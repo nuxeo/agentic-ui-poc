@@ -57,6 +57,7 @@ agentic-ui-poc/
 ├── libs/
 │   ├── core/                      # Nuxeo client, auth, singletons
 │   ├── shared/
+│   │   ├── nuxeo-client/          # Nuxeo REST API services, models, queries
 │   │   ├── ui/                    # Presentational components
 │   │   └── util/                  # Pure TS helpers
 │   └── features/
@@ -75,6 +76,7 @@ agentic-ui-poc/
 ```text
 apps/nuxeo-ui
   ├──> libs/core
+  ├──> libs/shared/nuxeo-client
   ├──> libs/shared/ui
   ├──> libs/shared/util
   └──> libs/features/*
@@ -121,7 +123,7 @@ Use **kebab-case** for all file names:
 | Service | `<name>.service.ts` | `auth.service.ts` |
 | Guard | `<name>.guards.ts` | `auth.guards.ts` |
 | Interceptor | `<name>.interceptor.ts` | `nuxeo-auth.interceptor.ts` |
-| Config token | `<name>.config.ts` | `nuxeo-api.config.ts` |
+| Config token | `<name>.config.ts` | `libs/shared/nuxeo-client/src/lib/nuxeo-api.config.ts` |
 | Route file | `lib.routes.ts` | (always this name in feature libs) |
 | Public API | `index.ts` | (always at `src/index.ts`) |
 
@@ -442,6 +444,24 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   ...
 }
+```
+
+### Nuxeo client library (`@agentic-ui/shared/nuxeo-client`)
+
+All Nuxeo REST API services live in `libs/shared/nuxeo-client/`. The library is split by domain:
+
+| Layer | Path | Contents |
+| ----- | ---- | -------- |
+| Models | `src/lib/models/` | `NuxeoDocument`, `NuxeoTask`, `NuxeoPaginatedList`, etc. |
+| Queries | `src/lib/queries/nxql-queries.ts` | NXQL query constants |
+| Services | `src/lib/services/` | `DocumentService`, `TaskService`, `CollectionService` |
+| Base | `src/lib/services/nuxeo-api-base.ts` | Shared HTTP helpers (`apiUrl()`, `nxqlSearch()`, `get()`) |
+| Config | `src/lib/nuxeo-api.config.ts` | `NUXEO_API_ORIGIN` injection token |
+
+When adding a new Nuxeo API domain (e.g., workflows, users, audit), create a new service file in `src/lib/services/`, a model file if needed, and re-export from `src/index.ts`. Import in consumers via:
+
+```typescript
+import { DocumentService, NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
 ```
 
 ### Signal-based state management

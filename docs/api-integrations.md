@@ -57,7 +57,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 | Field | Value |
 | ----- | ----- |
-| **Service** | `NuxeoDocumentService` (`apps/nuxeo-ui/src/app/services/nuxeo-document.service.ts`) |
+| **Service** | `DocumentService` (`libs/shared/nuxeo-client/src/lib/services/document.service.ts`) |
 | **Method** | `getRecentlyEdited(pageSize)` |
 | **HTTP Method** | `GET` |
 | **Endpoint** | `/nuxeo/api/v1/search/lang/NXQL/execute` |
@@ -121,7 +121,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 | Field | Value |
 | ----- | ----- |
-| **Service** | `NuxeoDocumentService` (`apps/nuxeo-ui/src/app/services/nuxeo-document.service.ts`) |
+| **Service** | `TaskService` (`libs/shared/nuxeo-client/src/lib/services/task.service.ts`) |
 | **Method** | `getUserTasks(userId, pageSize)` |
 | **HTTP Method** | `GET` |
 | **Endpoint** | `/nuxeo/api/v1/task` |
@@ -187,7 +187,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 | Field | Value |
 | ----- | ----- |
-| **Service** | `NuxeoDocumentService` (`apps/nuxeo-ui/src/app/services/nuxeo-document.service.ts`) |
+| **Service** | `DocumentService` (`libs/shared/nuxeo-client/src/lib/services/document.service.ts`) |
 | **Method** | `getRecentlyViewed(userId, pageSize)` |
 | **HTTP Method** | `GET` |
 | **Endpoint** | `/nuxeo/api/v1/search/lang/NXQL/execute` |
@@ -222,7 +222,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 | Field | Value |
 | ----- | ----- |
-| **Service** | `NuxeoDocumentService` (`apps/nuxeo-ui/src/app/services/nuxeo-document.service.ts`) |
+| **Service** | `CollectionService` (`libs/shared/nuxeo-client/src/lib/services/collection.service.ts`) |
 | **Method** | `getFavorites(userId, pageSize)` |
 | **HTTP Method** | `GET` (two-step) |
 | **Endpoint** | Step 1: `/nuxeo/api/v1/search/lang/NXQL/execute` — Step 2: `/nuxeo/api/v1/search/pp/default_content_collection/execute` |

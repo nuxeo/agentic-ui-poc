@@ -2,7 +2,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, map, throwError, tap } from 'rxjs';
 
-import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
+import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
 const STORAGE_KEY = 'agentic_ui_nuxeo_session';
 

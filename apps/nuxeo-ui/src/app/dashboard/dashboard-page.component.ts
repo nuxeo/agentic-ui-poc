@@ -7,12 +7,14 @@ import {
   WidgetGridComponent,
 } from '@agentic-ui/shared/ui';
 
-import { AuthService } from '../auth/auth.service';
 import {
   NuxeoDocument,
-  NuxeoDocumentService,
   NuxeoTask,
-} from '../services/nuxeo-document.service';
+  DocumentService,
+  TaskService,
+  CollectionService,
+} from '@agentic-ui/shared/nuxeo-client';
+import { AuthService } from '../auth/auth.service';
 
 const DOC_TYPE_ICONS: Record<string, string> = {
   File: 'description',
@@ -41,7 +43,9 @@ const DOC_TYPE_ICONS: Record<string, string> = {
   styleUrl: './dashboard-page.component.scss',
 })
 export class DashboardPageComponent {
-  private readonly nuxeoDocs = inject(NuxeoDocumentService);
+  private readonly docService = inject(DocumentService);
+  private readonly taskService = inject(TaskService);
+  private readonly collectionService = inject(CollectionService);
   private readonly auth = inject(AuthService);
 
   readonly recentlyEdited = signal<NuxeoDocument[]>([]);
@@ -63,7 +67,7 @@ export class DashboardPageComponent {
   constructor() {
     const userId = this.auth.username() ?? 'Administrator';
 
-    this.nuxeoDocs.getRecentlyEdited(10).subscribe({
+    this.docService.getRecentlyEdited(10).subscribe({
       next: (res) => {
         this.recentlyEdited.set(res.entries);
         this.recentlyEditedLoading.set(false);
@@ -74,7 +78,7 @@ export class DashboardPageComponent {
       },
     });
 
-    this.nuxeoDocs.getUserTasks(userId, 10).subscribe({
+    this.taskService.getUserTasks(userId, 10).subscribe({
       next: (entries) => {
         this.tasks.set(entries);
         this.tasksLoading.set(false);
@@ -85,7 +89,7 @@ export class DashboardPageComponent {
       },
     });
 
-    this.nuxeoDocs.getRecentlyViewed(userId, 10).subscribe({
+    this.docService.getRecentlyViewed(userId, 10).subscribe({
       next: (res) => {
         this.recentlyViewed.set(res.entries);
         this.recentlyViewedLoading.set(false);
@@ -96,7 +100,7 @@ export class DashboardPageComponent {
       },
     });
 
-    this.nuxeoDocs.getFavorites(userId, 10).subscribe({
+    this.collectionService.getFavorites(userId, 10).subscribe({
       next: (res) => {
         this.favorites.set(res.entries);
         this.favoritesLoading.set(false);

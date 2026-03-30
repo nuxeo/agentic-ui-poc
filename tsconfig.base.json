@@ -17,6 +17,9 @@
       "@agentic-ui/shared/util": [
         "libs/shared/util/src/index.ts"
       ],
+      "@agentic-ui/shared/nuxeo-client": [
+        "libs/shared/nuxeo-client/src/index.ts"
+      ],
       "@agentic-ui/feature-browse": [
         "libs/features/browse/src/index.ts"
       ],
