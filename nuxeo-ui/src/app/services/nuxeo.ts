@@ -35,8 +35,9 @@ export class NuxeoService {
   }
 
   search(query: string, pageSize = 20, currentPage = 0): Observable<NuxeoList> {
+    const sanitized = query.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     const params = new HttpParams()
-      .set('query', `SELECT * FROM Document WHERE ecm:fulltext = '${query.replace(/'/g, "\\'")}' AND ecm:isVersion = 0 AND ecm:isTrashed = 0`)
+      .set('query', `SELECT * FROM Document WHERE ecm:fulltext = '${sanitized}' AND ecm:isVersion = 0 AND ecm:isTrashed = 0`)
       .set('pageSize', pageSize)
       .set('currentPageIndex', currentPage);
     return this.http.get<NuxeoList>(`${this.base}/query`, { params });
