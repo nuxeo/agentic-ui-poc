@@ -1,0 +1,43 @@
+<div class="upload-container">
+  <h2>Upload Document</h2>
+
+  <mat-card class="upload-card">
+    <mat-card-content>
+      <div class="drop-zone"
+           [class.drag-active]="dragOver()"
+           (dragover)="onDragOver($event)"
+           (dragleave)="onDragLeave()"
+           (drop)="onDrop($event)"
+           (click)="fileInput.click()">
+        <mat-icon class="upload-icon">cloud_upload</mat-icon>
+        <p *ngIf="!selectedFile()">Drag & drop a file here or click to browse</p>
+        <p *ngIf="selectedFile()" class="file-selected">
+          <mat-icon>check_circle</mat-icon>
+          {{ selectedFile()!.name }} ({{ (selectedFile()!.size / 1024 / 1024).toFixed(2) }} MB)
+        </p>
+        <input #fileInput type="file" hidden (change)="onFileSelected($event)" />
+      </div>
+
+      <form [formGroup]="form" class="upload-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Target folder path</mat-label>
+          <input matInput formControlName="parentPath" />
+          <mat-hint>e.g. /default-domain/workspaces</mat-hint>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Document title (optional)</mat-label>
+          <input matInput formControlName="title" />
+        </mat-form-field>
+      </form>
+
+      <mat-progress-bar *ngIf="uploading()" mode="determinate" [value]="uploadProgress()" class="progress-bar"></mat-progress-bar>
+    </mat-card-content>
+
+    <mat-card-actions>
+      <button mat-flat-button color="primary" [disabled]="!selectedFile() || uploading()" (click)="upload()">
+        <mat-icon>upload</mat-icon>
+        {{ uploading() ? 'Uploading...' : 'Upload' }}
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>
