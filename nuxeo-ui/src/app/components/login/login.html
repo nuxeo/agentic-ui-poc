@@ -12,7 +12,9 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Username</mat-label>
           <input matInput formControlName="username" autocomplete="username" />
-          <mat-error *ngIf="form.get('username')?.hasError('required')">Username is required</mat-error>
+          @if (form.get('username')?.hasError('required')) {
+            <mat-error>Username is required</mat-error>
+          }
         </mat-form-field>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Password</mat-label>
@@ -20,12 +22,19 @@
           <button mat-icon-button matSuffix type="button" (click)="hidePassword.set(!hidePassword())" [attr.aria-label]="'Toggle password visibility'">
             <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
           </button>
-          <mat-error *ngIf="form.get('password')?.hasError('required')">Password is required</mat-error>
+          @if (form.get('password')?.hasError('required')) {
+            <mat-error>Password is required</mat-error>
+          }
         </mat-form-field>
-        <div *ngIf="error()" class="error-message">{{ error() }}</div>
+        @if (error()) {
+          <div class="error-message">{{ error() }}</div>
+        }
         <button mat-flat-button color="primary" type="submit" [disabled]="loading()" class="full-width login-btn">
-          <mat-spinner *ngIf="loading()" diameter="20"></mat-spinner>
-          <span *ngIf="!loading()">Sign In</span>
+          @if (loading()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <span>Sign In</span>
+          }
         </button>
       </form>
     </mat-card-content>

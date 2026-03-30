@@ -24,7 +24,7 @@ export class NuxeoService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.nuxeoUrl}/api/v1`;
 
-  getChildren(parentPath: string = '/'): Observable<NuxeoList> {
+  getChildren(parentPath = '/'): Observable<NuxeoList> {
     return this.http.get<NuxeoList>(
       `${this.base}/path${parentPath}/@children`,
     );

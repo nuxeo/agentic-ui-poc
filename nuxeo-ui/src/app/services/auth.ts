@@ -11,6 +11,16 @@ export interface User {
   email?: string;
 }
 
+interface NuxeoUserResponse {
+  id: string;
+  properties?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    [key: string]: unknown;
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -40,7 +50,7 @@ export class AuthService {
     const token = btoa(`${username}:${password}`);
     const headers = new HttpHeaders({ Authorization: `Basic ${token}` });
     return this.http
-      .get<any>(`${environment.nuxeoUrl}/api/v1/me`, { headers })
+      .get<NuxeoUserResponse>(`${environment.nuxeoUrl}/api/v1/me`, { headers })
       .pipe(
         tap((resp) => {
           const user: User = {

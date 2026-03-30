@@ -8,13 +8,20 @@
            (dragover)="onDragOver($event)"
            (dragleave)="onDragLeave()"
            (drop)="onDrop($event)"
-           (click)="fileInput.click()">
+           (click)="fileInput.click()"
+           (keyup.enter)="fileInput.click()"
+           role="button"
+           tabindex="0"
+           aria-label="Select file to upload">
         <mat-icon class="upload-icon">cloud_upload</mat-icon>
-        <p *ngIf="!selectedFile()">Drag & drop a file here or click to browse</p>
-        <p *ngIf="selectedFile()" class="file-selected">
-          <mat-icon>check_circle</mat-icon>
-          {{ selectedFile()!.name }} ({{ (selectedFile()!.size / 1024 / 1024).toFixed(2) }} MB)
-        </p>
+        @if (!selectedFile()) {
+          <p>Drag &amp; drop a file here or click to browse</p>
+        } @else {
+          <p class="file-selected">
+            <mat-icon>check_circle</mat-icon>
+            {{ selectedFile()!.name }} ({{ (selectedFile()!.size / 1024 / 1024).toFixed(2) }} MB)
+          </p>
+        }
         <input #fileInput type="file" hidden (change)="onFileSelected($event)" />
       </div>
 
@@ -30,7 +37,9 @@
         </mat-form-field>
       </form>
 
-      <mat-progress-bar *ngIf="uploading()" mode="determinate" [value]="uploadProgress()" class="progress-bar"></mat-progress-bar>
+      @if (uploading()) {
+        <mat-progress-bar mode="determinate" [value]="uploadProgress()" class="progress-bar"></mat-progress-bar>
+      }
     </mat-card-content>
 
     <mat-card-actions>
