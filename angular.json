@@ -3,32 +3,32 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "web": {
+    "nuxeo-ui": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
           "style": "scss"
         }
       },
-      "root": "apps/web",
-      "sourceRoot": "apps/web/src",
+      "root": "apps/nuxeo-ui",
+      "sourceRoot": "apps/nuxeo-ui/src",
       "prefix": "app",
       "architect": {
         "build": {
           "builder": "@angular/build:application",
           "options": {
-            "browser": "apps/web/src/main.ts",
-            "index": "apps/web/src/index.html",
-            "tsConfig": "apps/web/tsconfig.app.json",
+            "browser": "apps/nuxeo-ui/src/main.ts",
+            "index": "apps/nuxeo-ui/src/index.html",
+            "tsConfig": "apps/nuxeo-ui/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "outputPath": "dist/web",
+            "outputPath": "dist/nuxeo-ui",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "apps/web/public"
+                "input": "apps/nuxeo-ui/public"
               }
             ],
-            "styles": ["apps/web/src/styles.scss"]
+            "styles": ["apps/nuxeo-ui/src/styles.scss"]
           },
           "configurations": {
             "production": {
@@ -57,14 +57,14 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "proxyConfig": "apps/web/proxy.conf.json"
+            "proxyConfig": "apps/nuxeo-ui/proxy.conf.json"
           },
           "configurations": {
             "production": {
-              "buildTarget": "web:build:production"
+              "buildTarget": "nuxeo-ui:build:production"
             },
             "development": {
-              "buildTarget": "web:build:development"
+              "buildTarget": "nuxeo-ui:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -73,18 +73,18 @@
           "builder": "@angular/build:karma",
           "options": {
             "polyfills": ["zone.js", "zone.js/testing"],
-            "tsConfig": "apps/web/tsconfig.spec.json",
+            "tsConfig": "apps/nuxeo-ui/tsconfig.spec.json",
             "inlineStyleLanguage": "scss",
             "assets": [
               {
                 "glob": "**/*",
-                "input": "apps/web/public"
+                "input": "apps/nuxeo-ui/public"
               }
             ],
             "styles": [
-              "apps/web/src/styles.scss"
+              "apps/nuxeo-ui/src/styles.scss"
             ],
-            "karmaConfig": "apps/web/karma.conf.js"
+            "karmaConfig": "apps/nuxeo-ui/karma.conf.js"
           }
         }
       }

@@ -1,28 +1,28 @@
 {
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "name": "web",
+  "name": "nuxeo-ui",
   "projectType": "application",
   "generators": {
     "@schematics/angular:component": {
       "style": "scss"
     }
   },
-  "sourceRoot": "apps/web/src",
+  "sourceRoot": "apps/nuxeo-ui/src",
   "prefix": "app",
   "targets": {
     "build": {
       "executor": "nx:run-commands",
-      "outputs": ["{workspaceRoot}/dist/web"],
+      "outputs": ["{workspaceRoot}/dist/nuxeo-ui"],
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "ng build web"
+        "command": "ng build nuxeo-ui"
       },
       "configurations": {
         "production": {
-          "command": "ng build web --configuration=production"
+          "command": "ng build nuxeo-ui --configuration=production"
         },
         "development": {
-          "command": "ng build web --configuration=development"
+          "command": "ng build nuxeo-ui --configuration=development"
         }
       },
       "defaultConfiguration": "production"
@@ -32,14 +32,14 @@
       "continuous": true,
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "ng serve web"
+        "command": "ng serve nuxeo-ui"
       },
       "configurations": {
         "production": {
-          "command": "ng serve web --configuration=production"
+          "command": "ng serve nuxeo-ui --configuration=production"
         },
         "development": {
-          "command": "ng serve web --configuration=development"
+          "command": "ng serve nuxeo-ui --configuration=development"
         }
       },
       "defaultConfiguration": "development"
@@ -48,7 +48,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "{workspaceRoot}",
-        "command": "ng test web --no-watch --browsers=ChromeHeadless"
+        "command": "ng test nuxeo-ui --no-watch --browsers=ChromeHeadless"
       }
     }
   }

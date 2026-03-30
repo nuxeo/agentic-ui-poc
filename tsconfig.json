@@ -16,10 +16,10 @@
   "files": [],
   "references": [
     {
-      "path": "./apps/web/tsconfig.app.json"
+      "path": "./apps/nuxeo-ui/tsconfig.app.json"
     },
     {
-      "path": "./apps/web/tsconfig.spec.json"
+      "path": "./apps/nuxeo-ui/tsconfig.spec.json"
     }
   ],
   "extends": "./tsconfig.base.json"

@@ -2,13 +2,13 @@
 
 Nx + **Angular 19** monorepo for the **Agentic AI–Built Nuxeo Angular UI** PoC. PoC charter: [README.charter.md](README.charter.md). Boundaries and aliases: [docs/architecture.md](docs/architecture.md).
 
-The `web` app uses a root [`angular.json`](angular.json) for `ng build` / `ng serve` / `ng test` (Karma); Nx targets in [`apps/web/project.json`](apps/web/project.json) delegate to the Angular CLI (`nx:run-commands`) to avoid an Nx 22 + Angular 19 application-builder schema bug (`visitor is not a function`). Libraries use **Vitest 3** and **Analog 1.14** (aligned with Angular 19).
+The `nuxeo-ui` app uses a root [`angular.json`](angular.json) for `ng build` / `ng serve` / `ng test` (Karma); Nx targets in [`apps/nuxeo-ui/project.json`](apps/nuxeo-ui/project.json) delegate to the Angular CLI (`nx:run-commands`) to avoid an Nx 22 + Angular 19 application-builder schema bug (`visitor is not a function`). Libraries use **Vitest 3** and **Analog 1.14** (aligned with Angular 19).
 
 ## Structure
 
 | Path | Nx project | Role |
 | ---- | ---------- | ---- |
-| `apps/web` | `web` | Application shell, top-level routes |
+| `apps/nuxeo-ui` | `nuxeo-ui` | Application shell, top-level routes |
 | `libs/core` | `core` | Nuxeo API, auth, interceptors (to be implemented) |
 | `libs/shared/ui` | `ui` | Shared presentational / Satori-oriented UI |
 | `libs/shared/util` | `shared-util` | Pure TypeScript utilities |
@@ -20,10 +20,10 @@ The `web` app uses a root [`angular.json`](angular.json) for `ng build` / `ng se
 
 ```bash
 npm install
-npx nx serve web          # http://localhost:4200
-npx nx build web
+npx nx serve nuxeo-ui     # http://localhost:4200
+npx nx build nuxeo-ui
 npx nx graph              # dependency graph
-npx nx test <project>     # e.g. core, web, browse
+npx nx test <project>     # e.g. core, nuxeo-ui, browse
 ```
 
 ## Docs

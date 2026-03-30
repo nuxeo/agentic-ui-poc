@@ -54,7 +54,7 @@ export class LoginPageComponent {
   });
 
   /**
-   * Right-panel art from `apps/web/public/images/Login-background.svg`.
+   * Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`.
    */
   heroBackgroundImage(): string {
     return `url("${this.heroImagePath}")`;

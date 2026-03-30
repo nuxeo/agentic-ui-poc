@@ -1,6 +1,6 @@
 # Architecture boundaries
 
-Nx monorepo: `apps/web` (shell) and libraries under `libs/`. Path aliases are defined in `tsconfig.base.json`.
+Nx monorepo: `apps/nuxeo-ui` (shell) and libraries under `libs/`. Path aliases are defined in `tsconfig.base.json`.
 
 ## Stack version (authoritative)
 
@@ -8,12 +8,12 @@ The repo targets **Angular 19.2.x** (`@angular/*` and `@angular/build` in the **
 
 **Tooling (web vs libraries):**
 
-- **`apps/web`**: Built and served with the root [`angular.json`](../angular.json) and `ng` CLI (`@angular/build:application`). Nx targets in [`apps/web/project.json`](../apps/web/project.json) delegate to `ng build` / `ng serve` / `ng test` (Karma) for compatibility with the current Nx + application-builder setup.
+- **`apps/nuxeo-ui`**: Built and served with the root [`angular.json`](../angular.json) and `ng` CLI (`@angular/build:application`). Nx targets in [`apps/nuxeo-ui/project.json`](../apps/nuxeo-ui/project.json) delegate to `ng build` / `ng serve` / `ng test` (Karma) for compatibility with the current Nx + application-builder setup.
 - **Libraries** under `libs/*`: Unit tests use **Vitest** and **Analog** (Angular 19–compatible), not Karma.
 
-The shell uses **Hyland Satori Platform Nav** (`sat-platform-nav-container`, list items, main content with `router-outlet`). Navigation labels and paths are defined in `apps/web/src/app/platform-nav-items.ts` and stay in the web app until another surface needs the same config. With `@hylandsoftware/satori-ui` **0.1.x**, the sidebar product title is whatever Satori renders by default (Figma-specific title may require a newer Satori release or internal customization).
+The shell uses **Hyland Satori Platform Nav** (`sat-platform-nav-container`, list items, main content with `router-outlet`). Navigation labels and paths are defined in `apps/nuxeo-ui/src/app/platform-nav-items.ts` and stay in the app until another surface needs the same config. With `@hylandsoftware/satori-ui` **0.1.x**, the sidebar product title is whatever Satori renders by default (Figma-specific title may require a newer Satori release or internal customization).
 
-**Auth / Nuxeo (PoC):** Login, session storage, route guards, and the Nuxeo Basic-auth HTTP interceptor currently live under `apps/web/src/app/auth/` (and related shell config). Per the layer rules below, these concerns are intended to move into **`libs/core`** and be consumed via `@agentic-ui/core` as the implementation hardens.
+**Auth / Nuxeo (PoC):** Login, session storage, route guards, and the Nuxeo Basic-auth HTTP interceptor currently live under `apps/nuxeo-ui/src/app/auth/` (and related shell config). Per the layer rules below, these concerns are intended to move into **`libs/core`** and be consumed via `@agentic-ui/core` as the implementation hardens.
 
 ## Layers
 
@@ -26,18 +26,18 @@ The shell uses **Hyland Satori Platform Nav** (`sat-platform-nav-container`, lis
 
 ## Routing
 
-- Shell routes live in `apps/web/src/app/app.routes.ts`.
+- Shell routes live in `apps/nuxeo-ui/src/app/app.routes.ts`.
 - Each feature exports a `*Routes` array from its public API and is lazy-loaded via `loadChildren` (or `loadComponent` for standalone entry components).
 - Router uses `withComponentInputBinding()` in `app.config.ts` for route → component input binding.
 
-**Local Nuxeo:** Dev server proxy for `/nuxeo` → Nuxeo is configured in `apps/web/proxy.conf.json` and referenced from `angular.json` serve options.
+**Local Nuxeo:** Dev server proxy for `/nuxeo` → Nuxeo is configured in `apps/nuxeo-ui/proxy.conf.json` and referenced from `angular.json` serve options.
 
 ## Nx projects
 
 Run `npx nx graph` to view the dependency graph. Common commands:
 
-- `npx nx serve web` — dev server
-- `npx nx build web` — production build
+- `npx nx serve nuxeo-ui` — dev server
+- `npx nx build nuxeo-ui` — production build
 - `npx nx test <project>` — unit tests for a library or app
 
 ## Import paths
