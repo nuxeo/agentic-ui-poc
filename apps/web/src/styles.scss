@@ -1,0 +1,50 @@
+@use '@hylandsoftware/satori-ui/theme' as sat;
+
+html {
+  color-scheme: light dark;
+  @include sat.theme;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+app-root {
+  display: block;
+  height: 100%;
+}
+
+/* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
+sat-platform-nav .sat-platform-nav-list {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+sat-platform-nav .sat-platform-nav-list:hover {
+  overflow-y: auto;
+}
+
+/* Long page titles must not squeeze the trailing logo + actions (avoids clipped “HYLAND” / settings). */
+sat-app-header .sat-app-header-leading-container {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+sat-app-header .sat-app-header-title,
+sat-app-header h1.sat-app-header-title,
+sat-app-header h2.sat-app-header-title {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+sat-app-header .sat-app-header-trailing-container,
+sat-app-header .sat-app-header-actions,
+sat-app-header sat-word-mark-logo.sat-app-header-logo,
+sat-app-header .sat-app-header-logo sat-word-mark-logo {
+  flex-shrink: 0;
+}

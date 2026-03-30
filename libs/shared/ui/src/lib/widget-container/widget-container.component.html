@@ -1,0 +1,13 @@
+<div class="widget">
+  <div class="widget-header">
+    @if (icon()) {
+      <mat-icon class="widget-header-icon" [style.color]="iconColor()">{{ icon() }}</mat-icon>
+    }
+    <h3 class="widget-header-title">{{ title() }}</h3>
+    <ng-content select="[widgetActions]" />
+  </div>
+
+  <div class="widget-body">
+    <ng-content />
+  </div>
+</div>

@@ -1,0 +1,31 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "preserve",
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@agentic-ui/core": [
+        "libs/core/src/index.ts"
+      ],
+      "@agentic-ui/shared/ui": [
+        "libs/shared/ui/src/index.ts"
+      ],
+      "@agentic-ui/shared/util": [
+        "libs/shared/util/src/index.ts"
+      ],
+      "@agentic-ui/feature-browse": [
+        "libs/features/browse/src/index.ts"
+      ],
+      "@agentic-ui/feature-search": [
+        "libs/features/search/src/index.ts"
+      ],
+      "@agentic-ui/feature-document-detail": [
+        "libs/features/document-detail/src/index.ts"
+      ]
+    }
+  }
+}

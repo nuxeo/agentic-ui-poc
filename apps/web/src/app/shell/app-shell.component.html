@@ -1,0 +1,71 @@
+<sat-platform-nav-container>
+  <sat-platform-nav>
+    @for (item of navItems; track item.path) {
+      <sat-platform-nav-list-item
+        [url]="item.path"
+        [active]="isActive(item.path)"
+      >
+        <sat-platform-nav-avatar [item]="item" />
+        {{ item.label }}
+      </sat-platform-nav-list-item>
+    }
+
+    <sat-platform-nav-user>
+      <sat-platform-nav-user-profile [matMenuTriggerFor]="userMenu">
+        {{ displayName() }}
+      </sat-platform-nav-user-profile>
+      <mat-menu #userMenu="matMenu" satPlatformNavUserMenu>
+        <button mat-menu-item type="button">Settings</button>
+        <button mat-menu-item type="button" (click)="signOut()">
+          Sign out
+        </button>
+      </mat-menu>
+    </sat-platform-nav-user>
+  </sat-platform-nav>
+
+  <sat-platform-nav-main-content>
+    <sat-app-header>
+      <button
+        type="button"
+        mat-icon-button
+        satAppHeaderPlatformNavMobileTrigger
+        (click)="togglePlatformNav()"
+        aria-label="Toggle navigation menu"
+      >
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <h1 satAppHeaderTitle>{{ pageTitle() }}</h1>
+
+      <sat-word-mark-logo satAppHeaderLogo />
+
+      <div satAppHeaderActions>
+        <button
+          type="button"
+          mat-icon-button
+          aria-label="Settings menu"
+          [matMenuTriggerFor]="headerSettingsMenu"
+        >
+          <mat-icon>settings</mat-icon>
+        </button>
+      </div>
+    </sat-app-header>
+
+    <mat-menu #headerSettingsMenu="matMenu">
+      <button mat-menu-item type="button">
+        <mat-icon>settings</mat-icon>
+        Feature Flags
+      </button>
+      <button mat-menu-item type="button">
+        <mat-icon>help_outline</mat-icon>
+        Help
+      </button>
+      <button mat-menu-item type="button">
+        <mat-icon>info_outline</mat-icon>
+        About
+      </button>
+    </mat-menu>
+
+    <router-outlet />
+  </sat-platform-nav-main-content>
+</sat-platform-nav-container>

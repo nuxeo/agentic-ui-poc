@@ -1,0 +1,63 @@
+<ui-widget-grid [columns]="2">
+
+  <ui-widget-container title="Recently Edited" icon="edit" iconColor="#5c6bc0">
+    <table class="widget-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Modified</th>
+          <th>Last Contributor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3" class="empty-row">No recent edits</td></tr>
+      </tbody>
+    </table>
+  </ui-widget-container>
+
+  <ui-widget-container title="Tasks" icon="assignment" iconColor="#ef5350">
+    <table class="widget-table">
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Due</th>
+          <th>Info</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3" class="empty-row">No pending tasks</td></tr>
+      </tbody>
+    </table>
+  </ui-widget-container>
+
+  <ui-widget-container title="Recently Viewed" icon="visibility" iconColor="#42a5f5">
+    <table class="widget-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Type</th>
+          <th>Last Viewed</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3" class="empty-row">No recently viewed items</td></tr>
+      </tbody>
+    </table>
+  </ui-widget-container>
+
+  <ui-widget-container title="Favorite Items" icon="star" iconColor="#ffa726">
+    <table class="widget-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Modified</th>
+          <th>Last Contributor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="3" class="empty-row">You haven't starred documents yet.</td></tr>
+      </tbody>
+    </table>
+  </ui-widget-container>
+
+</ui-widget-grid>

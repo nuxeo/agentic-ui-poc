@@ -1,0 +1,131 @@
+<div class="login-page">
+  <div class="login-panel">
+    <div class="login-panel-inner">
+      <a routerLink="/login" class="login-brand" aria-label="Hyland">
+        <sat-logo direction="horizontal">
+          <sat-h-mark-logo />
+          <sat-word-mark-logo />
+        </sat-logo>
+      </a>
+
+      <form class="login-form" [formGroup]="form" (ngSubmit)="onFormSubmit()">
+        @if (step() === 'username') {
+          <mat-form-field appearance="outline" class="login-field-full">
+            <mat-label>Username or email</mat-label>
+            <input
+              matInput
+              formControlName="username"
+              autocomplete="username"
+            />
+            @if (
+              form.controls.username.hasError('required') &&
+              form.controls.username.touched
+            ) {
+              <mat-error>Username or email is required</mat-error>
+            }
+          </mat-form-field>
+
+          <div class="login-actions-row login-actions-row--single">
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              class="login-continue"
+              [disabled]="primaryDisabled()"
+            >
+              Continue
+            </button>
+          </div>
+        } @else {
+          <div class="login-user-row">
+            <mat-icon class="login-user-icon">person</mat-icon>
+            <span class="login-user-email">{{
+              form.controls.username.value || '—'
+            }}</span>
+            <button
+              type="button"
+              mat-button
+              color="primary"
+              (click)="backToUsername()"
+            >
+              Change
+            </button>
+          </div>
+
+          <mat-form-field appearance="outline" class="login-field-full">
+            <mat-label>Password</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="current-password"
+              required
+            />
+            @if (
+              form.controls.password.hasError('required') &&
+              form.controls.password.touched
+            ) {
+              <mat-error>Password is required</mat-error>
+            }
+          </mat-form-field>
+
+          <button type="button" mat-button color="primary" class="login-forgot">
+            Forgot Password?
+          </button>
+
+          <div class="login-actions-row">
+            <mat-checkbox formControlName="remember">Remember Me</mat-checkbox>
+            <button
+              mat-flat-button
+              color="primary"
+              type="submit"
+              class="login-continue"
+              [disabled]="primaryDisabled()"
+            >
+              @if (submitting()) {
+                <mat-spinner diameter="20" />
+              } @else {
+                Continue
+              }
+            </button>
+          </div>
+        }
+      </form>
+
+      <div class="login-or">
+        <span class="login-or-line"></span>
+        <span class="login-or-text">OR</span>
+        <span class="login-or-line"></span>
+      </div>
+
+      <div class="login-sso">
+        <button
+          type="button"
+          mat-stroked-button
+          class="login-sso-btn"
+          (click)="samlNotAvailable('Azure SAML')"
+        >
+          Log In With Azure SAML
+        </button>
+        <button
+          type="button"
+          mat-stroked-button
+          class="login-sso-btn"
+          (click)="samlNotAvailable('Okta SAML')"
+        >
+          Log In With Okta SAML
+        </button>
+      </div>
+    </div>
+
+    <p class="login-footer">
+      Copyright (C) 1992–2026 Hyland Software, Inc.
+    </p>
+  </div>
+
+  <div
+    class="login-hero"
+    role="presentation"
+    [style.background-image]="heroBackgroundImage()"
+  ></div>
+</div>

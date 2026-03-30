@@ -1,0 +1,11 @@
+.widget-grid {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+}
+
+@media (max-width: 900px) {
+  .widget-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "web",
+  "projectType": "application",
+  "generators": {
+    "@schematics/angular:component": {
+      "style": "scss"
+    }
+  },
+  "sourceRoot": "apps/web/src",
+  "prefix": "app",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/web"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng build web"
+      },
+      "configurations": {
+        "production": {
+          "command": "ng build web --configuration=production"
+        },
+        "development": {
+          "command": "ng build web --configuration=development"
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng serve web"
+      },
+      "configurations": {
+        "production": {
+          "command": "ng serve web --configuration=production"
+        },
+        "development": {
+          "command": "ng serve web --configuration=development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng test web --no-watch --browsers=ChromeHeadless"
+      }
+    }
+  }
+}

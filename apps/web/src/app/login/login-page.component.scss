@@ -1,0 +1,188 @@
+/* Login layout aligned to Hyland Figma: white form column ~56%, SVG hero ~44%. */
+:host {
+  display: block;
+  min-height: 100vh;
+}
+
+.login-page {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+.login-panel {
+  flex: 1 1 56%;
+  min-width: 0;
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  padding: clamp(2rem, 5vh, 3.5rem) clamp(1.5rem, 6vw, 4rem)
+    clamp(1.5rem, 4vh, 2.5rem);
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.login-panel-inner {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.login-brand {
+  display: block;
+  align-self: flex-start;
+  margin-bottom: 0.25rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.login-user-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  min-height: 48px;
+  margin-bottom: 0.25rem;
+}
+
+.login-user-icon {
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+  width: 22px;
+  height: 22px;
+  font-size: 22px;
+}
+
+.login-user-email {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+  word-break: break-all;
+}
+
+.login-user-field {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.login-field-full {
+  width: 100%;
+  margin-top: 0.125rem;
+}
+
+.login-forgot {
+  align-self: flex-start;
+  margin: 0.125rem 0 0.75rem;
+  font-weight: 500;
+}
+
+.login-actions-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.25rem;
+}
+
+.login-actions-row--single {
+  justify-content: flex-end;
+  margin-top: 0.75rem;
+}
+
+.login-continue {
+  min-width: 7.5rem;
+  padding-inline: 1.5rem;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.login-continue mat-spinner {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1.25rem 0 0.75rem;
+}
+
+.login-or-line {
+  flex: 1;
+  height: 1px;
+  background: var(--mat-sys-outline-variant, #c8c5d3);
+}
+
+.login-or-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+}
+
+.login-sso {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.login-sso-btn {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.login-footer {
+  margin: 2rem 0 0;
+  padding-top: 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.4;
+  color: var(--mat-sys-on-surface-variant, #757575);
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-hero {
+  flex: 1 1 44%;
+  min-width: min(100%, 320px);
+  min-height: 320px;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center center;
+}
+
+@media (max-width: 900px) {
+  .login-page {
+    flex-direction: column;
+  }
+
+  .login-panel {
+    max-width: none;
+    flex: 1 1 auto;
+  }
+
+  .login-hero {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 220px;
+    order: -1;
+  }
+}
