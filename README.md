@@ -28,5 +28,8 @@ npx nx test <project>     # e.g. core, nuxeo-ui, browse
 
 ## Docs
 
+- [docs/developer-guide.md](docs/developer-guide.md) — Coding conventions, project patterns, how-to guides
+- [docs/api-integrations.md](docs/api-integrations.md) — **Nuxeo API integration registry** (update when adding new APIs)
+- [docs/architecture.md](docs/architecture.md) — Layer boundaries, routing, import aliases
 - [docs/mvp-v1.md](docs/mvp-v1.md) — MVP checklist (fill in)
 - [docs/obstacles-log.md](docs/obstacles-log.md) — PoC friction / human intervention log

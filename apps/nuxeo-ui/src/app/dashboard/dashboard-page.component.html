@@ -1,63 +1,138 @@
 <ui-widget-grid [columns]="2">
 
   <ui-widget-container title="Recently Edited" icon="edit" iconColor="#5c6bc0">
-    <table class="widget-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Modified</th>
-          <th>Last Contributor</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="3" class="empty-row">No recent edits</td></tr>
-      </tbody>
-    </table>
+    @if (recentlyEditedLoading()) {
+      <div class="widget-loading">
+        <mat-spinner diameter="28" />
+      </div>
+    } @else if (recentlyEditedError()) {
+      <div class="widget-error">{{ recentlyEditedError() }}</div>
+    } @else if (recentlyEdited().length === 0) {
+      <div class="widget-empty">No recent edits</div>
+    } @else {
+      <table class="widget-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Modified</th>
+            <th>Last Contributor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of recentlyEdited(); track doc.uid) {
+            <tr class="widget-row">
+              <td class="doc-title-cell">
+                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+              </td>
+              <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
+              <td class="doc-contributor">
+                <span class="contributor-badge">{{ lastContributor(doc) }}</span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
   </ui-widget-container>
 
   <ui-widget-container title="Tasks" icon="assignment" iconColor="#ef5350">
-    <table class="widget-table">
-      <thead>
-        <tr>
-          <th>Task</th>
-          <th>Due</th>
-          <th>Info</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="3" class="empty-row">No pending tasks</td></tr>
-      </tbody>
-    </table>
+    @if (tasksLoading()) {
+      <div class="widget-loading">
+        <mat-spinner diameter="28" />
+      </div>
+    } @else if (tasksError()) {
+      <div class="widget-error">{{ tasksError() }}</div>
+    } @else if (tasks().length === 0) {
+      <div class="widget-empty">No pending tasks</div>
+    } @else {
+      <div class="task-list">
+        @for (task of tasks(); track task.id) {
+          <div class="task-card">
+            <div class="task-action">{{ taskLabel(task) }}</div>
+            @if (taskDocTitle(task)) {
+              <div class="task-doc-title">{{ taskDocTitle(task) }}</div>
+            }
+            <div class="task-due" [class.task-overdue]="isOverdue(task)">
+              Due <span class="task-due-value">{{ relativeTime(task.dueDate) }}</span>
+            </div>
+            <div class="task-workflow">{{ taskWorkflow(task) }}</div>
+          </div>
+        }
+      </div>
+    }
   </ui-widget-container>
 
   <ui-widget-container title="Recently Viewed" icon="visibility" iconColor="#42a5f5">
-    <table class="widget-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Type</th>
-          <th>Last Viewed</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="3" class="empty-row">No recently viewed items</td></tr>
-      </tbody>
-    </table>
+    @if (recentlyViewedLoading()) {
+      <div class="widget-loading">
+        <mat-spinner diameter="28" />
+      </div>
+    } @else if (recentlyViewedError()) {
+      <div class="widget-error">{{ recentlyViewedError() }}</div>
+    } @else if (recentlyViewed().length === 0) {
+      <div class="widget-empty">No recently viewed items</div>
+    } @else {
+      <table class="widget-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Last Viewed</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of recentlyViewed(); track doc.uid) {
+            <tr class="widget-row">
+              <td class="doc-title-cell">
+                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+              </td>
+              <td>
+                <span class="type-badge">{{ docTypeLabel(doc) }}</span>
+              </td>
+              <td class="doc-date">{{ relativeTime(doc.lastModified) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
   </ui-widget-container>
 
   <ui-widget-container title="Favorite Items" icon="star" iconColor="#ffa726">
-    <table class="widget-table">
-      <thead>
-        <tr>
-          <th>Title</th>
-          <th>Modified</th>
-          <th>Last Contributor</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="3" class="empty-row">You haven't starred documents yet.</td></tr>
-      </tbody>
-    </table>
+    @if (favoritesLoading()) {
+      <div class="widget-loading">
+        <mat-spinner diameter="28" />
+      </div>
+    } @else if (favoritesError()) {
+      <div class="widget-error">{{ favoritesError() }}</div>
+    } @else if (favorites().length === 0) {
+      <div class="widget-empty">You haven't starred documents yet.</div>
+    } @else {
+      <table class="widget-table">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Modified</th>
+            <th>Last Contributor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of favorites(); track doc.uid) {
+            <tr class="widget-row">
+              <td class="doc-title-cell">
+                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+              </td>
+              <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
+              <td class="doc-contributor">
+                <span class="contributor-badge">{{ lastContributor(doc) }}</span>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
   </ui-widget-container>
 
 </ui-widget-grid>

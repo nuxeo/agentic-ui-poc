@@ -13,9 +13,13 @@
     text-align: left;
     padding: 10px 20px;
     font-weight: 500;
-    color: #888;
+    color: #333;
     font-size: 12px;
     border-bottom: 1px solid #f0f0f0;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 1;
   }
 
   td {
@@ -30,4 +34,128 @@
     padding: 32px 20px;
     font-size: 13px;
   }
+}
+
+.widget-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.widget-error {
+  text-align: center;
+  color: #ef5350;
+  padding: 32px 20px;
+  font-size: 13px;
+}
+
+.widget-empty {
+  text-align: center;
+  color: #aaa;
+  padding: 32px 20px;
+  font-size: 13px;
+}
+
+.widget-row:hover {
+  background: #fafafa;
+}
+
+.doc-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.doc-type-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #9e9e9e;
+  flex-shrink: 0;
+}
+
+.doc-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.doc-date {
+  white-space: nowrap;
+  color: #666;
+  font-size: 12px;
+}
+
+.contributor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  background: #5c6bc0;
+  white-space: nowrap;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.task-card {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  line-height: 1.5;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.task-action {
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+}
+
+.task-doc-title {
+  font-size: 13px;
+  color: #555;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-due {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.task-due-value {
+  font-weight: 500;
+}
+
+.task-overdue {
+  color: #ef5350;
+
+  .task-due-value {
+    color: #ef5350;
+  }
+}
+
+.task-workflow {
+  font-size: 12px;
+  color: #666;
+  margin-top: 1px;
 }

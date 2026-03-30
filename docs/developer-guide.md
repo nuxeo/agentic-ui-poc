@@ -495,6 +495,16 @@ Register interceptors in `app.config.ts`:
 provideHttpClient(withInterceptors([nuxeoAuthInterceptor])),
 ```
 
+### Documenting API integrations
+
+Every new Nuxeo API call **must** be documented in [docs/api-integrations.md](api-integrations.md). Copy the template at the bottom of that file and fill in:
+
+- **Title** -- short name for the integration
+- **API Endpoint** -- HTTP method and path (e.g., `GET /nuxeo/api/v1/search/lang/NXQL/execute`)
+- **Payload Details** -- query parameters, request body, headers, and response shape
+
+This ensures any contributor can quickly see which APIs are in use, what they return, and which service owns them.
+
 ---
 
 ## 9. Styling Guide
