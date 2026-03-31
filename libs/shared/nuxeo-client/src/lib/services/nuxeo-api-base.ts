@@ -18,6 +18,14 @@ export class NuxeoApiBase {
     return this.http.get<T>(this.apiUrl(path), { params, headers });
   }
 
+  post<T>(path: string, body: unknown, headers?: Record<string, string>): Observable<T> {
+    return this.http.post<T>(this.apiUrl(path), body, { headers });
+  }
+
+  put<T>(path: string, body: unknown, headers?: Record<string, string>): Observable<T> {
+    return this.http.put<T>(this.apiUrl(path), body, { headers });
+  }
+
   nxqlSearch(query: string, pageSize: number): Observable<NuxeoDocumentList> {
     const params = new HttpParams().set('query', query).set('pageSize', pageSize);
     return this.http.get<NuxeoDocumentList>(

@@ -1,1 +1,633 @@
-<p>DocumentDetail works!</p>
+@if (loading()) {
+  <div class="detail-loading">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (error()) {
+  <div class="detail-error">
+    <mat-icon class="error-icon">error_outline</mat-icon>
+    <p>{{ error() }}</p>
+    <button mat-stroked-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon> Go Back
+    </button>
+  </div>
+} @else if (doc()) {
+  <!-- Header -->
+  <div class="detail-header">
+    <button mat-icon-button (click)="goBack()" aria-label="Go back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="header-info">
+      <h1 class="header-title">{{ doc()!.title }}</h1>
+      <span class="header-path">{{ breadcrumbPath() }}</span>
+    </div>
+    <div class="header-actions">
+      <button mat-icon-button matTooltip="Edit" aria-label="Edit">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="openAddToCollectionDialog()"
+              matTooltip="Add to collection"
+              aria-label="Add to collection">
+        <mat-icon>library_add</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="trashDocument()"
+              [disabled]="actionInProgress() === 'trash'"
+              matTooltip="Delete"
+              aria-label="Delete">
+        <mat-icon>delete</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="toggleClipboard()"
+              [matTooltip]="isInClipboard() ? 'Remove from clipboard' : 'Add to clipboard'"
+              aria-label="Clipboard">
+        <mat-icon>{{ isInClipboard() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="toggleFavorite()"
+              [disabled]="actionInProgress() === 'favorite'"
+              [matTooltip]="isFavorite() ? 'Remove from favorites' : 'Add to favorites'"
+              aria-label="Favorite"
+              [class.action-active]="isFavorite()">
+        <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
+      </button>
+      <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More actions" aria-label="More actions">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Search" aria-label="Search">
+        <mat-icon>search</mat-icon>
+      </button>
+    </div>
+
+    <mat-menu #moreMenu="matMenu">
+      <button mat-menu-item (click)="shareDocument()">
+        <mat-icon>share</mat-icon>
+        <span>Share</span>
+      </button>
+      <button mat-menu-item (click)="toggleSubscription()" [disabled]="actionInProgress() === 'subscribe'">
+        <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
+        <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
+      </button>
+      <button mat-menu-item (click)="toggleClipboard()">
+        <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
+        <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
+      </button>
+      <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
+        <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
+        <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
+      </button>
+      <button mat-menu-item (click)="exportDocument()" [disabled]="actionInProgress() === 'export'">
+        <mat-icon>download</mat-icon>
+        <span>Export</span>
+      </button>
+    </mat-menu>
+
+  </div>
+
+  <!-- Main body: tabs on left, properties panel on right -->
+  <div class="detail-body">
+    <!-- Left: Tabs + content -->
+    <div class="detail-main">
+      <mat-tab-group class="detail-tabs" animationDuration="0ms" (selectedIndexChange)="onTabChange($event)">
+        <mat-tab label="View">
+          <div class="viewer-panel">
+            <div class="viewer-content">
+              @if (blobUrl(); as url) {
+                @if (isImage()) {
+                  <img [src]="url" [alt]="doc()!.title" class="viewer-image" />
+                } @else {
+                  <iframe [src]="url" class="viewer-iframe"></iframe>
+                }
+              } @else {
+                <div class="viewer-placeholder">
+                  <mat-icon class="placeholder-icon">insert_drive_file</mat-icon>
+                  <p>Preview not available</p>
+                </div>
+              }
+            </div>
+
+            <div class="viewer-toolbar">
+              <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in">
+                <mat-icon>zoom_in</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Fit to width" aria-label="Fit to width">
+                <mat-icon>fit_screen</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out">
+                <mat-icon>zoom_out</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Rotate left" aria-label="Rotate left">
+                <mat-icon>rotate_left</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Rotate right" aria-label="Rotate right">
+                <mat-icon>rotate_right</mat-icon>
+              </button>
+            </div>
+
+            <div class="viewer-footer">
+              <div class="viewer-footer-info">
+                <span class="file-name">{{ fileName() }}</span>
+                @if (fileSize()) {
+                  <span class="file-size">{{ fileSize() }}</span>
+                }
+              </div>
+              <div class="viewer-footer-actions">
+                <button mat-icon-button matTooltip="Annotate" aria-label="Annotate">
+                  <mat-icon>edit_note</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Preview" aria-label="Preview">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Download" aria-label="Download" (click)="download()">
+                  <mat-icon>download</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="More" aria-label="More">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Permissions">
+          <div class="permissions-container">
+            <!-- Permissions defined locally -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <h3 class="perm-section-title">Permissions defined locally</h3>
+                <button mat-button color="primary" class="perm-action-btn">New</button>
+              </div>
+              @if (localAces().length === 0) {
+                <div class="perm-empty">There are no local permissions.</div>
+              } @else {
+                <table class="perm-table">
+                  <thead>
+                    <tr>
+                      <th>User / Group</th>
+                      <th>Right</th>
+                      <th>Time Frame</th>
+                      <th>Granted by</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ace of localAces(); track ace.id) {
+                      <tr>
+                        <td>{{ ace.username }}</td>
+                        <td>{{ permissionLabel(ace.permission) }}</td>
+                        <td>{{ aceTimeFrame(ace) }}</td>
+                        <td>{{ ace.creator ?? '—' }}</td>
+                        <td class="perm-row-actions">
+                          <button mat-icon-button matTooltip="Edit" aria-label="Edit permission">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                          <button mat-icon-button matTooltip="Delete" aria-label="Delete permission">
+                            <mat-icon>delete</mat-icon>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- Permissions inherited from upper levels -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <h3 class="perm-section-title">Permissions inherited from upper levels</h3>
+                <button mat-button color="primary" class="perm-action-btn">
+                  {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+                </button>
+              </div>
+              @if (!isInheritanceBlocked()) {
+                <div class="perm-info-bar">
+                  <span class="perm-info-accent"></span>
+                  <p>If you want to explicitly control the access to this document you can block the permissions inheritance. Any change made on parent document will not affect the access conditions to this document. You and the administrators will be added to local permissions.</p>
+                </div>
+              }
+              @if (isInheritanceBlocked()) {
+                <div class="perm-empty">Permissions inheritance is blocked.</div>
+              } @else if (inheritedAces().length === 0) {
+                <div class="perm-empty">No inherited permissions.</div>
+              } @else {
+                <table class="perm-table">
+                  <thead>
+                    <tr>
+                      <th>User / Group</th>
+                      <th>Right</th>
+                      <th>Time Frame</th>
+                      <th>Granted by</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ace of inheritedAces(); track ace.id) {
+                      <tr>
+                        <td>{{ ace.username }}</td>
+                        <td>{{ permissionLabel(ace.permission) }}</td>
+                        <td>{{ aceTimeFrame(ace) }}</td>
+                        <td>{{ ace.creator ?? '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- Permissions Assigned to External Users -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <h3 class="perm-section-title">Permissions Assigned to External Users</h3>
+                <button mat-button color="primary" class="perm-action-btn">New</button>
+              </div>
+              <div class="perm-info-bar">
+                <span class="perm-info-accent"></span>
+                <p>Sharing to external users does not create new user accounts. External users are provided a link to access this document.</p>
+              </div>
+              @if (externalAces().length === 0) {
+                <div class="perm-empty">The document is not shared with any external user.</div>
+              } @else {
+                <table class="perm-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Right</th>
+                      <th>Time Frame</th>
+                      <th>Granted by</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ace of externalAces(); track ace.id) {
+                      <tr>
+                        <td>{{ ace.username }}</td>
+                        <td>{{ permissionLabel(ace.permission) }}</td>
+                        <td>{{ aceTimeFrame(ace) }}</td>
+                        <td>{{ ace.creator ?? '—' }}</td>
+                        <td class="perm-row-actions">
+                          <button mat-icon-button matTooltip="Delete" aria-label="Delete permission">
+                            <mat-icon>delete</mat-icon>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="History">
+          <div class="history-container">
+            <!-- Filters -->
+            <div class="history-filters">
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field filter-field--wide">
+                  <mat-label>Username</mat-label>
+                  <input matInput placeholder="Filter by username" [ngModel]="filterUsername()" (ngModelChange)="filterUsername.set($event)" />
+                </mat-form-field>
+              </div>
+
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>From</mat-label>
+                  <input matInput [matDatepicker]="fromPicker" placeholder="mm/dd/yyyy" [ngModel]="filterDateFrom()" (ngModelChange)="filterDateFrom.set($event)" />
+                  <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+                  <mat-datepicker #fromPicker />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>To</mat-label>
+                  <input matInput [matDatepicker]="toPicker" placeholder="mm/dd/yyyy" [ngModel]="filterDateTo()" (ngModelChange)="filterDateTo.set($event)" />
+                  <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+                  <mat-datepicker #toPicker />
+                </mat-form-field>
+              </div>
+
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>Performed Actions</mat-label>
+                  <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
+                    <mat-option value="">Select event actions</mat-option>
+                    @for (action of availableActions(); track action.id) {
+                      <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>Event Category</mat-label>
+                  <mat-select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
+                    <mat-option value="">Select event category</mat-option>
+                    @for (cat of availableCategories(); track cat.id) {
+                      <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Table -->
+            @if (auditLoading()) {
+              <div class="history-loading">
+                <mat-spinner diameter="32" />
+              </div>
+            } @else if (filteredAuditEntries().length === 0) {
+              <div class="history-empty">
+                <mat-icon>event_busy</mat-icon>
+                <p>No history entries found.</p>
+              </div>
+            } @else {
+              <div class="history-table-wrapper">
+                <table mat-table [dataSource]="filteredAuditEntries()" matSort (matSortChange)="onAuditSort($event)" class="history-table">
+                  <ng-container matColumnDef="eventId">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
+                    <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="eventDate">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                    <td mat-cell *matCellDef="let entry">{{ entry.eventDate | date:'MMMM d, yyyy' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="principalName">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+                    <td mat-cell *matCellDef="let entry">
+                      <div class="user-cell">
+                        <span class="user-avatar">{{ userInitial(entry.principalName) }}</span>
+                        <span>{{ entry.principalName }}</span>
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="category">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                    <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="comment">
+                    <th mat-header-cell *matHeaderCellDef>Comment</th>
+                    <td mat-cell *matCellDef="let entry" class="comment-cell">{{ entry.comment }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="docLifeCycle">
+                    <th mat-header-cell *matHeaderCellDef>State</th>
+                    <td mat-cell *matCellDef="let entry">
+                      <span class="state-badge">{{ entry.docLifeCycle }}</span>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="historyDisplayedColumns; sticky: true"></tr>
+                  <tr mat-row *matRowDef="let row; columns: historyDisplayedColumns;"></tr>
+                </table>
+              </div>
+
+              <mat-paginator
+                [length]="auditTotalSize()"
+                [pageSize]="auditPageSize()"
+                [pageIndex]="auditPageIndex()"
+                [pageSizeOptions]="[10, 20, 50]"
+                (page)="onAuditPageChange($event)"
+                showFirstLastButtons
+              />
+            }
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Publishing">
+          <div class="publish-container">
+            <!-- Published Versions -->
+            <section class="publish-section">
+              <div class="publish-section-header">
+                <h3 class="publish-section-title">Published Versions</h3>
+              </div>
+              @if (publishLoading()) {
+                <div class="publish-loading">
+                  <mat-spinner diameter="24" />
+                </div>
+              } @else if (publishedDocs().length === 0) {
+                <div class="publish-empty">
+                  <mat-icon>cloud_off</mat-icon>
+                  <p>This document has not been published yet.</p>
+                </div>
+              } @else {
+                <table class="publish-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Version</th>
+                      <th>Published Location</th>
+                      <th>Last Modified</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pub of publishedDocs(); track pub.uid) {
+                      <tr>
+                        <td>
+                          <div class="pub-title-cell">
+                            <mat-icon class="pub-doc-icon">description</mat-icon>
+                            <span>{{ pub.title }}</span>
+                          </div>
+                        </td>
+                        <td><span class="version-badge">{{ publishedVersion(pub) }}</span></td>
+                        <td class="pub-path">{{ publishedPath(pub) }}</td>
+                        <td>{{ pub.lastModified | date:'mediumDate' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- Publish to Section -->
+            <section class="publish-section">
+              <div class="publish-section-header">
+                <h3 class="publish-section-title">Publish to a Section</h3>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  class="publish-btn"
+                  [disabled]="!selectedSectionId() || publishing()"
+                  (click)="publishToSection()"
+                >
+                  @if (publishing()) {
+                    <mat-spinner diameter="18" />
+                  } @else {
+                    <ng-container>
+                      <mat-icon>publish</mat-icon>
+                      Publish
+                    </ng-container>
+                  }
+                </button>
+              </div>
+
+              <div class="publish-info-bar">
+                <span class="publish-info-accent"></span>
+                <p>Select a section below to publish this document. Published documents will appear in the selected section and will be accessible to users with read access.</p>
+              </div>
+
+              @if (sectionsLoading()) {
+                <div class="publish-loading">
+                  <mat-spinner diameter="24" />
+                </div>
+              } @else if (sectionTree().length === 0) {
+                <div class="publish-empty">
+                  <mat-icon>folder_off</mat-icon>
+                  <p>No sections available for publishing.</p>
+                </div>
+              } @else {
+                <div class="section-tree">
+                  @for (node of sectionTree(); track node.doc.uid) {
+                    <ng-container
+                      *ngTemplateOutlet="sectionNodeTpl; context: { $implicit: node, depth: 0 }"
+                    />
+                  }
+                </div>
+              }
+            </section>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
+
+    <!-- Right: Properties Panel (persists across all tabs) -->
+    @if (propertiesPanelOpen()) {
+      <aside class="properties-panel">
+        <div class="panel-header">
+          <span class="panel-title">{{ fileName() }}</span>
+          <button mat-icon-button (click)="closePropertiesPanel()" aria-label="Close panel">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="panel-sub-tabs">
+          <button class="sub-tab sub-tab--active">Properties</button>
+          <button class="sub-tab">Activity</button>
+        </div>
+
+        <div class="panel-body">
+          <div class="version-section">
+            <label class="version-label">Version</label>
+            <div class="version-select">
+              <span>{{ versionLabel() }}</span>
+              <mat-icon class="version-arrow">arrow_drop_down</mat-icon>
+            </div>
+          </div>
+
+          <div class="indexing-header">
+            <h4 class="indexing-title">Indexing Properties</h4>
+            <button mat-icon-button aria-label="Edit properties">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </div>
+
+          <div class="prop-field">
+            <span class="prop-label">Title</span>
+            <span class="prop-value">{{ doc()!.title }}</span>
+          </div>
+
+          <div class="prop-field">
+            <span class="prop-label">File Name</span>
+            <span class="prop-value">{{ fileName() }}</span>
+          </div>
+
+          @if (creator()) {
+            <div class="prop-field">
+              <span class="prop-label">Created By</span>
+              <span class="prop-value">{{ creator() }}</span>
+            </div>
+          }
+
+          @if (created()) {
+            <div class="prop-field">
+              <span class="prop-label">Created</span>
+              <span class="prop-value">{{ created() | date:'longDate' }}</span>
+            </div>
+          }
+
+          @if (modified()) {
+            <div class="prop-field">
+              <span class="prop-label">Last Modified</span>
+              <span class="prop-value">{{ modified() | date:'longDate' }}</span>
+            </div>
+          }
+
+          @if (contributors().length > 0) {
+            <div class="prop-field">
+              <span class="prop-label">Contributors</span>
+              <span class="prop-value">{{ contributors().join(', ') }}</span>
+            </div>
+          }
+
+          @if (expires()) {
+            <div class="prop-field">
+              <span class="prop-label">Expires</span>
+              <span class="prop-value">{{ expires() | date:'longDate' }}</span>
+            </div>
+          }
+
+          @if (tags().length > 0) {
+            <div class="prop-field">
+              <span class="prop-label">Tags</span>
+              <div class="tags-row">
+                @for (tag of tags(); track tag; let i = $index) {
+                  <span class="tag-chip" [style.border-color]="tagColor(i)" [style.color]="tagColor(i)">
+                    {{ tag }}
+                  </span>
+                }
+              </div>
+            </div>
+          }
+
+          @if (description()) {
+            <div class="prop-field">
+              <span class="prop-label">Description</span>
+              <p class="prop-description">{{ description() }}</p>
+            </div>
+          }
+
+          <div class="prop-section-divider"></div>
+
+          <h4 class="section-title">Attachments</h4>
+          <p class="section-empty">There are no attachments</p>
+
+          <div class="prop-section-divider"></div>
+
+          <h4 class="section-title">Collections</h4>
+          <p class="section-empty">No collections</p>
+        </div>
+      </aside>
+    }
+  </div>
+}
+
+<ng-template #sectionNodeTpl let-node let-depth="depth">
+  <div
+    class="section-node"
+    [class.section-node--selected]="selectedSectionId() === node.doc.uid"
+    [style.padding-left.px]="16 + depth * 24"
+    (click)="selectSection(node.doc.uid)"
+  >
+    @if (node.children.length > 0) {
+      <button class="section-toggle" (click)="toggleSectionNode(node); $event.stopPropagation()" type="button">
+        <mat-icon class="section-arrow" [class.section-arrow--expanded]="node.expanded">
+          chevron_right
+        </mat-icon>
+      </button>
+    } @else {
+      <span class="section-toggle-spacer"></span>
+    }
+    <mat-icon class="section-icon">{{ sectionIcon(node) }}</mat-icon>
+    <span class="section-label">{{ node.doc.title }}</span>
+    @if (selectedSectionId() === node.doc.uid) {
+      <mat-icon class="section-check">check_circle</mat-icon>
+    }
+  </div>
+
+  @if (node.expanded && node.children.length > 0) {
+    @for (child of node.children; track child.doc.uid) {
+      <ng-container *ngTemplateOutlet="sectionNodeTpl; context: { $implicit: child, depth: depth + 1 }" />
+    }
+  }
+</ng-template>

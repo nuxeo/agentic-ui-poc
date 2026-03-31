@@ -3,13 +3,87 @@
     <h2 class="drawer-title">{{ item.label }}</h2>
   </div>
 
-  <mat-nav-list class="drawer-list">
-    <a mat-list-item (click)="itemSelected.emit(item.path)">
-      <span class="placeholder-text">Go to {{ item.label }}</span>
-    </a>
-  </mat-nav-list>
+  @if (isBrowse) {
+    <div class="folder-tree">
+      @if (rootLoading()) {
+        <div class="tree-loading">
+          <mat-spinner diameter="24" />
+        </div>
+      } @else if (rootNodes().length === 0) {
+        <div class="tree-empty">No folders found</div>
+      } @else {
+        <div class="tree-list">
+          @for (node of rootNodes(); track node.doc.uid) {
+            <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: node, depth: 0 }" />
+          }
+        </div>
+      }
+    </div>
+  } @else if (isCollections) {
+    <div class="collections-panel">
+      @if (collectionsLoading()) {
+        <div class="tree-loading">
+          <mat-spinner diameter="24" />
+        </div>
+      } @else if (collections().length === 0) {
+        <div class="tree-empty">No collections found</div>
+      } @else {
+        <div class="collections-list">
+          @for (col of collections(); track col.uid) {
+            <button class="collection-card" (click)="openCollection(col)" type="button">
+              <mat-icon class="collection-card-icon">collections_bookmark</mat-icon>
+              <div class="collection-card-body">
+                <span class="collection-card-title">{{ col.title }}</span>
+                <span class="collection-card-date">Last Modified {{ col.lastModified | date:'mediumDate' }}</span>
+                <span class="collection-card-owner">
+                  <span class="owner-avatar">{{ collectionOwnerInitial(col) }}</span>
+                  {{ collectionOwner(col) }}
+                </span>
+              </div>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <mat-nav-list class="drawer-list">
+      <a mat-list-item (click)="itemSelected.emit(item.path)">
+        <span class="placeholder-text">Go to {{ item.label }}</span>
+      </a>
+    </mat-nav-list>
 
-  <div class="drawer-empty">
-    <p>Content for "{{ item.label }}" will appear here.</p>
-  </div>
+    <div class="drawer-empty">
+      <p>Content for "{{ item.label }}" will appear here.</p>
+    </div>
+  }
 }
+
+<ng-template #folderTpl let-node let-depth="depth">
+  <div class="tree-node" [style.padding-left.px]="12 + depth * 20">
+    @if (hasChildren(node)) {
+      <button class="tree-toggle" (click)="toggleNode(node)" type="button">
+        @if (node.loading) {
+          <mat-spinner diameter="14" />
+        } @else {
+          <mat-icon class="tree-arrow" [class.tree-arrow--expanded]="node.expanded">
+            chevron_right
+          </mat-icon>
+        }
+      </button>
+    } @else {
+      <span class="tree-toggle-spacer"></span>
+    }
+
+    <mat-icon class="tree-folder-icon">{{ folderIcon(node) }}</mat-icon>
+
+    <button class="tree-label" (click)="navigateToFolder(node)" type="button">
+      {{ nodeLabel(node) }}
+    </button>
+  </div>
+
+  @if (node.expanded && node.children.length > 0) {
+    @for (child of node.children; track child.doc.uid) {
+      <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: child, depth: depth + 1 }" />
+    }
+  }
+</ng-template>

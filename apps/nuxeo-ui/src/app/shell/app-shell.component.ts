@@ -101,6 +101,10 @@ export class AppShellComponent {
     void this.router.navigateByUrl(path);
   }
 
+  onNavigateKeepDrawer(path: string): void {
+    void this.router.navigateByUrl(path);
+  }
+
   onDrawerClose(): void {
     this.drawerOpen.set(false);
     this.activeDrawerItem.set(null);

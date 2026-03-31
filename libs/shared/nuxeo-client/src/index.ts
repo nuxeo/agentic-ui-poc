@@ -2,6 +2,9 @@
 export type { NuxeoPaginatedList } from './lib/models/paginated.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
 export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
+export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
+export type { DirectoryEntry, L10nDirectoryEntry } from './lib/models/directory.model';
+export type { NuxeoAce, NuxeoAcl } from './lib/models/acl.model';
 
 // Config
 export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
@@ -11,6 +14,9 @@ export { NuxeoApiBase } from './lib/services/nuxeo-api-base';
 export { DocumentService } from './lib/services/document.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
+export { BrowseService } from './lib/services/browse.service';
+export { DocumentDetailService, type UserGroupSuggestion } from './lib/services/document-detail.service';
+export { DirectoryService } from './lib/services/directory.service';
 
 // Queries (for advanced / custom use)
 export {
