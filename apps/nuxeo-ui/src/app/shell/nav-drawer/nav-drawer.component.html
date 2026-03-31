@@ -1,0 +1,23 @@
+@if (activeItem(); as item) {
+  <div class="drawer-header">
+    <h2 class="drawer-title">{{ item.label }}</h2>
+    <button mat-icon-button (click)="closeDrawer.emit()" aria-label="Close drawer">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="drawer-search">
+    <mat-icon class="search-icon">search</mat-icon>
+    <input type="text" class="search-input" placeholder="Search" />
+  </div>
+
+  <mat-nav-list class="drawer-list">
+    <a mat-list-item (click)="itemSelected.emit(item.path)">
+      <span class="placeholder-text">Go to {{ item.label }}</span>
+    </a>
+  </mat-nav-list>
+
+  <div class="drawer-empty">
+    <p>Content for "{{ item.label }}" will appear here.</p>
+  </div>
+}

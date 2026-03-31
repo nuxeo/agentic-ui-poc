@@ -2,8 +2,8 @@
   <sat-platform-nav>
     @for (item of navItems; track item.path) {
       <sat-platform-nav-list-item
-        [url]="item.path"
         [active]="isActive(item.path)"
+        (click)="onNavClick(item, $event)"
       >
         <sat-platform-nav-avatar [item]="item" />
         {{ item.label }}
@@ -66,6 +66,24 @@
       </button>
     </mat-menu>
 
-    <router-outlet />
+    <mat-sidenav-container class="shell-content">
+      <mat-sidenav
+        mode="side"
+        position="start"
+        [opened]="drawerOpen()"
+        (closed)="onDrawerClose()"
+        class="nav-drawer-sidenav"
+      >
+        <app-nav-drawer
+          [activeItem]="activeDrawerItem()"
+          (itemSelected)="onDrawerItemSelected($event)"
+          (closeDrawer)="onDrawerClose()"
+        />
+      </mat-sidenav>
+
+      <mat-sidenav-content>
+        <router-outlet />
+      </mat-sidenav-content>
+    </mat-sidenav-container>
   </sat-platform-nav-main-content>
 </sat-platform-nav-container>

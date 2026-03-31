@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatSidenavModule } from '@angular/material/sidenav';
 import { SatAppHeaderModule } from '@hylandsoftware/satori-ui/app-header';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import {
@@ -13,7 +14,8 @@ import {
 } from '@hylandsoftware/satori-ui/platform-nav';
 
 import { AuthService } from '../auth/auth.service';
-import { PLATFORM_NAV_ITEMS } from '../platform-nav-items';
+import { AppNavItem, PLATFORM_NAV_ITEMS } from '../platform-nav-items';
+import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 
 @Component({
   selector: 'app-shell',
@@ -25,6 +27,8 @@ import { PLATFORM_NAV_ITEMS } from '../platform-nav-items';
     MatMenuModule,
     MatButtonModule,
     MatIconModule,
+    MatSidenavModule,
+    NavDrawerComponent,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -37,6 +41,8 @@ export class AppShellComponent {
   protected readonly navItems = PLATFORM_NAV_ITEMS;
 
   readonly displayName = computed(() => this.auth.username() ?? 'User');
+  readonly drawerOpen = signal(false);
+  readonly activeDrawerItem = signal<AppNavItem | null>(null);
 
   private readonly currentUrl = signal(this.router.url.split('?')[0]);
 
@@ -49,6 +55,10 @@ export class AppShellComponent {
   });
 
   constructor() {
+    if (!this.platformNavState.collapsed()) {
+      this.platformNavState.toggleCollapsed();
+    }
+
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
@@ -59,10 +69,36 @@ export class AppShellComponent {
 
   isActive(path: string): boolean {
     const url = this.router.url.split('?')[0];
-    if (url === path) {
-      return true;
+    return url === path || url.startsWith(path + '/');
+  }
+
+  onNavClick(item: AppNavItem, event: Event): void {
+    if (item.hasDrawer) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (this.activeDrawerItem()?.path === item.path && this.drawerOpen()) {
+        this.drawerOpen.set(false);
+        this.activeDrawerItem.set(null);
+      } else {
+        this.activeDrawerItem.set(item);
+        this.drawerOpen.set(true);
+      }
+    } else {
+      this.drawerOpen.set(false);
+      this.activeDrawerItem.set(null);
     }
-    return url.startsWith(path + '/');
+  }
+
+  onDrawerItemSelected(path: string): void {
+    this.drawerOpen.set(false);
+    this.activeDrawerItem.set(null);
+    void this.router.navigateByUrl(path);
+  }
+
+  onDrawerClose(): void {
+    this.drawerOpen.set(false);
+    this.activeDrawerItem.set(null);
   }
 
   togglePlatformNav(): void {
