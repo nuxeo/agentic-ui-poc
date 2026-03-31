@@ -1,5 +1,6 @@
 // Models
 export type { NuxeoPaginatedList } from './lib/models/paginated.model';
+export type { AggregateBucket, AggregateResult, AssetAggregations, AssetSearchParams, AssetSearchResult } from './lib/models/asset.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
 export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
@@ -11,6 +12,8 @@ export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
 
 // Services
 export { NuxeoApiBase } from './lib/services/nuxeo-api-base';
+export { AssetService } from './lib/services/asset.service';
+export { AssetAggregationService } from './lib/services/asset-aggregation.service';
 export { DocumentService } from './lib/services/document.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';

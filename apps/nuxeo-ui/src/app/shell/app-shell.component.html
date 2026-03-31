@@ -78,6 +78,8 @@
           [activeItem]="activeDrawerItem()"
           (itemSelected)="onDrawerItemSelected($event)"
           (navigateKeepDrawer)="onNavigateKeepDrawer($event)"
+          (applyFilters)="onApplyFilters($event)"
+          (closeDrawer)="onDrawerClose()"
         />
       </mat-sidenav>
 

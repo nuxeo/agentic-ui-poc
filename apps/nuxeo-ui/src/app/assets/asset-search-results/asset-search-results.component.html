@@ -1,0 +1,171 @@
+<div class="results-page">
+
+  <!-- Toolbar -->
+  <div class="results-toolbar">
+    @if (resultCount() > 0) {
+      <span class="results-count">{{ resultCount() }} result(s)</span>
+    }
+
+    <div class="toolbar-actions">
+      <button
+        mat-icon-button
+        matTooltip="Export CSV"
+        (click)="exportCsv()"
+        class="toolbar-btn"
+      >
+        <mat-icon>download</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [matTooltip]="viewMode() === 'list' ? 'Switch to Grid View' : ''"
+        [class.active]="viewMode() === 'grid'"
+        (click)="setViewMode('grid')"
+        class="toolbar-btn"
+      >
+        <mat-icon>grid_view</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [matTooltip]="viewMode() === 'grid' ? 'Switch to Table View' : ''"
+        [class.active]="viewMode() === 'list'"
+        (click)="setViewMode('list')"
+        class="toolbar-btn"
+      >
+        <mat-icon>view_list</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="results-loading">
+      <mat-spinner diameter="32" />
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error() && !loading()) {
+    <div class="results-error">{{ error() }}</div>
+  }
+
+  <!-- Grid View -->
+  @if (!loading() && !error() && viewMode() === 'grid') {
+    <div class="asset-grid">
+      @for (asset of filteredAssets(); track asset.id) {
+        <div class="asset-card">
+          <div class="asset-card-thumbnail">
+            <mat-icon class="asset-icon">{{ asset.icon }}</mat-icon>
+            <span class="asset-type-badge">{{ asset.type }}</span>
+          </div>
+          <div class="asset-card-body">
+            <p class="asset-name" [title]="asset.name">{{ asset.name }}</p>
+            <p class="asset-contributor">{{ asset.lastContributor }} · {{ asset.modifiedDate }}</p>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Table View -->
+  @if (!loading() && !error() && viewMode() === 'list') {
+    <div class="list-wrapper">
+
+      <!-- Column picker panel -->
+      @if (columnPanelOpen()) {
+        <div
+          class="col-panel-backdrop"
+          role="button"
+          tabindex="0"
+          aria-label="Close column picker"
+          (click)="closeColumnPanel()"
+          (keydown.escape)="closeColumnPanel()"
+        ></div>
+        <div class="col-panel">
+          <p class="col-panel-title">Column Settings</p>
+          <div class="col-panel-list">
+            @for (col of columnsForPanel; track col.key) {
+              <mat-checkbox
+                class="col-panel-option"
+                [checked]="isPendingColumn(col.key)"
+                (change)="togglePendingColumn(col.key)"
+              >{{ col.label }}</mat-checkbox>
+            }
+          </div>
+          <div class="col-panel-actions">
+            <button mat-button (click)="resetColumns()">Reset</button>
+            <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+          </div>
+        </div>
+      }
+
+      <div class="asset-list">
+        <div class="list-header" [style.grid-template-columns]="gridTemplate()">
+          <span class="col-checkbox">
+            <mat-checkbox
+              [checked]="isAllSelected()"
+              [indeterminate]="isIndeterminate()"
+              (change)="toggleAll()"
+            ></mat-checkbox>
+          </span>
+          @for (col of visibleColumns(); track col.key) {
+            @if (SORTABLE_COLUMNS.has(col.key)) {
+              <span
+                [class.col-name]="col.key === 'name'"
+                class="col-sortable"
+                role="button"
+                tabindex="0"
+                (click)="sortBy(col.key)"
+                (keydown.enter)="sortBy(col.key)"
+                (keydown.space)="sortBy(col.key)"
+              >
+                {{ col.label }}
+                <mat-icon class="sort-icon" [class.sort-active]="sortColumn() === col.key">
+                  {{ sortColumn() === col.key && sortDirection() === 'desc' ? 'arrow_downward' : 'arrow_upward' }}
+                </mat-icon>
+              </span>
+            } @else {
+              <span>{{ col.label }}</span>
+            }
+          }
+          <span class="col-gear">
+            <button mat-icon-button class="gear-btn" matTooltip="Manage columns" (click)="openColumnPanel()">
+              <mat-icon>tune</mat-icon>
+            </button>
+          </span>
+        </div>
+
+        @for (asset of sortedAssets(); track asset.id) {
+          <div
+            class="list-row"
+            [class.selected]="isAssetSelected(asset.id)"
+            [style.grid-template-columns]="gridTemplate()"
+          >
+            <span class="col-checkbox">
+              <mat-checkbox
+                [checked]="isAssetSelected(asset.id)"
+                (change)="toggleAssetSelection(asset.id)"
+              ></mat-checkbox>
+            </span>
+            @for (col of visibleColumns(); track col.key) {
+              @if (col.key === 'name') {
+                <span class="col-name">
+                  <mat-icon class="row-icon">{{ asset.icon }}</mat-icon>
+                  <span class="row-name-text" [title]="asset.name">{{ asset.name }}</span>
+                </span>
+              } @else {
+                <span>{{ getCellValue(asset, col.key) }}</span>
+              }
+            }
+            <span></span>
+          </div>
+        }
+        @if (!loading() && resultCount() === 0) {
+          <div class="results-empty">No Documents match the search criteria.</div>
+        }
+      </div>
+    </div>
+  }
+
+</div>

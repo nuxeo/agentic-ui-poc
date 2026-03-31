@@ -53,7 +53,10 @@ export const routes: Routes = [
       },
       {
         path: 'documents',
-        loadComponent: placeholder,
+        loadComponent: () =>
+          import('./assets/asset-search-results/asset-search-results.component').then(
+            (m) => m.AssetSearchResultsComponent,
+          ),
       },
       {
         path: 'tasks',

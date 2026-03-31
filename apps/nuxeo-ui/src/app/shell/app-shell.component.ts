@@ -105,6 +105,10 @@ export class AppShellComponent {
     void this.router.navigateByUrl(path);
   }
 
+  onApplyFilters(url: string): void {
+    void this.router.navigateByUrl(url);
+  }
+
   onDrawerClose(): void {
     this.drawerOpen.set(false);
     this.activeDrawerItem.set(null);

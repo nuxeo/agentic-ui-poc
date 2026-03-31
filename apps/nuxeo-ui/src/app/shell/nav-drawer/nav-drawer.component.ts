@@ -8,6 +8,7 @@ import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, BrowseService, CollectionService } from '@agentic-ui/shared/nuxeo-client';
 import { AppNavItem } from '../../platform-nav-items';
+import { AssetsDrawerComponent } from '../../assets/assets-drawer/assets-drawer.component';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -27,7 +28,7 @@ const FOLDERISH_TYPES = new Set([
 @Component({
   selector: 'app-nav-drawer',
   standalone: true,
-  imports: [NgTemplateOutlet, DatePipe, MatListModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [NgTemplateOutlet, DatePipe, MatListModule, MatIconModule, MatProgressSpinnerModule, AssetsDrawerComponent],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
 })
@@ -38,6 +39,8 @@ export class NavDrawerComponent {
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
+  readonly applyFilters = output<string>();
+  readonly closeDrawer = output<void>();
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
@@ -64,6 +67,10 @@ export class NavDrawerComponent {
 
   get isCollections(): boolean {
     return this.activeItem()?.path === '/collections';
+  }
+
+  get isAssets(): boolean {
+    return this.activeItem()?.path === '/documents';
   }
 
   private loadCollections(): void {

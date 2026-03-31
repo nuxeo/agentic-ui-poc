@@ -511,7 +511,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     for (const doc of docs) {
-      const node = nodeMap.get(doc.path)!;
+      const node = nodeMap.get(doc.path);
+      if (!node) continue;
       const parentPath = doc.path.split('/').slice(0, -1).join('/');
       const parent = nodeMap.get(parentPath);
       if (parent) {

@@ -45,6 +45,11 @@
         </div>
       }
     </div>
+  } @else if (isAssets) {
+    <app-assets-drawer
+      (itemSelected)="itemSelected.emit($event)"
+      (applyFilters)="applyFilters.emit($event)"
+    />
   } @else {
     <mat-nav-list class="drawer-list">
       <a mat-list-item (click)="itemSelected.emit(item.path)">
