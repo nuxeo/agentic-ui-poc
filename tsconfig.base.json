@@ -28,6 +28,9 @@
       ],
       "@agentic-ui/feature-document-detail": [
         "libs/features/document-detail/src/index.ts"
+      ],
+      "@agentic-ui/feature-collections": [
+        "libs/features/collections/src/index.ts"
       ]
     }
   }

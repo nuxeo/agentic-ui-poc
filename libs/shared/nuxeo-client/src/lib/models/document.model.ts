@@ -1,4 +1,5 @@
 import { NuxeoPaginatedList } from './paginated.model';
+import { NuxeoAcl } from './acl.model';
 
 export interface NuxeoDocument {
   uid: string;
@@ -7,6 +8,16 @@ export interface NuxeoDocument {
   path: string;
   lastModified: string;
   properties: Record<string, unknown>;
+  lockOwner?: string | null;
+  lockCreated?: string | null;
+  isTrashed?: boolean;
+  facets?: string[];
+  contextParameters?: {
+    acls?: NuxeoAcl[];
+    favorites?: { isFavorite: boolean };
+    subscribedNotifications?: string[];
+    [key: string]: unknown;
+  };
 }
 
 export type NuxeoDocumentList = NuxeoPaginatedList<NuxeoDocument>;
