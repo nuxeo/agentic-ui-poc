@@ -73,6 +73,10 @@ export class AppShellComponent {
   }
 
   onNavClick(item: AppNavItem, event: Event): void {
+    if (!this.platformNavState.collapsed()) {
+      this.platformNavState.toggleCollapsed();
+    }
+
     if (item.hasDrawer) {
       event.preventDefault();
       event.stopPropagation();
@@ -87,6 +91,7 @@ export class AppShellComponent {
     } else {
       this.drawerOpen.set(false);
       this.activeDrawerItem.set(null);
+      void this.router.navigateByUrl(item.path);
     }
   }
 
