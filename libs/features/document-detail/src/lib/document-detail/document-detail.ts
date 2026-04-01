@@ -446,14 +446,38 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    const uid = this.route.snapshot.paramMap.get('uid');
-    if (!uid) {
-      this.error.set('No document ID provided.');
-      this.loading.set(false);
-      return;
+    this.route.paramMap.subscribe((params) => {
+      const uid = params.get('uid');
+      if (!uid) {
+        this.error.set('No document ID provided.');
+        this.loading.set(false);
+        return;
+      }
+      this.resetState();
+      this.docUid = uid;
+      this.loadDocument(uid);
+    });
+  }
+
+  private resetState(): void {
+    if (this.rawBlobUrl) {
+      URL.revokeObjectURL(this.rawBlobUrl);
+      this.rawBlobUrl = null;
     }
-    this.docUid = uid;
-    this.loadDocument(uid);
+    this.doc.set(null);
+    this.blobUrl.set(null);
+    this.error.set(null);
+    this.comments.set([]);
+    this.repliesMap.set({});
+    this.commentsLoaded = false;
+    this.panelActivity.set([]);
+    this.panelActivityLoaded = false;
+    this.versions.set([]);
+    this.versionsLoaded = false;
+    this.versionDropdownOpen.set(false);
+    this.documentTasks.set([]);
+    this.documentWorkflows.set([]);
+    this.panelSubTab.set('properties');
   }
 
   ngOnDestroy(): void {

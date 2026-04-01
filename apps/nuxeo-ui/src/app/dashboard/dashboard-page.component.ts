@@ -3,6 +3,8 @@ import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { catchError, of } from 'rxjs';
 import {
   WidgetContainerComponent,
   WidgetGridComponent,
@@ -11,6 +13,7 @@ import {
 import {
   NuxeoDocument,
   NuxeoTask,
+  NuxeoApiBase,
   DocumentService,
   TaskService,
   CollectionService,
@@ -48,7 +51,11 @@ export class DashboardPageComponent {
   private readonly docService = inject(DocumentService);
   private readonly taskService = inject(TaskService);
   private readonly collectionService = inject(CollectionService);
+  private readonly nuxeoApi = inject(NuxeoApiBase);
   private readonly auth = inject(AuthService);
+  private readonly sanitizer = inject(DomSanitizer);
+
+  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
   readonly recentlyEdited = signal<NuxeoDocument[]>([]);
   readonly recentlyEditedLoading = signal(true);
@@ -73,6 +80,7 @@ export class DashboardPageComponent {
       next: (res) => {
         this.recentlyEdited.set(res.entries);
         this.recentlyEditedLoading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.recentlyEditedError.set('Failed to load recently edited documents.');
@@ -95,6 +103,7 @@ export class DashboardPageComponent {
       next: (res) => {
         this.recentlyViewed.set(res.entries);
         this.recentlyViewedLoading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.recentlyViewedError.set('Failed to load recently viewed documents.');
@@ -106,6 +115,7 @@ export class DashboardPageComponent {
       next: (res) => {
         this.favorites.set(res.entries);
         this.favoritesLoading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.favoritesError.set('Failed to load favorite items.');
@@ -179,5 +189,21 @@ export class DashboardPageComponent {
 
   goToTask(task: NuxeoTask): void {
     this.router.navigate(['/tasks', task.id]);
+  }
+
+  private loadThumbnails(docs: NuxeoDocument[]): void {
+    for (const doc of docs) {
+      if (this.thumbnailMap()[doc.uid]) continue;
+      this.nuxeoApi.fetchThumbnail(doc.uid).pipe(
+        catchError(() => of(null)),
+      ).subscribe((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        this.thumbnailMap.update((m) => ({
+          ...m,
+          [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+        }));
+      });
+    }
   }
 }

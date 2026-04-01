@@ -22,7 +22,13 @@
           @for (doc of recentlyEdited(); track doc.uid) {
             <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
-                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <div class="doc-thumb">
+                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                    <img [src]="thumb" alt="" class="doc-thumb-img" />
+                  } @else {
+                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                  }
+                </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
               <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
@@ -85,7 +91,13 @@
           @for (doc of recentlyViewed(); track doc.uid) {
             <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
-                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <div class="doc-thumb">
+                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                    <img [src]="thumb" alt="" class="doc-thumb-img" />
+                  } @else {
+                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                  }
+                </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
               <td>
@@ -121,7 +133,13 @@
           @for (doc of favorites(); track doc.uid) {
             <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
-                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <div class="doc-thumb">
+                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                    <img [src]="thumb" alt="" class="doc-thumb-img" />
+                  } @else {
+                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                  }
+                </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
               <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
