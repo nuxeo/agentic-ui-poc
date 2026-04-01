@@ -1,8 +1,10 @@
-import { Component, inject, input, output, signal, effect, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, inject, input, output, signal, effect, computed, DestroyRef } from '@angular/core';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -10,6 +12,8 @@ import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, BrowseService, CollectionService, TaskService, NuxeoTask, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { AuthService } from '../../auth/auth.service';
 import { AppNavItem } from '../../platform-nav-items';
 
 export interface FolderNode {
@@ -37,6 +41,9 @@ const FOLDERISH_TYPES = new Set([
 export class NavDrawerComponent {
   private readonly browseService = inject(BrowseService);
   private readonly collectionService = inject(CollectionService);
+  private readonly detailService = inject(DocumentDetailService);
+  private readonly authService = inject(AuthService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
@@ -55,6 +62,15 @@ export class NavDrawerComponent {
   readonly tasks = signal<NuxeoTask[]>([]);
   readonly tasksLoading = signal(false);
   readonly tasksError = signal<string | null>(null);
+  readonly clipboardDocs = signal<Array<{ uid: string; title: string }>>(
+    JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]'),
+  );
+  readonly clipboardEmpty = computed(() => this.clipboardDocs().length === 0);
+
+  readonly favorites = signal<NuxeoDocument[]>([]);
+  readonly favoritesLoading = signal(false);
+  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
@@ -74,6 +90,23 @@ export class NavDrawerComponent {
       if (item?.path === '/tasks') {
         this.loadTasks();
       }
+      if (item?.path === '/clipboard') {
+        this.refreshClipboard();
+      }
+      if (item?.path === '/favorites') {
+        this.loadFavorites();
+      }
+    });
+
+    const onClipboardChanged = () => this.refreshClipboard();
+    window.addEventListener('clipboard-changed', onClipboardChanged);
+
+    const onFavoritesChanged = () => this.loadFavorites();
+    window.addEventListener('favorites-changed', onFavoritesChanged);
+
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('clipboard-changed', onClipboardChanged);
+      window.removeEventListener('favorites-changed', onFavoritesChanged);
     });
   }
 
@@ -85,6 +118,14 @@ export class NavDrawerComponent {
     return this.activeItem()?.path === '/collections';
   }
 
+  get isClipboard(): boolean {
+    return this.activeItem()?.path === '/clipboard';
+  }
+
+  get isFavorites(): boolean {
+    return this.activeItem()?.path === '/favorites';
+  }
+
   private loadCollections(): void {
     this.collectionsLoading.set(true);
     this.collectionService.getAll().subscribe({
@@ -92,6 +133,7 @@ export class NavDrawerComponent {
         this.collections.set(res.entries);
         this.collectionsLoading.set(false);
         this.collectionsLoaded = true;
+        this.loadThumbnailsForIds(res.entries.map((d) => d.uid));
       },
       error: () => {
         this.collectionsLoading.set(false);
@@ -318,5 +360,97 @@ export class NavDrawerComponent {
 
   isOverdue(task: NuxeoTask): boolean {
     return !!task.dueDate && new Date(task.dueDate) < new Date();
+  refreshClipboard(): void {
+    const docs: { uid: string; title: string }[] =
+      JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
+    this.clipboardDocs.set(docs);
+    this.loadThumbnailsForIds(docs.map((d) => d.uid));
+  }
+
+  private loadThumbnailsForIds(uids: string[]): void {
+    for (const uid of uids) {
+      if (this.thumbnailMap()[uid]) continue;
+      this.detailService.fetchThumbnail(uid).pipe(
+        catchError(() => of(null)),
+      ).subscribe((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        this.thumbnailMap.update((m) => ({
+          ...m,
+          [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+        }));
+      });
+    }
+  }
+
+  openClipboardDoc(doc: { uid: string; title: string }): void {
+    this.navigateKeepDrawer.emit(`/doc/${doc.uid}`);
+  }
+
+  removeFromClipboard(doc: { uid: string; title: string }): void {
+    const updated = this.clipboardDocs().filter((d) => d.uid !== doc.uid);
+    this.clipboardDocs.set(updated);
+    localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+    window.dispatchEvent(new Event('clipboard-changed'));
+  }
+
+  clearClipboard(): void {
+    this.clipboardDocs.set([]);
+    localStorage.setItem('nuxeo_clipboard', JSON.stringify([]));
+    window.dispatchEvent(new Event('clipboard-changed'));
+  }
+
+  // ── Favorites ──
+
+  loadFavorites(): void {
+    const user = this.authService.username();
+    if (!user) return;
+    this.favoritesLoading.set(true);
+    this.collectionService.getFavorites(user, 50).subscribe({
+      next: (res) => {
+        this.favorites.set(res.entries);
+        this.favoritesLoading.set(false);
+        this.loadThumbnails(res.entries);
+      },
+      error: () => this.favoritesLoading.set(false),
+    });
+  }
+
+  private loadThumbnails(docs: NuxeoDocument[]): void {
+    for (const doc of docs) {
+      if (this.thumbnailMap()[doc.uid]) continue;
+      this.detailService.fetchThumbnail(doc.uid).pipe(
+        catchError(() => of(null)),
+      ).subscribe((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        this.thumbnailMap.update((m) => ({
+          ...m,
+          [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+        }));
+      });
+    }
+  }
+
+  openFavoriteDoc(doc: NuxeoDocument): void {
+    this.navigateKeepDrawer.emit(`/doc/${doc.uid}`);
+  }
+
+  removeFromFavorites(doc: NuxeoDocument): void {
+    this.detailService.removeFromFavorites(doc.uid).subscribe({
+      next: () => {
+        this.favorites.update((list) => list.filter((d) => d.uid !== doc.uid));
+        window.dispatchEvent(new Event('favorites-changed'));
+      },
+    });
+  }
+
+  favoriteContributor(doc: NuxeoDocument): string {
+    return (doc.properties?.['dc:lastContributor'] as string) ?? '';
+  }
+
+  favoriteContributorInitial(doc: NuxeoDocument): string {
+    const c = this.favoriteContributor(doc);
+    return c ? c.charAt(0).toUpperCase() : '?';
   }
 }

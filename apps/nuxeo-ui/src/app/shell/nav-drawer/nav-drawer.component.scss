@@ -115,6 +115,7 @@
   flex-shrink: 0;
 }
 
+
 .tree-label {
   flex: 1;
   border: none;
@@ -166,13 +167,34 @@
   }
 }
 
-.collection-card-icon {
-  font-size: 22px;
-  width: 22px;
-  height: 22px;
-  color: #5c6bc0;
+.collection-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
   flex-shrink: 0;
+  border: 1px solid #e8e8e8;
   margin-top: 2px;
+}
+
+.collection-thumb-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  flex-shrink: 0;
+  border: 1px solid #e8e8e8;
+  margin-top: 2px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #5c6bc0;
+  }
 }
 
 .collection-card-body {
@@ -222,6 +244,109 @@
 /* ─── Task list inside drawer ─── */
 
 .refresh-btn {
+// Clipboard panel
+.clipboard-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.clipboard-empty-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  color: #bbb;
+  margin-bottom: 8px;
+}
+
+.clipboard-hint {
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+  padding: 0 24px;
+  line-height: 1.5;
+}
+
+.clipboard-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.clipboard-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #555;
+}
+
+.clipboard-clear-btn {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    margin-right: 4px;
+  }
+}
+
+.clipboard-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.clipboard-card {
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 0;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f5f6fa;
+  }
+}
+
+.clipboard-card-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px 10px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  min-width: 0;
+  text-align: left;
+}
+
+.clipboard-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #e8e8e8;
+}
+
+.clipboard-thumb-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  flex-shrink: 0;
+  border: 1px solid #e8e8e8;
+
   mat-icon {
     font-size: 18px;
     width: 18px;
@@ -294,5 +419,126 @@
   &.overdue {
     color: #b02b36;
     font-weight: 600;
+    color: #999;
+  }
+}
+
+.clipboard-card-title {
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clipboard-card-remove {
+  flex-shrink: 0;
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  color: #bbb;
+
+  &:hover {
+    color: #ef5350;
+  }
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// Favorites panel
+.favorites-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.favorites-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.favorite-card {
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 0;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f5f6fa;
+  }
+}
+
+.favorite-card-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  min-width: 0;
+  text-align: left;
+}
+
+.favorite-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #e8e8e8;
+}
+
+.favorite-thumb-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0f0f0;
+  flex-shrink: 0;
+  border: 1px solid #e8e8e8;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #999;
+  }
+}
+
+.favorite-card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.favorite-card-remove {
+  flex-shrink: 0;
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  color: #bbb;
+
+  &:hover {
+    color: #ef5350;
+  }
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
   }
 }

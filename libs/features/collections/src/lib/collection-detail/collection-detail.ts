@@ -18,7 +18,11 @@ import {
   CollectionService,
   DocumentDetailService,
 } from '@agentic-ui/shared/nuxeo-client';
-import { ShareDialogComponent, ShareDialogData } from '@agentic-ui/shared/ui';
+import { Observable } from 'rxjs';
+import {
+  ShareDialogComponent, ShareDialogData,
+  ExportDialogComponent, ExportDialogData, ExportType,
+} from '@agentic-ui/shared/ui';
 import { EditCollectionDialogComponent, EditCollectionDialogData } from '../edit-collection-dialog/edit-collection-dialog';
 import { AddPermissionDialogComponent, AddPermissionDialogData } from '../add-permission-dialog/add-permission-dialog';
 import { UpdatePermissionDialogComponent, UpdatePermissionDialogData } from '../update-permission-dialog/update-permission-dialog';
@@ -282,28 +286,25 @@ export class CollectionDetailComponent {
       localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
       this.toast('Added to clipboard');
     }
+    window.dispatchEvent(new Event('clipboard-changed'));
   }
 
   exportCollection(): void {
-    if (this.actionInProgress()) return;
-    this.actionInProgress.set('export');
-
     const title = this.collection()?.title ?? 'collection';
-    this.collectionService.bulkDownload(this.collectionUid, `${title}.zip`).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title}.zip`;
-        a.click();
-        URL.revokeObjectURL(url);
-        this.actionInProgress.set(null);
-        this.toast('Download started');
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Export failed');
-      },
+    this.dialog.open(ExportDialogComponent, {
+      data: {
+        documentUid: this.collectionUid,
+        documentTitle: title,
+        exportFn: (type: ExportType, uid: string): Observable<Blob> => {
+          switch (type) {
+            case 'thumbnail': return this.detailService.fetchThumbnail(uid);
+            case 'pdf':       return this.detailService.fetchPdfRendition(uid);
+            case 'zip':       return this.collectionService.bulkDownload(uid, `${title}.zip`);
+            case 'xml':       return this.detailService.exportXml(uid);
+          }
+        },
+      } satisfies ExportDialogData,
+      width: '440px',
     });
   }
 

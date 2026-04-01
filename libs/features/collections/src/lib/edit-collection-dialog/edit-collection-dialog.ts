@@ -40,17 +40,17 @@ export interface EditCollectionDialogData {
     <h2 mat-dialog-title>Edit Collection</h2>
 
     <mat-dialog-content>
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Title</mat-label>
         <input matInput [(ngModel)]="title" required />
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Description</mat-label>
         <textarea matInput [(ngModel)]="description" rows="2"></textarea>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Nature</mat-label>
         <mat-select [(ngModel)]="nature" placeholder="Select a value.">
           <mat-option [value]="null">-- None --</mat-option>
@@ -60,7 +60,7 @@ export interface EditCollectionDialogData {
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Subjects</mat-label>
         <mat-select [(ngModel)]="subjects" multiple placeholder="Select a value.">
           @for (entry of subjectEntries(); track entry.id) {
@@ -69,7 +69,7 @@ export interface EditCollectionDialogData {
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Coverage</mat-label>
         <mat-select [(ngModel)]="coverage" placeholder="Select a value.">
           <mat-option [value]="null">-- None --</mat-option>
@@ -79,7 +79,7 @@ export interface EditCollectionDialogData {
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Expires</mat-label>
         <input matInput [matDatepicker]="picker" [(ngModel)]="expires" />
         <mat-datepicker-toggle matIconSuffix [for]="picker" />
@@ -111,8 +111,8 @@ export interface EditCollectionDialogData {
     mat-dialog-content {
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      padding-top: 8px !important;
+      gap: 20px;
+      padding-top: 12px !important;
     }
 
     .full-width {
