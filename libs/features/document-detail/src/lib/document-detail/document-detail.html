@@ -90,63 +90,13 @@
     <div class="detail-main">
       <mat-tab-group class="detail-tabs" animationDuration="0ms" (selectedIndexChange)="onTabChange($event)">
         <mat-tab label="View">
-          <div class="viewer-panel">
-            <div class="viewer-content">
-              @if (blobUrl(); as url) {
-                @if (isImage()) {
-                  <img [src]="url" [alt]="doc()!.title" class="viewer-image" />
-                } @else {
-                  <iframe [src]="url" class="viewer-iframe"></iframe>
-                }
-              } @else {
-                <div class="viewer-placeholder">
-                  <mat-icon class="placeholder-icon">insert_drive_file</mat-icon>
-                  <p>Preview not available</p>
-                </div>
-              }
-            </div>
-
-            <div class="viewer-toolbar">
-              <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in">
-                <mat-icon>zoom_in</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Fit to width" aria-label="Fit to width">
-                <mat-icon>fit_screen</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out">
-                <mat-icon>zoom_out</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Rotate left" aria-label="Rotate left">
-                <mat-icon>rotate_left</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Rotate right" aria-label="Rotate right">
-                <mat-icon>rotate_right</mat-icon>
-              </button>
-            </div>
-
-            <div class="viewer-footer">
-              <div class="viewer-footer-info">
-                <span class="file-name">{{ fileName() }}</span>
-                @if (fileSize()) {
-                  <span class="file-size">{{ fileSize() }}</span>
-                }
-              </div>
-              <div class="viewer-footer-actions">
-                <button mat-icon-button matTooltip="Annotate" aria-label="Annotate">
-                  <mat-icon>edit_note</mat-icon>
-                </button>
-                <button mat-icon-button matTooltip="Preview" aria-label="Preview">
-                  <mat-icon>visibility</mat-icon>
-                </button>
-                <button mat-icon-button matTooltip="Download" aria-label="Download" (click)="download()">
-                  <mat-icon>download</mat-icon>
-                </button>
-                <button mat-icon-button matTooltip="More" aria-label="More">
-                  <mat-icon>more_vert</mat-icon>
-                </button>
-              </div>
-            </div>
-          </div>
+          <lib-document-viewer
+            [blobUrl]="blobUrl()"
+            [mimeType]="mimeType()"
+            [fileName]="fileName()"
+            [fileSize]="fileSize()"
+            (downloadClicked)="download()"
+          />
         </mat-tab>
 
         <mat-tab label="Permissions">
