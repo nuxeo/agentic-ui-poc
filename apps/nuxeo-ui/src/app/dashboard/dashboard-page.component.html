@@ -1,6 +1,5 @@
-<ui-widget-grid [columns]="2">
-
-  <ui-widget-container title="Recently Edited" icon="edit" iconColor="#5c6bc0">
+<lib-widget-grid [columns]="2">
+  <lib-widget-container title="Recently Edited" icon="edit" iconColor="#5c6bc0">
     @if (recentlyEditedLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -31,7 +30,7 @@
                 </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
-              <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
+              <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
               <td class="doc-contributor">
                 <span class="contributor-badge">{{ lastContributor(doc) }}</span>
               </td>
@@ -40,9 +39,9 @@
         </tbody>
       </table>
     }
-  </ui-widget-container>
+  </lib-widget-container>
 
-  <ui-widget-container title="Tasks" icon="assignment" iconColor="#ef5350">
+  <lib-widget-container title="Tasks" icon="assignment" iconColor="#ef5350">
     @if (tasksLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -67,9 +66,9 @@
         }
       </div>
     }
-  </ui-widget-container>
+  </lib-widget-container>
 
-  <ui-widget-container title="Recently Viewed" icon="visibility" iconColor="#42a5f5">
+  <lib-widget-container title="Recently Viewed" icon="visibility" iconColor="#42a5f5">
     @if (recentlyViewedLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -109,9 +108,9 @@
         </tbody>
       </table>
     }
-  </ui-widget-container>
+  </lib-widget-container>
 
-  <ui-widget-container title="Favorite Items" icon="star" iconColor="#ffa726">
+  <lib-widget-container title="Favorite Items" icon="star" iconColor="#ffa726">
     @if (favoritesLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -142,7 +141,7 @@
                 </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
-              <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
+              <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
               <td class="doc-contributor">
                 <span class="contributor-badge">{{ lastContributor(doc) }}</span>
               </td>
@@ -151,6 +150,5 @@
         </tbody>
       </table>
     }
-  </ui-widget-container>
-
-</ui-widget-grid>
+  </lib-widget-container>
+</lib-widget-grid>

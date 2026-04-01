@@ -6,13 +6,13 @@ This guide documents the coding conventions, project structure, and step-by-step
 
 ## 1. Prerequisites and Setup
 
-| Requirement | Version / Notes |
-| ----------- | --------------- |
-| **Node.js** | LTS (v20 or v22 recommended; odd versions like v25 work but are not LTS) |
-| **npm** | Ships with Node; used as the package manager (see `.npmrc`) |
-| **Nuxeo** | Running on `http://localhost:8180` for local development |
-| **Angular CLI** | Installed via `devDependencies` (`~19.2`); do not install globally |
-| **Nx** | Installed via `devDependencies` (`22.6`); invoked with `npx nx` |
+| Requirement     | Version / Notes                                                          |
+| --------------- | ------------------------------------------------------------------------ |
+| **Node.js**     | LTS (v20 or v22 recommended; odd versions like v25 work but are not LTS) |
+| **npm**         | Ships with Node; used as the package manager (see `.npmrc`)              |
+| **Nuxeo**       | Running on `http://localhost:8180` for local development                 |
+| **Angular CLI** | Installed via `devDependencies` (`~19.2`); do not install globally       |
+| **Nx**          | Installed via `devDependencies` (`22.6`); invoked with `npx nx`          |
 
 ### First-time setup
 
@@ -98,13 +98,13 @@ libs/core ──> libs/shared/util
 
 All library imports use `@agentic-ui/` aliases defined in `tsconfig.base.json`:
 
-| Alias | Entry point |
-| ----- | ----------- |
-| `@agentic-ui/core` | `libs/core/src/index.ts` |
-| `@agentic-ui/shared/ui` | `libs/shared/ui/src/index.ts` |
-| `@agentic-ui/shared/util` | `libs/shared/util/src/index.ts` |
-| `@agentic-ui/feature-browse` | `libs/features/browse/src/index.ts` |
-| `@agentic-ui/feature-search` | `libs/features/search/src/index.ts` |
+| Alias                                 | Entry point                                  |
+| ------------------------------------- | -------------------------------------------- |
+| `@agentic-ui/core`                    | `libs/core/src/index.ts`                     |
+| `@agentic-ui/shared/ui`               | `libs/shared/ui/src/index.ts`                |
+| `@agentic-ui/shared/util`             | `libs/shared/util/src/index.ts`              |
+| `@agentic-ui/feature-browse`          | `libs/features/browse/src/index.ts`          |
+| `@agentic-ui/feature-search`          | `libs/features/search/src/index.ts`          |
 | `@agentic-ui/feature-document-detail` | `libs/features/document-detail/src/index.ts` |
 
 Always import from the alias, never from relative paths that cross library boundaries.
@@ -117,23 +117,22 @@ Always import from the alias, never from relative paths that cross library bound
 
 Use **kebab-case** for all file names:
 
-| Kind | Pattern | Example |
-| ---- | ------- | ------- |
-| Component | `<name>.component.ts/.html/.scss` | `widget-container.component.ts` |
-| Service | `<name>.service.ts` | `auth.service.ts` |
-| Guard | `<name>.guards.ts` | `auth.guards.ts` |
-| Interceptor | `<name>.interceptor.ts` | `nuxeo-auth.interceptor.ts` |
-| Config token | `<name>.config.ts` | `libs/shared/nuxeo-client/src/lib/nuxeo-api.config.ts` |
-| Route file | `lib.routes.ts` | (always this name in feature libs) |
-| Public API | `index.ts` | (always at `src/index.ts`) |
+| Kind         | Pattern                           | Example                                                |
+| ------------ | --------------------------------- | ------------------------------------------------------ |
+| Component    | `<name>.component.ts/.html/.scss` | `widget-container.component.ts`                        |
+| Service      | `<name>.service.ts`               | `auth.service.ts`                                      |
+| Guard        | `<name>.guards.ts`                | `auth.guards.ts`                                       |
+| Interceptor  | `<name>.interceptor.ts`           | `nuxeo-auth.interceptor.ts`                            |
+| Config token | `<name>.config.ts`                | `libs/shared/nuxeo-client/src/lib/nuxeo-api.config.ts` |
+| Route file   | `lib.routes.ts`                   | (always this name in feature libs)                     |
+| Public API   | `index.ts`                        | (always at `src/index.ts`)                             |
 
 ### Classes and selectors
 
 - **Component classes**: PascalCase (`AppShellComponent`, `WidgetContainerComponent`).
 - **Selectors**: kebab-case with a prefix:
   - `app-` for app-level components (e.g., `app-shell`, `app-login-page`)
-  - `ui-` for shared UI components (e.g., `ui-widget-container`, `ui-widget-grid`)
-  - `lib-` is the Nx scaffold default; rename to one of the above prefixes for real components.
+  - `lib-` for shared UI components (e.g., `lib-widget-container`, `lib-widget-grid`)
 
 ### Route exports
 
@@ -183,7 +182,10 @@ export class AppShellComponent {
 
 // Wrong -- do not use constructor injection
 export class AppShellComponent {
-  constructor(private router: Router, private auth: AuthService) {}
+  constructor(
+    private router: Router,
+    private auth: AuthService,
+  ) {}
 }
 ```
 
@@ -234,7 +236,13 @@ Use **separate `.html` and `.scss` files** for all non-trivial components. Inlin
 @Component({
   standalone: true,
   template: `<div class="placeholder"><p>Coming soon</p></div>`,
-  styles: [`.placeholder { padding: 1.5rem; }`],
+  styles: [
+    `
+      .placeholder {
+        padding: 1.5rem;
+      }
+    `,
+  ],
 })
 export class PlaceholderPageComponent {}
 ```
@@ -274,9 +282,7 @@ Create `libs/features/<name>/src/lib/lib.routes.ts`:
 import { Route } from '@angular/router';
 import { MyFeature } from './<name>/<name>';
 
-export const myFeatureRoutes: Route[] = [
-  { path: '', component: MyFeature },
-];
+export const myFeatureRoutes: Route[] = [{ path: '', component: MyFeature }];
 ```
 
 ### Step 3: Export from the public API
@@ -450,13 +456,13 @@ export class AuthService {
 
 All Nuxeo REST API services live in `libs/shared/nuxeo-client/`. The library is split by domain:
 
-| Layer | Path | Contents |
-| ----- | ---- | -------- |
-| Models | `src/lib/models/` | `NuxeoDocument`, `NuxeoTask`, `NuxeoPaginatedList`, etc. |
-| Queries | `src/lib/queries/nxql-queries.ts` | NXQL query constants |
-| Services | `src/lib/services/` | `DocumentService`, `TaskService`, `CollectionService` |
-| Base | `src/lib/services/nuxeo-api-base.ts` | Shared HTTP helpers (`apiUrl()`, `nxqlSearch()`, `get()`) |
-| Config | `src/lib/nuxeo-api.config.ts` | `NUXEO_API_ORIGIN` injection token |
+| Layer    | Path                                 | Contents                                                  |
+| -------- | ------------------------------------ | --------------------------------------------------------- |
+| Models   | `src/lib/models/`                    | `NuxeoDocument`, `NuxeoTask`, `NuxeoPaginatedList`, etc.  |
+| Queries  | `src/lib/queries/nxql-queries.ts`    | NXQL query constants                                      |
+| Services | `src/lib/services/`                  | `DocumentService`, `TaskService`, `CollectionService`     |
+| Base     | `src/lib/services/nuxeo-api-base.ts` | Shared HTTP helpers (`apiUrl()`, `nxqlSearch()`, `get()`) |
+| Config   | `src/lib/nuxeo-api.config.ts`        | `NUXEO_API_ORIGIN` injection token                        |
 
 When adding a new Nuxeo API domain (e.g., workflows, users, audit), create a new service file in `src/lib/services/`, a model file if needed, and re-export from `src/index.ts`. Import in consumers via:
 
@@ -626,11 +632,11 @@ This ensures the signal's `.call()` behavior works correctly in templates and co
 
 Configuration in `.prettierrc`:
 
-| Setting | Value |
-| ------- | ----- |
-| `printWidth` | 100 |
-| `singleQuote` | true |
-| HTML parser | `angular` (for `.html` files) |
+| Setting       | Value                         |
+| ------------- | ----------------------------- |
+| `printWidth`  | 100                           |
+| `singleQuote` | true                          |
+| HTML parser   | `angular` (for `.html` files) |
 
 Run manually:
 
@@ -665,22 +671,22 @@ npx nx run-many -t eslint:lint # lint all projects
 
 ## 12. Common Commands
 
-| Command | Purpose |
-| ------- | ------- |
-| `npm install` | Install dependencies |
-| `npx nx serve nuxeo-ui` | Dev server with proxy (`http://localhost:4200`) |
-| `npx nx build nuxeo-ui` | Production build (output: `dist/nuxeo-ui/`) |
-| `npx nx build nuxeo-ui --configuration=development` | Development build |
-| `npx nx test nuxeo-ui` | App unit tests (Karma) |
-| `npx nx test <library>` | Library unit tests (Vitest) |
-| `npx nx lint <project>` | ESLint for a project |
-| `npx nx run-many -t test` | Run tests across all projects |
-| `npx nx run-many -t eslint:lint` | Lint all projects |
-| `npx nx graph` | Open the dependency graph visualization |
-| `npx nx affected -t test` | Run tests only for affected projects |
-| `npx nx affected -t build` | Build only affected projects |
-| `npx prettier --check .` | Verify formatting |
-| `npx prettier --write .` | Fix formatting |
+| Command                                             | Purpose                                         |
+| --------------------------------------------------- | ----------------------------------------------- |
+| `npm install`                                       | Install dependencies                            |
+| `npx nx serve nuxeo-ui`                             | Dev server with proxy (`http://localhost:4200`) |
+| `npx nx build nuxeo-ui`                             | Production build (output: `dist/nuxeo-ui/`)     |
+| `npx nx build nuxeo-ui --configuration=development` | Development build                               |
+| `npx nx test nuxeo-ui`                              | App unit tests (Karma)                          |
+| `npx nx test <library>`                             | Library unit tests (Vitest)                     |
+| `npx nx lint <project>`                             | ESLint for a project                            |
+| `npx nx run-many -t test`                           | Run tests across all projects                   |
+| `npx nx run-many -t eslint:lint`                    | Lint all projects                               |
+| `npx nx graph`                                      | Open the dependency graph visualization         |
+| `npx nx affected -t test`                           | Run tests only for affected projects            |
+| `npx nx affected -t build`                          | Build only affected projects                    |
+| `npx prettier --check .`                            | Verify formatting                               |
+| `npx prettier --write .`                            | Fix formatting                                  |
 
 ---
 
@@ -688,10 +694,10 @@ npx nx run-many -t eslint:lint # lint all projects
 
 The global provider setup in `apps/nuxeo-ui/src/app/app.config.ts`:
 
-| Provider | Purpose |
-| -------- | ------- |
-| `provideAnimations()` | Angular animations (required by Material and Satori) |
-| `provideHttpClient(withInterceptors([...]))` | HTTP client with auth interceptor |
-| `provideRouter(routes, withComponentInputBinding())` | Router with route-to-input binding |
-| `provideSatori()` | Satori UI theme and services |
-| `TranslateModule.forRoot(...)` | ngx-translate with no-op loader (PoC placeholder) |
+| Provider                                             | Purpose                                              |
+| ---------------------------------------------------- | ---------------------------------------------------- |
+| `provideAnimations()`                                | Angular animations (required by Material and Satori) |
+| `provideHttpClient(withInterceptors([...]))`         | HTTP client with auth interceptor                    |
+| `provideRouter(routes, withComponentInputBinding())` | Router with route-to-input binding                   |
+| `provideSatori()`                                    | Satori UI theme and services                         |
+| `TranslateModule.forRoot(...)`                       | ngx-translate with no-op loader (PoC placeholder)    |

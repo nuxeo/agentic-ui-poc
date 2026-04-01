@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -36,6 +36,7 @@ import { DocumentViewerComponent } from '@agentic-ui/shared/ui';
   standalone: true,
   imports: [
     FormsModule,
+    RouterLink,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
@@ -128,9 +129,7 @@ export class TasksPageComponent implements OnInit {
     if (!t) return false;
     const name = (t.name || '').toLowerCase();
     const directive = (t.directive || '').toLowerCase();
-    const hasStartReview = (t.taskInfo?.taskActions ?? []).some(
-      (a) => a.name === 'start_review',
-    );
+    const hasStartReview = (t.taskInfo?.taskActions ?? []).some((a) => a.name === 'start_review');
     return (
       hasStartReview ||
       name.includes('chooseparticipants') ||
@@ -255,7 +254,9 @@ export class TasksPageComponent implements OnInit {
     if (!current) return;
     this.taskService.getTask(current.id).subscribe({
       next: (updated) => this.selectedTask.set(updated),
-      error: () => { /* keep current */ },
+      error: () => {
+        /* keep current */
+      },
     });
   }
 
@@ -275,8 +276,6 @@ export class TasksPageComponent implements OnInit {
   isSelected(task: NuxeoTask): boolean {
     return this.selectedTask()?.id === task.id;
   }
-
-
 
   /* ════════════════════════════════════════════════════════
      User / Group Search
@@ -334,9 +333,10 @@ export class TasksPageComponent implements OnInit {
     const variables: Record<string, unknown> = {};
 
     if (this.isChooseParticipants) {
-      variables['participants'] = this.participants.length > 0
-        ? this.participants.map((p) => p.includes(':') ? p : `user:${p}`)
-        : [`user:${this.currentUsername() ?? 'Administrator'}`];
+      variables['participants'] =
+        this.participants.length > 0
+          ? this.participants.map((p) => (p.includes(':') ? p : `user:${p}`))
+          : [`user:${this.currentUsername() ?? 'Administrator'}`];
       if (this.dueDate) {
         variables['end_date'] = this.dueDate.toISOString();
       } else {
@@ -345,8 +345,7 @@ export class TasksPageComponent implements OnInit {
         d.setDate(d.getDate() + 7);
         variables['end_date'] = d.toISOString();
       }
-      if (this.validationOrReview)
-        variables['validationOrReview'] = this.validationOrReview;
+      if (this.validationOrReview) variables['validationOrReview'] = this.validationOrReview;
     }
     if (this.comment) variables['comment'] = this.comment;
 
@@ -426,11 +425,15 @@ export class TasksPageComponent implements OnInit {
     }
     this.userService.searchUsers(q).subscribe({
       next: (users) => this.delegateUserResults.set(users),
-      error: () => { /* swallow */ },
+      error: () => {
+        /* swallow */
+      },
     });
     this.userService.searchGroups(q).subscribe({
       next: (groups) => this.delegateGroupResults.set(groups),
-      error: () => { /* swallow */ },
+      error: () => {
+        /* swallow */
+      },
     });
   }
 
@@ -498,11 +501,15 @@ export class TasksPageComponent implements OnInit {
     }
     this.userService.searchUsers(q).subscribe({
       next: (users) => this.reassignUserResults.set(users),
-      error: () => { /* swallow */ },
+      error: () => {
+        /* swallow */
+      },
     });
     this.userService.searchGroups(q).subscribe({
       next: (groups) => this.reassignGroupResults.set(groups),
-      error: () => { /* swallow */ },
+      error: () => {
+        /* swallow */
+      },
     });
   }
 
@@ -632,11 +639,11 @@ export class TasksPageComponent implements OnInit {
     this.http.get(url, { responseType: 'blob' }).subscribe({
       next: (blob) => {
         this.rawPreviewUrl = URL.createObjectURL(blob);
-        this.previewBlobUrl.set(
-          this.sanitizer.bypassSecurityTrustResourceUrl(this.rawPreviewUrl),
-        );
+        this.previewBlobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.rawPreviewUrl));
       },
-      error: () => { /* preview not available */ },
+      error: () => {
+        /* preview not available */
+      },
     });
   }
 
@@ -696,9 +703,7 @@ export class TasksPageComponent implements OnInit {
      ════════════════════════════════════════════════════════ */
 
   taskLabel(task: NuxeoTask): string {
-    const key = task.name
-      .replace(/^wf\.\w+\./, '')
-      .replace(/\.(title|directive)$/i, '');
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
     return key
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\./g, ' ')
@@ -707,9 +712,7 @@ export class TasksPageComponent implements OnInit {
 
   taskDirective(task: NuxeoTask): string {
     if (task.directive) {
-      const d = task.directive
-        .replace(/^wf\.\w+\./, '')
-        .replace(/\.(title|directive)$/i, '');
+      const d = task.directive.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
       return d
         .replace(/([a-z])([A-Z])/g, '$1 $2')
         .replace(/\./g, ' ')
@@ -721,9 +724,7 @@ export class TasksPageComponent implements OnInit {
   taskWorkflow(task: NuxeoTask): string {
     const raw = task.workflowTitle || task.workflowModelName || '';
     const key = raw.replace(/^wf\.\w+\./, '');
-    return key
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    return key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   dueDateFormatted(task: NuxeoTask): string {
@@ -747,8 +748,7 @@ export class TasksPageComponent implements OnInit {
   actionColor(action: { name: string }): string {
     const n = action.name.toLowerCase();
     if (n.includes('reject') || n.includes('cancel')) return 'warn';
-    if (n.includes('approve') || n.includes('validate') || n.includes('start'))
-      return 'primary';
+    if (n.includes('approve') || n.includes('validate') || n.includes('start')) return 'primary';
     return '';
   }
 

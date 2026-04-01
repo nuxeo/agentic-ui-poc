@@ -25,7 +25,14 @@
   } @else {
     <div class="task-cards">
       @for (task of tasks(); track task.id) {
-        <div class="task-card" (click)="processTask(task)">
+        <div
+          class="task-card"
+          role="button"
+          tabindex="0"
+          (click)="processTask(task)"
+          (keydown.enter)="processTask(task)"
+          (keydown.space)="$event.preventDefault(); processTask(task)"
+        >
           <div class="task-card-left">
             <mat-icon class="task-type-icon">assignment</mat-icon>
           </div>
@@ -46,7 +53,11 @@
             </div>
           </div>
           <div class="task-card-action">
-            <button mat-stroked-button color="primary" (click)="processTask(task); $event.stopPropagation()">
+            <button
+              mat-stroked-button
+              color="primary"
+              (click)="processTask(task); $event.stopPropagation()"
+            >
               Process
             </button>
           </div>

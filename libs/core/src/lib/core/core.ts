@@ -4,6 +4,6 @@ import { Component } from '@angular/core';
   selector: 'lib-core',
   imports: [],
   templateUrl: './core.html',
-  styleUrl: './core.scss'
+  styleUrl: './core.scss',
 })
-export class Core {}
+export class CoreComponent {}

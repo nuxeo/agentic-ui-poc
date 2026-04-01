@@ -45,9 +45,15 @@ interface FlatSection {
         } @else {
           <!-- Location -->
           <div class="field-group">
-            <label class="field-label">Location <span class="required">*</span></label>
+            <label class="field-label" for="publish-dialog-location"
+              >Location <span class="required">*</span></label
+            >
             <div class="select-wrapper">
-              <select class="native-select" [(ngModel)]="selectedSectionId">
+              <select
+                id="publish-dialog-location"
+                class="native-select"
+                [(ngModel)]="selectedSectionId"
+              >
                 <option value="" disabled selected>Choose where to publish</option>
                 @for (s of flatSections(); track s.uid) {
                   <option [value]="s.uid">{{ sectionIndent(s.depth) }}{{ s.title }}</option>
@@ -99,9 +105,11 @@ interface FlatSection {
 
       <div class="pub-actions">
         <button class="btn btn-cancel" (click)="close()">Cancel</button>
-        <button class="btn btn-publish"
-                [disabled]="!selectedSectionId || publishing()"
-                (click)="publish()">
+        <button
+          class="btn btn-publish"
+          [disabled]="!selectedSectionId || publishing()"
+          (click)="publish()"
+        >
           @if (publishing()) {
             <mat-spinner diameter="16" />
           } @else {
@@ -111,177 +119,187 @@ interface FlatSection {
       </div>
     </div>
   `,
-  styles: [`
-    .pub-dialog {
-      display: flex;
-      flex-direction: column;
-      min-width: 540px;
-    }
-
-    .pub-header {
-      text-align: center;
-      font-size: 15px;
-      font-weight: 400;
-      color: #333;
-      padding: 20px 24px 12px;
-    }
-
-    .pub-divider {
-      height: 3px;
-      background: #3f51b5;
-      margin: 0 0 20px;
-    }
-
-    .pub-body {
-      padding: 0 24px;
-    }
-
-    .pub-loading {
-      display: flex;
-      justify-content: center;
-      padding: 32px 0;
-    }
-
-    /* Location field */
-    .field-group {
-      margin-bottom: 20px;
-    }
-
-    .field-label {
-      display: block;
-      font-size: 12px;
-      font-weight: 500;
-      color: #555;
-      margin-bottom: 4px;
-    }
-
-    .required {
-      color: #d32f2f;
-    }
-
-    .select-wrapper {
-      position: relative;
-    }
-
-    .native-select {
-      width: 100%;
-      padding: 10px 32px 10px 0;
-      border: none;
-      border-bottom: 1px solid #ccc;
-      background: transparent;
-      font-size: 14px;
-      color: #333;
-      appearance: none;
-      outline: none;
-      cursor: pointer;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 4px center;
-
-      &:focus {
-        border-bottom-color: #3f51b5;
-        border-bottom-width: 2px;
+  styles: [
+    `
+      .pub-dialog {
+        display: flex;
+        flex-direction: column;
+        min-width: 540px;
       }
-    }
 
-    /* Options row */
-    .options-row {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
+      .pub-header {
+        text-align: center;
+        font-size: 15px;
+        font-weight: 400;
+        color: #333;
+        padding: 20px 24px 12px;
+      }
 
-    .checkbox-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: #333;
-      cursor: pointer;
-      white-space: nowrap;
+      .pub-divider {
+        height: 3px;
+        background: #3f51b5;
+        margin: 0 0 20px;
+      }
 
-      input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        accent-color: #3f51b5;
+      .pub-body {
+        padding: 0 24px;
+      }
+
+      .pub-loading {
+        display: flex;
+        justify-content: center;
+        padding: 32px 0;
+      }
+
+      /* Location field */
+      .field-group {
+        margin-bottom: 20px;
+      }
+
+      .field-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 4px;
+      }
+
+      .required {
+        color: #d32f2f;
+      }
+
+      .select-wrapper {
+        position: relative;
+      }
+
+      .native-select {
+        width: 100%;
+        padding: 10px 32px 10px 0;
+        border: none;
+        border-bottom: 1px solid #ccc;
+        background: transparent;
+        font-size: 14px;
+        color: #333;
+        appearance: none;
+        outline: none;
         cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 4px center;
+
+        &:focus {
+          border-bottom-color: #3f51b5;
+          border-bottom-width: 2px;
+        }
       }
-    }
 
-    .inline-group {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .inline-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: #555;
-      white-space: nowrap;
-    }
-
-    .inline-select {
-      padding: 4px 20px 4px 6px;
-      border: 1px solid #ccc;
-      border-radius: 3px;
-      background: #fff;
-      font-size: 13px;
-      color: #333;
-      appearance: none;
-      cursor: pointer;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 4px center;
-    }
-
-    .version-select { width: 65px; }
-    .rendition-select { width: 160px; }
-
-    /* Actions */
-    .pub-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px 20px;
-    }
-
-    .btn {
-      padding: 8px 24px;
-      border-radius: 4px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      border: 1px solid #ccc;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .btn-cancel {
-      background: #fff;
-      color: #333;
-
-      &:hover { background: #f5f5f5; }
-    }
-
-    .btn-publish {
-      background: #3f51b5;
-      color: #fff;
-      border-color: #3f51b5;
-
-      &:hover { background: #3949ab; }
-
-      &:disabled {
-        background: #e0e0e0;
-        color: #999;
-        border-color: #e0e0e0;
-        cursor: default;
+      /* Options row */
+      .options-row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
       }
-    }
-  `],
+
+      .checkbox-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #333;
+        cursor: pointer;
+        white-space: nowrap;
+
+        input[type='checkbox'] {
+          width: 16px;
+          height: 16px;
+          accent-color: #3f51b5;
+          cursor: pointer;
+        }
+      }
+
+      .inline-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .inline-label {
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        white-space: nowrap;
+      }
+
+      .inline-select {
+        padding: 4px 20px 4px 6px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background: #fff;
+        font-size: 13px;
+        color: #333;
+        appearance: none;
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 4px center;
+      }
+
+      .version-select {
+        width: 65px;
+      }
+      .rendition-select {
+        width: 160px;
+      }
+
+      /* Actions */
+      .pub-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px 20px;
+      }
+
+      .btn {
+        padding: 8px 24px;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid #ccc;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .btn-cancel {
+        background: #fff;
+        color: #333;
+
+        &:hover {
+          background: #f5f5f5;
+        }
+      }
+
+      .btn-publish {
+        background: #3f51b5;
+        color: #fff;
+        border-color: #3f51b5;
+
+        &:hover {
+          background: #3949ab;
+        }
+
+        &:disabled {
+          background: #e0e0e0;
+          color: #999;
+          border-color: #e0e0e0;
+          cursor: default;
+        }
+      }
+    `,
+  ],
 })
 export class PublishDialogComponent implements OnInit {
   readonly data = inject<PublishDialogData>(MAT_DIALOG_DATA);
@@ -359,24 +377,30 @@ export class PublishDialogComponent implements OnInit {
     if (!this.selectedSectionId || this.publishing()) return;
     this.publishing.set(true);
 
-    const renditionName = this.showRenditions && this.selectedRendition && this.selectedRendition !== '__default__'
-      ? this.selectedRendition : undefined;
+    const renditionName =
+      this.showRenditions && this.selectedRendition && this.selectedRendition !== '__default__'
+        ? this.selectedRendition
+        : undefined;
     const defaultRendition = this.showRenditions && this.selectedRendition === '__default__';
 
-    this.detailService.publishDocument(this.data.documentUid, this.selectedSectionId, {
-      override: this.overrideExisting,
-      renditionName,
-      defaultRendition,
-    }).subscribe({
-      next: () => {
-        this.publishing.set(false);
-        this.snackBar.open(`"${this.data.documentTitle}" published successfully`, 'OK', { duration: 3000 });
-        this.dialogRef.close(true);
-      },
-      error: () => {
-        this.publishing.set(false);
-        this.snackBar.open('Failed to publish document', 'OK', { duration: 3000 });
-      },
-    });
+    this.detailService
+      .publishDocument(this.data.documentUid, this.selectedSectionId, {
+        override: this.overrideExisting,
+        renditionName,
+        defaultRendition,
+      })
+      .subscribe({
+        next: () => {
+          this.publishing.set(false);
+          this.snackBar.open(`"${this.data.documentTitle}" published successfully`, 'OK', {
+            duration: 3000,
+          });
+          this.dialogRef.close(true);
+        },
+        error: () => {
+          this.publishing.set(false);
+          this.snackBar.open('Failed to publish document', 'OK', { duration: 3000 });
+        },
+      });
   }
 }
