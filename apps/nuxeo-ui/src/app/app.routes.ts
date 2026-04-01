@@ -75,6 +75,13 @@ export const routes: Routes = [
         path: 'trash',
         loadComponent: placeholder,
       },
+      {
+        path: 'doc/:uid',
+        loadChildren: () =>
+          import('@agentic-ui/feature-document-detail').then(
+            (m) => m.documentDetailRoutes,
+          ),
+      },
     ],
   },
 ];

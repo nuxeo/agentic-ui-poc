@@ -1,15 +1,60 @@
 @if (activeItem(); as item) {
   <div class="drawer-header">
     <h2 class="drawer-title">{{ item.label }}</h2>
+
+    @if (item.path === '/recently-viewed') {
+      <button class="refresh-btn" (click)="refreshRecentlyViewed()" title="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
   </div>
 
-  <mat-nav-list class="drawer-list">
-    <a mat-list-item (click)="itemSelected.emit(item.path)">
-      <span class="placeholder-text">Go to {{ item.label }}</span>
-    </a>
-  </mat-nav-list>
+  @if (item.path === '/recently-viewed') {
+    <!-- Recently Viewed panel -->
+    @if (recentlyViewedLoading()) {
+      <div class="drawer-loading">
+        <mat-spinner diameter="28" />
+      </div>
+    } @else if (recentlyViewedError()) {
+      <div class="drawer-error">{{ recentlyViewedError() }}</div>
+    } @else if (recentlyViewed().length === 0) {
+      <div class="drawer-empty-state">
+        <mat-icon class="empty-icon">visibility_off</mat-icon>
+        <p class="empty-text">No recently viewed documents</p>
+      </div>
+    } @else {
+      <div class="rv-list">
+        @for (doc of recentlyViewed(); track doc.uid) {
+          <div class="rv-card" (click)="openDocument(doc)">
+            <div class="rv-thumb">
+              @if (thumbnailMap()[doc.uid]; as thumbUrl) {
+                <img [src]="thumbUrl" alt="" class="rv-thumb-img" />
+              } @else {
+                <mat-icon class="rv-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+              }
+            </div>
+            <div class="rv-info">
+              <span class="rv-title" [title]="doc.path">{{ doc.title }}</span>
+              <div class="rv-meta">
+                <span class="rv-type">{{ doc.type }}</span>
+                <span class="rv-sep">&middot;</span>
+                <span class="rv-time">{{ relativeTime(doc.lastModified) }}</span>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  } @else {
+    <!-- Default placeholder for other drawer items -->
+    <mat-nav-list class="drawer-list">
+      <a mat-list-item (click)="itemSelected.emit(item.path)">
+        <span class="placeholder-text">Go to {{ item.label }}</span>
+      </a>
+    </mat-nav-list>
 
-  <div class="drawer-empty">
-    <p>Content for "{{ item.label }}" will appear here.</p>
-  </div>
+    <div class="drawer-empty">
+      <p>Content for "{{ item.label }}" will appear here.</p>
+    </div>
+  }
 }

@@ -18,11 +18,22 @@ export class NuxeoApiBase {
     return this.http.get<T>(this.apiUrl(path), { params, headers });
   }
 
+  post<T>(path: string, body: unknown, headers?: Record<string, string>): Observable<T> {
+    return this.http.post<T>(this.apiUrl(path), body, { headers });
+  }
+
   nxqlSearch(query: string, pageSize: number): Observable<NuxeoDocumentList> {
     const params = new HttpParams().set('query', query).set('pageSize', pageSize);
     return this.http.get<NuxeoDocumentList>(
       this.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
       { params, headers: { properties: 'dublincore' } },
+    );
+  }
+
+  fetchThumbnail(uid: string): Observable<Blob> {
+    return this.http.get(
+      this.apiUrl(`/nuxeo/api/v1/id/${uid}/@rendition/thumbnail`),
+      { responseType: 'blob' },
     );
   }
 }
