@@ -4,16 +4,22 @@ export interface NuxeoTask {
   id: string;
   name: string;
   directive: string;
+  workflowInstanceId: string;
   workflowModelName: string;
   workflowTitle: string;
   created: string;
   dueDate: string;
   state: string;
-  targetDocumentIds: { id: string }[];
+  nodeName: string;
+  targetDocumentIds: { id?: string; uid?: string; title?: string; type?: string; path?: string }[];
   actors: { id: string }[];
+  delegatedActors: { id: string }[];
+  comments: { author: string; text: string; date: string }[];
+  variables: Record<string, unknown>;
   taskInfo: {
-    taskActions: { name: string; label: string }[];
+    taskActions: { name: string; label: string; url?: string }[];
   };
+  /** Enriched client-side after fetching the target document */
   targetDocTitle?: string;
 }
 

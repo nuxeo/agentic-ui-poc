@@ -1,6 +1,11 @@
 @if (activeItem(); as item) {
   <div class="drawer-header">
     <h2 class="drawer-title">{{ item.label }}</h2>
+    @if (isTasksPanel) {
+      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
   </div>
 
   @if (isBrowse) {
@@ -45,6 +50,38 @@
         </div>
       }
     </div>
+  } @else if (isTasksPanel) {
+    <!-- ═══ Inline Task List ═══ -->
+    @if (tasksLoading()) {
+      <div class="tree-loading">
+        <mat-spinner diameter="24" />
+      </div>
+    } @else if (tasksError()) {
+      <div class="tree-empty error">
+        <span>{{ tasksError() }}</span>
+        <button mat-stroked-button (click)="loadTasks()">Retry</button>
+      </div>
+    } @else if (tasks().length === 0) {
+      <div class="tree-empty">
+        <mat-icon class="empty-icon">task_alt</mat-icon>
+        <span>No pending tasks</span>
+      </div>
+    } @else {
+      <div class="task-list">
+        @for (task of tasks(); track task.id) {
+          <div class="task-item" (click)="selectTask(task)">
+            <mat-icon class="task-icon">assignment_turned_in</mat-icon>
+            <div class="task-body">
+              <div class="task-name">{{ taskLabel(task) }}</div>
+              @if (task.targetDocTitle) {
+                <div class="task-doc">{{ task.targetDocTitle }}</div>
+              }
+              <div class="task-due" [class.overdue]="isOverdue(task)">{{ dueLabel(task) }}</div>
+            </div>
+          </div>
+        }
+      </div>
+    }
   } @else {
     <mat-nav-list class="drawer-list">
       <a mat-list-item (click)="itemSelected.emit(item.path)">

@@ -1,12 +1,15 @@
-import { Component, inject, input, output, signal, effect } from '@angular/core';
+import { Component, inject, input, output, signal, effect, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { NuxeoDocument, BrowseService, CollectionService } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoDocument, BrowseService, CollectionService, TaskService, NuxeoTask, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
 import { AppNavItem } from '../../platform-nav-items';
 
 export interface FolderNode {
@@ -27,7 +30,7 @@ const FOLDERISH_TYPES = new Set([
 @Component({
   selector: 'app-nav-drawer',
   standalone: true,
-  imports: [NgTemplateOutlet, DatePipe, MatListModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [NgTemplateOutlet, DatePipe, MatListModule, MatIconModule, MatProgressSpinnerModule, MatButtonModule, MatTooltipModule],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
 })
@@ -46,7 +49,20 @@ export class NavDrawerComponent {
   readonly collectionsLoading = signal(false);
   private collectionsLoaded = false;
 
+  // Tasks
+  private readonly taskService = inject(TaskService);
+  private readonly currentUsername = inject(CURRENT_USERNAME);
+  readonly tasks = signal<NuxeoTask[]>([]);
+  readonly tasksLoading = signal(false);
+  readonly tasksError = signal<string | null>(null);
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor() {
+    // Auto-refresh nav task list when tasks are mutated elsewhere
+    this.taskService.tasksChanged$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadTasks());
+
     effect(() => {
       const item = this.activeItem();
       if (item?.path === '/browse' && this.rootNodes().length === 0) {
@@ -54,6 +70,9 @@ export class NavDrawerComponent {
       }
       if (item?.path === '/collections' && !this.collectionsLoaded) {
         this.loadCollections();
+      }
+      if (item?.path === '/tasks') {
+        this.loadTasks();
       }
     });
   }
@@ -247,5 +266,57 @@ export class NavDrawerComponent {
 
   hasChildren(node: FolderNode): boolean {
     return !node.loaded || node.children.length > 0;
+  }
+
+  /* ─── Tasks panel ─── */
+
+  get isTasksPanel(): boolean {
+    return this.activeItem()?.path === '/tasks';
+  }
+
+  loadTasks(): void {
+    this.tasksLoading.set(true);
+    this.tasksError.set(null);
+    const userId = this.currentUsername() ?? 'Administrator';
+    this.taskService.getUserTasks(userId, 50).subscribe({
+      next: (entries) => {
+        this.tasks.set(entries);
+        this.tasksLoading.set(false);
+      },
+      error: () => {
+        this.tasksError.set('Failed to load tasks.');
+        this.tasksLoading.set(false);
+      },
+    });
+  }
+
+  selectTask(task: NuxeoTask): void {
+    this.itemSelected.emit('/tasks/' + task.id);
+  }
+
+  taskLabel(task: NuxeoTask): string {
+    const key = task.name
+      .replace(/^wf\.\w+\./, '')
+      .replace(/\.(title|directive)$/i, '');
+    return key
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\./g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  dueLabel(task: NuxeoTask): string {
+    if (!task.dueDate) return '';
+    const diff = new Date(task.dueDate).getTime() - Date.now();
+    const absDiff = Math.abs(diff);
+    const days = Math.floor(absDiff / 86_400_000);
+    const hours = Math.floor(absDiff / 3_600_000);
+    let label: string;
+    if (days >= 1) label = days === 1 ? '1 day' : `${days} days`;
+    else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
+    return diff > 0 ? `Due in ${label}` : `${label} overdue`;
+  }
+
+  isOverdue(task: NuxeoTask): boolean {
+    return !!task.dueDate && new Date(task.dueDate) < new Date();
   }
 }
