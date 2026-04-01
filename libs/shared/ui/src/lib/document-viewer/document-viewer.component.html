@@ -1,0 +1,87 @@
+<div class="viewer-panel">
+  <!-- Content area -->
+  <div class="viewer-content">
+    @if (loading()) {
+      <div class="viewer-loading">
+        <mat-spinner diameter="36" />
+      </div>
+    } @else {
+      @switch (contentType()) {
+        @case ('image') {
+          <img
+            [src]="blobUrl()"
+            [alt]="fileName()"
+            class="viewer-image"
+            [style.transform]="transform()"
+          />
+        }
+        @case ('video') {
+          <video [src]="blobUrl()" controls class="viewer-video">
+            Your browser does not support video playback.
+          </video>
+        }
+        @case ('audio') {
+          <div class="viewer-audio-wrapper">
+            <mat-icon class="audio-icon">audiotrack</mat-icon>
+            <audio [src]="blobUrl()" controls class="viewer-audio"></audio>
+          </div>
+        }
+        @case ('pdf') {
+          <iframe [src]="blobUrl()" class="viewer-iframe"></iframe>
+        }
+        @case ('iframe') {
+          <iframe [src]="blobUrl()" class="viewer-iframe"></iframe>
+        }
+        @default {
+          <div class="viewer-placeholder">
+            <mat-icon class="placeholder-icon">insert_drive_file</mat-icon>
+            <p>Preview not available</p>
+          </div>
+        }
+      }
+    }
+  </div>
+
+  <!-- Toolbar -->
+  <div class="viewer-toolbar">
+    <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in" (click)="zoomIn()">
+      <mat-icon>zoom_in</mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Fit to width" aria-label="Fit to width" (click)="fitToWidth()">
+      <mat-icon>fit_screen</mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out" (click)="zoomOut()">
+      <mat-icon>zoom_out</mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Rotate left" aria-label="Rotate left" (click)="rotateLeft()">
+      <mat-icon>rotate_left</mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Rotate right" aria-label="Rotate right" (click)="rotateRight()">
+      <mat-icon>rotate_right</mat-icon>
+    </button>
+  </div>
+
+  <!-- Footer -->
+  <div class="viewer-footer">
+    <div class="viewer-footer-info">
+      <span class="file-name">{{ fileName() }}</span>
+      @if (fileSize()) {
+        <span class="file-size">{{ fileSize() }}</span>
+      }
+    </div>
+    <div class="viewer-footer-actions">
+      <button mat-icon-button matTooltip="Annotate" aria-label="Annotate"
+              (click)="annotateClicked.emit()">
+        <mat-icon>edit_note</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Preview" aria-label="Preview"
+              (click)="previewClicked.emit()">
+        <mat-icon>visibility</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Download" aria-label="Download"
+              (click)="downloadClicked.emit()">
+        <mat-icon>download</mat-icon>
+      </button>
+    </div>
+  </div>
+</div>

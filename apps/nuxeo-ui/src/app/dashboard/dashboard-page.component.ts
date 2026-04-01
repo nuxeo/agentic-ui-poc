@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {
@@ -43,6 +44,7 @@ const DOC_TYPE_ICONS: Record<string, string> = {
   styleUrl: './dashboard-page.component.scss',
 })
 export class DashboardPageComponent {
+  private readonly router = inject(Router);
   private readonly docService = inject(DocumentService);
   private readonly taskService = inject(TaskService);
   private readonly collectionService = inject(CollectionService);
@@ -112,6 +114,10 @@ export class DashboardPageComponent {
     });
   }
 
+  navigateToDoc(doc: NuxeoDocument): void {
+    void this.router.navigate(['/doc', doc.uid]);
+  }
+
   docIcon(doc: NuxeoDocument): string {
     return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
   }
@@ -169,5 +175,9 @@ export class DashboardPageComponent {
 
     if (label === 'just now') return label;
     return diff > 0 ? `${label} ago` : `in ${label}`;
+  }
+
+  goToTask(task: NuxeoTask): void {
+    this.router.navigate(['/tasks', task.id]);
   }
 }

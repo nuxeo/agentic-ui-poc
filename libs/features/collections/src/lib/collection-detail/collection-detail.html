@@ -1,0 +1,281 @@
+<div class="collection-page">
+  <!-- Header -->
+  <div class="collection-header">
+    <div class="header-left">
+      <mat-icon class="header-icon">collections_bookmark</mat-icon>
+      <div class="header-info">
+        <h1 class="header-title">{{ collection()?.title ?? 'Collection' }}</h1>
+        @if (breadcrumbPath()) {
+          <span class="header-path">{{ breadcrumbPath() }} &bull; {{ creator() }}</span>
+        }
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button mat-icon-button
+              matTooltip="Refresh"
+              aria-label="Refresh"
+              (click)="loadMembers()">
+        <mat-icon>sync</mat-icon>
+      </button>
+      <button mat-icon-button
+              matTooltip="Edit"
+              aria-label="Edit"
+              (click)="editCollection()">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="deleteCollection()"
+              [disabled]="actionInProgress() === 'trash'"
+              matTooltip="Delete"
+              aria-label="Delete">
+        <mat-icon>delete</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="exportCollection()"
+              [disabled]="actionInProgress() === 'export'"
+              matTooltip="Export"
+              aria-label="Export">
+        <mat-icon>download</mat-icon>
+      </button>
+      <button mat-icon-button
+              [matMenuTriggerFor]="moreMenu"
+              matTooltip="More actions"
+              aria-label="More actions">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <button mat-icon-button
+              matTooltip="Search"
+              aria-label="Search">
+        <mat-icon>search</mat-icon>
+      </button>
+    </div>
+
+    <mat-menu #moreMenu="matMenu">
+      <button mat-menu-item (click)="shareCollection()">
+        <mat-icon>share</mat-icon>
+        <span>Share</span>
+      </button>
+      <button mat-menu-item (click)="toggleSubscription()" [disabled]="actionInProgress() === 'subscribe'">
+        <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
+        <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
+      </button>
+      <button mat-menu-item (click)="toggleClipboard()">
+        <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
+        <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
+      </button>
+      <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
+        <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
+        <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
+      </button>
+      <button mat-menu-item (click)="exportCollection()" [disabled]="actionInProgress() === 'export'">
+        <mat-icon>download</mat-icon>
+        <span>Export</span>
+      </button>
+    </mat-menu>
+  </div>
+
+  <!-- Tabs -->
+  <mat-tab-group class="collection-tabs" animationDuration="0ms" mat-stretch-tabs="false">
+    <mat-tab label="View">
+      <div class="tab-content">
+        @if (loading()) {
+          <div class="tab-loading">
+            <mat-spinner diameter="36" />
+          </div>
+        } @else if (error()) {
+          <div class="tab-error">
+            <mat-icon class="error-icon">error_outline</mat-icon>
+            <p>{{ error() }}</p>
+            <button mat-stroked-button (click)="loadMembers()">
+              <mat-icon>refresh</mat-icon> Retry
+            </button>
+          </div>
+        } @else if (members().length === 0) {
+          <div class="tab-empty">
+            <mat-icon class="empty-icon">collections_bookmark</mat-icon>
+            <p>This collection is empty</p>
+          </div>
+        } @else {
+          <div class="result-count">{{ totalSize() }} result(s)</div>
+          <div class="members-table-wrapper">
+            <table class="members-table">
+              <thead>
+                <tr>
+                  <th class="col-title">Title</th>
+                  <th class="col-modified">Modified</th>
+                  <th class="col-contributor">Last Contributor</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (doc of members(); track doc.uid) {
+                  <tr class="member-row" (click)="onRowClick(doc)">
+                    <td class="cell-title">
+                      <mat-icon class="doc-icon">{{ docIcon(doc) }}</mat-icon>
+                      <span class="doc-name">{{ doc.title }}</span>
+                    </td>
+                    <td class="cell-modified">{{ doc.lastModified | date:'mediumDate' }}</td>
+                    <td class="cell-contributor">
+                      <span class="contributor-avatar">{{ contributorInitial(doc) }}</span>
+                      {{ lastContributor(doc) }}
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Permissions">
+      <div class="permissions-container">
+        <!-- Permissions defined locally -->
+        <section class="perm-section">
+          <div class="perm-section-header">
+            <h3 class="perm-section-title">Permissions defined locally</h3>
+            <button mat-button color="primary" class="perm-action-btn" (click)="addPermission()">New</button>
+          </div>
+          @if (localAces().length === 0) {
+            <div class="perm-empty">There are no local permissions.</div>
+          } @else {
+            <table class="perm-table">
+              <thead>
+                <tr>
+                  <th>User / Group</th>
+                  <th>Right</th>
+                  <th>Time Frame</th>
+                  <th>Granted by</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (ace of localAces(); track ace.id) {
+                  <tr>
+                    <td>{{ ace.username }}</td>
+                    <td>{{ permissionLabel(ace.permission) }}</td>
+                    <td>{{ aceTimeFrame(ace) }}</td>
+                    <td>{{ ace.creator ?? '—' }}</td>
+                    <td class="perm-row-actions">
+                      <button mat-icon-button matTooltip="Edit" aria-label="Edit permission"
+                              (click)="editPermission(ace)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Delete" aria-label="Delete permission"
+                              (click)="deletePermission(ace)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </section>
+
+        <!-- Permissions inherited from upper levels -->
+        <section class="perm-section">
+          <div class="perm-section-header">
+            <h3 class="perm-section-title">Permissions inherited from upper levels</h3>
+            <button mat-button color="primary" class="perm-action-btn"
+                    (click)="toggleInheritance()"
+                    [disabled]="actionInProgress() === 'inheritance'">
+              {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+            </button>
+          </div>
+          @if (!isInheritanceBlocked()) {
+            <div class="perm-info-bar">
+              <span class="perm-info-accent"></span>
+              <p>If you want to explicitly control the access to this document you can block the permissions inheritance. Any change made on parent document will not affect the access conditions to this document. You and the administrators will be added to local permissions.</p>
+            </div>
+          }
+          @if (isInheritanceBlocked()) {
+            <div class="perm-empty">Permissions inheritance is blocked.</div>
+          } @else if (inheritedAces().length === 0) {
+            <div class="perm-empty">No inherited permissions.</div>
+          } @else {
+            <table class="perm-table">
+              <thead>
+                <tr>
+                  <th>User / Group</th>
+                  <th>Right</th>
+                  <th>Time Frame</th>
+                  <th>Granted by</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (ace of inheritedAces(); track ace.id) {
+                  <tr>
+                    <td>{{ ace.username }}</td>
+                    <td>{{ permissionLabel(ace.permission) }}</td>
+                    <td>{{ aceTimeFrame(ace) }}</td>
+                    <td>{{ ace.creator ?? '—' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </section>
+
+        <!-- Permissions Assigned to External Users -->
+        <section class="perm-section">
+          <div class="perm-section-header">
+            <h3 class="perm-section-title">Permissions Assigned to External Users</h3>
+            <button mat-button color="primary" class="perm-action-btn" (click)="shareWithExternal()">New</button>
+          </div>
+          <div class="perm-info-bar">
+            <span class="perm-info-accent"></span>
+            <p>Sharing to external users does not create new user accounts. External users are provided a link to access this document.</p>
+          </div>
+          @if (externalAces().length === 0) {
+            <div class="perm-empty">The document is not shared with any external user.</div>
+          } @else {
+            <table class="perm-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Right</th>
+                  <th>Time Frame</th>
+                  <th>Granted by</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (ace of externalAces(); track ace.id) {
+                  <tr>
+                    <td>{{ displayUsername(ace) }}</td>
+                    <td>{{ permissionLabel(ace.permission) }}</td>
+                    <td>{{ aceTimeFrame(ace) }}</td>
+                    <td>{{ ace.creator ?? '—' }}</td>
+                    <td class="perm-row-actions">
+                      <button mat-icon-button matTooltip="Edit" aria-label="Edit permission"
+                              (click)="editExternalPermission(ace)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Send notification email" aria-label="Send notification"
+                              [disabled]="actionInProgress() === 'notify-' + ace.id"
+                              (click)="sendNotificationEmail(ace)">
+                        <mat-icon>send</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Delete" aria-label="Delete permission"
+                              (click)="deletePermission(ace)">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+        </section>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="History">
+      <div class="tab-content tab-placeholder">
+        <mat-icon>history</mat-icon>
+        <p>History log coming soon</p>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

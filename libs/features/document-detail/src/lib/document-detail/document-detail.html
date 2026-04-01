@@ -1,1 +1,988 @@
-<p>DocumentDetail works!</p>
+@if (loading()) {
+  <div class="detail-loading">
+    <mat-spinner diameter="40" />
+  </div>
+} @else if (error()) {
+  <div class="detail-error">
+    <mat-icon class="error-icon">error_outline</mat-icon>
+    <p>{{ error() }}</p>
+    <button mat-stroked-button (click)="goBack()">
+      <mat-icon>arrow_back</mat-icon> Go Back
+    </button>
+  </div>
+} @else if (doc()) {
+  <!-- Header -->
+  <div class="detail-header">
+    <button mat-icon-button (click)="goBack()" aria-label="Go back">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <div class="header-info">
+      <h1 class="header-title">{{ doc()!.title }}</h1>
+      <span class="header-path">{{ breadcrumbPath() }}</span>
+    </div>
+    <div class="header-actions">
+      <button mat-icon-button matTooltip="Edit" aria-label="Edit">
+        <mat-icon>edit</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="openAddToCollectionDialog()"
+              matTooltip="Add to collection"
+              aria-label="Add to collection">
+        <mat-icon>library_add</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="trashDocument()"
+              [disabled]="actionInProgress() === 'trash'"
+              matTooltip="Delete"
+              aria-label="Delete">
+        <mat-icon>delete</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="toggleClipboard()"
+              [matTooltip]="isInClipboard() ? 'Remove from clipboard' : 'Add to clipboard'"
+              aria-label="Clipboard">
+        <mat-icon>{{ isInClipboard() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+      </button>
+      <button mat-icon-button
+              (click)="toggleFavorite()"
+              [disabled]="actionInProgress() === 'favorite'"
+              [matTooltip]="isFavorite() ? 'Remove from favorites' : 'Add to favorites'"
+              aria-label="Favorite"
+              [class.action-active]="isFavorite()">
+        <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
+      </button>
+      <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More actions" aria-label="More actions">
+        <mat-icon>more_vert</mat-icon>
+      </button>
+    </div>
+
+    <mat-menu #moreMenu="matMenu">
+      <button mat-menu-item (click)="shareDocument()">
+        <mat-icon>share</mat-icon>
+        <span>Share</span>
+      </button>
+      @if (hasVersion()) {
+        <button mat-menu-item (click)="openPublishDialog()">
+          <mat-icon>publish</mat-icon>
+          <span>Publish document</span>
+        </button>
+      }
+      <button mat-menu-item (click)="toggleSubscription()" [disabled]="actionInProgress() === 'subscribe'">
+        <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
+        <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
+      </button>
+      <button mat-menu-item (click)="toggleClipboard()">
+        <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
+        <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
+      </button>
+      <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
+        <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
+        <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
+      </button>
+      <button mat-menu-item (click)="exportDocument()" [disabled]="actionInProgress() === 'export'">
+        <mat-icon>download</mat-icon>
+        <span>Export</span>
+      </button>
+      <button mat-menu-item (click)="openStartProcess()">
+        <mat-icon>play_circle</mat-icon>
+        <span>Start Process</span>
+      </button>
+    </mat-menu>
+
+  </div>
+
+  <!-- Workflow info banner (yellow) — one per running workflow -->
+  @for (wf of documentWorkflows(); track wf.id) {
+    <div class="workflow-banner">
+      <mat-icon class="workflow-banner-icon">warning</mat-icon>
+      <span class="workflow-banner-text">
+        You started a <strong>{{ workflowDisplayName(wf) }}</strong> workflow on this document.
+      </span>
+      <span class="workflow-banner-spacer"></span>
+      <button mat-button class="workflow-banner-abandon"
+              [disabled]="abandoningWorkflow()"
+              (click)="abandonWorkflow(wf)">
+        Abandon
+      </button>
+    </div>
+  }
+
+  <!-- Task action banner (blue) — one per pending task -->
+  @for (task of documentTasks(); track task.id) {
+    <div class="task-action-banner">
+      <mat-icon class="task-action-icon">check_box</mat-icon>
+      <span class="task-action-text">
+        You have a task to process
+        @if (taskDueLabel(task)) {
+          before <strong>{{ taskDueLabel(task) }}</strong>
+        }
+      </span>
+      <span class="task-action-spacer"></span>
+      <button mat-flat-button class="task-action-btn" (click)="goToTask(task)">
+        Process
+      </button>
+    </div>
+  }
+
+  <!-- Start Process modal dialog -->
+  @if (showStartProcessPanel()) {
+    <div class="start-process-backdrop" (click)="closeStartProcess()"></div>
+    <div class="start-process-dialog">
+      <h2 class="start-process-title">Start Process</h2>
+
+      @if (workflowsLoading()) {
+        <div class="start-process-loading">
+          <mat-spinner diameter="28" />
+        </div>
+      } @else if (availableWorkflows().length === 0) {
+        <p class="start-process-empty">No workflow models available.</p>
+      } @else {
+        <label class="start-process-label">Choose process</label>
+        <mat-form-field appearance="outline" class="start-process-field">
+          <mat-select
+            [value]="selectedWorkflowModel()"
+            (selectionChange)="selectedWorkflowModel.set($event.value)">
+            @for (wf of availableWorkflows(); track wf.name) {
+              <mat-option [value]="wf.name">{{ workflowDisplayName(wf) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <div class="start-process-actions">
+          <button mat-flat-button
+                  color="primary"
+                  class="start-process-btn"
+                  [disabled]="!selectedWorkflowModel() || startingWorkflow()"
+                  (click)="startProcess()">
+            @if (startingWorkflow()) {
+              <mat-spinner diameter="18" class="inline-spinner" />
+            }
+            Start
+          </button>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Main body: tabs on left, properties panel on right -->
+  <div class="detail-body">
+    <!-- Left: Tabs + content -->
+    <div class="detail-main">
+      <div class="tabs-header-row">
+        <mat-tab-group #tabGroup class="detail-tabs" animationDuration="0ms" (selectedIndexChange)="onTabChange($event)">
+        <mat-tab label="View">
+          <lib-document-viewer
+            [blobUrl]="blobUrl()"
+            [mimeType]="mimeType()"
+            [fileName]="fileName()"
+            [fileSize]="fileSize()"
+            (downloadClicked)="download()"
+            (previewClicked)="previewMainBlob()"
+            (annotateClicked)="annotateMainBlob()"
+          />
+        </mat-tab>
+
+        <mat-tab label="Permissions">
+          <div class="permissions-container">
+            <!-- Permissions defined locally -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <h3 class="perm-section-title">Permissions defined locally</h3>
+                <button mat-button color="primary" class="perm-action-btn">New</button>
+              </div>
+              @if (localAces().length === 0) {
+                <div class="perm-empty">There are no local permissions.</div>
+              } @else {
+                <table class="perm-table">
+                  <thead>
+                    <tr>
+                      <th>User / Group</th>
+                      <th>Right</th>
+                      <th>Time Frame</th>
+                      <th>Granted by</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ace of localAces(); track ace.id) {
+                      <tr>
+                        <td>{{ ace.username }}</td>
+                        <td>{{ permissionLabel(ace.permission) }}</td>
+                        <td>{{ aceTimeFrame(ace) }}</td>
+                        <td>{{ ace.creator ?? '—' }}</td>
+                        <td class="perm-row-actions">
+                          <button mat-icon-button matTooltip="Edit" aria-label="Edit permission">
+                            <mat-icon>edit</mat-icon>
+                          </button>
+                          <button mat-icon-button matTooltip="Delete" aria-label="Delete permission">
+                            <mat-icon>delete</mat-icon>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- Permissions inherited from upper levels -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <h3 class="perm-section-title">Permissions inherited from upper levels</h3>
+                <button mat-button color="primary" class="perm-action-btn">
+                  {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+                </button>
+              </div>
+              @if (!isInheritanceBlocked()) {
+                <div class="perm-info-bar">
+                  <span class="perm-info-accent"></span>
+                  <p>If you want to explicitly control the access to this document you can block the permissions inheritance. Any change made on parent document will not affect the access conditions to this document. You and the administrators will be added to local permissions.</p>
+                </div>
+              }
+              @if (isInheritanceBlocked()) {
+                <div class="perm-empty">Permissions inheritance is blocked.</div>
+              } @else if (inheritedAces().length === 0) {
+                <div class="perm-empty">No inherited permissions.</div>
+              } @else {
+                <table class="perm-table">
+                  <thead>
+                    <tr>
+                      <th>User / Group</th>
+                      <th>Right</th>
+                      <th>Time Frame</th>
+                      <th>Granted by</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ace of inheritedAces(); track ace.id) {
+                      <tr>
+                        <td>{{ ace.username }}</td>
+                        <td>{{ permissionLabel(ace.permission) }}</td>
+                        <td>{{ aceTimeFrame(ace) }}</td>
+                        <td>{{ ace.creator ?? '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- Permissions Assigned to External Users -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <h3 class="perm-section-title">Permissions Assigned to External Users</h3>
+                <button mat-button color="primary" class="perm-action-btn">New</button>
+              </div>
+              <div class="perm-info-bar">
+                <span class="perm-info-accent"></span>
+                <p>Sharing to external users does not create new user accounts. External users are provided a link to access this document.</p>
+              </div>
+              @if (externalAces().length === 0) {
+                <div class="perm-empty">The document is not shared with any external user.</div>
+              } @else {
+                <table class="perm-table">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Right</th>
+                      <th>Time Frame</th>
+                      <th>Granted by</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ace of externalAces(); track ace.id) {
+                      <tr>
+                        <td>{{ ace.username }}</td>
+                        <td>{{ permissionLabel(ace.permission) }}</td>
+                        <td>{{ aceTimeFrame(ace) }}</td>
+                        <td>{{ ace.creator ?? '—' }}</td>
+                        <td class="perm-row-actions">
+                          <button mat-icon-button matTooltip="Delete" aria-label="Delete permission">
+                            <mat-icon>delete</mat-icon>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+          </div>
+        </mat-tab>
+
+        <mat-tab label="History">
+          <div class="history-container">
+            <!-- Filters -->
+            <div class="history-filters">
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field filter-field--wide">
+                  <mat-label>Username</mat-label>
+                  <input matInput placeholder="Filter by username" [ngModel]="filterUsername()" (ngModelChange)="filterUsername.set($event)" />
+                </mat-form-field>
+              </div>
+
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>From</mat-label>
+                  <input matInput [matDatepicker]="fromPicker" placeholder="mm/dd/yyyy" [ngModel]="filterDateFrom()" (ngModelChange)="filterDateFrom.set($event)" />
+                  <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+                  <mat-datepicker #fromPicker />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>To</mat-label>
+                  <input matInput [matDatepicker]="toPicker" placeholder="mm/dd/yyyy" [ngModel]="filterDateTo()" (ngModelChange)="filterDateTo.set($event)" />
+                  <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+                  <mat-datepicker #toPicker />
+                </mat-form-field>
+              </div>
+
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>Performed Actions</mat-label>
+                  <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
+                    <mat-option value="">Select event actions</mat-option>
+                    @for (action of availableActions(); track action.id) {
+                      <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>Event Category</mat-label>
+                  <mat-select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
+                    <mat-option value="">Select event category</mat-option>
+                    @for (cat of availableCategories(); track cat.id) {
+                      <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Table -->
+            @if (auditLoading()) {
+              <div class="history-loading">
+                <mat-spinner diameter="32" />
+              </div>
+            } @else if (filteredAuditEntries().length === 0) {
+              <div class="history-empty">
+                <mat-icon>event_busy</mat-icon>
+                <p>No history entries found.</p>
+              </div>
+            } @else {
+              <div class="history-table-wrapper">
+                <table mat-table [dataSource]="filteredAuditEntries()" matSort (matSortChange)="onAuditSort($event)" class="history-table">
+                  <ng-container matColumnDef="eventId">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
+                    <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="eventDate">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                    <td mat-cell *matCellDef="let entry">{{ entry.eventDate | date:'MMMM d, yyyy' }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="principalName">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+                    <td mat-cell *matCellDef="let entry">
+                      <div class="user-cell">
+                        <span class="user-avatar">{{ userInitial(entry.principalName) }}</span>
+                        <span>{{ entry.principalName }}</span>
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="category">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                    <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="comment">
+                    <th mat-header-cell *matHeaderCellDef>Comment</th>
+                    <td mat-cell *matCellDef="let entry" class="comment-cell">{{ entry.comment }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="docLifeCycle">
+                    <th mat-header-cell *matHeaderCellDef>State</th>
+                    <td mat-cell *matCellDef="let entry">
+                      <span class="state-badge">{{ entry.docLifeCycle }}</span>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="historyDisplayedColumns; sticky: true"></tr>
+                  <tr mat-row *matRowDef="let row; columns: historyDisplayedColumns;"></tr>
+                </table>
+              </div>
+
+              <mat-paginator
+                [length]="auditTotalSize()"
+                [pageSize]="auditPageSize()"
+                [pageIndex]="auditPageIndex()"
+                [pageSizeOptions]="[10, 20, 50]"
+                (page)="onAuditPageChange($event)"
+                showFirstLastButtons
+              />
+            }
+          </div>
+        </mat-tab>
+
+        <mat-tab label="Publishing">
+          <div class="publish-container">
+            <!-- Publication details -->
+            <section class="publish-section">
+              <div class="publish-section-header">
+                <h3 class="publish-section-title">Publication details</h3>
+                @if (publishedDocs().length > 0) {
+                  <button
+                    mat-stroked-button
+                    class="unpublish-all-btn"
+                    [disabled]="actionInProgress() === 'unpublish-all'"
+                    (click)="unpublishAll()"
+                  >
+                    @if (actionInProgress() === 'unpublish-all') {
+                      <mat-spinner diameter="16" />
+                    } @else {
+                      Unpublish All
+                    }
+                  </button>
+                }
+              </div>
+              @if (publishLoading()) {
+                <div class="publish-loading">
+                  <mat-spinner diameter="24" />
+                </div>
+              } @else if (publishedDocs().length === 0) {
+                <div class="publish-empty">
+                  <mat-icon>cloud_off</mat-icon>
+                  <p>This document has not been published yet.</p>
+                </div>
+              } @else {
+                <table class="publish-table">
+                  <thead>
+                    <tr>
+                      <th>Path</th>
+                      <th>Version</th>
+                      <th>Rendition</th>
+                      <th>Publisher</th>
+                      <th>Publish Date</th>
+                      <th class="pub-actions-col"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pub of publishedDocs(); track pub.uid) {
+                      <tr>
+                        <td>
+                          <div class="pub-title-cell">
+                            <mat-icon class="pub-doc-icon">description</mat-icon>
+                            <span class="pub-path-text">{{ publishedPath(pub) }}</span>
+                          </div>
+                        </td>
+                        <td><span class="version-badge">{{ publishedVersion(pub) }}</span></td>
+                        <td>{{ publishedRendition(pub) }}</td>
+                        <td>
+                          <div class="pub-publisher">
+                            <span class="avatar-sm pub-avatar">{{ publishedBy(pub).charAt(0).toUpperCase() }}</span>
+                            <span>{{ publishedBy(pub) }}</span>
+                          </div>
+                        </td>
+                        <td>{{ publishedDate(pub) | date:'longDate' }}</td>
+                        <td class="pub-actions-cell">
+                          <button mat-stroked-button
+                                  class="pub-action-btn"
+                                  [disabled]="actionInProgress() === 'unpublish'"
+                                  (click)="unpublishDocument(pub)">
+                            Unpublish
+                          </button>
+                          @if (isOlderVersion(pub)) {
+                            <button mat-flat-button
+                                    color="primary"
+                                    class="pub-action-btn republish-btn"
+                                    [disabled]="actionInProgress() === 'republish'"
+                                    (click)="republishDocument(pub)">
+                              Republish
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- Publish to Section -->
+            <section class="publish-section">
+              <div class="publish-section-header">
+                <h3 class="publish-section-title">Publish to a Section</h3>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  class="publish-btn"
+                  [disabled]="!selectedSectionId() || publishing()"
+                  (click)="publishToSection()"
+                >
+                  @if (publishing()) {
+                    <mat-spinner diameter="18" />
+                  } @else {
+                    <ng-container>
+                      <mat-icon>publish</mat-icon>
+                      Publish
+                    </ng-container>
+                  }
+                </button>
+              </div>
+
+              <div class="publish-info-bar">
+                <span class="publish-info-accent"></span>
+                <p>Select a section below to publish this document. Published documents will appear in the selected section and will be accessible to users with read access.</p>
+              </div>
+
+              @if (sectionsLoading()) {
+                <div class="publish-loading">
+                  <mat-spinner diameter="24" />
+                </div>
+              } @else if (sectionTree().length === 0) {
+                <div class="publish-empty">
+                  <mat-icon>folder_off</mat-icon>
+                  <p>No sections available for publishing.</p>
+                </div>
+              } @else {
+                <div class="section-tree">
+                  @for (node of sectionTree(); track node.doc.uid) {
+                    <ng-container
+                      *ngTemplateOutlet="sectionNodeTpl; context: { $implicit: node, depth: 0 }"
+                    />
+                  }
+                </div>
+              }
+            </section>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+        <button mat-icon-button
+                class="panel-toggle-btn"
+                (click)="propertiesPanelOpen.set(!propertiesPanelOpen())"
+                [matTooltip]="propertiesPanelOpen() ? 'Hide details' : 'Show details'"
+                aria-label="Toggle details panel">
+          <mat-icon>{{ propertiesPanelOpen() ? 'info' : 'info_outline' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right: Properties Panel (persists across all tabs) -->
+    @if (propertiesPanelOpen()) {
+      <aside class="properties-panel">
+        <div class="panel-header">
+          <span class="panel-title">{{ fileName() }}</span>
+          <button mat-icon-button (click)="closePropertiesPanel()" aria-label="Close panel">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+
+        <div class="panel-sub-tabs">
+          <button class="sub-tab" [class.sub-tab--active]="panelSubTab() === 'properties'" (click)="switchPanelSubTab('properties')">Properties</button>
+          <button class="sub-tab" [class.sub-tab--active]="panelSubTab() === 'comments'" (click)="switchPanelSubTab('comments')">Comments</button>
+          <button class="sub-tab" [class.sub-tab--active]="panelSubTab() === 'activity'" (click)="switchPanelSubTab('activity')">Activity</button>
+        </div>
+
+        <!-- Properties sub-tab -->
+        @if (panelSubTab() === 'properties') {
+          <div class="panel-body">
+            <!-- Document info section matching native UI -->
+            <div class="doc-info-section">
+              @if (documentWorkflows().length > 0) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">Process</span>
+                  <span class="doc-info-value">
+                    <span class="state-chip" style="background:#ffebee;color:#c62828">Running</span>
+                  </span>
+                </div>
+              }
+
+              @if (docState()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">State</span>
+                  <span class="doc-info-value">
+                    <span class="state-chip">{{ docState() }}</span>
+                  </span>
+                </div>
+              }
+
+              <div class="doc-info-row">
+                <span class="doc-info-label">Version</span>
+                <span class="doc-info-value">
+                  @if (hasVersion()) {
+                    <div class="version-select-wrapper">
+                      <button class="version-select" (click)="toggleVersionDropdown()">
+                        <span>{{ versionLabel() }}</span>
+                        <mat-icon class="version-arrow">arrow_drop_down</mat-icon>
+                      </button>
+                      @if (versionDropdownOpen()) {
+                        <div class="version-dropdown">
+                          @if (versionsLoading()) {
+                            <div class="version-dropdown-loading">
+                              <mat-spinner diameter="20" />
+                            </div>
+                          } @else {
+                            @if (doc()?.isCheckedOut) {
+                              <button class="version-dropdown-item version-dropdown-create"
+                                      (click)="versionDropdownOpen.set(false); openCreateVersionDialog()">
+                                <mat-icon class="create-version-icon">add_circle_outline</mat-icon>
+                                <span class="version-dropdown-label">Create Version</span>
+                              </button>
+                            }
+                            <button class="version-dropdown-item version-dropdown-item--current"
+                                    (click)="versionDropdownOpen.set(false)">
+                              <span class="version-dropdown-label">{{ versionLabel() }} Latest</span>
+                            </button>
+                            @for (v of versions(); track v.uid) {
+                              <button class="version-dropdown-item" (click)="restoreVersion(v)">
+                                <span class="version-dropdown-label">{{ versionString(v) }}</span>
+                                <span class="version-dropdown-meta">Modified {{ relativeTime(v.lastModified) }} by {{ v.properties['dc:lastContributor'] ?? 'Unknown' }}</span>
+                              </button>
+                            }
+                            @if (versions().length === 0) {
+                              <div class="version-dropdown-empty">No previous versions</div>
+                            }
+                          }
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <button mat-flat-button color="primary" class="create-version-btn" (click)="openCreateVersionDialog()">
+                      Create Version
+                    </button>
+                  }
+                </span>
+              </div>
+
+              <div class="doc-info-row">
+                <span class="doc-info-label">Publications</span>
+                <span class="doc-info-value">
+                  @if (publicationCount() > 0) {
+                    <a class="publications-link" (click)="goToPublishingTab()">{{ publicationCount() }}</a>
+                  } @else {
+                    <span class="no-publications">0</span>
+                  }
+                </span>
+              </div>
+
+              @if (modified()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">Last Modified</span>
+                  <span class="doc-info-value">{{ modified() | date:'longDate' }}</span>
+                </div>
+              }
+
+              @if (created()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">Created</span>
+                  <span class="doc-info-value">{{ created() | date:'longDate' }}</span>
+                </div>
+              }
+
+              @if (creator()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">By</span>
+                  <span class="doc-info-value creator-value">
+                    <span class="avatar-sm">{{ creator()!.charAt(0).toUpperCase() }}</span>
+                    {{ creator() }}
+                  </span>
+                </div>
+              }
+
+              @if (contributors().length > 0) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">Contributors</span>
+                  <span class="doc-info-value creator-value">
+                    @for (c of contributors(); track c) {
+                      <span class="avatar-sm">{{ c.charAt(0).toUpperCase() }}</span>
+                    }
+                    {{ contributors().join(', ') }}
+                  </span>
+                </div>
+              }
+            </div>
+
+            <div class="indexing-header">
+              <h4 class="indexing-title">Indexing Properties</h4>
+            </div>
+
+            <div class="prop-field">
+              <span class="prop-label">Title</span>
+              <span class="prop-value">{{ doc()!.title }}</span>
+            </div>
+
+            <div class="prop-field">
+              <span class="prop-label">File Name</span>
+              <span class="prop-value">{{ fileName() }}</span>
+            </div>
+
+            @if (expires()) {
+              <div class="prop-field">
+                <span class="prop-label">Expires</span>
+                <span class="prop-value">{{ expires() | date:'longDate' }}</span>
+              </div>
+            }
+
+            @if (tags().length > 0) {
+              <div class="prop-field">
+                <span class="prop-label">Tags</span>
+                <div class="tags-row">
+                  @for (tag of tags(); track tag; let i = $index) {
+                    <span class="tag-chip" [style.border-color]="tagColor(i)" [style.color]="tagColor(i)">
+                      {{ tag }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (description()) {
+              <div class="prop-field">
+                <span class="prop-label">Description</span>
+                <p class="prop-description">{{ description() }}</p>
+              </div>
+            }
+
+            <div class="prop-section-divider"></div>
+
+            <h4 class="section-title">Attachments</h4>
+            @if (attachments().length === 0) {
+              <p class="section-empty">There are no attachments</p>
+            } @else {
+              @for (att of attachments(); track att.index) {
+                <div class="attachment-card">
+                  <div class="attachment-info">
+                    <span class="attachment-name">{{ att.name }}</span>
+                    <span class="attachment-size">{{ formatBytes(att.size) }}</span>
+                  </div>
+                  <div class="attachment-actions">
+                    <button mat-icon-button matTooltip="Open in Nuxeo Drive" (click)="openDriveDialog()">
+                      <mat-icon>open_in_new</mat-icon>
+                    </button>
+                    <button mat-icon-button matTooltip="Preview" (click)="previewAttachment(att)">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                    <button mat-icon-button matTooltip="Download" (click)="downloadAttachment(att.url, att.name)">
+                      <mat-icon>download</mat-icon>
+                    </button>
+                    <button mat-icon-button [matMenuTriggerFor]="attMenu" matTooltip="More" aria-label="More actions">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #attMenu="matMenu">
+                      <button mat-menu-item (click)="openReplaceDialog(att)">
+                        <mat-icon>find_replace</mat-icon>
+                        <span>Replace</span>
+                      </button>
+                      <button mat-menu-item (click)="openRemoveDialog(att)">
+                        <mat-icon>cancel</mat-icon>
+                        <span>Remove</span>
+                      </button>
+                    </mat-menu>
+                  </div>
+                </div>
+              }
+            }
+
+            <div class="upload-attachment-zone" (click)="attachmentInput.click()">
+              <a class="upload-link">Upload attachment</a>
+              <input #attachmentInput type="file" hidden (change)="uploadAttachment($event)" />
+            </div>
+
+            <div class="prop-section-divider"></div>
+
+            <h4 class="section-title">Collections</h4>
+            @if (collections().length === 0) {
+              <p class="section-empty">No collections</p>
+            } @else {
+              @for (col of collections(); track col.uid) {
+                <div class="collection-chip">
+                  <mat-icon class="collection-icon">bookmark</mat-icon>
+                  <span>{{ col.title }}</span>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <!-- Comments sub-tab -->
+        @if (panelSubTab() === 'comments') {
+          <div class="panel-body comments-panel">
+            @if (commentsLoading()) {
+              <div class="panel-loading">
+                <mat-spinner diameter="28" />
+              </div>
+            } @else {
+              <!-- Existing comments -->
+              @for (comment of comments(); track comment.id) {
+                <div class="comment-card">
+                  <div class="comment-header">
+                    <span class="comment-avatar">{{ userInitial(comment.author) }}</span>
+                    <span class="comment-author">{{ comment.author }}</span>
+                    <span class="comment-time">{{ relativeTime(comment.creationDate) }}</span>
+                    @if (isCommentEdited(comment)) {
+                      <span class="comment-edited">(edited)</span>
+                    }
+                    <button mat-icon-button [matMenuTriggerFor]="commentMenu" class="comment-menu-btn">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #commentMenu="matMenu">
+                      <button mat-menu-item (click)="startEditComment(comment)">
+                        <mat-icon>edit</mat-icon> Edit
+                      </button>
+                      <button mat-menu-item (click)="deleteComment(comment)">
+                        <mat-icon>delete</mat-icon> Delete
+                      </button>
+                    </mat-menu>
+                  </div>
+                  @if (editingCommentId() === comment.id) {
+                    <div class="comment-edit-row">
+                      <input class="comment-edit-input"
+                             [value]="editingCommentText()"
+                             (input)="editingCommentText.set($any($event.target).value)"
+                             (keydown.enter)="saveEditComment()" />
+                      <button mat-icon-button (click)="saveEditComment()" [disabled]="commentSaving()" matTooltip="Save">
+                        <mat-icon>check</mat-icon>
+                      </button>
+                      <button mat-icon-button (click)="cancelEditComment()" matTooltip="Cancel">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <p class="comment-text">{{ comment.text }}</p>
+                  }
+
+                  <div class="comment-footer">
+                    <button class="reply-toggle-btn" (click)="startReply(comment.id)">
+                      <mat-icon class="reply-icon">reply</mat-icon> Reply
+                    </button>
+                  </div>
+
+                  @if (replyCount(comment.id) > 0) {
+                    <div class="reply-summary">
+                      {{ replyCount(comment.id) }} {{ replyCount(comment.id) === 1 ? 'Reply' : 'Replies' }}
+                      · Last reply {{ lastReplyTime(comment.id) }}
+                    </div>
+                    <div class="replies-section">
+                      @for (reply of repliesMap()[comment.id] ?? []; track reply.id) {
+                        <div class="reply-card">
+                          <div class="comment-header">
+                            <span class="comment-avatar reply-avatar">{{ userInitial(reply.author) }}</span>
+                            <span class="comment-author">{{ reply.author }}</span>
+                            <span class="comment-time">{{ relativeTime(reply.creationDate) }}</span>
+                            @if (isCommentEdited(reply)) {
+                              <span class="comment-edited">(edited)</span>
+                            }
+                          </div>
+                          <p class="comment-text reply-text">{{ reply.text }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (replyingToId() === comment.id) {
+                    <div class="reply-input-row">
+                      <input class="new-comment-input reply-input"
+                             placeholder="Write a reply here"
+                             [value]="replyText()"
+                             (input)="replyText.set($any($event.target).value)"
+                             (keydown.enter)="submitReply(comment.id)" />
+                      @if (replyText().trim()) {
+                        <button mat-icon-button (click)="submitReply(comment.id)" [disabled]="commentSaving()" matTooltip="Submit">
+                          <mat-icon>check</mat-icon>
+                        </button>
+                        <button mat-icon-button (click)="cancelReply()" matTooltip="Cancel">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (comments().length === 0) {
+                <p class="section-empty">No comments yet</p>
+              }
+
+              <!-- New comment input -->
+              <div class="new-comment-row">
+                <input class="new-comment-input"
+                       placeholder="Write a comment here"
+                       [value]="newCommentText()"
+                       (input)="newCommentText.set($any($event.target).value)"
+                       (keydown.enter)="submitComment()" />
+                @if (newCommentText().trim()) {
+                  <button mat-icon-button (click)="submitComment()" [disabled]="commentSaving()" matTooltip="Submit">
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="cancelNewComment()" matTooltip="Cancel">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Activity sub-tab -->
+        @if (panelSubTab() === 'activity') {
+          <div class="panel-body activity-panel">
+            @if (panelActivityLoading()) {
+              <div class="panel-loading">
+                <mat-spinner diameter="28" />
+              </div>
+            } @else {
+              @for (entry of panelActivity(); track $index) {
+                <div class="activity-card">
+                  <span class="activity-avatar">{{ userInitial(entry.principalName) }}</span>
+                  <div class="activity-info">
+                    <span class="activity-user">{{ entry.principalName }}</span>
+                    <span class="activity-action">{{ activityLabel(entry.eventId) }}</span>
+                    <span class="activity-time">{{ relativeTime(entry.eventDate) }}</span>
+                  </div>
+                </div>
+              }
+
+              @if (panelActivity().length === 0) {
+                <p class="section-empty">No recent activity</p>
+              }
+            }
+          </div>
+        }
+      </aside>
+    }
+  </div>
+}
+
+<ng-template #sectionNodeTpl let-node let-depth="depth">
+  <div
+    class="section-node"
+    [class.section-node--selected]="selectedSectionId() === node.doc.uid"
+    [style.padding-left.px]="16 + depth * 24"
+    (click)="selectSection(node.doc.uid)"
+  >
+    @if (node.children.length > 0) {
+      <button class="section-toggle" (click)="toggleSectionNode(node); $event.stopPropagation()" type="button">
+        <mat-icon class="section-arrow" [class.section-arrow--expanded]="node.expanded">
+          chevron_right
+        </mat-icon>
+      </button>
+    } @else {
+      <span class="section-toggle-spacer"></span>
+    }
+    <mat-icon class="section-icon">{{ sectionIcon(node) }}</mat-icon>
+    <span class="section-label">{{ node.doc.title }}</span>
+    @if (selectedSectionId() === node.doc.uid) {
+      <mat-icon class="section-check">check_circle</mat-icon>
+    }
+  </div>
+
+  @if (node.expanded && node.children.length > 0) {
+    @for (child of node.children; track child.doc.uid) {
+      <ng-container *ngTemplateOutlet="sectionNodeTpl; context: { $implicit: child, depth: depth + 1 }" />
+    }
+  }
+</ng-template>

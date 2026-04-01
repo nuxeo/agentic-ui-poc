@@ -1,0 +1,157 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.viewer-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.viewer-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: auto;
+  min-height: 0;
+  background: #fafafa;
+}
+
+.viewer-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.viewer-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
+  transition: transform 0.2s ease;
+  transform-origin: center center;
+}
+
+.viewer-video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
+}
+
+.viewer-audio-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+
+  .audio-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #999;
+  }
+}
+
+.viewer-audio {
+  min-width: 320px;
+}
+
+.viewer-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 4px;
+}
+
+.viewer-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: #999;
+
+  .placeholder-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+  }
+
+  p {
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+.viewer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 0;
+  background: #f0f0f0;
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+
+  button {
+    color: #555;
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+.viewer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-top: 1px solid #eee;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.viewer-footer-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-size {
+  font-size: 11px;
+  color: #888;
+}
+
+.viewer-footer-actions {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+
+  button {
+    color: #555;
+  }
+}

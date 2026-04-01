@@ -1,6 +1,6 @@
 import { Route } from '@angular/router';
-import { DocumentDetail } from './document-detail/document-detail';
+import { DocumentDetailComponent } from './document-detail/document-detail';
 
 export const documentDetailRoutes: Route[] = [
-  { path: '', component: DocumentDetail }
+  { path: ':uid', component: DocumentDetailComponent },
 ];

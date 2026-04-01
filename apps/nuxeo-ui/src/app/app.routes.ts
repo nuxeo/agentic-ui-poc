@@ -45,15 +45,20 @@ export const routes: Routes = [
         loadComponent: placeholder,
       },
       {
-        path: 'documents',
+        path: 'doc',
         loadChildren: () =>
           import('@agentic-ui/feature-document-detail').then(
             (m) => m.documentDetailRoutes,
           ),
       },
       {
-        path: 'tasks',
+        path: 'documents',
         loadComponent: placeholder,
+      },
+      {
+        path: 'tasks',
+        loadChildren: () =>
+          import('@agentic-ui/feature-tasks').then((m) => m.tasksRoutes),
       },
       {
         path: 'favorites',
@@ -61,7 +66,10 @@ export const routes: Routes = [
       },
       {
         path: 'collections',
-        loadComponent: placeholder,
+        loadChildren: () =>
+          import('@agentic-ui/feature-collections').then(
+            (m) => m.collectionsRoutes,
+          ),
       },
       {
         path: 'personal-space',

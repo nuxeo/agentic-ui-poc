@@ -1,1 +1,70 @@
-<p>Browse works!</p>
+<div class="browse-container">
+  <nav class="breadcrumb-bar">
+    @for (crumb of breadcrumbs(); track crumb.routerPath; let last = $last) {
+      @if (last) {
+        <span class="breadcrumb-current">{{ crumb.label }}</span>
+      } @else {
+        <a class="breadcrumb-link" [routerLink]="crumb.routerPath">{{ crumb.label }}</a>
+        <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
+      }
+    }
+  </nav>
+
+  @if (loading()) {
+    <div class="browse-loading">
+      <mat-spinner diameter="36" />
+    </div>
+  } @else if (error()) {
+    <div class="browse-error">
+      <mat-icon class="error-icon">error_outline</mat-icon>
+      <p>{{ error() }}</p>
+      <button mat-stroked-button (click)="loadContent()">
+        <mat-icon>refresh</mat-icon> Retry
+      </button>
+    </div>
+  } @else if (entries().length === 0) {
+    <div class="browse-empty">
+      <mat-icon class="empty-icon">folder_open</mat-icon>
+      <p>This folder is empty</p>
+    </div>
+  } @else {
+    <div class="browse-summary">{{ totalSize() }} items</div>
+    <div class="browse-table-wrapper">
+      <table class="browse-table">
+        <thead>
+          <tr>
+            <th class="col-name">Name</th>
+            <th class="col-type">Type</th>
+            <th class="col-modified">Modified</th>
+            <th class="col-contributor">Last Contributor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (doc of entries(); track doc.uid) {
+            <tr
+              class="browse-row"
+              [class.browse-row--folder]="isFolderish(doc)"
+              (click)="onRowClick(doc)"
+            >
+              <td class="cell-name">
+                @if (thumbnailMap()[doc.uid]; as thumb) {
+                  <img [src]="thumb" alt="" class="doc-thumb" />
+                } @else {
+                  <mat-icon class="doc-icon" [class.folder-icon]="isFolderish(doc)">
+                    {{ docIcon(doc) }}
+                  </mat-icon>
+                }
+                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+              </td>
+              <td class="cell-type">
+                <span class="type-badge">{{ doc.type }}</span>
+              </td>
+              <td class="cell-modified">{{ doc.lastModified | date:'medium' }}</td>
+              <td class="cell-contributor">{{ lastContributor(doc) }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
