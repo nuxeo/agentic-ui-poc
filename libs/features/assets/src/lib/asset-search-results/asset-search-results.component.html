@@ -38,39 +38,53 @@
     </div>
   </div>
 
-  <!-- Loading -->
-  @if (loading()) {
-    <div class="results-loading">
-      <mat-spinner diameter="32" />
-    </div>
-  }
+  <main class="results-content">
 
-  <!-- Error -->
-  @if (error() && !loading()) {
-    <div class="results-error">{{ error() }}</div>
-  }
-
-  <!-- Grid View -->
-  @if (!loading() && !error() && viewMode() === 'grid') {
-    <div class="asset-grid">
-      @for (asset of filteredAssets(); track asset.id) {
-        <div class="asset-card">
-          <div class="asset-card-thumbnail">
-            <mat-icon class="asset-icon">{{ asset.icon }}</mat-icon>
-            <span class="asset-type-badge">{{ asset.type }}</span>
-          </div>
-          <div class="asset-card-body">
-            <p class="asset-name" [title]="asset.name">{{ asset.name }}</p>
-            <p class="asset-contributor">{{ asset.lastContributor }} · {{ asset.modifiedDate }}</p>
-          </div>
+      <!-- Loading -->
+      @if (loading()) {
+        <div class="results-loading">
+          <mat-spinner diameter="32" />
         </div>
       }
-    </div>
-  }
 
-  <!-- Table View -->
-  @if (!loading() && !error() && viewMode() === 'list') {
-    <div class="list-wrapper">
+      <!-- Error -->
+      @if (error() && !loading()) {
+        <div class="results-error">{{ error() }}</div>
+      }
+
+      <!-- Grid View -->
+      @if (!loading() && !error() && viewMode() === 'grid') {
+        <div class="asset-grid">
+          @for (asset of filteredAssets(); track asset.id) {
+            <div
+              class="asset-card"
+              [class.selected]="isAssetSelected(asset.id)"
+              role="button"
+              tabindex="0"
+              (click)="openAsset(asset)"
+              (keydown.enter)="openAsset(asset)"
+              (keydown.space)="openAsset(asset)"
+            >
+              <div class="asset-card-thumbnail">
+                <div class="asset-select" (click)="$event.stopPropagation()" role="button" tabindex="0" (keydown.enter)="$event.stopPropagation()" (keydown.space)="$event.stopPropagation()">
+                  <mat-checkbox
+                    [checked]="isAssetSelected(asset.id)"
+                    (click)="$event.stopPropagation()"
+                    (change)="toggleAssetSelection(asset.id)"
+                  ></mat-checkbox>
+                </div>
+                <div class="asset-name-overlay" [title]="asset.name">{{ asset.name }}</div>
+                <mat-icon class="asset-icon">{{ asset.icon }}</mat-icon>
+                <span class="asset-type-badge">{{ asset.type }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Table View -->
+      @if (!loading() && !error() && viewMode() === 'list') {
+        <div class="list-wrapper">
 
       <!-- Column picker panel -->
       @if (columnPanelOpen()) {
@@ -141,10 +155,16 @@
             class="list-row"
             [class.selected]="isAssetSelected(asset.id)"
             [style.grid-template-columns]="gridTemplate()"
+            role="button"
+            tabindex="0"
+            (click)="openAsset(asset)"
+            (keydown.enter)="openAsset(asset)"
+            (keydown.space)="openAsset(asset)"
           >
             <span class="col-checkbox">
               <mat-checkbox
                 [checked]="isAssetSelected(asset.id)"
+                (click)="$event.stopPropagation()"
                 (change)="toggleAssetSelection(asset.id)"
               ></mat-checkbox>
             </span>
@@ -167,5 +187,7 @@
       </div>
     </div>
   }
+
+  </main>
 
 </div>

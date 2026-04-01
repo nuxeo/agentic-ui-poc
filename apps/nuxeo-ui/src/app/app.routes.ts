@@ -54,7 +54,7 @@ export const routes: Routes = [
       {
         path: 'documents',
         loadComponent: () =>
-          import('./assets/asset-search-results/asset-search-results.component').then(
+          import('@agentic-ui/feature-assets/asset-search-results').then(
             (m) => m.AssetSearchResultsComponent,
           ),
       },

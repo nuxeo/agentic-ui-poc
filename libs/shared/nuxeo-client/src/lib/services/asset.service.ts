@@ -22,22 +22,29 @@ export class AssetService {
       videoDurations = [],
     } = params;
 
-    const httpParams = new HttpParams()
+    let httpParams = new HttpParams()
       .set('currentPageIndex', pageIndex)
       .set('offset', pageIndex * pageSize)
-      .set('pageSize', pageSize)
-      .set('system_primaryType_agg', JSON.stringify(primaryTypes))
-      .set('system_mimetype_agg', JSON.stringify(mimeTypes))
-      .set('asset_width_agg', JSON.stringify(widths))
-      .set('asset_height_agg', JSON.stringify(heights))
-      .set('color_profile_agg', JSON.stringify(colorProfiles))
-      .set('color_depth_agg', JSON.stringify(colorDepths))
-      .set('video_duration_agg', JSON.stringify(videoDurations));
+      .set('pageSize', pageSize);
+
+    const addAggParam = (key: string, values: string[]) => {
+      if (values.length > 0) {
+        httpParams = httpParams.set(key, JSON.stringify(values));
+      }
+    };
+
+    addAggParam('system_primaryType_agg', primaryTypes);
+    addAggParam('system_mimetype_agg', mimeTypes);
+    addAggParam('asset_width_agg', widths);
+    addAggParam('asset_height_agg', heights);
+    addAggParam('color_profile_agg', colorProfiles);
+    addAggParam('color_depth_agg', colorDepths);
+    addAggParam('video_duration_agg', videoDurations);
 
     return this.api.get<AssetSearchResult>(
       '/nuxeo/api/v1/search/pp/assets_search/execute',
       httpParams,
-      { properties: 'dublincore,file' },
+      { properties: '*' },
     );
   }
 }

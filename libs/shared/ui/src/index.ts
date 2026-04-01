@@ -3,3 +3,5 @@ export { WidgetContainerComponent } from './lib/widget-container/widget-containe
 export { WidgetGridComponent } from './lib/widget-grid/widget-grid.component';
 export { ShareDialogComponent, type ShareDialogData } from './lib/share-dialog/share-dialog.component';
 export { DocumentViewerComponent } from './lib/document-viewer/document-viewer.component';
+export { SearchFiltersDrawerComponent } from '@agentic-ui/feature-search';
+export { AssetsDrawerComponent } from '@agentic-ui/feature-assets';

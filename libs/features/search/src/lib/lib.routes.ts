@@ -1,6 +1,6 @@
 import { Route } from '@angular/router';
-import { Search } from './search/search';
+import { SearchComponent } from './search/search';
 
 export const searchRoutes: Route[] = [
-  { path: '', component: Search }
+  { path: '', component: SearchComponent }
 ];

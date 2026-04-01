@@ -1,3 +1,4 @@
 export * from './lib/lib.routes';
 
-export * from './lib/search/search';
+export { SearchComponent } from './lib/search/search';
+export * from './lib/search-filters-drawer/search-filters-drawer.component';

@@ -46,17 +46,16 @@
       }
     </div>
   } @else if (isAssets) {
-    <app-assets-drawer
-      (itemSelected)="itemSelected.emit($event)"
-      (applyFilters)="applyFilters.emit($event)"
+    <app-dynamic-drawer 
+      [drawerComponent]="assetsDrawerComponent()"
+      (filtersApplied)="applyFilters.emit($event)"
+    />
+  } @else if (isSearchFilters) {
+    <app-dynamic-drawer 
+      [drawerComponent]="searchFiltersDrawerComponent()"
+      (filtersApplied)="applyFilters.emit($event)"
     />
   } @else {
-    <mat-nav-list class="drawer-list">
-      <a mat-list-item (click)="itemSelected.emit(item.path)">
-        <span class="placeholder-text">Go to {{ item.label }}</span>
-      </a>
-    </mat-nav-list>
-
     <div class="drawer-empty">
       <p>Content for "{{ item.label }}" will appear here.</p>
     </div>

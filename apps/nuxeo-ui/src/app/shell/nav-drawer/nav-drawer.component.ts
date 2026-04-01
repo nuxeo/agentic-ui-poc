@@ -1,14 +1,14 @@
-import { Component, inject, input, output, signal, effect } from '@angular/core';
+import { Component, inject, input, output, signal, effect, Type } from '@angular/core';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
-import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { DynamicDrawerComponent } from './dynamic-drawer.component';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { NuxeoDocument, BrowseService, CollectionService } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoDocument, BrowseService, CollectionService, AssetService, AssetAggregationService } from '@agentic-ui/shared/nuxeo-client';
+import type { AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 import { AppNavItem } from '../../platform-nav-items';
-import { AssetsDrawerComponent } from '../../assets/assets-drawer/assets-drawer.component';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -28,13 +28,15 @@ const FOLDERISH_TYPES = new Set([
 @Component({
   selector: 'app-nav-drawer',
   standalone: true,
-  imports: [NgTemplateOutlet, DatePipe, MatListModule, MatIconModule, MatProgressSpinnerModule, AssetsDrawerComponent],
+  imports: [NgTemplateOutlet, DatePipe, MatIconModule, MatProgressSpinnerModule, DynamicDrawerComponent],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
 })
 export class NavDrawerComponent {
   private readonly browseService = inject(BrowseService);
   private readonly collectionService = inject(CollectionService);
+  private readonly assetService = inject(AssetService);
+  private readonly assetAggregationService = inject(AssetAggregationService);
 
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
@@ -49,7 +51,13 @@ export class NavDrawerComponent {
   readonly collectionsLoading = signal(false);
   private collectionsLoaded = false;
 
+  readonly assetsDrawerComponent = signal<Type<unknown> | null>(null);
+  readonly searchFiltersDrawerComponent = signal<Type<unknown> | null>(null);
+
   constructor() {
+    // Dynamically load drawer components to avoid static import of lazy-loaded libraries
+    this.loadDrawerComponents();
+
     effect(() => {
       const item = this.activeItem();
       if (item?.path === '/browse' && this.rootNodes().length === 0) {
@@ -58,6 +66,64 @@ export class NavDrawerComponent {
       if (item?.path === '/collections' && !this.collectionsLoaded) {
         this.loadCollections();
       }
+      if (item?.path === '/documents') {
+        this.loadAssetAggregations();
+      }
+    });
+  }
+
+  private computeAssetAggregationsFromEntries(entries: NuxeoDocument[]): AssetAggregations {
+    const aggregations: AssetAggregations = {};
+
+    const typeMap = new Map<string, number>();
+    const mimeMap = new Map<string, number>();
+
+    for (const doc of entries) {
+      typeMap.set(doc.type, (typeMap.get(doc.type) ?? 0) + 1);
+
+      const fileContent = doc.properties['file:content'] as { 'mime-type'?: string } | null;
+      const mime = fileContent?.['mime-type'];
+      if (mime) {
+        mimeMap.set(mime, (mimeMap.get(mime) ?? 0) + 1);
+      }
+    }
+
+    if (typeMap.size > 0) {
+      aggregations.system_primaryType_agg = {
+        buckets: Array.from(typeMap.entries()).map(([key, docCount]) => ({ key, docCount })),
+      };
+    }
+
+    if (mimeMap.size > 0) {
+      aggregations.system_mimetype_agg = {
+        buckets: Array.from(mimeMap.entries()).map(([key, docCount]) => ({ key, docCount })),
+      };
+    }
+
+    return aggregations;
+  }
+
+  private loadAssetAggregations(): void {
+    this.assetService.searchAssets({ pageSize: 200 }).subscribe({
+      next: (res) => {
+        const aggregations = res.aggregations ?? this.computeAssetAggregationsFromEntries(res.entries ?? []);
+        this.assetAggregationService.aggregations.set(aggregations);
+      },
+      error: () => {
+        this.assetAggregationService.aggregations.set({});
+      },
+    });
+  }
+
+  private loadDrawerComponents(): void {
+    Promise.all([
+      import('@agentic-ui/feature-assets/assets-drawer').then((m) => m.AssetsDrawerComponent),
+      import('@agentic-ui/feature-search').then((m) => m.SearchFiltersDrawerComponent),
+    ]).then(([assetsComp, searchComp]) => {
+      this.assetsDrawerComponent.set(assetsComp);
+      this.searchFiltersDrawerComponent.set(searchComp);
+    }).catch(() => {
+      // Silently fail if components don't load
     });
   }
 
@@ -71,6 +137,10 @@ export class NavDrawerComponent {
 
   get isAssets(): boolean {
     return this.activeItem()?.path === '/documents';
+  }
+
+  get isSearchFilters(): boolean {
+    return this.activeItem()?.path === '/search';
   }
 
   private loadCollections(): void {
