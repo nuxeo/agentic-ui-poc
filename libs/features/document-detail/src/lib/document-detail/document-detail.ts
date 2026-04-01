@@ -687,7 +687,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.auditEntries.set(res.entries);
-          this.auditTotalSize.set(res.totalSize);
+          this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
