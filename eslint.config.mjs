@@ -49,7 +49,14 @@ export default [
             "**/*.cjs",
             "**/*.mjs"
         ],
-        // Override or add rules here
-        rules: {}
+        rules: {
+            "@typescript-eslint/no-unused-vars": [
+                "warn",
+                { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
+            ],
+            "no-console": ["warn", { allow: ["warn", "error"] }],
+            "eqeqeq": ["error", "always"],
+            "no-duplicate-imports": "error"
+        }
     }
 ];

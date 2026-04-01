@@ -11,12 +11,7 @@ export type {
   NuxeoWorkflowModel,
   NuxeoWorkflowModelList,
 } from './lib/models/workflow.model';
-export type {
-  NuxeoUser,
-  NuxeoUserList,
-  NuxeoGroup,
-  NuxeoGroupList,
-} from './lib/models/user.model';
+export type { NuxeoUser, NuxeoUserList, NuxeoGroup, NuxeoGroupList } from './lib/models/user.model';
 
 // Config
 export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
@@ -28,10 +23,18 @@ export { DocumentService } from './lib/services/document.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';
-export { DocumentDetailService, type UserGroupSuggestion, type NuxeoComment, type NuxeoCommentList } from './lib/services/document-detail.service';
+export {
+  DocumentDetailService,
+  type UserGroupSuggestion,
+  type NuxeoComment,
+  type NuxeoCommentList,
+} from './lib/services/document-detail.service';
 export { DirectoryService } from './lib/services/directory.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
+
+// Constants
+export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 
 // Queries (for advanced / custom use)
 export {

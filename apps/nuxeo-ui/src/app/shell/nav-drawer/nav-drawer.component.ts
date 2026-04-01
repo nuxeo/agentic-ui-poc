@@ -1,5 +1,14 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, inject, input, output, signal, effect, computed, DestroyRef } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  effect,
+  computed,
+  DestroyRef,
+} from '@angular/core';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +18,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { NuxeoDocument, NuxeoApiBase, BrowseService, CollectionService, DocumentService, DocumentDetailService, TaskService, NuxeoTask, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
+import {
+  NuxeoDocument,
+  BrowseService,
+  CollectionService,
+  DocumentService,
+  DocumentDetailService,
+  TaskService,
+  NuxeoTask,
+  CURRENT_USERNAME,
+  docTypeIcon,
+} from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { AppNavItem } from '../../platform-nav-items';
@@ -24,27 +43,28 @@ export interface FolderNode {
 }
 
 const FOLDERISH_TYPES = new Set([
-  'Domain', 'Folder', 'OrderedFolder', 'Workspace',
-  'WorkspaceRoot', 'SectionRoot', 'Section', 'TemplateRoot',
+  'Domain',
+  'Folder',
+  'OrderedFolder',
+  'Workspace',
+  'WorkspaceRoot',
+  'SectionRoot',
+  'Section',
+  'TemplateRoot',
 ]);
-
-const DOC_TYPE_ICONS: Record<string, string> = {
-  File: 'description',
-  Note: 'sticky_note_2',
-  Picture: 'image',
-  Video: 'videocam',
-  Audio: 'audiotrack',
-  Folder: 'folder',
-  Workspace: 'workspaces',
-  Domain: 'public',
-  Collection: 'collections_bookmark',
-  Section: 'library_books',
-};
 
 @Component({
   selector: 'app-nav-drawer',
   standalone: true,
-  imports: [NgTemplateOutlet, DatePipe, MatListModule, MatIconModule, MatProgressSpinnerModule, MatButtonModule, MatTooltipModule],
+  imports: [
+    NgTemplateOutlet,
+    DatePipe,
+    MatListModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatButtonModule,
+    MatTooltipModule,
+  ],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
 })
@@ -53,7 +73,6 @@ export class NavDrawerComponent {
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly docService = inject(DocumentService);
-  private readonly nuxeoApi = inject(NuxeoApiBase);
   private readonly authService = inject(AuthService);
   private readonly sanitizer = inject(DomSanitizer);
 
@@ -167,6 +186,7 @@ export class NavDrawerComponent {
       error: () => {
         this.recentlyViewedError.set('Failed to load recently viewed documents.');
         this.recentlyViewedLoading.set(false);
+        this.recentlyViewedLoaded = false;
       },
     });
   }
@@ -181,7 +201,7 @@ export class NavDrawerComponent {
   }
 
   docIcon(doc: NuxeoDocument): string {
-    return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
+    return docTypeIcon(doc.type);
   }
 
   relativeTime(dateStr: string): string {
@@ -342,9 +362,7 @@ export class NavDrawerComponent {
     if (unloaded.length === 0) return;
 
     const checks$ = unloaded.map((n) =>
-      this.browseService.getChildren(n.doc.path, 50).pipe(
-        catchError(() => of(null)),
-      ),
+      this.browseService.getChildren(n.doc.path, 50).pipe(catchError(() => of(null))),
     );
 
     forkJoin(checks$).subscribe((results) => {
@@ -410,9 +428,7 @@ export class NavDrawerComponent {
   }
 
   taskLabel(task: NuxeoTask): string {
-    const key = task.name
-      .replace(/^wf\.\w+\./, '')
-      .replace(/\.(title|directive)$/i, '');
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
     return key
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\./g, ' ')
@@ -438,8 +454,9 @@ export class NavDrawerComponent {
   // ── Clipboard ──
 
   refreshClipboard(): void {
-    const docs: { uid: string; title: string }[] =
-      JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
+    const docs: { uid: string; title: string }[] = JSON.parse(
+      localStorage.getItem('nuxeo_clipboard') ?? '[]',
+    );
     this.clipboardDocs.set(docs);
     this.loadThumbnailsForIds(docs.map((d) => d.uid));
   }
@@ -447,16 +464,17 @@ export class NavDrawerComponent {
   private loadThumbnailsForIds(uids: string[]): void {
     for (const uid of uids) {
       if (this.thumbnailMap()[uid]) continue;
-      this.detailService.fetchThumbnail(uid).pipe(
-        catchError(() => of(null)),
-      ).subscribe((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        this.thumbnailMap.update((m) => ({
-          ...m,
-          [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-        }));
-      });
+      this.detailService
+        .fetchThumbnail(uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
     }
   }
 
@@ -496,16 +514,17 @@ export class NavDrawerComponent {
   private loadThumbnails(docs: NuxeoDocument[]): void {
     for (const doc of docs) {
       if (this.thumbnailMap()[doc.uid]) continue;
-      this.detailService.fetchThumbnail(doc.uid).pipe(
-        catchError(() => of(null)),
-      ).subscribe((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        this.thumbnailMap.update((m) => ({
-          ...m,
-          [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-        }));
-      });
+      this.detailService
+        .fetchThumbnail(doc.uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
     }
   }
 

@@ -33,7 +33,9 @@
   background: transparent;
   cursor: pointer;
   color: #666;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 
   &:hover {
     background: #f0f0f0;
@@ -141,6 +143,8 @@
 }
 
 .tree-label {
+  flex: 1;
+  min-width: 0;
   border: none;
   background: none;
   font-size: 13px;
@@ -168,7 +172,12 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  width: 100%;
   padding: 8px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
   transition: background 0.15s;
 

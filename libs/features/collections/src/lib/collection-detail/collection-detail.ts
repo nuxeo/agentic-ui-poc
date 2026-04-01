@@ -17,28 +17,36 @@ import {
   NuxeoAcl,
   CollectionService,
   DocumentDetailService,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
 import { Observable } from 'rxjs';
 import {
-  ShareDialogComponent, ShareDialogData,
-  ExportDialogComponent, ExportDialogData, ExportType,
+  ShareDialogComponent,
+  ShareDialogData,
+  ExportDialogComponent,
+  ExportDialogData,
+  ExportType,
 } from '@agentic-ui/shared/ui';
-import { EditCollectionDialogComponent, EditCollectionDialogData } from '../edit-collection-dialog/edit-collection-dialog';
-import { AddPermissionDialogComponent, AddPermissionDialogData } from '../add-permission-dialog/add-permission-dialog';
-import { UpdatePermissionDialogComponent, UpdatePermissionDialogData } from '../update-permission-dialog/update-permission-dialog';
-import { DeletePermissionDialogComponent, DeletePermissionDialogData } from '../delete-permission-dialog/delete-permission-dialog';
-import { ShareExternalDialogComponent, ShareExternalDialogData } from '../share-external-dialog/share-external-dialog';
-
-const DOC_TYPE_ICONS: Record<string, string> = {
-  File: 'description',
-  Note: 'sticky_note_2',
-  Picture: 'image',
-  Video: 'videocam',
-  Audio: 'audiotrack',
-  Folder: 'folder',
-  Workspace: 'workspaces',
-  Collection: 'collections_bookmark',
-};
+import {
+  EditCollectionDialogComponent,
+  EditCollectionDialogData,
+} from '../edit-collection-dialog/edit-collection-dialog';
+import {
+  AddPermissionDialogComponent,
+  AddPermissionDialogData,
+} from '../add-permission-dialog/add-permission-dialog';
+import {
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
+} from '../update-permission-dialog/update-permission-dialog';
+import {
+  DeletePermissionDialogComponent,
+  DeletePermissionDialogData,
+} from '../delete-permission-dialog/delete-permission-dialog';
+import {
+  ShareExternalDialogComponent,
+  ShareExternalDialogData,
+} from '../share-external-dialog/share-external-dialog';
 
 @Component({
   selector: 'lib-collection-detail',
@@ -130,7 +138,9 @@ export class CollectionDetailComponent {
       error: () => {
         this.collectionService.getById(this.collectionUid).subscribe({
           next: (doc) => this.collection.set(doc),
-          error: () => {},
+          error: () => {
+            /* fallback also failed, ignore */
+          },
         });
       },
     });
@@ -174,7 +184,7 @@ export class CollectionDetailComponent {
   }
 
   docIcon(doc: NuxeoDocument): string {
-    return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
+    return docTypeIcon(doc.type);
   }
 
   lastContributor(doc: NuxeoDocument): string {
@@ -297,10 +307,14 @@ export class CollectionDetailComponent {
         documentTitle: title,
         exportFn: (type: ExportType, uid: string): Observable<Blob> => {
           switch (type) {
-            case 'thumbnail': return this.detailService.fetchThumbnail(uid);
-            case 'pdf':       return this.detailService.fetchPdfRendition(uid);
-            case 'zip':       return this.collectionService.bulkDownload(uid, `${title}.zip`);
-            case 'xml':       return this.detailService.exportXml(uid);
+            case 'thumbnail':
+              return this.detailService.fetchThumbnail(uid);
+            case 'pdf':
+              return this.detailService.fetchPdfRendition(uid);
+            case 'zip':
+              return this.collectionService.bulkDownload(uid, `${title}.zip`);
+            case 'xml':
+              return this.detailService.exportXml(uid);
           }
         },
       } satisfies ExportDialogData,
@@ -336,7 +350,11 @@ export class CollectionDetailComponent {
   aceTimeFrame(ace: NuxeoAce): string {
     if (!ace.begin && !ace.end) return 'Permanent';
     const fmt = (iso: string) =>
-      new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+      new Date(iso).toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
     if (!ace.begin && ace.end) return `Until ${fmt(ace.end)}`;
     const parts: string[] = [];
     if (ace.begin) parts.push(`from ${fmt(ace.begin)}`);
@@ -417,18 +435,16 @@ export class CollectionDetailComponent {
     if (this.actionInProgress()) return;
     this.actionInProgress.set('notify-' + ace.id);
 
-    this.detailService
-      .sendNotificationEmailForPermission(this.collectionUid, ace.id)
-      .subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Notification email sent');
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to send notification');
-        },
-      });
+    this.detailService.sendNotificationEmailForPermission(this.collectionUid, ace.id).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast('Notification email sent');
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to send notification');
+      },
+    });
   }
 
   shareWithExternal(): void {

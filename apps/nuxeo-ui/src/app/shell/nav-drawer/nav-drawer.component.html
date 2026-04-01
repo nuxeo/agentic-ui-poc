@@ -7,7 +7,12 @@
       </button>
     }
     @if (isRecentlyViewed) {
-      <button mat-icon-button (click)="refreshRecentlyViewed()" matTooltip="Refresh" class="refresh-btn">
+      <button
+        mat-icon-button
+        (click)="refreshRecentlyViewed()"
+        matTooltip="Refresh"
+        class="refresh-btn"
+      >
         <mat-icon>refresh</mat-icon>
       </button>
     }
@@ -45,7 +50,7 @@
     } @else {
       <div class="rv-list">
         @for (doc of recentlyViewed(); track doc.uid) {
-          <div class="rv-card" (click)="openRecentlyViewedDoc(doc)">
+          <button class="rv-card" (click)="openRecentlyViewedDoc(doc)" type="button">
             <div class="rv-thumb">
               @if (thumbnailMap()[doc.uid]; as thumbUrl) {
                 <img [src]="thumbUrl" alt="" class="rv-thumb-img" />
@@ -61,7 +66,7 @@
                 <span class="rv-time">{{ relativeTime(doc.lastModified) }}</span>
               </div>
             </div>
-          </div>
+          </button>
         }
       </div>
     }
@@ -86,7 +91,9 @@
               }
               <div class="collection-card-body">
                 <span class="collection-card-title">{{ col.title }}</span>
-                <span class="collection-card-date">Last Modified {{ col.lastModified | date:'mediumDate' }}</span>
+                <span class="collection-card-date"
+                  >Last Modified {{ col.lastModified | date: 'mediumDate' }}</span
+                >
                 <span class="collection-card-owner">
                   <span class="owner-avatar">{{ collectionOwnerInitial(col) }}</span>
                   {{ collectionOwner(col) }}
@@ -138,7 +145,9 @@
         <div class="tree-empty">
           <mat-icon class="clipboard-empty-icon">star_border</mat-icon>
           <p>No favorites yet</p>
-          <span class="clipboard-hint">Use the star icon on documents to add them to your favorites.</span>
+          <span class="clipboard-hint"
+            >Use the star icon on documents to add them to your favorites.</span
+          >
         </div>
       } @else {
         <div class="favorites-list">
@@ -154,11 +163,13 @@
                 }
                 <span class="favorite-card-title">{{ doc.title }}</span>
               </button>
-              <button mat-icon-button
-                      class="favorite-card-remove"
-                      matTooltip="Remove from favorites"
-                      aria-label="Remove from favorites"
-                      (click)="removeFromFavorites(doc)">
+              <button
+                mat-icon-button
+                class="favorite-card-remove"
+                matTooltip="Remove from favorites"
+                aria-label="Remove from favorites"
+                (click)="removeFromFavorites(doc)"
+              >
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -172,7 +183,9 @@
         <div class="tree-empty">
           <mat-icon class="clipboard-empty-icon">content_paste</mat-icon>
           <p>Clipboard is empty</p>
-          <span class="clipboard-hint">Use "Add to Clipboard" on documents or collections to add items here.</span>
+          <span class="clipboard-hint"
+            >Use "Add to Clipboard" on documents or collections to add items here.</span
+          >
         </div>
       } @else {
         <div class="clipboard-actions-bar">
@@ -194,11 +207,13 @@
                 }
                 <span class="clipboard-card-title">{{ doc.title }}</span>
               </button>
-              <button mat-icon-button
-                      class="clipboard-card-remove"
-                      matTooltip="Remove from clipboard"
-                      aria-label="Remove from clipboard"
-                      (click)="removeFromClipboard(doc)">
+              <button
+                mat-icon-button
+                class="clipboard-card-remove"
+                matTooltip="Remove from clipboard"
+                aria-label="Remove from clipboard"
+                (click)="removeFromClipboard(doc)"
+              >
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -244,7 +259,9 @@
 
   @if (node.expanded && node.children.length > 0) {
     @for (child of node.children; track child.doc.uid) {
-      <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: child, depth: depth + 1 }" />
+      <ng-container
+        *ngTemplateOutlet="folderTpl; context: { $implicit: child, depth: depth + 1 }"
+      />
     }
   }
 </ng-template>
