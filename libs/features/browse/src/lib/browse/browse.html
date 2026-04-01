@@ -47,9 +47,13 @@
               (click)="onRowClick(doc)"
             >
               <td class="cell-name">
-                <mat-icon class="doc-icon" [class.folder-icon]="isFolderish(doc)">
-                  {{ docIcon(doc) }}
-                </mat-icon>
+                @if (thumbnailMap()[doc.uid]; as thumb) {
+                  <img [src]="thumb" alt="" class="doc-thumb" />
+                } @else {
+                  <mat-icon class="doc-icon" [class.folder-icon]="isFolderish(doc)">
+                    {{ docIcon(doc) }}
+                  </mat-icon>
+                }
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
               <td class="cell-type">

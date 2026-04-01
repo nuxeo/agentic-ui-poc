@@ -31,7 +31,13 @@
         <div class="collections-list">
           @for (col of collections(); track col.uid) {
             <button class="collection-card" (click)="openCollection(col)" type="button">
-              <mat-icon class="collection-card-icon">collections_bookmark</mat-icon>
+              @if (thumbnailMap()[col.uid]; as thumb) {
+                <img [src]="thumb" alt="" class="collection-thumb" />
+              } @else {
+                <div class="collection-thumb-placeholder">
+                  <mat-icon>collections_bookmark</mat-icon>
+                </div>
+              }
               <div class="collection-card-body">
                 <span class="collection-card-title">{{ col.title }}</span>
                 <span class="collection-card-date">Last Modified {{ col.lastModified | date:'mediumDate' }}</span>
@@ -41,6 +47,84 @@
                 </span>
               </div>
             </button>
+          }
+        </div>
+      }
+    </div>
+  } @else if (isFavorites) {
+    <div class="favorites-panel">
+      @if (favoritesLoading()) {
+        <div class="tree-loading">
+          <mat-spinner diameter="24" />
+        </div>
+      } @else if (favorites().length === 0) {
+        <div class="tree-empty">
+          <mat-icon class="clipboard-empty-icon">star_border</mat-icon>
+          <p>No favorites yet</p>
+          <span class="clipboard-hint">Use the star icon on documents to add them to your favorites.</span>
+        </div>
+      } @else {
+        <div class="favorites-list">
+          @for (doc of favorites(); track doc.uid) {
+            <div class="favorite-card">
+              <button class="favorite-card-main" (click)="openFavoriteDoc(doc)" type="button">
+                @if (thumbnailMap()[doc.uid]; as thumb) {
+                  <img [src]="thumb" alt="" class="favorite-thumb" />
+                } @else {
+                  <div class="favorite-thumb-placeholder">
+                    <mat-icon>insert_drive_file</mat-icon>
+                  </div>
+                }
+                <span class="favorite-card-title">{{ doc.title }}</span>
+              </button>
+              <button mat-icon-button
+                      class="favorite-card-remove"
+                      matTooltip="Remove from favorites"
+                      aria-label="Remove from favorites"
+                      (click)="removeFromFavorites(doc)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else if (isClipboard) {
+    <div class="clipboard-panel">
+      @if (clipboardEmpty()) {
+        <div class="tree-empty">
+          <mat-icon class="clipboard-empty-icon">content_paste</mat-icon>
+          <p>Clipboard is empty</p>
+          <span class="clipboard-hint">Use "Add to Clipboard" on documents or collections to add items here.</span>
+        </div>
+      } @else {
+        <div class="clipboard-actions-bar">
+          <span class="clipboard-count">{{ clipboardDocs().length }} item(s)</span>
+          <button mat-button color="warn" class="clipboard-clear-btn" (click)="clearClipboard()">
+            <mat-icon>delete_sweep</mat-icon> Clear All
+          </button>
+        </div>
+        <div class="clipboard-list">
+          @for (doc of clipboardDocs(); track doc.uid) {
+            <div class="clipboard-card">
+              <button class="clipboard-card-main" (click)="openClipboardDoc(doc)" type="button">
+                @if (thumbnailMap()[doc.uid]; as thumb) {
+                  <img [src]="thumb" alt="" class="clipboard-thumb" />
+                } @else {
+                  <div class="clipboard-thumb-placeholder">
+                    <mat-icon>description</mat-icon>
+                  </div>
+                }
+                <span class="clipboard-card-title">{{ doc.title }}</span>
+              </button>
+              <button mat-icon-button
+                      class="clipboard-card-remove"
+                      matTooltip="Remove from clipboard"
+                      aria-label="Remove from clipboard"
+                      (click)="removeFromClipboard(doc)">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
           }
         </div>
       }

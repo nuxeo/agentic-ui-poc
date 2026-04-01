@@ -36,9 +36,12 @@ import {
   DocumentDetailService,
   DirectoryService,
 } from '@agentic-ui/shared/nuxeo-client';
-import { forkJoin } from 'rxjs';
-
-import { ShareDialogComponent, ShareDialogData, DocumentViewerComponent } from '@agentic-ui/shared/ui';
+import { forkJoin, Observable } from 'rxjs';
+import {
+  ShareDialogComponent, ShareDialogData,
+  DocumentViewerComponent,
+  ExportDialogComponent, ExportDialogData, ExportType,
+} from '@agentic-ui/shared/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 
 export interface SectionNode {
@@ -603,6 +606,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.isFavorite.set(!wasFav);
         this.actionInProgress.set(null);
         this.toast(wasFav ? 'Removed from favorites' : 'Added to favorites');
+        window.dispatchEvent(new Event('favorites-changed'));
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -666,27 +670,24 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
       this.toast('Added to clipboard');
     }
+    window.dispatchEvent(new Event('clipboard-changed'));
   }
 
   exportDocument(): void {
-    if (this.actionInProgress()) return;
-    this.actionInProgress.set('export');
-
-    this.detailService.exportBlob(this.docUid).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = this.fileName();
-        a.click();
-        URL.revokeObjectURL(url);
-        this.actionInProgress.set(null);
-        this.toast('Download started');
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to export document');
-      },
+    this.dialog.open(ExportDialogComponent, {
+      data: {
+        documentUid: this.docUid,
+        documentTitle: this.doc()?.title ?? 'document',
+        exportFn: (type: ExportType, uid: string): Observable<Blob> => {
+          switch (type) {
+            case 'thumbnail': return this.detailService.fetchThumbnail(uid);
+            case 'pdf':       return this.detailService.fetchPdfRendition(uid);
+            case 'zip':       return this.detailService.exportZip(uid, `${this.doc()?.title ?? 'export'}.zip`);
+            case 'xml':       return this.detailService.exportXml(uid);
+          }
+        },
+      } satisfies ExportDialogData,
+      width: '440px',
     });
   }
 

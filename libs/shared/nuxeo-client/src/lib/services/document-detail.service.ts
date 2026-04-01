@@ -154,6 +154,21 @@ export class DocumentDetailService {
     );
   }
 
+  exportZip(uid: string, filename = 'export.zip'): Observable<Blob> {
+    return this.http.post(
+      this.api.apiUrl('/nuxeo/api/v1/automation/Blob.BulkDownload'),
+      { params: { filename }, input: `docs:${uid}` },
+      { responseType: 'blob' },
+    );
+  }
+
+  exportXml(uid: string): Observable<Blob> {
+    return this.http.get(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@export?adapter=export`),
+      { responseType: 'blob' },
+    );
+  }
+
   startWorkflow(uid: string, workflowModelName: string): Observable<unknown> {
     return this.api.post<unknown>(
       `/nuxeo/api/v1/id/${uid}/@workflow`,
