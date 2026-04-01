@@ -54,9 +54,6 @@
       <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More actions" aria-label="More actions">
         <mat-icon>more_vert</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Search" aria-label="Search">
-        <mat-icon>search</mat-icon>
-      </button>
     </div>
 
     <mat-menu #moreMenu="matMenu">
@@ -64,6 +61,12 @@
         <mat-icon>share</mat-icon>
         <span>Share</span>
       </button>
+      @if (hasVersion()) {
+        <button mat-menu-item (click)="openPublishDialog()">
+          <mat-icon>publish</mat-icon>
+          <span>Publish document</span>
+        </button>
+      }
       <button mat-menu-item (click)="toggleSubscription()" [disabled]="actionInProgress() === 'subscribe'">
         <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
         <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
@@ -88,7 +91,8 @@
   <div class="detail-body">
     <!-- Left: Tabs + content -->
     <div class="detail-main">
-      <mat-tab-group class="detail-tabs" animationDuration="0ms" (selectedIndexChange)="onTabChange($event)">
+      <div class="tabs-header-row">
+        <mat-tab-group #tabGroup class="detail-tabs" animationDuration="0ms" (selectedIndexChange)="onTabChange($event)">
         <mat-tab label="View">
           <lib-document-viewer
             [blobUrl]="blobUrl()"
@@ -96,6 +100,8 @@
             [fileName]="fileName()"
             [fileSize]="fileSize()"
             (downloadClicked)="download()"
+            (previewClicked)="previewMainBlob()"
+            (annotateClicked)="annotateMainBlob()"
           />
         </mat-tab>
 
@@ -347,10 +353,24 @@
 
         <mat-tab label="Publishing">
           <div class="publish-container">
-            <!-- Published Versions -->
+            <!-- Publication details -->
             <section class="publish-section">
               <div class="publish-section-header">
-                <h3 class="publish-section-title">Published Versions</h3>
+                <h3 class="publish-section-title">Publication details</h3>
+                @if (publishedDocs().length > 0) {
+                  <button
+                    mat-stroked-button
+                    class="unpublish-all-btn"
+                    [disabled]="actionInProgress() === 'unpublish-all'"
+                    (click)="unpublishAll()"
+                  >
+                    @if (actionInProgress() === 'unpublish-all') {
+                      <mat-spinner diameter="16" />
+                    } @else {
+                      Unpublish All
+                    }
+                  </button>
+                }
               </div>
               @if (publishLoading()) {
                 <div class="publish-loading">
@@ -365,10 +385,12 @@
                 <table class="publish-table">
                   <thead>
                     <tr>
-                      <th>Title</th>
+                      <th>Path</th>
                       <th>Version</th>
-                      <th>Published Location</th>
-                      <th>Last Modified</th>
+                      <th>Rendition</th>
+                      <th>Publisher</th>
+                      <th>Publish Date</th>
+                      <th class="pub-actions-col"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -377,12 +399,35 @@
                         <td>
                           <div class="pub-title-cell">
                             <mat-icon class="pub-doc-icon">description</mat-icon>
-                            <span>{{ pub.title }}</span>
+                            <span class="pub-path-text">{{ publishedPath(pub) }}</span>
                           </div>
                         </td>
                         <td><span class="version-badge">{{ publishedVersion(pub) }}</span></td>
-                        <td class="pub-path">{{ publishedPath(pub) }}</td>
-                        <td>{{ pub.lastModified | date:'mediumDate' }}</td>
+                        <td>{{ publishedRendition(pub) }}</td>
+                        <td>
+                          <div class="pub-publisher">
+                            <span class="avatar-sm pub-avatar">{{ publishedBy(pub).charAt(0).toUpperCase() }}</span>
+                            <span>{{ publishedBy(pub) }}</span>
+                          </div>
+                        </td>
+                        <td>{{ publishedDate(pub) | date:'longDate' }}</td>
+                        <td class="pub-actions-cell">
+                          <button mat-stroked-button
+                                  class="pub-action-btn"
+                                  [disabled]="actionInProgress() === 'unpublish'"
+                                  (click)="unpublishDocument(pub)">
+                            Unpublish
+                          </button>
+                          @if (isOlderVersion(pub)) {
+                            <button mat-flat-button
+                                    color="primary"
+                                    class="pub-action-btn republish-btn"
+                                    [disabled]="actionInProgress() === 'republish'"
+                                    (click)="republishDocument(pub)">
+                              Republish
+                            </button>
+                          }
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -439,6 +484,14 @@
           </div>
         </mat-tab>
       </mat-tab-group>
+        <button mat-icon-button
+                class="panel-toggle-btn"
+                (click)="propertiesPanelOpen.set(!propertiesPanelOpen())"
+                [matTooltip]="propertiesPanelOpen() ? 'Hide details' : 'Show details'"
+                aria-label="Toggle details panel">
+          <mat-icon>{{ propertiesPanelOpen() ? 'info' : 'info_outline' }}</mat-icon>
+        </button>
+      </div>
     </div>
 
     <!-- Right: Properties Panel (persists across all tabs) -->
@@ -452,101 +505,367 @@
         </div>
 
         <div class="panel-sub-tabs">
-          <button class="sub-tab sub-tab--active">Properties</button>
-          <button class="sub-tab">Activity</button>
+          <button class="sub-tab" [class.sub-tab--active]="panelSubTab() === 'properties'" (click)="switchPanelSubTab('properties')">Properties</button>
+          <button class="sub-tab" [class.sub-tab--active]="panelSubTab() === 'comments'" (click)="switchPanelSubTab('comments')">Comments</button>
+          <button class="sub-tab" [class.sub-tab--active]="panelSubTab() === 'activity'" (click)="switchPanelSubTab('activity')">Activity</button>
         </div>
 
-        <div class="panel-body">
-          <div class="version-section">
-            <label class="version-label">Version</label>
-            <div class="version-select">
-              <span>{{ versionLabel() }}</span>
-              <mat-icon class="version-arrow">arrow_drop_down</mat-icon>
-            </div>
-          </div>
-
-          <div class="indexing-header">
-            <h4 class="indexing-title">Indexing Properties</h4>
-            <button mat-icon-button aria-label="Edit properties">
-              <mat-icon>edit</mat-icon>
-            </button>
-          </div>
-
-          <div class="prop-field">
-            <span class="prop-label">Title</span>
-            <span class="prop-value">{{ doc()!.title }}</span>
-          </div>
-
-          <div class="prop-field">
-            <span class="prop-label">File Name</span>
-            <span class="prop-value">{{ fileName() }}</span>
-          </div>
-
-          @if (creator()) {
-            <div class="prop-field">
-              <span class="prop-label">Created By</span>
-              <span class="prop-value">{{ creator() }}</span>
-            </div>
-          }
-
-          @if (created()) {
-            <div class="prop-field">
-              <span class="prop-label">Created</span>
-              <span class="prop-value">{{ created() | date:'longDate' }}</span>
-            </div>
-          }
-
-          @if (modified()) {
-            <div class="prop-field">
-              <span class="prop-label">Last Modified</span>
-              <span class="prop-value">{{ modified() | date:'longDate' }}</span>
-            </div>
-          }
-
-          @if (contributors().length > 0) {
-            <div class="prop-field">
-              <span class="prop-label">Contributors</span>
-              <span class="prop-value">{{ contributors().join(', ') }}</span>
-            </div>
-          }
-
-          @if (expires()) {
-            <div class="prop-field">
-              <span class="prop-label">Expires</span>
-              <span class="prop-value">{{ expires() | date:'longDate' }}</span>
-            </div>
-          }
-
-          @if (tags().length > 0) {
-            <div class="prop-field">
-              <span class="prop-label">Tags</span>
-              <div class="tags-row">
-                @for (tag of tags(); track tag; let i = $index) {
-                  <span class="tag-chip" [style.border-color]="tagColor(i)" [style.color]="tagColor(i)">
-                    {{ tag }}
+        <!-- Properties sub-tab -->
+        @if (panelSubTab() === 'properties') {
+          <div class="panel-body">
+            <!-- Document info section matching native UI -->
+            <div class="doc-info-section">
+              @if (docState()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">State</span>
+                  <span class="doc-info-value">
+                    <span class="state-chip">{{ docState() }}</span>
                   </span>
+                </div>
+              }
+
+              <div class="doc-info-row">
+                <span class="doc-info-label">Version</span>
+                <span class="doc-info-value">
+                  @if (hasVersion()) {
+                    <div class="version-select-wrapper">
+                      <button class="version-select" (click)="toggleVersionDropdown()">
+                        <span>{{ versionLabel() }}</span>
+                        <mat-icon class="version-arrow">arrow_drop_down</mat-icon>
+                      </button>
+                      @if (versionDropdownOpen()) {
+                        <div class="version-dropdown">
+                          @if (versionsLoading()) {
+                            <div class="version-dropdown-loading">
+                              <mat-spinner diameter="20" />
+                            </div>
+                          } @else {
+                            @if (doc()?.isCheckedOut) {
+                              <button class="version-dropdown-item version-dropdown-create"
+                                      (click)="versionDropdownOpen.set(false); openCreateVersionDialog()">
+                                <mat-icon class="create-version-icon">add_circle_outline</mat-icon>
+                                <span class="version-dropdown-label">Create Version</span>
+                              </button>
+                            }
+                            <button class="version-dropdown-item version-dropdown-item--current"
+                                    (click)="versionDropdownOpen.set(false)">
+                              <span class="version-dropdown-label">{{ versionLabel() }} Latest</span>
+                            </button>
+                            @for (v of versions(); track v.uid) {
+                              <button class="version-dropdown-item" (click)="restoreVersion(v)">
+                                <span class="version-dropdown-label">{{ versionString(v) }}</span>
+                                <span class="version-dropdown-meta">Modified {{ relativeTime(v.lastModified) }} by {{ v.properties['dc:lastContributor'] ?? 'Unknown' }}</span>
+                              </button>
+                            }
+                            @if (versions().length === 0) {
+                              <div class="version-dropdown-empty">No previous versions</div>
+                            }
+                          }
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <button mat-flat-button color="primary" class="create-version-btn" (click)="openCreateVersionDialog()">
+                      Create Version
+                    </button>
+                  }
+                </span>
+              </div>
+
+              <div class="doc-info-row">
+                <span class="doc-info-label">Publications</span>
+                <span class="doc-info-value">
+                  @if (publicationCount() > 0) {
+                    <a class="publications-link" (click)="goToPublishingTab()">{{ publicationCount() }}</a>
+                  } @else {
+                    <span class="no-publications">0</span>
+                  }
+                </span>
+              </div>
+
+              @if (modified()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">Last Modified</span>
+                  <span class="doc-info-value">{{ modified() | date:'longDate' }}</span>
+                </div>
+              }
+
+              @if (created()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">Created</span>
+                  <span class="doc-info-value">{{ created() | date:'longDate' }}</span>
+                </div>
+              }
+
+              @if (creator()) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">By</span>
+                  <span class="doc-info-value creator-value">
+                    <span class="avatar-sm">{{ creator()!.charAt(0).toUpperCase() }}</span>
+                    {{ creator() }}
+                  </span>
+                </div>
+              }
+
+              @if (contributors().length > 0) {
+                <div class="doc-info-row">
+                  <span class="doc-info-label">Contributors</span>
+                  <span class="doc-info-value creator-value">
+                    @for (c of contributors(); track c) {
+                      <span class="avatar-sm">{{ c.charAt(0).toUpperCase() }}</span>
+                    }
+                    {{ contributors().join(', ') }}
+                  </span>
+                </div>
+              }
+            </div>
+
+            <div class="indexing-header">
+              <h4 class="indexing-title">Indexing Properties</h4>
+            </div>
+
+            <div class="prop-field">
+              <span class="prop-label">Title</span>
+              <span class="prop-value">{{ doc()!.title }}</span>
+            </div>
+
+            <div class="prop-field">
+              <span class="prop-label">File Name</span>
+              <span class="prop-value">{{ fileName() }}</span>
+            </div>
+
+            @if (expires()) {
+              <div class="prop-field">
+                <span class="prop-label">Expires</span>
+                <span class="prop-value">{{ expires() | date:'longDate' }}</span>
+              </div>
+            }
+
+            @if (tags().length > 0) {
+              <div class="prop-field">
+                <span class="prop-label">Tags</span>
+                <div class="tags-row">
+                  @for (tag of tags(); track tag; let i = $index) {
+                    <span class="tag-chip" [style.border-color]="tagColor(i)" [style.color]="tagColor(i)">
+                      {{ tag }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (description()) {
+              <div class="prop-field">
+                <span class="prop-label">Description</span>
+                <p class="prop-description">{{ description() }}</p>
+              </div>
+            }
+
+            <div class="prop-section-divider"></div>
+
+            <h4 class="section-title">Attachments</h4>
+            @if (attachments().length === 0) {
+              <p class="section-empty">There are no attachments</p>
+            } @else {
+              @for (att of attachments(); track att.index) {
+                <div class="attachment-card">
+                  <div class="attachment-info">
+                    <span class="attachment-name">{{ att.name }}</span>
+                    <span class="attachment-size">{{ formatBytes(att.size) }}</span>
+                  </div>
+                  <div class="attachment-actions">
+                    <button mat-icon-button matTooltip="Open in Nuxeo Drive" (click)="openDriveDialog()">
+                      <mat-icon>open_in_new</mat-icon>
+                    </button>
+                    <button mat-icon-button matTooltip="Preview" (click)="previewAttachment(att)">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                    <button mat-icon-button matTooltip="Download" (click)="downloadAttachment(att.url, att.name)">
+                      <mat-icon>download</mat-icon>
+                    </button>
+                    <button mat-icon-button [matMenuTriggerFor]="attMenu" matTooltip="More" aria-label="More actions">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #attMenu="matMenu">
+                      <button mat-menu-item (click)="openReplaceDialog(att)">
+                        <mat-icon>find_replace</mat-icon>
+                        <span>Replace</span>
+                      </button>
+                      <button mat-menu-item (click)="openRemoveDialog(att)">
+                        <mat-icon>cancel</mat-icon>
+                        <span>Remove</span>
+                      </button>
+                    </mat-menu>
+                  </div>
+                </div>
+              }
+            }
+
+            <div class="upload-attachment-zone" (click)="attachmentInput.click()">
+              <a class="upload-link">Upload attachment</a>
+              <input #attachmentInput type="file" hidden (change)="uploadAttachment($event)" />
+            </div>
+
+            <div class="prop-section-divider"></div>
+
+            <h4 class="section-title">Collections</h4>
+            @if (collections().length === 0) {
+              <p class="section-empty">No collections</p>
+            } @else {
+              @for (col of collections(); track col.uid) {
+                <div class="collection-chip">
+                  <mat-icon class="collection-icon">bookmark</mat-icon>
+                  <span>{{ col.title }}</span>
+                </div>
+              }
+            }
+          </div>
+        }
+
+        <!-- Comments sub-tab -->
+        @if (panelSubTab() === 'comments') {
+          <div class="panel-body comments-panel">
+            @if (commentsLoading()) {
+              <div class="panel-loading">
+                <mat-spinner diameter="28" />
+              </div>
+            } @else {
+              <!-- Existing comments -->
+              @for (comment of comments(); track comment.id) {
+                <div class="comment-card">
+                  <div class="comment-header">
+                    <span class="comment-avatar">{{ userInitial(comment.author) }}</span>
+                    <span class="comment-author">{{ comment.author }}</span>
+                    <span class="comment-time">{{ relativeTime(comment.creationDate) }}</span>
+                    @if (isCommentEdited(comment)) {
+                      <span class="comment-edited">(edited)</span>
+                    }
+                    <button mat-icon-button [matMenuTriggerFor]="commentMenu" class="comment-menu-btn">
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                    <mat-menu #commentMenu="matMenu">
+                      <button mat-menu-item (click)="startEditComment(comment)">
+                        <mat-icon>edit</mat-icon> Edit
+                      </button>
+                      <button mat-menu-item (click)="deleteComment(comment)">
+                        <mat-icon>delete</mat-icon> Delete
+                      </button>
+                    </mat-menu>
+                  </div>
+                  @if (editingCommentId() === comment.id) {
+                    <div class="comment-edit-row">
+                      <input class="comment-edit-input"
+                             [value]="editingCommentText()"
+                             (input)="editingCommentText.set($any($event.target).value)"
+                             (keydown.enter)="saveEditComment()" />
+                      <button mat-icon-button (click)="saveEditComment()" [disabled]="commentSaving()" matTooltip="Save">
+                        <mat-icon>check</mat-icon>
+                      </button>
+                      <button mat-icon-button (click)="cancelEditComment()" matTooltip="Cancel">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <p class="comment-text">{{ comment.text }}</p>
+                  }
+
+                  <div class="comment-footer">
+                    <button class="reply-toggle-btn" (click)="startReply(comment.id)">
+                      <mat-icon class="reply-icon">reply</mat-icon> Reply
+                    </button>
+                  </div>
+
+                  @if (replyCount(comment.id) > 0) {
+                    <div class="reply-summary">
+                      {{ replyCount(comment.id) }} {{ replyCount(comment.id) === 1 ? 'Reply' : 'Replies' }}
+                      · Last reply {{ lastReplyTime(comment.id) }}
+                    </div>
+                    <div class="replies-section">
+                      @for (reply of repliesMap()[comment.id] ?? []; track reply.id) {
+                        <div class="reply-card">
+                          <div class="comment-header">
+                            <span class="comment-avatar reply-avatar">{{ userInitial(reply.author) }}</span>
+                            <span class="comment-author">{{ reply.author }}</span>
+                            <span class="comment-time">{{ relativeTime(reply.creationDate) }}</span>
+                            @if (isCommentEdited(reply)) {
+                              <span class="comment-edited">(edited)</span>
+                            }
+                          </div>
+                          <p class="comment-text reply-text">{{ reply.text }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (replyingToId() === comment.id) {
+                    <div class="reply-input-row">
+                      <input class="new-comment-input reply-input"
+                             placeholder="Write a reply here"
+                             [value]="replyText()"
+                             (input)="replyText.set($any($event.target).value)"
+                             (keydown.enter)="submitReply(comment.id)" />
+                      @if (replyText().trim()) {
+                        <button mat-icon-button (click)="submitReply(comment.id)" [disabled]="commentSaving()" matTooltip="Submit">
+                          <mat-icon>check</mat-icon>
+                        </button>
+                        <button mat-icon-button (click)="cancelReply()" matTooltip="Cancel">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (comments().length === 0) {
+                <p class="section-empty">No comments yet</p>
+              }
+
+              <!-- New comment input -->
+              <div class="new-comment-row">
+                <input class="new-comment-input"
+                       placeholder="Write a comment here"
+                       [value]="newCommentText()"
+                       (input)="newCommentText.set($any($event.target).value)"
+                       (keydown.enter)="submitComment()" />
+                @if (newCommentText().trim()) {
+                  <button mat-icon-button (click)="submitComment()" [disabled]="commentSaving()" matTooltip="Submit">
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="cancelNewComment()" matTooltip="Cancel">
+                    <mat-icon>close</mat-icon>
+                  </button>
                 }
               </div>
-            </div>
-          }
+            }
+          </div>
+        }
 
-          @if (description()) {
-            <div class="prop-field">
-              <span class="prop-label">Description</span>
-              <p class="prop-description">{{ description() }}</p>
-            </div>
-          }
+        <!-- Activity sub-tab -->
+        @if (panelSubTab() === 'activity') {
+          <div class="panel-body activity-panel">
+            @if (panelActivityLoading()) {
+              <div class="panel-loading">
+                <mat-spinner diameter="28" />
+              </div>
+            } @else {
+              @for (entry of panelActivity(); track $index) {
+                <div class="activity-card">
+                  <span class="activity-avatar">{{ userInitial(entry.principalName) }}</span>
+                  <div class="activity-info">
+                    <span class="activity-user">{{ entry.principalName }}</span>
+                    <span class="activity-action">{{ activityLabel(entry.eventId) }}</span>
+                    <span class="activity-time">{{ relativeTime(entry.eventDate) }}</span>
+                  </div>
+                </div>
+              }
 
-          <div class="prop-section-divider"></div>
-
-          <h4 class="section-title">Attachments</h4>
-          <p class="section-empty">There are no attachments</p>
-
-          <div class="prop-section-divider"></div>
-
-          <h4 class="section-title">Collections</h4>
-          <p class="section-empty">No collections</p>
-        </div>
+              @if (panelActivity().length === 0) {
+                <p class="section-empty">No recent activity</p>
+              }
+            }
+          </div>
+        }
       </aside>
     }
   </div>

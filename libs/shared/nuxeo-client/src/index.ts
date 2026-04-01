@@ -15,7 +15,7 @@ export { DocumentService } from './lib/services/document.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';
-export { DocumentDetailService, type UserGroupSuggestion } from './lib/services/document-detail.service';
+export { DocumentDetailService, type UserGroupSuggestion, type NuxeoComment, type NuxeoCommentList } from './lib/services/document-detail.service';
 export { DirectoryService } from './lib/services/directory.service';
 
 // Queries (for advanced / custom use)

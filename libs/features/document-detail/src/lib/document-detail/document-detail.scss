@@ -69,6 +69,7 @@
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: 0;
   flex-shrink: 0;
 
@@ -76,6 +77,7 @@
     color: #555;
   }
 }
+
 
 .action-active {
   color: #ffc107 !important;
@@ -117,6 +119,27 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+}
+
+.tabs-header-row {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.panel-toggle-btn {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 2;
+  color: #555;
+
+  &:hover {
+    color: #3f51b5;
+  }
 }
 
 // Tabs — compact, left-aligned (matching Figma)
@@ -237,7 +260,88 @@
   padding: 16px;
 }
 
-// Version section
+// Document info section (State, Version, Publications, etc.)
+.doc-info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 20px;
+  padding: 12px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.doc-info-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 6px 0;
+  gap: 12px;
+}
+
+.doc-info-label {
+  font-size: 12px;
+  color: #888;
+  min-width: 100px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.doc-info-value {
+  font-size: 13px;
+  color: #333;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.state-chip {
+  display: inline-block;
+  padding: 2px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  background: #e8eaf6;
+  color: #3949ab;
+  text-transform: capitalize;
+}
+
+.publications-link {
+  color: #3f51b5;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.no-publications {
+  color: #aaa;
+}
+
+.creator-value {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.avatar-sm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #e57373;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+// Version section (kept for the dropdown in doc-info)
 .version-section {
   margin-bottom: 16px;
 }
@@ -248,6 +352,11 @@
   font-weight: 500;
   color: #888;
   margin-bottom: 4px;
+}
+
+.version-select-wrapper {
+  position: relative;
+  display: inline-block;
 }
 
 .version-select {
@@ -261,7 +370,7 @@
   font-weight: 500;
   color: #5c6bc0;
   background: #fff;
-  cursor: default;
+  cursor: pointer;
 
   .version-arrow {
     font-size: 18px;
@@ -269,6 +378,99 @@
     height: 18px;
     color: #5c6bc0;
   }
+
+  &:hover {
+    background: #f5f5ff;
+  }
+}
+
+.create-version-btn {
+  font-size: 13px !important;
+  height: 32px;
+}
+
+.version-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  min-width: 240px;
+  max-height: 280px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  margin-top: 4px;
+}
+
+.version-dropdown-loading {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.version-dropdown-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background: #f5f6fa;
+  }
+
+  &--current {
+    font-weight: 600;
+  }
+}
+
+.version-dropdown-label {
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+}
+
+.version-dropdown-meta {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.version-dropdown-empty {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #999;
+  text-align: center;
+}
+
+.version-dropdown-create {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: #3f51b5;
+  border-bottom: 1px solid #e0e0e0;
+
+  .version-dropdown-label {
+    color: #3f51b5;
+    font-weight: 600;
+  }
+}
+
+.create-version-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #3f51b5;
 }
 
 // Indexing Properties header
@@ -351,6 +553,105 @@
   font-size: 13px;
   color: #999;
   margin: 0;
+}
+
+// Attachments
+.attachment-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.attachment-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.attachment-name {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-size {
+  font-size: 11px;
+  color: #999;
+}
+
+.attachment-actions {
+  display: flex;
+  flex-shrink: 0;
+
+  button {
+    width: 30px !important;
+    height: 30px !important;
+    line-height: 30px !important;
+    color: #555;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      color: #3f51b5;
+    }
+  }
+}
+
+// Upload attachment zone
+.upload-attachment-zone {
+  margin-top: 12px;
+  padding: 14px;
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:hover {
+    border-color: #5c6bc0;
+    background: #f9f9ff;
+  }
+}
+
+.upload-link {
+  font-size: 13px;
+  color: #5c6bc0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.collection-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  background: #e8eaf6;
+  color: #3f51b5;
+  font-size: 12px;
+  font-weight: 500;
+  margin: 2px 4px 2px 0;
+}
+
+.collection-icon {
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
 }
 
 // History tab
@@ -781,6 +1082,52 @@
   color: #666;
 }
 
+.pub-path-text {
+  font-size: 12px;
+  color: #333;
+  word-break: break-all;
+}
+
+.pub-publisher {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pub-avatar {
+  width: 24px;
+  height: 24px;
+  font-size: 11px;
+}
+
+.pub-actions-col {
+  text-align: right;
+  width: 220px;
+}
+
+.pub-actions-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pub-action-btn {
+  font-size: 12px !important;
+  height: 32px !important;
+  padding: 0 16px !important;
+  margin-left: 8px;
+}
+
+.republish-btn {
+  background: #3f51b5 !important;
+  color: #fff !important;
+}
+
+.unpublish-all-btn {
+  font-size: 12px;
+  height: 32px;
+  padding: 0 16px;
+}
+
 // Section tree picker
 .section-tree {
   padding: 8px 0;
@@ -884,4 +1231,273 @@
     font-size: 14px;
     margin: 0;
   }
+}
+
+// ── Panel loading ──
+.panel-loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0;
+}
+
+// ── Comments panel ──
+.comments-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.comment-card {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-of-type {
+    border-bottom: none;
+  }
+}
+
+.comment-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #7b1fa2;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.comment-author {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+}
+
+.comment-time {
+  font-size: 11px;
+  color: #999;
+}
+
+.comment-edited {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+}
+
+.comment-menu-btn {
+  margin-left: auto;
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.comment-text {
+  margin: 0;
+  font-size: 13px;
+  color: #555;
+  padding-left: 36px;
+  line-height: 1.5;
+}
+
+.comment-footer {
+  display: flex;
+  gap: 12px;
+  padding-left: 36px;
+  margin-top: 4px;
+}
+
+.reply-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #5c6bc0;
+  font-size: 12px;
+  padding: 2px 0;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.reply-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.reply-summary {
+  padding-left: 36px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #5c6bc0;
+  font-weight: 500;
+}
+
+.replies-section {
+  padding-left: 36px;
+  margin-top: 8px;
+  border-left: 2px solid #e0e0e0;
+  margin-left: 16px;
+}
+
+.reply-card {
+  padding: 6px 0 6px 12px;
+}
+
+.reply-avatar {
+  width: 22px !important;
+  height: 22px !important;
+  font-size: 10px !important;
+  line-height: 22px !important;
+}
+
+.reply-input-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 36px;
+  margin-top: 6px;
+}
+
+.reply-input {
+  font-size: 12px !important;
+}
+
+.comment-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 36px;
+  margin-top: 4px;
+}
+
+.comment-edit-input {
+  flex: 1;
+  border: none;
+  border-bottom: 2px solid #5c6bc0;
+  outline: none;
+  font-size: 13px;
+  padding: 6px 0;
+  color: #333;
+  background: transparent;
+}
+
+.new-comment-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  border-top: 1px solid #e0e0e0;
+  padding-top: 12px;
+}
+
+.new-comment-input {
+  flex: 1;
+  border: none;
+  border-bottom: 2px solid #5c6bc0;
+  outline: none;
+  font-size: 13px;
+  padding: 6px 0;
+  color: #333;
+  background: transparent;
+
+  &::placeholder {
+    color: #aaa;
+    font-style: italic;
+  }
+}
+
+// ── Activity panel ──
+.activity-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.activity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.activity-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #7b1fa2;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.activity-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.activity-user {
+  font-weight: 600;
+  color: #333;
+}
+
+.activity-action {
+  color: #555;
+}
+
+.activity-time {
+  color: #999;
+  font-size: 11px;
+}
+
+// Publish dialog panel - remove default Material dialog padding
+::ng-deep .publish-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  padding: 0;
+}
+
+::ng-deep .publish-dialog-panel .mat-mdc-dialog-container .mdc-dialog__content {
+  padding: 0;
+}
+
+::ng-deep .preview-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+::ng-deep .preview-dialog-panel .mat-mdc-dialog-container .mdc-dialog__content {
+  padding: 0;
+  max-height: none;
 }
