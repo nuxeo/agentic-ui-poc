@@ -1,12 +1,4 @@
-import {
-  Component,
-  OnInit,
-  OnDestroy,
-  inject,
-  signal,
-  computed,
-  viewChild,
-} from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -49,12 +41,18 @@ import {
 } from '@agentic-ui/shared/nuxeo-client';
 import { forkJoin, Observable } from 'rxjs';
 import {
-  ShareDialogComponent, ShareDialogData,
+  ShareDialogComponent,
+  ShareDialogData,
   DocumentViewerComponent,
-  ExportDialogComponent, ExportDialogData, ExportType,
+  ExportDialogComponent,
+  ExportDialogData,
+  ExportType,
 } from '@agentic-ui/shared/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
-import { CreateVersionDialogComponent, CreateVersionDialogData } from '../create-version-dialog/create-version-dialog';
+import {
+  CreateVersionDialogComponent,
+  CreateVersionDialogData,
+} from '../create-version-dialog/create-version-dialog';
 import { PublishDialogComponent, PublishDialogData } from '../publish-dialog/publish-dialog';
 import { DriveDialogComponent } from '../drive-dialog/drive-dialog';
 import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/attachment-preview-dialog';
@@ -188,9 +186,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly clipboardDocs = signal<Array<{ uid: string; title: string }>>(
     JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]'),
   );
-  readonly isInClipboard = computed(() =>
-    this.clipboardDocs().some((d) => d.uid === this.docUid),
-  );
+  readonly isInClipboard = computed(() => this.clipboardDocs().some((d) => d.uid === this.docUid));
 
   // History tab state
   readonly auditEntries = signal<AuditEntry[]>([]);
@@ -199,7 +195,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly auditPageSize = signal(20);
   readonly auditPageIndex = signal(0);
   readonly historyDisplayedColumns = [
-    'eventId', 'eventDate', 'principalName', 'category', 'comment', 'docLifeCycle',
+    'eventId',
+    'eventDate',
+    'principalName',
+    'category',
+    'comment',
+    'docLifeCycle',
   ];
   private historyLoaded = false;
 
@@ -274,10 +275,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly docState = computed(() => {
     const d = this.doc();
     if (!d) return '';
-    return (d.properties['ecm:currentLifeCycleState'] as string)
-      ?? (d.properties['dc:nature'] as string)
-      ?? d.type
-      ?? '';
+    return (
+      (d.properties['ecm:currentLifeCycleState'] as string) ??
+      (d.properties['dc:nature'] as string) ??
+      d.type ??
+      ''
+    );
   });
 
   readonly publicationCount = computed(() => this.publishedDocs().length);
@@ -320,7 +323,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly collections = computed(() => {
     const d = this.doc();
     if (!d) return [];
-    const cols = d.contextParameters?.['collections'] as Array<{ uid: string; title: string; path: string }> | undefined;
+    const cols = d.contextParameters?.['collections'] as
+      | Array<{ uid: string; title: string; path: string }>
+      | undefined;
     return cols ?? [];
   });
 
@@ -365,9 +370,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     const acls = d?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
     if (!acls) return [];
-    return acls
-      .flatMap((a) => a.aces)
-      .filter((ace) => ace.externalUser && ace.granted);
+    return acls.flatMap((a) => a.aces).filter((ace) => ace.externalUser && ace.granted);
   });
 
   readonly isInheritanceBlocked = computed<boolean>(() => {
@@ -412,9 +415,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     if (username) {
       const lower = username.toLowerCase();
-      entries = entries.filter((e) =>
-        e.principalName.toLowerCase().includes(lower),
-      );
+      entries = entries.filter((e) => e.principalName.toLowerCase().includes(lower));
     }
     if (dateFrom) {
       const from = dateFrom.getTime();
@@ -446,14 +447,38 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    const uid = this.route.snapshot.paramMap.get('uid');
-    if (!uid) {
-      this.error.set('No document ID provided.');
-      this.loading.set(false);
-      return;
+    this.route.paramMap.subscribe((params) => {
+      const uid = params.get('uid');
+      if (!uid) {
+        this.error.set('No document ID provided.');
+        this.loading.set(false);
+        return;
+      }
+      this.resetState();
+      this.docUid = uid;
+      this.loadDocument(uid);
+    });
+  }
+
+  private resetState(): void {
+    if (this.rawBlobUrl) {
+      URL.revokeObjectURL(this.rawBlobUrl);
+      this.rawBlobUrl = null;
     }
-    this.docUid = uid;
-    this.loadDocument(uid);
+    this.doc.set(null);
+    this.blobUrl.set(null);
+    this.error.set(null);
+    this.comments.set([]);
+    this.repliesMap.set({});
+    this.commentsLoaded = false;
+    this.panelActivity.set([]);
+    this.panelActivityLoaded = false;
+    this.versions.set([]);
+    this.versionsLoaded = false;
+    this.versionDropdownOpen.set(false);
+    this.documentTasks.set([]);
+    this.documentWorkflows.set([]);
+    this.panelSubTab.set('properties');
   }
 
   ngOnDestroy(): void {
@@ -571,9 +596,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   taskLabel(task: NuxeoTask): string {
-    const key = task.name
-      .replace(/^wf\.\w+\./, '')
-      .replace(/\.(title|directive)$/i, '');
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
     return key
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\./g, ' ')
@@ -611,12 +634,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (isImg || isPdfType) {
       this.detailService.fetchBlob(doc.uid).subscribe({
         next: (blob) => this.setBlobUrl(blob),
-        error: () => { /* viewer will show fallback */ },
+        error: () => {
+          /* viewer will show fallback */
+        },
       });
     } else {
       this.detailService.fetchPdfRendition(doc.uid).subscribe({
         next: (blob) => this.setBlobUrl(blob),
-        error: () => { /* no preview available */ },
+        error: () => {
+          /* no preview available */
+        },
       });
     }
   }
@@ -682,17 +709,21 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   eventLabel(eventId: string): string {
-    return this.eventTypeLabelMap.get(eventId)
-      ?? eventId.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+    return (
+      this.eventTypeLabelMap.get(eventId) ??
+      eventId.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+    );
   }
 
   categoryLabel(category: string): string {
-    return this.eventCategoryLabelMap.get(category)
-      ?? category
+    return (
+      this.eventCategoryLabelMap.get(category) ??
+      category
         .replace(/([A-Z])/g, ' $1')
         .replace(/^./, (c) => c.toUpperCase())
         .replace('event ', '')
-        .replace(' Category', '');
+        .replace(' Category', '')
+    );
   }
 
   userInitial(name: string): string {
@@ -748,7 +779,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     for (const doc of docs) {
-      const node = nodeMap.get(doc.path)!;
+      const node = nodeMap.get(doc.path);
+      if (!node) continue;
       const parentPath = doc.path.split('/').slice(0, -1).join('/');
       const parent = nodeMap.get(parentPath);
       if (parent) {
@@ -761,9 +793,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   selectSection(id: string): void {
-    this.selectedSectionId.set(
-      this.selectedSectionId() === id ? null : id,
-    );
+    this.selectedSectionId.set(this.selectedSectionId() === id ? null : id);
   }
 
   toggleSectionNode(node: SectionNode): void {
@@ -807,22 +837,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   isOlderVersion(pub: NuxeoDocument): boolean {
     const pubMajor = Number(pub.properties?.['uid:major_version'] ?? 0);
     const pubMinor = Number(pub.properties?.['uid:minor_version'] ?? 0);
-    return pubMajor < this.currentMajor()
-      || (pubMajor === this.currentMajor() && pubMinor < this.currentMinor());
+    return (
+      pubMajor < this.currentMajor() ||
+      (pubMajor === this.currentMajor() && pubMinor < this.currentMinor())
+    );
   }
 
   publishedRendition(doc: NuxeoDocument): string {
     const nature = doc.properties?.['dc:nature'] as string | null;
     if (nature) return nature;
-    const mime = (doc.properties?.['file:content'] as Record<string, unknown>)?.['mime-type'] as string;
+    const mime = (doc.properties?.['file:content'] as Record<string, unknown>)?.[
+      'mime-type'
+    ] as string;
     if (mime === 'application/pdf') return 'PDF';
     return 'None';
   }
 
   publishedBy(doc: NuxeoDocument): string {
-    return (doc.properties?.['dc:lastContributor'] as string)
-      ?? (doc.properties?.['dc:creator'] as string)
-      ?? '';
+    return (
+      (doc.properties?.['dc:lastContributor'] as string) ??
+      (doc.properties?.['dc:creator'] as string) ??
+      ''
+    );
   }
 
   publishedDate(doc: NuxeoDocument): string {
@@ -893,17 +929,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private doRepublish(targetSectionUid: string): void {
-    this.detailService.publishDocument(this.docUid, targetSectionUid, { override: true }).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document republished');
-        this.refreshPublishedDocs();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to republish');
-      },
-    });
+    this.detailService
+      .publishDocument(this.docUid, targetSectionUid, { override: true })
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document republished');
+          this.refreshPublishedDocs();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to republish');
+        },
+      });
   }
 
   unpublishAll(): void {
@@ -1043,10 +1081,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         documentTitle: this.doc()?.title ?? 'document',
         exportFn: (type: ExportType, uid: string): Observable<Blob> => {
           switch (type) {
-            case 'thumbnail': return this.detailService.fetchThumbnail(uid);
-            case 'pdf':       return this.detailService.fetchPdfRendition(uid);
-            case 'zip':       return this.detailService.exportZip(uid, `${this.doc()?.title ?? 'export'}.zip`);
-            case 'xml':       return this.detailService.exportXml(uid);
+            case 'thumbnail':
+              return this.detailService.fetchThumbnail(uid);
+            case 'pdf':
+              return this.detailService.fetchPdfRendition(uid);
+            case 'zip':
+              return this.detailService.exportZip(uid, `${this.doc()?.title ?? 'export'}.zip`);
+            case 'xml':
+              return this.detailService.exportXml(uid);
           }
         },
       } satisfies ExportDialogData,
@@ -1160,8 +1202,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           parentId: (e.properties['comment:parentId'] as string) ?? this.docUid,
           text: (e.properties['comment:text'] as string) ?? '',
           author: (e.properties['comment:author'] as string) ?? '',
-          creationDate: (e.properties['comment:creationDate'] as string) ?? (e.properties['dc:created'] as string) ?? '',
-          modificationDate: (e.properties['comment:modificationDate'] as string) ?? (e.properties['dc:modified'] as string) ?? '',
+          creationDate:
+            (e.properties['comment:creationDate'] as string) ??
+            (e.properties['dc:created'] as string) ??
+            '',
+          modificationDate:
+            (e.properties['comment:modificationDate'] as string) ??
+            (e.properties['dc:modified'] as string) ??
+            '',
         }));
         const topLevel = all.filter((c) => c.parentId === this.docUid);
         const replies: Record<string, NuxeoComment[]> = {};
@@ -1218,9 +1266,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.commentSaving.set(true);
     this.detailService.updateComment(this.docUid, id, text).subscribe({
       next: (updated) => {
-        this.comments.update((list) =>
-          list.map((c) => (c.id === id ? updated : c)),
-        );
+        this.comments.update((list) => list.map((c) => (c.id === id ? updated : c)));
         this.editingCommentId.set(null);
         this.editingCommentText.set('');
         this.commentSaving.set(false);
@@ -1340,7 +1386,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       documentRestored: 'restored the document',
       'activity.deleted': 'activity.deleted',
     };
-    return labels[eventId] ?? eventId.replace(/([A-Z])/g, ' $1').toLowerCase().trim();
+    return (
+      labels[eventId] ??
+      eventId
+        .replace(/([A-Z])/g, ' $1')
+        .toLowerCase()
+        .trim()
+    );
   }
 
   // ── Versioning ──

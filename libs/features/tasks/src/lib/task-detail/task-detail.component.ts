@@ -167,7 +167,9 @@ export class TaskDetailComponent implements OnInit {
     });
     this.userService.searchGroups(q).subscribe({
       next: (groups) => this.groupResults.set(groups),
-      error: () => {},
+      error: () => {
+        /* group search failed, ignore */
+      },
     });
   }
 
@@ -197,9 +199,7 @@ export class TaskDetailComponent implements OnInit {
 
     if (this.isChooseParticipants) {
       // Format participants as Nuxeo expects
-      variables['participants'] = this.participants.map((p) =>
-        p.includes(':') ? p : `user:${p}`,
-      );
+      variables['participants'] = this.participants.map((p) => (p.includes(':') ? p : `user:${p}`));
       if (this.dueDate) {
         variables['end_date'] = this.dueDate.toISOString();
       }
@@ -217,17 +217,14 @@ export class TaskDetailComponent implements OnInit {
       .subscribe({
         next: () => {
           this.submitting.set(false);
-          this.snackBar.open(
-            `Task "${this.taskLabel(task)}" completed successfully.`,
-            'Close',
-            { duration: 4000 },
-          );
+          this.snackBar.open(`Task "${this.taskLabel(task)}" completed successfully.`, 'Close', {
+            duration: 4000,
+          });
           this.router.navigate(['/tasks']);
         },
         error: (err) => {
           this.submitting.set(false);
-          const msg =
-            err?.error?.message || 'Failed to complete the task.';
+          const msg = err?.error?.message || 'Failed to complete the task.';
           this.snackBar.open(msg, 'Close', { duration: 6000 });
         },
       });
@@ -258,9 +255,7 @@ export class TaskDetailComponent implements OnInit {
   }
 
   taskLabel(task: NuxeoTask): string {
-    const key = task.name
-      .replace(/^wf\.\w+\./, '')
-      .replace(/\.(title|directive)$/i, '');
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
     return key
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\./g, ' ')
@@ -270,9 +265,7 @@ export class TaskDetailComponent implements OnInit {
   taskWorkflow(task: NuxeoTask): string {
     const raw = task.workflowTitle || task.workflowModelName;
     const key = raw.replace(/^wf\.\w+\./, '');
-    return key
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    return key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   actionLabel(action: { name: string; label: string }): string {
@@ -287,8 +280,7 @@ export class TaskDetailComponent implements OnInit {
   actionColor(action: { name: string }): string {
     const n = action.name.toLowerCase();
     if (n.includes('reject') || n.includes('cancel')) return 'warn';
-    if (n.includes('approve') || n.includes('validate') || n.includes('start'))
-      return 'primary';
+    if (n.includes('approve') || n.includes('validate') || n.includes('start')) return 'primary';
     return '';
   }
 

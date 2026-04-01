@@ -1,5 +1,14 @@
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Component, inject, input, output, signal, effect, computed, DestroyRef } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  effect,
+  computed,
+  DestroyRef,
+} from '@angular/core';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,7 +18,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { NuxeoDocument, BrowseService, CollectionService, DocumentDetailService, TaskService, NuxeoTask, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
+import {
+  NuxeoDocument,
+  BrowseService,
+  CollectionService,
+  DocumentService,
+  DocumentDetailService,
+  TaskService,
+  NuxeoTask,
+  CURRENT_USERNAME,
+  docTypeIcon,
+} from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { AppNavItem } from '../../platform-nav-items';
@@ -20,19 +39,32 @@ export interface FolderNode {
   expanded: boolean;
   loaded: boolean;
   loading: boolean;
-  /** true for the synthetic "Root" node */
   isRoot?: boolean;
 }
 
 const FOLDERISH_TYPES = new Set([
-  'Domain', 'Folder', 'OrderedFolder', 'Workspace',
-  'WorkspaceRoot', 'SectionRoot', 'Section', 'TemplateRoot',
+  'Domain',
+  'Folder',
+  'OrderedFolder',
+  'Workspace',
+  'WorkspaceRoot',
+  'SectionRoot',
+  'Section',
+  'TemplateRoot',
 ]);
 
 @Component({
   selector: 'app-nav-drawer',
   standalone: true,
-  imports: [NgTemplateOutlet, DatePipe, MatListModule, MatIconModule, MatProgressSpinnerModule, MatButtonModule, MatTooltipModule],
+  imports: [
+    NgTemplateOutlet,
+    DatePipe,
+    MatListModule,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatButtonModule,
+    MatTooltipModule,
+  ],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
 })
@@ -40,6 +72,7 @@ export class NavDrawerComponent {
   private readonly browseService = inject(BrowseService);
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
+  private readonly docService = inject(DocumentService);
   private readonly authService = inject(AuthService);
   private readonly sanitizer = inject(DomSanitizer);
 
@@ -69,10 +102,15 @@ export class NavDrawerComponent {
   readonly favoritesLoading = signal(false);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
+  // Recently Viewed
+  readonly recentlyViewed = signal<NuxeoDocument[]>([]);
+  readonly recentlyViewedLoading = signal(false);
+  readonly recentlyViewedError = signal<string | null>(null);
+  private recentlyViewedLoaded = false;
+
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
-    // Auto-refresh nav task list when tasks are mutated elsewhere
     this.taskService.tasksChanged$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadTasks());
@@ -93,6 +131,9 @@ export class NavDrawerComponent {
       }
       if (item?.path === '/favorites') {
         this.loadFavorites();
+      }
+      if (item?.path === '/recently-viewed' && !this.recentlyViewedLoaded) {
+        this.loadRecentlyViewed();
       }
     });
 
@@ -124,6 +165,68 @@ export class NavDrawerComponent {
     return this.activeItem()?.path === '/favorites';
   }
 
+  get isRecentlyViewed(): boolean {
+    return this.activeItem()?.path === '/recently-viewed';
+  }
+
+  // ── Recently Viewed ──
+
+  private loadRecentlyViewed(): void {
+    this.recentlyViewedLoaded = true;
+    this.recentlyViewedLoading.set(true);
+    this.recentlyViewedError.set(null);
+
+    const userId = this.authService.username() ?? 'Administrator';
+    this.docService.getRecentlyViewed(userId, 20).subscribe({
+      next: (res) => {
+        this.recentlyViewed.set(res.entries);
+        this.recentlyViewedLoading.set(false);
+        this.loadThumbnails(res.entries);
+      },
+      error: () => {
+        this.recentlyViewedError.set('Failed to load recently viewed documents.');
+        this.recentlyViewedLoading.set(false);
+        this.recentlyViewedLoaded = false;
+      },
+    });
+  }
+
+  refreshRecentlyViewed(): void {
+    this.recentlyViewedLoaded = false;
+    this.loadRecentlyViewed();
+  }
+
+  openRecentlyViewedDoc(doc: NuxeoDocument): void {
+    this.navigateKeepDrawer.emit(`/doc/${doc.uid}`);
+  }
+
+  docIcon(doc: NuxeoDocument): string {
+    return docTypeIcon(doc.type);
+  }
+
+  relativeTime(dateStr: string): string {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const absDiff = Math.abs(diff);
+    const minutes = Math.floor(absDiff / 60_000);
+    const hours = Math.floor(absDiff / 3_600_000);
+    const days = Math.floor(absDiff / 86_400_000);
+    const months = Math.floor(days / 30);
+    const years = Math.floor(days / 365);
+
+    let label: string;
+    if (years >= 1) label = years === 1 ? 'a year' : `${years} years`;
+    else if (months >= 1) label = months === 1 ? 'a month' : `${months} months`;
+    else if (days >= 1) label = days === 1 ? 'a day' : `${days} days`;
+    else if (hours >= 1) label = hours === 1 ? 'an hour' : `${hours} hours`;
+    else label = minutes <= 1 ? 'just now' : `${minutes} minutes`;
+
+    if (label === 'just now') return label;
+    return diff > 0 ? `${label} ago` : `in ${label}`;
+  }
+
+  // ── Collections ──
+
   private loadCollections(): void {
     this.collectionsLoading.set(true);
     this.collectionService.getAll().subscribe({
@@ -152,10 +255,8 @@ export class NavDrawerComponent {
     return owner ? owner.charAt(0).toUpperCase() : '?';
   }
 
-  /**
-   * Builds the tree starting from a synthetic Root node,
-   * auto-expanding Root → Domain to match Nuxeo's native browse view.
-   */
+  // ── Browse tree ──
+
   private loadRootTree(): void {
     this.rootLoading.set(true);
 
@@ -179,7 +280,6 @@ export class NavDrawerComponent {
             rootNode.loaded = true;
             rootNode.loading = false;
 
-            // Auto-expand the first domain node and load its children
             const domainNode = domainNodes[0];
             if (domainNode) {
               domainNode.expanded = true;
@@ -257,19 +357,12 @@ export class NavDrawerComponent {
     }
   }
 
-  /**
-   * For each unloaded child, fetches its children (pageSize=1) to determine
-   * whether it has sub-folders. Marks empty folders as loaded so the
-   * expand arrow is hidden immediately.
-   */
   private prefetchChildStatus(nodes: FolderNode[]): void {
     const unloaded = nodes.filter((n) => !n.loaded);
     if (unloaded.length === 0) return;
 
     const checks$ = unloaded.map((n) =>
-      this.browseService.getChildren(n.doc.path, 50).pipe(
-        catchError(() => of(null)),
-      ),
+      this.browseService.getChildren(n.doc.path, 50).pipe(catchError(() => of(null))),
     );
 
     forkJoin(checks$).subscribe((results) => {
@@ -308,7 +401,7 @@ export class NavDrawerComponent {
     return !node.loaded || node.children.length > 0;
   }
 
-  /* ─── Tasks panel ─── */
+  // ── Tasks panel ──
 
   get isTasksPanel(): boolean {
     return this.activeItem()?.path === '/tasks';
@@ -335,9 +428,7 @@ export class NavDrawerComponent {
   }
 
   taskLabel(task: NuxeoTask): string {
-    const key = task.name
-      .replace(/^wf\.\w+\./, '')
-      .replace(/\.(title|directive)$/i, '');
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
     return key
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\./g, ' ')
@@ -360,9 +451,12 @@ export class NavDrawerComponent {
     return !!task.dueDate && new Date(task.dueDate) < new Date();
   }
 
+  // ── Clipboard ──
+
   refreshClipboard(): void {
-    const docs: { uid: string; title: string }[] =
-      JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
+    const docs: { uid: string; title: string }[] = JSON.parse(
+      localStorage.getItem('nuxeo_clipboard') ?? '[]',
+    );
     this.clipboardDocs.set(docs);
     this.loadThumbnailsForIds(docs.map((d) => d.uid));
   }
@@ -370,16 +464,17 @@ export class NavDrawerComponent {
   private loadThumbnailsForIds(uids: string[]): void {
     for (const uid of uids) {
       if (this.thumbnailMap()[uid]) continue;
-      this.detailService.fetchThumbnail(uid).pipe(
-        catchError(() => of(null)),
-      ).subscribe((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        this.thumbnailMap.update((m) => ({
-          ...m,
-          [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-        }));
-      });
+      this.detailService
+        .fetchThumbnail(uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
     }
   }
 
@@ -419,16 +514,17 @@ export class NavDrawerComponent {
   private loadThumbnails(docs: NuxeoDocument[]): void {
     for (const doc of docs) {
       if (this.thumbnailMap()[doc.uid]) continue;
-      this.detailService.fetchThumbnail(doc.uid).pipe(
-        catchError(() => of(null)),
-      ).subscribe((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        this.thumbnailMap.update((m) => ({
-          ...m,
-          [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-        }));
-      });
+      this.detailService
+        .fetchThumbnail(doc.uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
     }
   }
 

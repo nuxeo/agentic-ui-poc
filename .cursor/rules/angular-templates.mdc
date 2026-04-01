@@ -1,0 +1,25 @@
+---
+description: Angular HTML template conventions for accessibility and UX
+globs: "**/*.html"
+alwaysApply: false
+---
+
+# Angular Template Conventions
+
+## Accessibility
+
+- Never use `<div (click)="...">` for interactive elements. Use `<button>` or `<a>` instead.
+- Buttons must have `type="button"` unless they submit a form.
+- When converting a `<div>` to `<button>`, add reset styles: `border: none; background: none; font: inherit; text-align: left; width: 100%;`.
+
+```html
+<!-- ❌ BAD -->
+<div class="card" (click)="openItem(item)">...</div>
+
+<!-- ✅ GOOD -->
+<button class="card" (click)="openItem(item)" type="button">...</button>
+```
+
+## CSS / Layout
+
+- When using flex layouts with text truncation (`text-overflow: ellipsis`), the text container must have `flex: 1` and `min-width: 0`.

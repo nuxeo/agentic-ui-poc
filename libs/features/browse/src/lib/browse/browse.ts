@@ -13,6 +13,7 @@ import {
   NuxeoDocument,
   BrowseService,
   DocumentDetailService,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
 
 const FOLDERISH_TYPES = new Set([
@@ -29,23 +30,6 @@ const FOLDERISH_TYPES = new Set([
   'Favorites',
 ]);
 
-const DOC_TYPE_ICONS: Record<string, string> = {
-  Domain: 'public',
-  Folder: 'folder',
-  OrderedFolder: 'folder',
-  Workspace: 'workspaces',
-  WorkspaceRoot: 'source',
-  SectionRoot: 'library_books',
-  Section: 'library_books',
-  TemplateRoot: 'dashboard_customize',
-  File: 'description',
-  Note: 'sticky_note_2',
-  Picture: 'image',
-  Video: 'videocam',
-  Audio: 'audiotrack',
-  Collection: 'collections_bookmark',
-};
-
 interface BreadcrumbSegment {
   label: string;
   routerPath: string;
@@ -54,13 +38,7 @@ interface BreadcrumbSegment {
 @Component({
   selector: 'lib-browse',
   standalone: true,
-  imports: [
-    DatePipe,
-    RouterLink,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatButtonModule,
-  ],
+  imports: [DatePipe, RouterLink, MatIconModule, MatProgressSpinnerModule, MatButtonModule],
   templateUrl: './browse.html',
   styleUrl: './browse.scss',
 })
@@ -82,9 +60,7 @@ export class BrowseComponent {
 
   readonly breadcrumbs = computed<BreadcrumbSegment[]>(() => {
     const doc = this.currentDoc();
-    const crumbs: BreadcrumbSegment[] = [
-      { label: 'Root', routerPath: '/browse' },
-    ];
+    const crumbs: BreadcrumbSegment[] = [{ label: 'Root', routerPath: '/browse' }];
     if (!doc || doc.path === '/') return crumbs;
 
     const parts = doc.path.split('/').filter(Boolean);
@@ -130,16 +106,17 @@ export class BrowseComponent {
   private loadThumbnails(docs: NuxeoDocument[]): void {
     this.thumbnailMap.set({});
     for (const doc of docs) {
-      this.detailService.fetchThumbnail(doc.uid).pipe(
-        catchError(() => of(null)),
-      ).subscribe((blob) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        this.thumbnailMap.update((m) => ({
-          ...m,
-          [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-        }));
-      });
+      this.detailService
+        .fetchThumbnail(doc.uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
     }
   }
 
@@ -148,7 +125,7 @@ export class BrowseComponent {
   }
 
   docIcon(doc: NuxeoDocument): string {
-    return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
+    return docTypeIcon(doc.type);
   }
 
   lastContributor(doc: NuxeoDocument): string {

@@ -280,6 +280,15 @@
   cursor: pointer;
   font-size: 0.85rem;
 
+  &:where(button) {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+  }
+
   &:hover {
     background: #f5f5f5;
   }

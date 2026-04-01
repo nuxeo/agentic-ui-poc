@@ -8,28 +8,23 @@ const placeholder = () =>
 export const routes: Routes = [
   {
     path: 'login',
-    loadComponent: () =>
-      import('./login/login-page.component').then((m) => m.LoginPageComponent),
+    loadComponent: () => import('./login/login-page.component').then((m) => m.LoginPageComponent),
     canActivate: [loginGuard],
   },
   {
     path: '',
-    loadComponent: () =>
-      import('./shell/app-shell.component').then((m) => m.AppShellComponent),
+    loadComponent: () => import('./shell/app-shell.component').then((m) => m.AppShellComponent),
     canActivate: [authGuard],
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {
         path: 'dashboard',
         loadComponent: () =>
-          import('./dashboard/dashboard-page.component').then(
-            (m) => m.DashboardPageComponent,
-          ),
+          import('./dashboard/dashboard-page.component').then((m) => m.DashboardPageComponent),
       },
       {
         path: 'browse',
-        loadChildren: () =>
-          import('@agentic-ui/feature-browse').then((m) => m.browseRoutes),
+        loadChildren: () => import('@agentic-ui/feature-browse').then((m) => m.browseRoutes),
       },
       {
         path: 'recently-viewed',
@@ -37,8 +32,7 @@ export const routes: Routes = [
       },
       {
         path: 'search',
-        loadChildren: () =>
-          import('@agentic-ui/feature-search').then((m) => m.searchRoutes),
+        loadChildren: () => import('@agentic-ui/feature-search').then((m) => m.searchRoutes),
       },
       {
         path: 'expired-queue',
@@ -47,9 +41,7 @@ export const routes: Routes = [
       {
         path: 'doc',
         loadChildren: () =>
-          import('@agentic-ui/feature-document-detail').then(
-            (m) => m.documentDetailRoutes,
-          ),
+          import('@agentic-ui/feature-document-detail').then((m) => m.documentDetailRoutes),
       },
       {
         path: 'documents',
@@ -57,8 +49,7 @@ export const routes: Routes = [
       },
       {
         path: 'tasks',
-        loadChildren: () =>
-          import('@agentic-ui/feature-tasks').then((m) => m.tasksRoutes),
+        loadChildren: () => import('@agentic-ui/feature-tasks').then((m) => m.tasksRoutes),
       },
       {
         path: 'favorites',
@@ -67,9 +58,7 @@ export const routes: Routes = [
       {
         path: 'collections',
         loadChildren: () =>
-          import('@agentic-ui/feature-collections').then(
-            (m) => m.collectionsRoutes,
-          ),
+          import('@agentic-ui/feature-collections').then((m) => m.collectionsRoutes),
       },
       {
         path: 'personal-space',

@@ -22,6 +22,33 @@
   margin: 0;
 }
 
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  color: #666;
+  transition:
+    background 0.15s,
+    color 0.15s;
+
+  &:hover {
+    background: #f0f0f0;
+    color: #3f51b5;
+  }
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}
+
 .drawer-list {
   flex: 1;
   overflow-y: auto;
@@ -99,68 +126,152 @@
   font-size: 18px;
   width: 18px;
   height: 18px;
-  color: #999;
-  transition: transform 0.2s ease;
+  color: #888;
+  transition: transform 0.15s ease;
+}
 
-  &--expanded {
-    transform: rotate(90deg);
-  }
+.tree-arrow--expanded {
+  transform: rotate(90deg);
 }
 
 .tree-folder-icon {
   font-size: 18px;
   width: 18px;
   height: 18px;
-  color: #ffa726;
+  color: #f9a825;
   flex-shrink: 0;
 }
 
-
 .tree-label {
   flex: 1;
+  min-width: 0;
   border: none;
   background: none;
-  cursor: pointer;
   font-size: 13px;
   color: #333;
-  text-align: left;
+  cursor: pointer;
   padding: 2px 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.4;
+  text-align: left;
 
   &:hover {
-    color: #5c6bc0;
+    color: #3f51b5;
   }
+}
+
+// Recently Viewed list
+.rv-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.rv-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f5f6fa;
+  }
+}
+
+.rv-thumb {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: 1px solid #e8e8e8;
+}
+
+.rv-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rv-thumb-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: #5c6bc0;
+}
+
+.rv-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rv-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.rv-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #999;
+}
+
+.rv-type {
+  color: #888;
+}
+
+.rv-sep {
+  color: #ccc;
+}
+
+.rv-time {
+  color: #aaa;
 }
 
 // Collections panel
 .collections-panel {
   flex: 1;
   overflow-y: auto;
-  padding-top: 4px;
+  padding: 4px 0;
 }
 
 .collections-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 8px;
+  gap: 0;
 }
 
 .collection-card {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
-  width: 100%;
-  padding: 12px 10px;
-  border: none;
-  background: none;
+  padding: 10px 16px;
   cursor: pointer;
+  border: none;
+  background: transparent;
   text-align: left;
-  border-radius: 6px;
-  transition: background-color 0.15s;
+  transition: background 0.15s;
 
   &:hover {
     background: #f5f6fa;
@@ -174,7 +285,6 @@
   object-fit: cover;
   flex-shrink: 0;
   border: 1px solid #e8e8e8;
-  margin-top: 2px;
 }
 
 .collection-thumb-placeholder {
@@ -187,43 +297,42 @@
   background: #f0f0f0;
   flex-shrink: 0;
   border: 1px solid #e8e8e8;
-  margin-top: 2px;
 
   mat-icon {
     font-size: 18px;
     width: 18px;
     height: 18px;
-    color: #5c6bc0;
+    color: #999;
   }
 }
 
 .collection-card-body {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 
 .collection-card-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1a1a2e;
-  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .collection-card-date {
   font-size: 11px;
-  color: #888;
+  color: #999;
 }
 
 .collection-card-owner {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-size: 11px;
-  color: #666;
+  color: #888;
   margin-top: 2px;
 }
 
@@ -231,17 +340,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #e65100;
+  background: #5c6bc0;
   color: #fff;
   font-size: 10px;
   font-weight: 600;
   flex-shrink: 0;
 }
-
-/* ─── Task list inside drawer ─── */
 
 // Clipboard panel
 .clipboard-panel {
@@ -262,31 +369,28 @@
 
 .clipboard-hint {
   font-size: 12px;
-  color: #aaa;
+  color: #bbb;
+  margin-top: 4px;
+  max-width: 200px;
   text-align: center;
-  padding: 0 24px;
-  line-height: 1.5;
 }
 
 .clipboard-actions-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid #f0f0f0;
-  flex-shrink: 0;
 }
 
 .clipboard-count {
   font-size: 12px;
-  font-weight: 600;
-  color: #555;
+  color: #888;
+  font-weight: 500;
 }
 
 .clipboard-clear-btn {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: none;
+  font-size: 12px !important;
 
   mat-icon {
     font-size: 16px;
@@ -418,7 +522,6 @@
   &.overdue {
     color: #b02b36;
     font-weight: 600;
-    color: #999;
   }
 }
 

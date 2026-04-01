@@ -95,6 +95,10 @@ export class AppShellComponent {
   }
 
   isActive(path: string): boolean {
+    const activeDrawer = this.activeDrawerItem();
+    if (activeDrawer && this.drawerOpen()) {
+      return activeDrawer.path === path;
+    }
     const url = this.router.url.split('?')[0];
     return url === path || url.startsWith(path + '/');
   }

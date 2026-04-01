@@ -32,9 +32,9 @@ export class NuxeoApiBase {
 
   nxqlSearch(query: string, pageSize: number): Observable<NuxeoDocumentList> {
     const params = new HttpParams().set('query', query).set('pageSize', pageSize);
-    return this.http.get<NuxeoDocumentList>(
-      this.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
-      { params, headers: { properties: 'dublincore' } },
-    );
+    return this.http.get<NuxeoDocumentList>(this.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'), {
+      params,
+      headers: { properties: 'dublincore' },
+    });
   }
 }

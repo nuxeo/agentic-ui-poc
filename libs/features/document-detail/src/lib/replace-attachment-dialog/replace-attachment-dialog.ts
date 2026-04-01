@@ -13,10 +13,9 @@ export interface ReplaceAttachmentDialogData {
     <div class="replace-dialog">
       <h2>Replace File</h2>
 
-      <div
+      <label
         class="upload-zone"
         [class.has-file]="selectedFile()"
-        (click)="fileInput.click()"
         (dragover)="onDragOver($event)"
         (dragleave)="onDragLeave($event)"
         (drop)="onDrop($event)"
@@ -24,14 +23,16 @@ export interface ReplaceAttachmentDialogData {
         @if (selectedFile(); as file) {
           <span class="file-chosen">{{ file.name }}</span>
         } @else {
-          <a class="upload-link">Upload main file</a>
+          <span class="upload-link">Upload main file</span>
         }
         <input #fileInput type="file" hidden (change)="onFileSelected($event)" />
-      </div>
+      </label>
 
       <div class="dialog-actions">
         <button class="btn-cancel" (click)="cancel()">Cancel</button>
-        <button class="btn-replace" [disabled]="!selectedFile()" (click)="confirm()">Replace</button>
+        <button class="btn-replace" [disabled]="!selectedFile()" (click)="confirm()">
+          Replace
+        </button>
       </div>
     </div>
   `,
@@ -49,12 +50,15 @@ export interface ReplaceAttachmentDialogData {
       }
 
       .upload-zone {
+        display: block;
         border: 2px dashed #ccc;
         border-radius: 6px;
         padding: 32px 16px;
         text-align: center;
         cursor: pointer;
-        transition: border-color 0.15s, background 0.15s;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
         margin-bottom: 24px;
 
         &:hover,
