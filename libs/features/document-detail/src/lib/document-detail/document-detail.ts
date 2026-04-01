@@ -554,7 +554,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   openStartProcess(): void {
     this.showStartProcessPanel.set(true);
     this.workflowsLoading.set(true);
-    this.workflowService.getWorkflowModels().subscribe({
+    this.detailService.getRunnableWorkflows(this.docUid).subscribe({
       next: (models) => {
         this.availableWorkflows.set(models);
         this.workflowsLoading.set(false);
