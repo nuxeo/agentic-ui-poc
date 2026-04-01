@@ -11,6 +11,7 @@ export interface NuxeoDocument {
   lockOwner?: string | null;
   lockCreated?: string | null;
   isTrashed?: boolean;
+  isCheckedOut?: boolean;
   facets?: string[];
   contextParameters?: {
     acls?: NuxeoAcl[];

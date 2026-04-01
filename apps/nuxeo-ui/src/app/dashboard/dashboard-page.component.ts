@@ -114,6 +114,10 @@ export class DashboardPageComponent {
     });
   }
 
+  navigateToDoc(doc: NuxeoDocument): void {
+    void this.router.navigate(['/doc', doc.uid]);
+  }
+
   docIcon(doc: NuxeoDocument): string {
     return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
   }

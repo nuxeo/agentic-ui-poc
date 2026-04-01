@@ -20,7 +20,7 @@
         </thead>
         <tbody>
           @for (doc of recentlyEdited(); track doc.uid) {
-            <tr class="widget-row">
+            <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
                 <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
@@ -83,7 +83,7 @@
         </thead>
         <tbody>
           @for (doc of recentlyViewed(); track doc.uid) {
-            <tr class="widget-row">
+            <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
                 <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
@@ -119,7 +119,7 @@
         </thead>
         <tbody>
           @for (doc of favorites(); track doc.uid) {
-            <tr class="widget-row">
+            <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
                 <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>

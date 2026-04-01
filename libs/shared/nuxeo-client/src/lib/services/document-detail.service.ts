@@ -1,6 +1,7 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { AuditLogList } from '../models/audit.model';
@@ -15,7 +16,7 @@ export class DocumentDetailService {
     return this.api.get<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}`,
       undefined,
-      { properties: '*', 'enrichers.document': 'acls,renditions,favorites,subscribedNotifications' },
+      { properties: '*', 'enrichers.document': 'acls,renditions,favorites,subscribedNotifications,collections' },
     );
   }
 
@@ -49,20 +50,24 @@ export class DocumentDetailService {
 
   getPublishedVersions(uid: string): Observable<NuxeoDocumentList> {
     const query =
-      `SELECT * FROM Document WHERE ecm:isProxy = 1 ` +
-      `AND ecm:proxyTargetId = '${uid}' ` +
-      `AND ecm:isTrashed = 0`;
-    const params = new HttpParams().set('query', query).set('pageSize', '50');
+      `SELECT * FROM Document WHERE ecm:isProxy = 1 AND ecm:isTrashed = 0 ` +
+      `AND (rend:sourceVersionableId = "${uid}" ` +
+      `OR ecm:proxyVersionableId = "${uid}")`;
+    const params = new HttpParams()
+      .set('queryParams', query)
+      .set('pageSize', '40')
+      .set('sortBy', 'dc:modified,uid:major_version,uid:minor_version')
+      .set('sortOrder', 'desc,desc,desc');
     return this.http.get<NuxeoDocumentList>(
-      this.api.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
-      { params, headers: { properties: 'dublincore,uid' } },
+      this.api.apiUrl('/nuxeo/api/v1/search/pp/nxql_search/execute'),
+      { params, headers: { properties: 'dublincore,common,uid,rendition' } },
     );
   }
 
   getSectionTree(): Observable<NuxeoDocumentList> {
     const query =
       `SELECT * FROM Document WHERE ecm:primaryType IN ('SectionRoot', 'Section') ` +
-      `AND ecm:isTrashed = 0 ORDER BY ecm:path`;
+      `AND ecm:isTrashed = 0 ORDER BY dc:title`;
     const params = new HttpParams().set('query', query).set('pageSize', '200');
     return this.http.get<NuxeoDocumentList>(
       this.api.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
@@ -70,13 +75,31 @@ export class DocumentDetailService {
     );
   }
 
-  publishDocument(uid: string, targetSectionId: string): Observable<NuxeoDocument> {
+  publishDocument(
+    uid: string,
+    targetSectionId: string,
+    options?: { override?: boolean; renditionName?: string; defaultRendition?: boolean },
+  ): Observable<NuxeoDocument> {
+    const params: Record<string, unknown> = { target: targetSectionId };
+    if (options?.override) params['override'] = 'true';
+    if (options?.renditionName) params['renditionName'] = options.renditionName;
+    if (options?.defaultRendition) params['defaultRendition'] = true;
     return this.api.post<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}/@op/Document.PublishToSection`,
-      {
-        params: { target: targetSectionId, override: 'true' },
-        context: {},
-      },
+      { params, context: {} },
+    );
+  }
+
+  unpublishDocument(proxyUid: string): Observable<unknown> {
+    return this.http.delete(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${proxyUid}`),
+    );
+  }
+
+  republishDocument(sourceUid: string, targetSectionId: string): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${sourceUid}/@op/Document.PublishToSection`,
+      { params: { target: targetSectionId, override: 'true' }, context: {} },
     );
   }
 
@@ -305,6 +328,141 @@ export class DocumentDetailService {
       { 'Content-Type': 'application/json' },
     );
   }
+
+  // ── Attachments ──
+
+  uploadAttachment(uid: string, file: File): Observable<unknown> {
+    const params = JSON.stringify({
+      params: { document: uid, save: 'true', xpath: 'files:files' },
+    });
+    const formData = new FormData();
+    formData.append('request', new Blob([params], { type: 'application/json' }));
+    formData.append('file', file);
+    return this.http.post(
+      this.api.apiUrl('/nuxeo/api/v1/automation/Blob.AttachOnDocument'),
+      formData,
+      { responseType: 'blob' },
+    );
+  }
+
+  removeAttachment(uid: string, index: number): Observable<NuxeoDocument> {
+    return this.getFullDocument(uid).pipe(
+      switchMap((doc) => {
+        const files = (doc.properties['files:files'] as unknown[]) ?? [];
+        const updated = files.filter((_, i) => i !== index);
+        return this.http.put<NuxeoDocument>(
+          this.api.apiUrl(`/nuxeo/api/v1/id/${uid}`),
+          { 'entity-type': 'document', uid, properties: { 'files:files': updated } },
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+      }),
+    );
+  }
+
+  replaceAttachment(uid: string, index: number, file: File): Observable<unknown> {
+    const params = JSON.stringify({
+      params: { document: uid, save: 'true', xpath: `files:files/${index}/file` },
+    });
+    const formData = new FormData();
+    formData.append('request', new Blob([params], { type: 'application/json' }));
+    formData.append('file', file);
+    return this.http.post(
+      this.api.apiUrl('/nuxeo/api/v1/automation/Blob.AttachOnDocument'),
+      formData,
+      { responseType: 'blob' },
+    );
+  }
+
+  // ── Versioning ──
+
+  createVersion(uid: string, increment: 'Major' | 'Minor'): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${uid}/@op/Document.CreateVersion`,
+      { params: { increment, saveDocument: true }, context: {} },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
+  getVersions(uid: string): Observable<NuxeoDocumentList> {
+    const query = `SELECT * FROM Document WHERE ecm:versionVersionableId = '${uid}' AND ecm:isVersion = 1 ORDER BY dc:modified DESC`;
+    const params = new HttpParams().set('query', query).set('pageSize', '50');
+    return this.http.get<NuxeoDocumentList>(
+      this.api.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
+      { params, headers: { properties: '*' } },
+    );
+  }
+
+  restoreVersion(versionUid: string): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${versionUid}/@op/Document.RestoreVersion`,
+      { params: { checkout: true }, context: {} },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
+  // ── Comments ──
+
+  getComments(uid: string): Observable<NuxeoCommentList> {
+    return this.http.get<NuxeoCommentList>(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@comment`),
+      { params: new HttpParams().set('pageSize', '100').set('sortBy', 'creationDate').set('sortOrder', 'ASC') },
+    );
+  }
+
+  getAllComments(uid: string): Observable<NuxeoDocumentList> {
+    const query = `SELECT * FROM Comment WHERE ecm:ancestorId = '${uid}' ORDER BY dc:created ASC`;
+    const params = new HttpParams().set('query', query).set('pageSize', '200');
+    return this.http.get<NuxeoDocumentList>(
+      this.api.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
+      { params, headers: { properties: '*' } },
+    );
+  }
+
+  createComment(uid: string, text: string): Observable<NuxeoComment> {
+    return this.http.post<NuxeoComment>(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@comment`),
+      { 'entity-type': 'comment', parentId: uid, text },
+    );
+  }
+
+  createReply(uid: string, parentCommentId: string, text: string): Observable<NuxeoComment> {
+    return this.http.post<NuxeoComment>(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${parentCommentId}/@comment`),
+      { 'entity-type': 'comment', parentId: parentCommentId, text },
+    );
+  }
+
+  updateComment(uid: string, commentId: string, text: string): Observable<NuxeoComment> {
+    return this.http.put<NuxeoComment>(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@comment/${commentId}`),
+      { 'entity-type': 'comment', text },
+    );
+  }
+
+  deleteComment(uid: string, commentId: string): Observable<void> {
+    return this.http.delete<void>(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@comment/${commentId}`),
+    );
+  }
+
+}
+
+export interface NuxeoComment {
+  id: string;
+  parentId: string;
+  text: string;
+  author: string;
+  creationDate: string;
+  modificationDate?: string;
+  numberOfReplies?: number;
+}
+
+export interface NuxeoCommentList {
+  entries: NuxeoComment[];
+  totalSize: number;
+  currentPageSize: number;
+  currentPageIndex: number;
+  numberOfPages: number;
 }
 
 export interface UserGroupSuggestion {

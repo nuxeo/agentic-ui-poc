@@ -6,12 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatButtonModule } from '@angular/material/button';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { NuxeoDocument, BrowseService, CollectionService, TaskService, NuxeoTask, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoDocument, BrowseService, CollectionService, DocumentDetailService, TaskService, NuxeoTask, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { AppNavItem } from '../../platform-nav-items';
@@ -360,6 +358,8 @@ export class NavDrawerComponent {
 
   isOverdue(task: NuxeoTask): boolean {
     return !!task.dueDate && new Date(task.dueDate) < new Date();
+  }
+
   refreshClipboard(): void {
     const docs: { uid: string; title: string }[] =
       JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
