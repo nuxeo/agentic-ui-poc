@@ -38,7 +38,7 @@ import {
 } from '@agentic-ui/shared/nuxeo-client';
 import { forkJoin } from 'rxjs';
 
-import { ShareDialogComponent, ShareDialogData } from '@agentic-ui/shared/ui';
+import { ShareDialogComponent, ShareDialogData, DocumentViewerComponent } from '@agentic-ui/shared/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 
 export interface SectionNode {
@@ -79,6 +79,7 @@ const TAG_COLORS: string[] = [
     MatSortModule,
     MatTableModule,
     MatPaginatorModule,
+    DocumentViewerComponent,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
