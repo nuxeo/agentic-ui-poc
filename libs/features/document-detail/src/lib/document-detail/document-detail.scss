@@ -507,6 +507,16 @@
   color: #1a1a2e;
   line-height: 1.4;
   word-break: break-word;
+
+  &.process-running {
+    color: #1a73e8;
+    font-weight: 600;
+    font-size: 12px;
+    background: #e8f0fe;
+    padding: 2px 10px;
+    border-radius: 12px;
+    display: inline-block;
+  }
 }
 
 .prop-description {
@@ -1500,4 +1510,158 @@
 ::ng-deep .preview-dialog-panel .mat-mdc-dialog-container .mdc-dialog__content {
   padding: 0;
   max-height: none;
+}
+/* ─── Workflow info banner (yellow) ─── */
+.workflow-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #fef3e0;
+  border-bottom: 1px solid #f5d9a0;
+  flex-shrink: 0;
+
+  .workflow-banner-icon {
+    color: #e6a117;
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .workflow-banner-text {
+    font-size: 13px;
+    color: #5d4037;
+
+    strong {
+      font-weight: 600;
+    }
+  }
+
+  .workflow-banner-spacer {
+    flex: 1;
+  }
+
+  .workflow-banner-abandon {
+    color: #d84315;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+}
+
+/* ─── Task action banner (blue) ─── */
+.task-action-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--mat-sys-primary, #1a73e8);
+  flex-shrink: 0;
+
+  .task-action-icon {
+    color: #fff;
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .task-action-text {
+    font-size: 13px;
+    color: #fff;
+
+    strong {
+      font-weight: 600;
+    }
+  }
+
+  .task-action-spacer {
+    flex: 1;
+  }
+
+  .task-action-btn {
+    background: #fff;
+    color: var(--mat-sys-primary, #1a73e8);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 4px;
+    min-width: 90px;
+  }
+}
+
+/* ─── Start-process modal dialog ─── */
+.start-process-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.32);
+  z-index: 1000;
+}
+
+.start-process-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1001;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.24);
+  padding: 32px 40px;
+  min-width: 420px;
+  max-width: 520px;
+  width: 90vw;
+
+  .start-process-title {
+    margin: 0 0 24px;
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--mat-sys-on-surface, #212121);
+  }
+
+  .start-process-label {
+    display: block;
+    font-size: 13px;
+    color: var(--mat-sys-on-surface-variant, #666);
+    margin-bottom: 8px;
+  }
+
+  .start-process-field {
+    width: 100%;
+  }
+
+  .start-process-loading {
+    display: flex;
+    justify-content: center;
+    padding: 32px 0;
+  }
+
+  .start-process-empty {
+    font-size: 14px;
+    color: var(--mat-sys-on-surface-variant, #666);
+    text-align: center;
+    padding: 20px 0;
+    margin: 0;
+  }
+
+  .start-process-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+
+  .start-process-btn {
+    min-width: 100px;
+    text-transform: uppercase;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .inline-spinner {
+    display: inline-block;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
 }

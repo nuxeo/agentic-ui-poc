@@ -57,7 +57,8 @@ export const routes: Routes = [
       },
       {
         path: 'tasks',
-        loadComponent: placeholder,
+        loadChildren: () =>
+          import('@agentic-ui/feature-tasks').then((m) => m.tasksRoutes),
       },
       {
         path: 'favorites',

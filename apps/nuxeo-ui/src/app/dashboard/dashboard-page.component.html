@@ -48,7 +48,7 @@
     } @else {
       <div class="task-list">
         @for (task of tasks(); track task.id) {
-          <div class="task-card">
+          <div class="task-card" (click)="goToTask(task)">
             <div class="task-action">{{ taskLabel(task) }}</div>
             @if (taskDocTitle(task)) {
               <div class="task-doc-title">{{ taskDocTitle(task) }}</div>

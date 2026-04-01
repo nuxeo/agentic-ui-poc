@@ -241,6 +241,8 @@
   flex-shrink: 0;
 }
 
+/* ─── Task list inside drawer ─── */
+
 // Clipboard panel
 .clipboard-panel {
   display: flex;
@@ -348,6 +350,74 @@
     font-size: 18px;
     width: 18px;
     height: 18px;
+  }
+}
+
+.empty-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: #ccc;
+}
+
+.task-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.task-item {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f4f4f4;
+  transition: background 0.1s;
+
+  &:hover {
+    background: #f4f3f7;
+  }
+}
+
+.task-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #5654ac;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.task-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1c1e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-doc {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.task-due {
+  font-size: 11px;
+  color: #777;
+  margin-top: 2px;
+
+  &.overdue {
+    color: #b02b36;
+    font-weight: 600;
     color: #999;
   }
 }

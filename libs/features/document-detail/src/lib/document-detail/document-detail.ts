@@ -20,6 +20,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -39,6 +40,12 @@ import {
   DirectoryService,
   NuxeoComment,
   NuxeoApiBase,
+  TaskService,
+  NuxeoTask,
+  WorkflowService,
+  NuxeoWorkflow,
+  NuxeoWorkflowModel,
+  CURRENT_USERNAME,
 } from '@agentic-ui/shared/nuxeo-client';
 import { forkJoin, Observable } from 'rxjs';
 import {
@@ -85,6 +92,7 @@ const TAG_COLORS: string[] = [
     MatMenuModule,
     MatSnackBarModule,
     MatDialogModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -108,6 +116,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly nuxeoApi = inject(NuxeoApiBase);
+  private readonly taskService = inject(TaskService);
+  private readonly workflowService = inject(WorkflowService);
+  private readonly currentUsername = inject(CURRENT_USERNAME);
 
   readonly tabGroup = viewChild<MatTabGroup>('tabGroup');
 
@@ -156,6 +167,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly hasVersion = computed(() => {
     return this.currentMajor() > 0 || this.currentMinor() > 0;
   });
+
+  // Workflow / Task state
+  readonly documentTasks = signal<NuxeoTask[]>([]);
+  readonly documentTasksLoading = signal(false);
+  readonly documentWorkflows = signal<NuxeoWorkflow[]>([]);
+  readonly abandoningWorkflow = signal(false);
+  readonly availableWorkflows = signal<NuxeoWorkflowModel[]>([]);
+  readonly workflowsLoading = signal(false);
+  readonly startingWorkflow = signal(false);
+  readonly showStartProcessPanel = signal(false);
+  readonly selectedWorkflowModel = signal('');
 
   // Document action states
   readonly isLocked = signal(false);
@@ -451,12 +473,123 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.loading.set(false);
         this.loadBlob(doc);
         this.loadPublicationCount(uid);
+        this.loadDocumentTasks(uid);
+        this.loadDocumentWorkflows(uid);
       },
       error: () => {
         this.error.set('Failed to load document.');
         this.loading.set(false);
       },
     });
+  }
+
+  /* ─── Workflow / Task methods ─── */
+
+  private loadDocumentTasks(uid: string): void {
+    this.documentTasksLoading.set(true);
+    const userId = this.currentUsername() ?? 'Administrator';
+    this.taskService.getDocumentTasks(uid, userId).subscribe({
+      next: (tasks) => {
+        this.documentTasks.set(tasks);
+        this.documentTasksLoading.set(false);
+      },
+      error: () => this.documentTasksLoading.set(false),
+    });
+  }
+
+  private loadDocumentWorkflows(uid: string): void {
+    this.workflowService.getDocumentWorkflows(uid).subscribe({
+      next: (wfs) => this.documentWorkflows.set(wfs),
+      error: () => this.documentWorkflows.set([]),
+    });
+  }
+
+  abandonWorkflow(wf: NuxeoWorkflow): void {
+    this.abandoningWorkflow.set(true);
+    this.workflowService.cancelWorkflow(wf.id).subscribe({
+      next: () => {
+        this.abandoningWorkflow.set(false);
+        this.toast('Workflow abandoned');
+        this.loadDocumentWorkflows(this.docUid);
+        this.loadDocumentTasks(this.docUid);
+      },
+      error: () => {
+        this.abandoningWorkflow.set(false);
+        this.toast('Failed to abandon workflow');
+      },
+    });
+  }
+
+  taskDueLabel(task: NuxeoTask): string {
+    if (!task.dueDate) return '';
+    const d = new Date(task.dueDate);
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  openStartProcess(): void {
+    this.showStartProcessPanel.set(true);
+    this.workflowsLoading.set(true);
+    this.workflowService.getWorkflowModels().subscribe({
+      next: (models) => {
+        this.availableWorkflows.set(models);
+        this.workflowsLoading.set(false);
+      },
+      error: () => {
+        this.availableWorkflows.set([]);
+        this.workflowsLoading.set(false);
+      },
+    });
+  }
+
+  closeStartProcess(): void {
+    this.showStartProcessPanel.set(false);
+    this.selectedWorkflowModel.set('');
+  }
+
+  startProcess(): void {
+    const model = this.selectedWorkflowModel();
+    if (!model) return;
+
+    this.startingWorkflow.set(true);
+    this.detailService.startWorkflow(this.docUid, model).subscribe({
+      next: () => {
+        this.startingWorkflow.set(false);
+        this.closeStartProcess();
+        this.toast('Workflow started successfully');
+        this.loadDocumentTasks(this.docUid);
+        this.loadDocumentWorkflows(this.docUid);
+      },
+      error: () => {
+        this.startingWorkflow.set(false);
+        this.toast('Failed to start workflow');
+      },
+    });
+  }
+
+  goToTask(task: NuxeoTask): void {
+    void this.router.navigateByUrl('/tasks/' + task.id);
+  }
+
+  taskLabel(task: NuxeoTask): string {
+    const key = task.name
+      .replace(/^wf\.\w+\./, '')
+      .replace(/\.(title|directive)$/i, '');
+    return key
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\./g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  /** Turn "ParallelDocumentReview" or "wf.x.Y" into "Parallel Document Review" */
+  workflowDisplayName(wf: { name: string; title: string; workflowModelName?: string }): string {
+    // Use workflowModelName or name — the title is an i18n key (wf.x.Y)
+    const raw = (wf.workflowModelName ?? wf.name) || wf.title;
+    // If it looks like an i18n key, strip the prefix
+    const cleaned = raw.startsWith('wf.') ? raw.replace(/^wf\.\w+\./, '') : raw;
+    return cleaned
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   private syncActionStates(doc: NuxeoDocument): void {

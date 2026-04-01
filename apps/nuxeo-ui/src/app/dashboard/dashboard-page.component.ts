@@ -44,11 +44,11 @@ const DOC_TYPE_ICONS: Record<string, string> = {
   styleUrl: './dashboard-page.component.scss',
 })
 export class DashboardPageComponent {
+  private readonly router = inject(Router);
   private readonly docService = inject(DocumentService);
   private readonly taskService = inject(TaskService);
   private readonly collectionService = inject(CollectionService);
   private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
 
   readonly recentlyEdited = signal<NuxeoDocument[]>([]);
   readonly recentlyEditedLoading = signal(true);
@@ -175,5 +175,9 @@ export class DashboardPageComponent {
 
     if (label === 'just now') return label;
     return diff > 0 ? `${label} ago` : `in ${label}`;
+  }
+
+  goToTask(task: NuxeoTask): void {
+    this.router.navigate(['/tasks', task.id]);
   }
 }
