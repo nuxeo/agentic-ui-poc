@@ -31,6 +31,9 @@
       ],
       "@agentic-ui/feature-collections": [
         "libs/features/collections/src/index.ts"
+      ],
+      "@agentic-ui/feature-tasks": [
+        "libs/features/tasks/src/index.ts"
       ]
     }
   }

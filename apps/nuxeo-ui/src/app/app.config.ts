@@ -1,5 +1,5 @@
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { ApplicationConfig, importProvidersFrom } from '@angular/core';
+import { ApplicationConfig, importProvidersFrom, inject } from '@angular/core';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import {
@@ -9,7 +9,9 @@ import {
 } from '@ngx-translate/core';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 
+import { CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
+import { AuthService } from './auth/auth.service';
 import { routes } from './app.routes';
 
 export const appConfig: ApplicationConfig = {
@@ -23,5 +25,12 @@ export const appConfig: ApplicationConfig = {
         loader: { provide: TranslateLoader, useClass: TranslateNoOpLoader },
       }),
     ),
+    {
+      provide: CURRENT_USERNAME,
+      useFactory: () => {
+        const auth = inject(AuthService);
+        return () => auth.username();
+      },
+    },
   ],
 };

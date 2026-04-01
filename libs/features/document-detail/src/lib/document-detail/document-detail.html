@@ -80,9 +80,86 @@
         <mat-icon>download</mat-icon>
         <span>Export</span>
       </button>
+      <button mat-menu-item (click)="openStartProcess()">
+        <mat-icon>play_circle</mat-icon>
+        <span>Start Process</span>
+      </button>
     </mat-menu>
 
   </div>
+
+  <!-- Workflow info banner (yellow) — one per running workflow -->
+  @for (wf of documentWorkflows(); track wf.id) {
+    <div class="workflow-banner">
+      <mat-icon class="workflow-banner-icon">warning</mat-icon>
+      <span class="workflow-banner-text">
+        You started a <strong>{{ workflowDisplayName(wf) }}</strong> workflow on this document.
+      </span>
+      <span class="workflow-banner-spacer"></span>
+      <button mat-button class="workflow-banner-abandon"
+              [disabled]="abandoningWorkflow()"
+              (click)="abandonWorkflow(wf)">
+        Abandon
+      </button>
+    </div>
+  }
+
+  <!-- Task action banner (blue) — one per pending task -->
+  @for (task of documentTasks(); track task.id) {
+    <div class="task-action-banner">
+      <mat-icon class="task-action-icon">check_box</mat-icon>
+      <span class="task-action-text">
+        You have a task to process
+        @if (taskDueLabel(task)) {
+          before <strong>{{ taskDueLabel(task) }}</strong>
+        }
+      </span>
+      <span class="task-action-spacer"></span>
+      <button mat-flat-button class="task-action-btn" (click)="goToTask(task)">
+        Process
+      </button>
+    </div>
+  }
+
+  <!-- Start Process modal dialog -->
+  @if (showStartProcessPanel()) {
+    <div class="start-process-backdrop" (click)="closeStartProcess()"></div>
+    <div class="start-process-dialog">
+      <h2 class="start-process-title">Start Process</h2>
+
+      @if (workflowsLoading()) {
+        <div class="start-process-loading">
+          <mat-spinner diameter="28" />
+        </div>
+      } @else if (availableWorkflows().length === 0) {
+        <p class="start-process-empty">No workflow models available.</p>
+      } @else {
+        <label class="start-process-label">Choose process</label>
+        <mat-form-field appearance="outline" class="start-process-field">
+          <mat-select
+            [value]="selectedWorkflowModel()"
+            (selectionChange)="selectedWorkflowModel.set($event.value)">
+            @for (wf of availableWorkflows(); track wf.name) {
+              <mat-option [value]="wf.name">{{ workflowDisplayName(wf) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <div class="start-process-actions">
+          <button mat-flat-button
+                  color="primary"
+                  class="start-process-btn"
+                  [disabled]="!selectedWorkflowModel() || startingWorkflow()"
+                  (click)="startProcess()">
+            @if (startingWorkflow()) {
+              <mat-spinner diameter="18" class="inline-spinner" />
+            }
+            Start
+          </button>
+        </div>
+      }
+    </div>
+  }
 
   <!-- Main body: tabs on left, properties panel on right -->
   <div class="detail-body">
@@ -457,6 +534,18 @@
         </div>
 
         <div class="panel-body">
+          @if (documentWorkflows().length > 0) {
+            <div class="prop-field">
+              <span class="prop-label">Process</span>
+              <span class="prop-value process-running">Running</span>
+            </div>
+          }
+
+          <div class="prop-field">
+            <span class="prop-label">State</span>
+            <span class="prop-value">{{ (doc()!.properties['dc:currentLifeCycleState'] ?? 'Project') }}</span>
+          </div>
+
           <div class="version-section">
             <label class="version-label">Version</label>
             <div class="version-select">
