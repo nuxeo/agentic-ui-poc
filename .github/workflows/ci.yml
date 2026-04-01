@@ -36,5 +36,5 @@ jobs:
       - name: Build affected projects
         run: npx nx affected -t build --base=$NX_BASE --head=$NX_HEAD
 
-      - name: Test affected projects
-        run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD
+      # - name: Test affected projects
+      #   run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD

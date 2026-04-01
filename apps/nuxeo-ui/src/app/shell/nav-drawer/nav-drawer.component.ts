@@ -108,6 +108,12 @@ export class NavDrawerComponent {
   readonly recentlyViewedError = signal<string | null>(null);
   private recentlyViewedLoaded = false;
 
+  // Expired Queue
+  readonly expiredDocs = signal<NuxeoDocument[]>([]);
+  readonly expiredLoading = signal(false);
+  readonly expiredError = signal<string | null>(null);
+  private expiredLoaded = false;
+
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
@@ -134,6 +140,9 @@ export class NavDrawerComponent {
       }
       if (item?.path === '/recently-viewed' && !this.recentlyViewedLoaded) {
         this.loadRecentlyViewed();
+      }
+      if (item?.path === '/expired-queue' && !this.expiredLoaded) {
+        this.loadExpiredDocuments();
       }
     });
 
@@ -167,6 +176,50 @@ export class NavDrawerComponent {
 
   get isRecentlyViewed(): boolean {
     return this.activeItem()?.path === '/recently-viewed';
+  }
+
+  get isExpiredQueue(): boolean {
+    return this.activeItem()?.path === '/expired-queue';
+  }
+
+  // ── Expired Queue ──
+
+  private loadExpiredDocuments(): void {
+    this.expiredLoaded = true;
+    this.expiredLoading.set(true);
+    this.expiredError.set(null);
+
+    this.docService.getExpiredDocuments(20).subscribe({
+      next: (res) => {
+        this.expiredDocs.set(res.entries);
+        this.expiredLoading.set(false);
+        this.loadThumbnails(res.entries);
+      },
+      error: () => {
+        this.expiredError.set('Failed to load expired documents.');
+        this.expiredLoading.set(false);
+        this.expiredLoaded = false;
+      },
+    });
+  }
+
+  refreshExpired(): void {
+    this.expiredLoaded = false;
+    this.loadExpiredDocuments();
+  }
+
+  openExpiredDoc(doc: NuxeoDocument): void {
+    this.navigateKeepDrawer.emit(`/doc/${doc.uid}`);
+  }
+
+  expiredDate(doc: NuxeoDocument): string {
+    const expired = doc.properties?.['dc:expired'] as string;
+    if (!expired) return '';
+    return new Date(expired).toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   }
 
   // ── Recently Viewed ──

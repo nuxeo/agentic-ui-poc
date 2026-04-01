@@ -16,6 +16,11 @@
         <mat-icon>refresh</mat-icon>
       </button>
     }
+    @if (isExpiredQueue) {
+      <button mat-icon-button (click)="refreshExpired()" matTooltip="Refresh" class="refresh-btn">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
   </div>
 
   @if (isBrowse) {
@@ -66,6 +71,42 @@
                 <span class="rv-time">{{ relativeTime(doc.lastModified) }}</span>
               </div>
             </div>
+          </button>
+        }
+      </div>
+    }
+  } @else if (isExpiredQueue) {
+    @if (expiredLoading()) {
+      <div class="tree-loading">
+        <mat-spinner diameter="24" />
+      </div>
+    } @else if (expiredError()) {
+      <div class="tree-empty error">{{ expiredError() }}</div>
+    } @else if (expiredDocs().length === 0) {
+      <div class="tree-empty">
+        <mat-icon class="empty-icon">timer_off</mat-icon>
+        <span>No expired documents</span>
+      </div>
+    } @else {
+      <div class="expired-list">
+        @for (doc of expiredDocs(); track doc.uid) {
+          <button class="expired-card" (click)="openExpiredDoc(doc)" type="button">
+            <div class="expired-thumb">
+              @if (thumbnailMap()[doc.uid]; as thumbUrl) {
+                <img [src]="thumbUrl" alt="" class="expired-thumb-img" />
+              } @else {
+                <mat-icon class="expired-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+              }
+            </div>
+            <div class="expired-info">
+              <span class="expired-title" [title]="doc.path">{{ doc.title }}</span>
+              <div class="expired-meta">
+                <span class="expired-type">{{ doc.type }}</span>
+                <span class="expired-sep">&middot;</span>
+                <span class="expired-date">Expired {{ expiredDate(doc) }}</span>
+              </div>
+            </div>
+            <mat-icon class="expired-warning-icon">warning</mat-icon>
           </button>
         }
       </div>
