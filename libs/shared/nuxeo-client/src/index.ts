@@ -40,5 +40,6 @@ export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export {
   RECENTLY_EDITED_QUERY,
   RECENTLY_VIEWED_QUERY,
+  EXPIRED_DOCUMENTS_QUERY,
   FAVORITES_COLLECTION_QUERY,
 } from './lib/queries/nxql-queries';

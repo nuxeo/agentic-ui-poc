@@ -2,7 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
-import { RECENTLY_EDITED_QUERY, RECENTLY_VIEWED_QUERY } from '../queries/nxql-queries';
+import {
+  RECENTLY_EDITED_QUERY,
+  RECENTLY_VIEWED_QUERY,
+  EXPIRED_DOCUMENTS_QUERY,
+} from '../queries/nxql-queries';
 import { NuxeoApiBase } from './nuxeo-api-base';
 
 @Injectable({ providedIn: 'root' })
@@ -15,6 +19,15 @@ export class DocumentService {
 
   getRecentlyViewed(userId: string, pageSize = 10): Observable<NuxeoDocumentList> {
     const query = RECENTLY_VIEWED_QUERY.replace(/\{user\}/g, userId);
+    return this.api.nxqlSearch(query, pageSize);
+  }
+
+  getExpiredDocuments(pageSize = 20): Observable<NuxeoDocumentList> {
+    const now = new Date()
+      .toISOString()
+      .replace('T', ' ')
+      .replace(/\.\d+Z$/, '');
+    const query = EXPIRED_DOCUMENTS_QUERY.replace('{now}', now);
     return this.api.nxqlSearch(query, pageSize);
   }
 
