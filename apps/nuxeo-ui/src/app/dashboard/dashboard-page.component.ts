@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import {
@@ -47,6 +48,7 @@ export class DashboardPageComponent {
   private readonly taskService = inject(TaskService);
   private readonly collectionService = inject(CollectionService);
   private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly recentlyEdited = signal<NuxeoDocument[]>([]);
   readonly recentlyEditedLoading = signal(true);
@@ -110,6 +112,10 @@ export class DashboardPageComponent {
         this.favoritesLoading.set(false);
       },
     });
+  }
+
+  navigateToDoc(doc: NuxeoDocument): void {
+    void this.router.navigate(['/doc', doc.uid]);
   }
 
   docIcon(doc: NuxeoDocument): string {

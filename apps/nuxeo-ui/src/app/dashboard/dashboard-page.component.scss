@@ -57,8 +57,12 @@
   font-size: 13px;
 }
 
-.widget-row:hover {
-  background: #fafafa;
+.widget-row {
+  cursor: pointer;
+
+  &:hover {
+    background: #f5f6fa;
+  }
 }
 
 .doc-title-cell {
