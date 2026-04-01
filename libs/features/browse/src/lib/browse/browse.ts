@@ -1,14 +1,18 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import {
   NuxeoDocument,
   BrowseService,
+  DocumentDetailService,
 } from '@agentic-ui/shared/nuxeo-client';
 
 const FOLDERISH_TYPES = new Set([
@@ -64,12 +68,15 @@ export class BrowseComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
+  private readonly detailService = inject(DocumentDetailService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly entries = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly currentDoc = signal<NuxeoDocument | null>(null);
   readonly totalSize = signal(0);
+  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
   private currentNuxeoPath = '/';
 
@@ -111,12 +118,29 @@ export class BrowseComponent {
         this.entries.set(res.entries);
         this.totalSize.set(res.totalSize);
         this.loading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.error.set('Failed to load folder contents.');
         this.loading.set(false);
       },
     });
+  }
+
+  private loadThumbnails(docs: NuxeoDocument[]): void {
+    this.thumbnailMap.set({});
+    for (const doc of docs) {
+      this.detailService.fetchThumbnail(doc.uid).pipe(
+        catchError(() => of(null)),
+      ).subscribe((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        this.thumbnailMap.update((m) => ({
+          ...m,
+          [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+        }));
+      });
+    }
   }
 
   isFolderish(doc: NuxeoDocument): boolean {
