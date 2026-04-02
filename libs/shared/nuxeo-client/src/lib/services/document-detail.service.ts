@@ -119,15 +119,15 @@ export class DocumentDetailService {
 
   addToFavorites(uid: string): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}/@op/Document.AddToFavorites`,
-      { params: {}, context: {} },
+      '/nuxeo/api/v1/automation/Document.AddToFavorites',
+      { params: {}, context: {}, input: uid },
     );
   }
 
   removeFromFavorites(uid: string): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}/@op/Document.RemoveFromFavorites`,
-      { params: {}, context: {} },
+      '/nuxeo/api/v1/automation/Document.RemoveFromFavorites',
+      { params: {}, context: {}, input: uid },
     );
   }
 

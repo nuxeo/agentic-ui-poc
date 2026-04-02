@@ -1,14 +1,14 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap, catchError, of, tap, map, combineLatest } from 'rxjs';
+import { switchMap, catchError, of, tap, map, combineLatest, finalize } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { SearchService, SearchAggregationService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
+import { SearchService, SearchAggregationService, SelectionService, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
 import type { SearchResultItem, SearchResponse, SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
@@ -120,6 +120,7 @@ export class SearchComponent {
   private readonly router = inject(Router);
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
+  private readonly documentDetailService = inject(DocumentDetailService);
   readonly selectionService = inject(SelectionService);
 
   readonly loading = signal(true);
@@ -136,6 +137,7 @@ export class SearchComponent {
   readonly sortColumn = signal<string | null>(null);
   readonly sortDirection = signal<SortDirection>(null);
   readonly favoriteIds = signal<Set<string>>(new Set());
+  readonly favoritePendingIds = signal<Set<string>>(new Set());
 
   private readonly results$ = combineLatest([
     this.route.queryParamMap,
@@ -209,6 +211,9 @@ export class SearchComponent {
           if (this.searchAggregationService?.items?.set) {
             this.searchAggregationService.items.set(response.items);
           }
+          this.favoriteIds.set(
+            new Set(response.items.filter((item) => item.isFavorite).map((item) => item.id)),
+          );
         }),
         map((response) => response.items),
         tap(() => this.loading.set(false)),
@@ -459,10 +464,36 @@ export class SearchComponent {
     if (event) {
       event.stopPropagation();
     }
-    const next = new Set(this.favoriteIds());
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    this.favoriteIds.set(next);
+    if (!id || this.favoritePendingIds().has(id)) return;
+
+    const isCurrentlyFavorite = this.favoriteIds().has(id);
+    this.favoritePendingIds.update((current) => new Set(current).add(id));
+
+    const op = isCurrentlyFavorite
+      ? this.documentDetailService.removeFromFavorites(id)
+      : this.documentDetailService.addToFavorites(id);
+
+    op
+      .pipe(
+        finalize(() => {
+          this.favoritePendingIds.update((current) => {
+            const next = new Set(current);
+            next.delete(id);
+            return next;
+          });
+        }),
+      )
+      .subscribe({
+        next: () => {
+          this.favoriteIds.update((current) => {
+            const next = new Set(current);
+            if (isCurrentlyFavorite) next.delete(id);
+            else next.add(id);
+            return next;
+          });
+          window.dispatchEvent(new Event('favorites-changed'));
+        },
+      });
   }
 
   isFavorited(id: string): boolean {

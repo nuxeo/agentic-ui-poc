@@ -19,6 +19,7 @@ export interface SearchResultItem {
   id: string;
   title: string;
   type: string;
+  isFavorite?: boolean;
   modifiedDate: string;
   sizeInBytes?: number;
   lastContributor: string;

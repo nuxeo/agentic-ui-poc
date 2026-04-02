@@ -133,6 +133,7 @@
 									mat-icon-button
 									matTooltip="Add to favorites"
 									class="action-btn"
+									[disabled]="favoritePendingIds().has(row.id)"
 									(click)="toggleFavorite(row.id, $event)"
 								>
 									<mat-icon class="action-icon" [class.favorited]="isFavorited(row.id)">{{ isFavorited(row.id) ? 'star' : 'star_outline' }}</mat-icon>
@@ -314,6 +315,7 @@
 								mat-icon-button
 								matTooltip="Add to favorites"
 								class="action-btn"
+								[disabled]="favoritePendingIds().has(row.id)"
 								(click)="toggleFavorite(row.id, $event)"
 							>
 								<mat-icon class="action-icon" [class.favorited]="isFavorited(row.id)">{{ isFavorited(row.id) ? 'star' : 'star_outline' }}</mat-icon>

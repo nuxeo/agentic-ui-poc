@@ -140,6 +140,7 @@ export class SearchService {
     return this.api
       .get<SearchApiResponse>('/nuxeo/api/v1/search/pp/default_search/execute', httpParams, {
         properties: 'dublincore,file,common',
+        'enrichers.document': 'favorites',
       })
       .pipe(
         map((res) => ({
@@ -160,6 +161,7 @@ export class SearchService {
               id: doc.uid,
               title: doc.title,
               type: doc.type,
+              isFavorite: doc.contextParameters?.favorites?.isFavorite ?? false,
               modifiedDate: doc.lastModified?.slice(0, 10) ?? '',
               sizeInBytes: this.parseSizeInBytes(fileContent?.length),
               lastContributor,
