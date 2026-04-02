@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, DestroyRef } from '@angular/core';
+import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { switchMap, map, catchError, of, tap } from 'rxjs';
