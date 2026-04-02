@@ -64,7 +64,7 @@
               (keydown.space)="openAsset(asset)"
             >
               <div class="asset-card-thumbnail">
-                <div class="asset-select" (click)="$event.stopPropagation()">
+                <div class="asset-select" role="none" (click)="$event.stopPropagation()">
                   <mat-checkbox
                     [checked]="isAssetSelected(asset.id)"
                     (click)="$event.stopPropagation()"
