@@ -614,10 +614,6 @@ export class SearchFiltersDrawerComponent {
     }));
   }
 
-  private normalizeKey(value: string): string {
-    return value.toLowerCase().replace(/[^a-z0-9]/g, '');
-  }
-
   private loadCollectionsFromApi(): void {
     if (this.collectionsLoaded() || this.collectionsLoading()) return;
 

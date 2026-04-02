@@ -90,7 +90,6 @@ export class NavDrawerComponent {
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
-  readonly closeDrawer = output<void>();
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);

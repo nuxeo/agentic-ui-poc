@@ -18,19 +18,6 @@ export interface ColumnDef {
   width: string;
 }
 
-export interface FilterOption {
-  label: string;
-  value: string;
-  selected: boolean;
-  aggKey?: string;
-}
-
-export interface FilterGroup {
-  id: string;
-  label: string;
-  options: FilterOption[];
-}
-
 const ALL_COLUMNS: ColumnDef[] = [
   { key: 'name',        label: 'Title',            width: '280px' },
   { key: 'type',        label: 'Type',             width: '120px' },
@@ -67,8 +54,6 @@ export interface AssetResult {
   subjects?: string;
   flags?: string;
 }
-
-const DYNAMIC_GROUPS = new Set(['asset-type', 'asset-format', 'color-profile', 'color-depth']);
 
 function buildApiParams(params: ParamMap) {
   const get = (key: string) => params.get(key)?.split(',').filter(Boolean) ?? [];
@@ -235,7 +220,7 @@ export class AssetSearchResultsComponent {
   private readonly assetService = inject(AssetService);
   private readonly aggregationService = inject(AssetAggregationService);
   readonly selectionService = inject(SelectionService);
-  private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+  private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -278,139 +263,6 @@ export class AssetSearchResultsComponent {
       '40px',
     ].join(' ')
   );
-
-  // Filter management
-  private readonly GROUP_AGG_KEY: Record<string, keyof AssetAggregations> = {
-    'asset-type':     'system_primaryType_agg',
-    'asset-format':   'system_mimetype_agg',
-    'asset-width':    'asset_width_agg',
-    'asset-height':   'asset_height_agg',
-    'color-profile':  'color_profile_agg',
-    'color-depth':    'color_depth_agg',
-    'video-duration': 'video_duration_agg',
-  };
-
-  private readonly ALWAYS_SHOW_ZERO = new Set(['asset-width', 'asset-height', 'video-duration']);
-
-  readonly expandedFilters = signal<Set<string>>(new Set());
-
-  readonly filterGroups = signal<FilterGroup[]>([
-    { id: 'asset-type',   label: 'Asset Type',              options: [] },
-    { id: 'asset-format', label: 'Asset Format',            options: [] },
-    {
-      id: 'asset-width', label: 'Asset Width',
-      options: [
-        { label: 'Less than 500 px',            value: 'to_500_px',            selected: false, aggKey: 'to_500_px' },
-        { label: 'Between 500 px and 1500 px',  value: 'from_500_to_1500_px',  selected: false, aggKey: 'from_500_to_1500_px' },
-        { label: 'Between 1500 px and 2000 px', value: 'from_1500_to_2000_px', selected: false, aggKey: 'from_1500_to_2000_px' },
-        { label: 'More than 2000 px',           value: 'from_2000_px',         selected: false, aggKey: 'from_2000_px' },
-      ],
-    },
-    {
-      id: 'asset-height', label: 'Asset Height',
-      options: [
-        { label: 'Less than 500 px',            value: 'to_500_px',            selected: false, aggKey: 'to_500_px' },
-        { label: 'Between 500 px and 1500 px',  value: 'from_500_to_1500_px',  selected: false, aggKey: 'from_500_to_1500_px' },
-        { label: 'Between 1500 px and 2000 px', value: 'from_1500_to_2000_px', selected: false, aggKey: 'from_1500_to_2000_px' },
-        { label: 'More than 2000 px',           value: 'from_2000_px',         selected: false, aggKey: 'from_2000_px' },
-      ],
-    },
-    { id: 'color-profile', label: 'Color Profile',          options: [] },
-    { id: 'color-depth',   label: 'Color Depth per Channel', options: [] },
-    {
-      id: 'video-duration', label: 'Video Duration',
-      options: [
-        { label: 'Less than 30 s',           value: 'to_30_s',            selected: false, aggKey: 'to_30_s' },
-        { label: 'Between 30 s and 180 s',   value: 'from_30_to_180_s',   selected: false, aggKey: 'from_30_to_180_s' },
-        { label: 'Between 180 s and 600 s',  value: 'from_180_to_600_s',  selected: false, aggKey: 'from_180_to_600_s' },
-        { label: 'Between 600 s and 1800 s', value: 'from_600_to_1800_s', selected: false, aggKey: 'from_600_to_1800_s' },
-        { label: 'More than 1800 s',         value: 'from_1800_s',        selected: false, aggKey: 'from_1800_s' },
-      ],
-    },
-  ]);
-
-  readonly dynamicGroups = DYNAMIC_GROUPS;
-
-  constructor() {
-    // Initialize expandedFilters with 'asset-type' expanded by default
-    this.expandedFilters.set(new Set(['asset-type']));
-
-    effect(() => {
-      const params = this.queryParams();
-      const getSelected = (id: string) => new Set(params.get(id)?.split(',').filter(Boolean) ?? []);
-      const aggs = this.aggregationService.aggregations();
-      this.filterGroups.update(groups =>
-        groups.map(g => {
-          const selectedFromUrl = getSelected(g.id);
-
-          if (!DYNAMIC_GROUPS.has(g.id)) {
-            return {
-              ...g,
-              options: g.options.map(o => ({
-                ...o,
-                selected: selectedFromUrl.has(o.value),
-              })),
-            };
-          }
-
-          const aggField = this.GROUP_AGG_KEY[g.id];
-          const buckets = aggs[aggField]?.buckets ?? [];
-
-          // Create options directly from aggregation keys so selected values map 1:1 to API params
-          const options: FilterOption[] = buckets.map(b => {
-            const label = b.key; // Show actual type: "Picture", "image/png", etc.
-            const value = b.key;
-            return { label, value, selected: selectedFromUrl.has(value), aggKey: b.key };
-          });
-
-          return { ...g, options };
-        })
-      );
-    });
-  }
-
-  getCountText(groupId: string, aggKey?: string): string {
-    if (!aggKey) return '';
-    const aggField = this.GROUP_AGG_KEY[groupId];
-    if (!aggField) return '';
-    const agg = this.aggregationService.aggregations()[aggField];
-    if (!agg) return this.ALWAYS_SHOW_ZERO.has(groupId) ? ' (0)' : '';
-    const bucket = agg.buckets.find(b => b.key === aggKey);
-    const count = bucket?.docCount ?? (this.ALWAYS_SHOW_ZERO.has(groupId) ? 0 : null);
-    return count !== null ? ` (${count})` : '';
-  }
-
-  isExpanded(id: string): boolean {
-    return this.expandedFilters().has(id);
-  }
-
-  toggleFilter(id: string): void {
-    this.expandedFilters.update((set) => {
-      const next = new Set(set);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  toggleOption(groupId: string, value: string): void {
-    const currentValues = this.queryParams().get(groupId)?.split(',').filter(Boolean) ?? [];
-    const nextValues = new Set(currentValues);
-
-    if (nextValues.has(value)) {
-      nextValues.delete(value);
-    } else {
-      nextValues.add(value);
-    }
-
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParamsHandling: 'merge',
-      queryParams: {
-        [groupId]: nextValues.size > 0 ? Array.from(nextValues).join(',') : null,
-      },
-    });
-  }
 
   openAsset(asset: AssetResult): void {
     void this.router.navigate(['/doc', asset.id]);

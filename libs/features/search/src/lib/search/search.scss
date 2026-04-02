@@ -269,6 +269,8 @@
 }
 
 .result-name {
+  flex: 1;
+  min-width: 0;
   font-size: 13px;
   font-weight: 500;
   color: #1a1a2e;
@@ -582,9 +584,13 @@
   border: 1px solid var(--mat-sys-outline-variant, #d8dbe2);
   border-radius: 8px;
   background: #fff;
+  font: inherit;
+  text-align: left;
+  width: 100%;
   position: relative;
   transition: background 0.2s ease;
   min-height: 92px;
+  cursor: pointer;
 
   &:hover {
     background: var(--mat-sys-surface-container-low, #f8f9fc);
