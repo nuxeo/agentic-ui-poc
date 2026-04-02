@@ -202,6 +202,9 @@
   aspect-ratio: 4 / 3;
   display: flex;
   cursor: pointer;
+  font: inherit;
+  text-align: left;
+  padding: 0;
   transition: box-shadow 0.15s ease;
 
   &:hover {
@@ -311,7 +314,12 @@
 .list-row {
   display: grid;
   padding: 10px 16px;
+  border: none;
   border-bottom: 1px solid var(--mat-sys-outline-variant, #eceef3);
+  background: none;
+  font: inherit;
+  text-align: left;
+  width: 100%;
   align-items: center;
   font-size: 13px;
   color: var(--mat-sys-on-surface, #1a1c1e);
@@ -345,6 +353,8 @@
 }
 
 .row-name-text {
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -379,6 +389,9 @@
   position: fixed;
   inset: 0;
   z-index: 99;
+  border: none;
+  background: transparent;
+  padding: 0;
 }
 
 .col-panel {

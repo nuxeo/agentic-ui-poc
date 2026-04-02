@@ -112,7 +112,7 @@
 
 			<div class="result-grid">
 				@for (row of displayResults(); track row.id) {
-					<div class="result-card" role="button" tabindex="0" (click)="openDocument(row.id)" (keydown.enter)="openDocument(row.id)" [class.selected]="isSelected(row.id)">
+					<button type="button" class="result-card" (click)="openDocument(row.id)" (keydown.enter)="openDocument(row.id)" [class.selected]="isSelected(row.id)">
 						<div class="grid-card-checkbox col-hover-select">
 							<mat-checkbox
 								[checked]="isSelected(row.id)"
@@ -147,7 +147,7 @@
 								</button>
 							</div>
 						</div>
-					</div>
+					</button>
 				}
 			</div>
 		</div>
@@ -156,14 +156,13 @@
 	@if (!loading() && !error() && viewMode() === 'table') {
 		<div class="list-wrapper">
 			@if (columnPanelOpen()) {
-				<div
+				<button
+					type="button"
 					class="col-panel-backdrop"
-					role="button"
-					tabindex="0"
 					aria-label="Close column picker"
 					(click)="closeColumnPanel()"
 					(keydown.escape)="closeColumnPanel()"
-				></div>
+				></button>
 				<div class="col-panel">
 					<p class="col-panel-title">Column Settings</p>
 					<div class="col-panel-list">
@@ -219,12 +218,11 @@
 				</div>
 
 				@for (row of sortedResults(); track row.id) {
-					<div
+					<button
+						type="button"
 						class="list-row"
 						[class.selected]="isSelected(row.id)"
 						[style.grid-template-columns]="gridTemplate()"
-						role="button"
-						tabindex="0"
 						(click)="openDocument(row.id)"
 						(keydown.enter)="openDocument(row.id)"
 					>
@@ -246,7 +244,7 @@
 							}
 						}
 						<span class="col-gear"></span>
-					</div>
+					</button>
 				}
 
 				@if (resultCount() === 0) {

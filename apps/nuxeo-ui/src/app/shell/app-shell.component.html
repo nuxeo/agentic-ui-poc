@@ -9,7 +9,7 @@
         mat-icon-button
         type="button"
         class="selection-topbar-icon"
-        (click)="selectionService.deleteSelected()"
+        (click)="selectionService.deleteSelected().subscribe()"
         aria-label="Delete selected"
       >
         <mat-icon>delete</mat-icon>
@@ -98,7 +98,6 @@
           [activeItem]="activeDrawerItem()"
           (itemSelected)="onDrawerItemSelected($event)"
           (navigateKeepDrawer)="onNavigateKeepDrawer($event)"
-          (closeDrawer)="onDrawerClose()"
         />
       </mat-sidenav>
 

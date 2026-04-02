@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin } from 'rxjs';
+import { Observable, forkJoin, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -140,7 +140,7 @@ export class DocumentDetailService {
   }
 
   trashDocuments(uids: string[]): Observable<NuxeoDocument[]> {
-    if (uids.length === 0) return forkJoin([]);
+    if (uids.length === 0) return of([]);
     return forkJoin(uids.map((uid) => this.trashDocument(uid)));
   }
 

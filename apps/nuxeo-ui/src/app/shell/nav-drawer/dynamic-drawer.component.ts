@@ -1,7 +1,6 @@
 import {
   Component,
   input,
-  output,
   effect,
   ViewContainerRef,
   inject,
@@ -14,8 +13,7 @@ import {
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 /**
- * Wrapper component for dynamically loading drawer components.
- * Handles subscription to drawer component outputs and forwards them to parent.
+ * Wrapper component for dynamically loading drawer components and managing loading state.
  */
 @Component({
   selector: 'app-dynamic-drawer',

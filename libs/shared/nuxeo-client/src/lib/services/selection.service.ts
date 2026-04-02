@@ -1,6 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { DocumentDetailService } from './document-detail.service';
+import type { NuxeoDocument } from '../models/document.model';
 
 @Injectable({ providedIn: 'root' })
 export class SelectionService {
@@ -39,10 +41,10 @@ export class SelectionService {
     this.selectedIds.set(new Set());
   }
 
-  deleteSelected(): Observable<unknown[]> {
+  deleteSelected(): Observable<NuxeoDocument[]> {
     const ids = [...this.selectedIds()];
-    const result$ = this.documentDetailService.trashDocuments(ids);
-    result$.subscribe({ next: () => this.clear() });
-    return result$;
+    return this.documentDetailService.trashDocuments(ids).pipe(
+      tap(() => this.clear()),
+    );
   }
 }

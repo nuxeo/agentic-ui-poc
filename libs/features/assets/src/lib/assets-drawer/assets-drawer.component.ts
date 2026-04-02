@@ -47,7 +47,7 @@ function toMimeType(value: string): string {
 }
 
 @Component({
-  selector: 'app-assets-drawer',
+  selector: 'lib-assets-drawer',
   standalone: true,
   imports: [MatIconModule, MatButtonModule, MatCheckboxModule, MatDividerModule, MatSlideToggleModule],
   templateUrl: './assets-drawer.component.html',

@@ -63,15 +63,14 @@ const FOLDERISH_TYPES = new Set([
 @Component({
   selector: 'app-nav-drawer',
   standalone: true,
-  imports: [NgTemplateOutlet, DatePipe, MatIconModule, MatProgressSpinnerModule, DynamicDrawerComponent],
   imports: [
     NgTemplateOutlet,
     DatePipe,
-    MatListModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatButtonModule,
     MatTooltipModule,
+    DynamicDrawerComponent,
   ],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
@@ -91,7 +90,6 @@ export class NavDrawerComponent {
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
-  readonly closeDrawer = output<void>();
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);

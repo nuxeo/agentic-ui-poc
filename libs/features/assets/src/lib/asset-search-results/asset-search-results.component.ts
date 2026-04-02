@@ -7,8 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDividerModule } from '@angular/material/divider';
-import { AssetService, AssetAggregationService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
+import { AssetService, AssetAggregationService, SelectionService, docTypeIcon } from '@agentic-ui/shared/nuxeo-client';
 import type { NuxeoDocument, AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
@@ -70,16 +69,6 @@ export interface AssetResult {
   flags?: string;
 }
 
-const DOC_TYPE_ICON_MAP: Record<string, string> = {
-  Picture: 'image',
-  Video: 'videocam',
-  Audio: 'audiotrack',
-  File: 'description',
-  Note: 'sticky_note_2',
-  Folder: 'folder',
-  Workspace: 'workspaces',
-};
-
 const DYNAMIC_GROUPS = new Set(['asset-type', 'asset-format', 'color-profile', 'color-depth']);
 
 function buildApiParams(params: ParamMap) {
@@ -119,7 +108,7 @@ function mapToAssetResult(doc: NuxeoDocument): AssetResult {
     mimeType: mime,
     modifiedDate: doc.lastModified?.slice(0, 10) ?? '',
     lastContributor: (props['dc:lastContributor'] as string) ?? '',
-    icon: DOC_TYPE_ICON_MAP[doc.type] ?? 'description',
+    icon: docTypeIcon(doc.type),
     widthPx: Number.isFinite(widthPx) ? widthPx : (Number.isFinite(Number(vidInfo?.width)) ? Number(vidInfo?.width) : undefined),
     heightPx: Number.isFinite(heightPx) ? heightPx : (Number.isFinite(Number(vidInfo?.height)) ? Number(vidInfo?.height) : undefined),
     videoDurationSec: Number.isFinite(videoDurationSec) ? videoDurationSec : undefined,
@@ -234,8 +223,9 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
 }
 
 @Component({
-  selector: 'app-asset-search-results',
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule, MatDividerModule],
+  selector: 'lib-asset-search-results',
+  standalone: true,
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule],
   templateUrl: './asset-search-results.component.html',
   styleUrl: './asset-search-results.component.scss',
 })
@@ -404,7 +394,7 @@ export class AssetSearchResultsComponent {
   }
 
   toggleOption(groupId: string, value: string): void {
-    const currentValues = this.route.snapshot.queryParamMap.get(groupId)?.split(',').filter(Boolean) ?? [];
+    const currentValues = this.queryParams().get(groupId)?.split(',').filter(Boolean) ?? [];
     const nextValues = new Set(currentValues);
 
     if (nextValues.has(value)) {
@@ -591,14 +581,17 @@ export class AssetSearchResultsComponent {
 
   exportCsv(): void {
     const headers = ['Title', 'Type', 'Modified', 'Last Contributor', 'State', 'Version', 'Created', 'Author', 'Nature', 'Coverage', 'Subjects', 'Flags'];
+    const escape = (value: string): string => `"${value.replaceAll('"', '""')}"`;
     const rows = this.filteredAssets().map((a) => [
       a.name, a.type, a.modifiedDate, a.lastContributor,
       a.state ?? '', a.version ?? '', a.createdDate ?? '',
       a.author ?? '', a.nature ?? '', a.coverage ?? '',
       a.subjects ?? '', a.flags ?? '',
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const csv = [headers, ...rows]
+      .map((r) => r.map((cell) => escape(cell ?? '')).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;

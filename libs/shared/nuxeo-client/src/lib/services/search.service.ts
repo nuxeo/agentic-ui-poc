@@ -176,8 +176,12 @@ export class SearchService {
               coverage: typeof props['dc:coverage'] === 'string' ? (props['dc:coverage'] as string) : undefined,
               subjects: tags.join(', ') || undefined,
               flags: undefined,
-              collection: (props['collection:documentIds'] as string) ?? '',
-              collectionKey: ((props['collection:documentIds'] as string) ?? '').toLowerCase(),
+              collection: Array.isArray(props['collection:documentIds'])
+                ? (props['collection:documentIds'] as string[]).join(',')
+                : ((props['collection:documentIds'] as string) ?? ''),
+              collectionKey: Array.isArray(props['collection:documentIds'])
+                ? (props['collection:documentIds'] as string[]).join(',').toLowerCase()
+                : ((props['collection:documentIds'] as string) ?? '').toLowerCase(),
               tags,
               icon: this.iconFor(doc.type, fileContent?.['mime-type']),
             } satisfies SearchResultItem;

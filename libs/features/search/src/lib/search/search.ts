@@ -63,6 +63,13 @@ const COLUMN_TO_API_FIELD: Record<string, string> = {
   'flags': 'dc:flag',
 };
 
+// Reverse map: API field names back to display column keys
+const API_FIELD_TO_COLUMN: Record<string, string> = Object.fromEntries(
+  Object.entries(COLUMN_TO_API_FIELD)
+    .filter(([key]) => key !== 'title') // prefer 'name' over 'title' for dc:title
+    .map(([key, value]) => [value, key]),
+);
+
 interface SearchResultViewModel {
   id: string;
   name: string;
@@ -103,6 +110,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
 
 @Component({
   selector: 'lib-search',
+  standalone: true,
   imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule, MatSelectModule],
   templateUrl: './search.html',
   styleUrl: './search.scss',
@@ -143,10 +151,14 @@ export class SearchComponent {
 
       // Update sort from query params only if they exist
       const querySortBy = params.get('sortBy');
-      const querySortOrder = params.get('sortOrder') as SortDirection;
+      const querySortOrderRaw = params.get('sortOrder');
+      const querySortOrder: 'asc' | 'desc' | null =
+        querySortOrderRaw === 'asc' || querySortOrderRaw === 'desc' ? querySortOrderRaw : null;
 
-      this.sortColumn.set(querySortBy);
-      this.sortDirection.set(querySortOrder === 'asc' || querySortOrder === 'desc' ? querySortOrder : null);
+      // Map API field name back to UI column key for in-memory sorting/indicators
+      const uiSortColumn = querySortBy ? (API_FIELD_TO_COLUMN[querySortBy] ?? querySortBy) : null;
+      this.sortColumn.set(uiSortColumn);
+      this.sortDirection.set(querySortOrder);
 
       const request: {
         q?: string;
