@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { finalize } from 'rxjs/operators';
 import { DocumentDetailService } from './document-detail.service';
 import type { NuxeoDocument } from '../models/document.model';
 
@@ -44,7 +44,7 @@ export class SelectionService {
   deleteSelected(): Observable<NuxeoDocument[]> {
     const ids = [...this.selectedIds()];
     return this.documentDetailService.trashDocuments(ids).pipe(
-      tap(() => this.clear()),
+      finalize(() => this.clear()),
     );
   }
 }

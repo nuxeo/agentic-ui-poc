@@ -477,6 +477,11 @@
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
+  border: none;
+  background: none;
+  font: inherit;
+  padding: 0;
+  color: inherit;
 
   &:hover {
     color: var(--mat-sys-primary, #5c6bc0);

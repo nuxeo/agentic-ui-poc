@@ -164,6 +164,14 @@ export class SearchComponent {
       this.sortColumn.set(uiSortColumn);
       this.sortDirection.set(querySortOrder);
 
+      // Sync grid sort UI from query params so grid view stays in sync with table view
+      if (uiSortColumn) {
+        this.gridGroupBy.set(uiSortColumn);
+      }
+      if (querySortOrder) {
+        this.gridSortOrder.set(querySortOrder);
+      }
+
       const request: {
         q?: string;
         quickFilters?: string;
@@ -527,12 +535,7 @@ export class SearchComponent {
     if (event) {
       event.stopPropagation();
     }
-    // Implement actual download logic here
-    // This would typically call a service to download the document
-    const link = document.createElement('a');
-    link.href = `/api/documents/${id}/download`;
-    link.download = name;
-    link.click();
+    console.warn('Document download is not yet implemented for document:', id, name);
   }
 
   setGridGroupBy(value: string): void {

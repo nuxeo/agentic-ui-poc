@@ -5,6 +5,7 @@ import type { NuxeoDocumentList } from '../models/document.model';
 import type { AggregateResult } from '../models/asset.model';
 import type { SearchAggregations, SearchResponse, SearchResultItem } from '../models/search.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
+import { docTypeIcon } from '../constants/doc-type-icons';
 
 export interface SearchQueryParams {
   q?: string;
@@ -185,7 +186,7 @@ export class SearchService {
                 ? (props['collection:documentIds'] as string[]).join(',').toLowerCase()
                 : ((props['collection:documentIds'] as string) ?? '').toLowerCase(),
               tags,
-              icon: this.iconFor(doc.type, fileContent?.['mime-type']),
+              icon: docTypeIcon(doc.type),
             } satisfies SearchResultItem;
           }),
           aggregations: this.normalizeAggregations(res.aggregations),
@@ -239,14 +240,5 @@ export class SearchService {
       dc_subjects_agg: toAggregate(aggregations?.['dc_subjects_agg']),
       common_size_agg: toAggregate(aggregations?.['common_size_agg']),
     };
-  }
-
-  private iconFor(type: string, mimeType?: string): string {
-    if (type === 'Picture' || mimeType?.startsWith('image/')) return 'image';
-    if (type === 'Video' || mimeType?.startsWith('video/')) return 'videocam';
-    if (type === 'Audio' || mimeType?.startsWith('audio/')) return 'audiotrack';
-    if (type === 'Folder') return 'folder';
-    if (type === 'Note') return 'sticky_note_2';
-    return 'description';
   }
 }

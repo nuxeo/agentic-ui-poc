@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, of, map } from 'rxjs';
+import { Observable, forkJoin, of, map, catchError } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -133,7 +133,7 @@ export class DocumentDetailService {
   }
 
   trashDocument(uid: string): Observable<NuxeoDocument> {
-    const input = uid.startsWith('doc:') || uid.startsWith('docs:') ? uid : `docs:${uid}`;
+    const input = uid.startsWith('doc:') ? uid : `doc:${uid}`;
     return this.api.post<NuxeoDocument>(
       '/nuxeo/api/v1/automation/Document.Trash',
       { params: {}, context: {}, input },
@@ -142,7 +142,13 @@ export class DocumentDetailService {
 
   trashDocuments(uids: string[]): Observable<NuxeoDocument[]> {
     if (uids.length === 0) return of([]);
-    return forkJoin(uids.map((uid) => this.trashDocument(uid)));
+    return forkJoin(
+      uids.map((uid) =>
+        this.trashDocument(uid).pipe(catchError(() => of(null))),
+      ),
+    ).pipe(
+      map((results) => results.filter((r): r is NuxeoDocument => r !== null)),
+    );
   }
 
   subscribe(uid: string, notifications = 'Creation,Modification'): Observable<NuxeoDocument> {
