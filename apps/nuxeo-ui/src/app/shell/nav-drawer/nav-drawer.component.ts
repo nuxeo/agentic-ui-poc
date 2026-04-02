@@ -8,13 +8,14 @@ import {
   effect,
   computed,
   DestroyRef,
+  Type,
 } from '@angular/core';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
-import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { DynamicDrawerComponent } from './dynamic-drawer.component';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
@@ -22,6 +23,10 @@ import {
   NuxeoDocument,
   BrowseService,
   CollectionService,
+  AssetService,
+  AssetAggregationService,
+  SearchService,
+  SearchAggregationService,
   DocumentService,
   DocumentDetailService,
   TaskService,
@@ -29,6 +34,8 @@ import {
   CURRENT_USERNAME,
   docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
+import type { SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
+import type { AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { AppNavItem } from '../../platform-nav-items';
@@ -59,11 +66,11 @@ const FOLDERISH_TYPES = new Set([
   imports: [
     NgTemplateOutlet,
     DatePipe,
-    MatListModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatButtonModule,
     MatTooltipModule,
+    DynamicDrawerComponent,
   ],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
@@ -71,6 +78,10 @@ const FOLDERISH_TYPES = new Set([
 export class NavDrawerComponent {
   private readonly browseService = inject(BrowseService);
   private readonly collectionService = inject(CollectionService);
+  private readonly assetService = inject(AssetService);
+  private readonly assetAggregationService = inject(AssetAggregationService);
+  private readonly searchService = inject(SearchService);
+  private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly docService = inject(DocumentService);
   private readonly authService = inject(AuthService);
@@ -86,6 +97,9 @@ export class NavDrawerComponent {
   readonly collections = signal<NuxeoDocument[]>([]);
   readonly collectionsLoading = signal(false);
   private collectionsLoaded = false;
+
+  readonly assetsDrawerComponent = signal<Type<unknown> | null>(null);
+  readonly searchFiltersDrawerComponent = signal<Type<unknown> | null>(null);
 
   // Tasks
   private readonly taskService = inject(TaskService);
@@ -117,6 +131,9 @@ export class NavDrawerComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
+    // Dynamically load drawer components to avoid static import of lazy-loaded libraries
+    this.loadDrawerComponents();
+
     this.taskService.tasksChanged$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadTasks());
@@ -128,6 +145,12 @@ export class NavDrawerComponent {
       }
       if (item?.path === '/collections' && !this.collectionsLoaded) {
         this.loadCollections();
+      }
+      if (item?.path === '/documents') {
+        this.loadAssetAggregations();
+      }
+      if (item?.path === '/search') {
+        this.loadSearchAggregations();
       }
       if (item?.path === '/tasks') {
         this.loadTasks();
@@ -158,12 +181,101 @@ export class NavDrawerComponent {
     });
   }
 
+  private loadSearchAggregations(): void {
+    const filters = this.searchAggregationService.drawerFilters();
+    const request: SearchQueryParams = {
+      q: (filters['q'] ?? '').trim() || undefined,
+      modifiedDate: (filters['modifiedDate'] ?? '').trim() || undefined,
+      author: (filters['author'] ?? '').trim() || undefined,
+      collection: (filters['collection'] ?? '').trim() || undefined,
+      tag: (filters['tag'] ?? '').trim() || undefined,
+      nature: (filters['nature'] ?? '').trim() || undefined,
+      subjects: (filters['subjects'] ?? '').trim() || undefined,
+      coverage: (filters['coverage'] ?? '').trim() || undefined,
+      size: (filters['size'] ?? '').trim() || undefined,
+    };
+
+    this.searchService.search(request).subscribe({
+      next: (res) => {
+        this.searchAggregationService.aggregations.set(res.aggregations);
+        this.searchAggregationService.items.set(res.items);
+      },
+      error: () => {
+        this.searchAggregationService.aggregations.set({});
+        this.searchAggregationService.items.set([]);
+      },
+    });
+  }
+
+  private computeAssetAggregationsFromEntries(entries: NuxeoDocument[]): AssetAggregations {
+    const aggregations: AssetAggregations = {};
+
+    const typeMap = new Map<string, number>();
+    const mimeMap = new Map<string, number>();
+
+    for (const doc of entries) {
+      typeMap.set(doc.type, (typeMap.get(doc.type) ?? 0) + 1);
+
+      const fileContent = doc.properties['file:content'] as { 'mime-type'?: string } | null;
+      const mime = fileContent?.['mime-type'];
+      if (mime) {
+        mimeMap.set(mime, (mimeMap.get(mime) ?? 0) + 1);
+      }
+    }
+
+    if (typeMap.size > 0) {
+      aggregations.system_primaryType_agg = {
+        buckets: Array.from(typeMap.entries()).map(([key, docCount]) => ({ key, docCount })),
+      };
+    }
+
+    if (mimeMap.size > 0) {
+      aggregations.system_mimetype_agg = {
+        buckets: Array.from(mimeMap.entries()).map(([key, docCount]) => ({ key, docCount })),
+      };
+    }
+
+    return aggregations;
+  }
+
+  private loadAssetAggregations(): void {
+    this.assetService.searchAssets({ pageSize: 200 }).subscribe({
+      next: (res) => {
+        const aggregations = res.aggregations ?? this.computeAssetAggregationsFromEntries(res.entries ?? []);
+        this.assetAggregationService.aggregations.set(aggregations);
+      },
+      error: () => {
+        this.assetAggregationService.aggregations.set({});
+      },
+    });
+  }
+
+  private loadDrawerComponents(): void {
+    Promise.all([
+      import('@agentic-ui/feature-assets/assets-drawer').then((m) => m.AssetsDrawerComponent),
+      import('@agentic-ui/feature-search').then((m) => m.SearchFiltersDrawerComponent),
+    ]).then(([assetsComp, searchComp]) => {
+      this.assetsDrawerComponent.set(assetsComp);
+      this.searchFiltersDrawerComponent.set(searchComp);
+    }).catch(() => {
+      // Silently fail if components don't load
+    });
+  }
+
   get isBrowse(): boolean {
     return this.activeItem()?.path === '/browse';
   }
 
   get isCollections(): boolean {
     return this.activeItem()?.path === '/collections';
+  }
+
+  get isAssets(): boolean {
+    return this.activeItem()?.path === '/documents';
+  }
+
+  get isSearchFilters(): boolean {
+    return this.activeItem()?.path === '/search';
   }
 
   get isClipboard(): boolean {

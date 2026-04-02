@@ -1,0 +1,25 @@
+<div class="selection-topbar">
+  <div class="topbar-left">
+    <span class="selected-label">All {{ selectedCount() }} item(s) selected</span>
+    <button
+      mat-button
+      type="button"
+      class="clear-btn"
+      (click)="cleared.emit()"
+    >
+      Clear
+    </button>
+  </div>
+
+  <div class="topbar-actions">
+    <button
+      mat-icon-button
+      matTooltip="Delete selected"
+      type="button"
+      class="topbar-icon-btn"
+      (click)="deleted.emit()"
+    >
+      <mat-icon>delete</mat-icon>
+    </button>
+  </div>
+</div>

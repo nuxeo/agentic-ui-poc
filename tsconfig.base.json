@@ -20,11 +20,26 @@
       "@agentic-ui/shared/nuxeo-client": [
         "libs/shared/nuxeo-client/src/index.ts"
       ],
+      "@agentic-ui/shared/drawers": [
+        "libs/shared/drawers/src/index.ts"
+      ],
       "@agentic-ui/feature-browse": [
         "libs/features/browse/src/index.ts"
       ],
       "@agentic-ui/feature-search": [
         "libs/features/search/src/index.ts"
+      ],
+      "@agentic-ui/feature-assets": [
+        "libs/features/assets/src/index.ts"
+      ],
+      "@agentic-ui/feature-assets/assets-drawer": [
+        "libs/features/assets/src/lib/assets-drawer/assets-drawer.component.ts"
+      ],
+      "@agentic-ui/feature-assets/asset-search-results": [
+        "libs/features/assets/src/lib/asset-search-results/asset-search-results.component.ts"
+      ],
+      "@agentic-ui/feature-search/search-filters-drawer": [
+        "libs/features/search/src/lib/search-filters-drawer/search-filters-drawer.component.ts"
       ],
       "@agentic-ui/feature-document-detail": [
         "libs/features/document-detail/src/index.ts"

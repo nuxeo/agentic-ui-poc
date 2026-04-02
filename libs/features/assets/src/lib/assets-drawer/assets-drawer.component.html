@@ -1,0 +1,63 @@
+<div class="drawer-search">
+  <mat-icon class="search-icon">search</mat-icon>
+  <input type="text" class="search-input" placeholder="Search" />
+</div>
+
+<mat-divider />
+
+<div class="filters-section">
+  <p class="filters-heading">Filters</p>
+
+  @for (group of filterGroups(); track group.id) {
+    <div class="filter-group">
+      <button class="filter-btn" type="button" (click)="toggleFilter(group.id)">
+        <span class="filter-btn-label">{{ group.label }}</span>
+        <mat-icon class="filter-btn-icon">
+          {{ isExpanded(group.id) ? 'expand_less' : 'expand_more' }}
+        </mat-icon>
+      </button>
+
+      @if (isExpanded(group.id)) {
+        <div class="filter-options">
+          @if (dynamicGroups.has(group.id) && group.options.length === 0) {
+            <span class="filter-no-results">No available results</span>
+          } @else {
+            @for (option of group.options; track option.value) {
+              <mat-checkbox
+                [checked]="option.selected"
+                (change)="toggleOption(group.id, option.value)"
+                class="filter-checkbox"
+              >
+                {{ option.label }}{{ getCountText(group.id, option.aggKey) }}
+              </mat-checkbox>
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<mat-divider />
+
+<div class="drawer-footer">
+  <div class="footer-toggle-row">
+    <span class="footer-toggle-label">Auto search</span>
+    <mat-slide-toggle
+      [checked]="autoSearch()"
+      (change)="autoSearch.set($event.checked)"
+      color="primary"
+    />
+  </div>
+
+  <div class="footer-actions">
+    <button mat-stroked-button class="reset-btn" type="button" (click)="resetFilters()">
+      Reset
+    </button>
+    @if (!autoSearch()) {
+      <button mat-flat-button color="primary" class="search-btn" type="button" (click)="applySearch()">
+        Search
+      </button>
+    }
+  </div>
+</div>

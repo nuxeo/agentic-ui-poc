@@ -1,4 +1,13 @@
-<sat-platform-nav-container>
+@if (selectionService.selectedCount() > 0) {
+  <lib-selection-topbar
+    class="selection-topbar--sticky"
+    [selectedCount]="selectionService.selectedCount()"
+    (cleared)="selectionService.clear()"
+    (deleted)="onDeleteSelected()"
+  />
+}
+
+<sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
   <sat-platform-nav>
     @for (item of navItems; track item.path) {
       <sat-platform-nav-list-item

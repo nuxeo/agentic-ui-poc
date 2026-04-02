@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, forkJoin, of, map, catchError } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -120,22 +120,34 @@ export class DocumentDetailService {
 
   addToFavorites(uid: string): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}/@op/Document.AddToFavorites`,
-      { params: {}, context: {} },
+      '/nuxeo/api/v1/automation/Document.AddToFavorites',
+      { params: {}, context: {}, input: uid },
     );
   }
 
   removeFromFavorites(uid: string): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}/@op/Document.RemoveFromFavorites`,
-      { params: {}, context: {} },
+      '/nuxeo/api/v1/automation/Document.RemoveFromFavorites',
+      { params: {}, context: {}, input: uid },
     );
   }
 
   trashDocument(uid: string): Observable<NuxeoDocument> {
+    const input = uid.startsWith('doc:') ? uid : `doc:${uid}`;
     return this.api.post<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}/@op/Document.Trash`,
-      { params: {}, context: {} },
+      '/nuxeo/api/v1/automation/Document.Trash',
+      { params: {}, context: {}, input },
+    );
+  }
+
+  trashDocuments(uids: string[]): Observable<NuxeoDocument[]> {
+    if (uids.length === 0) return of([]);
+    return forkJoin(
+      uids.map((uid) =>
+        this.trashDocument(uid).pipe(catchError(() => of(null))),
+      ),
+    ).pipe(
+      map((results) => results.filter((r): r is NuxeoDocument => r !== null)),
     );
   }
 

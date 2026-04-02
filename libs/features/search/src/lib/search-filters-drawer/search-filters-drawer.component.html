@@ -1,0 +1,261 @@
+<div class="drawer-search">
+  <mat-icon class="search-icon">search</mat-icon>
+  <input
+    type="text"
+    class="search-input"
+    placeholder="Search"
+    [value]="query()"
+    (input)="onQueryChange($any($event.target).value)"
+  />
+</div>
+
+<mat-divider />
+
+<div class="filters-section">
+  <p class="filters-heading">Filters</p>
+
+  <div class="filter-group">
+    <button class="filter-btn" type="button" (click)="toggleFilter('modification-date')">
+      <span class="filter-btn-label">Modification Date</span>
+      <mat-icon class="filter-btn-icon">
+        {{ isExpanded('modification-date') ? 'expand_less' : 'expand_more' }}
+      </mat-icon>
+    </button>
+
+    @if (isExpanded('modification-date')) {
+      <div class="filter-options">
+        @if (availableModificationDateWithData().length === 0) {
+          <span class="filter-no-results">No available results</span>
+        } @else {
+          @for (option of availableModificationDateWithData(); track option.key) {
+            <mat-checkbox
+              [checked]="isModificationDateSelected(option.value)"
+              (change)="toggleModificationDate(option.value)"
+              class="filter-checkbox"
+            >
+              {{ option.label }}{{ getCountText(option.count) }}
+            </mat-checkbox>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <div class="filter-group">
+    <p class="filter-title">Authors</p>
+    <div class="typeahead-field">
+      <div class="typeahead-input-wrap">
+        <input
+          class="typeahead-input"
+          type="text"
+          placeholder="Search for authors..."
+          [value]="authorInput()"
+          (input)="onAuthorInput($any($event.target).value)"
+          (focus)="authorOpen.set(true)"
+          (blur)="closeAuthorDropdown()"
+        />
+        <mat-icon class="typeahead-arrow">arrow_drop_down</mat-icon>
+      </div>
+
+      @if (authorOpen()) {
+        <div class="typeahead-panel">
+          @if (filteredAuthors().length === 0) {
+            <div class="typeahead-hint">No results found</div>
+          } @else {
+            @for (author of filteredAuthors(); track author.key) {
+              <button class="typeahead-option" type="button" (mousedown)="selectAuthor(author)">
+                {{ author.label }}{{ getCountText(author.count) }}
+              </button>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <p class="filter-title">Collections</p>
+    <div class="typeahead-field">
+      <div class="typeahead-input-wrap">
+        <input
+          class="typeahead-input"
+          type="text"
+          placeholder="Select a value."
+          [value]="collectionInput()"
+          (input)="onCollectionInput($any($event.target).value)"
+          (focus)="onCollectionFocus()"
+          (blur)="closeCollectionDropdown()"
+        />
+        <mat-icon class="typeahead-arrow">arrow_drop_down</mat-icon>
+      </div>
+
+      @if (collectionOpen()) {
+        <div class="typeahead-panel">
+          @if (collectionsLoading()) {
+            <div class="typeahead-hint">Loading collections...</div>
+          } @else if (filteredCollections().length === 0) {
+            <div class="typeahead-hint">No results found</div>
+          } @else {
+            @for (collection of filteredCollections(); track collection.key) {
+              <button class="typeahead-option" type="button" (mousedown)="selectCollection(collection)">
+                {{ collection.label }}{{ getCountText(collection.count) }}
+              </button>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <p class="filter-title">Tags</p>
+    <div class="typeahead-field">
+      <div class="typeahead-input-wrap">
+        <input
+          class="typeahead-input"
+          type="text"
+          placeholder="e.g. events, boston"
+          [value]="tagInput()"
+          (input)="onTagInput($any($event.target).value)"
+          (focus)="tagOpen.set(true)"
+          (blur)="closeTagDropdown()"
+        />
+        <mat-icon class="typeahead-arrow">arrow_drop_down</mat-icon>
+      </div>
+
+      @if (tagOpen()) {
+        <div class="typeahead-panel">
+          @if (!tagInput().trim()) {
+            <div class="typeahead-hint">Please enter 1 or more characters</div>
+          } @else if (filteredTags().length === 0) {
+            <div class="typeahead-hint">No results for {{ tagInput().trim() }}</div>
+          } @else if (filteredTags().length > 0) {
+            @for (tag of filteredTags(); track tag.key) {
+              <button class="typeahead-option" type="button" (mousedown)="selectTag(tag)">
+                {{ tag.label }}{{ getCountText(tag.count) }}
+              </button>
+            }
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="filter-group">
+    <button class="filter-btn" type="button" (click)="toggleFilter('nature')">
+      <span class="filter-btn-label">Nature</span>
+      <mat-icon class="filter-btn-icon">
+        {{ isExpanded('nature') ? 'expand_less' : 'expand_more' }}
+      </mat-icon>
+    </button>
+
+    @if (isExpanded('nature')) {
+      <div class="filter-options">
+        @if (availableNatureWithData().length === 0) {
+          <span class="filter-no-results">No available results</span>
+        } @else {
+          @for (option of availableNatureWithData(); track option.key) {
+            <mat-checkbox
+              [checked]="isNatureSelected(option.value)"
+              (change)="toggleNature(option.value)"
+              class="filter-checkbox"
+            >
+              {{ option.label }}{{ getCountText(option.count) }}
+            </mat-checkbox>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <div class="filter-group">
+    <button class="filter-btn" type="button" (click)="toggleFilter('subjects')">
+      <span class="filter-btn-label">Subjects</span>
+      <mat-icon class="filter-btn-icon">
+        {{ isExpanded('subjects') ? 'expand_less' : 'expand_more' }}
+      </mat-icon>
+    </button>
+
+    @if (isExpanded('subjects')) {
+      <div class="filter-options">
+        @if (availableSubjectsWithData().length === 0) {
+          <span class="filter-no-results">No available results</span>
+        } @else {
+          @for (option of availableSubjectsWithData(); track option.key) {
+            <mat-checkbox
+              [checked]="isSubjectSelected(option.value)"
+              (change)="toggleSubject(option.value)"
+              class="filter-checkbox"
+            >
+              {{ option.label }}{{ getCountText(option.count) }}
+            </mat-checkbox>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <div class="filter-group">
+    <button class="filter-btn" type="button" (click)="toggleFilter('coverage')">
+      <span class="filter-btn-label">Coverage</span>
+      <mat-icon class="filter-btn-icon">
+        {{ isExpanded('coverage') ? 'expand_less' : 'expand_more' }}
+      </mat-icon>
+    </button>
+
+    @if (isExpanded('coverage')) {
+      <div class="filter-options">
+        @if (availableCoverageWithData().length === 0) {
+          <span class="filter-no-results">No available results</span>
+        } @else {
+          @for (option of availableCoverageWithData(); track option.key) {
+            <mat-checkbox
+              [checked]="isCoverageSelected(option.value)"
+              (change)="toggleCoverage(option.value)"
+              class="filter-checkbox"
+            >
+              {{ option.label }}{{ getCountText(option.count) }}
+            </mat-checkbox>
+          }
+        }
+      </div>
+    }
+  </div>
+
+  <div class="filter-group">
+    <button class="filter-btn" type="button" (click)="toggleFilter('size')">
+      <span class="filter-btn-label">Size</span>
+      <mat-icon class="filter-btn-icon">
+        {{ isExpanded('size') ? 'expand_less' : 'expand_more' }}
+      </mat-icon>
+    </button>
+
+    @if (isExpanded('size')) {
+      <div class="filter-options">
+        @if (availableSizesWithData().length === 0) {
+          <span class="filter-no-results">No available results</span>
+        } @else {
+          @for (option of availableSizesWithData(); track option.key) {
+            <mat-checkbox
+              [checked]="isSizeSelected(option.value)"
+              (change)="toggleSize(option.value)"
+              class="filter-checkbox"
+            >
+              {{ option.label }}{{ getCountText(option.count) }}
+            </mat-checkbox>
+          }
+        }
+      </div>
+    }
+  </div>
+</div>
+
+<mat-divider />
+
+<div class="drawer-footer">
+  <div class="footer-actions">
+    <button mat-stroked-button class="reset-btn" type="button" [disabled]="!hasActiveFilters()" (click)="resetFilters()">
+      Reset
+    </button>
+  </div>
+</div>

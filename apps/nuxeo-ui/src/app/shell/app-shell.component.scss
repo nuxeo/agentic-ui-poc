@@ -1,10 +1,24 @@
 :host {
   display: block;
   height: 100%;
+  --selection-topbar-height: 48px;
+}
+
+.selection-topbar--sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1200;
+}
+
+sat-platform-nav-container.has-selection-topbar {
+  padding-top: var(--selection-topbar-height);
+  height: calc(100% - var(--selection-topbar-height));
 }
 
 .shell-content {
-  height: calc(100% - 56px);
+  height: calc(100% - var(--selection-topbar-height));
 }
 
 .nav-drawer-sidenav {

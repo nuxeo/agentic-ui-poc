@@ -145,6 +145,14 @@
         </div>
       }
     </div>
+  } @else if (isAssets) {
+    <app-dynamic-drawer
+      [drawerComponent]="assetsDrawerComponent()"
+    />
+  } @else if (isSearchFilters) {
+    <app-dynamic-drawer
+      [drawerComponent]="searchFiltersDrawerComponent()"
+    />
   } @else if (isTasksPanel) {
     @if (tasksLoading()) {
       <div class="tree-loading">
@@ -263,12 +271,6 @@
       }
     </div>
   } @else {
-    <mat-nav-list class="drawer-list">
-      <a mat-list-item (click)="itemSelected.emit(item.path)">
-        <span class="placeholder-text">Go to {{ item.label }}</span>
-      </a>
-    </mat-nav-list>
-
     <div class="drawer-empty">
       <p>Content for "{{ item.label }}" will appear here.</p>
     </div>
