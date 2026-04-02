@@ -1,7 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter } from 'rxjs';
+import { Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -13,7 +13,12 @@ import {
   SatPlatformNavModule,
   SatPlatformNavStateService,
 } from '@hylandsoftware/satori-ui/platform-nav';
-import { CollectionService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
+import {
+  CollectionService,
+  SearchService,
+  SelectionService,
+  type GlobalSearchSuggestion,
+} from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
 
 import { AuthService } from '../auth/auth.service';
@@ -40,11 +45,14 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 })
 export class AppShellComponent {
   private readonly router = inject(Router);
+  private readonly host = inject(ElementRef<HTMLElement>);
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
+  private readonly searchService = inject(SearchService);
+  private readonly searchInput$ = new Subject<string>();
 
   protected readonly navItems = PLATFORM_NAV_ITEMS;
 
@@ -53,6 +61,11 @@ export class AppShellComponent {
   readonly activeDrawerItem = signal<AppNavItem | null>(null);
   readonly clipboardCount = signal(this.readClipboardCount());
   readonly favoritesCount = signal(0);
+  readonly globalSearchTerm = signal('');
+  readonly globalSearchLoading = signal(false);
+  readonly globalSearchError = signal<string | null>(null);
+  readonly globalSearchResults = signal<GlobalSearchSuggestion[]>([]);
+  readonly globalSearchOpen = signal(false);
 
   private readonly currentUrl = signal(this.router.url.split('?')[0]);
 
@@ -83,12 +96,51 @@ export class AppShellComponent {
       .subscribe((e) => {
         this.currentUrl.set(e.urlAfterRedirects.split('?')[0]);
         this.refreshClipboardCount();
+        this.clearGlobalSearch();
       });
 
     window.addEventListener('storage', this.storageListener);
     window.addEventListener('clipboard-changed', () => this.refreshClipboardCount());
     window.addEventListener('favorites-changed', () => this.refreshFavoritesCount());
     this.refreshFavoritesCount();
+
+    this.searchInput$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap((value) => {
+          const term = value.trim();
+          if (term.length < 2) {
+            this.globalSearchLoading.set(false);
+            this.globalSearchError.set(null);
+            return of<GlobalSearchSuggestion[]>([]);
+          }
+
+          this.globalSearchLoading.set(true);
+          this.globalSearchError.set(null);
+
+          return this.searchService.suggest(term).pipe(
+            catchError(() => {
+              this.globalSearchError.set('Failed to load suggestions.');
+              return of<GlobalSearchSuggestion[]>([]);
+            }),
+            finalize(() => this.globalSearchLoading.set(false)),
+          );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((results) => {
+        this.globalSearchResults.set(
+          results.filter((result) => result.kind === 'document' && !!(result.documentUid ?? result.id)),
+        );
+        this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
+      });
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (this.host.nativeElement.contains(event.target as Node)) return;
+    this.globalSearchOpen.set(false);
   }
 
   private readClipboardCount(): number {
@@ -171,6 +223,37 @@ export class AppShellComponent {
         this.selectionService.clear();
       },
     });
+  }
+
+  onGlobalSearchInput(value: string): void {
+    this.globalSearchTerm.set(value);
+    const hasEnoughChars = value.trim().length >= 2;
+    this.globalSearchOpen.set(hasEnoughChars);
+    this.searchInput$.next(value);
+  }
+
+  onGlobalSearchFocus(): void {
+    this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
+  }
+
+  onGlobalSearchSelect(result: GlobalSearchSuggestion): void {
+    this.globalSearchTerm.set(result.displayLabel);
+    this.globalSearchOpen.set(false);
+    const documentUid = result.documentUid ?? result.id;
+    void this.router.navigate(['/doc', documentUid]);
+  }
+
+  private clearGlobalSearch(): void {
+    this.globalSearchTerm.set('');
+    this.globalSearchLoading.set(false);
+    this.globalSearchError.set(null);
+    this.globalSearchResults.set([]);
+    this.globalSearchOpen.set(false);
+  }
+
+  documentPreviewUrl(result: GlobalSearchSuggestion): string {
+    const documentUid = result.documentUid ?? result.id;
+    return `/nuxeo/api/v1/id/${encodeURIComponent(documentUid)}/@rendition/thumbnail`;
   }
 
   private getDeleteErrorMessage(err: unknown): string {

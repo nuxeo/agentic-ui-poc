@@ -7,6 +7,21 @@
   border-right: 1px solid #e0e0e0;
 }
 
+::ng-deep {
+  .mat-mdc-tooltip {
+    pointer-events: auto !important;
+  }
+
+  .mdc-tooltip {
+    z-index: 10000 !important;
+    position: fixed !important;
+  }
+
+  .mdc-tooltip__surface {
+    white-space: nowrap !important;
+  }
+}
+
 .drawer-header {
   display: flex;
   align-items: center;

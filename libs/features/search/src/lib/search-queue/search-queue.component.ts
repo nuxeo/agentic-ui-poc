@@ -1,0 +1,42 @@
+import { Component, computed, inject, input, output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { SearchAggregationService, type SearchResultItem } from '@agentic-ui/shared/nuxeo-client';
+
+interface ActiveFilter {
+  label: string;
+  value: string;
+  selected: boolean;
+}
+
+@Component({
+  selector: 'lib-search-queue',
+  standalone: true,
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule],
+  templateUrl: './search-queue.component.html',
+  styleUrl: './search-queue.component.scss',
+})
+export class SearchQueueComponent {
+  private readonly searchAggregationService = inject(SearchAggregationService);
+
+  readonly items = computed(() => this.searchAggregationService.items());
+  readonly selectedItemId = input<string>('');
+  readonly activeFilters = input<ActiveFilter[]>([]);
+  readonly switchToFilter = output<void>();
+  readonly quickFilterToggled = output<string>();
+  readonly itemSelected = output<SearchResultItem>();
+
+  onSwitchToFilter(): void {
+    this.switchToFilter.emit();
+  }
+
+  onItemClick(item: SearchResultItem): void {
+    this.itemSelected.emit(item);
+  }
+
+  onQuickFilterClick(value: string): void {
+    this.quickFilterToggled.emit(value);
+  }
+}

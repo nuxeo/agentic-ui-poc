@@ -46,6 +46,50 @@
 
       <h1 satAppHeaderTitle>{{ pageTitle() }}</h1>
 
+      <div class="header-search" satAppHeaderLogo (click)="$event.stopPropagation()">
+        <div class="header-search-input-wrap">
+          <mat-icon class="header-search-icon">search</mat-icon>
+          <input
+            type="text"
+            class="header-search-input"
+            placeholder="Search documents, users or groups"
+            [value]="globalSearchTerm()"
+            (focus)="onGlobalSearchFocus()"
+            (input)="onGlobalSearchInput($any($event.target).value)"
+          />
+        </div>
+
+        @if (globalSearchOpen()) {
+          <div class="header-search-dropdown">
+            @if (globalSearchLoading()) {
+              <div class="header-search-state">Searching…</div>
+            } @else if (globalSearchError()) {
+              <div class="header-search-state">{{ globalSearchError() }}</div>
+            } @else if (globalSearchResults().length === 0) {
+              <div class="header-search-state">No results found</div>
+            } @else {
+              @for (result of globalSearchResults(); track result.kind + ':' + result.id) {
+                <button
+                  type="button"
+                  class="header-search-option"
+                  (click)="onGlobalSearchSelect(result)"
+                >
+                  <img
+                    class="header-search-option-preview"
+                    [src]="documentPreviewUrl(result)"
+                    alt="Document preview"
+                  />
+                  <span class="header-search-option-meta">
+                    <span class="header-search-option-text">{{ result.displayLabel }}</span>
+                    <span class="header-search-option-path">{{ result.path || '/' }}</span>
+                  </span>
+                </button>
+              }
+            }
+          </div>
+        }
+      </div>
+
       <sat-word-mark-logo satAppHeaderLogo />
 
       <div satAppHeaderActions>

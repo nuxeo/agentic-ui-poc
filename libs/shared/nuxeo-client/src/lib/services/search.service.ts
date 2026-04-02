@@ -1,6 +1,6 @@
 import { HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import type { NuxeoDocumentList } from '../models/document.model';
 import type { AggregateResult } from '../models/asset.model';
 import type { SearchAggregations, SearchResponse, SearchResultItem } from '../models/search.model';
@@ -30,6 +30,21 @@ export interface SearchCollectionOption {
   itemCount: number;
 }
 
+export interface SavedSearchOption {
+  id: string;
+  title: string;
+  query?: string;
+}
+
+export interface GlobalSearchSuggestion {
+  id: string;
+  displayLabel: string;
+  kind: 'document' | 'user' | 'group' | 'other';
+  documentUid?: string;
+  path?: string;
+  prefixedId?: string;
+}
+
 interface SearchApiResponse extends NuxeoDocumentList {
   aggregations?: Record<string, { buckets?: Array<{ key?: string; docCount?: number; doc_count?: number }> }>;
 }
@@ -37,6 +52,77 @@ interface SearchApiResponse extends NuxeoDocumentList {
 @Injectable({ providedIn: 'root' })
 export class SearchService {
   private readonly api = inject(NuxeoApiBase);
+
+  suggest(searchTerm: string, pageSize = 10): Observable<GlobalSearchSuggestion[]> {
+    const term = searchTerm.trim();
+    if (!term) return of([]);
+
+    return this.api
+      .post<unknown>(
+        '/nuxeo/api/v1/automation/Search.SuggestersLauncher',
+        {
+          params: { searchTerm: term },
+          context: {},
+        },
+        {
+          'Content-Type': 'application/json',
+          properties: '*',
+        },
+      )
+      .pipe(
+        map((res) => this.normalizeSuggestions(res).slice(0, pageSize)),
+        catchError(() => this.suggestFallback(term, pageSize)),
+      );
+  }
+
+  private suggestFallback(searchTerm: string, pageSize: number): Observable<GlobalSearchSuggestion[]> {
+    const userGroup$ = this.api
+      .post<unknown[]>(
+        '/nuxeo/api/v1/automation/UserGroup.Suggestion',
+        {
+          params: { searchTerm, searchType: 'USER_GROUP_TYPE' },
+          context: {},
+        },
+        {
+          'Content-Type': 'application/json',
+          properties: '*',
+        },
+      )
+      .pipe(
+        map((res) =>
+          (Array.isArray(res) ? res : [])
+            .map((item) => this.mapSuggestion(item))
+            .filter((item): item is GlobalSearchSuggestion => item !== null),
+        ),
+        catchError(() => of<GlobalSearchSuggestion[]>([])),
+      );
+
+    const docsParams = new HttpParams()
+      .set('query', searchTerm)
+      .set('pageSize', pageSize)
+      .set('currentPageIndex', 0);
+
+    const docs$ = this.api
+      .get<NuxeoDocumentList>('/nuxeo/api/v1/search/pp/default_search/execute', docsParams, {
+        properties: 'dublincore',
+      })
+      .pipe(
+        map((res) =>
+          res.entries.map((doc) => ({
+            id: doc.uid,
+            displayLabel: doc.title || doc.uid,
+            kind: 'document' as const,
+            documentUid: doc.uid,
+            path: doc.path,
+          })),
+        ),
+        catchError(() => of<GlobalSearchSuggestion[]>([])),
+      );
+
+    return forkJoin([docs$, userGroup$]).pipe(
+      map(([docs, usersAndGroups]) => [...docs, ...usersAndGroups].slice(0, pageSize)),
+    );
+  }
 
   getUserCollections(): Observable<SearchCollectionOption[]> {
     return this.api
@@ -58,6 +144,36 @@ export class SearchService {
             } satisfies SearchCollectionOption;
           }),
         ),
+      );
+  }
+
+  getSavedSearches(pageProvider = 'default_search'): Observable<SavedSearchOption[]> {
+    const params = new HttpParams().set('pageProvider', pageProvider);
+
+    return this.api
+      .get<NuxeoDocumentList>('/nuxeo/api/v1/search/saved', params, {
+        properties: '*',
+        'enrichers.document': 'thumbnail,permissions,highlight',
+      })
+      .pipe(
+        map((res) =>
+          res.entries.map((doc) => {
+            const props = doc.properties ?? {};
+            const query = this.firstString(
+              props['contentview:query'],
+              props['savedsearch:query'],
+              props['search:query'],
+              props['query'],
+            );
+
+            return {
+              id: doc.uid,
+              title: doc.title ?? doc.uid,
+              query,
+            } satisfies SavedSearchOption;
+          }),
+        ),
+        catchError(() => of<SavedSearchOption[]>([])),
       );
   }
 
@@ -218,6 +334,15 @@ export class SearchService {
     return undefined;
   }
 
+  private firstString(...values: unknown[]): string | undefined {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim()) {
+        return value;
+      }
+    }
+    return undefined;
+  }
+
   private normalizeAggregations(aggregations?: SearchApiResponse['aggregations']): SearchAggregations {
     const toAggregate = (agg?: { buckets?: Array<{ key?: string; docCount?: number; doc_count?: number }> }): AggregateResult | undefined => {
       if (!agg?.buckets?.length) return undefined;
@@ -240,5 +365,90 @@ export class SearchService {
       dc_subjects_agg: toAggregate(aggregations?.['dc_subjects_agg']),
       common_size_agg: toAggregate(aggregations?.['common_size_agg']),
     };
+  }
+
+  private normalizeSuggestions(payload: unknown): GlobalSearchSuggestion[] {
+    const items = this.extractSuggestionItems(payload);
+    const suggestions: GlobalSearchSuggestion[] = [];
+
+    for (const item of items) {
+      const mapped = this.mapSuggestion(item);
+      if (mapped) suggestions.push(mapped);
+    }
+
+    return suggestions;
+  }
+
+  private extractSuggestionItems(payload: unknown): unknown[] {
+    if (Array.isArray(payload)) return payload;
+    if (!payload || typeof payload !== 'object') return [];
+
+    const obj = payload as Record<string, unknown>;
+
+    const directArrayKeys = ['entries', 'results', 'suggestions', 'documents', 'users', 'groups'];
+    const arrays = directArrayKeys
+      .map((key) => obj[key])
+      .filter(Array.isArray)
+      .flatMap((value) => value as unknown[]);
+
+    if (arrays.length > 0) return arrays;
+
+    return Object.values(obj)
+      .filter(Array.isArray)
+      .flatMap((value) => value as unknown[]);
+  }
+
+  private mapSuggestion(value: unknown): GlobalSearchSuggestion | null {
+    if (!value || typeof value !== 'object') return null;
+
+    const item = value as Record<string, unknown>;
+    const properties = (item['properties'] as Record<string, unknown> | undefined) ?? {};
+
+    const typeValue = this.asString(item['type']) ?? this.asString(item['entity-type']) ?? '';
+    const id =
+      this.asString(item['id']) ??
+      this.asString(item['uid']) ??
+      this.asString(item['username']) ??
+      this.asString(item['groupname']) ??
+      this.asString(item['prefixed_id']);
+
+    if (!id) return null;
+
+    const displayLabel =
+      this.asString(item['displayLabel']) ??
+      this.asString(item['title']) ??
+      this.asString(properties['dc:title']) ??
+      id;
+
+    const prefixedId = this.asString(item['prefixed_id']);
+    const path =
+      this.asString(item['path']) ??
+      this.asString(properties['ecm:path']) ??
+      this.asString(item['url']);
+    const typeUpper = typeValue.toUpperCase();
+    const isGroup =
+      typeUpper.includes('GROUP') ||
+      typeof item['groupname'] === 'string' ||
+      prefixedId?.startsWith('group:') === true;
+    const isUser =
+      typeUpper.includes('USER') ||
+      typeof item['username'] === 'string' ||
+      prefixedId?.startsWith('user:') === true;
+    const documentUid = this.asString(item['uid']) ?? (typeUpper.includes('DOCUMENT') ? id : undefined);
+
+    return {
+      id,
+      displayLabel,
+      kind: isGroup ? 'group' : isUser ? 'user' : documentUid ? 'document' : 'other',
+      documentUid,
+      path,
+      prefixedId,
+    };
+  }
+
+  private asString(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
   }
 }

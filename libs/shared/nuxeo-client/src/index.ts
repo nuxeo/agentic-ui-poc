@@ -6,7 +6,7 @@ export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
 export type { DirectoryEntry, L10nDirectoryEntry } from './lib/models/directory.model';
 export type { NuxeoAce, NuxeoAcl } from './lib/models/acl.model';
-export type { SearchQueryParams } from './lib/services/search.service';
+export type { SearchQueryParams, GlobalSearchSuggestion, SavedSearchOption } from './lib/services/search.service';
 export type { SearchAggregations, SearchResponse, SearchResultItem } from './lib/models/search.model';
 export type {
   NuxeoWorkflow,
