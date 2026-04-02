@@ -1,9 +1,10 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
+import { NuxeoWorkflowModel } from '../models/workflow.model';
 import { AuditLogList } from '../models/audit.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 
@@ -192,17 +193,35 @@ export class DocumentDetailService {
     );
   }
 
-  startWorkflow(uid: string, workflowModelName: string): Observable<unknown> {
-    return this.api.post<unknown>(
-      `/nuxeo/api/v1/id/${uid}/@workflow`,
-      { 'entity-type': 'workflow', workflowModelName, attachedDocumentIds: [{ id: uid }] },
-    );
-  }
-
   getAvailableWorkflows(uid: string): Observable<{ entries: Array<{ workflowModelName: string; title: string }> }> {
     return this.api.get<{ entries: Array<{ workflowModelName: string; title: string }> }>(
       `/nuxeo/api/v1/id/${uid}/@workflow`,
     );
+  }
+
+  /**
+   * Returns only the workflows that can actually be started on this document,
+   * respecting lifecycle-state filters (e.g. approved docs hide Serial/Parallel review).
+   */
+  getRunnableWorkflows(uid: string): Observable<NuxeoWorkflowModel[]> {
+    return this.api
+      .get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
+        'enrichers.document': 'runnableWorkflows',
+      })
+      .pipe(
+        map((doc) => {
+          const entries = (doc.contextParameters?.['runnableWorkflows'] ?? []) as Array<{
+            name: string;
+            title: string;
+            workflowModelName: string;
+          }>;
+          return entries.map((e) => ({
+            'entity-type': 'workflowModel' as const,
+            name: e.workflowModelName ?? e.name,
+            title: e.title,
+          }));
+        }),
+      );
   }
 
   createCollection(title: string, description = ''): Observable<NuxeoDocument> {
