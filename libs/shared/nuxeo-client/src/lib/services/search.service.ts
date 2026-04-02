@@ -37,6 +37,12 @@ export interface SavedSearchOption {
   query?: string;
 }
 
+export interface SaveSavedSearchParams {
+  title: string;
+  params: Record<string, string>;
+  pageProviderName?: string;
+}
+
 export interface GlobalSearchSuggestion {
   id: string;
   displayLabel: string;
@@ -53,6 +59,9 @@ interface SearchApiResponse extends NuxeoDocumentList {
 @Injectable({ providedIn: 'root' })
 export class SearchService {
   private readonly api = inject(NuxeoApiBase);
+
+  private readonly savedSearchHighlight =
+    'dc:title.fulltext,ecm:binarytext,dc:description.fulltext,ecm:tag,note:note.fulltext,file:content.name';
 
   suggest(searchTerm: string, pageSize = 10): Observable<GlobalSearchSuggestion[]> {
     const term = searchTerm.trim();
@@ -176,6 +185,28 @@ export class SearchService {
         ),
         catchError(() => of<SavedSearchOption[]>([])),
       );
+  }
+
+  saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown> {
+    const { title, params, pageProviderName = 'default_search' } = request;
+
+    return this.api.post<unknown>(
+      '/nuxeo/api/v1/search/saved',
+      {
+        'entity-type': 'savedSearch',
+        pageProviderName,
+        params: {
+          ...params,
+          highlight: this.savedSearchHighlight,
+        },
+        title,
+      },
+      {
+        'Content-Type': 'application/json',
+        accept: 'text/plain,application/json, application/json',
+        properties: '*',
+      },
+    );
   }
 
   search(params: SearchQueryParams): Observable<SearchResponse> {

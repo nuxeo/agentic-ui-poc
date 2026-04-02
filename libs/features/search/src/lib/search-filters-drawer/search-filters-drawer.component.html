@@ -307,6 +307,9 @@
       <button mat-stroked-button class="reset-btn" type="button" [disabled]="!hasActiveFilters()" (click)="resetFilters()">
         Reset
       </button>
+      <button mat-stroked-button class="save-as-btn" type="button" [disabled]="!hasActiveFilters()" (click)="openSaveAsDialog()">
+        Save As
+      </button>
     </div>
   </div>
 } @else if (viewMode() === 'queue') {

@@ -1,9 +1,10 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
@@ -15,6 +16,7 @@ import {
   type AssetQueueItem,
   type SavedSearchOption,
 } from '@agentic-ui/shared/nuxeo-client';
+import { SavedSearchDialogComponent } from '@agentic-ui/shared/ui';
 import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
 
 export interface FilterOption {
@@ -72,6 +74,7 @@ function toMimeType(value: string): string {
 export class AssetsDrawerComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly aggregationService = inject(AssetAggregationService);
   private readonly searchService = inject(SearchService);
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
@@ -98,6 +101,11 @@ export class AssetsDrawerComponent {
   };
 
   private readonly ALWAYS_SHOW_ZERO = new Set(['asset-width', 'asset-height', 'video-duration']);
+
+  readonly hasActiveFilters = computed(() =>
+    this.secondarySearchInput().trim().length > 0 ||
+    this.filterGroups().some((group) => group.options.some((option) => option.selected)),
+  );
 
   getCountText(groupId: string, aggKey?: string): string {
     if (!aggKey) return '';
@@ -281,6 +289,29 @@ export class AssetsDrawerComponent {
     });
   }
 
+  openSaveAsDialog(): void {
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Saved Search',
+        placeholder: 'Enter a name for your saved search',
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.saveSavedSearch({
+        title: trimmedTitle,
+        params: this.buildSavedSearchParams(),
+        pageProviderName: 'assets_search',
+      }).subscribe({
+        next: () => {
+          this.savedSearchesLoaded.set(false);
+          this.loadSavedSearchesFromApi();
+        },
+      });
+    });
+  }
+
   isExpanded(id: string): boolean {
     return this.expandedFilters().has(id);
   }
@@ -318,6 +349,15 @@ export class AssetsDrawerComponent {
       }
     }
     return queryParams;
+  }
+
+  private buildSavedSearchParams(): Record<string, string> {
+    const params = this.buildFilterQueryParams();
+    const ecmFulltext = this.secondarySearchInput().trim();
+    if (ecmFulltext) {
+      params['ecm_fulltext'] = ecmFulltext;
+    }
+    return params;
   }
 
   toggleOption(groupId: string, value: string): void {

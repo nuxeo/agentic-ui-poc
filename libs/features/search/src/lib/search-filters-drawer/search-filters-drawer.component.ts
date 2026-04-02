@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -12,6 +13,7 @@ import {
   type SavedSearchOption,
   type SearchResultItem,
 } from '@agentic-ui/shared/nuxeo-client';
+import { SavedSearchDialogComponent } from '@agentic-ui/shared/ui';
 import { SearchQueueComponent } from '../search-queue/search-queue.component';
 
 interface CountOption {
@@ -41,6 +43,7 @@ export class SearchFiltersDrawerComponent {
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly activatedRoute = inject(ActivatedRoute);
 
   readonly viewMode = signal<DrawerViewMode>(this.loadViewModeFromStorage());
@@ -230,6 +233,29 @@ export class SearchFiltersDrawerComponent {
 
   onSecondarySearchEnter(): void {
     this.updateDrawerFilters();
+  }
+
+  openSaveAsDialog(): void {
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Saved Search',
+        placeholder: 'Enter a name for your saved search',
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.saveSavedSearch({
+        title: trimmedTitle,
+        params: this.buildFilters(),
+        pageProviderName: 'default_search',
+      }).subscribe({
+        next: () => {
+          this.savedSearchesLoaded.set(false);
+          this.loadSavedSearchesFromApi();
+        },
+      });
+    });
   }
 
   isExpanded(id: string): boolean {
