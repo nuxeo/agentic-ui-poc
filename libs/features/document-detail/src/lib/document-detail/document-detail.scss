@@ -798,20 +798,6 @@
   gap: 8px;
 }
 
-.user-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #5c6bc0;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
 .comment-cell {
   max-width: 240px;
   overflow: hidden;
@@ -1279,20 +1265,6 @@
   margin-bottom: 4px;
 }
 
-.comment-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #7b1fa2;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
 .comment-author {
   font-size: 13px;
   font-weight: 600;
@@ -1379,13 +1351,6 @@
   padding: 6px 0 6px 12px;
 }
 
-.reply-avatar {
-  width: 22px !important;
-  height: 22px !important;
-  font-size: 10px !important;
-  line-height: 22px !important;
-}
-
 .reply-input-row {
   display: flex;
   align-items: center;
@@ -1459,20 +1424,6 @@
   &:last-child {
     border-bottom: none;
   }
-}
-
-.activity-avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #7b1fa2;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 600;
-  flex-shrink: 0;
 }
 
 .activity-info {

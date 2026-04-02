@@ -38,7 +38,9 @@ import {
   NuxeoWorkflow,
   NuxeoWorkflowModel,
   CURRENT_USERNAME,
+  avatarColor,
 } from '@agentic-ui/shared/nuxeo-client';
+import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { forkJoin, Observable } from 'rxjs';
 import {
   ShareDialogComponent,
@@ -99,6 +101,7 @@ const TAG_COLORS: string[] = [
     MatTableModule,
     MatPaginatorModule,
     DocumentViewerComponent,
+    SatAvatarModule,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
@@ -726,9 +729,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     );
   }
 
-  userInitial(name: string): string {
-    return name.charAt(0).toUpperCase();
-  }
+  avatarColor = avatarColor;
 
   tagColor(index: number): string {
     return TAG_COLORS[index % TAG_COLORS.length];

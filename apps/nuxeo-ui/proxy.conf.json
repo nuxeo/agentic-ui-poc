@@ -3,6 +3,7 @@
     "target": "http://localhost:8180",
     "secure": false,
     "changeOrigin": true,
+    "autoRewrite": true,
     "headers": {
       "X-NXproperties": "*"
     }
