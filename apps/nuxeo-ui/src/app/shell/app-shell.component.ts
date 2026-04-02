@@ -13,6 +13,7 @@ import {
   SatPlatformNavStateService,
 } from '@hylandsoftware/satori-ui/platform-nav';
 import { CollectionService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
+import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS } from '../platform-nav-items';
@@ -30,6 +31,7 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
     MatIconModule,
     MatSidenavModule,
     NavDrawerComponent,
+    SelectionTopbarComponent,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -143,6 +145,12 @@ export class AppShellComponent {
     this.drawerOpen.set(false);
     this.activeDrawerItem.set(null);
     this.refreshClipboardCount();
+  }
+
+  onDeleteSelected(): void {
+    this.selectionService.deleteSelected().subscribe({
+      error: (err) => console.error('Failed to delete selected documents', err),
+    });
   }
 
   refreshClipboardCount(): void {

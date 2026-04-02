@@ -1,4 +1,4 @@
-import { Component, effect, inject, output, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -57,9 +57,8 @@ export class AssetsDrawerComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly aggregationService = inject(AssetAggregationService);
-  private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+  private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
-  readonly applyFilters = output<string>();
   readonly dynamicGroups = DYNAMIC_GROUPS;
 
   private readonly GROUP_AGG_KEY: Record<string, keyof AssetAggregations> = {

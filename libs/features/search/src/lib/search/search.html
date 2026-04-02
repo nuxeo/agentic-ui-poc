@@ -294,7 +294,7 @@
 
 		<div class="simple-list">
 			@for (row of displayResults(); track row.id) {
-				<div class="simple-list-item" [class.selected]="isSelected(row.id)" role="button" tabindex="0" (click)="openDocument(row.id)" (keydown.enter)="openDocument(row.id)">
+				<button type="button" class="simple-list-item" [class.selected]="isSelected(row.id)" (click)="openDocument(row.id)" (keydown.enter)="openDocument(row.id)">
 					<div class="simple-list-thumb-wrap">
 						<img class="simple-list-thumb" [src]="row.imageUrl" [alt]="row.name" (error)="onImageError($event)" />
 						<span class="simple-list-checkbox col-hover-select">
@@ -330,7 +330,7 @@
 							</button>
 						</div>
 					</div>
-				</div>
+				</button>
 			}
 
 			@if (resultCount() === 0) {
