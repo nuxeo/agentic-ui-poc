@@ -80,9 +80,24 @@ export class AdminUserDetailsPageComponent implements OnInit {
 
   private userId = '';
 
+  private resetState(): void {
+    this.user.set(null);
+    this.loading.set(false);
+    this.error.set(null);
+    this.groupInfo.set([]);
+    this.localPerm.set(null);
+    this.localPermLoading.set(false);
+    this.localPageIndex.set(0);
+    this.groupPermMap.set({});
+    this.groupPermLoading.set({});
+  }
+
   ngOnInit(): void {
-    this.userId = this.route.snapshot.paramMap.get('userId') ?? '';
-    this.load();
+    this.route.paramMap.subscribe((paramMap) => {
+      this.userId = paramMap.get('userId') ?? '';
+      this.resetState();
+      this.load();
+    });
   }
 
   load(): void {
