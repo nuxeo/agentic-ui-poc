@@ -100,10 +100,6 @@ export class AppShellComponent {
       this.platformNavState.toggleCollapsed();
     }
 
-    if (this.auth.isAuthenticated()) {
-      this.auth.refreshCurrentUser().subscribe({ error: () => {} });
-    }
-
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
