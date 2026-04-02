@@ -2,8 +2,10 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, Observable } from 'rxjs';
+import { forkJoin, Observable, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
@@ -31,7 +33,9 @@ import {
   DirectoryService,
   DirectoryEntry,
   docTypeIcon,
+  avatarColor,
 } from '@agentic-ui/shared/nuxeo-client';
+import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -82,6 +86,7 @@ import {
     MatSelectModule,
     MatDatepickerModule,
     MatNativeDateModule,
+    SatAvatarModule,
   ],
   templateUrl: './collection-detail.html',
   styleUrl: './collection-detail.scss',
@@ -94,12 +99,14 @@ export class CollectionDetailComponent {
   private readonly directoryService = inject(DirectoryService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly collection = signal<NuxeoDocument | null>(null);
   readonly members = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly totalSize = signal(0);
+  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -213,12 +220,30 @@ export class CollectionDetailComponent {
         this.members.set(res.entries);
         this.totalSize.set(res.totalSize);
         this.loading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.error.set('Failed to load collection contents.');
         this.loading.set(false);
       },
     });
+  }
+
+  private loadThumbnails(docs: NuxeoDocument[]): void {
+    this.thumbnailMap.set({});
+    for (const doc of docs) {
+      this.detailService
+        .fetchThumbnail(doc.uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
+    }
   }
 
   breadcrumbPath(): string {
@@ -649,9 +674,7 @@ export class CollectionDetailComponent {
     );
   }
 
-  userInitial(name: string): string {
-    return name ? name.charAt(0).toUpperCase() : '?';
-  }
+  avatarColor = avatarColor;
 
   private toast(message: string): void {
     this.snackBar.open(message, 'OK', {

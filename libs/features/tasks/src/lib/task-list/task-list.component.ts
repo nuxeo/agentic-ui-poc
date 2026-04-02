@@ -3,19 +3,13 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatChipsModule } from '@angular/material/chips';
 
 import { NuxeoTask, TaskService, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
 
 @Component({
   selector: 'lib-task-list',
   standalone: true,
-  imports: [
-    MatIconModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatChipsModule,
-  ],
+  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule],
   templateUrl: './task-list.component.html',
   styleUrl: './task-list.component.scss',
 })
@@ -54,9 +48,7 @@ export class TaskListComponent implements OnInit {
   }
 
   taskLabel(task: NuxeoTask): string {
-    const key = task.name
-      .replace(/^wf\.\w+\./, '')
-      .replace(/\.(title|directive)$/i, '');
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
     return key
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\./g, ' ')
@@ -66,9 +58,7 @@ export class TaskListComponent implements OnInit {
   taskWorkflow(task: NuxeoTask): string {
     const raw = task.workflowTitle || task.workflowModelName;
     const key = raw.replace(/^wf\.\w+\./, '');
-    return key
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    return key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   isOverdue(task: NuxeoTask): boolean {

@@ -245,6 +245,14 @@
   gap: 10px;
 }
 
+.doc-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .doc-icon {
   font-size: 20px;
   width: 20px;
@@ -517,20 +525,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.user-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: #5c6bc0;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-  flex-shrink: 0;
 }
 
 .comment-cell {
