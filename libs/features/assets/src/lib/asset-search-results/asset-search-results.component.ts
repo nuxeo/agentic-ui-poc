@@ -1,5 +1,5 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, computed, effect, inject, signal, DestroyRef } from '@angular/core';
+import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { switchMap, map, catchError, of, tap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,8 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { AssetService, AssetAggregationService, SelectionService, docTypeIcon } from '@agentic-ui/shared/nuxeo-client';
-import type { NuxeoDocument, AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
+import { AssetService, AssetAggregationService, SelectionService, docTypeIcon, type NuxeoDocument, type AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -232,6 +231,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
 export class AssetSearchResultsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly assetService = inject(AssetService);
   private readonly aggregationService = inject(AssetAggregationService);
   readonly selectionService = inject(SelectionService);
@@ -450,9 +450,11 @@ export class AssetSearchResultsComponent {
   }
 
   deleteSelected(): void {
-    this.selectionService.deleteSelected().subscribe({
-      next: () => this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
-    });
+    this.selectionService.deleteSelected()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
+      });
   }
 
   clearSelection(): void {

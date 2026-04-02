@@ -6,8 +6,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { AssetAggregationService } from '@agentic-ui/shared/nuxeo-client';
-import type { AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
+import { AssetAggregationService, type AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 
 export interface FilterOption {
   label: string;

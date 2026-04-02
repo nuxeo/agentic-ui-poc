@@ -4,9 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
-import { SearchAggregationService, SearchService } from '@agentic-ui/shared/nuxeo-client';
-import type { AggregateResult } from '@agentic-ui/shared/nuxeo-client';
-import type { SearchResultItem } from '@agentic-ui/shared/nuxeo-client';
+import { SearchAggregationService, SearchService, type AggregateResult, type SearchResultItem } from '@agentic-ui/shared/nuxeo-client';
 
 interface CountOption {
   key: string;

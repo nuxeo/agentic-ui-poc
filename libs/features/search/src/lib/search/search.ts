@@ -1,5 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
+import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { switchMap, catchError, of, tap, map, combineLatest, finalize } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,8 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { SearchService, SearchAggregationService, SelectionService, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
-import type { SearchResultItem, SearchResponse, SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
+import { SearchService, SearchAggregationService, SelectionService, DocumentDetailService, type SearchResultItem, type SearchResponse, type SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -118,6 +117,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
 export class SearchComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
@@ -316,9 +316,11 @@ export class SearchComponent {
   }
 
   deleteSelected(): void {
-    this.selectionService.deleteSelected().subscribe({
-      next: () => this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
-    });
+    this.selectionService.deleteSelected()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
+      });
   }
 
   clearSelection(): void {
@@ -482,6 +484,7 @@ export class SearchComponent {
             return next;
           });
         }),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: () => {
