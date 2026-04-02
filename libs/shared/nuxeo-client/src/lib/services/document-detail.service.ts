@@ -193,13 +193,6 @@ export class DocumentDetailService {
     );
   }
 
-  startWorkflow(uid: string, workflowModelName: string): Observable<unknown> {
-    return this.api.post<unknown>(
-      `/nuxeo/api/v1/id/${uid}/@workflow`,
-      { 'entity-type': 'workflow', workflowModelName, attachedDocumentIds: [uid] },
-    );
-  }
-
   getAvailableWorkflows(uid: string): Observable<{ entries: Array<{ workflowModelName: string; title: string }> }> {
     return this.api.get<{ entries: Array<{ workflowModelName: string; title: string }> }>(
       `/nuxeo/api/v1/id/${uid}/@workflow`,

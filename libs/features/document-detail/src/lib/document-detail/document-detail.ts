@@ -576,7 +576,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!model) return;
 
     this.startingWorkflow.set(true);
-    this.detailService.startWorkflow(this.docUid, model).subscribe({
+    this.workflowService.startWorkflow(this.docUid, model).subscribe({
       next: () => {
         this.startingWorkflow.set(false);
         this.closeStartProcess();
