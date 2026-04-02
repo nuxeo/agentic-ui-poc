@@ -243,9 +243,18 @@ export class NavDrawerComponent {
       next: (res) => {
         const aggregations = res.aggregations ?? this.computeAssetAggregationsFromEntries(res.entries ?? []);
         this.assetAggregationService.aggregations.set(aggregations);
+        this.assetAggregationService.items.set(
+          (res.entries ?? []).map((entry) => ({
+            id: entry.uid,
+            title: entry.title,
+            type: entry.type,
+            icon: docTypeIcon(entry.type),
+          })),
+        );
       },
       error: () => {
         this.assetAggregationService.aggregations.set({});
+        this.assetAggregationService.items.set([]);
       },
     });
   }

@@ -23,7 +23,7 @@ export { CURRENT_USERNAME } from './lib/current-user.token';
 // Services
 export { NuxeoApiBase } from './lib/services/nuxeo-api-base';
 export { AssetService } from './lib/services/asset.service';
-export { AssetAggregationService } from './lib/services/asset-aggregation.service';
+export { AssetAggregationService, type AssetQueueItem } from './lib/services/asset-aggregation.service';
 export { DocumentService } from './lib/services/document.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';

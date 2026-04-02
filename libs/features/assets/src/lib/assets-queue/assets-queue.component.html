@@ -1,0 +1,24 @@
+<div class="queue-list">
+  @if (items().length === 0) {
+    <div class="queue-empty">
+      <mat-icon>search_off</mat-icon>
+      <p>No asset results</p>
+    </div>
+  } @else {
+    @for (item of items(); track item.id) {
+      <button
+        type="button"
+        class="queue-item"
+        [class.active]="item.id === selectedItemId()"
+        (click)="onItemClick(item)"
+      >
+        <div class="queue-item-preview">
+          <mat-icon class="queue-item-icon">{{ item.icon || 'description' }}</mat-icon>
+        </div>
+        <div class="queue-item-content">
+          <h4 class="queue-item-title">{{ item.title }}</h4>
+        </div>
+      </button>
+    }
+  }
+</div>

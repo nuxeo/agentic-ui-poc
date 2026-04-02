@@ -255,6 +255,14 @@ export class AssetSearchResultsComponent {
           const mapped = result.entries.map(mapToAssetResult);
           const aggs = mergeComputedAggregations(result.entries, mapped, result.aggregations);
           this.aggregationService.aggregations.set(aggs);
+          this.aggregationService.items.set(
+            mapped.map((asset) => ({
+              id: asset.id,
+              title: asset.name,
+              type: asset.type,
+              icon: asset.icon,
+            })),
+          );
           return mapped;
         }),
         catchError(() => {
