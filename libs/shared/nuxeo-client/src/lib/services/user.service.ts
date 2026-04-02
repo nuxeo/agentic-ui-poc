@@ -1,6 +1,6 @@
 import { HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable, map, switchMap } from 'rxjs';
 
 import { NuxeoUser, NuxeoUserList, NuxeoGroup, NuxeoGroupList } from '../models/user.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
@@ -17,6 +17,23 @@ export class UserService {
       .pipe(map((res) => res.entries));
   }
 
+  /**
+   * User search with paging (used by Administration). Uses `*` when the query is empty
+   * so the server returns a broad list where supported.
+   */
+  searchUsersPaged(
+    query: string,
+    pageSize = 50,
+    currentPageIndex = 0,
+  ): Observable<NuxeoUserList> {
+    const q = query.trim() || '*';
+    const params = new HttpParams()
+      .set('q', q)
+      .set('pageSize', String(pageSize))
+      .set('currentPageIndex', String(currentPageIndex));
+    return this.api.get<NuxeoUserList>('/nuxeo/api/v1/user/search', params);
+  }
+
   /** Search groups by partial name (for participant picker). */
   searchGroups(query: string): Observable<NuxeoGroup[]> {
     const params = new HttpParams().set('q', query);
@@ -25,8 +42,120 @@ export class UserService {
       .pipe(map((res) => res.entries));
   }
 
+  searchGroupsPaged(
+    query: string,
+    pageSize = 50,
+    currentPageIndex = 0,
+  ): Observable<NuxeoGroupList> {
+    const q = query.trim() || '*';
+    const params = new HttpParams()
+      .set('q', q)
+      .set('pageSize', String(pageSize))
+      .set('currentPageIndex', String(currentPageIndex));
+    return this.api.get<NuxeoGroupList>('/nuxeo/api/v1/group/search', params);
+  }
+
   /** Get a specific user. */
   getUser(userId: string): Observable<NuxeoUser> {
-    return this.api.get<NuxeoUser>(`/nuxeo/api/v1/user/${userId}`);
+    return this.api.get<NuxeoUser>(`/nuxeo/api/v1/user/${encodeURIComponent(userId)}`);
+  }
+
+  getGroup(groupId: string): Observable<NuxeoGroup> {
+    return this.api.get<NuxeoGroup>(`/nuxeo/api/v1/group/${encodeURIComponent(groupId)}`);
+  }
+
+  createUser(input: {
+    username: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    groups?: string[];
+  }): Observable<NuxeoUser> {
+    return this.api.post<NuxeoUser>('/nuxeo/api/v1/user', {
+      'entity-type': 'user',
+      id: input.username,
+      properties: {
+        username: input.username,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        email: input.email,
+        password: input.password,
+        groups: input.groups ?? [],
+      },
+    });
+  }
+
+  updateUser(
+    userId: string,
+    updates: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      password?: string;
+      groups?: string[];
+    },
+  ): Observable<NuxeoUser> {
+    return this.getUser(userId).pipe(
+      switchMap((existing) => {
+        const props = { ...existing.properties };
+        if (updates.firstName !== undefined) props.firstName = updates.firstName;
+        if (updates.lastName !== undefined) props.lastName = updates.lastName;
+        if (updates.email !== undefined) props.email = updates.email;
+        if (updates.groups !== undefined) props.groups = updates.groups;
+        if (updates.password !== undefined && updates.password.length > 0) {
+          props.password = updates.password;
+        }
+        return this.api.put<NuxeoUser>(`/nuxeo/api/v1/user/${encodeURIComponent(userId)}`, {
+          'entity-type': 'user',
+          id: existing.id,
+          properties: props,
+        });
+      }),
+    );
+  }
+
+  deleteUser(userId: string): Observable<void> {
+    return this.api
+      .delete<unknown>(`/nuxeo/api/v1/user/${encodeURIComponent(userId)}`)
+      .pipe(map(() => undefined));
+  }
+
+  createGroup(input: {
+    groupname: string;
+    grouplabel: string;
+    memberUsers?: string[];
+    memberGroups?: string[];
+  }): Observable<NuxeoGroup> {
+    return this.api.post<NuxeoGroup>('/nuxeo/api/v1/group', {
+      'entity-type': 'group',
+      groupname: input.groupname,
+      grouplabel: input.grouplabel,
+      memberUsers: input.memberUsers ?? [],
+      memberGroups: input.memberGroups ?? [],
+    });
+  }
+
+  updateGroup(
+    groupname: string,
+    updates: { grouplabel?: string; memberUsers?: string[]; memberGroups?: string[] },
+  ): Observable<NuxeoGroup> {
+    return this.getGroup(groupname).pipe(
+      switchMap((existing) =>
+        this.api.put<NuxeoGroup>(`/nuxeo/api/v1/group/${encodeURIComponent(groupname)}`, {
+          'entity-type': 'group',
+          groupname: existing.groupname,
+          grouplabel: updates.grouplabel ?? existing.grouplabel,
+          memberUsers: updates.memberUsers ?? existing.memberUsers ?? [],
+          memberGroups: updates.memberGroups ?? existing.memberGroups ?? [],
+        }),
+      ),
+    );
+  }
+
+  deleteGroup(groupname: string): Observable<void> {
+    return this.api
+      .delete<unknown>(`/nuxeo/api/v1/group/${encodeURIComponent(groupname)}`)
+      .pipe(map(() => undefined));
   }
 }

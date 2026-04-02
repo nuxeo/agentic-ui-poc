@@ -22,4 +22,5 @@ export const PLATFORM_NAV_ITEMS: AppNavItem[] = [
   { label: 'Personal Space', path: '/personal-space', icon: 'grid_view', hasDrawer: true },
   { label: 'Clipboard', path: '/clipboard', icon: 'notepad', hasDrawer: true },
   { label: 'Trash', path: '/trash', icon: 'trash', hasDrawer: true },
+  { label: 'Administration', path: '/administration', icon: 'settings', hasDrawer: false },
 ];

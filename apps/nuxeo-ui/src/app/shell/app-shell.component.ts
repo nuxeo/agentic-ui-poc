@@ -46,7 +46,13 @@ export class AppShellComponent {
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
 
-  protected readonly navItems = PLATFORM_NAV_ITEMS;
+  /** Hides Administration for non-administrators. */
+  protected readonly navItems = computed(() => {
+    if (!this.auth.isAdministrator()) {
+      return PLATFORM_NAV_ITEMS.filter((i) => i.path !== '/administration');
+    }
+    return PLATFORM_NAV_ITEMS;
+  });
 
   readonly displayName = computed(() => this.auth.username() ?? 'User');
   readonly drawerOpen = signal(false);
@@ -58,6 +64,25 @@ export class AppShellComponent {
 
   readonly pageTitle = computed(() => {
     const url = this.currentUrl();
+    const parts = url.split('/').filter(Boolean);
+    if (parts[0] === 'administration') {
+      const seg = parts[1] ?? 'analytics';
+      if (seg === 'users-groups' && parts[2] === 'user' && parts[3]) {
+        return `User: ${parts[3]}`;
+      }
+      if (seg === 'users-groups' && parts[2] === 'group' && parts[3]) {
+        return `Group: ${parts[3]}`;
+      }
+      const titles: Record<string, string> = {
+        analytics: 'Analytics',
+        'users-groups': 'Users & Groups',
+        vocabularies: 'Vocabularies',
+        audit: 'Audit',
+        'cloud-services': 'Cloud Services',
+        'nxql-search': 'NXQL Search',
+      };
+      return titles[seg] ?? 'Administration';
+    }
     const match = PLATFORM_NAV_ITEMS.find(
       (item) => url === item.path || url.startsWith(item.path + '/'),
     );
@@ -73,6 +98,10 @@ export class AppShellComponent {
   constructor() {
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
+    }
+
+    if (this.auth.isAuthenticated()) {
+      this.auth.refreshCurrentUser().subscribe({ error: () => {} });
     }
 
     this.router.events

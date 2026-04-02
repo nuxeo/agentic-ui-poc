@@ -15,6 +15,11 @@ export type {
   NuxeoWorkflowModelList,
 } from './lib/models/workflow.model';
 export type { NuxeoUser, NuxeoUserList, NuxeoGroup, NuxeoGroupList } from './lib/models/user.model';
+export type {
+  PrincipalPermissionRow,
+  PrincipalPermissionPage,
+} from './lib/models/principal-permissions.model';
+export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 
 // Config
 export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
@@ -41,6 +46,11 @@ export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
 export { TagService } from './lib/services/tag.service';
+export {
+  AdministrationService,
+  FALLBACK_DIRECTORY_NAMES,
+} from './lib/services/administration.service';
+export { PrincipalPermissionsService } from './lib/services/principal-permissions.service';
 
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';

@@ -1,0 +1,96 @@
+<div class="audit-page">
+  <header class="audit-page__header">
+    <h1 class="audit-page__title">Audit</h1>
+    <button type="button" mat-icon-button aria-label="Settings (placeholder)">
+      <mat-icon>settings</mat-icon>
+    </button>
+  </header>
+
+  <div class="audit-filters mat-elevation-z0">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Filter by username</mat-label>
+      <input matInput [(ngModel)]="principalName" name="principalName" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>From</mat-label>
+      <input matInput [matDatepicker]="fromPicker" [(ngModel)]="fromDate" name="fromDate" />
+      <mat-datepicker-toggle matSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>To</mat-label>
+      <input matInput [matDatepicker]="toPicker" [(ngModel)]="toDate" name="toDate" />
+      <mat-datepicker-toggle matSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker />
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Performed actions</mat-label>
+      <mat-select [(ngModel)]="eventAction" name="eventAction">
+        <mat-option value="">All actions</mat-option>
+        @for (t of eventTypes(); track t.id) {
+          <mat-option [value]="t.id">{{ t.displayLabel || t.id }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline" subscriptSizing="dynamic">
+      <mat-label>Event category</mat-label>
+      <mat-select [(ngModel)]="eventCategory" name="eventCategory">
+        <mat-option value="">All categories</mat-option>
+        @for (c of eventCategories(); track c.id) {
+          <mat-option [value]="c.id">{{ c.displayLabel || c.id }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    <button type="button" mat-flat-button color="primary" (click)="applyFilters()">Apply</button>
+  </div>
+
+  @if (loading()) {
+    <div class="audit-center"><mat-spinner diameter="40" /></div>
+  } @else {
+    <p class="audit-meta">{{ totalSize() }} event(s)</p>
+    <div class="audit-table-wrap mat-elevation-z1">
+      <table mat-table [dataSource]="entries()" class="audit-table">
+        <ng-container matColumnDef="action">
+          <th mat-header-cell *matHeaderCellDef>Performed Action</th>
+          <td mat-cell *matCellDef="let e">{{ actionLabel(e) }}</td>
+        </ng-container>
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef>Date</th>
+          <td mat-cell *matCellDef="let e">{{ e.eventDate | date: 'medium' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="username">
+          <th mat-header-cell *matHeaderCellDef>Username</th>
+          <td mat-cell *matCellDef="let e">{{ e.principalName }}</td>
+        </ng-container>
+        <ng-container matColumnDef="category">
+          <th mat-header-cell *matHeaderCellDef>Category</th>
+          <td mat-cell *matCellDef="let e">{{ e.category }}</td>
+        </ng-container>
+        <ng-container matColumnDef="document">
+          <th mat-header-cell *matHeaderCellDef>Document</th>
+          <td mat-cell *matCellDef="let e">{{ e.docPath || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="comment">
+          <th mat-header-cell *matHeaderCellDef>Comment</th>
+          <td mat-cell *matCellDef="let e">{{ e.comment || '—' }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      </table>
+    </div>
+    <div class="audit-pager">
+      <button type="button" mat-button (click)="prevPage()" [disabled]="pageIndex() === 0">
+        Previous
+      </button>
+      <span>Page {{ pageIndex() + 1 }}</span>
+      <button
+        type="button"
+        mat-button
+        (click)="nextPage()"
+        [disabled]="(pageIndex() + 1) * 50 >= totalSize()"
+      >
+        Next
+      </button>
+    </div>
+  }
+</div>

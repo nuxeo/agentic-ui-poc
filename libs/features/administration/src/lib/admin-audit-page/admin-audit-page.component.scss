@@ -1,0 +1,81 @@
+.audit-page {
+  padding: var(--admin-space-4, 1.25rem) var(--admin-space-5, 1.5rem) 2rem;
+  max-width: 1200px;
+}
+
+.audit-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.audit-page__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.audit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-2, 0.75rem);
+  align-items: center;
+  margin-bottom: 1rem;
+
+  mat-form-field {
+    min-width: 160px;
+    flex: 1 1 160px;
+  }
+}
+
+.audit-meta {
+  font-size: 0.9rem;
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.65));
+}
+
+.audit-table-wrap {
+  overflow: auto;
+  max-height: 560px;
+  border-radius: var(--admin-radius-1, 8px);
+}
+
+.audit-table {
+  width: 100%;
+  font-size: 0.875rem;
+
+  th.mat-mdc-header-cell,
+  td.mat-mdc-cell {
+    padding-top: var(--admin-row-padding-y, 0.68rem);
+    padding-bottom: var(--admin-row-padding-y, 0.68rem);
+  }
+}
+
+.audit-center {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.audit-pager {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.audit-page .mat-mdc-form-field {
+  --mat-form-field-container-height: var(--admin-control-height, 40px);
+}
+
+.audit-page .mat-mdc-unelevated-button,
+.audit-page .mat-mdc-outlined-button,
+.audit-page .mat-mdc-button {
+  min-height: var(--admin-control-height, 40px);
+}
+
+@media (max-width: 900px) {
+  .audit-page {
+    padding: 1rem;
+  }
+}

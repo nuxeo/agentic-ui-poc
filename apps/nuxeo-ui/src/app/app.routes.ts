@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { adminGuard } from './auth/admin.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
 
 const placeholder = () =>
@@ -74,6 +75,12 @@ export const routes: Routes = [
       {
         path: 'trash',
         loadComponent: placeholder,
+      },
+      {
+        path: 'administration',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('@agentic-ui/feature-administration').then((m) => m.administrationRoutes),
       },
     ],
   },
