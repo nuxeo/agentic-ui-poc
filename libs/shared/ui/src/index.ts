@@ -6,3 +6,4 @@ export { ShareDialogComponent, type ShareDialogData } from './lib/share-dialog/s
 export { DocumentViewerComponent } from './lib/document-viewer/document-viewer.component';
 export { SearchFiltersDrawerComponent } from '@agentic-ui/feature-search';
 export { AssetsDrawerComponent } from '@agentic-ui/feature-assets';
+export { ExportDialogComponent, type ExportDialogData, type ExportType } from './lib/export-dialog/export-dialog.component';

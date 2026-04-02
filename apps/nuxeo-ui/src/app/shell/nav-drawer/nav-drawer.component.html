@@ -1,6 +1,26 @@
 @if (activeItem(); as item) {
   <div class="drawer-header">
     <h2 class="drawer-title">{{ item.label }}</h2>
+    @if (isTasksPanel) {
+      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
+    @if (isRecentlyViewed) {
+      <button
+        mat-icon-button
+        (click)="refreshRecentlyViewed()"
+        matTooltip="Refresh"
+        class="refresh-btn"
+      >
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
+    @if (isExpiredQueue) {
+      <button mat-icon-button (click)="refreshExpired()" matTooltip="Refresh" class="refresh-btn">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
   </div>
 
   @if (isBrowse) {
@@ -19,6 +39,78 @@
         </div>
       }
     </div>
+  } @else if (isRecentlyViewed) {
+    <!-- Recently Viewed panel -->
+    @if (recentlyViewedLoading()) {
+      <div class="tree-loading">
+        <mat-spinner diameter="24" />
+      </div>
+    } @else if (recentlyViewedError()) {
+      <div class="tree-empty error">{{ recentlyViewedError() }}</div>
+    } @else if (recentlyViewed().length === 0) {
+      <div class="tree-empty">
+        <mat-icon class="empty-icon">visibility_off</mat-icon>
+        <span>No recently viewed documents</span>
+      </div>
+    } @else {
+      <div class="rv-list">
+        @for (doc of recentlyViewed(); track doc.uid) {
+          <button class="rv-card" (click)="openRecentlyViewedDoc(doc)" type="button">
+            <div class="rv-thumb">
+              @if (thumbnailMap()[doc.uid]; as thumbUrl) {
+                <img [src]="thumbUrl" alt="" class="rv-thumb-img" />
+              } @else {
+                <mat-icon class="rv-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+              }
+            </div>
+            <div class="rv-info">
+              <span class="rv-title" [title]="doc.path">{{ doc.title }}</span>
+              <div class="rv-meta">
+                <span class="rv-type">{{ doc.type }}</span>
+                <span class="rv-sep">&middot;</span>
+                <span class="rv-time">{{ relativeTime(doc.lastModified) }}</span>
+              </div>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  } @else if (isExpiredQueue) {
+    @if (expiredLoading()) {
+      <div class="tree-loading">
+        <mat-spinner diameter="24" />
+      </div>
+    } @else if (expiredError()) {
+      <div class="tree-empty error">{{ expiredError() }}</div>
+    } @else if (expiredDocs().length === 0) {
+      <div class="tree-empty">
+        <mat-icon class="empty-icon">timer_off</mat-icon>
+        <span>No expired documents</span>
+      </div>
+    } @else {
+      <div class="expired-list">
+        @for (doc of expiredDocs(); track doc.uid) {
+          <button class="expired-card" (click)="openExpiredDoc(doc)" type="button">
+            <div class="expired-thumb">
+              @if (thumbnailMap()[doc.uid]; as thumbUrl) {
+                <img [src]="thumbUrl" alt="" class="expired-thumb-img" />
+              } @else {
+                <mat-icon class="expired-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+              }
+            </div>
+            <div class="expired-info">
+              <span class="expired-title" [title]="doc.path">{{ doc.title }}</span>
+              <div class="expired-meta">
+                <span class="expired-type">{{ doc.type }}</span>
+                <span class="expired-sep">&middot;</span>
+                <span class="expired-date">Expired {{ expiredDate(doc) }}</span>
+              </div>
+            </div>
+            <mat-icon class="expired-warning-icon">warning</mat-icon>
+          </button>
+        }
+      </div>
+    }
   } @else if (isCollections) {
     <div class="collections-panel">
       @if (collectionsLoading()) {
@@ -31,10 +123,18 @@
         <div class="collections-list">
           @for (col of collections(); track col.uid) {
             <button class="collection-card" (click)="openCollection(col)" type="button">
-              <mat-icon class="collection-card-icon">collections_bookmark</mat-icon>
+              @if (thumbnailMap()[col.uid]; as thumb) {
+                <img [src]="thumb" alt="" class="collection-thumb" />
+              } @else {
+                <div class="collection-thumb-placeholder">
+                  <mat-icon>collections_bookmark</mat-icon>
+                </div>
+              }
               <div class="collection-card-body">
                 <span class="collection-card-title">{{ col.title }}</span>
-                <span class="collection-card-date">Last Modified {{ col.lastModified | date:'mediumDate' }}</span>
+                <span class="collection-card-date"
+                  >Last Modified {{ col.lastModified | date: 'mediumDate' }}</span
+                >
                 <span class="collection-card-owner">
                   <span class="owner-avatar">{{ collectionOwnerInitial(col) }}</span>
                   {{ collectionOwner(col) }}
@@ -53,6 +153,123 @@
     <app-dynamic-drawer
       [drawerComponent]="searchFiltersDrawerComponent()"
     />
+  } @else if (isTasksPanel) {
+    @if (tasksLoading()) {
+      <div class="tree-loading">
+        <mat-spinner diameter="24" />
+      </div>
+    } @else if (tasksError()) {
+      <div class="tree-empty error">
+        <span>{{ tasksError() }}</span>
+        <button mat-stroked-button (click)="loadTasks()">Retry</button>
+      </div>
+    } @else if (tasks().length === 0) {
+      <div class="tree-empty">
+        <mat-icon class="empty-icon">task_alt</mat-icon>
+        <span>No pending tasks</span>
+      </div>
+    } @else {
+      <div class="task-list">
+        @for (task of tasks(); track task.id) {
+          <div class="task-item" (click)="selectTask(task)">
+            <mat-icon class="task-icon">assignment_turned_in</mat-icon>
+            <div class="task-body">
+              <div class="task-name">{{ taskLabel(task) }}</div>
+              @if (task.targetDocTitle) {
+                <div class="task-doc">{{ task.targetDocTitle }}</div>
+              }
+              <div class="task-due" [class.overdue]="isOverdue(task)">{{ dueLabel(task) }}</div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  } @else if (isFavorites) {
+    <div class="favorites-panel">
+      @if (favoritesLoading()) {
+        <div class="tree-loading">
+          <mat-spinner diameter="24" />
+        </div>
+      } @else if (favorites().length === 0) {
+        <div class="tree-empty">
+          <mat-icon class="clipboard-empty-icon">star_border</mat-icon>
+          <p>No favorites yet</p>
+          <span class="clipboard-hint"
+            >Use the star icon on documents to add them to your favorites.</span
+          >
+        </div>
+      } @else {
+        <div class="favorites-list">
+          @for (doc of favorites(); track doc.uid) {
+            <div class="favorite-card">
+              <button class="favorite-card-main" (click)="openFavoriteDoc(doc)" type="button">
+                @if (thumbnailMap()[doc.uid]; as thumb) {
+                  <img [src]="thumb" alt="" class="favorite-thumb" />
+                } @else {
+                  <div class="favorite-thumb-placeholder">
+                    <mat-icon>insert_drive_file</mat-icon>
+                  </div>
+                }
+                <span class="favorite-card-title">{{ doc.title }}</span>
+              </button>
+              <button
+                mat-icon-button
+                class="favorite-card-remove"
+                matTooltip="Remove from favorites"
+                aria-label="Remove from favorites"
+                (click)="removeFromFavorites(doc)"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else if (isClipboard) {
+    <div class="clipboard-panel">
+      @if (clipboardEmpty()) {
+        <div class="tree-empty">
+          <mat-icon class="clipboard-empty-icon">content_paste</mat-icon>
+          <p>Clipboard is empty</p>
+          <span class="clipboard-hint"
+            >Use "Add to Clipboard" on documents or collections to add items here.</span
+          >
+        </div>
+      } @else {
+        <div class="clipboard-actions-bar">
+          <span class="clipboard-count">{{ clipboardDocs().length }} item(s)</span>
+          <button mat-button color="warn" class="clipboard-clear-btn" (click)="clearClipboard()">
+            <mat-icon>delete_sweep</mat-icon> Clear All
+          </button>
+        </div>
+        <div class="clipboard-list">
+          @for (doc of clipboardDocs(); track doc.uid) {
+            <div class="clipboard-card">
+              <button class="clipboard-card-main" (click)="openClipboardDoc(doc)" type="button">
+                @if (thumbnailMap()[doc.uid]; as thumb) {
+                  <img [src]="thumb" alt="" class="clipboard-thumb" />
+                } @else {
+                  <div class="clipboard-thumb-placeholder">
+                    <mat-icon>description</mat-icon>
+                  </div>
+                }
+                <span class="clipboard-card-title">{{ doc.title }}</span>
+              </button>
+              <button
+                mat-icon-button
+                class="clipboard-card-remove"
+                matTooltip="Remove from clipboard"
+                aria-label="Remove from clipboard"
+                (click)="removeFromClipboard(doc)"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
   } @else {
     <div class="drawer-empty">
       <p>Content for "{{ item.label }}" will appear here.</p>
@@ -85,7 +302,9 @@
 
   @if (node.expanded && node.children.length > 0) {
     @for (child of node.children; track child.doc.uid) {
-      <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: child, depth: depth + 1 }" />
+      <ng-container
+        *ngTemplateOutlet="folderTpl; context: { $implicit: child, depth: depth + 1 }"
+      />
     }
   }
 </ng-template>

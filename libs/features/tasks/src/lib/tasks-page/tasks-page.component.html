@@ -1,0 +1,536 @@
+<div class="tasks-page">
+  <!-- ═══ LEFT: Task List Drawer ═══ -->
+  <aside class="task-drawer">
+    <div class="drawer-header">
+      <h2><mat-icon class="drawer-icon">assignment</mat-icon> Tasks</h2>
+      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh">
+        <mat-icon>refresh</mat-icon>
+      </button>
+    </div>
+
+    @if (listLoading()) {
+      <div class="drawer-status"><mat-spinner diameter="28" /></div>
+    } @else if (listError()) {
+      <div class="drawer-status error">
+        <span>{{ listError() }}</span>
+        <button mat-stroked-button (click)="loadTasks()">Retry</button>
+      </div>
+    } @else if (tasks().length === 0) {
+      <div class="drawer-status">
+        <mat-icon class="empty-icon">task_alt</mat-icon>
+        <span>No pending tasks</span>
+      </div>
+    } @else {
+      <div class="task-items">
+        @for (task of tasks(); track task.id) {
+          <button
+            type="button"
+            class="task-item"
+            [class.active]="isSelected(task)"
+            (click)="selectTask(task)"
+          >
+            <mat-icon class="task-item-icon">assignment_turned_in</mat-icon>
+            <div class="task-item-body">
+              <div class="task-item-name">{{ taskLabel(task) }}</div>
+              @if (task.targetDocTitle) {
+                <div class="task-item-doc">{{ task.targetDocTitle }}</div>
+              }
+              <div class="task-item-meta">
+                <span class="wf-badge">{{ taskWorkflow(task) }}</span>
+                <span class="due-text" [class.overdue]="isOverdue(task)">{{ dueLabel(task) }}</span>
+              </div>
+            </div>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Bottom link -->
+    <div class="drawer-footer">
+      <a class="view-dashboard-link" routerLink="/dashboard">View Tasks Dashboard</a>
+    </div>
+  </aside>
+
+  <!-- ═══ MIDDLE + RIGHT: Task Form + Document Preview ═══ -->
+  <main class="detail-area">
+    @if (!hasSelection()) {
+      <div class="empty-detail">
+        <mat-icon>assignment</mat-icon>
+        <p>Select a task from the list</p>
+      </div>
+    } @else if (taskLoading()) {
+      <div class="loading-detail"><mat-spinner diameter="36" /><span>Loading…</span></div>
+    } @else {
+      <!-- Document Header Bar (title + breadcrumb) — spans full width -->
+      <div class="doc-header-bar">
+        <div class="doc-header-top">
+          <mat-icon class="doc-header-type-icon">description</mat-icon>
+          <div class="doc-header-titles">
+            @if (targetDoc()) {
+              <h1 class="doc-main-title">{{ targetDoc()!.title }}</h1>
+              <div class="doc-breadcrumb">
+                @for (seg of breadcrumbs(); track seg; let last = $last) {
+                  <span class="breadcrumb-seg">{{ seg }}</span>
+                  @if (!last) {
+                    <span class="breadcrumb-sep">&gt;</span>
+                  }
+                }
+              </div>
+            } @else {
+              <h1 class="doc-main-title">{{ selectedTask()!.targetDocTitle || 'Document' }}</h1>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- Two-panel split: Task Form (left) + Document Preview (right) -->
+      <div class="task-content-area">
+        <!-- ─── Task Form Panel (middle column) ─── -->
+        <section class="task-form-panel">
+          <div class="task-form-scroll">
+            <!-- Task title + Delegate / Reassign links -->
+            <div class="task-form-header">
+              <h3 class="task-form-title">{{ taskDirective(selectedTask()!) }}</h3>
+              <div class="task-header-actions">
+                <button type="button" class="delegate-link" (click)="openDelegatePanel()">
+                  Delegate
+                </button>
+                <button type="button" class="reassign-link" (click)="openReassignPanel()">
+                  Reassign
+                </button>
+              </div>
+            </div>
+
+            <!-- View Graph link -->
+            <button type="button" class="view-graph-link" (click)="openGraphPanel()">
+              View Graph
+            </button>
+
+            <!-- ═══ Delegate Panel (inline) ═══ -->
+            @if (showDelegatePanel()) {
+              <div class="action-panel delegate-panel">
+                <div class="action-panel-header">
+                  <h4>Delegate Task</h4>
+                  <button mat-icon-button (click)="closeDelegatePanel()" matTooltip="Close">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+                <p class="action-panel-hint">
+                  Add users or groups to delegate this task to. The original assignees will keep the
+                  task.
+                </p>
+
+                <div class="action-panel-chips">
+                  @for (actor of delegateActors; track actor) {
+                    <span class="participant-chip">
+                      <mat-icon class="chip-type-icon">{{
+                        actor.startsWith('group:') ? 'group' : 'person'
+                      }}</mat-icon>
+                      {{ formatParticipant(actor) }}
+                      <button class="chip-x" (click)="removeDelegateActor(actor)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </span>
+                  }
+                </div>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Search users or groups</mat-label>
+                  <input
+                    matInput
+                    [(ngModel)]="delegateInput"
+                    (input)="searchDelegateUsers()"
+                    placeholder="Type to search…"
+                  />
+                </mat-form-field>
+
+                @if (delegateUserResults().length > 0 || delegateGroupResults().length > 0) {
+                  <div class="search-dropdown">
+                    @for (user of delegateUserResults(); track user.id) {
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        (click)="addDelegateActor('user:' + user.id)"
+                      >
+                        <mat-icon>person</mat-icon>
+                        <span>{{ user.properties.firstName }} {{ user.properties.lastName }}</span>
+                        <span class="dropdown-id">{{ user.id }}</span>
+                      </button>
+                    }
+                    @for (group of delegateGroupResults(); track group.groupname) {
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        (click)="addDelegateActor('group:' + group.groupname)"
+                      >
+                        <mat-icon>group</mat-icon>
+                        <span>{{ group.grouplabel || group.groupname }}</span>
+                        <span class="dropdown-id">{{ group.groupname }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Comment (optional)</mat-label>
+                  <textarea matInput [(ngModel)]="delegateComment" rows="3"></textarea>
+                </mat-form-field>
+
+                <div class="action-panel-buttons">
+                  <button class="nuxeo-action-btn outline" (click)="closeDelegatePanel()">
+                    Cancel
+                  </button>
+                  <button
+                    class="nuxeo-action-btn primary"
+                    [disabled]="delegateActors.length === 0 || submitting()"
+                    (click)="confirmDelegate()"
+                  >
+                    Delegate
+                  </button>
+                </div>
+              </div>
+            }
+
+            <!-- ═══ Reassign Panel (inline) ═══ -->
+            @if (showReassignPanel()) {
+              <div class="action-panel reassign-panel">
+                <div class="action-panel-header">
+                  <h4>Reassign Task</h4>
+                  <button mat-icon-button (click)="closeReassignPanel()" matTooltip="Close">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+                <p class="action-panel-hint">
+                  Select new assignees. The current assignees will be removed from this task.
+                </p>
+
+                <div class="action-panel-chips">
+                  @for (actor of reassignActors; track actor) {
+                    <span class="participant-chip">
+                      <mat-icon class="chip-type-icon">{{
+                        actor.startsWith('group:') ? 'group' : 'person'
+                      }}</mat-icon>
+                      {{ formatParticipant(actor) }}
+                      <button class="chip-x" (click)="removeReassignActor(actor)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </span>
+                  }
+                </div>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Search users or groups</mat-label>
+                  <input
+                    matInput
+                    [(ngModel)]="reassignInput"
+                    (input)="searchReassignUsers()"
+                    placeholder="Type to search…"
+                  />
+                </mat-form-field>
+
+                @if (reassignUserResults().length > 0 || reassignGroupResults().length > 0) {
+                  <div class="search-dropdown">
+                    @for (user of reassignUserResults(); track user.id) {
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        (click)="addReassignActor('user:' + user.id)"
+                      >
+                        <mat-icon>person</mat-icon>
+                        <span>{{ user.properties.firstName }} {{ user.properties.lastName }}</span>
+                        <span class="dropdown-id">{{ user.id }}</span>
+                      </button>
+                    }
+                    @for (group of reassignGroupResults(); track group.groupname) {
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        (click)="addReassignActor('group:' + group.groupname)"
+                      >
+                        <mat-icon>group</mat-icon>
+                        <span>{{ group.grouplabel || group.groupname }}</span>
+                        <span class="dropdown-id">{{ group.groupname }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Comment (optional)</mat-label>
+                  <textarea matInput [(ngModel)]="reassignComment" rows="3"></textarea>
+                </mat-form-field>
+
+                <div class="action-panel-buttons">
+                  <button class="nuxeo-action-btn outline" (click)="closeReassignPanel()">
+                    Cancel
+                  </button>
+                  <button
+                    class="nuxeo-action-btn primary"
+                    [disabled]="reassignActors.length === 0 || submitting()"
+                    (click)="confirmReassign()"
+                  >
+                    Reassign
+                  </button>
+                </div>
+              </div>
+            }
+
+            <!-- ═══ Graph Panel (inline) ═══ -->
+            @if (showGraphPanel()) {
+              <div class="action-panel graph-panel">
+                <div class="action-panel-header">
+                  <h4>Workflow Graph</h4>
+                  <button mat-icon-button (click)="closeGraphPanel()" matTooltip="Close">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                </div>
+
+                @if (graphLoading()) {
+                  <div class="graph-loading"><mat-spinner diameter="24" /></div>
+                } @else if (graphNodes().length > 0) {
+                  <div class="graph-nodes">
+                    @for (node of graphNodes(); track node.id; let i = $index; let last = $last) {
+                      <div
+                        class="graph-node"
+                        [class.current]="node.isCurrent"
+                        [class.done]="node.state === 'done'"
+                      >
+                        <div class="graph-node-marker">
+                          @if (node.state === 'done') {
+                            <mat-icon class="node-icon done">check_circle</mat-icon>
+                          } @else if (node.isCurrent) {
+                            <mat-icon class="node-icon current">radio_button_checked</mat-icon>
+                          } @else {
+                            <mat-icon class="node-icon pending">radio_button_unchecked</mat-icon>
+                          }
+                        </div>
+                        <span class="graph-node-title">{{ node.title }}</span>
+                      </div>
+                      @if (!last) {
+                        <div class="graph-connector"></div>
+                      }
+                    }
+                  </div>
+                } @else {
+                  <div class="graph-empty">
+                    <mat-icon>account_tree</mat-icon>
+                    <span>No graph data available</span>
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Actors in this task -->
+            <div class="task-form-section">
+              <span class="section-label">Actors in this task:</span>
+              <div class="actor-chips">
+                @for (actor of taskActors(); track actor) {
+                  <span class="actor-chip">
+                    <span class="actor-avatar">{{ actor.charAt(0).toUpperCase() }}</span>
+                    <span class="actor-name">{{ actor }}</span>
+                  </span>
+                }
+              </div>
+            </div>
+
+            <!-- Delegated actors (if any) -->
+            @if (delegatedActorsList.length > 0) {
+              <div class="task-form-section">
+                <span class="section-label">Delegated to:</span>
+                <div class="actor-chips">
+                  @for (actor of delegatedActorsList; track actor) {
+                    <span class="actor-chip delegated">
+                      <span class="actor-avatar delegated">{{
+                        actor.replace('user:', '').replace('group:', '').charAt(0).toUpperCase()
+                      }}</span>
+                      <span class="actor-name">{{ formatParticipant(actor) }}</span>
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Due date display -->
+            <div class="task-form-section">
+              <span class="section-label">Due</span>
+              <span class="due-value" [class.overdue]="isOverdue(selectedTask()!)">
+                {{ dueLabel(selectedTask()!) }}
+              </span>
+            </div>
+
+            @if (isChooseParticipants) {
+              <!-- Participants field -->
+              <div class="task-form-section">
+                <span class="section-label required">Participants</span>
+
+                <div class="participant-chips">
+                  @for (p of participants; track p) {
+                    <span class="participant-chip">
+                      <mat-icon class="chip-type-icon">{{
+                        p.startsWith('group:') ? 'group' : 'person'
+                      }}</mat-icon>
+                      {{ formatParticipant(p) }}
+                      <button class="chip-x" (click)="removeParticipant(p)">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </span>
+                  }
+                </div>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Search users or groups</mat-label>
+                  <input
+                    matInput
+                    [(ngModel)]="participantInput"
+                    (input)="searchUsers()"
+                    placeholder="Type to search…"
+                  />
+                  @if (searching()) {
+                    <mat-icon matSuffix>hourglass_empty</mat-icon>
+                  }
+                </mat-form-field>
+
+                @if (userResults().length > 0 || groupResults().length > 0) {
+                  <div class="search-dropdown">
+                    @for (user of userResults(); track user.id) {
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        (click)="addParticipant('user:' + user.id)"
+                      >
+                        <mat-icon>person</mat-icon>
+                        <span>{{ user.properties.firstName }} {{ user.properties.lastName }}</span>
+                        <span class="dropdown-id">{{ user.id }}</span>
+                      </button>
+                    }
+                    @for (group of groupResults(); track group.groupname) {
+                      <button
+                        type="button"
+                        class="dropdown-item"
+                        (click)="addParticipant('group:' + group.groupname)"
+                      >
+                        <mat-icon>group</mat-icon>
+                        <span>{{ group.grouplabel || group.groupname }}</span>
+                        <span class="dropdown-id">{{ group.groupname }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Review Type -->
+              <div class="task-form-section">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Review Type</mat-label>
+                  <mat-select [(ngModel)]="validationOrReview">
+                    <mat-option value="simpleReview">Simple Review</mat-option>
+                    <mat-option value="validation">Validation</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            }
+
+            <!-- Comment -->
+            <div class="task-form-section">
+              <label class="section-label" for="tasks-page-comment-input">Comment</label>
+              <mat-form-field appearance="outline" class="full-width">
+                <input
+                  id="tasks-page-comment-input"
+                  matInput
+                  [(ngModel)]="comment"
+                  placeholder=""
+                />
+              </mat-form-field>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="task-form-actions">
+              @for (action of actions; track action.name) {
+                <button
+                  class="nuxeo-action-btn"
+                  [class.primary]="actionColor(action) === 'primary'"
+                  [class.warn]="actionColor(action) === 'warn'"
+                  [disabled]="submitting()"
+                  (click)="executeAction(action)"
+                >
+                  {{ actionLabel(action) }}
+                </button>
+              }
+              @if (submitting()) {
+                <mat-spinner diameter="20" />
+              }
+            </div>
+
+            <!-- Abandon workflow button -->
+            @if (selectedTask()?.workflowInstanceId) {
+              <div class="task-form-section abandon-section">
+                <mat-divider />
+                <button
+                  class="nuxeo-action-btn outline warn-outline"
+                  [disabled]="submitting()"
+                  (click)="abandonWorkflow()"
+                >
+                  <mat-icon>cancel</mat-icon> Abandon Workflow
+                </button>
+              </div>
+            }
+
+            <!-- Task comments history -->
+            @if (taskComments.length > 0) {
+              <div class="task-form-section comments-section">
+                <mat-divider />
+                <span class="section-label">Comments</span>
+                <div class="comments-list">
+                  @for (c of taskComments; track $index) {
+                    <div class="comment-item">
+                      <div class="comment-header">
+                        @if (c.author) {
+                          <span class="comment-author">
+                            <span class="actor-avatar small">{{
+                              c.author.charAt(0).toUpperCase()
+                            }}</span>
+                            {{ c.author }}
+                          </span>
+                        }
+                        @if (c.date) {
+                          <span class="comment-date">{{ c.date }}</span>
+                        }
+                      </div>
+                      <p class="comment-text">{{ c.text }}</p>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Collapse handle -->
+          <div class="panel-collapse-handle">
+            <button mat-icon-button matTooltip="Collapse">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+          </div>
+        </section>
+
+        <!-- ─── Document Preview Panel (right column) ─── -->
+        <section class="doc-preview-panel">
+          @if (targetDoc()) {
+            <lib-document-viewer
+              [blobUrl]="previewUrl()"
+              [mimeType]="mimeType()"
+              [fileName]="fileName()"
+              [fileSize]="fileSize()"
+              [loading]="docLoading()"
+              (downloadClicked)="download()"
+            />
+          } @else {
+            <div class="preview-placeholder">
+              <mat-icon>insert_drive_file</mat-icon>
+              <span>{{ docLoading() ? 'Loading...' : 'No document' }}</span>
+            </div>
+          }
+        </section>
+      </div>
+    }
+  </main>
+</div>

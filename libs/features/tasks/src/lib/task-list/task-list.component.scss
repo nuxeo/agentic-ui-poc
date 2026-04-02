@@ -1,0 +1,161 @@
+:host {
+  display: block;
+  padding: 1.5rem;
+}
+
+.task-list-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+}
+
+.task-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: #666;
+}
+
+.task-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: #d32f2f;
+  background: #fbe9e7;
+  border-radius: 8px;
+
+  mat-icon {
+    font-size: 20px;
+  }
+}
+
+.task-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #999;
+  text-align: center;
+
+  .task-empty-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+    color: #ccc;
+  }
+
+  p {
+    margin: 0;
+    font-size: 1rem;
+  }
+}
+
+.task-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.task-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+
+  &:hover {
+    border-color: #90caf9;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #90caf9;
+    outline-offset: 2px;
+  }
+}
+
+.task-card-left {
+  .task-type-icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #5c6bc0;
+  }
+}
+
+.task-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.task-card-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: #212121;
+  margin-bottom: 0.25rem;
+}
+
+.task-card-doc {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.task-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.task-workflow-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: #e8eaf6;
+  color: #3f51b5;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.task-due {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: #666;
+
+  &.overdue {
+    color: #d32f2f;
+    font-weight: 500;
+  }
+}
+
+.inline-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.task-card-action {
+  flex-shrink: 0;
+}

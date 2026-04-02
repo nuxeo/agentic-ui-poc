@@ -178,6 +178,15 @@
   flex-shrink: 0;
 }
 
+.doc-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #e8e8e8;
+}
+
 .folder-icon {
   color: #ffa726;
 }

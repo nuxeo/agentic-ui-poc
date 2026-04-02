@@ -2,7 +2,7 @@ import { Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 @Component({
-  selector: 'ui-widget-container',
+  selector: 'lib-widget-container',
   standalone: true,
   imports: [MatIconModule],
   templateUrl: './widget-container.component.html',

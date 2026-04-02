@@ -15,6 +15,7 @@ import {
 import { SelectionService } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
+import { CollectionService } from '@agentic-ui/shared/nuxeo-client';
 import { AppNavItem, PLATFORM_NAV_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 
@@ -39,12 +40,15 @@ export class AppShellComponent {
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
   readonly selectionService = inject(SelectionService);
+  private readonly collectionService = inject(CollectionService);
 
   protected readonly navItems = PLATFORM_NAV_ITEMS;
 
   readonly displayName = computed(() => this.auth.username() ?? 'User');
   readonly drawerOpen = signal(false);
   readonly activeDrawerItem = signal<AppNavItem | null>(null);
+  readonly clipboardCount = signal(this.readClipboardCount());
+  readonly favoritesCount = signal(0);
 
   private readonly currentUrl = signal(this.router.url.split('?')[0]);
 
@@ -55,6 +59,12 @@ export class AppShellComponent {
     );
     return match?.label ?? 'Hyland Nuxeo';
   });
+
+  private storageListener = (e: StorageEvent) => {
+    if (e.key === 'nuxeo_clipboard') {
+      this.clipboardCount.set(this.readClipboardCount());
+    }
+  };
 
   constructor() {
     if (!this.platformNavState.collapsed()) {
@@ -67,20 +77,37 @@ export class AppShellComponent {
         takeUntilDestroyed(),
       )
       .subscribe((e) => {
-        const nextUrl = e.urlAfterRedirects.split('?')[0];
-        if (nextUrl !== this.currentUrl()) {
-          this.selectionService.clear();
-        }
-        this.currentUrl.set(nextUrl);
+        this.currentUrl.set(e.urlAfterRedirects.split('?')[0]);
+        this.refreshClipboardCount();
       });
+
+    window.addEventListener('storage', this.storageListener);
+    window.addEventListener('clipboard-changed', () => this.refreshClipboardCount());
+    window.addEventListener('favorites-changed', () => this.refreshFavoritesCount());
+    this.refreshFavoritesCount();
+  }
+
+  private readClipboardCount(): number {
+    try {
+      const items = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
+      return Array.isArray(items) ? items.length : 0;
+    } catch {
+      return 0;
+    }
   }
 
   isActive(path: string): boolean {
+    const activeDrawer = this.activeDrawerItem();
+    if (activeDrawer && this.drawerOpen()) {
+      return activeDrawer.path === path;
+    }
     const url = this.router.url.split('?')[0];
     return url === path || url.startsWith(path + '/');
   }
 
   onNavClick(item: AppNavItem, event: Event): void {
+    this.refreshClipboardCount();
+
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
     }
@@ -116,6 +143,20 @@ export class AppShellComponent {
   onDrawerClose(): void {
     this.drawerOpen.set(false);
     this.activeDrawerItem.set(null);
+    this.refreshClipboardCount();
+  }
+
+  refreshClipboardCount(): void {
+    this.clipboardCount.set(this.readClipboardCount());
+  }
+
+  refreshFavoritesCount(): void {
+    const user = this.auth.username();
+    if (!user) return;
+    this.collectionService.getFavorites(user, 1).subscribe({
+      next: (res) => this.favoritesCount.set(res.totalSize ?? res.entries?.length ?? 0),
+      error: () => {},
+    });
   }
 
   togglePlatformNav(): void {

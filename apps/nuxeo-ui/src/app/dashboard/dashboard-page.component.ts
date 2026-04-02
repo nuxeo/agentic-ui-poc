@@ -1,33 +1,22 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import {
-  WidgetContainerComponent,
-  WidgetGridComponent,
-} from '@agentic-ui/shared/ui';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { catchError, of } from 'rxjs';
+import { WidgetContainerComponent, WidgetGridComponent } from '@agentic-ui/shared/ui';
 
 import {
   NuxeoDocument,
   NuxeoTask,
   DocumentService,
+  DocumentDetailService,
   TaskService,
   CollectionService,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
-
-const DOC_TYPE_ICONS: Record<string, string> = {
-  File: 'description',
-  Note: 'sticky_note_2',
-  Picture: 'image',
-  Video: 'videocam',
-  Audio: 'audiotrack',
-  Folder: 'folder',
-  Workspace: 'workspaces',
-  Domain: 'public',
-  Collection: 'collections_bookmark',
-  Section: 'library_books',
-};
 
 @Component({
   selector: 'app-dashboard-page',
@@ -43,10 +32,15 @@ const DOC_TYPE_ICONS: Record<string, string> = {
   styleUrl: './dashboard-page.component.scss',
 })
 export class DashboardPageComponent {
+  private readonly router = inject(Router);
   private readonly docService = inject(DocumentService);
   private readonly taskService = inject(TaskService);
   private readonly collectionService = inject(CollectionService);
+  private readonly detailService = inject(DocumentDetailService);
   private readonly auth = inject(AuthService);
+  private readonly sanitizer = inject(DomSanitizer);
+
+  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
   readonly recentlyEdited = signal<NuxeoDocument[]>([]);
   readonly recentlyEditedLoading = signal(true);
@@ -71,6 +65,7 @@ export class DashboardPageComponent {
       next: (res) => {
         this.recentlyEdited.set(res.entries);
         this.recentlyEditedLoading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.recentlyEditedError.set('Failed to load recently edited documents.');
@@ -93,6 +88,7 @@ export class DashboardPageComponent {
       next: (res) => {
         this.recentlyViewed.set(res.entries);
         this.recentlyViewedLoading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.recentlyViewedError.set('Failed to load recently viewed documents.');
@@ -104,6 +100,7 @@ export class DashboardPageComponent {
       next: (res) => {
         this.favorites.set(res.entries);
         this.favoritesLoading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.favoritesError.set('Failed to load favorite items.');
@@ -112,8 +109,12 @@ export class DashboardPageComponent {
     });
   }
 
+  navigateToDoc(doc: NuxeoDocument): void {
+    void this.router.navigate(['/doc', doc.uid]);
+  }
+
   docIcon(doc: NuxeoDocument): string {
-    return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
+    return docTypeIcon(doc.type);
   }
 
   docTypeLabel(doc: NuxeoDocument): string {
@@ -125,9 +126,7 @@ export class DashboardPageComponent {
   }
 
   taskLabel(task: NuxeoTask): string {
-    const key = task.name
-      .replace(/^wf\.\w+\./, '')
-      .replace(/\.(title|directive)$/i, '');
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
     return key
       .replace(/([a-z])([A-Z])/g, '$1 $2')
       .replace(/\./g, ' ')
@@ -141,9 +140,7 @@ export class DashboardPageComponent {
   taskWorkflow(task: NuxeoTask): string {
     const raw = task.workflowTitle || task.workflowModelName;
     const key = raw.replace(/^wf\.\w+\./, '');
-    return key
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    return key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   isOverdue(task: NuxeoTask): boolean {
@@ -169,5 +166,26 @@ export class DashboardPageComponent {
 
     if (label === 'just now') return label;
     return diff > 0 ? `${label} ago` : `in ${label}`;
+  }
+
+  goToTask(task: NuxeoTask): void {
+    this.router.navigate(['/tasks', task.id]);
+  }
+
+  private loadThumbnails(docs: NuxeoDocument[]): void {
+    for (const doc of docs) {
+      if (this.thumbnailMap()[doc.uid]) continue;
+      this.detailService
+        .fetchThumbnail(doc.uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
+    }
   }
 }

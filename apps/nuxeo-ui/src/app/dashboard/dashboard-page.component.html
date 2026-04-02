@@ -1,6 +1,5 @@
-<ui-widget-grid [columns]="2">
-
-  <ui-widget-container title="Recently Edited" icon="edit" iconColor="#5c6bc0">
+<lib-widget-grid [columns]="2">
+  <lib-widget-container title="Recently Edited" icon="edit" iconColor="#5c6bc0">
     @if (recentlyEditedLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -20,12 +19,18 @@
         </thead>
         <tbody>
           @for (doc of recentlyEdited(); track doc.uid) {
-            <tr class="widget-row">
+            <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
-                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <div class="doc-thumb">
+                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                    <img [src]="thumb" alt="" class="doc-thumb-img" />
+                  } @else {
+                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                  }
+                </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
-              <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
+              <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
               <td class="doc-contributor">
                 <span class="contributor-badge">{{ lastContributor(doc) }}</span>
               </td>
@@ -34,9 +39,9 @@
         </tbody>
       </table>
     }
-  </ui-widget-container>
+  </lib-widget-container>
 
-  <ui-widget-container title="Tasks" icon="assignment" iconColor="#ef5350">
+  <lib-widget-container title="Tasks" icon="assignment" iconColor="#ef5350">
     @if (tasksLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -48,7 +53,7 @@
     } @else {
       <div class="task-list">
         @for (task of tasks(); track task.id) {
-          <div class="task-card">
+          <div class="task-card" (click)="goToTask(task)">
             <div class="task-action">{{ taskLabel(task) }}</div>
             @if (taskDocTitle(task)) {
               <div class="task-doc-title">{{ taskDocTitle(task) }}</div>
@@ -61,9 +66,9 @@
         }
       </div>
     }
-  </ui-widget-container>
+  </lib-widget-container>
 
-  <ui-widget-container title="Recently Viewed" icon="visibility" iconColor="#42a5f5">
+  <lib-widget-container title="Recently Viewed" icon="visibility" iconColor="#42a5f5">
     @if (recentlyViewedLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -83,9 +88,15 @@
         </thead>
         <tbody>
           @for (doc of recentlyViewed(); track doc.uid) {
-            <tr class="widget-row">
+            <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
-                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <div class="doc-thumb">
+                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                    <img [src]="thumb" alt="" class="doc-thumb-img" />
+                  } @else {
+                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                  }
+                </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
               <td>
@@ -97,9 +108,9 @@
         </tbody>
       </table>
     }
-  </ui-widget-container>
+  </lib-widget-container>
 
-  <ui-widget-container title="Favorite Items" icon="star" iconColor="#ffa726">
+  <lib-widget-container title="Favorite Items" icon="star" iconColor="#ffa726">
     @if (favoritesLoading()) {
       <div class="widget-loading">
         <mat-spinner diameter="28" />
@@ -119,12 +130,18 @@
         </thead>
         <tbody>
           @for (doc of favorites(); track doc.uid) {
-            <tr class="widget-row">
+            <tr class="widget-row" (click)="navigateToDoc(doc)">
               <td class="doc-title-cell">
-                <mat-icon class="doc-type-icon">{{ docIcon(doc) }}</mat-icon>
+                <div class="doc-thumb">
+                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                    <img [src]="thumb" alt="" class="doc-thumb-img" />
+                  } @else {
+                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                  }
+                </div>
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
-              <td class="doc-date">{{ doc.lastModified | date:'mediumDate' }}</td>
+              <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
               <td class="doc-contributor">
                 <span class="contributor-badge">{{ lastContributor(doc) }}</span>
               </td>
@@ -133,6 +150,5 @@
         </tbody>
       </table>
     }
-  </ui-widget-container>
-
-</ui-widget-grid>
+  </lib-widget-container>
+</lib-widget-grid>

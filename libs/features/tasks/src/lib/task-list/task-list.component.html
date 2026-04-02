@@ -1,0 +1,68 @@
+<div class="task-list-page">
+  <div class="task-list-header">
+    <h2>My Tasks</h2>
+    <button mat-icon-button (click)="loadTasks()" title="Refresh">
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="task-loading">
+      <mat-spinner diameter="36" />
+      <span>Loading tasks…</span>
+    </div>
+  } @else if (error()) {
+    <div class="task-error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button (click)="loadTasks()">Retry</button>
+    </div>
+  } @else if (tasks().length === 0) {
+    <div class="task-empty">
+      <mat-icon class="task-empty-icon">task_alt</mat-icon>
+      <p>You have no pending tasks.</p>
+    </div>
+  } @else {
+    <div class="task-cards">
+      @for (task of tasks(); track task.id) {
+        <div
+          class="task-card"
+          role="button"
+          tabindex="0"
+          (click)="processTask(task)"
+          (keydown.enter)="processTask(task)"
+          (keydown.space)="$event.preventDefault(); processTask(task)"
+        >
+          <div class="task-card-left">
+            <mat-icon class="task-type-icon">assignment</mat-icon>
+          </div>
+          <div class="task-card-body">
+            <div class="task-card-title">{{ taskLabel(task) }}</div>
+            @if (task.targetDocTitle) {
+              <div class="task-card-doc">
+                <mat-icon class="inline-icon">description</mat-icon>
+                {{ task.targetDocTitle }}
+              </div>
+            }
+            <div class="task-card-meta">
+              <span class="task-workflow-badge">{{ taskWorkflow(task) }}</span>
+              <span class="task-due" [class.overdue]="isOverdue(task)">
+                <mat-icon class="inline-icon">schedule</mat-icon>
+                Due {{ dueLabel(task) }}
+              </span>
+            </div>
+          </div>
+          <div class="task-card-action">
+            <button
+              mat-stroked-button
+              color="primary"
+              (click)="processTask(task); $event.stopPropagation()"
+            >
+              Process
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

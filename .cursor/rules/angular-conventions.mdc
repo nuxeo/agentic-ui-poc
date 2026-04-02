@@ -1,0 +1,40 @@
+---
+description: Angular & TypeScript conventions for the Nuxeo UI project
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# Angular / TypeScript Conventions
+
+## Shared Constants & Utilities
+
+- Never define local `DOC_TYPE_ICONS` maps. Always import `docTypeIcon()` from `@agentic-ui/shared/nuxeo-client`.
+- Domain-specific API methods (e.g. `fetchThumbnail`) belong in their domain service (`DocumentDetailService`), not in `NuxeoApiBase`.
+- Keep shared constants, models, and utilities in `libs/shared/` — never duplicate across feature libs or apps.
+
+## Routing & Component Reuse
+
+- When a component reads route params, subscribe to `ActivatedRoute.paramMap` — never use `.snapshot` if the component can be reused across navigations.
+- Always reset component state (signals, flags, blob URLs) when route params change.
+
+## Signals & State
+
+- Reset boolean loaded/error flags on failure so the user can retry.
+
+```typescript
+// ❌ BAD — loaded stays true, retry impossible
+error: () => {
+  this.loading.set(false);
+}
+
+// ✅ GOOD
+error: () => {
+  this.loading.set(false);
+  this.loaded = false;  // allows retry
+}
+```
+
+## Dependency Injection
+
+- Remove unused `inject()` calls. Every injected service must be referenced.
+- Prefer injecting the most specific service, not a base class, when only one method is needed.

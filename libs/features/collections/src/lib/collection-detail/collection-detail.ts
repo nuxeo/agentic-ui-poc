@@ -1,7 +1,9 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin, Observable } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,37 +12,60 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTableModule } from '@angular/material/table';
+import { MatSortModule, Sort } from '@angular/material/sort';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 
 import {
   NuxeoDocument,
   NuxeoAce,
   NuxeoAcl,
+  AuditEntry,
   CollectionService,
   DocumentDetailService,
+  DirectoryService,
+  DirectoryEntry,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
-import { ShareDialogComponent, ShareDialogData } from '@agentic-ui/shared/ui';
-import { EditCollectionDialogComponent, EditCollectionDialogData } from '../edit-collection-dialog/edit-collection-dialog';
-import { AddPermissionDialogComponent, AddPermissionDialogData } from '../add-permission-dialog/add-permission-dialog';
-import { UpdatePermissionDialogComponent, UpdatePermissionDialogData } from '../update-permission-dialog/update-permission-dialog';
-import { DeletePermissionDialogComponent, DeletePermissionDialogData } from '../delete-permission-dialog/delete-permission-dialog';
-import { ShareExternalDialogComponent, ShareExternalDialogData } from '../share-external-dialog/share-external-dialog';
-
-const DOC_TYPE_ICONS: Record<string, string> = {
-  File: 'description',
-  Note: 'sticky_note_2',
-  Picture: 'image',
-  Video: 'videocam',
-  Audio: 'audiotrack',
-  Folder: 'folder',
-  Workspace: 'workspaces',
-  Collection: 'collections_bookmark',
-};
+import {
+  ShareDialogComponent,
+  ShareDialogData,
+  ExportDialogComponent,
+  ExportDialogData,
+  ExportType,
+} from '@agentic-ui/shared/ui';
+import {
+  EditCollectionDialogComponent,
+  EditCollectionDialogData,
+} from '../edit-collection-dialog/edit-collection-dialog';
+import {
+  AddPermissionDialogComponent,
+  AddPermissionDialogData,
+} from '../add-permission-dialog/add-permission-dialog';
+import {
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
+} from '../update-permission-dialog/update-permission-dialog';
+import {
+  DeletePermissionDialogComponent,
+  DeletePermissionDialogData,
+} from '../delete-permission-dialog/delete-permission-dialog';
+import {
+  ShareExternalDialogComponent,
+  ShareExternalDialogData,
+} from '../share-external-dialog/share-external-dialog';
 
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
   imports: [
     DatePipe,
+    FormsModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatButtonModule,
@@ -49,6 +74,14 @@ const DOC_TYPE_ICONS: Record<string, string> = {
     MatMenuModule,
     MatSnackBarModule,
     MatDialogModule,
+    MatTableModule,
+    MatSortModule,
+    MatPaginatorModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
   ],
   templateUrl: './collection-detail.html',
   styleUrl: './collection-detail.scss',
@@ -58,6 +91,7 @@ export class CollectionDetailComponent {
   private readonly router = inject(Router);
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
+  private readonly directoryService = inject(DirectoryService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
 
@@ -76,6 +110,35 @@ export class CollectionDetailComponent {
   );
 
   private collectionUid = '';
+
+  // History tab state
+  readonly auditEntries = signal<AuditEntry[]>([]);
+  readonly auditLoading = signal(false);
+  readonly auditTotalSize = signal(0);
+  readonly auditPageSize = signal(20);
+  readonly auditPageIndex = signal(0);
+  readonly historyDisplayedColumns = [
+    'eventId',
+    'eventDate',
+    'principalName',
+    'category',
+    'comment',
+    'docLifeCycle',
+  ];
+  private historyLoaded = false;
+
+  readonly filterUsername = signal('');
+  readonly filterDateFrom = signal<Date | null>(null);
+  readonly filterDateTo = signal<Date | null>(null);
+  readonly filterAction = signal('');
+  readonly filterCategory = signal('');
+
+  readonly availableActions = signal<DirectoryEntry[]>([]);
+  readonly availableCategories = signal<DirectoryEntry[]>([]);
+  private eventTypeLabelMap = new Map<string, string>();
+  private eventCategoryLabelMap = new Map<string, string>();
+  private sortActive = signal('');
+  private sortDirection = signal<'asc' | 'desc' | ''>('');
 
   readonly isInClipboard = computed(() =>
     this.clipboardDocs().some((d) => d.uid === this.collectionUid),
@@ -126,7 +189,9 @@ export class CollectionDetailComponent {
       error: () => {
         this.collectionService.getById(this.collectionUid).subscribe({
           next: (doc) => this.collection.set(doc),
-          error: () => {},
+          error: () => {
+            /* fallback also failed, ignore */
+          },
         });
       },
     });
@@ -170,7 +235,7 @@ export class CollectionDetailComponent {
   }
 
   docIcon(doc: NuxeoDocument): string {
-    return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
+    return docTypeIcon(doc.type);
   }
 
   lastContributor(doc: NuxeoDocument): string {
@@ -282,28 +347,29 @@ export class CollectionDetailComponent {
       localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
       this.toast('Added to clipboard');
     }
+    window.dispatchEvent(new Event('clipboard-changed'));
   }
 
   exportCollection(): void {
-    if (this.actionInProgress()) return;
-    this.actionInProgress.set('export');
-
     const title = this.collection()?.title ?? 'collection';
-    this.collectionService.bulkDownload(this.collectionUid, `${title}.zip`).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title}.zip`;
-        a.click();
-        URL.revokeObjectURL(url);
-        this.actionInProgress.set(null);
-        this.toast('Download started');
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Export failed');
-      },
+    this.dialog.open(ExportDialogComponent, {
+      data: {
+        documentUid: this.collectionUid,
+        documentTitle: title,
+        exportFn: (type: ExportType, uid: string): Observable<Blob> => {
+          switch (type) {
+            case 'thumbnail':
+              return this.detailService.fetchThumbnail(uid);
+            case 'pdf':
+              return this.detailService.fetchPdfRendition(uid);
+            case 'zip':
+              return this.collectionService.bulkDownload(uid, `${title}.zip`);
+            case 'xml':
+              return this.detailService.exportXml(uid);
+          }
+        },
+      } satisfies ExportDialogData,
+      width: '440px',
     });
   }
 
@@ -335,7 +401,11 @@ export class CollectionDetailComponent {
   aceTimeFrame(ace: NuxeoAce): string {
     if (!ace.begin && !ace.end) return 'Permanent';
     const fmt = (iso: string) =>
-      new Date(iso).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+      new Date(iso).toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
     if (!ace.begin && ace.end) return `Until ${fmt(ace.end)}`;
     const parts: string[] = [];
     if (ace.begin) parts.push(`from ${fmt(ace.begin)}`);
@@ -416,18 +486,16 @@ export class CollectionDetailComponent {
     if (this.actionInProgress()) return;
     this.actionInProgress.set('notify-' + ace.id);
 
-    this.detailService
-      .sendNotificationEmailForPermission(this.collectionUid, ace.id)
-      .subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Notification email sent');
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to send notification');
-        },
-      });
+    this.detailService.sendNotificationEmailForPermission(this.collectionUid, ace.id).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast('Notification email sent');
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to send notification');
+      },
+    });
   }
 
   shareWithExternal(): void {
@@ -464,6 +532,125 @@ export class CollectionDetailComponent {
         this.toast('Action failed');
       },
     });
+  }
+
+  // --- History tab ---
+
+  readonly filteredAuditEntries = computed(() => {
+    let entries = this.auditEntries();
+    const username = this.filterUsername();
+    const dateFrom = this.filterDateFrom();
+    const dateTo = this.filterDateTo();
+    const action = this.filterAction();
+    const category = this.filterCategory();
+    const active = this.sortActive();
+    const direction = this.sortDirection();
+
+    if (username) {
+      const lower = username.toLowerCase();
+      entries = entries.filter((e) => e.principalName.toLowerCase().includes(lower));
+    }
+    if (dateFrom) {
+      const from = dateFrom.getTime();
+      entries = entries.filter((e) => new Date(e.eventDate).getTime() >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo);
+      to.setHours(23, 59, 59, 999);
+      entries = entries.filter((e) => new Date(e.eventDate).getTime() <= to.getTime());
+    }
+    if (action) {
+      entries = entries.filter((e) => e.eventId === action);
+    }
+    if (category) {
+      entries = entries.filter((e) => e.category === category);
+    }
+
+    if (active && direction) {
+      const dir = direction === 'asc' ? 1 : -1;
+      const key = active as keyof AuditEntry;
+      entries = [...entries].sort((a, b) => {
+        const va = a[key] ?? '';
+        const vb = b[key] ?? '';
+        return va < vb ? -dir : va > vb ? dir : 0;
+      });
+    }
+
+    return entries;
+  });
+
+  onTabChange(index: number): void {
+    if (index === 2 && !this.historyLoaded) {
+      this.loadDirectoryEntries();
+      this.loadAuditLog();
+    }
+  }
+
+  private loadDirectoryEntries(): void {
+    forkJoin({
+      types: this.directoryService.getEventTypes(),
+      categories: this.directoryService.getEventCategories(),
+    }).subscribe({
+      next: ({ types, categories }) => {
+        this.availableActions.set(types);
+        this.availableCategories.set(categories);
+        this.eventTypeLabelMap = new Map(types.map((t) => [t.id, t.displayLabel]));
+        this.eventCategoryLabelMap = new Map(categories.map((c) => [c.id, c.displayLabel]));
+      },
+    });
+  }
+
+  loadAuditLog(): void {
+    if (!this.collectionUid) return;
+    this.auditLoading.set(true);
+
+    this.detailService
+      .getAuditLog(this.collectionUid, this.auditPageSize(), this.auditPageIndex())
+      .subscribe({
+        next: (res) => {
+          this.auditEntries.set(res.entries);
+          this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
+          this.auditLoading.set(false);
+          this.historyLoaded = true;
+        },
+        error: () => {
+          this.auditLoading.set(false);
+          this.historyLoaded = false;
+        },
+      });
+  }
+
+  onAuditPageChange(event: PageEvent): void {
+    this.auditPageSize.set(event.pageSize);
+    this.auditPageIndex.set(event.pageIndex);
+    this.loadAuditLog();
+  }
+
+  onAuditSort(sort: Sort): void {
+    this.sortActive.set(sort.active);
+    this.sortDirection.set(sort.direction);
+  }
+
+  eventLabel(eventId: string): string {
+    return (
+      this.eventTypeLabelMap.get(eventId) ??
+      eventId.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+    );
+  }
+
+  categoryLabel(category: string): string {
+    return (
+      this.eventCategoryLabelMap.get(category) ??
+      category
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, (c) => c.toUpperCase())
+        .replace('event ', '')
+        .replace(' Category', '')
+    );
+  }
+
+  userInitial(name: string): string {
+    return name ? name.charAt(0).toUpperCase() : '?';
   }
 
   private toast(message: string): void {

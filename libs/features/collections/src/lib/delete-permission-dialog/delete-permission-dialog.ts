@@ -1,8 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { signal } from '@angular/core';
 
 import { NuxeoAce, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
 
@@ -44,10 +43,7 @@ export interface DeletePermissionDialogData {
     <mat-dialog-actions>
       <button mat-stroked-button mat-dialog-close>Cancel</button>
       <span class="spacer"></span>
-      <button mat-stroked-button
-              color="warn"
-              [disabled]="deleting()"
-              (click)="confirmDelete()">
+      <button mat-stroked-button color="warn" [disabled]="deleting()" (click)="confirmDelete()">
         @if (deleting()) {
           <mat-spinner diameter="18" />
         } @else {
@@ -56,45 +52,47 @@ export interface DeletePermissionDialogData {
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
-    :host {
-      display: block;
-      min-width: 460px;
-    }
-
-    .confirm-table {
-      width: 100%;
-      border-collapse: collapse;
-      border: 1px solid #e0e0e0;
-      border-radius: 4px;
-
-      th {
-        text-align: left;
-        padding: 10px 16px;
-        font-size: 12px;
-        font-weight: 600;
-        color: #333;
-        background: #fafafa;
-        border-bottom: 1px solid #e0e0e0;
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 460px;
       }
 
-      td {
-        padding: 12px 16px;
-        font-size: 13px;
-        color: #333;
+      .confirm-table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+
+        th {
+          text-align: left;
+          padding: 10px 16px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #333;
+          background: #fafafa;
+          border-bottom: 1px solid #e0e0e0;
+        }
+
+        td {
+          padding: 12px 16px;
+          font-size: 13px;
+          color: #333;
+        }
       }
-    }
 
-    mat-dialog-actions {
-      display: flex;
-      gap: 8px;
-      padding: 12px 24px 16px;
-    }
+      mat-dialog-actions {
+        display: flex;
+        gap: 8px;
+        padding: 12px 24px 16px;
+      }
 
-    .spacer {
-      flex: 1;
-    }
-  `],
+      .spacer {
+        flex: 1;
+      }
+    `,
+  ],
 })
 export class DeletePermissionDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<DeletePermissionDialogComponent>);

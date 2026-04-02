@@ -8,7 +8,12 @@
     } @else {
       @switch (contentType()) {
         @case ('image') {
-          <img [src]="blobUrl()" [alt]="fileName()" class="viewer-image" />
+          <img
+            [src]="blobUrl()"
+            [alt]="fileName()"
+            class="viewer-image"
+            [style.transform]="transform()"
+          />
         }
         @case ('video') {
           <video [src]="blobUrl()" controls class="viewer-video">
@@ -39,19 +44,19 @@
 
   <!-- Toolbar -->
   <div class="viewer-toolbar">
-    <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in">
+    <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in" (click)="zoomIn()">
       <mat-icon>zoom_in</mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Fit to width" aria-label="Fit to width">
+    <button mat-icon-button matTooltip="Fit to width" aria-label="Fit to width" (click)="fitToWidth()">
       <mat-icon>fit_screen</mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out">
+    <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out" (click)="zoomOut()">
       <mat-icon>zoom_out</mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Rotate left" aria-label="Rotate left">
+    <button mat-icon-button matTooltip="Rotate left" aria-label="Rotate left" (click)="rotateLeft()">
       <mat-icon>rotate_left</mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Rotate right" aria-label="Rotate right">
+    <button mat-icon-button matTooltip="Rotate right" aria-label="Rotate right" (click)="rotateRight()">
       <mat-icon>rotate_right</mat-icon>
     </button>
   </div>

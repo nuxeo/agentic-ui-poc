@@ -1,0 +1,225 @@
+<div class="task-detail-page">
+  @if (loading()) {
+    <div class="task-loading">
+      <mat-spinner diameter="36" />
+      <span>Loading task…</span>
+    </div>
+  } @else if (error()) {
+    <div class="task-error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+      <button mat-stroked-button (click)="goBack()">Back to Tasks</button>
+    </div>
+  } @else {
+    <!-- Header -->
+    <div class="task-detail-header">
+      <button mat-icon-button (click)="goBack()" title="Back to Tasks">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="task-detail-title-group">
+        <h2>{{ taskLabel(task()!) }}</h2>
+        <span class="task-workflow-badge">{{ taskWorkflow(task()!) }}</span>
+      </div>
+    </div>
+
+    <div class="task-detail-layout">
+      <!-- Left: Task form -->
+      <div class="task-form-panel">
+        <!-- Target document banner (prominent) -->
+        <div class="document-banner">
+          @if (docLoading()) {
+            <div class="doc-banner-loading">
+              <mat-spinner diameter="20" />
+              <span>Loading document…</span>
+            </div>
+          } @else if (targetDoc()) {
+            <div class="doc-banner-content">
+              @if (hasVisualPreview() && docPreviewUrl()) {
+                <img
+                  class="doc-preview-img"
+                  [src]="docPreviewUrl()"
+                  [alt]="targetDoc()!.title"
+                  (error)="$any($event.target).style.display = 'none'"
+                />
+              }
+              <div class="doc-banner-info">
+                <div class="doc-banner-title">
+                  <mat-icon class="doc-icon">description</mat-icon>
+                  {{ targetDoc()!.title }}
+                </div>
+                <div class="doc-banner-path">{{ targetDoc()!.path }}</div>
+                <div class="doc-banner-meta">
+                  <span class="doc-type-badge">{{ targetDoc()!.type }}</span>
+                  @if (docDownloadUrl()) {
+                    <a class="doc-download-link" [href]="docDownloadUrl()" target="_blank">
+                      <mat-icon class="inline-icon">download</mat-icon>
+                      Download
+                    </a>
+                  }
+                </div>
+              </div>
+            </div>
+          } @else {
+            <div class="doc-banner-empty">
+              <mat-icon>insert_drive_file</mat-icon>
+              <span>No linked document</span>
+            </div>
+          }
+        </div>
+
+        <!-- Participants picker (for Choose Participants step) -->
+        @if (isChooseParticipants) {
+          <div class="form-section">
+            <h3>Participants</h3>
+
+            <div class="participant-chips">
+              @for (p of participants; track p) {
+                <span class="participant-chip">
+                  {{ formatParticipantLabel(p) }}
+                  <mat-icon class="chip-remove" (click)="removeParticipant(p)">close</mat-icon>
+                </span>
+              }
+              @if (participants.length === 0) {
+                <span class="participant-hint">No participants added yet</span>
+              }
+            </div>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Search users or groups</mat-label>
+              <input
+                matInput
+                [(ngModel)]="participantInput"
+                (input)="searchUsers()"
+                placeholder="Type 3+ characters to search…"
+              />
+              @if (searching()) {
+                <mat-icon matSuffix>hourglass_empty</mat-icon>
+              }
+            </mat-form-field>
+
+            @if (userResults().length > 0 || groupResults().length > 0) {
+              <div class="search-results">
+                @for (user of userResults(); track user.id) {
+                  <button
+                    type="button"
+                    class="search-result-item"
+                    (click)="addParticipant('user:' + user.id)"
+                  >
+                    <mat-icon>person</mat-icon>
+                    <span>{{ user.properties.firstName }} {{ user.properties.lastName }}</span>
+                    <span class="search-result-id">({{ user.id }})</span>
+                  </button>
+                }
+                @for (group of groupResults(); track group.groupname) {
+                  <button
+                    type="button"
+                    class="search-result-item"
+                    (click)="addParticipant('group:' + group.groupname)"
+                  >
+                    <mat-icon>group</mat-icon>
+                    <span>{{ group.grouplabel || group.groupname }}</span>
+                    <span class="search-result-id">({{ group.groupname }})</span>
+                  </button>
+                }
+              </div>
+            }
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="form-field-half">
+                <mat-label>Review type</mat-label>
+                <mat-select [(ngModel)]="validationOrReview">
+                  <mat-option value="simpleReview">Simple Review</mat-option>
+                  <mat-option value="validation">Validation</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="form-field-half">
+                <mat-label>Due date</mat-label>
+                <input matInput [matDatepicker]="picker" [(ngModel)]="dueDate" />
+                <mat-datepicker-toggle matSuffix [for]="picker" />
+                <mat-datepicker #picker />
+              </mat-form-field>
+            </div>
+          </div>
+        }
+
+        <!-- Comment -->
+        <div class="form-section">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Comment</mat-label>
+            <textarea
+              matInput
+              [(ngModel)]="comment"
+              rows="3"
+              placeholder="Add a comment…"
+            ></textarea>
+          </mat-form-field>
+        </div>
+
+        <!-- Actions -->
+        <div class="task-actions">
+          @for (action of actions; track action.name) {
+            <button
+              mat-flat-button
+              [color]="actionColor(action)"
+              [disabled]="submitting()"
+              (click)="executeAction(action)"
+            >
+              <mat-icon>{{ actionIcon(action) }}</mat-icon>
+              {{ actionLabel(action) }}
+            </button>
+          }
+
+          <button
+            mat-stroked-button
+            color="warn"
+            [disabled]="submitting()"
+            (click)="abandonWorkflow()"
+          >
+            <mat-icon>block</mat-icon>
+            Abandon
+          </button>
+        </div>
+
+        @if (submitting()) {
+          <div class="task-submitting">
+            <mat-spinner diameter="24" />
+            <span>Processing…</span>
+          </div>
+        }
+      </div>
+
+      <!-- Right: Task metadata sidebar -->
+      <div class="task-info-panel">
+        <div class="info-card">
+          <h3><mat-icon class="section-icon">info</mat-icon> Task Info</h3>
+          <div class="info-row">
+            <span class="info-label">Created</span>
+            <span class="info-value">{{ task()!.created | date: 'mediumDate' }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Due</span>
+            <span class="info-value" [class.overdue]="taskOverdue()">
+              {{ task()!.dueDate | date: 'mediumDate' }}
+              @if (taskOverdue()) {
+                <span class="overdue-badge">Overdue</span>
+              }
+            </span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">State</span>
+            <span class="info-value">{{ task()!.state }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Assigned to</span>
+            <span class="info-value">
+              @for (actor of task()!.actors; track actor.id) {
+                <span class="actor-chip">{{ formatParticipantLabel(actor.id) }}</span>
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

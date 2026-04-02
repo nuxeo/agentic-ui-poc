@@ -1,11 +1,5 @@
-import {
-  Component,
-  OnInit,
-  OnDestroy,
-  inject,
-  signal,
-  computed,
-} from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -13,11 +7,12 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
@@ -35,11 +30,34 @@ import {
   DirectoryEntry,
   DocumentDetailService,
   DirectoryService,
+  NuxeoComment,
+  NuxeoApiBase,
+  TaskService,
+  NuxeoTask,
+  WorkflowService,
+  NuxeoWorkflow,
+  NuxeoWorkflowModel,
+  CURRENT_USERNAME,
 } from '@agentic-ui/shared/nuxeo-client';
-import { forkJoin } from 'rxjs';
-
-import { ShareDialogComponent, ShareDialogData, DocumentViewerComponent } from '@agentic-ui/shared/ui';
+import { forkJoin, Observable } from 'rxjs';
+import {
+  ShareDialogComponent,
+  ShareDialogData,
+  DocumentViewerComponent,
+  ExportDialogComponent,
+  ExportDialogData,
+  ExportType,
+} from '@agentic-ui/shared/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
+import {
+  CreateVersionDialogComponent,
+  CreateVersionDialogData,
+} from '../create-version-dialog/create-version-dialog';
+import { PublishDialogComponent, PublishDialogData } from '../publish-dialog/publish-dialog';
+import { DriveDialogComponent } from '../drive-dialog/drive-dialog';
+import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/attachment-preview-dialog';
+import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
+import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -72,6 +90,7 @@ const TAG_COLORS: string[] = [
     MatMenuModule,
     MatSnackBarModule,
     MatDialogModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -90,17 +109,73 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly detailService = inject(DocumentDetailService);
   private readonly directoryService = inject(DirectoryService);
+  private readonly http = inject(HttpClient);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly nuxeoApi = inject(NuxeoApiBase);
+  private readonly taskService = inject(TaskService);
+  private readonly workflowService = inject(WorkflowService);
+  private readonly currentUsername = inject(CURRENT_USERNAME);
+
+  readonly tabGroup = viewChild<MatTabGroup>('tabGroup');
 
   readonly doc = signal<NuxeoDocument | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly blobUrl = signal<SafeResourceUrl | null>(null);
   readonly propertiesPanelOpen = signal(true);
+  readonly panelSubTab = signal<'properties' | 'comments' | 'activity'>('properties');
   private rawBlobUrl: string | null = null;
   private docUid = '';
+
+  // Comments state
+  readonly comments = signal<NuxeoComment[]>([]);
+  readonly commentsLoading = signal(false);
+  readonly newCommentText = signal('');
+  readonly editingCommentId = signal<string | null>(null);
+  readonly editingCommentText = signal('');
+  readonly commentSaving = signal(false);
+  readonly repliesMap = signal<Record<string, NuxeoComment[]>>({});
+  readonly replyingToId = signal<string | null>(null);
+  readonly replyText = signal('');
+  private commentsLoaded = false;
+
+  // Panel activity state (recent activity for the side panel)
+  readonly panelActivity = signal<AuditEntry[]>([]);
+  readonly panelActivityLoading = signal(false);
+  private panelActivityLoaded = false;
+
+  // Version state
+  readonly versions = signal<NuxeoDocument[]>([]);
+  readonly versionsLoading = signal(false);
+  readonly versionDropdownOpen = signal(false);
+  private versionsLoaded = false;
+
+  readonly currentMajor = computed(() => {
+    const d = this.doc();
+    return Number(d?.properties['uid:major_version'] ?? 0);
+  });
+
+  readonly currentMinor = computed(() => {
+    const d = this.doc();
+    return Number(d?.properties['uid:minor_version'] ?? 0);
+  });
+
+  readonly hasVersion = computed(() => {
+    return this.currentMajor() > 0 || this.currentMinor() > 0;
+  });
+
+  // Workflow / Task state
+  readonly documentTasks = signal<NuxeoTask[]>([]);
+  readonly documentTasksLoading = signal(false);
+  readonly documentWorkflows = signal<NuxeoWorkflow[]>([]);
+  readonly abandoningWorkflow = signal(false);
+  readonly availableWorkflows = signal<NuxeoWorkflowModel[]>([]);
+  readonly workflowsLoading = signal(false);
+  readonly startingWorkflow = signal(false);
+  readonly showStartProcessPanel = signal(false);
+  readonly selectedWorkflowModel = signal('');
 
   // Document action states
   readonly isLocked = signal(false);
@@ -111,9 +186,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly clipboardDocs = signal<Array<{ uid: string; title: string }>>(
     JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]'),
   );
-  readonly isInClipboard = computed(() =>
-    this.clipboardDocs().some((d) => d.uid === this.docUid),
-  );
+  readonly isInClipboard = computed(() => this.clipboardDocs().some((d) => d.uid === this.docUid));
 
   // History tab state
   readonly auditEntries = signal<AuditEntry[]>([]);
@@ -122,7 +195,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly auditPageSize = signal(20);
   readonly auditPageIndex = signal(0);
   readonly historyDisplayedColumns = [
-    'eventId', 'eventDate', 'principalName', 'category', 'comment', 'docLifeCycle',
+    'eventId',
+    'eventDate',
+    'principalName',
+    'category',
+    'comment',
+    'docLifeCycle',
   ];
   private historyLoaded = false;
 
@@ -190,10 +268,22 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly versionLabel = computed(() => {
     const d = this.doc();
     if (!d) return '';
-    const major = d.properties['uid:major_version'] ?? 0;
-    const minor = d.properties['uid:minor_version'] ?? 0;
-    return `${major}.${minor}+`;
+    const label = `${this.currentMajor()}.${this.currentMinor()}`;
+    return d.isCheckedOut ? `${label}+` : label;
   });
+
+  readonly docState = computed(() => {
+    const d = this.doc();
+    if (!d) return '';
+    return (
+      (d.properties['ecm:currentLifeCycleState'] as string) ??
+      (d.properties['dc:nature'] as string) ??
+      d.type ??
+      ''
+    );
+  });
+
+  readonly publicationCount = computed(() => this.publishedDocs().length);
 
   readonly contributors = computed(() => {
     const d = this.doc();
@@ -212,6 +302,31 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly description = computed(() => {
     const d = this.doc();
     return (d?.properties['dc:description'] as string) ?? '';
+  });
+
+  readonly attachments = computed(() => {
+    const d = this.doc();
+    if (!d) return [];
+    const files = d.properties['files:files'] as Array<{ file: Record<string, unknown> }> | null;
+    if (!files) return [];
+    return files
+      .filter((f) => f.file)
+      .map((f, i) => ({
+        index: i,
+        name: (f.file['name'] as string) ?? 'Untitled',
+        size: Number(f.file['length'] ?? 0),
+        mimeType: (f.file['mime-type'] as string) ?? '',
+        url: (f.file['data'] as string) ?? '',
+      }));
+  });
+
+  readonly collections = computed(() => {
+    const d = this.doc();
+    if (!d) return [];
+    const cols = d.contextParameters?.['collections'] as
+      | Array<{ uid: string; title: string; path: string }>
+      | undefined;
+    return cols ?? [];
   });
 
   readonly creator = computed(() => {
@@ -255,9 +370,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     const acls = d?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
     if (!acls) return [];
-    return acls
-      .flatMap((a) => a.aces)
-      .filter((ace) => ace.externalUser && ace.granted);
+    return acls.flatMap((a) => a.aces).filter((ace) => ace.externalUser && ace.granted);
   });
 
   readonly isInheritanceBlocked = computed<boolean>(() => {
@@ -302,9 +415,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     if (username) {
       const lower = username.toLowerCase();
-      entries = entries.filter((e) =>
-        e.principalName.toLowerCase().includes(lower),
-      );
+      entries = entries.filter((e) => e.principalName.toLowerCase().includes(lower));
     }
     if (dateFrom) {
       const from = dateFrom.getTime();
@@ -336,14 +447,38 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    const uid = this.route.snapshot.paramMap.get('uid');
-    if (!uid) {
-      this.error.set('No document ID provided.');
-      this.loading.set(false);
-      return;
+    this.route.paramMap.subscribe((params) => {
+      const uid = params.get('uid');
+      if (!uid) {
+        this.error.set('No document ID provided.');
+        this.loading.set(false);
+        return;
+      }
+      this.resetState();
+      this.docUid = uid;
+      this.loadDocument(uid);
+    });
+  }
+
+  private resetState(): void {
+    if (this.rawBlobUrl) {
+      URL.revokeObjectURL(this.rawBlobUrl);
+      this.rawBlobUrl = null;
     }
-    this.docUid = uid;
-    this.loadDocument(uid);
+    this.doc.set(null);
+    this.blobUrl.set(null);
+    this.error.set(null);
+    this.comments.set([]);
+    this.repliesMap.set({});
+    this.commentsLoaded = false;
+    this.panelActivity.set([]);
+    this.panelActivityLoaded = false;
+    this.versions.set([]);
+    this.versionsLoaded = false;
+    this.versionDropdownOpen.set(false);
+    this.documentTasks.set([]);
+    this.documentWorkflows.set([]);
+    this.panelSubTab.set('properties');
   }
 
   ngOnDestroy(): void {
@@ -362,12 +497,122 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.syncActionStates(doc);
         this.loading.set(false);
         this.loadBlob(doc);
+        this.loadPublicationCount(uid);
+        this.loadDocumentTasks(uid);
+        this.loadDocumentWorkflows(uid);
       },
       error: () => {
         this.error.set('Failed to load document.');
         this.loading.set(false);
       },
     });
+  }
+
+  /* ─── Workflow / Task methods ─── */
+
+  private loadDocumentTasks(uid: string): void {
+    this.documentTasksLoading.set(true);
+    const userId = this.currentUsername() ?? 'Administrator';
+    this.taskService.getDocumentTasks(uid, userId).subscribe({
+      next: (tasks) => {
+        this.documentTasks.set(tasks);
+        this.documentTasksLoading.set(false);
+      },
+      error: () => this.documentTasksLoading.set(false),
+    });
+  }
+
+  private loadDocumentWorkflows(uid: string): void {
+    this.workflowService.getDocumentWorkflows(uid).subscribe({
+      next: (wfs) => this.documentWorkflows.set(wfs),
+      error: () => this.documentWorkflows.set([]),
+    });
+  }
+
+  abandonWorkflow(wf: NuxeoWorkflow): void {
+    this.abandoningWorkflow.set(true);
+    this.workflowService.cancelWorkflow(wf.id).subscribe({
+      next: () => {
+        this.abandoningWorkflow.set(false);
+        this.toast('Workflow abandoned');
+        this.loadDocumentWorkflows(this.docUid);
+        this.loadDocumentTasks(this.docUid);
+      },
+      error: () => {
+        this.abandoningWorkflow.set(false);
+        this.toast('Failed to abandon workflow');
+      },
+    });
+  }
+
+  taskDueLabel(task: NuxeoTask): string {
+    if (!task.dueDate) return '';
+    const d = new Date(task.dueDate);
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+
+  openStartProcess(): void {
+    this.showStartProcessPanel.set(true);
+    this.workflowsLoading.set(true);
+    this.workflowService.getWorkflowModels().subscribe({
+      next: (models) => {
+        this.availableWorkflows.set(models);
+        this.workflowsLoading.set(false);
+      },
+      error: () => {
+        this.availableWorkflows.set([]);
+        this.workflowsLoading.set(false);
+      },
+    });
+  }
+
+  closeStartProcess(): void {
+    this.showStartProcessPanel.set(false);
+    this.selectedWorkflowModel.set('');
+  }
+
+  startProcess(): void {
+    const model = this.selectedWorkflowModel();
+    if (!model) return;
+
+    this.startingWorkflow.set(true);
+    this.detailService.startWorkflow(this.docUid, model).subscribe({
+      next: () => {
+        this.startingWorkflow.set(false);
+        this.closeStartProcess();
+        this.toast('Workflow started successfully');
+        this.loadDocumentTasks(this.docUid);
+        this.loadDocumentWorkflows(this.docUid);
+      },
+      error: () => {
+        this.startingWorkflow.set(false);
+        this.toast('Failed to start workflow');
+      },
+    });
+  }
+
+  goToTask(task: NuxeoTask): void {
+    void this.router.navigateByUrl('/tasks/' + task.id);
+  }
+
+  taskLabel(task: NuxeoTask): string {
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
+    return key
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\./g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  /** Turn "ParallelDocumentReview" or "wf.x.Y" into "Parallel Document Review" */
+  workflowDisplayName(wf: { name: string; title: string; workflowModelName?: string }): string {
+    // Use workflowModelName or name — the title is an i18n key (wf.x.Y)
+    const raw = (wf.workflowModelName ?? wf.name) || wf.title;
+    // If it looks like an i18n key, strip the prefix
+    const cleaned = raw.startsWith('wf.') ? raw.replace(/^wf\.\w+\./, '') : raw;
+    return cleaned
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   private syncActionStates(doc: NuxeoDocument): void {
@@ -389,12 +634,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (isImg || isPdfType) {
       this.detailService.fetchBlob(doc.uid).subscribe({
         next: (blob) => this.setBlobUrl(blob),
-        error: () => { /* viewer will show fallback */ },
+        error: () => {
+          /* viewer will show fallback */
+        },
       });
     } else {
       this.detailService.fetchPdfRendition(doc.uid).subscribe({
         next: (blob) => this.setBlobUrl(blob),
-        error: () => { /* no preview available */ },
+        error: () => {
+          /* no preview available */
+        },
       });
     }
   }
@@ -438,7 +687,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.auditEntries.set(res.entries);
-          this.auditTotalSize.set(res.totalSize);
+          this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
@@ -460,17 +709,21 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   eventLabel(eventId: string): string {
-    return this.eventTypeLabelMap.get(eventId)
-      ?? eventId.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
+    return (
+      this.eventTypeLabelMap.get(eventId) ??
+      eventId.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase())
+    );
   }
 
   categoryLabel(category: string): string {
-    return this.eventCategoryLabelMap.get(category)
-      ?? category
+    return (
+      this.eventCategoryLabelMap.get(category) ??
+      category
         .replace(/([A-Z])/g, ' $1')
         .replace(/^./, (c) => c.toUpperCase())
         .replace('event ', '')
-        .replace(' Category', '');
+        .replace(' Category', '')
+    );
   }
 
   userInitial(name: string): string {
@@ -481,18 +734,32 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return TAG_COLORS[index % TAG_COLORS.length];
   }
 
-  private loadPublishingData(): void {
-    this.publishTabLoaded = true;
-    this.publishLoading.set(true);
-    this.sectionsLoading.set(true);
-
-    this.detailService.getPublishedVersions(this.docUid).subscribe({
+  private loadPublicationCount(uid: string): void {
+    this.detailService.getPublishedVersions(uid).subscribe({
       next: (res) => {
         this.publishedDocs.set(res.entries);
         this.publishLoading.set(false);
       },
       error: () => this.publishLoading.set(false),
     });
+  }
+
+  private loadPublishingData(): void {
+    this.publishTabLoaded = true;
+    this.publishLoading.set(true);
+    this.sectionsLoading.set(true);
+
+    if (this.publishedDocs().length === 0) {
+      this.detailService.getPublishedVersions(this.docUid).subscribe({
+        next: (res) => {
+          this.publishedDocs.set(res.entries);
+          this.publishLoading.set(false);
+        },
+        error: () => this.publishLoading.set(false),
+      });
+    } else {
+      this.publishLoading.set(false);
+    }
 
     this.detailService.getSectionTree().subscribe({
       next: (res) => {
@@ -526,9 +793,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   selectSection(id: string): void {
-    this.selectedSectionId.set(
-      this.selectedSectionId() === id ? null : id,
-    );
+    this.selectedSectionId.set(this.selectedSectionId() === id ? null : id);
   }
 
   toggleSectionNode(node: SectionNode): void {
@@ -541,15 +806,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!target || !this.docUid) return;
     this.publishing.set(true);
 
-    this.detailService.publishDocument(this.docUid, target).subscribe({
+    this.detailService.publishDocument(this.docUid, target, { override: true }).subscribe({
       next: () => {
         this.publishing.set(false);
         this.selectedSectionId.set(null);
-        this.detailService.getPublishedVersions(this.docUid).subscribe({
-          next: (res) => this.publishedDocs.set(res.entries),
-        });
+        this.toast('Document published');
+        this.refreshPublishedDocs();
       },
-      error: () => this.publishing.set(false),
+      error: () => {
+        this.publishing.set(false);
+        this.toast('Failed to publish');
+      },
     });
   }
 
@@ -558,13 +825,149 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   publishedPath(doc: NuxeoDocument): string {
-    return doc.path.split('/').slice(2).join(' > ');
+    return doc.path;
   }
 
   publishedVersion(doc: NuxeoDocument): string {
     const major = doc.properties?.['uid:major_version'] ?? 0;
     const minor = doc.properties?.['uid:minor_version'] ?? 0;
     return `${major}.${minor}`;
+  }
+
+  isOlderVersion(pub: NuxeoDocument): boolean {
+    const pubMajor = Number(pub.properties?.['uid:major_version'] ?? 0);
+    const pubMinor = Number(pub.properties?.['uid:minor_version'] ?? 0);
+    return (
+      pubMajor < this.currentMajor() ||
+      (pubMajor === this.currentMajor() && pubMinor < this.currentMinor())
+    );
+  }
+
+  publishedRendition(doc: NuxeoDocument): string {
+    const nature = doc.properties?.['dc:nature'] as string | null;
+    if (nature) return nature;
+    const mime = (doc.properties?.['file:content'] as Record<string, unknown>)?.[
+      'mime-type'
+    ] as string;
+    if (mime === 'application/pdf') return 'PDF';
+    return 'None';
+  }
+
+  publishedBy(doc: NuxeoDocument): string {
+    return (
+      (doc.properties?.['dc:lastContributor'] as string) ??
+      (doc.properties?.['dc:creator'] as string) ??
+      ''
+    );
+  }
+
+  publishedDate(doc: NuxeoDocument): string {
+    return (doc.properties?.['dc:modified'] as string) ?? doc.lastModified ?? '';
+  }
+
+  goToPublishingTab(): void {
+    const tg = this.tabGroup();
+    if (tg) {
+      tg.selectedIndex = 3;
+      this.onTabChange(3);
+    }
+  }
+
+  unpublishDocument(proxyDoc: NuxeoDocument): void {
+    if (this.actionInProgress()) return;
+    this.actionInProgress.set('unpublish');
+    this.detailService.unpublishDocument(proxyDoc.uid).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.publishedDocs.update((docs) => docs.filter((d) => d.uid !== proxyDoc.uid));
+        this.toast('Publication removed');
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to unpublish');
+      },
+    });
+  }
+
+  republishDocument(proxyDoc: NuxeoDocument): void {
+    if (this.actionInProgress()) return;
+    this.actionInProgress.set('republish');
+    this.republishToSectionByProxy(proxyDoc);
+  }
+
+  private republishToSectionByProxy(proxyDoc: NuxeoDocument): void {
+    const sectionPath = proxyDoc.path.split('/').slice(0, -1).join('/');
+    // Find section UID from the section tree or query for it
+    const findSection = (nodes: SectionNode[]): string | null => {
+      for (const n of nodes) {
+        if (n.doc.path === sectionPath) return n.doc.uid;
+        const found = findSection(n.children);
+        if (found) return found;
+      }
+      return null;
+    };
+    const sectionUid = findSection(this.sectionTree());
+    if (sectionUid) {
+      this.doRepublish(sectionUid);
+    } else {
+      const query = `SELECT * FROM Document WHERE ecm:path = '${sectionPath}' AND ecm:isTrashed = 0`;
+      this.nuxeoApi.nxqlSearch(query, 1).subscribe({
+        next: (res) => {
+          if (res.entries.length > 0) {
+            this.doRepublish(res.entries[0].uid);
+          } else {
+            this.actionInProgress.set(null);
+            this.toast('Section not found');
+          }
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to republish');
+        },
+      });
+    }
+  }
+
+  private doRepublish(targetSectionUid: string): void {
+    this.detailService
+      .publishDocument(this.docUid, targetSectionUid, { override: true })
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document republished');
+          this.refreshPublishedDocs();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to republish');
+        },
+      });
+  }
+
+  unpublishAll(): void {
+    const docs = this.publishedDocs();
+    if (docs.length === 0 || this.actionInProgress()) return;
+    this.actionInProgress.set('unpublish-all');
+
+    const deletions = docs.map((d) => this.detailService.unpublishDocument(d.uid));
+    forkJoin(deletions).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.publishedDocs.set([]);
+        this.toast('All publications removed');
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to remove some publications');
+        this.refreshPublishedDocs();
+      },
+    });
+  }
+
+  private refreshPublishedDocs(): void {
+    this.detailService.getPublishedVersions(this.docUid).subscribe({
+      next: (res) => this.publishedDocs.set(res.entries),
+    });
   }
 
   // ── Document Actions ──
@@ -604,6 +1007,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.isFavorite.set(!wasFav);
         this.actionInProgress.set(null);
         this.toast(wasFav ? 'Removed from favorites' : 'Added to favorites');
+        window.dispatchEvent(new Event('favorites-changed'));
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -667,27 +1071,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
       this.toast('Added to clipboard');
     }
+    window.dispatchEvent(new Event('clipboard-changed'));
   }
 
   exportDocument(): void {
-    if (this.actionInProgress()) return;
-    this.actionInProgress.set('export');
-
-    this.detailService.exportBlob(this.docUid).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = this.fileName();
-        a.click();
-        URL.revokeObjectURL(url);
-        this.actionInProgress.set(null);
-        this.toast('Download started');
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to export document');
-      },
+    this.dialog.open(ExportDialogComponent, {
+      data: {
+        documentUid: this.docUid,
+        documentTitle: this.doc()?.title ?? 'document',
+        exportFn: (type: ExportType, uid: string): Observable<Blob> => {
+          switch (type) {
+            case 'thumbnail':
+              return this.detailService.fetchThumbnail(uid);
+            case 'pdf':
+              return this.detailService.fetchPdfRendition(uid);
+            case 'zip':
+              return this.detailService.exportZip(uid, `${this.doc()?.title ?? 'export'}.zip`);
+            case 'xml':
+              return this.detailService.exportXml(uid);
+          }
+        },
+      } satisfies ExportDialogData,
+      width: '440px',
     });
   }
 
@@ -747,6 +1152,461 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     a.href = this.rawBlobUrl;
     a.download = this.fileName();
     a.click();
+  }
+
+  previewMainBlob(): void {
+    if (!this.rawBlobUrl) return;
+    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.rawBlobUrl);
+    this.dialog.open(AttachmentPreviewDialogComponent, {
+      width: '90vw',
+      maxWidth: '1200px',
+      maxHeight: '95vh',
+      panelClass: 'preview-dialog-panel',
+      data: {
+        name: this.fileName(),
+        mimeType: this.mimeType(),
+        blobUrl: safeUrl,
+        rawUrl: '',
+      },
+    });
+  }
+
+  annotateMainBlob(): void {
+    const nuxeoOrigin = this.nuxeoApi.apiUrl('');
+    const uid = this.docUid;
+    if (!uid) return;
+    window.open(`${nuxeoOrigin}/nuxeo/ui/#!/doc/${uid}`, '_blank');
+  }
+
+  // ── Panel Sub-Tab Switching ──
+
+  switchPanelSubTab(tab: 'properties' | 'comments' | 'activity'): void {
+    this.panelSubTab.set(tab);
+    if (tab === 'comments' && !this.commentsLoaded) {
+      this.loadComments();
+    }
+    if (tab === 'activity' && !this.panelActivityLoaded) {
+      this.loadPanelActivity();
+    }
+  }
+
+  // ── Comments ──
+
+  loadComments(): void {
+    if (!this.docUid) return;
+    this.commentsLoading.set(true);
+    this.detailService.getAllComments(this.docUid).subscribe({
+      next: (res) => {
+        const all = (res.entries ?? []).map((e) => ({
+          id: e.uid,
+          parentId: (e.properties['comment:parentId'] as string) ?? this.docUid,
+          text: (e.properties['comment:text'] as string) ?? '',
+          author: (e.properties['comment:author'] as string) ?? '',
+          creationDate:
+            (e.properties['comment:creationDate'] as string) ??
+            (e.properties['dc:created'] as string) ??
+            '',
+          modificationDate:
+            (e.properties['comment:modificationDate'] as string) ??
+            (e.properties['dc:modified'] as string) ??
+            '',
+        }));
+        const topLevel = all.filter((c) => c.parentId === this.docUid);
+        const replies: Record<string, NuxeoComment[]> = {};
+        for (const c of all) {
+          if (c.parentId !== this.docUid) {
+            if (!replies[c.parentId]) replies[c.parentId] = [];
+            replies[c.parentId].push(c);
+          }
+        }
+        this.comments.set(topLevel);
+        this.repliesMap.set(replies);
+        this.commentsLoading.set(false);
+        this.commentsLoaded = true;
+      },
+      error: () => this.commentsLoading.set(false),
+    });
+  }
+
+  submitComment(): void {
+    const text = this.newCommentText().trim();
+    if (!text || this.commentSaving()) return;
+    this.commentSaving.set(true);
+    this.detailService.createComment(this.docUid, text).subscribe({
+      next: (comment) => {
+        this.comments.update((list) => [comment, ...list]);
+        this.newCommentText.set('');
+        this.commentSaving.set(false);
+      },
+      error: () => {
+        this.commentSaving.set(false);
+        this.toast('Failed to add comment');
+      },
+    });
+  }
+
+  cancelNewComment(): void {
+    this.newCommentText.set('');
+  }
+
+  startEditComment(comment: NuxeoComment): void {
+    this.editingCommentId.set(comment.id);
+    this.editingCommentText.set(comment.text);
+  }
+
+  cancelEditComment(): void {
+    this.editingCommentId.set(null);
+    this.editingCommentText.set('');
+  }
+
+  saveEditComment(): void {
+    const id = this.editingCommentId();
+    const text = this.editingCommentText().trim();
+    if (!id || !text || this.commentSaving()) return;
+    this.commentSaving.set(true);
+    this.detailService.updateComment(this.docUid, id, text).subscribe({
+      next: (updated) => {
+        this.comments.update((list) => list.map((c) => (c.id === id ? updated : c)));
+        this.editingCommentId.set(null);
+        this.editingCommentText.set('');
+        this.commentSaving.set(false);
+      },
+      error: () => {
+        this.commentSaving.set(false);
+        this.toast('Failed to update comment');
+      },
+    });
+  }
+
+  deleteComment(comment: NuxeoComment): void {
+    if (!confirm('Delete this comment?')) return;
+    this.detailService.deleteComment(this.docUid, comment.id).subscribe({
+      next: () => {
+        this.comments.update((list) => list.filter((c) => c.id !== comment.id));
+        this.toast('Comment deleted');
+      },
+      error: () => this.toast('Failed to delete comment'),
+    });
+  }
+
+  startReply(commentId: string): void {
+    this.replyingToId.set(commentId);
+    this.replyText.set('');
+  }
+
+  cancelReply(): void {
+    this.replyingToId.set(null);
+    this.replyText.set('');
+  }
+
+  submitReply(commentId: string): void {
+    const text = this.replyText().trim();
+    if (!text || this.commentSaving()) return;
+    this.commentSaving.set(true);
+    this.detailService.createReply(this.docUid, commentId, text).subscribe({
+      next: (reply) => {
+        const correctedReply = { ...reply, parentId: commentId };
+        this.repliesMap.update((m) => ({
+          ...m,
+          [commentId]: [...(m[commentId] ?? []), correctedReply],
+        }));
+        this.replyingToId.set(null);
+        this.replyText.set('');
+        this.commentSaving.set(false);
+      },
+      error: () => {
+        this.commentSaving.set(false);
+        this.toast('Failed to add reply');
+      },
+    });
+  }
+
+  replyCount(commentId: string): number {
+    return (this.repliesMap()[commentId] ?? []).length;
+  }
+
+  lastReplyTime(commentId: string): string {
+    const replies = this.repliesMap()[commentId];
+    if (!replies?.length) return '';
+    return this.relativeTime(replies[replies.length - 1].creationDate);
+  }
+
+  isCommentEdited(comment: NuxeoComment): boolean {
+    return !!comment.modificationDate && comment.modificationDate !== comment.creationDate;
+  }
+
+  relativeTime(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const seconds = Math.floor(diff / 1000);
+    if (seconds < 60) return 'a few seconds ago';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+    return new Date(dateStr).toLocaleDateString();
+  }
+
+  // ── Panel Activity ──
+
+  loadPanelActivity(): void {
+    if (!this.docUid) return;
+    this.panelActivityLoading.set(true);
+    this.detailService.getAuditLog(this.docUid, 20, 0).subscribe({
+      next: (res) => {
+        this.panelActivity.set(res.entries);
+        this.panelActivityLoading.set(false);
+        this.panelActivityLoaded = true;
+      },
+      error: () => this.panelActivityLoading.set(false),
+    });
+  }
+
+  activityLabel(eventId: string): string {
+    const labels: Record<string, string> = {
+      documentCreated: 'created the document',
+      documentModified: 'updated the document',
+      documentMoved: 'moved the document',
+      documentRemoved: 'removed the document',
+      documentLocked: 'locked the document',
+      documentUnlocked: 'unlocked the document',
+      documentSecurityUpdated: 'updated security settings',
+      lifecycle_transition_event: 'changed document state',
+      download: 'downloaded the document',
+      loginSuccess: 'logged in',
+      addedToCollection: 'added to collection',
+      removedFromCollection: 'removed from collection',
+      documentPublished: 'published the document',
+      documentProxyPublished: 'published the document',
+      'workflow.start': 'started a review',
+      'workflow.complete': 'completed a review',
+      documentCheckedIn: 'checked in the document',
+      documentCheckedOut: 'checked out the document',
+      documentRestored: 'restored the document',
+      'activity.deleted': 'activity.deleted',
+    };
+    return (
+      labels[eventId] ??
+      eventId
+        .replace(/([A-Z])/g, ' $1')
+        .toLowerCase()
+        .trim()
+    );
+  }
+
+  // ── Versioning ──
+
+  openCreateVersionDialog(): void {
+    const ref = this.dialog.open(CreateVersionDialogComponent, {
+      width: '520px',
+      data: {
+        documentUid: this.docUid,
+        documentTitle: this.doc()?.title ?? '',
+        currentMajor: this.currentMajor(),
+        currentMinor: this.currentMinor(),
+      } satisfies CreateVersionDialogData,
+    });
+
+    ref.afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadDocument(this.docUid);
+        this.versionsLoaded = false;
+        this.loadVersions();
+      }
+    });
+  }
+
+  toggleVersionDropdown(): void {
+    if (!this.versionsLoaded) {
+      this.loadVersions();
+    }
+    this.versionDropdownOpen.update((v) => !v);
+  }
+
+  loadVersions(): void {
+    if (!this.docUid) return;
+    this.versionsLoading.set(true);
+    this.detailService.getVersions(this.docUid).subscribe({
+      next: (res) => {
+        this.versions.set(res.entries ?? []);
+        this.versionsLoading.set(false);
+        this.versionsLoaded = true;
+      },
+      error: () => this.versionsLoading.set(false),
+    });
+  }
+
+  versionString(doc: NuxeoDocument): string {
+    const major = Number(doc.properties['uid:major_version'] ?? 0);
+    const minor = Number(doc.properties['uid:minor_version'] ?? 0);
+    return `${major}.${minor}`;
+  }
+
+  restoreVersion(version: NuxeoDocument): void {
+    this.versionDropdownOpen.set(false);
+    this.actionInProgress.set('restore');
+    this.detailService.restoreVersion(version.uid).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast(`Restored to version ${this.versionString(version)}`);
+        this.loadDocument(this.docUid);
+        this.versionsLoaded = false;
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to restore version');
+      },
+    });
+  }
+
+  // ── Publish ──
+
+  openPublishDialog(): void {
+    const openDialog = (versions: NuxeoDocument[]) => {
+      const renditions = this.buildRenditionOptions();
+      const ref = this.dialog.open(PublishDialogComponent, {
+        width: '620px',
+        panelClass: 'publish-dialog-panel',
+        data: {
+          documentUid: this.docUid,
+          documentTitle: this.doc()?.title ?? '',
+          versionLabel: this.versionLabel(),
+          renditions,
+          versions,
+        } satisfies PublishDialogData,
+      });
+
+      ref.afterClosed().subscribe((published) => {
+        if (published) {
+          this.publishTabLoaded = false;
+        }
+      });
+    };
+
+    if (this.versionsLoaded) {
+      openDialog(this.versions());
+    } else {
+      this.detailService.getVersions(this.docUid).subscribe({
+        next: (res) => {
+          const entries = res.entries ?? [];
+          this.versions.set(entries);
+          this.versionsLoaded = true;
+          openDialog(entries);
+        },
+        error: () => openDialog([]),
+      });
+    }
+  }
+
+  private buildRenditionOptions(): { name: string; label: string }[] {
+    const d = this.doc();
+    const rends = d?.contextParameters?.['renditions'] as Array<{ name: string }> | undefined;
+    const labelMap: Record<string, string> = {
+      thumbnail: 'Thumbnail',
+      pdf: 'PDF',
+      zipExport: 'ZIP Export',
+      xmlExport: 'XML Export',
+    };
+    if (!rends) return Object.entries(labelMap).map(([name, label]) => ({ name, label }));
+    return rends.map((r) => ({ name: r.name, label: labelMap[r.name] ?? r.name }));
+  }
+
+  previewAttachment(att: { name: string; url: string; mimeType: string }): void {
+    this.http.get(att.url, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+        this.dialog.open(AttachmentPreviewDialogComponent, {
+          width: '90vw',
+          maxWidth: '1200px',
+          maxHeight: '95vh',
+          panelClass: 'preview-dialog-panel',
+          data: { name: att.name, mimeType: att.mimeType, blobUrl: safeUrl, rawUrl: objectUrl },
+        });
+      },
+      error: () => this.toast('Failed to load preview'),
+    });
+  }
+
+  openDriveDialog(): void {
+    this.dialog.open(DriveDialogComponent, { width: '500px' });
+  }
+
+  uploadAttachment(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.actionInProgress.set('upload');
+
+    this.detailService.uploadAttachment(this.docUid, file).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast(`"${file.name}" attached`);
+        this.loadDocument(this.docUid);
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to upload attachment');
+      },
+    });
+    input.value = '';
+  }
+
+  formatBytes(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  downloadAttachment(url: string, name: string): void {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.target = '_blank';
+    a.click();
+  }
+
+  openReplaceDialog(att: { index: number; name: string }): void {
+    const ref = this.dialog.open(ReplaceAttachmentDialogComponent, {
+      width: '480px',
+      data: { fileName: att.name },
+    });
+    ref.afterClosed().subscribe((file: File | null) => {
+      if (!file) return;
+      this.actionInProgress.set('replace');
+      this.detailService.replaceAttachment(this.docUid, att.index, file).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast(`"${att.name}" replaced`);
+          this.loadDocument(this.docUid);
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to replace attachment');
+        },
+      });
+    });
+  }
+
+  openRemoveDialog(att: { index: number; name: string }): void {
+    const ref = this.dialog.open(RemoveAttachmentDialogComponent, { width: '400px' });
+    ref.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.actionInProgress.set('remove');
+      this.detailService.removeAttachment(this.docUid, att.index).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast(`"${att.name}" removed`);
+          this.loadDocument(this.docUid);
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to remove attachment');
+        },
+      });
+    });
   }
 
   closePropertiesPanel(): void {

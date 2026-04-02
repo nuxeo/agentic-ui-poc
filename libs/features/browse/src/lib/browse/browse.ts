@@ -1,14 +1,19 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
+import { of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 
 import {
   NuxeoDocument,
   BrowseService,
+  DocumentDetailService,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
 
 const FOLDERISH_TYPES = new Set([
@@ -25,23 +30,6 @@ const FOLDERISH_TYPES = new Set([
   'Favorites',
 ]);
 
-const DOC_TYPE_ICONS: Record<string, string> = {
-  Domain: 'public',
-  Folder: 'folder',
-  OrderedFolder: 'folder',
-  Workspace: 'workspaces',
-  WorkspaceRoot: 'source',
-  SectionRoot: 'library_books',
-  Section: 'library_books',
-  TemplateRoot: 'dashboard_customize',
-  File: 'description',
-  Note: 'sticky_note_2',
-  Picture: 'image',
-  Video: 'videocam',
-  Audio: 'audiotrack',
-  Collection: 'collections_bookmark',
-};
-
 interface BreadcrumbSegment {
   label: string;
   routerPath: string;
@@ -50,13 +38,7 @@ interface BreadcrumbSegment {
 @Component({
   selector: 'lib-browse',
   standalone: true,
-  imports: [
-    DatePipe,
-    RouterLink,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatButtonModule,
-  ],
+  imports: [DatePipe, RouterLink, MatIconModule, MatProgressSpinnerModule, MatButtonModule],
   templateUrl: './browse.html',
   styleUrl: './browse.scss',
 })
@@ -64,20 +46,21 @@ export class BrowseComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
+  private readonly detailService = inject(DocumentDetailService);
+  private readonly sanitizer = inject(DomSanitizer);
 
   readonly entries = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly currentDoc = signal<NuxeoDocument | null>(null);
   readonly totalSize = signal(0);
+  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
   private currentNuxeoPath = '/';
 
   readonly breadcrumbs = computed<BreadcrumbSegment[]>(() => {
     const doc = this.currentDoc();
-    const crumbs: BreadcrumbSegment[] = [
-      { label: 'Root', routerPath: '/browse' },
-    ];
+    const crumbs: BreadcrumbSegment[] = [{ label: 'Root', routerPath: '/browse' }];
     if (!doc || doc.path === '/') return crumbs;
 
     const parts = doc.path.split('/').filter(Boolean);
@@ -111,6 +94,7 @@ export class BrowseComponent {
         this.entries.set(res.entries);
         this.totalSize.set(res.totalSize);
         this.loading.set(false);
+        this.loadThumbnails(res.entries);
       },
       error: () => {
         this.error.set('Failed to load folder contents.');
@@ -119,12 +103,29 @@ export class BrowseComponent {
     });
   }
 
+  private loadThumbnails(docs: NuxeoDocument[]): void {
+    this.thumbnailMap.set({});
+    for (const doc of docs) {
+      this.detailService
+        .fetchThumbnail(doc.uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
+    }
+  }
+
   isFolderish(doc: NuxeoDocument): boolean {
     return FOLDERISH_TYPES.has(doc.type);
   }
 
   docIcon(doc: NuxeoDocument): string {
-    return DOC_TYPE_ICONS[doc.type] ?? 'insert_drive_file';
+    return docTypeIcon(doc.type);
   }
 
   lastContributor(doc: NuxeoDocument): string {

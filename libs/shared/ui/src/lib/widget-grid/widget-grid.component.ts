@@ -1,7 +1,7 @@
 import { Component, input } from '@angular/core';
 
 @Component({
-  selector: 'ui-widget-grid',
+  selector: 'lib-widget-grid',
   standalone: true,
   templateUrl: './widget-grid.component.html',
   styleUrl: './widget-grid.component.scss',
