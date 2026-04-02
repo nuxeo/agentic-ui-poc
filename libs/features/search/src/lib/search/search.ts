@@ -8,6 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SearchService, SearchAggregationService, SelectionService, DocumentDetailService, type SearchResultItem, type SearchResponse, type SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
@@ -110,13 +111,14 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
 @Component({
   selector: 'lib-search',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule, MatSelectModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule, MatSelectModule, MatSnackBarModule],
   templateUrl: './search.html',
   styleUrl: './search.scss',
 })
 export class SearchComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
@@ -496,7 +498,25 @@ export class SearchComponent {
           });
           window.dispatchEvent(new Event('favorites-changed'));
         },
+        error: (err) => {
+          this.snackBar.open(this.getApiErrorMessage(err, 'Failed to update favorites.'), 'Dismiss', {
+            duration: 5000,
+          });
+        },
       });
+  }
+
+  private getApiErrorMessage(err: unknown, fallback: string): string {
+    if (typeof err === 'string' && err.trim().length > 0) return err;
+
+    const maybeObj = err as { error?: { message?: string }; message?: string } | null;
+    const apiMessage = maybeObj?.error?.message;
+    if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) return apiMessage;
+
+    const defaultMessage = maybeObj?.message;
+    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0) return defaultMessage;
+
+    return fallback;
   }
 
   isFavorited(id: string): boolean {

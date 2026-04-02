@@ -30,6 +30,8 @@ export interface AssetSearchParams {
   colorProfiles?: string[];
   colorDepths?: string[];
   videoDurations?: string[];
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface AssetSearchResult extends NuxeoPaginatedList<NuxeoDocument> {

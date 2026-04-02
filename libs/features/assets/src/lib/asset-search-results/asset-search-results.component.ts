@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSelectModule } from '@angular/material/select';
 import { AssetService, AssetAggregationService, SelectionService, docTypeIcon, type NuxeoDocument, type AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
@@ -55,6 +56,20 @@ export interface AssetResult {
   flags?: string;
 }
 
+const GRID_SORT_TO_API_FIELD: Record<string, string> = {
+  name: 'dc:title',
+  createdDate: 'dc:created',
+  modifiedDate: 'dc:modified',
+  lastContributor: 'dc:lastContributor',
+  state: 'ecm:currentLifeCycleState',
+  nature: 'dc:nature',
+  coverage: 'dc:coverage',
+};
+
+const API_FIELD_TO_GRID_SORT = Object.fromEntries(
+  Object.entries(GRID_SORT_TO_API_FIELD).map(([ui, api]) => [api, ui]),
+) as Record<string, string>;
+
 function buildApiParams(params: ParamMap) {
   const get = (key: string) => params.get(key)?.split(',').filter(Boolean) ?? [];
 
@@ -64,6 +79,11 @@ function buildApiParams(params: ParamMap) {
   // Get mimeTypes from asset-format param - values are now the full MIME types
   const mimeTypeValues = get('asset-format');
 
+  const sortBy = params.get('sortBy') ?? undefined;
+  const sortOrderRaw = params.get('sortOrder');
+  const sortOrder: 'asc' | 'desc' | undefined =
+    sortOrderRaw === 'asc' || sortOrderRaw === 'desc' ? sortOrderRaw : undefined;
+
   return {
     primaryTypes: primaryTypeValues,
     mimeTypes: mimeTypeValues,
@@ -72,6 +92,8 @@ function buildApiParams(params: ParamMap) {
     colorProfiles: get('color-profile'),
     colorDepths: get('color-depth'),
     videoDurations: get('video-duration'),
+    sortBy,
+    sortOrder,
   };
 }
 
@@ -209,7 +231,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
 @Component({
   selector: 'lib-asset-search-results',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule, MatSelectModule],
   templateUrl: './asset-search-results.component.html',
   styleUrl: './asset-search-results.component.scss',
 })
@@ -251,6 +273,20 @@ export class AssetSearchResultsComponent {
   readonly visibleColumnKeys = signal<string[]>(['name', 'modified', 'contributor']);
   readonly sortColumn = signal<string | null>(null);
   readonly sortDirection = signal<SortDirection>(null);
+  readonly gridGroupBy = signal<string>('createdDate');
+  readonly gridSortOrder = signal<'asc' | 'desc'>('asc');
+
+  constructor() {
+    effect(() => {
+      const params = this.queryParams();
+      const apiSortBy = params.get('sortBy') ?? 'dc:created';
+      const uiSortBy = API_FIELD_TO_GRID_SORT[apiSortBy] ?? 'createdDate';
+      const sortOrder = params.get('sortOrder') === 'desc' ? 'desc' : 'asc';
+
+      this.gridGroupBy.set(uiSortBy);
+      this.gridSortOrder.set(sortOrder);
+    });
+  }
 
   readonly visibleColumns = computed(() =>
     ALL_COLUMNS.filter(c => this.visibleColumnKeys().includes(c.key))
@@ -402,6 +438,79 @@ export class AssetSearchResultsComponent {
       return dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
   });
+
+  readonly gridAssets = computed(() => {
+    const assets = [...this.filteredAssets()];
+    const col = this.gridGroupBy();
+    const dir = this.gridSortOrder();
+
+    return assets.sort((a, b) => {
+      let aVal = '';
+      let bVal = '';
+
+      switch (col) {
+        case 'name':
+          aVal = a.name;
+          bVal = b.name;
+          break;
+        case 'createdDate':
+          aVal = a.createdDate ?? '';
+          bVal = b.createdDate ?? '';
+          break;
+        case 'modifiedDate':
+          aVal = a.modifiedDate;
+          bVal = b.modifiedDate;
+          break;
+        case 'lastContributor':
+          aVal = a.lastContributor;
+          bVal = b.lastContributor;
+          break;
+        case 'state':
+          aVal = a.state ?? '';
+          bVal = b.state ?? '';
+          break;
+        case 'nature':
+          aVal = a.nature ?? '';
+          bVal = b.nature ?? '';
+          break;
+        case 'coverage':
+          aVal = a.coverage ?? '';
+          bVal = b.coverage ?? '';
+          break;
+      }
+
+      return dir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+  });
+
+  setGridGroupBy(value: string): void {
+    this.gridGroupBy.set(value);
+    this.gridSortOrder.set('asc');
+
+    const apiFieldName = GRID_SORT_TO_API_FIELD[value] ?? null;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        sortBy: apiFieldName,
+        sortOrder: 'asc',
+      },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  setGridSortOrder(direction: 'asc' | 'desc'): void {
+    this.gridSortOrder.set(direction);
+
+    const apiFieldName = GRID_SORT_TO_API_FIELD[this.gridGroupBy()] ?? null;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        sortBy: apiFieldName,
+        sortOrder: direction,
+      },
+      queryParamsHandling: 'merge',
+    });
+  }
 
   readonly SORTABLE_COLUMNS = new Set(['name', 'modified', 'contributor']);
 

@@ -158,6 +158,7 @@
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
 }
 
 /* Loading / Error */
@@ -185,6 +186,35 @@
 }
 
 /* Grid View */
+.grid-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #d8dbe2);
+  flex-shrink: 0;
+}
+
+.grid-actions-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.grid-select {
+  min-width: 200px;
+  font-size: 14px;
+}
+
+.grid-select-all {
+  margin-right: 4px;
+}
+
+.action-btn {
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+}
+
 .asset-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

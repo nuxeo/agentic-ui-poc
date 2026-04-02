@@ -20,6 +20,8 @@ export class AssetService {
       colorProfiles = [],
       colorDepths = [],
       videoDurations = [],
+      sortBy,
+      sortOrder,
     } = params;
 
     let httpParams = new HttpParams()
@@ -40,6 +42,14 @@ export class AssetService {
     addAggParam('color_profile_agg', colorProfiles);
     addAggParam('color_depth_agg', colorDepths);
     addAggParam('video_duration_agg', videoDurations);
+
+    if (sortBy) {
+      httpParams = httpParams.set('sortBy', sortBy);
+    }
+
+    if (sortOrder) {
+      httpParams = httpParams.set('sortOrder', sortOrder);
+    }
 
     return this.api.get<AssetSearchResult>(
       '/nuxeo/api/v1/search/pp/assets_search/execute',

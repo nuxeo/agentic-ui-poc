@@ -5,6 +5,7 @@ import { filter } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { SatAppHeaderModule } from '@hylandsoftware/satori-ui/app-header';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
@@ -29,6 +30,7 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
     MatMenuModule,
     MatButtonModule,
     MatIconModule,
+    MatSnackBarModule,
     MatSidenavModule,
     NavDrawerComponent,
     SelectionTopbarComponent,
@@ -40,6 +42,7 @@ export class AppShellComponent {
   private readonly router = inject(Router);
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
+  private readonly snackBar = inject(MatSnackBar);
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
 
@@ -148,9 +151,39 @@ export class AppShellComponent {
   }
 
   onDeleteSelected(): void {
+    const count = this.selectionService.selectedCount();
+    if (count === 0) return;
+
+    const confirmed = window.confirm(
+      `Delete ${count} selected item${count === 1 ? '' : 's'}? This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      this.selectionService.clear();
+      return;
+    }
+
     this.selectionService.deleteSelected().subscribe({
-      error: (err) => console.error('Failed to delete selected documents', err),
+      error: (err) => {
+        console.error('Failed to delete selected documents', err);
+        const message = this.getDeleteErrorMessage(err);
+        this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+        this.selectionService.clear();
+      },
     });
+  }
+
+  private getDeleteErrorMessage(err: unknown): string {
+    if (typeof err === 'string' && err.trim().length > 0) return err;
+
+    const maybeObj = err as { error?: { message?: string }; message?: string } | null;
+    const apiMessage = maybeObj?.error?.message;
+    if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) return apiMessage;
+
+    const defaultMessage = maybeObj?.message;
+    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0) return defaultMessage;
+
+    return 'Failed to delete selected documents. Please try again.';
   }
 
   refreshClipboardCount(): void {

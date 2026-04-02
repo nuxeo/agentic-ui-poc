@@ -37,6 +37,44 @@
     </div>
   </div>
 
+  @if (!loading() && !error() && viewMode() === 'grid') {
+    <div class="grid-actions-bar">
+      <div class="grid-actions-left">
+        <mat-checkbox
+          [checked]="isAllSelected()"
+          [indeterminate]="isIndeterminate()"
+          [disabled]="selectedCount() === 0 && filteredAssets().length === 0"
+          matTooltip="Select all on this page"
+          (change)="toggleAll()"
+          class="grid-select-all"
+        ></mat-checkbox>
+
+        <mat-select
+          [value]="gridGroupBy()"
+          (selectionChange)="setGridGroupBy($event.value)"
+          class="grid-select"
+        >
+          <mat-option value="name">Title</mat-option>
+          <mat-option value="createdDate">Created</mat-option>
+          <mat-option value="modifiedDate">Modified</mat-option>
+          <mat-option value="lastContributor">Last contributor</mat-option>
+          <mat-option value="state">State</mat-option>
+          <mat-option value="nature">Nature</mat-option>
+          <mat-option value="coverage">Coverage</mat-option>
+        </mat-select>
+
+        <button
+          mat-icon-button
+          matTooltip="Revert sort order"
+          (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
+          class="action-btn"
+        >
+          <mat-icon>{{ gridSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+  }
+
   <main class="results-content">
 
       <!-- Loading -->
@@ -54,7 +92,7 @@
       <!-- Grid View -->
       @if (!loading() && !error() && viewMode() === 'grid') {
         <div class="asset-grid">
-          @for (asset of filteredAssets(); track asset.id) {
+          @for (asset of gridAssets(); track asset.id) {
             <button
               type="button"
               class="asset-card"
