@@ -8,7 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
-import { AssetService, AssetAggregationService } from '@agentic-ui/shared/nuxeo-client';
+import { AssetService, AssetAggregationService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
 import type { NuxeoDocument, AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
@@ -244,6 +244,7 @@ export class AssetSearchResultsComponent {
   private readonly router = inject(Router);
   private readonly assetService = inject(AssetService);
   private readonly aggregationService = inject(AssetAggregationService);
+  readonly selectionService = inject(SelectionService);
   private readonly queryParams = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
 
   readonly loading = signal(true);
@@ -442,25 +443,30 @@ export class AssetSearchResultsComponent {
     }
   }
 
-  readonly selectedAssetIds = signal<Set<string>>(new Set());
-
   isAssetSelected(id: string): boolean {
-    return this.selectedAssetIds().has(id);
+    return this.selectionService.isSelected(id);
   }
 
   toggleAssetSelection(id: string): void {
-    const current = new Set(this.selectedAssetIds());
-    if (current.has(id)) current.delete(id);
-    else current.add(id);
-    this.selectedAssetIds.set(current);
+    this.selectionService.toggle(id);
   }
 
   toggleAll(): void {
     if (this.isAllSelected()) {
-      this.selectedAssetIds.set(new Set());
+      this.selectionService.clear();
     } else {
-      this.selectedAssetIds.set(new Set(this.filteredAssets().map(a => a.id)));
+      this.selectionService.selectAll(this.filteredAssets().map(a => a.id));
     }
+  }
+
+  deleteSelected(): void {
+    this.selectionService.deleteSelected().subscribe({
+      next: () => this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
+    });
+  }
+
+  clearSelection(): void {
+    this.selectionService.clear();
   }
 
   readonly columnPanelOpen = signal(false);
@@ -567,15 +573,16 @@ export class AssetSearchResultsComponent {
   }
 
   readonly resultCount = computed(() => this.filteredAssets().length);
+  readonly selectedCount = computed(() => this.selectionService.selectedCount());
 
   readonly isAllSelected = computed(() => {
     const assets = this.filteredAssets();
-    return assets.length > 0 && assets.every(a => this.selectedAssetIds().has(a.id));
+    return this.selectionService.isAllSelected(assets.map(a => a.id));
   });
 
   readonly isIndeterminate = computed(() => {
     const assets = this.filteredAssets();
-    return assets.some(a => this.selectedAssetIds().has(a.id)) && !this.isAllSelected();
+    return this.selectionService.isIndeterminate(assets.map(a => a.id));
   });
 
   setViewMode(mode: ViewMode): void {

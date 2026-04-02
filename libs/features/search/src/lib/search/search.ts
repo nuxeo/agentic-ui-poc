@@ -1,14 +1,14 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap, catchError, of, tap, map } from 'rxjs';
+import { switchMap, catchError, of, tap, map, combineLatest } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { SearchService, SearchAggregationService } from '@agentic-ui/shared/nuxeo-client';
+import { SearchService, SearchAggregationService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
 import type { SearchResultItem, SearchResponse, SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
@@ -112,6 +112,7 @@ export class SearchComponent {
   private readonly router = inject(Router);
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
+  readonly selectionService = inject(SelectionService);
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -126,15 +127,17 @@ export class SearchComponent {
   readonly columnsForPanel = ALL_COLUMNS;
   readonly sortColumn = signal<string | null>(null);
   readonly sortDirection = signal<SortDirection>(null);
-  readonly selectedIds = signal<Set<string>>(new Set());
   readonly favoriteIds = signal<Set<string>>(new Set());
 
-  private readonly results$ = this.route.queryParamMap.pipe(
+  private readonly results$ = combineLatest([
+    this.route.queryParamMap,
+    toObservable(this.searchAggregationService.drawerFilters),
+  ]).pipe(
     tap(() => {
       this.loading.set(true);
       this.error.set(null);
     }),
-    switchMap((params) => {
+    switchMap(([params, drawerFilters]) => {
       const quickFilters = params.get('quickFilters') ?? '';
       this.selectedQuickFilters.set(this.parseQuickFilters(quickFilters));
 
@@ -160,20 +163,23 @@ export class SearchComponent {
         size?: string;
       } = {};
 
-      const q = params.get('q')?.trim() ?? '';
-      const modifiedDate = params.get('modifiedDate')?.trim() ?? '';
-      const author = params.get('author')?.trim() ?? '';
-      const collection = params.get('collection')?.trim() ?? '';
-      const tag = params.get('tag')?.trim() ?? '';
-      const nature = params.get('nature')?.trim() ?? '';
-      const subjects = params.get('subjects')?.trim() ?? '';
-      const coverage = params.get('coverage')?.trim() ?? '';
-      const size = params.get('size')?.trim() ?? '';
+      // Sort and quick filters still come from URL params
+      if (quickFilters.trim()) request.quickFilters = quickFilters;
+      if (querySortBy) request.sortBy = querySortBy;
+      if (querySortOrder) request.sortOrder = querySortOrder;
+
+      // All drawer filters come from the shared service signal (not URL)
+      const q = (drawerFilters['q'] ?? '').trim();
+      const modifiedDate = (drawerFilters['modifiedDate'] ?? '').trim();
+      const author = (drawerFilters['author'] ?? '').trim();
+      const collection = (drawerFilters['collection'] ?? '').trim();
+      const tag = (drawerFilters['tag'] ?? '').trim();
+      const nature = (drawerFilters['nature'] ?? '').trim();
+      const subjects = (drawerFilters['subjects'] ?? '').trim();
+      const coverage = (drawerFilters['coverage'] ?? '').trim();
+      const size = (drawerFilters['size'] ?? '').trim();
 
       if (q) request.q = q;
-      if (quickFilters.trim()) request.quickFilters = quickFilters;
-
-      // Include drawer filters only when selected
       if (modifiedDate) request.modifiedDate = modifiedDate;
       if (author) request.author = author;
       if (collection) request.collection = collection;
@@ -183,20 +189,20 @@ export class SearchComponent {
       if (coverage) request.coverage = coverage;
       if (size) request.size = size;
 
-      // Include sort parameters only if they were explicitly set in query params (triggered by user)
-      if (querySortBy) request.sortBy = querySortBy;
-      if (querySortOrder) request.sortOrder = querySortOrder;
-
       return this.searchService.search(request as SearchQueryParams).pipe(
         tap((response: SearchResponse) => {
           if (this.searchAggregationService?.aggregations?.set) {
             this.searchAggregationService.aggregations.set(response.aggregations);
+          }
+          if (this.searchAggregationService?.items?.set) {
+            this.searchAggregationService.items.set(response.items);
           }
         }),
         map((response) => response.items),
         tap(() => this.loading.set(false)),
         catchError(() => {
           this.searchAggregationService.aggregations.set({});
+          this.searchAggregationService.items.set([]);
           this.error.set('Failed to load search results.');
           this.loading.set(false);
           return of<SearchResultItem[]>([]);
@@ -232,16 +238,17 @@ export class SearchComponent {
   });
 
   readonly resultCount = computed(() => this.displayResults().length);
+  readonly selectedCount = computed(() => this.selectionService.selectedCount());
   readonly SORTABLE_COLUMNS = new Set(['name', 'modified', 'contributor', 'author', 'created']);
 
   readonly isAllSelected = computed(() => {
     const rows = this.displayResults();
-    return rows.length > 0 && rows.every((r) => this.selectedIds().has(r.id));
+    return this.selectionService.isAllSelected(rows.map((r) => r.id));
   });
 
   readonly isIndeterminate = computed(() => {
     const rows = this.displayResults();
-    return rows.some((r) => this.selectedIds().has(r.id)) && !this.isAllSelected();
+    return this.selectionService.isIndeterminate(rows.map((r) => r.id));
   });
 
   isQuickFilterSelected(value: string): boolean {
@@ -276,22 +283,29 @@ export class SearchComponent {
   }
 
   isSelected(id: string): boolean {
-    return this.selectedIds().has(id);
+    return this.selectionService.isSelected(id);
   }
 
   toggleSelection(id: string): void {
-    const next = new Set(this.selectedIds());
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    this.selectedIds.set(next);
+    this.selectionService.toggle(id);
   }
 
   toggleAll(): void {
     if (this.isAllSelected()) {
-      this.selectedIds.set(new Set());
-      return;
+      this.selectionService.clear();
+     } else {
+      this.selectionService.selectAll(this.displayResults().map((r) => r.id));
     }
-    this.selectedIds.set(new Set(this.displayResults().map((r) => r.id)));
+  }
+
+  deleteSelected(): void {
+    this.selectionService.deleteSelected().subscribe({
+      next: () => this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
+    });
+  }
+
+  clearSelection(): void {
+    this.selectionService.clear();
   }
 
   isPendingColumn(key: string): boolean {

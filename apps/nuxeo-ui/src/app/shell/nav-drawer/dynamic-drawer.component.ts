@@ -41,13 +41,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 })
 export class DynamicDrawerComponent implements OnDestroy {
   readonly drawerComponent = input<Type<unknown> | null>(null);
-  readonly filtersApplied = output<string>();
   readonly isLoading = signal(true);
 
   private readonly vcr = inject(ViewContainerRef);
   private readonly injector = inject(Injector);
   private componentRef: ComponentRef<unknown> | null = null;
-  private applyFiltersSub: { unsubscribe: () => void } | null = null;
 
   constructor() {
     effect(() => {
@@ -76,23 +74,10 @@ export class DynamicDrawerComponent implements OnDestroy {
       injector: this.injector,
     });
 
-    // Subscribe to applyFilters output if it exists
-    const instance = this.componentRef.instance as Record<string, unknown>;
-    const applyFilters = instance['applyFilters'] as { subscribe?: (cb: (value: string) => void) => unknown } | undefined;
-    if (applyFilters?.subscribe) {
-      this.applyFiltersSub = applyFilters.subscribe((filterUrl: string) => {
-        this.filtersApplied.emit(filterUrl);
-      }) as { unsubscribe: () => void };
-    }
-
     this.isLoading.set(false);
   }
 
   private destroyCurrentComponent(): void {
-    if (this.applyFiltersSub) {
-      this.applyFiltersSub.unsubscribe();
-      this.applyFiltersSub = null;
-    }
     if (this.componentRef) {
       this.componentRef.destroy();
       this.componentRef = null;

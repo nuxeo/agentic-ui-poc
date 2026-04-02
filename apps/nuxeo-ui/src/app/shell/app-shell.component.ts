@@ -12,6 +12,7 @@ import {
   SatPlatformNavModule,
   SatPlatformNavStateService,
 } from '@hylandsoftware/satori-ui/platform-nav';
+import { SelectionService } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS } from '../platform-nav-items';
@@ -37,6 +38,7 @@ export class AppShellComponent {
   private readonly router = inject(Router);
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
+  readonly selectionService = inject(SelectionService);
 
   protected readonly navItems = PLATFORM_NAV_ITEMS;
 
@@ -64,7 +66,13 @@ export class AppShellComponent {
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
         takeUntilDestroyed(),
       )
-      .subscribe((e) => this.currentUrl.set(e.urlAfterRedirects.split('?')[0]));
+      .subscribe((e) => {
+        const nextUrl = e.urlAfterRedirects.split('?')[0];
+        if (nextUrl !== this.currentUrl()) {
+          this.selectionService.clear();
+        }
+        this.currentUrl.set(nextUrl);
+      });
   }
 
   isActive(path: string): boolean {
@@ -103,10 +111,6 @@ export class AppShellComponent {
 
   onNavigateKeepDrawer(path: string): void {
     void this.router.navigateByUrl(path);
-  }
-
-  onApplyFilters(url: string): void {
-    void this.router.navigateByUrl(url);
   }
 
   onDrawerClose(): void {

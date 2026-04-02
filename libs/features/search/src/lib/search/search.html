@@ -79,7 +79,7 @@
 					<mat-checkbox
 						[checked]="isAllSelected()"
 						[indeterminate]="isIndeterminate()"
-						[disabled]="selectedIds().size === 0 && displayResults().length === 0"
+						[disabled]="selectedCount() === 0 && displayResults().length === 0"
 						matTooltip="Select all on this page"
 						(change)="toggleAll()"
 						class="grid-select-all"
@@ -262,7 +262,7 @@
 				<mat-checkbox
 					[checked]="isAllSelected()"
 					[indeterminate]="isIndeterminate()"
-					[disabled]="selectedIds().size === 0 && displayResults().length === 0"
+					[disabled]="selectedCount() === 0 && displayResults().length === 0"
 					matTooltip="Select all on this page"
 					(change)="toggleAll()"
 					class="list-select-all"

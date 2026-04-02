@@ -24,6 +24,7 @@ export { DocumentDetailService, type UserGroupSuggestion } from './lib/services/
 export { DirectoryService } from './lib/services/directory.service';
 export { SearchService } from './lib/services/search.service';
 export { SearchAggregationService } from './lib/services/search-aggregation.service';
+export { SelectionService } from './lib/services/selection.service';
 
 // Queries (for advanced / custom use)
 export {

@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, forkJoin } from 'rxjs';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { AuditLogList } from '../models/audit.model';
@@ -109,10 +109,16 @@ export class DocumentDetailService {
   }
 
   trashDocument(uid: string): Observable<NuxeoDocument> {
+    const input = uid.startsWith('doc:') || uid.startsWith('docs:') ? uid : `docs:${uid}`;
     return this.api.post<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}/@op/Document.Trash`,
-      { params: {}, context: {} },
+      '/nuxeo/api/v1/automation/Document.Trash',
+      { params: {}, context: {}, input },
     );
+  }
+
+  trashDocuments(uids: string[]): Observable<NuxeoDocument[]> {
+    if (uids.length === 0) return forkJoin([]);
+    return forkJoin(uids.map((uid) => this.trashDocument(uid)));
   }
 
   subscribe(uid: string, notifications = 'Creation,Modification'): Observable<NuxeoDocument> {

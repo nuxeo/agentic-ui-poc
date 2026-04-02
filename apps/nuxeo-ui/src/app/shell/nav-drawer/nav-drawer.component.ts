@@ -6,7 +6,16 @@ import { DynamicDrawerComponent } from './dynamic-drawer.component';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { NuxeoDocument, BrowseService, CollectionService, AssetService, AssetAggregationService } from '@agentic-ui/shared/nuxeo-client';
+import {
+  NuxeoDocument,
+  BrowseService,
+  CollectionService,
+  AssetService,
+  AssetAggregationService,
+  SearchService,
+  SearchAggregationService,
+} from '@agentic-ui/shared/nuxeo-client';
+import type { SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
 import type { AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 import { AppNavItem } from '../../platform-nav-items';
 
@@ -37,11 +46,12 @@ export class NavDrawerComponent {
   private readonly collectionService = inject(CollectionService);
   private readonly assetService = inject(AssetService);
   private readonly assetAggregationService = inject(AssetAggregationService);
+  private readonly searchService = inject(SearchService);
+  private readonly searchAggregationService = inject(SearchAggregationService);
 
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
-  readonly applyFilters = output<string>();
   readonly closeDrawer = output<void>();
 
   readonly rootNodes = signal<FolderNode[]>([]);
@@ -69,6 +79,35 @@ export class NavDrawerComponent {
       if (item?.path === '/documents') {
         this.loadAssetAggregations();
       }
+      if (item?.path === '/search') {
+        this.loadSearchAggregations();
+      }
+    });
+  }
+
+  private loadSearchAggregations(): void {
+    const filters = this.searchAggregationService.drawerFilters();
+    const request: SearchQueryParams = {
+      q: (filters['q'] ?? '').trim() || undefined,
+      modifiedDate: (filters['modifiedDate'] ?? '').trim() || undefined,
+      author: (filters['author'] ?? '').trim() || undefined,
+      collection: (filters['collection'] ?? '').trim() || undefined,
+      tag: (filters['tag'] ?? '').trim() || undefined,
+      nature: (filters['nature'] ?? '').trim() || undefined,
+      subjects: (filters['subjects'] ?? '').trim() || undefined,
+      coverage: (filters['coverage'] ?? '').trim() || undefined,
+      size: (filters['size'] ?? '').trim() || undefined,
+    };
+
+    this.searchService.search(request).subscribe({
+      next: (res) => {
+        this.searchAggregationService.aggregations.set(res.aggregations);
+        this.searchAggregationService.items.set(res.items);
+      },
+      error: () => {
+        this.searchAggregationService.aggregations.set({});
+        this.searchAggregationService.items.set([]);
+      },
     });
   }
 

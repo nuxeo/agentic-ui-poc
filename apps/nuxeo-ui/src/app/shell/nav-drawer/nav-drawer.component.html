@@ -46,14 +46,12 @@
       }
     </div>
   } @else if (isAssets) {
-    <app-dynamic-drawer 
+    <app-dynamic-drawer
       [drawerComponent]="assetsDrawerComponent()"
-      (filtersApplied)="applyFilters.emit($event)"
     />
   } @else if (isSearchFilters) {
-    <app-dynamic-drawer 
+    <app-dynamic-drawer
       [drawerComponent]="searchFiltersDrawerComponent()"
-      (filtersApplied)="applyFilters.emit($event)"
     />
   } @else {
     <div class="drawer-empty">

@@ -20,6 +20,7 @@ export interface SearchResultItem {
   title: string;
   type: string;
   modifiedDate: string;
+  sizeInBytes?: number;
   lastContributor: string;
   createdDate?: string;
   author: string;

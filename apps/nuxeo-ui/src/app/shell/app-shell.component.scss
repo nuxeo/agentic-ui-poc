@@ -1,10 +1,69 @@
 :host {
   display: block;
   height: 100%;
+  --selection-topbar-height: 56px;
+}
+
+.selection-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 0 72px;
+  height: var(--selection-topbar-height);
+  background: var(--mat-sys-primary, #1a73e8);
+  color: #fff;
+  z-index: 20;
+  box-shadow: 0 2px 4px rgb(0 0 0 / 18%);
+}
+
+.selection-topbar--sticky {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1200;
+}
+
+sat-platform-nav-container.has-selection-topbar {
+  padding-top: var(--selection-topbar-height);
+  height: calc(100% - var(--selection-topbar-height));
+}
+
+.selection-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.selection-topbar-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.selection-topbar-clear {
+  color: #fff !important;
+  --mdc-text-button-label-text-color: #fff;
+  font-size: 15px;
+  font-weight: 400;
+  text-decoration: underline;
+  opacity: 1;
+  min-width: auto;
+  padding: 0 6px;
+  line-height: 1;
+}
+
+.selection-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.selection-topbar-icon {
+  color: #fff;
 }
 
 .shell-content {
-  height: calc(100% - 56px);
+  height: calc(100% - var(--selection-topbar-height));
 }
 
 .nav-drawer-sidenav {

@@ -64,7 +64,7 @@ export class SearchService {
     const {
       q = '',
       quickFilters = '',
-      sortBy = 'dc:modified',
+      sortBy = 'dc:created',
       sortOrder = 'desc',
       modifiedDate = '',
       author = '',
@@ -125,13 +125,12 @@ export class SearchService {
       httpParams = httpParams.set('common_size_agg', JSON.stringify(sizeValues));
     }
 
-    const allSubjectValues = [...subjectValues];
-    if (tag.trim()) {
-      allSubjectValues.push(tag.trim());
+    if (subjectValues.length > 0) {
+      httpParams = httpParams.set('dc_subjects_agg', JSON.stringify([...new Set(subjectValues)]));
     }
 
-    if (allSubjectValues.length > 0) {
-      httpParams = httpParams.set('dc_subjects_agg', JSON.stringify([...new Set(allSubjectValues)]));
+    if (tag.trim()) {
+      httpParams = httpParams.set('ecm_tags', JSON.stringify([tag.trim()]));
     }
 
     if (q.trim()) {
@@ -146,7 +145,7 @@ export class SearchService {
         map((res) => ({
           items: res.entries.map((doc) => {
             const props = doc.properties ?? {};
-            const fileContent = props['file:content'] as { 'mime-type'?: string } | null;
+            const fileContent = props['file:content'] as { 'mime-type'?: string; length?: number | string } | null;
             const tags = (props['dc:subjects'] as string[] | undefined) ?? [];
             const lastContributor = this.asPrincipalName(props['dc:lastContributor']);
             const author = this.asPrincipalName(props['dc:creator']);
@@ -162,6 +161,7 @@ export class SearchService {
               title: doc.title,
               type: doc.type,
               modifiedDate: doc.lastModified?.slice(0, 10) ?? '',
+              sizeInBytes: this.parseSizeInBytes(fileContent?.length),
               lastContributor,
               createdDate: typeof props['dc:created'] === 'string'
                 ? (props['dc:created'] as string).slice(0, 10)
@@ -198,6 +198,17 @@ export class SearchService {
     };
 
     return principal.name ?? principal.properties?.username ?? principal.id ?? '';
+  }
+
+  private parseSizeInBytes(value: unknown): number | undefined {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) && value >= 0 ? value : undefined;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+    }
+    return undefined;
   }
 
   private normalizeAggregations(aggregations?: SearchApiResponse['aggregations']): SearchAggregations {
