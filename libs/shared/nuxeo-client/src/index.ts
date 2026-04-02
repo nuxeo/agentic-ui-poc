@@ -40,9 +40,11 @@ export { SearchAggregationService } from './lib/services/search-aggregation.serv
 export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
+export { TagService } from './lib/services/tag.service';
 
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
+export { avatarColor } from './lib/constants/avatar-colors';
 
 // Queries (for advanced / custom use)
 export {

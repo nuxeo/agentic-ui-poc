@@ -1,20 +1,78 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin, of, Subject } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
-import { of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTableModule } from '@angular/material/table';
+import { MatSortModule, Sort } from '@angular/material/sort';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 
 import {
   NuxeoDocument,
+  NuxeoAcl,
+  NuxeoAce,
+  AuditEntry,
+  DirectoryEntry,
   BrowseService,
   DocumentDetailService,
+  DirectoryService,
+  TagService,
   docTypeIcon,
+  avatarColor,
 } from '@agentic-ui/shared/nuxeo-client';
+
+import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
+
+import {
+  ShareDialogComponent,
+  ShareDialogData,
+  ExportDialogComponent,
+  ExportDialogData,
+  ExportType,
+} from '@agentic-ui/shared/ui';
+
+import {
+  AddPermissionDialogComponent,
+  AddPermissionDialogData,
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
+  DeletePermissionDialogComponent,
+  DeletePermissionDialogData,
+  ShareExternalDialogComponent,
+  ShareExternalDialogData,
+} from '@agentic-ui/feature-collections';
+
+import { BrowseDriveDialogComponent } from '../drive-dialog/drive-dialog';
+
+import {
+  ColumnDef,
+  ColumnSettingsDialogComponent,
+  loadColumnSettings,
+} from '../column-settings-dialog/column-settings-dialog';
+import {
+  EditMetadataDialogComponent,
+  EditMetadataDialogData,
+} from '../edit-metadata-dialog/edit-metadata-dialog';
 
 const FOLDERISH_TYPES = new Set([
   'Domain',
@@ -38,7 +96,32 @@ interface BreadcrumbSegment {
 @Component({
   selector: 'lib-browse',
   standalone: true,
-  imports: [DatePipe, RouterLink, MatIconModule, MatProgressSpinnerModule, MatButtonModule],
+  imports: [
+    DatePipe,
+    NgClass,
+    FormsModule,
+    RouterLink,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    MatButtonModule,
+    MatTabsModule,
+    MatTableModule,
+    MatSortModule,
+    MatPaginatorModule,
+    MatMenuModule,
+    MatTooltipModule,
+    MatDialogModule,
+    MatSnackBarModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
+    MatChipsModule,
+    MatAutocompleteModule,
+    SatAvatarModule,
+    SatTagModule,
+  ],
   templateUrl: './browse.html',
   styleUrl: './browse.scss',
 })
@@ -47,22 +130,230 @@ export class BrowseComponent {
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
   private readonly detailService = inject(DocumentDetailService);
+  private readonly directoryService = inject(DirectoryService);
+  private readonly tagService = inject(TagService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
 
+  // Core state
   readonly entries = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly currentDoc = signal<NuxeoDocument | null>(null);
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
-
   private currentNuxeoPath = '/';
 
+  // Details side panel
+  readonly panelOpen = signal(false);
+  readonly panelSubTab = signal<'info' | 'tags' | 'activity'>('info');
+  readonly tags = computed<string[]>(() => {
+    const doc = this.currentDoc();
+    if (!doc) return [];
+    const raw = doc.properties?.['nxtag:tags'] as Array<{ label: string } | string> | undefined;
+    if (!raw) return [];
+    return raw.map((t) => (typeof t === 'string' ? t : t.label));
+  });
+  readonly activityEntries = signal<AuditEntry[]>([]);
+  readonly activityLoading = signal(false);
+
+  // Tag autocomplete
+  tagInput = '';
+  readonly tagSearchResults = signal<string[]>([]);
+  readonly showCreateOption = signal(false);
+  private readonly tagSearch$ = new Subject<string>();
+
+  // Tabs
+  readonly activeTabIndex = signal(0);
+
+  // Permissions tab
+  readonly permissionsLoaded = signal(false);
+  readonly localAces = computed<NuxeoAce[]>(() => {
+    const doc = this.currentDoc();
+    const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
+    if (!acls) return [];
+    const local = acls.find((a) => a.name === 'local');
+    return local?.aces ?? [];
+  });
+  readonly inheritedAces = computed<NuxeoAce[]>(() => {
+    const doc = this.currentDoc();
+    const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
+    if (!acls) return [];
+    const inherited = acls.find((a) => a.name === 'inherited');
+    return inherited?.aces ?? [];
+  });
+  readonly externalAces = computed<NuxeoAce[]>(() => {
+    const doc = this.currentDoc();
+    const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
+    if (!acls) return [];
+    return acls.flatMap((a) => a.aces).filter((ace) => ace.externalUser && ace.granted);
+  });
+  readonly isInheritanceBlocked = computed<boolean>(() => {
+    const doc = this.currentDoc();
+    const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
+    if (!acls) return false;
+    return !acls.some((a) => a.name === 'inherited');
+  });
+  readonly actionInProgress = signal<string | null>(null);
+
+  // History tab
+  readonly auditEntries = signal<AuditEntry[]>([]);
+  readonly auditLoading = signal(false);
+  readonly auditTotalSize = signal(0);
+  readonly auditPageSize = signal(10);
+  readonly auditPageIndex = signal(0);
+  private historyLoaded = false;
+  filterUsername = '';
+  filterDateFrom: Date | null = null;
+  filterDateTo: Date | null = null;
+  filterAction = '';
+  filterCategory = '';
+  readonly availableActions = signal<DirectoryEntry[]>([]);
+  readonly availableCategories = signal<DirectoryEntry[]>([]);
+  readonly eventTypeLabelMap = signal<Record<string, string>>({});
+  readonly eventCategoryLabelMap = signal<Record<string, string>>({});
+  sortActive = 'eventDate';
+  sortDirection: 'asc' | 'desc' | '' = 'desc';
+
+  readonly filteredAuditEntries = computed(() => {
+    let entries = this.auditEntries();
+    if (this.filterUsername) {
+      const term = this.filterUsername.toLowerCase();
+      entries = entries.filter((e) => e.principalName?.toLowerCase().includes(term));
+    }
+    if (this.filterDateFrom) {
+      const from = this.filterDateFrom.getTime();
+      entries = entries.filter((e) => new Date(e.eventDate).getTime() >= from);
+    }
+    if (this.filterDateTo) {
+      const to = this.filterDateTo.getTime() + 86_400_000;
+      entries = entries.filter((e) => new Date(e.eventDate).getTime() < to);
+    }
+    if (this.filterAction) {
+      entries = entries.filter((e) => e.eventId === this.filterAction);
+    }
+    if (this.filterCategory) {
+      entries = entries.filter((e) => e.category === this.filterCategory);
+    }
+    if (this.sortActive && this.sortDirection) {
+      const dir = this.sortDirection === 'asc' ? 1 : -1;
+      const key = this.sortActive as keyof AuditEntry;
+      entries = [...entries].sort((a, b) => {
+        const va = String(a[key] ?? '');
+        const vb = String(b[key] ?? '');
+        return va.localeCompare(vb) * dir;
+      });
+    }
+    return entries;
+  });
+
+  // Trash tab
+  readonly trashedDocs = signal<NuxeoDocument[]>([]);
+  readonly trashLoading = signal(false);
+  private trashLoaded = false;
+
+  // View toggle
+  readonly viewMode = signal<'list' | 'card'>('list');
+  readonly csvExporting = signal(false);
+
+  // Column sorting
+  readonly browseSortKey = signal<string>('');
+  readonly browseSortDir = signal<'asc' | 'desc'>('asc');
+
+  // Column settings
+  readonly columns = signal<ColumnDef[]>(loadColumnSettings());
+  readonly visibleColumns = computed(() => this.columns().filter((c) => c.visible));
+
+  // Filters
+  readonly filterText = signal('');
+  readonly filterType = signal('');
+  readonly filterModifiedFrom = signal<Date | null>(null);
+  readonly filterModifiedTo = signal<Date | null>(null);
+  readonly filterContributor = signal('');
+
+  readonly distinctTypes = computed(() => {
+    const types = new Set(this.entries().map((e) => e.type));
+    return Array.from(types).sort();
+  });
+
+  readonly filteredEntries = computed(() => {
+    let docs = this.entries();
+    const text = this.filterText();
+    const type = this.filterType();
+    const modFrom = this.filterModifiedFrom();
+    const modTo = this.filterModifiedTo();
+    const contributor = this.filterContributor();
+
+    if (text) {
+      const term = text.toLowerCase();
+      docs = docs.filter((d) => d.title.toLowerCase().includes(term));
+    }
+    if (type) {
+      docs = docs.filter((d) => d.type === type);
+    }
+    if (modFrom) {
+      const from = modFrom.getTime();
+      docs = docs.filter((d) => new Date(d.lastModified).getTime() >= from);
+    }
+    if (modTo) {
+      const to = modTo.getTime() + 86_400_000;
+      docs = docs.filter((d) => new Date(d.lastModified).getTime() < to);
+    }
+    if (contributor) {
+      const term = contributor.toLowerCase();
+      docs = docs.filter((d) =>
+        ((d.properties?.['dc:lastContributor'] as string) ?? '').toLowerCase().includes(term),
+      );
+    }
+
+    const key = this.browseSortKey();
+    const dir = this.browseSortDir();
+    if (key) {
+      const mult = dir === 'asc' ? 1 : -1;
+      docs = [...docs].sort((a, b) => {
+        let va: string, vb: string;
+        if (key === 'title') {
+          va = a.title.toLowerCase();
+          vb = b.title.toLowerCase();
+        } else if (key === 'modified') {
+          va = a.lastModified ?? '';
+          vb = b.lastModified ?? '';
+        } else if (key === 'lastContributor') {
+          va = ((a.properties?.['dc:lastContributor'] as string) ?? '').toLowerCase();
+          vb = ((b.properties?.['dc:lastContributor'] as string) ?? '').toLowerCase();
+        } else {
+          va = String(this.getCellValue(a, key)).toLowerCase();
+          vb = String(this.getCellValue(b, key)).toLowerCase();
+        }
+        return va < vb ? -mult : va > vb ? mult : 0;
+      });
+    }
+
+    return docs;
+  });
+
+  toggleBrowseSort(colKey: string): void {
+    if (this.browseSortKey() === colKey) {
+      this.browseSortDir.update((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      this.browseSortKey.set(colKey);
+      this.browseSortDir.set('asc');
+    }
+  }
+
+  // Subscription state
+  readonly isSubscribed = computed(() => {
+    const doc = this.currentDoc();
+    const notifs = doc?.contextParameters?.['subscribedNotifications'] as string[] | undefined;
+    return notifs && notifs.length > 0;
+  });
+
+  // Breadcrumbs
   readonly breadcrumbs = computed<BreadcrumbSegment[]>(() => {
     const doc = this.currentDoc();
     const crumbs: BreadcrumbSegment[] = [{ label: 'Root', routerPath: '/browse' }];
     if (!doc || doc.path === '/') return crumbs;
-
     const parts = doc.path.split('/').filter(Boolean);
     let accumulated = '/browse';
     for (const part of parts) {
@@ -76,16 +367,43 @@ export class BrowseComponent {
     this.route.url.pipe(takeUntilDestroyed()).subscribe((segments) => {
       const subPath = segments.map((s) => s.path).join('/');
       this.currentNuxeoPath = subPath ? `/${subPath}` : '/';
+      this.historyLoaded = false;
+      this.trashLoaded = false;
+      this.activeTabIndex.set(0);
       this.loadContent();
     });
+
+    this.tagSearch$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap((term) =>
+          term.length > 0
+            ? this.tagService.searchTags(term).pipe(catchError(() => of([])))
+            : of([]),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe((results) => {
+        const existing = this.tags();
+        const filtered = results.filter((r) => !existing.includes(r));
+        this.tagSearchResults.set(filtered);
+        const exactMatch = results.some((r) => r.toLowerCase() === this.tagInput.toLowerCase());
+        this.showCreateOption.set(this.tagInput.trim().length > 0 && !exactMatch);
+      });
   }
+
+  // ── Content loading ──
 
   loadContent(): void {
     this.loading.set(true);
     this.error.set(null);
 
     this.browseService.getByPath(this.currentNuxeoPath).subscribe({
-      next: (doc) => this.currentDoc.set(doc),
+      next: (doc) => {
+        this.currentDoc.set(doc);
+        this.loadActivity(doc.uid);
+      },
       error: () => this.currentDoc.set(null),
     });
 
@@ -103,8 +421,8 @@ export class BrowseComponent {
     });
   }
 
-  private loadThumbnails(docs: NuxeoDocument[]): void {
-    this.thumbnailMap.set({});
+  private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
+    if (reset) this.thumbnailMap.set({});
     for (const doc of docs) {
       this.detailService
         .fetchThumbnail(doc.uid)
@@ -120,6 +438,375 @@ export class BrowseComponent {
     }
   }
 
+  // ── Details side panel ──
+
+  togglePanel(): void {
+    this.panelOpen.update((v) => !v);
+  }
+
+  closePanel(): void {
+    this.panelOpen.set(false);
+  }
+
+  switchPanelSubTab(tab: 'info' | 'tags' | 'activity'): void {
+    this.panelSubTab.set(tab);
+  }
+
+  private loadActivity(uid: string): void {
+    this.activityLoading.set(true);
+    this.detailService.getAuditLog(uid, 5, 0).subscribe({
+      next: (res) => {
+        this.activityEntries.set(res.entries);
+        this.activityLoading.set(false);
+      },
+      error: () => this.activityLoading.set(false),
+    });
+  }
+
+  onTagSearch(term: string): void {
+    this.tagSearch$.next(term);
+  }
+
+  selectTag(label: string): void {
+    this.applyTag(label);
+  }
+
+  createTag(): void {
+    const label = this.tagInput.trim();
+    if (label) this.applyTag(label);
+  }
+
+  private applyTag(label: string): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.tagService.addTag(doc.uid, label).subscribe({
+      next: () => {
+        this.tagInput = '';
+        this.tagSearchResults.set([]);
+        this.showCreateOption.set(false);
+        this.browseService.getByPath(this.currentNuxeoPath).subscribe({
+          next: (d) => this.currentDoc.set(d),
+        });
+        this.snackBar.open(`Tag "${label}" added`, 'OK', { duration: 2000 });
+      },
+      error: () => this.snackBar.open('Failed to add tag', 'OK', { duration: 3000 }),
+    });
+  }
+
+  removeTag(label: string): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.tagService.removeTag(doc.uid, label).subscribe({
+      next: () => {
+        this.browseService.getByPath(this.currentNuxeoPath).subscribe({
+          next: (d) => this.currentDoc.set(d),
+        });
+      },
+      error: () => this.snackBar.open('Failed to remove tag', 'OK', { duration: 3000 }),
+    });
+  }
+
+  // ── Tab changes ──
+
+  onTabChange(index: number): void {
+    this.activeTabIndex.set(index);
+    if (index === 1 && !this.permissionsLoaded()) {
+      this.permissionsLoaded.set(true);
+    }
+    if (index === 2 && !this.historyLoaded) {
+      this.loadDirectoryEntries();
+      this.loadAuditLog();
+    }
+    if (index === 3 && !this.trashLoaded) {
+      this.loadTrash();
+    }
+  }
+
+  // ── History tab ──
+
+  private loadDirectoryEntries(): void {
+    forkJoin([
+      this.directoryService.getEventTypes(),
+      this.directoryService.getEventCategories(),
+    ]).subscribe({
+      next: ([types, cats]) => {
+        this.availableActions.set(types);
+        this.availableCategories.set(cats);
+        const typeMap: Record<string, string> = {};
+        for (const t of types) typeMap[t.id] = t.label;
+        this.eventTypeLabelMap.set(typeMap);
+        const catMap: Record<string, string> = {};
+        for (const c of cats) catMap[c.id] = c.label;
+        this.eventCategoryLabelMap.set(catMap);
+      },
+    });
+  }
+
+  loadAuditLog(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.auditLoading.set(true);
+    this.detailService.getAuditLog(doc.uid, this.auditPageSize(), this.auditPageIndex()).subscribe({
+      next: (res) => {
+        this.auditEntries.set(res.entries);
+        this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
+        this.auditLoading.set(false);
+        this.historyLoaded = true;
+      },
+      error: () => this.auditLoading.set(false),
+    });
+  }
+
+  onAuditPageChange(event: PageEvent): void {
+    this.auditPageSize.set(event.pageSize);
+    this.auditPageIndex.set(event.pageIndex);
+    this.loadAuditLog();
+  }
+
+  onAuditSort(sort: Sort): void {
+    this.sortActive = sort.active;
+    this.sortDirection = sort.direction;
+  }
+
+  eventLabel(eventId: string): string {
+    return this.eventTypeLabelMap()[eventId] ?? eventId;
+  }
+
+  categoryLabel(category: string): string {
+    return this.eventCategoryLabelMap()[category] ?? category;
+  }
+
+  avatarColor = avatarColor;
+
+  // ── Trash tab ──
+
+  private loadTrash(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.trashLoading.set(true);
+    this.browseService.getTrashedChildren(doc.uid, 50).subscribe({
+      next: (res) => {
+        this.trashedDocs.set(res.entries);
+        this.trashLoading.set(false);
+        this.trashLoaded = true;
+        this.loadThumbnails(res.entries, false);
+      },
+      error: () => this.trashLoading.set(false),
+    });
+  }
+
+  restoreDocument(doc: NuxeoDocument): void {
+    this.browseService.restoreDocument(doc.uid).subscribe({
+      next: () => {
+        this.snackBar.open(`"${doc.title}" restored`, 'OK', { duration: 3000 });
+        this.loadTrash();
+        this.loadContent();
+      },
+      error: () => this.snackBar.open('Failed to restore document', 'OK', { duration: 3000 }),
+    });
+  }
+
+  // ── View toggle ──
+
+  setViewMode(mode: 'list' | 'card'): void {
+    this.viewMode.set(mode);
+  }
+
+  // ── Column settings ──
+
+  openColumnSettings(): void {
+    const ref = this.dialog.open(ColumnSettingsDialogComponent, {
+      data: this.columns(),
+    });
+    ref.afterClosed().subscribe((result: ColumnDef[] | undefined) => {
+      if (result) this.columns.set(result);
+    });
+  }
+
+  // ── Filters ──
+
+  clearFilters(): void {
+    this.filterText.set('');
+    this.filterType.set('');
+    this.filterModifiedFrom.set(null);
+    this.filterModifiedTo.set(null);
+    this.filterContributor.set('');
+  }
+
+  // ── CSV export (server-side via Nuxeo Bulk Action) ──
+
+  exportCsv(): void {
+    const doc = this.currentDoc();
+    if (!doc || this.csvExporting()) return;
+
+    this.csvExporting.set(true);
+    this.snackBar.open('Starting CSV export...', undefined, { duration: 2000 });
+
+    this.browseService
+      .startCsvExport(doc.uid)
+      .pipe(switchMap((commandId) => this.browseService.pollAndDownloadCsv(commandId)))
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${doc.title ?? 'export'}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+          this.csvExporting.set(false);
+          this.snackBar.open('CSV exported successfully', 'OK', { duration: 3000 });
+        },
+        error: () => {
+          this.csvExporting.set(false);
+          this.snackBar.open('CSV export failed', 'OK', { duration: 3000 });
+        },
+      });
+  }
+
+  getCellValue(doc: NuxeoDocument, key: string): string {
+    switch (key) {
+      case 'title':
+        return doc.title;
+      case 'type':
+        return doc.type;
+      case 'modified':
+        return doc.lastModified ? new Date(doc.lastModified).toLocaleDateString() : '';
+      case 'lastContributor':
+        return (doc.properties?.['dc:lastContributor'] as string) ?? '';
+      case 'state':
+        return (doc.properties?.['dc:nature'] as string) ?? '';
+      case 'version': {
+        const major = doc.properties?.['uid:major_version'];
+        return major !== undefined && major !== null
+          ? `${major}.${doc.properties?.['uid:minor_version'] ?? 0}`
+          : '';
+      }
+      case 'created':
+        return doc.properties?.['dc:created']
+          ? new Date(doc.properties['dc:created'] as string).toLocaleDateString()
+          : '';
+      case 'author':
+        return (doc.properties?.['dc:creator'] as string) ?? '';
+      case 'nature':
+        return (doc.properties?.['dc:nature'] as string) ?? '';
+      case 'coverage':
+        return (doc.properties?.['dc:coverage'] as string) ?? '';
+      case 'subjects': {
+        const s = doc.properties?.['dc:subjects'] as string[] | undefined;
+        return s?.join(', ') ?? '';
+      }
+      default:
+        return '';
+    }
+  }
+
+  // ── Action toolbar ──
+
+  openDriveDialog(): void {
+    this.dialog.open(BrowseDriveDialogComponent);
+  }
+
+  openEditDialog(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    const data: EditMetadataDialogData = {
+      uid: doc.uid,
+      title: doc.title,
+      description: (doc.properties?.['dc:description'] as string) ?? '',
+      nature: (doc.properties?.['dc:nature'] as string) ?? '',
+      subjects: (doc.properties?.['dc:subjects'] as string[]) ?? [],
+      coverage: (doc.properties?.['dc:coverage'] as string) ?? '',
+      expires: (doc.properties?.['dc:expired'] as string) ?? null,
+    };
+    const ref = this.dialog.open(EditMetadataDialogComponent, { data });
+    ref.afterClosed().subscribe((result) => {
+      if (result) this.loadContent();
+    });
+  }
+
+  deleteDocument(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    if (!confirm(`Move "${doc.title}" to trash?`)) return;
+    this.detailService.trashDocument(doc.uid).subscribe({
+      next: () => {
+        this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
+        void this.router.navigateByUrl('/browse');
+      },
+      error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+    });
+  }
+
+  downloadAll(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.detailService.exportZip(doc.uid, `${doc.title}.zip`).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${doc.title}.zip`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.snackBar.open('Download failed', 'OK', { duration: 3000 }),
+    });
+  }
+
+  openShareDialog(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.dialog.open(ShareDialogComponent, {
+      data: { title: doc.title, url: window.location.href } as ShareDialogData,
+    });
+  }
+
+  toggleNotify(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    const action$ = this.isSubscribed()
+      ? this.detailService.unsubscribe(doc.uid)
+      : this.detailService.subscribe(doc.uid);
+    action$.subscribe({
+      next: () => {
+        this.browseService.getByPath(this.currentNuxeoPath).subscribe({
+          next: (d) => this.currentDoc.set(d),
+        });
+        this.snackBar.open(
+          this.isSubscribed() ? 'Unsubscribed' : 'Subscribed to notifications',
+          'OK',
+          { duration: 3000 },
+        );
+      },
+      error: () => this.snackBar.open('Failed to update notifications', 'OK', { duration: 3000 }),
+    });
+  }
+
+  openExportDialog(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.dialog.open(ExportDialogComponent, {
+      data: {
+        documentUid: doc.uid,
+        documentTitle: doc.title,
+        exportFn: (type: ExportType, uid: string) => {
+          switch (type) {
+            case 'thumbnail':
+              return this.detailService.fetchThumbnail(uid);
+            case 'zip':
+              return this.detailService.exportZip(uid);
+            case 'xml':
+              return this.detailService.exportXml(uid);
+            default:
+              return this.detailService.fetchThumbnail(uid);
+          }
+        },
+      } as ExportDialogData,
+    });
+  }
+
+  // ── Helpers ──
+
   isFolderish(doc: NuxeoDocument): boolean {
     return FOLDERISH_TYPES.has(doc.type);
   }
@@ -132,11 +819,207 @@ export class BrowseComponent {
     return (doc.properties?.['dc:lastContributor'] as string) ?? '';
   }
 
+  docCreator(doc: NuxeoDocument): string {
+    return (doc.properties?.['dc:creator'] as string) ?? '';
+  }
+
+  docState(): string {
+    const doc = this.currentDoc();
+    return (doc?.properties?.['dc:nature'] as string) ?? 'Project';
+  }
+
   onRowClick(doc: NuxeoDocument): void {
     if (this.isFolderish(doc)) {
       void this.router.navigateByUrl(`/browse${doc.path}`);
     } else {
       void this.router.navigateByUrl(`/doc/${doc.uid}`);
     }
+  }
+
+  relativeTime(dateStr: string): string {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60_000);
+    const hours = Math.floor(diff / 3_600_000);
+    const days = Math.floor(diff / 86_400_000);
+    if (days >= 1) return days === 1 ? 'a day ago' : `${days} days ago`;
+    if (hours >= 1) return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
+    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+  }
+
+  permissionIcon(permission: string): string {
+    switch (permission) {
+      case 'Everything':
+        return 'admin_panel_settings';
+      case 'ReadWrite':
+        return 'edit';
+      case 'Read':
+        return 'visibility';
+      case 'Write':
+        return 'create';
+      default:
+        return 'lock';
+    }
+  }
+
+  permissionLabel(permission: string): string {
+    const labels: Record<string, string> = {
+      Everything: 'Manage everything',
+      ReadWrite: 'Edit',
+      Read: 'Read',
+      Write: 'Write',
+      ReadRemove: 'Read & Remove',
+      AddChildren: 'Add Children',
+      Remove: 'Remove',
+      ManageWorkflows: 'Manage Workflows',
+      ReadCanCollect: 'Can collect',
+    };
+    return labels[permission] ?? permission;
+  }
+
+  aceTimeFrame(ace: NuxeoAce): string {
+    if (!ace.begin && !ace.end) return 'Permanent';
+    const fmt = (iso: string) =>
+      new Date(iso).toLocaleDateString('en-US', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    if (!ace.begin && ace.end) return `Until ${fmt(ace.end)}`;
+    const parts: string[] = [];
+    if (ace.begin) parts.push(`from ${fmt(ace.begin)}`);
+    if (ace.end) parts.push(`to ${fmt(ace.end)}`);
+    return parts.join(' ');
+  }
+
+  displayUsername(ace: NuxeoAce): string {
+    return ace.username.replace(/^transient\//, '');
+  }
+
+  private reloadCurrentDoc(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    this.detailService.getFullDocument(doc.uid).subscribe({
+      next: (updated) => this.currentDoc.set(updated),
+    });
+  }
+
+  addPermission(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    const dialogRef = this.dialog.open(AddPermissionDialogComponent, {
+      data: { documentUid: doc.uid } satisfies AddPermissionDialogData,
+      width: '560px',
+    });
+    dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
+      if (created) {
+        this.reloadCurrentDoc();
+        this.snackBar.open('Permission added', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  editPermission(ace: NuxeoAce): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    const dialogRef = this.dialog.open(UpdatePermissionDialogComponent, {
+      data: { documentUid: doc.uid, ace } satisfies UpdatePermissionDialogData,
+      width: '520px',
+    });
+    dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
+      if (updated) {
+        this.reloadCurrentDoc();
+        this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  deletePermission(ace: NuxeoAce): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    const dialogRef = this.dialog.open(DeletePermissionDialogComponent, {
+      data: {
+        documentUid: doc.uid,
+        ace,
+        permissionLabel: this.permissionLabel(ace.permission),
+        timeFrameLabel: this.aceTimeFrame(ace),
+      } satisfies DeletePermissionDialogData,
+      width: '560px',
+    });
+    dialogRef.afterClosed().subscribe((deleted: boolean | undefined) => {
+      if (deleted) {
+        this.reloadCurrentDoc();
+        this.snackBar.open('Permission deleted', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  toggleInheritance(): void {
+    const doc = this.currentDoc();
+    if (!doc || this.actionInProgress()) return;
+    this.actionInProgress.set('inheritance');
+    const blocked = this.isInheritanceBlocked();
+    const op = blocked
+      ? this.detailService.unblockPermissionInheritance(doc.uid)
+      : this.detailService.blockPermissionInheritance(doc.uid);
+    op.subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.reloadCurrentDoc();
+        this.snackBar.open(blocked ? 'Inheritance unblocked' : 'Inheritance blocked', 'OK', {
+          duration: 3000,
+        });
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.snackBar.open('Action failed', 'OK', { duration: 3000 });
+      },
+    });
+  }
+
+  shareWithExternal(): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    const dialogRef = this.dialog.open(ShareExternalDialogComponent, {
+      data: { documentUid: doc.uid } satisfies ShareExternalDialogData,
+      width: '520px',
+    });
+    dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
+      if (created) {
+        this.reloadCurrentDoc();
+        this.snackBar.open('Shared with external user', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  editExternalPermission(ace: NuxeoAce): void {
+    const doc = this.currentDoc();
+    if (!doc) return;
+    const dialogRef = this.dialog.open(UpdatePermissionDialogComponent, {
+      data: { documentUid: doc.uid, ace, isExternal: true } satisfies UpdatePermissionDialogData,
+      width: '520px',
+    });
+    dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
+      if (updated) {
+        this.reloadCurrentDoc();
+        this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
+      }
+    });
+  }
+
+  sendNotificationEmail(ace: NuxeoAce): void {
+    const doc = this.currentDoc();
+    if (!doc || this.actionInProgress()) return;
+    this.actionInProgress.set('notify-' + ace.id);
+    this.detailService.sendNotificationEmailForPermission(doc.uid, ace.id).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.snackBar.open('Failed to send notification', 'OK', { duration: 3000 });
+      },
+    });
   }
 }

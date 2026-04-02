@@ -38,7 +38,9 @@ import {
   NuxeoWorkflow,
   NuxeoWorkflowModel,
   CURRENT_USERNAME,
+  avatarColor,
 } from '@agentic-ui/shared/nuxeo-client';
+import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { forkJoin, Observable } from 'rxjs';
 import {
   ShareDialogComponent,
@@ -99,6 +101,7 @@ const TAG_COLORS: string[] = [
     MatTableModule,
     MatPaginatorModule,
     DocumentViewerComponent,
+    SatAvatarModule,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
@@ -554,7 +557,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   openStartProcess(): void {
     this.showStartProcessPanel.set(true);
     this.workflowsLoading.set(true);
-    this.workflowService.getWorkflowModels().subscribe({
+    this.detailService.getRunnableWorkflows(this.docUid).subscribe({
       next: (models) => {
         this.availableWorkflows.set(models);
         this.workflowsLoading.set(false);
@@ -576,7 +579,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!model) return;
 
     this.startingWorkflow.set(true);
-    this.detailService.startWorkflow(this.docUid, model).subscribe({
+    this.workflowService.startWorkflow(this.docUid, model).subscribe({
       next: () => {
         this.startingWorkflow.set(false);
         this.closeStartProcess();
@@ -726,9 +729,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     );
   }
 
-  userInitial(name: string): string {
-    return name.charAt(0).toUpperCase();
-  }
+  avatarColor = avatarColor;
 
   tagColor(index: number): string {
     return TAG_COLORS[index % TAG_COLORS.length];

@@ -30,7 +30,7 @@ export class WorkflowService {
       {
         'entity-type': 'workflow',
         workflowModelName,
-        attachedDocumentIds: [{ id: docId }],
+        attachedDocumentIds: [docId],
       },
     );
   }
