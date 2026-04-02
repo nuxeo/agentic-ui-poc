@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { switchMap } from 'rxjs/operators';
 import { SettingsService, UserService, type LocalPermissionRow } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from '../../auth/auth.service';
@@ -67,10 +67,14 @@ export class ProfilePageComponent {
           if (!identifier) {
             return of({ identifier: '', label: '' });
           }
-          return this.userService.getGroup(identifier).pipe(
-            catchError(() => of({ grouplabel: identifier, groupname: identifier })),
-            switchMap((g) => of({ identifier, label: (g as { grouplabel?: string }).grouplabel?.trim() || identifier })),
-          );
+          // TODO: Re-enable the `getGroup()` call once Group details API/screen integration is available.
+          // return this.userService.getGroup(identifier).pipe(
+          //   catchError(() => of({ grouplabel: identifier, groupname: identifier })),
+          //   switchMap((g) =>
+          //     of({ identifier, label: (g as { grouplabel?: string }).grouplabel?.trim() || identifier }),
+          //   ),
+          // );
+          return of({ identifier, label: identifier });
         }),
       )
       .subscribe({
