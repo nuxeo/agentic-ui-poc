@@ -8,7 +8,7 @@ import {
   effect,
   computed,
   DestroyRef,
-  Type
+  Type,
 } from '@angular/core';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -90,6 +90,7 @@ export class NavDrawerComponent {
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
+  readonly closeDrawer = output<void>();
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
@@ -101,9 +102,6 @@ export class NavDrawerComponent {
   readonly assetsDrawerComponent = signal<Type<unknown> | null>(null);
   readonly searchFiltersDrawerComponent = signal<Type<unknown> | null>(null);
 
-  constructor() {
-    // Dynamically load drawer components to avoid static import of lazy-loaded libraries
-    this.loadDrawerComponents();
   // Tasks
   private readonly taskService = inject(TaskService);
   private readonly currentUsername = inject(CURRENT_USERNAME);
@@ -134,6 +132,9 @@ export class NavDrawerComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   constructor() {
+    // Dynamically load drawer components to avoid static import of lazy-loaded libraries
+    this.loadDrawerComponents();
+
     this.taskService.tasksChanged$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadTasks());
@@ -152,6 +153,32 @@ export class NavDrawerComponent {
       if (item?.path === '/search') {
         this.loadSearchAggregations();
       }
+      if (item?.path === '/tasks') {
+        this.loadTasks();
+      }
+      if (item?.path === '/clipboard') {
+        this.refreshClipboard();
+      }
+      if (item?.path === '/favorites') {
+        this.loadFavorites();
+      }
+      if (item?.path === '/recently-viewed' && !this.recentlyViewedLoaded) {
+        this.loadRecentlyViewed();
+      }
+      if (item?.path === '/expired-queue' && !this.expiredLoaded) {
+        this.loadExpiredDocuments();
+      }
+    });
+
+    const onClipboardChanged = () => this.refreshClipboard();
+    window.addEventListener('clipboard-changed', onClipboardChanged);
+
+    const onFavoritesChanged = () => this.loadFavorites();
+    window.addEventListener('favorites-changed', onFavoritesChanged);
+
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('clipboard-changed', onClipboardChanged);
+      window.removeEventListener('favorites-changed', onFavoritesChanged);
     });
   }
 
@@ -233,32 +260,6 @@ export class NavDrawerComponent {
       this.searchFiltersDrawerComponent.set(searchComp);
     }).catch(() => {
       // Silently fail if components don't load
-      if (item?.path === '/tasks') {
-        this.loadTasks();
-      }
-      if (item?.path === '/clipboard') {
-        this.refreshClipboard();
-      }
-      if (item?.path === '/favorites') {
-        this.loadFavorites();
-      }
-      if (item?.path === '/recently-viewed' && !this.recentlyViewedLoaded) {
-        this.loadRecentlyViewed();
-      }
-      if (item?.path === '/expired-queue' && !this.expiredLoaded) {
-        this.loadExpiredDocuments();
-      }
-    });
-
-    const onClipboardChanged = () => this.refreshClipboard();
-    window.addEventListener('clipboard-changed', onClipboardChanged);
-
-    const onFavoritesChanged = () => this.loadFavorites();
-    window.addEventListener('favorites-changed', onFavoritesChanged);
-
-    this.destroyRef.onDestroy(() => {
-      window.removeEventListener('clipboard-changed', onClipboardChanged);
-      window.removeEventListener('favorites-changed', onFavoritesChanged);
     });
   }
 

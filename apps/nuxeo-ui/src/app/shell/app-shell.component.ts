@@ -12,10 +12,9 @@ import {
   SatPlatformNavModule,
   SatPlatformNavStateService,
 } from '@hylandsoftware/satori-ui/platform-nav';
-import { SelectionService } from '@agentic-ui/shared/nuxeo-client';
+import { CollectionService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
-import { CollectionService } from '@agentic-ui/shared/nuxeo-client';
 import { AppNavItem, PLATFORM_NAV_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 
@@ -155,7 +154,7 @@ export class AppShellComponent {
     if (!user) return;
     this.collectionService.getFavorites(user, 1).subscribe({
       next: (res) => this.favoritesCount.set(res.totalSize ?? res.entries?.length ?? 0),
-      error: () => {},
+      error: () => this.favoritesCount.set(0),
     });
   }
 
