@@ -49,7 +49,6 @@
       "style": "scss"
     }
   },
-  "nxCloudId": "69ca2007ad49184a6d721806",
   "plugins": [
     {
       "plugin": "@nx/eslint/plugin",
