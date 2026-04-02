@@ -66,9 +66,21 @@ export class AdminGroupDetailsPageComponent implements OnInit {
 
   private groupId = '';
 
+  private resetState(): void {
+    this.group.set(null);
+    this.loading.set(false);
+    this.error.set(null);
+    this.localPerm.set(null);
+    this.localPermLoading.set(false);
+    this.localPageIndex.set(0);
+  }
+
   ngOnInit(): void {
-    this.groupId = this.route.snapshot.paramMap.get('groupId') ?? '';
-    this.load();
+    this.route.paramMap.subscribe((paramMap) => {
+      this.groupId = paramMap.get('groupId') ?? '';
+      this.resetState();
+      this.load();
+    });
   }
 
   load(): void {
