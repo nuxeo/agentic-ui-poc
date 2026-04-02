@@ -270,6 +270,19 @@
         </div>
       }
     </div>
+  } @else if (isSettings) {
+    <div class="settings-panel">
+      @for (settingsItem of settingsItems; track settingsItem.path) {
+        <button
+          type="button"
+          class="settings-item"
+          (click)="navigateToSettings(settingsItem.path)"
+        >
+          {{ settingsItem.label }}
+        </button>
+      }
+      <button type="button" class="settings-item" (click)="onSettingsSignOut()">Sign Out</button>
+    </div>
   } @else {
     <div class="drawer-empty">
       <p>Content for "{{ item.label }}" will appear here.</p>

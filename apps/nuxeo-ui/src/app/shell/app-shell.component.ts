@@ -17,7 +17,7 @@ import { CollectionService, SelectionService } from '@agentic-ui/shared/nuxeo-cl
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
 
 import { AuthService } from '../auth/auth.service';
-import { AppNavItem, PLATFORM_NAV_ITEMS } from '../platform-nav-items';
+import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 
 @Component({
@@ -39,6 +39,13 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
   styleUrl: './app-shell.component.scss',
 })
 export class AppShellComponent {
+  private readonly settingsDrawerItem: AppNavItem = {
+    label: 'Settings',
+    path: '/settings',
+    icon: 'settings',
+    hasDrawer: true,
+  };
+
   private readonly router = inject(Router);
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
@@ -58,7 +65,7 @@ export class AppShellComponent {
 
   readonly pageTitle = computed(() => {
     const url = this.currentUrl();
-    const match = PLATFORM_NAV_ITEMS.find(
+    const match = [...PLATFORM_NAV_ITEMS, ...SETTINGS_DRAWER_ITEMS].find(
       (item) => url === item.path || url.startsWith(item.path + '/'),
     );
     return match?.label ?? 'Hyland Nuxeo';
@@ -140,6 +147,21 @@ export class AppShellComponent {
     void this.router.navigateByUrl(path);
   }
 
+  toggleSettingsDrawer(): void {
+    if (this.activeDrawerItem()?.path === this.settingsDrawerItem.path && this.drawerOpen()) {
+      this.drawerOpen.set(false);
+      this.activeDrawerItem.set(null);
+      return;
+    }
+
+    if (!this.platformNavState.collapsed()) {
+      this.platformNavState.toggleCollapsed();
+    }
+
+    this.activeDrawerItem.set(this.settingsDrawerItem);
+    this.drawerOpen.set(true);
+  }
+
   onNavigateKeepDrawer(path: string): void {
     void this.router.navigateByUrl(path);
   }
@@ -204,6 +226,8 @@ export class AppShellComponent {
   }
 
   signOut(): void {
+    this.drawerOpen.set(false);
+    this.activeDrawerItem.set(null);
     this.auth.logout();
     void this.router.navigateByUrl('/login');
   }

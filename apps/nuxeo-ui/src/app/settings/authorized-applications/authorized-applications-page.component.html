@@ -1,0 +1,42 @@
+<section class="authorized-applications-page">
+  <div class="authorized-applications-page__card">
+    @if (loading()) {
+      <div class="authorized-applications-page__state">Loading authorized applications…</div>
+    } @else {
+      @if (error(); as errorMessage) {
+        <div class="authorized-applications-page__state authorized-applications-page__state--error">
+          {{ errorMessage }}
+        </div>
+      } @else {
+        <div class="authorized-applications-table-wrapper">
+          <table class="authorized-applications-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Authorization Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              @if (applications().length === 0) {
+                <tr>
+                  <td colspan="2" class="authorized-applications-table__empty">
+                    <div class="authorized-applications-table__empty-content">
+                      You have not granted any application access to your Nuxeo account yet.
+                    </div>
+                  </td>
+                </tr>
+              } @else {
+                @for (application of applications(); track application.name + application.authorizationDate) {
+                  <tr>
+                    <td>{{ application.name }}</td>
+                    <td>{{ application.authorizationDate }}</td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  </div>
+</section>
