@@ -52,6 +52,8 @@ export class ProfilePageComponent {
       this.loading.set(false);
       this.localPermissionsLoading.set(false);
       this.adminPermissionsLoading.set(false);
+      this.groupsLoading.set(false);
+      this.group.set(null);
       return;
     }
 

@@ -107,7 +107,7 @@
     </article>
 
     <article class="profile-card">
-      <h3 class="profile-card__section-title">administrators permissions</h3>
+      <h3 class="profile-card__section-title">Administrator Permissions</h3>
       @if (adminPermissionsLoading()) {
         <p class="profile-card__text">Loading administrator permissions…</p>
       } @else {
@@ -124,7 +124,7 @@
             <tbody>
               @if (adminPermissions().length === 0) {
                 <tr>
-                  <td colspan="4" class="profile-card__table-empty">Administrators does not have permissions.</td>
+                  <td colspan="4" class="profile-card__table-empty">Administrators do not have any permissions.</td>
                 </tr>
               } @else {
                 @for (permission of adminPagedRows(); track permission.on + permission.right) {

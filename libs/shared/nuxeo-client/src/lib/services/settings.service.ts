@@ -30,61 +30,21 @@ export class SettingsService {
   private readonly api = inject(NuxeoApiBase);
 
   getLocalPermissions(username: string, pageSize = 25): Observable<LocalPermissionRow[]> {
-    const nxql =
-      `SELECT * FROM Document WHERE ecm:mixinType != "HiddenInNavigation" ` +
-      `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ` +
-      `AND ecm:acl/*1/principal = "${username}"`;
-
-    return this.api
-      .post<NuxeoDocumentList>(
-        '/nuxeo/api/v1/automation/Repository.Query',
-        {
-          params: {
-            query: nxql,
-            page: 0,
-            pageSize,
-          },
-          context: {},
-        },
-        {
-          'X-NXContext-Category': 'acls',
-          'X-NXRepository': 'default',
-          'enrichers-document': 'acls',
-          properties: '*',
-        },
-      )
-      .pipe(
-        map((res) => {
-          const rows: LocalPermissionRow[] = [];
-
-          for (const doc of res.entries ?? []) {
-            const acls = doc.contextParameters?.acls ?? [];
-            for (const acl of acls) {
-              for (const ace of acl.aces ?? []) {
-                if (ace.username !== username || ace.status !== 'effective' || !ace.granted) {
-                  continue;
-                }
-
-                rows.push({
-                  on: doc.title || doc.path || doc.uid,
-                  right: ace.permission,
-                  timeFrame: this.formatTimeFrame(ace.begin, ace.end),
-                  grantedBy: ace.creator || 'System',
-                });
-              }
-            }
-          }
-
-          return rows;
-        }),
-      );
+    return this.queryPermissions(username, pageSize);
   }
 
   getAdminPermissions(pageSize = 25): Observable<LocalPermissionRow[]> {
+    return this.queryPermissions('administrators', pageSize);
+  }
+
+  private queryPermissions(principal: string, pageSize: number): Observable<LocalPermissionRow[]> {
+    // Escape single quotes in principal for safe inclusion in NXQL string literal
+    const safePrincipal = principal.replace(/'/g, "''");
+
     const nxql =
       `SELECT * FROM Document WHERE ecm:mixinType != "HiddenInNavigation" ` +
       `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ` +
-      `AND ecm:acl/*1/principal = "administrators"`;
+      `AND ecm:acl/*1/principal = '${safePrincipal}'`;
 
     return this.api
       .post<NuxeoDocumentList>(
@@ -108,7 +68,7 @@ export class SettingsService {
             const acls = doc.contextParameters?.acls ?? [];
             for (const acl of acls) {
               for (const ace of acl.aces ?? []) {
-                if (ace.username !== 'administrators' || ace.status !== 'effective' || !ace.granted) {
+                if (ace.username !== principal || ace.status !== 'effective' || !ace.granted) {
                   continue;
                 }
 
