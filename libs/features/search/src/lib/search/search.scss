@@ -585,6 +585,14 @@
   font-size: 14px;
 }
 
+.results-empty--grid {
+  grid-column: 1 / -1;
+  min-height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .simple-list {
   display: flex;
   flex-direction: column;

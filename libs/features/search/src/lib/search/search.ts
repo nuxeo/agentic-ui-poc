@@ -174,6 +174,7 @@ export class SearchComponent {
 
       const request: {
         q?: string;
+        ecmFulltext?: string;
         quickFilters?: string;
         sortBy?: string | null;
         sortOrder?: ('asc' | 'desc') | null;
@@ -194,6 +195,7 @@ export class SearchComponent {
 
       // All drawer filters come from the shared service signal (not URL)
       const q = (drawerFilters['q'] ?? '').trim();
+      const ecmFulltext = (drawerFilters['ecm_fulltext'] ?? '').trim();
       const modifiedDate = (drawerFilters['modifiedDate'] ?? '').trim();
       const author = (drawerFilters['author'] ?? '').trim();
       const collection = (drawerFilters['collection'] ?? '').trim();
@@ -204,6 +206,7 @@ export class SearchComponent {
       const size = (drawerFilters['size'] ?? '').trim();
 
       if (q) request.q = q;
+      if (ecmFulltext) request.ecmFulltext = ecmFulltext;
       if (modifiedDate) request.modifiedDate = modifiedDate;
       if (author) request.author = author;
       if (collection) request.collection = collection;

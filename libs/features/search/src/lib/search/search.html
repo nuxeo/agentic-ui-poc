@@ -63,11 +63,7 @@
     </div>
   }
 
-  @if (error() && !loading()) {
-    <div class="results-error">{{ error() }}</div>
-  }
-
-  @if (!loading() && !error() && viewMode() === 'grid') {
+  @if (!loading() && viewMode() === 'grid') {
     <div class="grid-container">
       <div class="grid-action-bar">
         <div class="grid-actions-left">
@@ -157,11 +153,15 @@
             </div>
           </button>
         }
+
+        @if (resultCount() === 0) {
+          <div class="results-empty results-empty--grid">No documents match the search criteria.</div>
+        }
       </div>
     </div>
   }
 
-  @if (!loading() && !error() && viewMode() === 'table') {
+  @if (!loading() && viewMode() === 'table') {
     <div class="list-wrapper">
       @if (columnPanelOpen()) {
         <button
@@ -267,13 +267,13 @@
         }
 
         @if (resultCount() === 0) {
-          <div class="results-empty">No Documents match the search criteria.</div>
+          <div class="results-empty">No documents match the search criteria.</div>
         }
       </div>
     </div>
   }
 
-  @if (!loading() && !error() && viewMode() === 'list') {
+  @if (!loading() && viewMode() === 'list') {
     <div class="list-action-bar">
       <div class="list-actions-left">
         <mat-checkbox
@@ -364,7 +364,7 @@
       }
 
       @if (resultCount() === 0) {
-        <div class="results-empty">No Documents match the search criteria.</div>
+        <div class="results-empty">No documents match the search criteria.</div>
       }
     </div>
   }

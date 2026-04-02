@@ -49,6 +49,9 @@
           type="text"
           class="search-input"
           placeholder="Filter results"
+          [value]="secondarySearchInput()"
+          (input)="onSecondarySearchInput($any($event.target).value)"
+          (keydown.enter)="onSecondarySearchEnter()"
         />
       </div>
     </div>

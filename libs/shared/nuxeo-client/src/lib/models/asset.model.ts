@@ -23,6 +23,7 @@ export interface AssetAggregations {
 export interface AssetSearchParams {
   pageIndex?: number;
   pageSize?: number;
+  ecmFulltext?: string;
   primaryTypes?: string[];
   mimeTypes?: string[];
   widths?: string[];

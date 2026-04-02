@@ -185,6 +185,7 @@ export class NavDrawerComponent {
     const filters = this.searchAggregationService.drawerFilters();
     const request: SearchQueryParams = {
       q: (filters['q'] ?? '').trim() || undefined,
+      ecmFulltext: (filters['ecm_fulltext'] ?? '').trim() || undefined,
       modifiedDate: (filters['modifiedDate'] ?? '').trim() || undefined,
       author: (filters['author'] ?? '').trim() || undefined,
       collection: (filters['collection'] ?? '').trim() || undefined,

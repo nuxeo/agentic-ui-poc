@@ -85,6 +85,7 @@ export class AssetsDrawerComponent {
   readonly selectedSavedSearch = signal('');
   readonly savedSearchesLoading = signal(false);
   readonly savedSearchesLoaded = signal(false);
+  readonly secondarySearchInput = signal('');
 
   private readonly GROUP_AGG_KEY: Record<string, keyof AssetAggregations> = {
     'asset-type':     'system_primaryType_agg',
@@ -163,6 +164,8 @@ export class AssetsDrawerComponent {
     effect(() => {
       const params = this.queryParams();
       const getSelected = (id: string) => new Set(params.get(id)?.split(',').filter(Boolean) ?? []);
+      const fulltext = params.get('ecm_fulltext') ?? '';
+      this.secondarySearchInput.set(fulltext);
       const aggs = this.aggregationService.aggregations();
       this.filterGroups.update(groups =>
         groups.map(g => {
@@ -262,6 +265,20 @@ export class AssetsDrawerComponent {
     this.filterSearchInput.set(option.label);
     this.selectedSavedSearch.set(option.value);
     this.filterSearchOpen.set(false);
+  }
+
+  onSecondarySearchInput(value: string): void {
+    this.secondarySearchInput.set(value);
+  }
+
+  onSecondarySearchEnter(): void {
+    const value = this.secondarySearchInput().trim();
+    void this.router.navigate(['/documents'], {
+      queryParams: {
+        ecm_fulltext: value ? value : null,
+      },
+      queryParamsHandling: 'merge',
+    });
   }
 
   isExpanded(id: string): boolean {

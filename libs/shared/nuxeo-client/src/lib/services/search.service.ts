@@ -9,6 +9,7 @@ import { docTypeIcon } from '../constants/doc-type-icons';
 
 export interface SearchQueryParams {
   q?: string;
+  ecmFulltext?: string;
   quickFilters?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -180,6 +181,7 @@ export class SearchService {
   search(params: SearchQueryParams): Observable<SearchResponse> {
     const {
       q = '',
+      ecmFulltext = '',
       quickFilters = '',
       sortBy = 'dc:created',
       sortOrder = 'desc',
@@ -252,6 +254,10 @@ export class SearchService {
 
     if (q.trim()) {
       httpParams = httpParams.set('query', q.trim());
+    }
+
+    if (ecmFulltext.trim()) {
+      httpParams = httpParams.set('ecm_fulltext', ecmFulltext.trim());
     }
 
     return this.api

@@ -37,7 +37,7 @@
     </div>
   </div>
 
-  @if (!loading() && !error() && viewMode() === 'grid') {
+  @if (!loading() && viewMode() === 'grid') {
     <div class="grid-actions-bar">
       <div class="grid-actions-left">
         <mat-checkbox
@@ -84,13 +84,8 @@
         </div>
       }
 
-      <!-- Error -->
-      @if (error() && !loading()) {
-        <div class="results-error">{{ error() }}</div>
-      }
-
       <!-- Grid View -->
-      @if (!loading() && !error() && viewMode() === 'grid') {
+      @if (!loading() && viewMode() === 'grid') {
         <div class="asset-grid">
           @for (asset of gridAssets(); track asset.id) {
             <button
@@ -117,7 +112,7 @@
       }
 
       <!-- Table View -->
-      @if (!loading() && !error() && viewMode() === 'list') {
+      @if (!loading() && viewMode() === 'list') {
         <div class="list-wrapper">
 
       <!-- Column picker panel -->

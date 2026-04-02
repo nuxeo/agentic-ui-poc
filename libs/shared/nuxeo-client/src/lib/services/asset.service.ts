@@ -13,6 +13,7 @@ export class AssetService {
     const {
       pageIndex = 0,
       pageSize = 40,
+      ecmFulltext,
       primaryTypes = [],
       mimeTypes = [],
       widths = [],
@@ -49,6 +50,11 @@ export class AssetService {
 
     if (sortOrder) {
       httpParams = httpParams.set('sortOrder', sortOrder);
+    }
+
+    const fulltext = ecmFulltext?.trim();
+    if (fulltext) {
+      httpParams = httpParams.set('ecm_fulltext', fulltext);
     }
 
     return this.api.get<AssetSearchResult>(

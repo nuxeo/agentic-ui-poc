@@ -80,6 +80,7 @@ function buildApiParams(params: ParamMap) {
   const mimeTypeValues = get('asset-format');
 
   const sortBy = params.get('sortBy') ?? undefined;
+  const ecmFulltext = params.get('ecm_fulltext')?.trim() || undefined;
   const sortOrderRaw = params.get('sortOrder');
   const sortOrder: 'asc' | 'desc' | undefined =
     sortOrderRaw === 'asc' || sortOrderRaw === 'desc' ? sortOrderRaw : undefined;
@@ -92,6 +93,7 @@ function buildApiParams(params: ParamMap) {
     colorProfiles: get('color-profile'),
     colorDepths: get('color-depth'),
     videoDurations: get('video-duration'),
+    ecmFulltext,
     sortBy,
     sortOrder,
   };

@@ -46,7 +46,14 @@
     <div class="drawer-search-row">
       <div class="drawer-search drawer-search-secondary">
         <mat-icon class="search-icon">search</mat-icon>
-        <input type="text" class="search-input" placeholder="Filter results" />
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Filter results"
+          [value]="secondarySearchInput()"
+          (input)="onSecondarySearchInput($any($event.target).value)"
+          (keydown.enter)="onSecondarySearchEnter()"
+        />
       </div>
     </div>
   }

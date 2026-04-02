@@ -49,6 +49,7 @@ export class SearchFiltersDrawerComponent {
   readonly availableSavedSearches = signal<SavedSearchSelectOption[]>([]);
   readonly selectedSavedSearch = signal('');
   readonly savedSearchInput = signal('');
+  readonly secondarySearchInput = signal('');
   readonly savedSearchOpen = signal(false);
   readonly savedSearchesLoading = signal(false);
   readonly savedSearchesLoaded = signal(false);
@@ -90,6 +91,7 @@ export class SearchFiltersDrawerComponent {
   readonly hasActiveFilters = computed(() =>
     this.selectedSavedSearch().trim().length > 0 ||
     this.query().trim().length > 0 ||
+    this.secondarySearchInput().trim().length > 0 ||
     this.selectedModificationDates().size > 0 ||
     this.selectedNatures().size > 0 ||
     this.selectedSubjects().size > 0 ||
@@ -124,6 +126,11 @@ export class SearchFiltersDrawerComponent {
       this.subjectsOptions.set(this.toSubjectsOptionsFromResults(items));
       this.coverageOptions.set(this.toFieldOptionsFromResults(items, (item) => item.coverage));
       this.sizeOptions.set(this.toSizeOptionsFromResults(items));
+    });
+
+    effect(() => {
+      const fulltext = (this.searchAggregationService.drawerFilters()['ecm_fulltext'] ?? '').trim();
+      this.secondarySearchInput.set(fulltext);
     });
 
     effect(() => {
@@ -214,6 +221,14 @@ export class SearchFiltersDrawerComponent {
 
   onQueryChange(value: string): void {
     this.query.set(value);
+    this.updateDrawerFilters();
+  }
+
+  onSecondarySearchInput(value: string): void {
+    this.secondarySearchInput.set(value);
+  }
+
+  onSecondarySearchEnter(): void {
     this.updateDrawerFilters();
   }
 
@@ -463,6 +478,7 @@ export class SearchFiltersDrawerComponent {
     this.savedSearchInput.set('');
     this.savedSearchOpen.set(false);
     this.query.set('');
+    this.secondarySearchInput.set('');
     this.selectedModificationDates.set(new Set());
     this.selectedNatures.set(new Set());
     this.selectedSubjects.set(new Set());
@@ -498,6 +514,9 @@ export class SearchFiltersDrawerComponent {
 
     const q = this.query().trim();
     if (q) filters['q'] = q;
+
+    const ecmFulltext = this.secondarySearchInput().trim();
+    if (ecmFulltext) filters['ecm_fulltext'] = ecmFulltext;
 
     const modificationDates = [...this.selectedModificationDates()];
     if (modificationDates.length > 0) filters['modifiedDate'] = modificationDates.join(',');
