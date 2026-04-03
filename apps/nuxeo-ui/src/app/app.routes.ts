@@ -74,7 +74,7 @@ export const routes: Routes = [
       },
       {
         path: 'trash',
-        loadComponent: placeholder,
+        loadChildren: () => import('@agentic-ui/feature-trash').then((m) => m.trashRoutes),
       },
       {
         path: 'administration',

@@ -1,0 +1,252 @@
+<div class="drawer-header">
+  <div class="saved-filters-dropdown" (blur)="closeSavedFilterDropdown()">
+    <button class="saved-filters-trigger" type="button" (click)="toggleSavedFilterDropdown()">
+      <span class="saved-filters-label">{{
+        trashFilterService.activeSavedFilterTitle() ?? 'Search Filters'
+      }}</span>
+      <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
+    </button>
+
+    @if (savedFilterDropdownOpen()) {
+      <div class="saved-filters-panel">
+        <div class="saved-filters-search">
+          <input
+            class="saved-filters-search-input"
+            type="text"
+            placeholder="Search..."
+            [value]="savedFilterSearch()"
+            (input)="savedFilterSearch.set($any($event.target).value)"
+          />
+        </div>
+        <button
+          class="saved-filters-option saved-filters-default"
+          type="button"
+          (mousedown)="resetFilters()"
+        >
+          <mat-icon class="saved-filter-icon">search</mat-icon>
+          Default Search
+        </button>
+        @for (filter of filteredSavedFilters(); track filter.uid) {
+          <button
+            class="saved-filters-option"
+            type="button"
+            (mousedown)="selectSavedFilter(filter)"
+          >
+            <mat-icon class="saved-filter-icon">bookmark</mat-icon>
+            {{ filter.title }}
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <button
+    mat-icon-button
+    class="view-switcher-btn"
+    [class.active]="trashFilterService.layoutMode() === 'results'"
+    matTooltip="{{
+      trashFilterService.layoutMode() === 'filters' ? 'Show results' : 'Show filters'
+    }}"
+    type="button"
+    (click)="toggleLayout()"
+  >
+    <mat-icon>{{
+      trashFilterService.layoutMode() === 'filters' ? 'view_sidebar' : 'filter_list'
+    }}</mat-icon>
+  </button>
+</div>
+
+<mat-divider />
+
+<!-- ───── FILTERS MODE ───── -->
+@if (trashFilterService.layoutMode() === 'filters') {
+  <div class="filters-section">
+    <div class="filter-group">
+      <p class="filter-title">Full Text</p>
+      <div class="filter-input-wrap">
+        <input
+          class="filter-input"
+          type="text"
+          placeholder="Search for something..."
+          [value]="fullText()"
+          (input)="onFullTextChange($any($event.target).value)"
+        />
+        @if (fullText()) {
+          <button class="clear-btn" type="button" (click)="onFullTextClear()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <p class="filter-title">Path</p>
+      <div class="typeahead-field">
+        <div class="typeahead-input-wrap">
+          <input
+            class="typeahead-input"
+            type="text"
+            placeholder="/"
+            [value]="pathInput()"
+            (input)="onPathInput($any($event.target).value)"
+            (focus)="onPathFocus()"
+            (blur)="closePathDropdown()"
+            (keydown)="onPathKeydown($event)"
+          />
+        </div>
+        @if (pathOpen()) {
+          <div class="typeahead-panel">
+            @if (pathLoading()) {
+              <div class="typeahead-hint">Loading...</div>
+            } @else if (pathSuggestions().length === 0) {
+              <div class="typeahead-hint">No folders found</div>
+            } @else {
+              @for (doc of pathSuggestions(); track doc.uid) {
+                <button class="typeahead-option" type="button" (mousedown)="selectPath(doc)">
+                  {{ doc.path }}
+                </button>
+              }
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <p class="filter-title">Authors</p>
+      <div class="typeahead-field">
+        <div class="typeahead-input-wrap">
+          <input
+            class="typeahead-input"
+            type="text"
+            placeholder="Search for authors..."
+            [value]="authorInput()"
+            (input)="onAuthorInput($any($event.target).value)"
+            (focus)="onAuthorFocus()"
+            (blur)="closeAuthorDropdown()"
+          />
+          <mat-icon class="typeahead-arrow">arrow_drop_down</mat-icon>
+        </div>
+        @if (authorOpen()) {
+          <div class="typeahead-panel">
+            @if (filteredAuthorOptions().length > 0) {
+              @for (opt of filteredAuthorOptions(); track opt.id) {
+                <button
+                  class="typeahead-option"
+                  type="button"
+                  (mousedown)="selectAuthorOption(opt)"
+                >
+                  <mat-icon class="suggestion-icon">person</mat-icon>
+                  {{ opt.label }}
+                  <span class="option-count">({{ opt.count }})</span>
+                </button>
+              }
+            } @else if (authorInput().length === 0) {
+              <div class="typeahead-hint">No authors found</div>
+            } @else {
+              <div class="typeahead-hint">No matching authors</div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="filter-group">
+      <button class="filter-btn" type="button" (click)="toggleSizeExpanded()">
+        <span class="filter-btn-label">Size</span>
+        <mat-icon class="filter-btn-icon">
+          {{ sizeExpanded() ? 'expand_less' : 'expand_more' }}
+        </mat-icon>
+      </button>
+      @if (sizeExpanded()) {
+        <div class="filter-options">
+          @for (option of sizeOptions(); track option.key) {
+            <mat-checkbox
+              [checked]="isSizeSelected(option.value)"
+              (change)="toggleSize(option.value)"
+              class="filter-checkbox"
+            >
+              {{ option.label }} ({{ option.count }})
+            </mat-checkbox>
+          }
+        </div>
+      }
+    </div>
+  </div>
+
+  <mat-divider />
+
+  <div class="drawer-footer">
+    <div class="footer-actions">
+      <button
+        mat-stroked-button
+        class="footer-btn"
+        type="button"
+        [disabled]="!hasActiveFilters()"
+        (click)="resetFilters()"
+      >
+        Reset
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        class="footer-btn save-as-btn"
+        type="button"
+        [disabled]="saving()"
+        (click)="saveCurrentSearch()"
+      >
+        @if (saving()) {
+          Saving...
+        } @else {
+          Save As
+        }
+      </button>
+      @if (trashFilterService.hasSavedFilter()) {
+        <button
+          mat-flat-button
+          class="footer-btn save-btn"
+          type="button"
+          [disabled]="saving()"
+          (click)="saveExistingSearch()"
+        >
+          @if (saving()) {
+            Saving...
+          } @else {
+            Save
+          }
+        </button>
+      }
+    </div>
+  </div>
+}
+
+<!-- ───── RESULTS MODE ───── -->
+@if (trashFilterService.layoutMode() === 'results') {
+  <div class="drawer-results-header">
+    <span class="drawer-results-count">{{ trashFilterService.totalResults() }} result(s)</span>
+  </div>
+
+  @if (trashFilterService.resultsLoading()) {
+    <div class="drawer-results-loading">Loading...</div>
+  } @else if (trashFilterService.results().length === 0) {
+    <div class="drawer-results-empty">Trash is empty.</div>
+  } @else {
+    <div class="drawer-results-list">
+      @for (item of trashFilterService.results(); track item.uid) {
+        <button class="drawer-result-item" type="button" (click)="openDocument(item.uid)">
+          <div class="drawer-result-thumb">
+            @if (trashFilterService.resultThumbnails()[item.uid]; as thumb) {
+              <img class="drawer-result-thumb-img" [src]="thumb" alt="" />
+            } @else {
+              <mat-icon class="drawer-result-thumb-icon">{{ docIcon(item.type) }}</mat-icon>
+            }
+          </div>
+          <div class="drawer-result-info">
+            <span class="drawer-result-title">{{ item.title }}</span>
+            <span class="drawer-result-type">{{ item.type }}</span>
+          </div>
+        </button>
+      }
+    </div>
+  }
+}

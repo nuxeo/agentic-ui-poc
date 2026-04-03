@@ -29,6 +29,7 @@
       "@agentic-ui/feature-collections": ["libs/features/collections/src/index.ts"],
       "@agentic-ui/feature-tasks": ["libs/features/tasks/src/index.ts"],
       "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"]
+      "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"]
     }
   }
 }

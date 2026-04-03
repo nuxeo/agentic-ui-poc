@@ -293,6 +293,15 @@
   color: #bdbdbd;
 }
 
+.asset-thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
 .asset-type-badge {
   position: absolute;
   top: 8px;
@@ -379,6 +388,14 @@
   width: 18px;
   height: 18px;
   color: var(--mat-sys-on-surface-variant, #7a7d87);
+  flex-shrink: 0;
+}
+
+.row-thumbnail-image {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 4px;
   flex-shrink: 0;
 }
 
@@ -497,7 +514,9 @@
   width: 14px;
   height: 14px;
   opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
   color: var(--mat-sys-on-surface-variant, #8a8d98);
 
   &.sort-active {

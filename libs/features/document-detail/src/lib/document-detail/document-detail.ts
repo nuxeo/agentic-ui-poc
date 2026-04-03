@@ -1038,6 +1038,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  readonly isTrashed = computed(() => {
+    const d = this.doc();
+    return d?.isTrashed === true || d?.state === 'deleted';
+  });
+
   trashDocument(): void {
     if (this.actionInProgress()) return;
     if (!confirm('Are you sure you want to delete this document?')) return;
@@ -1052,6 +1057,39 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       error: () => {
         this.actionInProgress.set(null);
         this.toast('Failed to delete document');
+      },
+    });
+  }
+
+  restoreFromTrash(): void {
+    if (this.actionInProgress()) return;
+    this.actionInProgress.set('restore');
+    this.detailService.restoreFromTrash(this.docUid).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast('Document restored');
+        this.loadDocument(this.docUid);
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to restore document');
+      },
+    });
+  }
+
+  permanentlyDelete(): void {
+    if (this.actionInProgress()) return;
+    if (!confirm('Permanently delete this document? This cannot be undone.')) return;
+    this.actionInProgress.set('permanentDelete');
+    this.detailService.permanentlyDelete(this.docUid).subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast('Document permanently deleted');
+        this.goBack();
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to permanently delete document');
       },
     });
   }

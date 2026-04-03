@@ -1,6 +1,12 @@
 // Models
 export type { NuxeoPaginatedList } from './lib/models/paginated.model';
-export type { AggregateBucket, AggregateResult, AssetAggregations, AssetSearchParams, AssetSearchResult } from './lib/models/asset.model';
+export type {
+  AggregateBucket,
+  AggregateResult,
+  AssetAggregations,
+  AssetSearchParams,
+  AssetSearchResult,
+} from './lib/models/asset.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
 export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
@@ -15,7 +21,11 @@ export type {
   NuxeoOAuth2TokenList,
 } from './lib/models/oauth2.model';
 export type { SearchQueryParams } from './lib/services/search.service';
-export type { SearchAggregations, SearchResponse, SearchResultItem } from './lib/models/search.model';
+export type {
+  SearchAggregations,
+  SearchResponse,
+  SearchResultItem,
+} from './lib/models/search.model';
 export type {
   NuxeoWorkflow,
   NuxeoWorkflowList,
@@ -60,6 +70,17 @@ export {
 } from './lib/services/administration.service';
 export { PrincipalPermissionsService } from './lib/services/principal-permissions.service';
 export { SettingsService, type LocalPermissionRow, type SynchronizationRootRow } from './lib/services/settings.service';
+export {
+  TrashService,
+  type TrashSearchParams,
+  type SavedSearch,
+} from './lib/services/trash.service';
+export {
+  TrashFilterService,
+  type TrashFilters,
+  type TrashLayoutMode,
+  type TrashResultItem,
+} from './lib/services/trash-filter.service';
 
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
