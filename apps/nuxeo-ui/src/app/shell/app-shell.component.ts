@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
@@ -44,6 +44,9 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
   styleUrl: './app-shell.component.scss',
 })
 export class AppShellComponent {
+  @ViewChild('globalSearchContainer')
+  private globalSearchContainer?: ElementRef<HTMLElement>;
+
   private readonly settingsDrawerItem: AppNavItem = {
     label: 'Settings',
     path: '/settings',
@@ -103,7 +106,6 @@ export class AppShellComponent {
       };
       return titles[seg] ?? 'Administration';
     }
-    const match = PLATFORM_NAV_ITEMS.find(
     const match = [...PLATFORM_NAV_ITEMS, ...SETTINGS_DRAWER_ITEMS].find(
       (item) => url === item.path || url.startsWith(item.path + '/'),
     );
@@ -196,6 +198,7 @@ export class AppShellComponent {
 
   onNavClick(item: AppNavItem, event: Event): void {
     this.refreshClipboardCount();
+    this.clearGlobalSearch();
 
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
@@ -222,6 +225,7 @@ export class AppShellComponent {
   onDrawerItemSelected(path: string): void {
     this.drawerOpen.set(false);
     this.activeDrawerItem.set(null);
+    this.clearGlobalSearch();
     void this.router.navigateByUrl(path);
   }
 
@@ -241,6 +245,7 @@ export class AppShellComponent {
   }
 
   onNavigateKeepDrawer(path: string): void {
+    this.clearGlobalSearch();
     void this.router.navigateByUrl(path);
   }
 
@@ -284,9 +289,19 @@ export class AppShellComponent {
     this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
   }
 
+  onGlobalSearchFocusOut(event: FocusEvent): void {
+    const container = this.globalSearchContainer?.nativeElement;
+    const nextTarget = event.relatedTarget as Node | null;
+
+    if (container && nextTarget && container.contains(nextTarget)) {
+      return;
+    }
+
+    this.clearGlobalSearch();
+  }
+
   onGlobalSearchSelect(result: GlobalSearchSuggestion): void {
-    this.globalSearchTerm.set(result.displayLabel);
-    this.globalSearchOpen.set(false);
+    this.clearGlobalSearch();
     const documentUid = result.documentUid ?? result.id;
     void this.router.navigate(['/doc', documentUid]);
   }

@@ -40,7 +40,13 @@
 
       <h1 satAppHeaderTitle>{{ pageTitle() }}</h1>
 
-      <div class="header-search" satAppHeaderLogo (click)="$event.stopPropagation()">
+      <div
+        #globalSearchContainer
+        class="header-search"
+        satAppHeaderLogo
+        (click)="$event.stopPropagation()"
+        (focusout)="onGlobalSearchFocusOut($event)"
+      >
         <div class="header-search-input-wrap">
           <mat-icon class="header-search-icon">search</mat-icon>
           <input
