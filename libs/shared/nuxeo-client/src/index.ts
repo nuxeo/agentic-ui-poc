@@ -33,6 +33,11 @@ export type {
   NuxeoWorkflowModelList,
 } from './lib/models/workflow.model';
 export type { NuxeoUser, NuxeoUserList, NuxeoGroup, NuxeoGroupList } from './lib/models/user.model';
+export type {
+  PrincipalPermissionRow,
+  PrincipalPermissionPage,
+} from './lib/models/principal-permissions.model';
+export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 
 // Config
 export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
@@ -65,6 +70,12 @@ export {
   type LocalPermissionRow,
   type SynchronizationRootRow,
 } from './lib/services/settings.service';
+export {
+  AdministrationService,
+  FALLBACK_DIRECTORY_NAMES,
+} from './lib/services/administration.service';
+export { PrincipalPermissionsService } from './lib/services/principal-permissions.service';
+export { SettingsService, type LocalPermissionRow, type SynchronizationRootRow } from './lib/services/settings.service';
 export {
   TrashService,
   type TrashSearchParams,

@@ -8,6 +8,8 @@ export interface NuxeoUser {
     email: string;
     groups: string[];
     company?: string;
+    /** Set only when creating or changing password (not returned on GET in some setups). */
+    password?: string;
   };
   isAdministrator?: boolean;
   isAnonymous?: boolean;
@@ -16,6 +18,10 @@ export interface NuxeoUser {
 export interface NuxeoUserList {
   'entity-type': 'users';
   entries: NuxeoUser[];
+  totalSize?: number;
+  currentPageSize?: number;
+  currentPageIndex?: number;
+  numberOfPages?: number;
 }
 
 export interface NuxeoGroup {
@@ -29,4 +35,8 @@ export interface NuxeoGroup {
 export interface NuxeoGroupList {
   'entity-type': 'groups';
   entries: NuxeoGroup[];
+  totalSize?: number;
+  currentPageSize?: number;
+  currentPageIndex?: number;
+  numberOfPages?: number;
 }

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { adminGuard } from './auth/admin.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
 
 const placeholder = () =>
@@ -74,6 +75,12 @@ export const routes: Routes = [
       {
         path: 'trash',
         loadChildren: () => import('@agentic-ui/feature-trash').then((m) => m.trashRoutes),
+      },
+      {
+        path: 'administration',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('@agentic-ui/feature-administration').then((m) => m.administrationRoutes),
       },
       {
         path: 'settings/nuxeo-drive',

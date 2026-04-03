@@ -1,0 +1,53 @@
+<div class="voc-page">
+  <header class="voc-page__header">
+    <h1 class="voc-page__title">Vocabularies</h1>
+    <button type="button" mat-icon-button aria-label="Search (placeholder)">
+      <mat-icon>search</mat-icon>
+    </button>
+  </header>
+
+  <div class="voc-card mat-elevation-z1">
+    @if (loadingList()) {
+      <div class="voc-center"><mat-spinner diameter="36" /></div>
+    } @else {
+      <mat-form-field appearance="outline" class="voc-select" subscriptSizing="dynamic">
+        <mat-label>Vocabulary</mat-label>
+        <mat-select
+          [ngModel]="selectedDirectory()"
+          (ngModelChange)="onDirectoryChange($event)"
+          placeholder="Select a Vocabulary"
+        >
+          @for (name of directoryNames(); track name) {
+            <mat-option [value]="name">{{ name }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (loading()) {
+        <div class="voc-center"><mat-spinner diameter="36" /></div>
+      } @else {
+        <div class="voc-table-wrap">
+          <table mat-table [dataSource]="entries()" class="voc-table">
+            <ng-container matColumnDef="id">
+              <th mat-header-cell *matHeaderCellDef>Id</th>
+              <td mat-cell *matCellDef="let row">{{ row.id }}</td>
+            </ng-container>
+            <ng-container matColumnDef="label">
+              <th mat-header-cell *matHeaderCellDef>Label</th>
+              <td mat-cell *matCellDef="let row">{{ row.displayLabel ?? row.label }}</td>
+            </ng-container>
+            <ng-container matColumnDef="ordering">
+              <th mat-header-cell *matHeaderCellDef>Ordering</th>
+              <td mat-cell *matCellDef="let row">{{ row.ordering }}</td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="columns"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns"></tr>
+          </table>
+          @if (entries().length === 0 && selectedDirectory()) {
+            <p class="voc-empty">No entries in this vocabulary.</p>
+          }
+        </div>
+      }
+    }
+  </div>
+</div>
