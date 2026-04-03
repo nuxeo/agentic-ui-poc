@@ -161,30 +161,71 @@ export class SearchService {
     const params = new HttpParams().set('pageProvider', pageProvider);
 
     return this.api
-      .get<NuxeoDocumentList>('/nuxeo/api/v1/search/saved', params, {
+      .get<{ entries: Array<Record<string, unknown>> }>('/nuxeo/api/v1/search/saved', params, {
         properties: '*',
         'enrichers.document': 'thumbnail,permissions,highlight',
       })
       .pipe(
         map((res) =>
-          res.entries.map((doc) => {
-            const props = doc.properties ?? {};
+          (res.entries ?? []).map((doc) => {
+            // Saved search API returns entries with `id`; document API returns `uid`.
+            const id = this.asString(doc['id']) ?? this.asString(doc['uid']) ?? '';
+            const title = this.asString(doc['title']) ?? id;
+            const props = (doc['properties'] as Record<string, unknown>) ?? {};
             const query = this.firstString(
               props['contentview:query'],
               props['savedsearch:query'],
               props['search:query'],
-              props['query'],
+              doc['query'],
             );
 
-            return {
-              id: doc.uid,
-              title: doc.title ?? doc.uid,
-              query,
-            } satisfies SavedSearchOption;
-          }),
+            return { id, title, query } satisfies SavedSearchOption;
+          }).filter((item) => item.id.length > 0),
         ),
         catchError(() => of<SavedSearchOption[]>([])),
       );
+  }
+
+  getSavedSearchById(id: string): Observable<Record<string, string>> {
+    return this.api
+      .get<unknown>(`/nuxeo/api/v1/search/saved/${id}`, new HttpParams(), { properties: '*' })
+      .pipe(
+        map((res) => this.extractSavedSearchParams(res)),
+        catchError(() => of<Record<string, string>>({})),
+      );
+  }
+
+  private extractSavedSearchParams(res: unknown): Record<string, string> {
+    if (!res || typeof res !== 'object') return {};
+    const obj = res as Record<string, unknown>;
+
+    // Saved search entity format: top-level params object
+    if (obj['params'] && typeof obj['params'] === 'object' && !Array.isArray(obj['params'])) {
+      const result: Record<string, string> = {};
+      for (const [key, value] of Object.entries(obj['params'] as Record<string, unknown>)) {
+        if (key !== 'highlight' && value !== null && value !== undefined) {
+          result[key] = String(value);
+        }
+      }
+      return result;
+    }
+
+    // Document format: params stored in savedsearch schema namedParams
+    const props = (obj['properties'] as Record<string, unknown>) ?? {};
+    const namedParams = props['savedsearch:namedParams'];
+    if (Array.isArray(namedParams)) {
+      const result: Record<string, string> = {};
+      for (const entry of namedParams as Array<Record<string, unknown>>) {
+        const key = typeof entry['key'] === 'string' ? entry['key'] : null;
+        const value = entry['value'];
+        if (key && key !== 'highlight' && value !== null && value !== undefined) {
+          result[key] = String(value);
+        }
+      }
+      return result;
+    }
+
+    return {};
   }
 
   saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown> {

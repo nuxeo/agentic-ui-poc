@@ -1081,7 +1081,7 @@
                       {{ lastReplyTime(comment.id) }}
                     </div>
                     <div class="replies-section">
-                      @for (reply of repliesMap()[comment.id] ?? []; track reply.id) {
+                      @for (reply of repliesMap()[comment.id]; track reply.id) {
                         <div class="reply-card">
                           <div class="comment-header">
                             <sat-avatar

@@ -344,17 +344,6 @@ export class SearchFiltersDrawerComponent {
     }
   }
 
-  onSavedSearchInput(value: string): void {
-    this.savedSearchInput.set(value);
-    this.savedSearchOpen.set(true);
-
-    if (!value.trim() && this.selectedSavedSearch()) {
-      this.selectedSavedSearch.set('');
-      this.query.set('');
-      this.updateDrawerFilters();
-    }
-  }
-
   onSavedSearchFocus(): void {
     this.savedSearchOpen.set(true);
     this.loadSavedSearchesFromApi();
@@ -392,9 +381,96 @@ export class SearchFiltersDrawerComponent {
     this.selectedSavedSearch.set(option.value);
     this.savedSearchOpen.set(false);
 
-    if (option.query) {
-      this.query.set(option.query);
-    }
+    this.searchService.getSavedSearchById(option.value).subscribe({
+      next: (params) => {
+        this.applySavedSearchParams(params);
+      },
+    });
+  }
+
+  selectDefaultSavedSearch(): void {
+    this.resetFilters();
+  }
+
+  private applySavedSearchParams(params: Record<string, string>): void {
+    const get = (key: string) => params[key]?.trim() ?? '';
+    const parseJsonArray = (raw: string): string[] | null => {
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map(String).map((v) => v.trim()).filter(Boolean);
+        }
+      } catch {
+        // not JSON
+      }
+      return null;
+    };
+    const getSet = (key: string): Set<string> => {
+      const raw = get(key);
+      if (!raw) return new Set();
+      // Values may be stored as a JSON array string (e.g. '["val1","val2"]') or comma-separated
+      const parsed = parseJsonArray(raw);
+      if (parsed) return new Set(parsed);
+      return new Set(raw.split(',').map((v) => v.trim()).filter(Boolean));
+    };
+    const getScalar = (key: string): string => {
+      const raw = get(key);
+      if (!raw) return '';
+
+      const parsed = parseJsonArray(raw);
+      if (parsed && parsed.length > 0) return parsed[0];
+
+      return raw;
+    };
+    const fallbackSet = (...keys: string[]): Set<string> => {
+      for (const key of keys) {
+        const s = getSet(key);
+        if (s.size > 0) return s;
+      }
+      return new Set();
+    };
+    const fallback = (...keys: string[]): string => {
+      for (const key of keys) {
+        const v = getScalar(key);
+        if (v) return v;
+      }
+      return '';
+    };
+
+    // Support both drawer-style keys and API-style keys from persisted saved searches.
+    this.query.set(fallback('q', 'query'));
+    this.secondarySearchInput.set(fallback('ecm_fulltext', 'ecmFulltext'));
+
+    // Aggregation keys (dc_modified_agg etc.) take priority over URL-style keys (modifiedDate etc.)
+    this.selectedModificationDates.set(fallbackSet('dc_modified_agg', 'modifiedDate'));
+    this.selectedNatures.set(fallbackSet('dc_nature_agg', 'nature'));
+    this.selectedSubjects.set(fallbackSet('dc_subjects_agg', 'subjects'));
+    this.selectedCoverage.set(fallbackSet('dc_coverage_agg', 'coverage'));
+    this.selectedSizes.set(fallbackSet('common_size_agg', 'size'));
+
+    const author = fallback('dc_creator_agg', 'author');
+    this.selectedAuthor.set(author);
+    this.authorInput.set(author);
+
+    const collection = fallback('collection_agg', 'collection');
+    this.selectedCollection.set(collection);
+    this.collectionInput.set(collection);
+
+    const tag = fallback('ecm_tags', 'tag');
+    this.selectedTag.set(tag);
+    this.tagInput.set(tag);
+
+    // Expand filter groups that have active selections so the user can see them
+    this.expandedFilters.update((set) => {
+      const next = new Set(set);
+      if (this.selectedModificationDates().size > 0) next.add('modification-date');
+      if (this.selectedNatures().size > 0) next.add('nature');
+      if (this.selectedSubjects().size > 0) next.add('subjects');
+      if (this.selectedCoverage().size > 0) next.add('coverage');
+      if (this.selectedSizes().size > 0) next.add('size');
+      return next;
+    });
 
     this.updateDrawerFilters();
   }
@@ -432,15 +508,6 @@ export class SearchFiltersDrawerComponent {
     if (!term) return this.availableAuthorsWithData();
     return this.availableAuthorsWithData().filter((o) =>
       o.label.toLowerCase().includes(term) || o.value.toLowerCase().includes(term),
-    );
-  }
-
-  filteredSavedSearches(): SavedSearchSelectOption[] {
-    const term = this.savedSearchInput().trim().toLowerCase();
-    if (!term) return this.availableSavedSearches();
-
-    return this.availableSavedSearches().filter((option) =>
-      option.label.toLowerCase().includes(term) || option.value.toLowerCase().includes(term),
     );
   }
 
@@ -590,8 +657,6 @@ export class SearchFiltersDrawerComponent {
   }
 
   private toModifiedDateOptionsFromResults(items: SearchResultItem[]): CountOption[] {
-    if (items.length === 0) return [];
-
     const nowMs = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
 
@@ -852,7 +917,7 @@ export class SearchFiltersDrawerComponent {
     if (this.savedSearchesLoaded() || this.savedSearchesLoading()) return;
 
     this.savedSearchesLoading.set(true);
-    this.searchService.getSavedSearches().subscribe({
+    this.searchService.getSavedSearches('default_search').subscribe({
       next: (items) => {
         this.availableSavedSearches.set(items.map((item) => this.toSavedSearchOption(item)));
         this.savedSearchesLoaded.set(true);

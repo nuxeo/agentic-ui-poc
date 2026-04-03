@@ -1,25 +1,30 @@
 <div class="drawer-header-actions">
   <div class="drawer-search-row-primary">
     <div class="drawer-search drawer-search-primary typeahead-input-wrap">
-      <input
+      <button
         class="typeahead-input"
-        type="text"
-        placeholder="Search Filters"
-        [value]="savedSearchInput()"
-        (input)="onSavedSearchInput($any($event.target).value)"
+        type="button"
+        [attr.aria-expanded]="savedSearchOpen()"
+        [attr.aria-label]="savedSearchInput() || 'Saved Searches'"
+        (click)="onSavedSearchFocus()"
         (focus)="onSavedSearchFocus()"
         (blur)="closeSavedSearchDropdown()"
-      />
+      >
+        {{ savedSearchInput() || 'Saved Searches' }}
+      </button>
       <mat-icon class="typeahead-arrow">arrow_drop_down</mat-icon>
 
       @if (savedSearchOpen()) {
         <div class="typeahead-panel">
           @if (savedSearchesLoading()) {
             <div class="typeahead-hint">Loading saved searches...</div>
-          } @else if (filteredSavedSearches().length === 0) {
+          } @else if (availableSavedSearches().length === 0) {
               <div class="typeahead-hint">Search filters</div>
           } @else {
-            @for (option of filteredSavedSearches(); track option.key) {
+            <button class="typeahead-option" type="button" (mousedown)="selectDefaultSavedSearch()">
+              Search Filters
+            </button>
+            @for (option of availableSavedSearches(); track option.key) {
               <button class="typeahead-option" type="button" (mousedown)="selectSavedSearch(option)">
                 {{ option.label }}
               </button>

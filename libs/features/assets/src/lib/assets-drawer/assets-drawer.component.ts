@@ -1,6 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -242,15 +241,6 @@ export class AssetsDrawerComponent {
     });
   }
 
-  onFilterSearchInput(value: string): void {
-    this.filterSearchInput.set(value);
-    this.filterSearchOpen.set(true);
-
-    if (!value.trim() && this.selectedSavedSearch()) {
-      this.selectedSavedSearch.set('');
-    }
-  }
-
   onFilterSearchFocus(): void {
     this.filterSearchOpen.set(true);
     this.loadSavedSearchesFromApi();
@@ -260,19 +250,16 @@ export class AssetsDrawerComponent {
     setTimeout(() => this.filterSearchOpen.set(false), 120);
   }
 
-  filteredFilterOptions(): SavedSearchSelectOption[] {
-    const term = this.filterSearchInput().trim().toLowerCase();
-    if (!term) return this.availableSavedSearches();
-
-    return this.availableSavedSearches().filter((option) =>
-      option.label.toLowerCase().includes(term) || option.value.toLowerCase().includes(term),
-    );
-  }
-
   selectFilterOption(option: SavedSearchSelectOption): void {
     this.filterSearchInput.set(option.label);
     this.selectedSavedSearch.set(option.value);
     this.filterSearchOpen.set(false);
+
+    this.searchService.getSavedSearchById(option.value).subscribe({
+      next: (params) => {
+        this.applySavedSearchParams(params);
+      },
+    });
   }
 
   onSecondarySearchInput(value: string): void {
@@ -375,6 +362,48 @@ export class AssetsDrawerComponent {
     }
   }
 
+  private applySavedSearchParams(params: Record<string, string>): void {
+    const get = (key: string) => params[key]?.trim() ?? '';
+    const parseJsonArray = (raw: string): string[] | null => {
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map(String).map((v) => v.trim()).filter(Boolean);
+        }
+      } catch {
+        // not JSON
+      }
+      return null;
+    };
+    const getValues = (...keys: string[]): string[] => {
+      for (const key of keys) {
+        const raw = get(key);
+        if (!raw) continue;
+
+        const parsed = parseJsonArray(raw);
+        if (parsed && parsed.length > 0) return parsed;
+
+        const split = raw.split(',').map((v) => v.trim()).filter(Boolean);
+        if (split.length > 0) return split;
+      }
+      return [];
+    };
+    const firstValue = (...keys: string[]): string => getValues(...keys)[0] ?? '';
+
+    const queryParams: Record<string, string | null> = {};
+    for (const group of this.filterGroups()) {
+      const values = getValues(group.id, this.GROUP_AGG_KEY[group.id] ?? '');
+      queryParams[group.id] = values.length > 0 ? values.join(',') : null;
+    }
+
+    const ecmFulltext = firstValue('ecm_fulltext', 'ecmFulltext');
+    queryParams['ecm_fulltext'] = ecmFulltext || null;
+
+    // Navigate with normalized saved params and clear missing filters to avoid stale state.
+    void this.router.navigate(['/documents'], { queryParams });
+  }
+
   private syncSelectedDocumentFromUrl(url: string): void {
     const urlParts = url.split('/');
     const docIndex = urlParts.indexOf('doc');
@@ -395,7 +424,7 @@ export class AssetsDrawerComponent {
     if (this.savedSearchesLoaded() || this.savedSearchesLoading()) return;
 
     this.savedSearchesLoading.set(true);
-    this.searchService.getSavedSearches().subscribe({
+    this.searchService.getSavedSearches('assets_search').subscribe({
       next: (items) => {
         this.availableSavedSearches.set(items.map((item) => this.toSavedSearchOption(item)));
         this.savedSearchesLoaded.set(true);
