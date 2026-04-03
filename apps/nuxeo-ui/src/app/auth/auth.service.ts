@@ -59,7 +59,7 @@ export class AuthService {
   constructor() {
     this.restoreSession();
     if (this.state()) {
-      this.refreshCurrentUser().subscribe({ error: () => this.clearSession() });
+      this.refreshCurrentUser().subscribe({ error: () => this.logout() });
     }
   }
 
