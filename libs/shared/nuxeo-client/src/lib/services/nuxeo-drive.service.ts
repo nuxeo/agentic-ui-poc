@@ -1,13 +1,18 @@
 import { inject, Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, map, catchError, of } from 'rxjs';
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
 import { CURRENT_USERNAME } from '../current-user.token';
+import { NuxeoApiBase } from './nuxeo-api-base';
 
 @Injectable({ providedIn: 'root' })
 export class NuxeoDriveService {
+  private readonly api = inject(NuxeoApiBase);
+  private readonly http = inject(HttpClient);
   private readonly apiOrigin = inject(NUXEO_API_ORIGIN);
   private readonly currentUsername = inject(CURRENT_USERNAME);
 
-  private get serverUrl(): string {
+  private get baseUrl(): string {
     const origin = this.apiOrigin || window.location.origin;
     return `${origin}/nuxeo`;
   }
@@ -16,44 +21,50 @@ export class NuxeoDriveService {
     return this.currentUsername() ?? 'Administrator';
   }
 
-  buildEditUrl(docUid: string, filename: string): string {
-    const server = encodeURIComponent(this.serverUrl);
-    const user = encodeURIComponent(this.username);
-    const file = encodeURIComponent(filename);
-    return `nxdrive://edit/${server}/user/${user}/repo/default/nxdocid/${docUid}/filename/${file}`;
-  }
-
-  buildTokenUrl(): string {
-    const server = encodeURIComponent(this.serverUrl);
-    const user = encodeURIComponent(this.username);
-    return `nxdrive://token/${server}/user/${user}/repo/default`;
-  }
-
   /**
-   * Attempts to open a nxdrive:// URL. Resolves to `true` if the browser
-   * handed off to an external app (window lost focus), `false` on timeout.
+   * Checks whether Nuxeo Drive has a registered token (i.e. is installed
+   * and has been connected at least once). This mirrors the native Nuxeo
+   * Web UI approach: GET /api/v1/token?application=Nuxeo Drive
    */
-  tryOpenDrive(nxdriveUrl: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      let resolved = false;
-      const done = (result: boolean) => {
-        if (resolved) return;
-        resolved = true;
-        cleanup();
-        resolve(result);
-      };
+  hasDriveToken(): Observable<boolean> {
+    return this.http
+      .get<{
+        entries: unknown[];
+      }>(this.api.apiUrl('/nuxeo/api/v1/token'), { params: { application: 'Nuxeo Drive' } })
+      .pipe(
+        map((res) => (res.entries?.length ?? 0) > 0),
+        catchError(() => of(false)),
+      );
+  }
 
-      const timer = setTimeout(() => done(false), 2000);
+  buildEditUrl(docUid: string, blobUrl: string, filename: string): string {
+    const parts = blobUrl.split('/nxfile/');
+    const downloadUrl = parts.length > 1 ? `nxfile/${parts[1]}` : '';
 
-      const onBlur = () => done(true);
-      window.addEventListener('blur', onBlur, { once: true });
+    return [
+      'nxdrive://edit',
+      this.baseUrl.replace('://', '/'),
+      'user',
+      this.username,
+      'repo',
+      'default',
+      'nxdocid',
+      docUid,
+      'filename',
+      encodeURIComponent(filename),
+      ...(downloadUrl ? ['downloadUrl', downloadUrl] : []),
+    ].join('/');
+  }
 
-      const cleanup = () => {
-        clearTimeout(timer);
-        window.removeEventListener('blur', onBlur);
-      };
+  buildDirectTransferUrl(docPath: string): string {
+    return [
+      'nxdrive://direct-transfer',
+      this.baseUrl.replace('://', '/'),
+      docPath.startsWith('/') ? docPath.slice(1) : docPath,
+    ].join('/');
+  }
 
-      window.location.href = nxdriveUrl;
-    });
+  openDriveUrl(url: string): void {
+    window.open(url, '_top');
   }
 }

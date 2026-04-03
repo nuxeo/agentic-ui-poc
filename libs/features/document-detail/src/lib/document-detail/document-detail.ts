@@ -1570,11 +1570,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   openDriveDialog(): void {
     const doc = this.doc();
-    const filename =
-      (doc?.properties?.['file:content'] as { name?: string } | null)?.name ?? doc?.title ?? '';
+    const fileContent = doc?.properties?.['file:content'] as {
+      name?: string;
+      data?: string;
+    } | null;
     const data: DriveDialogData = {
       docUid: doc?.uid ?? this.docUid,
-      filename,
+      filename: fileContent?.name ?? doc?.title ?? '',
+      blobUrl: fileContent?.data ?? '',
     };
     this.dialog.open(DriveDialogComponent, { width: '500px', data });
   }

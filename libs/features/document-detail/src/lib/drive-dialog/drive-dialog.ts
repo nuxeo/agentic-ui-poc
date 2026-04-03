@@ -6,6 +6,7 @@ import { NuxeoDriveService } from '@agentic-ui/shared/nuxeo-client';
 export interface DriveDialogData {
   docUid: string;
   filename: string;
+  blobUrl: string;
 }
 
 interface DrivePackage {
@@ -38,16 +39,13 @@ const DRIVE_PACKAGES: DrivePackage[] = [
   imports: [MatDialogModule, MatProgressSpinnerModule],
   template: `
     <div class="drive-dialog">
-      @if (launching()) {
+      @if (checking()) {
         <div class="launching-state">
           <mat-spinner diameter="32" />
-          <p class="launching-text">Opening in Nuxeo Drive...</p>
+          <p class="launching-text">Checking Nuxeo Drive...</p>
         </div>
       } @else {
         <h2>Download Nuxeo Drive Client</h2>
-        <p class="drive-subtitle">
-          Nuxeo Drive does not appear to be installed. Download the client for your platform:
-        </p>
         <table class="drive-table">
           <thead>
             <tr>
@@ -80,21 +78,16 @@ const DRIVE_PACKAGES: DrivePackage[] = [
         padding: 28px 32px;
       }
       h2 {
-        margin: 0 0 8px;
+        margin: 0 0 24px;
         font-size: 22px;
         font-weight: 600;
         color: #333;
-      }
-      .drive-subtitle {
-        margin: 0 0 20px;
-        font-size: 14px;
-        color: #666;
       }
       .launching-state {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
         padding: 32px 0;
       }
       .launching-text {
@@ -158,19 +151,20 @@ export class DriveDialogComponent implements OnInit {
   private readonly data = inject<DriveDialogData>(MAT_DIALOG_DATA);
 
   readonly packages = DRIVE_PACKAGES;
-  readonly launching = signal(true);
+  readonly checking = signal(true);
 
   ngOnInit(): void {
-    const url =
-      this.data.docUid && this.data.filename
-        ? this.driveService.buildEditUrl(this.data.docUid, this.data.filename)
-        : this.driveService.buildTokenUrl();
-
-    this.driveService.tryOpenDrive(url).then((opened) => {
-      if (opened) {
+    this.driveService.hasDriveToken().subscribe((hasToken) => {
+      if (hasToken) {
+        const url = this.driveService.buildEditUrl(
+          this.data.docUid,
+          this.data.blobUrl ?? '',
+          this.data.filename,
+        );
+        this.driveService.openDriveUrl(url);
         this.dialogRef.close();
       } else {
-        this.launching.set(false);
+        this.checking.set(false);
       }
     });
   }
