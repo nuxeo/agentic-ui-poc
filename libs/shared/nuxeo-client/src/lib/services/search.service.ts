@@ -251,6 +251,32 @@ export class SearchService {
     );
   }
 
+  updateSavedSearch(id: string, request: SaveSavedSearchParams): Observable<unknown> {
+    const { title, params, pageProviderName = 'default_search' } = request;
+
+    return this.api.put<unknown>(
+      `/nuxeo/api/v1/search/saved/${id}`,
+      {
+        'entity-type': 'savedSearch',
+        pageProviderName,
+        params: {
+          ...params,
+          highlight: this.savedSearchHighlight,
+        },
+        title,
+      },
+      {
+        'Content-Type': 'application/json',
+        accept: 'text/plain,application/json, application/json',
+        properties: '*',
+      },
+    );
+  }
+
+  deleteSavedSearch(id: string): Observable<unknown> {
+    return this.api.delete<unknown>(`/nuxeo/api/v1/search/saved/${id}`);
+  }
+
   search(params: SearchQueryParams): Observable<SearchResponse> {
     const {
       q = '',

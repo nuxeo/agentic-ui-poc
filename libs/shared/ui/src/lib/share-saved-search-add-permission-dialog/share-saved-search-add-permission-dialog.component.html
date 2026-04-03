@@ -1,0 +1,101 @@
+<h2 mat-dialog-title>{{ data.title || 'Add a Permission' }}</h2>
+
+<mat-dialog-content>
+  @if (!isEditMode) {
+    <label class="field-label" for="principal-input">User / Group *</label>
+    <mat-form-field appearance="outline" class="full-width">
+      <input
+        id="principal-input"
+        matInput
+        placeholder="Search for users and groups"
+        [ngModel]="searchText"
+        (ngModelChange)="onSearchChange($event)"
+        [matAutocomplete]="principalAuto"
+        required
+      />
+      <mat-autocomplete
+        #principalAuto="matAutocomplete"
+        (optionSelected)="onSuggestionSelected($event.option.value)"
+        [displayWith]="displaySuggestion"
+      >
+        @if (searchText.trim().length < 3) {
+          <mat-option disabled>Please enter 3 or more characters</mat-option>
+        } @else {
+          @for (suggestion of suggestions(); track suggestion.id) {
+            <mat-option [value]="suggestion">
+              <mat-icon class="suggestion-icon">{{ suggestion.type === 'USER_TYPE' ? 'person' : 'groups' }}</mat-icon>
+              <span>{{ suggestion.displayLabel }}</span>
+              <span class="suggestion-id">{{ suggestion.id }}</span>
+            </mat-option>
+          } @empty {
+            <mat-option disabled>No users/groups found</mat-option>
+          }
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  } @else {
+    <div class="field-label">User / Group</div>
+    <div class="user-group-display">{{ searchText }}</div>
+  }
+
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Right</mat-label>
+    <mat-select [(ngModel)]="right">
+      @for (opt of rightOptions; track opt.value) {
+        <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <div class="time-frame-row">
+    <span class="field-label no-margin">Time Frame</span>
+    <mat-radio-group [(ngModel)]="timeFrameMode" class="time-frame-radios">
+      <mat-radio-button value="permanent">Permanent</mat-radio-button>
+      <mat-radio-button value="date-based">Date-based</mat-radio-button>
+    </mat-radio-group>
+  </div>
+
+  <div class="date-fields">
+    <mat-form-field appearance="outline">
+      <mat-label>From</mat-label>
+      <input matInput [matDatepicker]="fromPicker" [(ngModel)]="beginDate" [disabled]="timeFrameMode === 'permanent'" />
+      <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+      <mat-datepicker #fromPicker />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>To</mat-label>
+      <input matInput [matDatepicker]="toPicker" [(ngModel)]="endDate" [disabled]="timeFrameMode === 'permanent'" />
+      <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+      <mat-datepicker #toPicker />
+    </mat-form-field>
+  </div>
+
+  <mat-checkbox [(ngModel)]="sendNotify">Send an email to notify user</mat-checkbox>
+
+  @if (sendNotify) {
+    <div class="notify-section">
+      <label class="field-label" for="notify">Notification email</label>
+      <mat-form-field appearance="outline" class="full-width">
+        <textarea
+          id="notify"
+          matInput
+          rows="2"
+          [(ngModel)]="notifyComment"
+          placeholder="Hi! Could you comment on this document and..."
+        ></textarea>
+      </mat-form-field>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions>
+  <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
+  <span class="spacer"></span>
+  @if (isEditMode) {
+    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">Update</button>
+  } @else {
+    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(true)">Create And Add Another</button>
+    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">Create</button>
+  }
+</mat-dialog-actions>

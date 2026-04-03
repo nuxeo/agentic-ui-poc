@@ -20,6 +20,16 @@ export class DocumentDetailService {
     });
   }
 
+  getDocumentPermissions(uid: string): Observable<NuxeoDocument> {
+    return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
+      properties: '*',
+      'enrichers.document': 'acls,permissions,userVisiblePermissions',
+      'fetch-acls': 'username,creator,extended',
+      depth: 'children',
+      time: String(Date.now()),
+    });
+  }
+
   fetchBlob(uid: string): Observable<Blob> {
     return this.http.get(this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/blobholder:0`), {
       responseType: 'blob',
@@ -314,6 +324,64 @@ export class DocumentDetailService {
     return this.api.post<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}/@op/Document.SetACE`,
       { params: { ...params, overwrite: params.overwrite ?? true }, context: {} },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
+  replacePermission(
+    uid: string,
+    params: {
+      username?: string;
+      email?: string | null;
+      permission: string;
+      begin?: string | null;
+      end?: string | null;
+      notify?: boolean;
+      comment?: string | null;
+      id?: string;
+    },
+  ): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      '/nuxeo/api/v1/automation/Document.ReplacePermission',
+      {
+        params: {
+          users: [],
+          ...params,
+        },
+        context: {},
+        input: uid,
+      },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
+  addPermission(
+    uid: string,
+    params: {
+      username?: string;
+      email?: string;
+      permission: string;
+      notify?: boolean;
+      comment?: string;
+      begin?: string | null;
+      end?: string | null;
+    },
+  ): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      '/nuxeo/api/v1/automation/Document.AddPermission',
+      {
+        params: {
+          ...(params.username ? { username: params.username } : {}),
+          ...(params.email ? { email: params.email } : {}),
+          permission: params.permission,
+          begin: params.begin ?? null,
+          end: params.end ?? null,
+          notify: params.notify ?? false,
+          comment: params.comment ?? '',
+        },
+        context: {},
+        input: uid,
+      },
       { 'Content-Type': 'application/json' },
     );
   }

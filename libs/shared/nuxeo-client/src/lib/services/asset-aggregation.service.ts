@@ -12,4 +12,6 @@ export interface AssetQueueItem {
 export class AssetAggregationService {
   readonly aggregations = signal<AssetAggregations>({});
   readonly items = signal<AssetQueueItem[]>([]);
+  readonly selectedSavedSearchId = signal('');
+  readonly selectedSavedSearchTitle = signal('');
 }

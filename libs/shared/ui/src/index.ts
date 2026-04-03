@@ -6,3 +6,4 @@ export { ShareDialogComponent, type ShareDialogData } from './lib/share-dialog/s
 export { DocumentViewerComponent } from './lib/document-viewer/document-viewer.component';
 export { ExportDialogComponent, type ExportDialogData, type ExportType } from './lib/export-dialog/export-dialog.component';
 export { SavedSearchDialogComponent, type SavedSearchDialogData } from './lib/saved-search-dialog/saved-search-dialog.component';
+export { ShareSavedSearchDialogComponent, type ShareSavedSearchDialogData, type PermissionEntry } from './lib/share-saved-search-dialog/share-saved-search-dialog.component';

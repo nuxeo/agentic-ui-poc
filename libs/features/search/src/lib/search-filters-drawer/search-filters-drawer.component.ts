@@ -387,6 +387,8 @@ export class SearchFiltersDrawerComponent {
     this.savedSearchInput.set(option.label);
     this.selectedSavedSearch.set(option.value);
     this.savedSearchOpen.set(false);
+    this.searchAggregationService.selectedSavedSearchId.set(option.value);
+    this.searchAggregationService.selectedSavedSearchTitle.set(option.label);
 
     this.searchService.getSavedSearchById(option.value).subscribe({
       next: (params) => {
@@ -396,6 +398,8 @@ export class SearchFiltersDrawerComponent {
   }
 
   selectDefaultSavedSearch(): void {
+    this.searchAggregationService.selectedSavedSearchId.set('');
+    this.searchAggregationService.selectedSavedSearchTitle.set('');
     this.resetFilters();
   }
 
@@ -577,6 +581,8 @@ export class SearchFiltersDrawerComponent {
     this.selectedSavedSearch.set('');
     this.savedSearchInput.set('');
     this.savedSearchOpen.set(false);
+    this.searchAggregationService.selectedSavedSearchId.set('');
+    this.searchAggregationService.selectedSavedSearchTitle.set('');
     this.query.set('');
     this.secondarySearchInput.set('');
     this.selectedModificationDates.set(new Set());

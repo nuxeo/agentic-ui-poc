@@ -254,6 +254,8 @@ export class AssetsDrawerComponent {
     this.filterSearchInput.set(option.label);
     this.selectedSavedSearch.set(option.value);
     this.filterSearchOpen.set(false);
+    this.aggregationService.selectedSavedSearchId.set(option.value);
+    this.aggregationService.selectedSavedSearchTitle.set(option.label);
 
     this.searchService.getSavedSearchById(option.value).subscribe({
       next: (params) => {
@@ -317,6 +319,10 @@ export class AssetsDrawerComponent {
     this.filterGroups.update((groups) =>
       groups.map((g) => ({ ...g, options: g.options.map((o) => ({ ...o, selected: false })) })),
     );
+    this.filterSearchInput.set('');
+    this.selectedSavedSearch.set('');
+    this.aggregationService.selectedSavedSearchId.set('');
+    this.aggregationService.selectedSavedSearchTitle.set('');
     void this.router.navigate(['/documents'], {
       queryParams: { ecm_fulltext: null },
       queryParamsHandling: 'merge',
