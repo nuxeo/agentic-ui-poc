@@ -8,30 +8,14 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@agentic-ui/core": [
-        "libs/core/src/index.ts"
-      ],
-      "@agentic-ui/shared/ui": [
-        "libs/shared/ui/src/index.ts"
-      ],
-      "@agentic-ui/shared/util": [
-        "libs/shared/util/src/index.ts"
-      ],
-      "@agentic-ui/shared/nuxeo-client": [
-        "libs/shared/nuxeo-client/src/index.ts"
-      ],
-      "@agentic-ui/shared/drawers": [
-        "libs/shared/drawers/src/index.ts"
-      ],
-      "@agentic-ui/feature-browse": [
-        "libs/features/browse/src/index.ts"
-      ],
-      "@agentic-ui/feature-search": [
-        "libs/features/search/src/index.ts"
-      ],
-      "@agentic-ui/feature-assets": [
-        "libs/features/assets/src/index.ts"
-      ],
+      "@agentic-ui/core": ["libs/core/src/index.ts"],
+      "@agentic-ui/shared/ui": ["libs/shared/ui/src/index.ts"],
+      "@agentic-ui/shared/util": ["libs/shared/util/src/index.ts"],
+      "@agentic-ui/shared/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
+      "@agentic-ui/shared/drawers": ["libs/shared/drawers/src/index.ts"],
+      "@agentic-ui/feature-browse": ["libs/features/browse/src/index.ts"],
+      "@agentic-ui/feature-search": ["libs/features/search/src/index.ts"],
+      "@agentic-ui/feature-assets": ["libs/features/assets/src/index.ts"],
       "@agentic-ui/feature-assets/assets-drawer": [
         "libs/features/assets/src/lib/assets-drawer/assets-drawer.component.ts"
       ],
@@ -41,15 +25,10 @@
       "@agentic-ui/feature-search/search-filters-drawer": [
         "libs/features/search/src/lib/search-filters-drawer/search-filters-drawer.component.ts"
       ],
-      "@agentic-ui/feature-document-detail": [
-        "libs/features/document-detail/src/index.ts"
-      ],
-      "@agentic-ui/feature-collections": [
-        "libs/features/collections/src/index.ts"
-      ],
-      "@agentic-ui/feature-tasks": [
-        "libs/features/tasks/src/index.ts"
-      ]
+      "@agentic-ui/feature-document-detail": ["libs/features/document-detail/src/index.ts"],
+      "@agentic-ui/feature-collections": ["libs/features/collections/src/index.ts"],
+      "@agentic-ui/feature-tasks": ["libs/features/tasks/src/index.ts"],
+      "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"]
     }
   }
 }

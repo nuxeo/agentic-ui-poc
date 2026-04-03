@@ -19,26 +19,28 @@
       <span class="header-path">{{ breadcrumbPath() }}</span>
     </div>
     <div class="header-actions">
-      <button mat-icon-button matTooltip="Edit" aria-label="Edit">
-        <mat-icon>edit</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        (click)="openAddToCollectionDialog()"
-        matTooltip="Add to collection"
-        aria-label="Add to collection"
-      >
-        <mat-icon>library_add</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        (click)="trashDocument()"
-        [disabled]="actionInProgress() === 'trash'"
-        matTooltip="Delete"
-        aria-label="Delete"
-      >
-        <mat-icon>delete</mat-icon>
-      </button>
+      @if (!isTrashed()) {
+        <button mat-icon-button matTooltip="Edit" aria-label="Edit">
+          <mat-icon>edit</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          (click)="openAddToCollectionDialog()"
+          matTooltip="Add to collection"
+          aria-label="Add to collection"
+        >
+          <mat-icon>library_add</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          (click)="trashDocument()"
+          [disabled]="actionInProgress() === 'trash'"
+          matTooltip="Delete"
+          aria-label="Delete"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      }
       <button
         mat-icon-button
         (click)="toggleClipboard()"
@@ -104,6 +106,30 @@
       </button>
     </mat-menu>
   </div>
+
+  @if (isTrashed()) {
+    <div class="trashed-banner">
+      <mat-icon class="trashed-banner-icon">info</mat-icon>
+      <span class="trashed-banner-text">You are viewing a trashed document.</span>
+      <span class="trashed-banner-spacer"></span>
+      <button
+        mat-stroked-button
+        class="trashed-banner-btn"
+        (click)="restoreFromTrash()"
+        [disabled]="actionInProgress() === 'restore'"
+      >
+        <mat-icon>restore_from_trash</mat-icon> Restore
+      </button>
+      <button
+        mat-stroked-button
+        class="trashed-banner-btn trashed-banner-btn--danger"
+        (click)="permanentlyDelete()"
+        [disabled]="actionInProgress() === 'permanentDelete'"
+      >
+        <mat-icon>delete_forever</mat-icon> Delete Permanently
+      </button>
+    </div>
+  }
 
   <!-- Workflow info banner (yellow) — one per running workflow -->
   @for (wf of documentWorkflows(); track wf.id) {
