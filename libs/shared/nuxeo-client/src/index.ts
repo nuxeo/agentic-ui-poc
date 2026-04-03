@@ -6,6 +6,14 @@ export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
 export type { DirectoryEntry, L10nDirectoryEntry } from './lib/models/directory.model';
 export type { NuxeoAce, NuxeoAcl } from './lib/models/acl.model';
+export type {
+  AuthorizedApplication,
+  ConnectedAccount,
+  NuxeoOAuth2ServiceProvider,
+  NuxeoOAuth2ServiceProviderList,
+  NuxeoOAuth2Token,
+  NuxeoOAuth2TokenList,
+} from './lib/models/oauth2.model';
 export type { SearchQueryParams } from './lib/services/search.service';
 export type { SearchAggregations, SearchResponse, SearchResultItem } from './lib/models/search.model';
 export type {
@@ -41,6 +49,7 @@ export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
 export { TagService } from './lib/services/tag.service';
+export { SettingsService, type LocalPermissionRow, type SynchronizationRootRow } from './lib/services/settings.service';
 
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';

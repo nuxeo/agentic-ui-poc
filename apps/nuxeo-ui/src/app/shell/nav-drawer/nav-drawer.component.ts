@@ -38,7 +38,7 @@ import type { SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
 import type { AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
-import { AppNavItem } from '../../platform-nav-items';
+import { AppNavItem, SETTINGS_DRAWER_ITEMS } from '../../platform-nav-items';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -90,6 +90,8 @@ export class NavDrawerComponent {
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
+  readonly signOutSelected = output<void>();
+  readonly settingsItems = SETTINGS_DRAWER_ITEMS;
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
@@ -282,6 +284,10 @@ export class NavDrawerComponent {
     return this.activeItem()?.path === '/clipboard';
   }
 
+  get isSettings(): boolean {
+    return this.activeItem()?.path === '/settings';
+  }
+
   get isFavorites(): boolean {
     return this.activeItem()?.path === '/favorites';
   }
@@ -292,6 +298,14 @@ export class NavDrawerComponent {
 
   get isExpiredQueue(): boolean {
     return this.activeItem()?.path === '/expired-queue';
+  }
+
+  onSettingsSignOut(): void {
+    this.signOutSelected.emit();
+  }
+
+  navigateToSettings(path: string): void {
+    this.navigateKeepDrawer.emit(path);
   }
 
   // ── Expired Queue ──
