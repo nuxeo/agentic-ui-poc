@@ -62,7 +62,10 @@ import {
   ShareExternalDialogData,
 } from '@agentic-ui/feature-collections';
 
-import { BrowseDriveDialogComponent } from '../drive-dialog/drive-dialog';
+import {
+  BrowseDriveDialogComponent,
+  type BrowseDriveDialogData,
+} from '../drive-dialog/drive-dialog';
 
 import {
   ColumnDef,
@@ -703,7 +706,12 @@ export class BrowseComponent {
   // ── Action toolbar ──
 
   openDriveDialog(): void {
-    this.dialog.open(BrowseDriveDialogComponent);
+    const doc = this.currentDoc();
+    const data: BrowseDriveDialogData = {
+      docUid: doc?.uid ?? '',
+      docPath: doc?.path ?? '/',
+    };
+    this.dialog.open(BrowseDriveDialogComponent, { data });
   }
 
   openEditDialog(): void {

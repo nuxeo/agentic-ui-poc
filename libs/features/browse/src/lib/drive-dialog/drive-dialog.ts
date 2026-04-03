@@ -1,5 +1,12 @@
-import { Component, inject } from '@angular/core';
-import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { Component, inject, signal, OnInit } from '@angular/core';
+import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { NuxeoDriveService } from '@agentic-ui/shared/nuxeo-client';
+
+export interface BrowseDriveDialogData {
+  docUid: string;
+  docPath: string;
+}
 
 interface DrivePackage {
   platform: string;
@@ -28,33 +35,43 @@ const DRIVE_PACKAGES: DrivePackage[] = [
 @Component({
   selector: 'lib-browse-drive-dialog',
   standalone: true,
-  imports: [MatDialogModule],
+  imports: [MatDialogModule, MatProgressSpinnerModule],
   template: `
     <div class="drive-dialog">
-      <h2>Download Nuxeo Drive Client</h2>
-      <table class="drive-table">
-        <thead>
-          <tr>
-            <th>Platform</th>
-            <th>Package to Install</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (pkg of packages; track pkg.platform) {
+      @if (launching()) {
+        <div class="launching-state">
+          <mat-spinner diameter="32" />
+          <p class="launching-text">Launching Nuxeo Drive...</p>
+        </div>
+      } @else {
+        <h2>Download Nuxeo Drive Client</h2>
+        <p class="drive-subtitle">
+          Nuxeo Drive does not appear to be installed. Download the client for your platform:
+        </p>
+        <table class="drive-table">
+          <thead>
             <tr>
-              <td>
-                <span class="platform-badge">{{ pkg.platform }}</span>
-              </td>
-              <td>
-                <a class="package-link" [href]="pkg.url" target="_blank" rel="noopener">{{
-                  pkg.name
-                }}</a>
-              </td>
+              <th>Platform</th>
+              <th>Package to Install</th>
             </tr>
-          }
-        </tbody>
-      </table>
-      <button class="close-link" (click)="close()">Close</button>
+          </thead>
+          <tbody>
+            @for (pkg of packages; track pkg.platform) {
+              <tr>
+                <td>
+                  <span class="platform-badge">{{ pkg.platform }}</span>
+                </td>
+                <td>
+                  <a class="package-link" [href]="pkg.url" target="_blank" rel="noopener">{{
+                    pkg.name
+                  }}</a>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <button class="close-link" (click)="close()">Close</button>
+      }
     </div>
   `,
   styles: [
@@ -63,10 +80,28 @@ const DRIVE_PACKAGES: DrivePackage[] = [
         padding: 28px 32px;
       }
       h2 {
-        margin: 0 0 24px;
+        margin: 0 0 8px;
         font-size: 22px;
         font-weight: 600;
         color: #333;
+      }
+      .drive-subtitle {
+        margin: 0 0 20px;
+        font-size: 14px;
+        color: #666;
+      }
+      .launching-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding: 32px 0;
+      }
+      .launching-text {
+        font-size: 15px;
+        font-weight: 500;
+        color: #333;
+        margin: 0;
       }
       .drive-table {
         width: 100%;
@@ -116,9 +151,25 @@ const DRIVE_PACKAGES: DrivePackage[] = [
     `,
   ],
 })
-export class BrowseDriveDialogComponent {
+export class BrowseDriveDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<BrowseDriveDialogComponent>);
+  private readonly driveService = inject(NuxeoDriveService);
+  private readonly data = inject<BrowseDriveDialogData>(MAT_DIALOG_DATA);
+
   readonly packages = DRIVE_PACKAGES;
+  readonly launching = signal(true);
+
+  ngOnInit(): void {
+    const url = this.driveService.buildTokenUrl();
+    this.driveService.tryOpenDrive(url).then((opened) => {
+      if (opened) {
+        this.dialogRef.close();
+      } else {
+        this.launching.set(false);
+      }
+    });
+  }
+
   close(): void {
     this.dialogRef.close();
   }

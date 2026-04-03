@@ -59,7 +59,12 @@ export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
 export { TagService } from './lib/services/tag.service';
-export { SettingsService, type LocalPermissionRow, type SynchronizationRootRow } from './lib/services/settings.service';
+export { NuxeoDriveService } from './lib/services/nuxeo-drive.service';
+export {
+  SettingsService,
+  type LocalPermissionRow,
+  type SynchronizationRootRow,
+} from './lib/services/settings.service';
 export {
   TrashService,
   type TrashSearchParams,
