@@ -187,8 +187,9 @@ export class SearchService {
   }
 
   getSavedSearchById(id: string): Observable<Record<string, string>> {
+    const encodedId = encodeURIComponent(id);
     return this.api
-      .get<unknown>(`/nuxeo/api/v1/search/saved/${id}`, new HttpParams(), { properties: '*' })
+      .get<unknown>(`/nuxeo/api/v1/search/saved/${encodedId}`, new HttpParams(), { properties: '*' })
       .pipe(
         map((res) => this.extractSavedSearchParams(res)),
         catchError(() => of<Record<string, string>>({})),
@@ -244,7 +245,7 @@ export class SearchService {
       },
       {
         'Content-Type': 'application/json',
-        accept: 'text/plain,application/json, application/json',
+        accept: 'text/plain, application/json',
         properties: '*',
       },
     );

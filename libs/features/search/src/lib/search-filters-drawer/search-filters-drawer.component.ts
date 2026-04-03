@@ -1,5 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
@@ -136,29 +138,34 @@ export class SearchFiltersDrawerComponent {
       this.secondarySearchInput.set(fulltext);
     });
 
-    effect(() => {
-      this.activatedRoute.parent?.params.subscribe((params) => {
+    this.activatedRoute.parent?.params
+      .pipe(takeUntilDestroyed())
+      .subscribe((params) => {
         this.selectedDocumentId.set(params['id'] ?? '');
       });
-    });
 
-    this.router.events.subscribe((event) => {
-      if (!(event instanceof NavigationEnd)) return;
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => {
+        const urlParts = event.urlAfterRedirects.split('/');
+        const docIndex = urlParts.indexOf('doc');
+        if (docIndex !== -1 && docIndex + 1 < urlParts.length) {
+          const docId = urlParts[docIndex + 1].split('?')[0]; // Remove query params
+          this.selectedDocumentId.set(docId);
+        } else {
+          this.selectedDocumentId.set('');
+        }
+      });
 
-      const urlParts = event.urlAfterRedirects.split('/');
-      const docIndex = urlParts.indexOf('doc');
-      if (docIndex !== -1 && docIndex + 1 < urlParts.length) {
-        const docId = urlParts[docIndex + 1].split('?')[0]; // Remove query params
-        this.selectedDocumentId.set(docId);
-      } else {
-        this.selectedDocumentId.set('');
-      }
-    });
-
-    this.activatedRoute.queryParamMap.subscribe((params) => {
-      const quickFilters = params.get('quickFilters') ?? '';
-      this.selectedQueueQuickFilters.set(this.parseQuickFilters(quickFilters));
-    });
+    this.activatedRoute.queryParamMap
+      .pipe(takeUntilDestroyed())
+      .subscribe((params) => {
+        const quickFilters = params.get('quickFilters') ?? '';
+        this.selectedQueueQuickFilters.set(this.parseQuickFilters(quickFilters));
+      });
 
     effect(() => {
       const mode = this.viewMode();

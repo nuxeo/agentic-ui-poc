@@ -19,6 +19,7 @@ export interface SavedSearchDialogData {
       <input
         class="saved-search-input"
         type="text"
+        [attr.aria-label]="data.title || 'Saved Search'"
         [value]="name()"
         [placeholder]="data.placeholder || 'Enter a name for your saved search'"
         (input)="onInput(($any($event.target).value))"

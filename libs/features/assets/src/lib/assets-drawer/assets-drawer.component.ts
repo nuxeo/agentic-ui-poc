@@ -313,12 +313,14 @@ export class AssetsDrawerComponent {
   }
 
   resetFilters(): void {
+    this.secondarySearchInput.set('');
     this.filterGroups.update((groups) =>
       groups.map((g) => ({ ...g, options: g.options.map((o) => ({ ...o, selected: false })) })),
     );
-    if (this.autoSearch()) {
-      void this.router.navigate(['/documents']);
-    }
+    void this.router.navigate(['/documents'], {
+      queryParams: { ecm_fulltext: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   applySearch(): void {
