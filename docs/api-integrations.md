@@ -2,7 +2,7 @@
 
 This document tracks all Nuxeo REST API integrations used in the application. When adding a new API call, append an entry following the format below.
 
-**Base URL:** `/nuxeo` (proxied to `http://localhost:8180` in development via `apps/nuxeo-ui/proxy.conf.json`)
+**Base URL:** `/nuxeo` (proxied to `http://localhost:8080` in development via `apps/nuxeo-ui/proxy.conf.json`)
 
 **Authentication:** All `/nuxeo/**` requests are automatically decorated with `Authorization: Basic <credentials>` by the `nuxeoAuthInterceptor` (see `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`).
 

@@ -9,7 +9,7 @@
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
   <sat-platform-nav>
-    @for (item of navItems; track item.path) {
+    @for (item of navItems(); track item.path) {
       <sat-platform-nav-list-item
         [active]="isActive(item.path)"
         (click)="onNavClick(item, $event)"

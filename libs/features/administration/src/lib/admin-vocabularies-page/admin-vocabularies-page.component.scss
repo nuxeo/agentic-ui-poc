@@ -1,0 +1,65 @@
+.voc-page {
+  padding: var(--admin-space-4, 1.25rem) var(--admin-space-5, 1.5rem) 2rem;
+  max-width: 960px;
+}
+
+.voc-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.voc-page__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.voc-card {
+  padding: 1.25rem;
+  border-radius: var(--admin-radius-1, 8px);
+  background: var(--mat-sys-surface, #fff);
+}
+
+.voc-select {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 1rem;
+}
+
+.voc-table-wrap {
+  overflow: auto;
+}
+
+.voc-table {
+  width: 100%;
+}
+
+.voc-empty {
+  margin: 0.5rem 0 0;
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.55));
+  font-size: 0.9rem;
+}
+
+.voc-center {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.voc-page .mat-mdc-form-field {
+  --mat-form-field-container-height: var(--admin-control-height, 40px);
+}
+
+.voc-table th.mat-mdc-header-cell,
+.voc-table td.mat-mdc-cell {
+  padding-top: var(--admin-row-padding-y, 0.68rem);
+  padding-bottom: var(--admin-row-padding-y, 0.68rem);
+}
+
+@media (max-width: 900px) {
+  .voc-page {
+    padding: 1rem;
+  }
+}
