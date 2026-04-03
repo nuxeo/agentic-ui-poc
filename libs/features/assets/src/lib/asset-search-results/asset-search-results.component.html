@@ -101,6 +101,10 @@
       </div>
     }
 
+    @if (error()) {
+      <div class="results-error">{{ error() }}</div>
+    }
+
     @if (!loading() && !error() && resultCount() === 0 && viewMode() === 'grid') {
       <div class="results-empty">No Documents match the search criteria.</div>
     }

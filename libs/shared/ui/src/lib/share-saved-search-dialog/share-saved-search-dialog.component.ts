@@ -511,6 +511,16 @@ export class ShareSavedSearchDialogComponent implements OnInit {
       return [null, null];
     }
 
+    // "Until <end>" — only end date set
+    if (timeFrame.startsWith('Until ')) {
+      return [null, timeFrame.slice(6).trim()];
+    }
+
+    // "From <begin>" — only begin date set
+    if (timeFrame.startsWith('From ')) {
+      return [timeFrame.slice(5).trim(), null];
+    }
+
     const parts = timeFrame.split(' - ');
     if (parts.length === 2) {
       return [parts[0].trim(), parts[1].trim()];

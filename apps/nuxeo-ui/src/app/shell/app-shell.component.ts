@@ -55,7 +55,6 @@ export class AppShellComponent {
   };
 
   private readonly router = inject(Router);
-  private readonly host = inject(ElementRef<HTMLElement>);
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
@@ -174,7 +173,14 @@ export class AppShellComponent {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (this.host.nativeElement.contains(event.target as Node)) return;
+    const searchContainer = this.globalSearchContainer?.nativeElement;
+    const clickPath = event.composedPath?.() ?? [];
+    if (
+      searchContainer &&
+      (clickPath.includes(searchContainer) || searchContainer.contains(event.target as Node))
+    ) {
+      return;
+    }
     this.globalSearchOpen.set(false);
   }
 

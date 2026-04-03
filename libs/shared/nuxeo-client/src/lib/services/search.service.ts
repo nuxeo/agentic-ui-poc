@@ -252,10 +252,11 @@ export class SearchService {
   }
 
   updateSavedSearch(id: string, request: SaveSavedSearchParams): Observable<unknown> {
+    const encodedId = encodeURIComponent(id);
     const { title, params, pageProviderName = 'default_search' } = request;
 
     return this.api.put<unknown>(
-      `/nuxeo/api/v1/search/saved/${id}`,
+      `/nuxeo/api/v1/search/saved/${encodedId}`,
       {
         'entity-type': 'savedSearch',
         pageProviderName,
@@ -267,14 +268,15 @@ export class SearchService {
       },
       {
         'Content-Type': 'application/json',
-        accept: 'text/plain,application/json, application/json',
+        accept: 'text/plain, application/json',
         properties: '*',
       },
     );
   }
 
   deleteSavedSearch(id: string): Observable<unknown> {
-    return this.api.delete<unknown>(`/nuxeo/api/v1/search/saved/${id}`);
+    const encodedId = encodeURIComponent(id);
+    return this.api.delete<unknown>(`/nuxeo/api/v1/search/saved/${encodedId}`);
   }
 
   search(params: SearchQueryParams): Observable<SearchResponse> {

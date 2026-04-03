@@ -125,10 +125,18 @@ export class ShareSavedSearchAddPermissionDialogComponent {
       this.endDate = null;
     } else {
       this.timeFrameMode = 'date-based';
-      const dateRange = data.timeFrame.split(' - ');
-      if (dateRange.length === 2) {
-        this.beginDate = this.parseDate(dateRange[0].trim());
-        this.endDate = this.parseDate(dateRange[1].trim());
+      if (data.timeFrame.startsWith('Until ')) {
+        this.beginDate = null;
+        this.endDate = this.parseDate(data.timeFrame.slice(6).trim());
+      } else if (data.timeFrame.startsWith('From ')) {
+        this.beginDate = this.parseDate(data.timeFrame.slice(5).trim());
+        this.endDate = null;
+      } else {
+        const dateRange = data.timeFrame.split(' - ');
+        if (dateRange.length === 2) {
+          this.beginDate = this.parseDate(dateRange[0].trim());
+          this.endDate = this.parseDate(dateRange[1].trim());
+        }
       }
     }
 
@@ -152,9 +160,21 @@ export class ShareSavedSearchAddPermissionDialogComponent {
   }
 
   private parseDate(dateStr: string): Date | null {
+    if (!dateStr) return null;
     try {
-      const [mm, dd, yyyy] = dateStr.split('/');
-      return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+      // YYYY-MM-DD (ISO date)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        const [yyyy, mm, dd] = dateStr.split('-');
+        return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+      }
+      // MM/DD/YYYY (legacy format)
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+        const [mm, dd, yyyy] = dateStr.split('/');
+        return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+      }
+      // ISO or other date-like strings
+      const parsed = new Date(dateStr);
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
     } catch {
       return null;
     }
@@ -221,12 +241,22 @@ export class ShareSavedSearchAddPermissionDialogComponent {
       };
     }
 
-    const from = this.beginDate ? this.formatDate(this.beginDate) : 'From';
-    const to = this.endDate ? this.formatDate(this.endDate) : 'To';
+    const from = this.beginDate ? this.formatDate(this.beginDate) : null;
+    const to = this.endDate ? this.formatDate(this.endDate) : null;
+    let timeFrame: string;
+    if (from && to) {
+      timeFrame = `${from} - ${to}`;
+    } else if (from) {
+      timeFrame = `From ${from}`;
+    } else if (to) {
+      timeFrame = `Until ${to}`;
+    } else {
+      timeFrame = 'Permanent';
+    }
     return {
       userGroup,
       right: this.right,
-      timeFrame: `${from} - ${to}`,
+      timeFrame,
       grantedBy,
     };
   }
@@ -244,9 +274,9 @@ export class ShareSavedSearchAddPermissionDialogComponent {
   }
 
   private formatDate(date: Date): string {
+    const yyyy = date.getFullYear();
     const mm = String(date.getMonth() + 1).padStart(2, '0');
     const dd = String(date.getDate()).padStart(2, '0');
-    const yyyy = date.getFullYear();
-    return `${mm}/${dd}/${yyyy}`;
+    return `${yyyy}-${mm}-${dd}`;
   }
 }
