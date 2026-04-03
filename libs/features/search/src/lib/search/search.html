@@ -117,12 +117,11 @@
               ></mat-checkbox>
             </div>
             <div class="result-card-thumbnail">
-              <img
-                class="result-thumbnail-image"
-                [src]="row.imageUrl"
-                [alt]="row.name"
-                (error)="onImageError($event)"
-              />
+              @if (thumbnailMap()[row.id]; as thumb) {
+                <img class="result-thumbnail-image" [src]="thumb" alt="" />
+              } @else {
+                <mat-icon class="result-icon">{{ row.icon }}</mat-icon>
+              }
             </div>
             <div class="result-card-body">
               <div class="result-head">
@@ -250,12 +249,11 @@
             @for (col of visibleColumns(); track col.key) {
               @if (col.key === 'name') {
                 <span class="col-name">
-                  <img
-                    class="row-thumbnail-image"
-                    [src]="row.imageUrl"
-                    [alt]="row.name"
-                    (error)="onImageError($event)"
-                  />
+                  @if (thumbnailMap()[row.id]; as thumb) {
+                    <img class="row-thumbnail-image" [src]="thumb" alt="" />
+                  } @else {
+                    <mat-icon class="row-icon">{{ row.icon }}</mat-icon>
+                  }
                   <span class="row-name-text" [title]="row.name">{{ row.name }}</span>
                 </span>
               } @else {
@@ -319,12 +317,11 @@
           (click)="openDocument(row.id)"
         >
           <div class="simple-list-thumb-wrap">
-            <img
-              class="simple-list-thumb"
-              [src]="row.imageUrl"
-              [alt]="row.name"
-              (error)="onImageError($event)"
-            />
+            @if (thumbnailMap()[row.id]; as thumb) {
+              <img class="simple-list-thumb" [src]="thumb" alt="" />
+            } @else {
+              <mat-icon class="simple-list-icon">{{ row.icon }}</mat-icon>
+            }
             <span class="simple-list-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(row.id)"

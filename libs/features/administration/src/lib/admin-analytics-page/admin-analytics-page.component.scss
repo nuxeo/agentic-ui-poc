@@ -1,0 +1,90 @@
+.admin-page {
+  padding: var(--admin-space-4, 1.25rem) var(--admin-space-5, 1.5rem) 2rem;
+  max-width: 1100px;
+}
+
+.admin-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.admin-page__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.admin-tabs {
+  margin-top: 0.5rem;
+}
+
+.tab-pad {
+  padding: 1rem 0 1.5rem;
+}
+
+.path-field {
+  width: 100%;
+  max-width: 480px;
+}
+
+.callout {
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  border-left: 4px solid var(--mat-sys-tertiary, #ff9800);
+  background: var(--mat-sys-surface-container-high, #f5f5f5);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.65));
+  font-size: 0.95rem;
+}
+
+.body {
+  max-width: 52ch;
+  line-height: 1.5;
+  color: var(--mat-sys-on-surface, rgba(0, 0, 0, 0.8));
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.mini-table {
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.table-scroll {
+  overflow: auto;
+  max-height: 420px;
+  border-radius: var(--admin-radius-1, 8px);
+}
+
+.admin-page .mat-mdc-form-field {
+  --mat-form-field-container-height: var(--admin-control-height, 40px);
+}
+
+.admin-page .mat-mdc-unelevated-button,
+.admin-page .mat-mdc-outlined-button,
+.admin-page .mat-mdc-button {
+  min-height: var(--admin-control-height, 40px);
+}
+
+.mini-table th.mat-mdc-header-cell,
+.mini-table td.mat-mdc-cell {
+  padding-top: var(--admin-row-padding-y, 0.68rem);
+  padding-bottom: var(--admin-row-padding-y, 0.68rem);
+}
+
+@media (max-width: 900px) {
+  .admin-page {
+    padding: 1rem;
+  }
+}

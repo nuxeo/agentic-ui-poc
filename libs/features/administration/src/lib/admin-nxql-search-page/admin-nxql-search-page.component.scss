@@ -1,0 +1,103 @@
+.nxql-page {
+  padding: var(--admin-space-4, 1.25rem) var(--admin-space-5, 1.5rem) 2rem;
+  max-width: 1200px;
+}
+
+.nxql-page__header {
+  margin-bottom: var(--admin-space-2, 0.75rem);
+}
+
+.nxql-page__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.nxql-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-3, 1rem);
+  padding: var(--admin-space-3, 1rem);
+  margin-bottom: var(--admin-space-4, 1.25rem);
+  border-radius: var(--admin-radius-1, 8px);
+  background: var(--mat-sys-surface, #fff);
+  box-shadow: var(--mat-sys-level1, 0 1px 3px rgba(0, 0, 0, 0.12));
+}
+
+.nxql-filters {
+  margin: 0;
+}
+
+.nxql-field {
+  width: 100%;
+}
+
+/* Outline + floating label need auto height on multi-line fields — fixed 40px breaks label alignment. */
+.nxql-field--query.mat-mdc-form-field {
+  --mat-form-field-container-height: auto;
+}
+
+.nxql-field--query textarea.mat-mdc-input-element {
+  min-height: 10rem;
+  line-height: 1.5;
+  font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.8125rem;
+}
+
+.nxql-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--admin-space-2, 0.75rem);
+  margin: 0;
+  flex-wrap: wrap;
+}
+
+.nxql-count {
+  font-size: 0.95rem;
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.65));
+}
+
+.nxql-table-wrap {
+  overflow: auto;
+  max-height: 520px;
+  border-radius: var(--admin-radius-1, 8px);
+}
+
+.nxql-table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.nxql-center {
+  display: flex;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.nxql-error {
+  color: var(--mat-sys-error, #b00020);
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.65));
+  font-size: 0.9rem;
+}
+
+.nxql-page .mat-mdc-unelevated-button,
+.nxql-page .mat-mdc-outlined-button,
+.nxql-page .mat-mdc-button {
+  min-height: var(--admin-control-height, 40px);
+}
+
+.nxql-table th.mat-mdc-header-cell,
+.nxql-table td.mat-mdc-cell {
+  padding-top: var(--admin-row-padding-y, 0.68rem);
+  padding-bottom: var(--admin-row-padding-y, 0.68rem);
+}
+
+@media (max-width: 900px) {
+  .nxql-page {
+    padding: 1rem;
+  }
+}

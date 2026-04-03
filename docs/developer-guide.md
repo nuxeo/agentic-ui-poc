@@ -10,7 +10,7 @@ This guide documents the coding conventions, project structure, and step-by-step
 | --------------- | ------------------------------------------------------------------------ |
 | **Node.js**     | LTS (v20 or v22 recommended; odd versions like v25 work but are not LTS) |
 | **npm**         | Ships with Node; used as the package manager (see `.npmrc`)              |
-| **Nuxeo**       | Running on `http://localhost:8180` for local development                 |
+| **Nuxeo**       | Running on `http://localhost:8080` for local development                 |
 | **Angular CLI** | Installed via `devDependencies` (`~19.2`); do not install globally       |
 | **Nx**          | Installed via `devDependencies` (`22.6`); invoked with `npx nx`          |
 
@@ -23,7 +23,7 @@ npm install
 
 ### Start the dev server
 
-Always use the Nx command so the proxy config (forwarding `/nuxeo` to `localhost:8180`) is applied:
+Always use the Nx command so the proxy config (forwarding `/nuxeo` to `localhost:8080`) is applied:
 
 ```bash
 npx nx serve nuxeo-ui        # http://localhost:4200
@@ -39,7 +39,7 @@ The proxy is defined in `apps/nuxeo-ui/proxy.conf.json` and referenced from `ang
 agentic-ui-poc/
 ├── apps/
 │   └── nuxeo-ui/                  # Application shell
-│       ├── proxy.conf.json        # Dev proxy: /nuxeo -> localhost:8180
+│       ├── proxy.conf.json        # Dev proxy: /nuxeo -> localhost:8080
 │       ├── public/                # Static assets (images, favicon)
 │       └── src/
 │           ├── index.html

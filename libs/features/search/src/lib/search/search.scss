@@ -1,4 +1,4 @@
- :host {
+:host {
   display: block;
   height: 100%;
 }
@@ -181,7 +181,9 @@
   font: inherit;
   text-align: left;
   width: 100%;
-  transition: box-shadow 0.15s ease, background-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -217,7 +219,9 @@
   left: 8px;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
   z-index: 2;
 
   mat-checkbox {
@@ -275,7 +279,9 @@
   gap: 4px;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
   justify-content: flex-end;
   padding-top: 8px;
 }
@@ -446,7 +452,9 @@
   gap: 4px;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
 }
 
 .action-btn {
@@ -651,7 +659,9 @@
   z-index: 1;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
 }
 
 .simple-list-thumb {
@@ -660,6 +670,13 @@
   object-fit: cover;
   border-radius: 6px;
   flex-shrink: 0;
+}
+
+.simple-list-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: #bdbdbd;
 }
 
 .simple-list-body {
@@ -675,6 +692,11 @@
   width: 76px;
   height: 76px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 6px;
 }
 
 .simple-list-title {
@@ -723,7 +745,8 @@
   gap: 4px;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
   flex-shrink: 0;
 }
-

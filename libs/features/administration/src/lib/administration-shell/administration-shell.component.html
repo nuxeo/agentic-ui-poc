@@ -1,0 +1,22 @@
+<div class="admin-shell">
+  <aside class="admin-shell__nav" aria-label="Administration sections">
+    <h2 class="admin-shell__title">Administration</h2>
+    <nav>
+      @for (link of links; track link.path) {
+        <a
+          class="admin-shell__link"
+          [routerLink]="link.path"
+          routerLinkActive="admin-shell__link--active"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          <span class="admin-shell__link-bar" aria-hidden="true"></span>
+          <mat-icon class="admin-shell__link-ico">{{ link.icon }}</mat-icon>
+          {{ link.label }}
+        </a>
+      }
+    </nav>
+  </aside>
+  <section class="admin-shell__main">
+    <router-outlet />
+  </section>
+</div>

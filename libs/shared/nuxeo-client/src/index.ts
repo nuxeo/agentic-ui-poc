@@ -1,6 +1,12 @@
 // Models
 export type { NuxeoPaginatedList } from './lib/models/paginated.model';
-export type { AggregateBucket, AggregateResult, AssetAggregations, AssetSearchParams, AssetSearchResult } from './lib/models/asset.model';
+export type {
+  AggregateBucket,
+  AggregateResult,
+  AssetAggregations,
+  AssetSearchParams,
+  AssetSearchResult,
+} from './lib/models/asset.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
 export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
@@ -9,12 +15,25 @@ export type { NuxeoAce, NuxeoAcl } from './lib/models/acl.model';
 export type { SearchQueryParams, GlobalSearchSuggestion, SavedSearchOption } from './lib/services/search.service';
 export type { SearchAggregations, SearchResponse, SearchResultItem } from './lib/models/search.model';
 export type {
+  AuthorizedApplication,
+  ConnectedAccount,
+  NuxeoOAuth2ServiceProvider,
+  NuxeoOAuth2ServiceProviderList,
+  NuxeoOAuth2Token,
+  NuxeoOAuth2TokenList,
+} from './lib/models/oauth2.model';
+export type {
   NuxeoWorkflow,
   NuxeoWorkflowList,
   NuxeoWorkflowModel,
   NuxeoWorkflowModelList,
 } from './lib/models/workflow.model';
 export type { NuxeoUser, NuxeoUserList, NuxeoGroup, NuxeoGroupList } from './lib/models/user.model';
+export type {
+  PrincipalPermissionRow,
+  PrincipalPermissionPage,
+} from './lib/models/principal-permissions.model';
+export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 
 // Config
 export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
@@ -41,6 +60,23 @@ export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
 export { TagService } from './lib/services/tag.service';
+export {
+  AdministrationService,
+  FALLBACK_DIRECTORY_NAMES,
+} from './lib/services/administration.service';
+export { PrincipalPermissionsService } from './lib/services/principal-permissions.service';
+export { SettingsService, type LocalPermissionRow, type SynchronizationRootRow } from './lib/services/settings.service';
+export {
+  TrashService,
+  type TrashSearchParams,
+  type SavedSearch,
+} from './lib/services/trash.service';
+export {
+  TrashFilterService,
+  type TrashFilters,
+  type TrashLayoutMode,
+  type TrashResultItem,
+} from './lib/services/trash-filter.service';
 
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';

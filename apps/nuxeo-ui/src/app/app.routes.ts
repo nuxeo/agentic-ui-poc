@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { adminGuard } from './auth/admin.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
 
 const placeholder = () =>
@@ -73,7 +74,44 @@ export const routes: Routes = [
       },
       {
         path: 'trash',
-        loadComponent: placeholder,
+        loadChildren: () => import('@agentic-ui/feature-trash').then((m) => m.trashRoutes),
+      },
+      {
+        path: 'administration',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('@agentic-ui/feature-administration').then((m) => m.administrationRoutes),
+      },
+      {
+        path: 'settings/nuxeo-drive',
+        loadComponent: () =>
+          import('./settings/nuxeo-drive/nuxeo-drive-page.component').then(
+            (m) => m.NuxeoDrivePageComponent,
+          ),
+      },
+      {
+        path: 'settings/profile',
+        loadComponent: () =>
+          import('./settings/profile/profile-page.component').then((m) => m.ProfilePageComponent),
+      },
+      {
+        path: 'settings/authorized-applications',
+        loadComponent: () =>
+          import('./settings/authorized-applications/authorized-applications-page.component').then(
+            (m) => m.AuthorizedApplicationsPageComponent,
+          ),
+      },
+      {
+        path: 'settings/cloud-services',
+        loadComponent: () =>
+          import('./settings/cloud-services/cloud-services-page.component').then(
+            (m) => m.CloudServicesPageComponent,
+          ),
+      },
+      {
+        path: 'settings/themes',
+        loadComponent: () =>
+          import('./settings/themes/themes-page.component').then((m) => m.ThemesPageComponent),
       },
     ],
   },

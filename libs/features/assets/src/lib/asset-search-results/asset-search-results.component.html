@@ -6,12 +6,7 @@
     }
 
     <div class="toolbar-actions">
-      <button
-        mat-icon-button
-        matTooltip="Export CSV"
-        (click)="exportCsv()"
-        class="toolbar-btn"
-      >
+      <button mat-icon-button matTooltip="Export CSV" (click)="exportCsv()" class="toolbar-btn">
         <mat-icon>download</mat-icon>
       </button>
 
@@ -76,6 +71,12 @@
   }
 
   <main class="results-content">
+    <!-- Loading -->
+    @if (loading()) {
+      <div class="results-loading">
+        <mat-spinner diameter="32" />
+      </div>
+    }
 
       <!-- Loading -->
       @if (loading()) {
@@ -175,41 +176,147 @@
           </span>
         </div>
 
-        @for (asset of sortedAssets(); track asset.id) {
+    <!-- Grid View -->
+    @if (!loading() && !error() && viewMode() === 'grid') {
+      <div class="asset-grid">
+        @for (asset of gridAssets(); track asset.id) {
           <button
             type="button"
-            class="list-row"
+            class="asset-card"
             [class.selected]="isAssetSelected(asset.id)"
-            [style.grid-template-columns]="gridTemplate()"
             (click)="openAsset(asset)"
           >
+            <div class="asset-card-thumbnail">
+              <div class="asset-select" role="none" (click)="$event.stopPropagation()">
+                <mat-checkbox
+                  [checked]="isAssetSelected(asset.id)"
+                  (click)="$event.stopPropagation()"
+                  (change)="toggleAssetSelection(asset.id)"
+                ></mat-checkbox>
+              </div>
+              <div class="asset-name-overlay" [title]="asset.name">{{ asset.name }}</div>
+              @if (thumbnailMap()[asset.id]; as thumb) {
+                <img class="asset-thumbnail-image" [src]="thumb" alt="" />
+              } @else {
+                <mat-icon class="asset-icon">{{ asset.icon }}</mat-icon>
+              }
+              <span class="asset-type-badge">{{ asset.type }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Table View -->
+    @if (!loading() && !error() && viewMode() === 'list') {
+      <div class="list-wrapper">
+        <!-- Column picker panel -->
+        @if (columnPanelOpen()) {
+          <button
+            type="button"
+            class="col-panel-backdrop"
+            aria-label="Close column picker"
+            (click)="closeColumnPanel()"
+            (keydown.escape)="closeColumnPanel()"
+          ></button>
+          <div class="col-panel">
+            <p class="col-panel-title">Column Settings</p>
+            <div class="col-panel-list">
+              @for (col of columnsForPanel; track col.key) {
+                <mat-checkbox
+                  class="col-panel-option"
+                  [checked]="isPendingColumn(col.key)"
+                  (change)="togglePendingColumn(col.key)"
+                  >{{ col.label }}</mat-checkbox
+                >
+              }
+            </div>
+            <div class="col-panel-actions">
+              <button mat-button (click)="resetColumns()">Reset</button>
+              <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+            </div>
+          </div>
+        }
+
+        <div class="asset-list">
+          <div class="list-header" [style.grid-template-columns]="gridTemplate()">
             <span class="col-checkbox">
               <mat-checkbox
-                [checked]="isAssetSelected(asset.id)"
-                (click)="$event.stopPropagation()"
-                (change)="toggleAssetSelection(asset.id)"
+                [checked]="isAllSelected()"
+                [indeterminate]="isIndeterminate()"
+                (change)="toggleAll()"
               ></mat-checkbox>
             </span>
             @for (col of visibleColumns(); track col.key) {
-              @if (col.key === 'name') {
-                <span class="col-name">
-                  <mat-icon class="row-icon">{{ asset.icon }}</mat-icon>
-                  <span class="row-name-text" [title]="asset.name">{{ asset.name }}</span>
-                </span>
+              @if (SORTABLE_COLUMNS.has(col.key)) {
+                <button
+                  type="button"
+                  [class.col-name]="col.key === 'name'"
+                  class="col-sortable"
+                  (click)="sortBy(col.key)"
+                >
+                  {{ col.label }}
+                  <mat-icon class="sort-icon" [class.sort-active]="sortColumn() === col.key">
+                    {{
+                      sortColumn() === col.key && sortDirection() === 'desc'
+                        ? 'arrow_downward'
+                        : 'arrow_upward'
+                    }}
+                  </mat-icon>
+                </button>
               } @else {
-                <span>{{ getCellValue(asset, col.key) }}</span>
+                <span>{{ col.label }}</span>
               }
             }
-            <span></span>
-          </button>
-        }
-        @if (!loading() && resultCount() === 0) {
-          <div class="results-empty">No Documents match the search criteria.</div>
-        }
+            <span class="col-gear">
+              <button
+                mat-icon-button
+                class="gear-btn"
+                matTooltip="Manage columns"
+                (click)="openColumnPanel()"
+              >
+                <mat-icon>tune</mat-icon>
+              </button>
+            </span>
+          </div>
+
+          @for (asset of sortedAssets(); track asset.id) {
+            <button
+              type="button"
+              class="list-row"
+              [class.selected]="isAssetSelected(asset.id)"
+              [style.grid-template-columns]="gridTemplate()"
+              (click)="openAsset(asset)"
+            >
+              <span class="col-checkbox">
+                <mat-checkbox
+                  [checked]="isAssetSelected(asset.id)"
+                  (click)="$event.stopPropagation()"
+                  (change)="toggleAssetSelection(asset.id)"
+                ></mat-checkbox>
+              </span>
+              @for (col of visibleColumns(); track col.key) {
+                @if (col.key === 'name') {
+                  <span class="col-name">
+                    @if (thumbnailMap()[asset.id]; as thumb) {
+                      <img class="row-thumbnail-image" [src]="thumb" alt="" />
+                    } @else {
+                      <mat-icon class="row-icon">{{ asset.icon }}</mat-icon>
+                    }
+                    <span class="row-name-text" [title]="asset.name">{{ asset.name }}</span>
+                  </span>
+                } @else {
+                  <span>{{ getCellValue(asset, col.key) }}</span>
+                }
+              }
+              <span></span>
+            </button>
+          }
+          @if (!loading() && resultCount() === 0) {
+            <div class="results-empty">No Documents match the search criteria.</div>
+          }
+        </div>
       </div>
-    </div>
-  }
-
+    }
   </main>
-
 </div>

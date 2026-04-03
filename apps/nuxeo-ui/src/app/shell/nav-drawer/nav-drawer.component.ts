@@ -33,12 +33,12 @@ import {
   NuxeoTask,
   CURRENT_USERNAME,
   docTypeIcon,
+  type SearchQueryParams,
+  type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
-import type { SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
-import type { AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
-import { AppNavItem } from '../../platform-nav-items';
+import { AppNavItem, SETTINGS_DRAWER_ITEMS } from '../../platform-nav-items';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -90,6 +90,8 @@ export class NavDrawerComponent {
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
+  readonly signOutSelected = output<void>();
+  readonly settingsItems = SETTINGS_DRAWER_ITEMS;
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
@@ -100,6 +102,7 @@ export class NavDrawerComponent {
 
   readonly assetsDrawerComponent = signal<Type<unknown> | null>(null);
   readonly searchFiltersDrawerComponent = signal<Type<unknown> | null>(null);
+  readonly trashDrawerComponent = signal<Type<unknown> | null>(null);
 
   // Tasks
   private readonly taskService = inject(TaskService);
@@ -242,7 +245,8 @@ export class NavDrawerComponent {
   private loadAssetAggregations(): void {
     this.assetService.searchAssets({ pageSize: 200 }).subscribe({
       next: (res) => {
-        const aggregations = res.aggregations ?? this.computeAssetAggregationsFromEntries(res.entries ?? []);
+        const aggregations =
+          res.aggregations ?? this.computeAssetAggregationsFromEntries(res.entries ?? []);
         this.assetAggregationService.aggregations.set(aggregations);
         this.assetAggregationService.items.set(
           (res.entries ?? []).map((entry) => ({
@@ -264,12 +268,16 @@ export class NavDrawerComponent {
     Promise.all([
       import('@agentic-ui/feature-assets/assets-drawer').then((m) => m.AssetsDrawerComponent),
       import('@agentic-ui/feature-search').then((m) => m.SearchFiltersDrawerComponent),
-    ]).then(([assetsComp, searchComp]) => {
-      this.assetsDrawerComponent.set(assetsComp);
-      this.searchFiltersDrawerComponent.set(searchComp);
-    }).catch(() => {
-      // Silently fail if components don't load
-    });
+      import('@agentic-ui/feature-trash').then((m) => m.TrashFiltersDrawerComponent),
+    ])
+      .then(([assetsComp, searchComp, trashComp]) => {
+        this.assetsDrawerComponent.set(assetsComp);
+        this.searchFiltersDrawerComponent.set(searchComp);
+        this.trashDrawerComponent.set(trashComp);
+      })
+      .catch(() => {
+        // Silently fail if components don't load
+      });
   }
 
   get isBrowse(): boolean {
@@ -292,6 +300,10 @@ export class NavDrawerComponent {
     return this.activeItem()?.path === '/clipboard';
   }
 
+  get isSettings(): boolean {
+    return this.activeItem()?.path === '/settings';
+  }
+
   get isFavorites(): boolean {
     return this.activeItem()?.path === '/favorites';
   }
@@ -302,6 +314,18 @@ export class NavDrawerComponent {
 
   get isExpiredQueue(): boolean {
     return this.activeItem()?.path === '/expired-queue';
+  }
+
+  onSettingsSignOut(): void {
+    this.signOutSelected.emit();
+  }
+
+  navigateToSettings(path: string): void {
+    this.navigateKeepDrawer.emit(path);
+  }
+
+  get isTrash(): boolean {
+    return this.activeItem()?.path === '/trash';
   }
 
   // ── Expired Queue ──

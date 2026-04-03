@@ -1,0 +1,56 @@
+<div class="cloud-page">
+  <header class="cloud-page__header">
+    <h1 class="cloud-page__title">Cloud Services</h1>
+  </header>
+
+  <mat-tab-group animationDuration="0ms">
+    <mat-tab label="Providers">
+      <div class="tab-inner">
+        <div class="subhead">
+          <span>OAuth 2 Service Providers</span>
+          <button type="button" mat-button color="primary" (click)="refreshProviders()">Refresh</button>
+        </div>
+        @if (loading()) {
+          <div class="cloud-center"><mat-spinner diameter="36" /></div>
+        } @else {
+          <div class="table-wrap mat-elevation-z1">
+            <table mat-table [dataSource]="providers()" class="cloud-table">
+              <ng-container matColumnDef="serviceName">
+                <th mat-header-cell *matHeaderCellDef>Service Name</th>
+                <td mat-cell *matCellDef="let p">{{ providerName(p) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="description">
+                <th mat-header-cell *matHeaderCellDef>Description</th>
+                <td mat-cell *matCellDef="let p">{{ providerDescription(p) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="enabled">
+                <th mat-header-cell *matHeaderCellDef>Enabled</th>
+                <td mat-cell *matCellDef="let p">{{ providerEnabled(p) ? 'Yes' : 'No' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="providerColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: providerColumns"></tr>
+            </table>
+            @if (providers().length === 0) {
+              <p class="empty">No provider defined.</p>
+            }
+          </div>
+        }
+      </div>
+    </mat-tab>
+    <mat-tab label="Tokens">
+      <div class="tab-inner">
+        <p class="muted">
+          OAuth token management is not exposed via a stable public REST contract in all Nuxeo versions.
+          Use Nuxeo Admin or configure tokens through your identity provider.
+        </p>
+      </div>
+    </mat-tab>
+    <mat-tab label="Consumers">
+      <div class="tab-inner">
+        <p class="muted">
+          OAuth consumer registration is typically done server-side. No consumers are listed here.
+        </p>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

@@ -1,0 +1,120 @@
+<div class="admin-page">
+  <header class="admin-page__header">
+    <h1 class="admin-page__title">Analytics</h1>
+    <button type="button" mat-icon-button aria-label="Search (placeholder)">
+      <mat-icon>search</mat-icon>
+    </button>
+  </header>
+
+  <mat-tab-group animationDuration="0ms" class="admin-tabs">
+    <mat-tab label="Document Distribution">
+      <div class="tab-pad">
+        <mat-form-field appearance="outline" class="path-field" subscriptSizing="dynamic">
+          <mat-label>Path</mat-label>
+          <input
+            matInput
+            name="distPath"
+            [ngModel]="distPath()"
+            (ngModelChange)="distPath.set($event)"
+            (blur)="refreshDistribution()"
+          />
+          <mat-icon matPrefix>folder</mat-icon>
+        </mat-form-field>
+
+        @if (distributionWarning()) {
+          <div class="callout callout--warn" role="status">
+            Distribution analytics is disabled because the current query would impact the quality of
+            the service. Please select another path (deeper than the domain root).
+          </div>
+        } @else if (distLoading()) {
+          <div class="center"><mat-spinner diameter="36" /></div>
+        } @else {
+          <p class="muted">
+            Total documents under this path:
+            <strong>{{ totalUnderPath() ?? '—' }}</strong>
+          </p>
+          <table mat-table [dataSource]="typeRows()" class="mini-table mat-elevation-z0">
+            <ng-container matColumnDef="type">
+              <th mat-header-cell *matHeaderCellDef>Primary type</th>
+              <td mat-cell *matCellDef="let row">{{ row.type }}</td>
+            </ng-container>
+            <ng-container matColumnDef="count">
+              <th mat-header-cell *matHeaderCellDef>Count</th>
+              <td mat-cell *matCellDef="let row">{{ row.count }}</td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['type', 'count']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['type', 'count']"></tr>
+          </table>
+          <button type="button" mat-stroked-button (click)="refreshDistribution()">Refresh</button>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Repository Content">
+      <div class="tab-pad">
+        <mat-form-field appearance="outline" class="path-field" subscriptSizing="dynamic">
+          <mat-label>Path prefix</mat-label>
+          <input
+            matInput
+            name="repoPath"
+            [ngModel]="repoPath()"
+            (ngModelChange)="repoPath.set($event)"
+            (blur)="refreshRepositorySample()"
+            (keydown.enter)="refreshRepositorySample()"
+          />
+        </mat-form-field>
+        @if (repoLoading()) {
+          <div class="center"><mat-spinner diameter="36" /></div>
+        } @else {
+          <p class="muted">Showing {{ repoDocs().length }} of {{ repoTotal() }} (most recently modified).</p>
+          <div class="table-scroll mat-elevation-z1">
+            <table mat-table [dataSource]="repoDocs()" class="mini-table">
+              <ng-container matColumnDef="path">
+                <th mat-header-cell *matHeaderCellDef>Path</th>
+                <td mat-cell *matCellDef="let doc">{{ doc.path }}</td>
+              </ng-container>
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef>Type</th>
+                <td mat-cell *matCellDef="let doc">{{ doc.type }}</td>
+              </ng-container>
+              <ng-container matColumnDef="modified">
+                <th mat-header-cell *matHeaderCellDef>Modified</th>
+                <td mat-cell *matCellDef="let doc">{{ doc.lastModified | date: 'medium' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="repoColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: repoColumns"></tr>
+            </table>
+          </div>
+        }
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Search">
+      <div class="tab-pad">
+        <p class="muted">
+          Indexed documents (non-hidden, non-proxy, non-version, not trashed):
+          <strong>{{ searchMetricTotal() ?? '—' }}</strong>
+        </p>
+        <p class="body">
+          This metric mirrors a typical full-repository search scope. Use
+          <strong>NXQL Search</strong> in the left menu for ad-hoc queries.
+        </p>
+        <button type="button" mat-stroked-button (click)="refreshSearchMetric()">Refresh</button>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Workflow">
+      <div class="tab-pad">
+        @if (wfLoading()) {
+          <div class="center"><mat-spinner diameter="36" /></div>
+        } @else {
+          <p class="muted">
+            Documents with workflow-related primary types (Route / DocumentRoute / RoutingTask):
+            <strong>{{ wfTotal() ?? '—' }}</strong>
+          </p>
+          <button type="button" mat-stroked-button (click)="refreshWorkflow()">Refresh</button>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

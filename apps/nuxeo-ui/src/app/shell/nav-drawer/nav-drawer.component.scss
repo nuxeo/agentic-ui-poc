@@ -82,6 +82,28 @@
   font-size: 13px;
 }
 
+.settings-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.settings-item {
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  padding: 14px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+
+  &:hover {
+    background: #f5f6fa;
+  }
+}
+
 // Folder tree styles
 .folder-tree {
   flex: 1;

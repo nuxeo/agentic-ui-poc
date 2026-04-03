@@ -146,13 +146,11 @@
       }
     </div>
   } @else if (isAssets) {
-    <app-dynamic-drawer
-      [drawerComponent]="assetsDrawerComponent()"
-    />
+    <app-dynamic-drawer [drawerComponent]="assetsDrawerComponent()" />
   } @else if (isSearchFilters) {
-    <app-dynamic-drawer
-      [drawerComponent]="searchFiltersDrawerComponent()"
-    />
+    <app-dynamic-drawer [drawerComponent]="searchFiltersDrawerComponent()" />
+  } @else if (isTrash) {
+    <app-dynamic-drawer [drawerComponent]="trashDrawerComponent()" />
   } @else if (isTasksPanel) {
     @if (tasksLoading()) {
       <div class="tree-loading">
@@ -269,6 +267,19 @@
           }
         </div>
       }
+    </div>
+  } @else if (isSettings) {
+    <div class="settings-panel">
+      @for (settingsItem of settingsItems; track settingsItem.path) {
+        <button
+          type="button"
+          class="settings-item"
+          (click)="navigateToSettings(settingsItem.path)"
+        >
+          {{ settingsItem.label }}
+        </button>
+      }
+      <button type="button" class="settings-item" (click)="onSettingsSignOut()">Sign Out</button>
     </div>
   } @else {
     <div class="drawer-empty">

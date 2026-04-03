@@ -1,0 +1,389 @@
+<div class="results-page">
+  @if (selectedCount() > 0) {
+    <div class="selection-bar">
+      <span class="selection-bar-count">All {{ selectedCount() }} item(s) selected</span>
+      <a class="selection-bar-clear" (click)="selectionService.clear()">Clear</a>
+      <div class="selection-bar-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          class="selection-action-btn"
+          (click)="restoreSelected()"
+        >
+          <mat-icon>restore_from_trash</mat-icon>
+          Untrash Selected
+        </button>
+        <button
+          mat-flat-button
+          color="warn"
+          class="selection-action-btn"
+          (click)="deleteSelected()"
+        >
+          <mat-icon>delete_forever</mat-icon>
+          Delete Permanently
+        </button>
+      </div>
+    </div>
+  }
+
+  <div class="page-header-row">
+    <span class="page-header-title">Search Results</span>
+    <div class="page-header-actions">
+      <button mat-flat-button class="save-as-btn" [disabled]="saving()" (click)="saveAsSearch()">
+        <mat-icon>bookmark_add</mat-icon>
+        Save As
+      </button>
+      @if (trashFilterService.hasSavedFilter()) {
+        <button mat-flat-button class="save-btn" [disabled]="saving()" (click)="saveSearch()">
+          <mat-icon>bookmark</mat-icon>
+          Save
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="results-toolbar">
+    <div class="results-summary">
+      @if (resultCount() > 0) {
+        <span class="results-count">{{ totalResults() }} trashed document(s)</span>
+      }
+    </div>
+
+    <div class="toolbar-actions">
+      <button mat-icon-button matTooltip="Export CSV" (click)="exportCsv()" class="toolbar-btn">
+        <mat-icon>download</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [class.active]="viewMode() === 'grid'"
+        matTooltip="Grid View"
+        (click)="setViewMode('grid')"
+        class="toolbar-btn"
+      >
+        <mat-icon>grid_view</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [class.active]="viewMode() === 'table'"
+        matTooltip="Table View"
+        (click)="setViewMode('table')"
+        class="toolbar-btn"
+      >
+        <mat-icon>view_list</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [class.active]="viewMode() === 'list'"
+        matTooltip="List View"
+        (click)="setViewMode('list')"
+        class="toolbar-btn"
+      >
+        <mat-icon>format_list_bulleted</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="results-loading">
+      <mat-spinner diameter="32" />
+    </div>
+  }
+
+  @if (error() && !loading()) {
+    <div class="results-error">{{ error() }}</div>
+  }
+
+  <!-- ───── GRID VIEW ───── -->
+  @if (!loading() && !error() && viewMode() === 'grid') {
+    <div class="grid-container">
+      <div class="grid-action-bar">
+        <div class="grid-actions-left">
+          <mat-checkbox
+            [checked]="isAllSelected()"
+            [indeterminate]="isIndeterminate()"
+            [disabled]="resultCount() === 0"
+            matTooltip="Select all"
+            (change)="toggleAll()"
+          ></mat-checkbox>
+
+          <mat-select
+            [value]="sortBy()"
+            (selectionChange)="setSortBy($event.value)"
+            class="grid-select"
+          >
+            <mat-option value="title">Title</mat-option>
+            <mat-option value="created">Created</mat-option>
+            <mat-option value="modified">Modified</mat-option>
+            <mat-option value="contributor">Last contributor</mat-option>
+            <mat-option value="state">State</mat-option>
+          </mat-select>
+
+          <button
+            mat-icon-button
+            matTooltip="Revert sort order"
+            (click)="toggleSortDir()"
+            class="action-btn"
+          >
+            <mat-icon>{{ sortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        @for (doc of documents(); track doc.uid) {
+          <button
+            type="button"
+            class="result-card"
+            (click)="openDocument(doc.uid)"
+            [class.selected]="isSelected(doc.uid)"
+          >
+            <div class="grid-card-checkbox col-hover-select">
+              <mat-checkbox
+                [checked]="isSelected(doc.uid)"
+                (change)="toggleSelection(doc.uid)"
+                (click)="$event.stopPropagation()"
+              ></mat-checkbox>
+            </div>
+            <div class="result-card-thumbnail">
+              @if (thumbnailMap()[doc.uid]; as thumb) {
+                <img class="result-thumbnail-image" [src]="thumb" alt="" />
+              } @else {
+                <mat-icon class="result-icon">{{ docIcon(doc) }}</mat-icon>
+              }
+            </div>
+            <div class="result-card-body">
+              <p class="result-name" [title]="doc.title">{{ doc.title }}</p>
+              <span class="result-type-tag">{{ doc.type }}</span>
+            </div>
+          </button>
+        }
+
+        @if (resultCount() === 0) {
+          <div class="results-empty">Trash is empty.</div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ───── TABLE VIEW ───── -->
+  @if (!loading() && !error() && viewMode() === 'table') {
+    <div class="list-wrapper">
+      @if (columnPanelOpen()) {
+        <button
+          type="button"
+          class="col-panel-backdrop"
+          aria-label="Close column picker"
+          (click)="closeColumnPanel()"
+          (keydown.escape)="closeColumnPanel()"
+        ></button>
+        <div class="col-panel">
+          <p class="col-panel-title">Column Settings</p>
+          <div class="col-panel-list">
+            @for (col of columnsForPanel; track col.key) {
+              <mat-checkbox
+                class="col-panel-option"
+                [checked]="isPendingColumn(col.key)"
+                (change)="togglePendingColumn(col.key)"
+                >{{ col.label }}</mat-checkbox
+              >
+            }
+          </div>
+          <div class="col-panel-actions">
+            <button mat-button (click)="resetColumns()">Reset</button>
+            <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+          </div>
+        </div>
+      }
+
+      <div class="result-list">
+        <div class="list-header" [style.grid-template-columns]="gridTemplate()">
+          <span class="col-checkbox">
+            <mat-checkbox
+              [checked]="isAllSelected()"
+              [indeterminate]="isIndeterminate()"
+              (change)="toggleAll()"
+            ></mat-checkbox>
+          </span>
+          @for (col of visibleColumns(); track col.key) {
+            @if (SORTABLE_COLUMNS.has(col.key)) {
+              <button type="button" class="col-sortable" (click)="sortByColumn(col.key)">
+                {{ col.label }}
+                <mat-icon class="sort-icon" [class.sort-active]="sortBy() === col.key">
+                  {{
+                    sortBy() === col.key && sortDir() === 'desc' ? 'arrow_downward' : 'arrow_upward'
+                  }}
+                </mat-icon>
+              </button>
+            } @else {
+              <span>{{ col.label }}</span>
+            }
+          }
+          <span class="col-gear">
+            <button
+              mat-icon-button
+              class="gear-btn"
+              matTooltip="Manage columns"
+              (click)="openColumnPanel()"
+            >
+              <mat-icon>tune</mat-icon>
+            </button>
+          </span>
+        </div>
+
+        @for (doc of documents(); track doc.uid) {
+          <button
+            type="button"
+            class="list-row"
+            [class.selected]="isSelected(doc.uid)"
+            [style.grid-template-columns]="gridTemplate()"
+            (click)="openDocument(doc.uid)"
+          >
+            <span class="col-checkbox col-hover-select">
+              <mat-checkbox
+                [checked]="isSelected(doc.uid)"
+                (click)="$event.stopPropagation()"
+                (change)="toggleSelection(doc.uid)"
+              ></mat-checkbox>
+            </span>
+            @for (col of visibleColumns(); track col.key) {
+              @if (col.key === 'title') {
+                <span class="col-name">
+                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                    <img class="row-thumbnail-image" [src]="thumb" alt="" />
+                  } @else {
+                    <mat-icon class="row-icon">{{ docIcon(doc) }}</mat-icon>
+                  }
+                  <span class="row-name-text" [title]="doc.title">{{ doc.title }}</span>
+                </span>
+              } @else if (col.key === 'modified' || col.key === 'created') {
+                <span>{{ getCellValue(doc, col.key) | date: 'medium' }}</span>
+              } @else {
+                <span>{{ getCellValue(doc, col.key) }}</span>
+              }
+            }
+            <span class="col-actions">
+              <button
+                mat-icon-button
+                matTooltip="Restore"
+                class="action-btn"
+                [disabled]="actionInProgress().has(doc.uid)"
+                (click)="restoreDocument(doc.uid, $event)"
+              >
+                <mat-icon class="action-icon">restore_from_trash</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                matTooltip="Delete permanently"
+                class="action-btn action-danger"
+                [disabled]="actionInProgress().has(doc.uid)"
+                (click)="permanentlyDelete(doc.uid, $event)"
+              >
+                <mat-icon class="action-icon">delete_forever</mat-icon>
+              </button>
+            </span>
+          </button>
+        }
+
+        @if (resultCount() === 0) {
+          <div class="results-empty">Trash is empty.</div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ───── LIST VIEW ───── -->
+  @if (!loading() && !error() && viewMode() === 'list') {
+    <div class="list-action-bar">
+      <div class="list-actions-left">
+        <mat-checkbox
+          [checked]="isAllSelected()"
+          [indeterminate]="isIndeterminate()"
+          [disabled]="resultCount() === 0"
+          matTooltip="Select all"
+          (change)="toggleAll()"
+          class="list-select-all"
+        ></mat-checkbox>
+
+        <mat-select
+          [value]="sortBy()"
+          (selectionChange)="setSortBy($event.value)"
+          class="list-select"
+        >
+          <mat-option value="title">Title</mat-option>
+          <mat-option value="created">Created</mat-option>
+          <mat-option value="modified">Modified</mat-option>
+          <mat-option value="contributor">Last contributor</mat-option>
+          <mat-option value="state">State</mat-option>
+        </mat-select>
+
+        <button
+          mat-icon-button
+          matTooltip="Revert sort order"
+          (click)="toggleSortDir()"
+          class="action-btn"
+        >
+          <mat-icon>{{ sortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="simple-list">
+      @for (doc of documents(); track doc.uid) {
+        <button
+          type="button"
+          class="simple-list-item"
+          [class.selected]="isSelected(doc.uid)"
+          (click)="openDocument(doc.uid)"
+        >
+          <div class="simple-list-thumb-wrap">
+            @if (thumbnailMap()[doc.uid]; as thumb) {
+              <img class="simple-list-thumb" [src]="thumb" alt="" />
+            } @else {
+              <mat-icon class="simple-list-icon">{{ docIcon(doc) }}</mat-icon>
+            }
+            <span class="simple-list-checkbox col-hover-select">
+              <mat-checkbox
+                [checked]="isSelected(doc.uid)"
+                (click)="$event.stopPropagation()"
+                (change)="toggleSelection(doc.uid)"
+              ></mat-checkbox>
+            </span>
+          </div>
+          <div class="simple-list-body">
+            <div class="simple-list-header">
+              <p class="simple-list-title" [title]="doc.title">{{ doc.title }}</p>
+              <span class="simple-list-type-badge">{{ doc.type }}</span>
+            </div>
+            <div class="simple-list-actions col-hover-actions">
+              <button
+                mat-icon-button
+                matTooltip="Restore"
+                class="action-btn"
+                [disabled]="actionInProgress().has(doc.uid)"
+                (click)="restoreDocument(doc.uid, $event)"
+              >
+                <mat-icon class="action-icon">restore_from_trash</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                matTooltip="Delete permanently"
+                class="action-btn action-danger"
+                [disabled]="actionInProgress().has(doc.uid)"
+                (click)="permanentlyDelete(doc.uid, $event)"
+              >
+                <mat-icon class="action-icon">delete_forever</mat-icon>
+              </button>
+            </div>
+          </div>
+        </button>
+      }
+
+      @if (resultCount() === 0) {
+        <div class="results-empty">Trash is empty.</div>
+      }
+    </div>
+  }
+</div>
