@@ -2,6 +2,7 @@ import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { switchMap, catchError, of, tap, map, combineLatest, finalize } from 'rxjs';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -9,7 +10,15 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { SearchService, SearchAggregationService, SelectionService, DocumentDetailService, type SearchResultItem, type SearchResponse, type SearchQueryParams } from '@agentic-ui/shared/nuxeo-client';
+import {
+  SearchService,
+  SearchAggregationService,
+  SelectionService,
+  DocumentDetailService,
+  type SearchResultItem,
+  type SearchResponse,
+  type SearchQueryParams,
+} from '@agentic-ui/shared/nuxeo-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -26,18 +35,18 @@ interface QuickFilterOption {
 }
 
 const ALL_COLUMNS: ColumnDef[] = [
-  { key: 'name',        label: 'Title',            width: '2fr' },
-  { key: 'type',        label: 'Type',             width: '1fr' },
-  { key: 'modified',    label: 'Modified',         width: '1fr' },
+  { key: 'name', label: 'Title', width: '2fr' },
+  { key: 'type', label: 'Type', width: '1fr' },
+  { key: 'modified', label: 'Modified', width: '1fr' },
   { key: 'contributor', label: 'Last contributor', width: '1.2fr' },
-  { key: 'state',       label: 'State',            width: '1fr' },
-  { key: 'version',     label: 'Version',          width: '0.8fr' },
-  { key: 'created',     label: 'Created',          width: '1fr' },
-  { key: 'author',      label: 'Author',           width: '1fr' },
-  { key: 'nature',      label: 'Nature',           width: '1fr' },
-  { key: 'coverage',    label: 'Coverage',         width: '1fr' },
-  { key: 'subjects',    label: 'Subjects',         width: '1fr' },
-  { key: 'flags',       label: 'Flags',            width: '1fr' },
+  { key: 'state', label: 'State', width: '1fr' },
+  { key: 'version', label: 'Version', width: '0.8fr' },
+  { key: 'created', label: 'Created', width: '1fr' },
+  { key: 'author', label: 'Author', width: '1fr' },
+  { key: 'nature', label: 'Nature', width: '1fr' },
+  { key: 'coverage', label: 'Coverage', width: '1fr' },
+  { key: 'subjects', label: 'Subjects', width: '1fr' },
+  { key: 'flags', label: 'Flags', width: '1fr' },
 ];
 
 const QUICK_FILTER_OPTIONS: QuickFilterOption[] = [
@@ -48,19 +57,19 @@ const QUICK_FILTER_OPTIONS: QuickFilterOption[] = [
 
 // Map display column keys to API field names
 const COLUMN_TO_API_FIELD: Record<string, string> = {
-  'title': 'dc:title',
-  'name': 'dc:title',
-  'type': 'dc:type',
-  'modified': 'dc:modified',
-  'contributor': 'dc:lastContributor',
-  'state': 'ecm:currentLifeCycleState',
-  'version': 'dc:version',
-  'created': 'dc:created',
-  'author': 'dc:creator',
-  'nature': 'dc:nature',
-  'coverage': 'dc:coverage',
-  'subjects': 'dc:subjects',
-  'flags': 'dc:flag',
+  title: 'dc:title',
+  name: 'dc:title',
+  type: 'dc:type',
+  modified: 'dc:modified',
+  contributor: 'dc:lastContributor',
+  state: 'ecm:currentLifeCycleState',
+  version: 'dc:version',
+  created: 'dc:created',
+  author: 'dc:creator',
+  nature: 'dc:nature',
+  coverage: 'dc:coverage',
+  subjects: 'dc:subjects',
+  flags: 'dc:flag',
 };
 
 // Reverse map: API field names back to display column keys
@@ -111,7 +120,15 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
 @Component({
   selector: 'lib-search',
   standalone: true,
-  imports: [MatButtonModule, MatIconModule, MatTooltipModule, MatCheckboxModule, MatProgressSpinnerModule, MatSelectModule, MatSnackBarModule],
+  imports: [
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+    MatCheckboxModule,
+    MatProgressSpinnerModule,
+    MatSelectModule,
+    MatSnackBarModule,
+  ],
   templateUrl: './search.html',
   styleUrl: './search.scss',
 })
@@ -120,10 +137,13 @@ export class SearchComponent {
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
   readonly selectionService = inject(SelectionService);
+
+  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -226,7 +246,10 @@ export class SearchComponent {
           );
         }),
         map((response) => response.items),
-        tap(() => this.loading.set(false)),
+        tap((items) => {
+          this.loading.set(false);
+          this.loadThumbnails(items);
+        }),
         catchError(() => {
           this.searchAggregationService.aggregations.set({});
           this.searchAggregationService.items.set([]);
@@ -289,9 +312,9 @@ export class SearchComponent {
 
     this.selectedQuickFilters.set(next);
 
-    const orderedSelected = QUICK_FILTER_OPTIONS
-      .map((filter) => filter.value)
-      .filter((filterValue) => next.has(filterValue));
+    const orderedSelected = QUICK_FILTER_OPTIONS.map((filter) => filter.value).filter(
+      (filterValue) => next.has(filterValue),
+    );
 
     this.router.navigate([], {
       relativeTo: this.route,
@@ -320,16 +343,18 @@ export class SearchComponent {
   toggleAll(): void {
     if (this.isAllSelected()) {
       this.selectionService.clear();
-     } else {
+    } else {
       this.selectionService.selectAll(this.displayResults().map((r) => r.id));
     }
   }
 
   deleteSelected(): void {
-    this.selectionService.deleteSelected()
+    this.selectionService
+      .deleteSelected()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
+        next: () =>
+          this.router.navigate([], { relativeTo: this.route, queryParamsHandling: 'merge' }),
       });
   }
 
@@ -436,7 +461,20 @@ export class SearchComponent {
   }
 
   exportCsv(): void {
-    const headers = ['Title', 'Type', 'Modified', 'Last Contributor', 'State', 'Version', 'Created', 'Author', 'Nature', 'Coverage', 'Subjects', 'Flags'];
+    const headers = [
+      'Title',
+      'Type',
+      'Modified',
+      'Last Contributor',
+      'State',
+      'Version',
+      'Created',
+      'Author',
+      'Nature',
+      'Coverage',
+      'Subjects',
+      'Flags',
+    ];
     const escape = (value: string): string => `"${value.replaceAll('"', '""')}"`;
     const rows = this.sortedResults().map((row) => [
       row.name,
@@ -485,33 +523,31 @@ export class SearchComponent {
       ? this.documentDetailService.removeFromFavorites(id)
       : this.documentDetailService.addToFavorites(id);
 
-    op
-      .pipe(
-        finalize(() => {
-          this.favoritePendingIds.update((current) => {
-            const next = new Set(current);
-            next.delete(id);
-            return next;
-          });
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => {
-          this.favoriteIds.update((current) => {
-            const next = new Set(current);
-            if (isCurrentlyFavorite) next.delete(id);
-            else next.add(id);
-            return next;
-          });
-          window.dispatchEvent(new Event('favorites-changed'));
-        },
-        error: (err) => {
-          this.snackBar.open(this.getApiErrorMessage(err, 'Failed to update favorites.'), 'Dismiss', {
-            duration: 5000,
-          });
-        },
-      });
+    op.pipe(
+      finalize(() => {
+        this.favoritePendingIds.update((current) => {
+          const next = new Set(current);
+          next.delete(id);
+          return next;
+        });
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe({
+      next: () => {
+        this.favoriteIds.update((current) => {
+          const next = new Set(current);
+          if (isCurrentlyFavorite) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+        window.dispatchEvent(new Event('favorites-changed'));
+      },
+      error: (err) => {
+        this.snackBar.open(this.getApiErrorMessage(err, 'Failed to update favorites.'), 'Dismiss', {
+          duration: 5000,
+        });
+      },
+    });
   }
 
   private getApiErrorMessage(err: unknown, fallback: string): string {
@@ -522,7 +558,8 @@ export class SearchComponent {
     if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) return apiMessage;
 
     const defaultMessage = maybeObj?.message;
-    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0) return defaultMessage;
+    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0)
+      return defaultMessage;
 
     return fallback;
   }
@@ -578,5 +615,22 @@ export class SearchComponent {
         .map((v) => v.trim())
         .filter((v) => allowed.has(v)),
     );
+  }
+
+  private loadThumbnails(items: SearchResultItem[]): void {
+    for (const item of items) {
+      if (this.thumbnailMap()[item.id]) continue;
+      this.documentDetailService
+        .fetchThumbnail(item.id)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((m) => ({
+            ...m,
+            [item.id]: this.sanitizer.bypassSecurityTrustUrl(url),
+          }));
+        });
+    }
   }
 }

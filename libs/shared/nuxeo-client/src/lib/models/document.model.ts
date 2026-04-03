@@ -10,6 +10,7 @@ export interface NuxeoDocument {
   properties: Record<string, unknown>;
   lockOwner?: string | null;
   lockCreated?: string | null;
+  state?: string;
   isTrashed?: boolean;
   isCheckedOut?: boolean;
   facets?: string[];
