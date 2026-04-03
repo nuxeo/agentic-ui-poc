@@ -59,7 +59,7 @@ export class AuthService {
   constructor() {
     this.restoreSession();
     if (this.state()) {
-      this.refreshCurrentUser().subscribe({ error: () => {} });
+      this.refreshCurrentUser().subscribe({ error: () => this.logout() });
     }
   }
 
@@ -69,8 +69,7 @@ export class AuthService {
   }
 
   private restoreSession(): void {
-    const raw =
-      sessionStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       return;
     }
@@ -105,11 +104,7 @@ export class AuthService {
   /**
    * Validates credentials against Nuxeo (`GET /nuxeo/api/v1/me`).
    */
-  login(
-    username: string,
-    password: string,
-    remember: boolean,
-  ): Observable<void> {
+  login(username: string, password: string, remember: boolean): Observable<void> {
     const trimmed = username.trim();
     const basic = btoa(`${trimmed}:${password}`);
     const headers = new HttpHeaders({
@@ -117,30 +112,28 @@ export class AuthService {
       Accept: 'application/json',
     });
 
-    return this.http
-      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers })
-      .pipe(
-        tap((me) => {
-          const session: StoredSession = {
-            username: trimmed,
-            basic,
-            isAdministrator: readIsAdministratorFromMe(me),
-          };
-          this.state.set(session);
-          this.persist(session, remember);
-        }),
-        map(() => undefined),
-        catchError((err) =>
-          throwError(
-            () =>
-              new Error(
-                err?.status === 401 || err?.status === 403
-                  ? 'Invalid username or password.'
-                  : 'Could not reach Nuxeo. Check the server, proxy, and URL.',
-              ),
-          ),
+    return this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers }).pipe(
+      tap((me) => {
+        const session: StoredSession = {
+          username: trimmed,
+          basic,
+          isAdministrator: readIsAdministratorFromMe(me),
+        };
+        this.state.set(session);
+        this.persist(session, remember);
+      }),
+      map(() => undefined),
+      catchError((err) =>
+        throwError(
+          () =>
+            new Error(
+              err?.status === 401 || err?.status === 403
+                ? 'Invalid username or password.'
+                : 'Could not reach Nuxeo. Check the server, proxy, and URL.',
+            ),
         ),
-      );
+      ),
+    );
   }
 
   logout(): void {

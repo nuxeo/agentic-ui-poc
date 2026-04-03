@@ -56,7 +56,7 @@ import {
   CreateVersionDialogData,
 } from '../create-version-dialog/create-version-dialog';
 import { PublishDialogComponent, PublishDialogData } from '../publish-dialog/publish-dialog';
-import { DriveDialogComponent } from '../drive-dialog/drive-dialog';
+import { DriveDialogComponent, type DriveDialogData } from '../drive-dialog/drive-dialog';
 import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/attachment-preview-dialog';
 import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
@@ -1569,7 +1569,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   openDriveDialog(): void {
-    this.dialog.open(DriveDialogComponent, { width: '500px' });
+    const doc = this.doc();
+    const fileContent = doc?.properties?.['file:content'] as {
+      name?: string;
+      data?: string;
+    } | null;
+    const data: DriveDialogData = {
+      docUid: doc?.uid ?? this.docUid,
+      filename: fileContent?.name ?? doc?.title ?? '',
+      blobUrl: fileContent?.data ?? '',
+    };
+    this.dialog.open(DriveDialogComponent, { width: '500px', data });
   }
 
   uploadAttachment(event: Event): void {
