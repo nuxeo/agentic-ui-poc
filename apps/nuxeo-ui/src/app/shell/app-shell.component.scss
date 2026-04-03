@@ -136,6 +136,19 @@ sat-platform-nav-container.has-selection-topbar {
   flex-shrink: 0;
 }
 
+.header-search-option-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f2f4f7;
+  border: 1px solid #eaecf0;
+  flex-shrink: 0;
+  color: #475467;
+}
+
 .header-search-option-meta {
   display: flex;
   flex-direction: column;

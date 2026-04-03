@@ -166,7 +166,7 @@ export class AppShellComponent {
       )
       .subscribe((results) => {
         this.globalSearchResults.set(
-          results.filter((result) => result.kind === 'document' && !!(result.documentUid ?? result.id)),
+          results.filter((result) => result.kind !== 'other' && !!(result.documentUid ?? result.id)),
         );
         this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
       });
@@ -302,8 +302,14 @@ export class AppShellComponent {
 
   onGlobalSearchSelect(result: GlobalSearchSuggestion): void {
     this.clearGlobalSearch();
-    const documentUid = result.documentUid ?? result.id;
-    void this.router.navigate(['/doc', documentUid]);
+    if (result.kind === 'user') {
+      void this.router.navigate(['/administration/users-groups/user', result.id]);
+    } else if (result.kind === 'group') {
+      void this.router.navigate(['/administration/users-groups/group', result.id]);
+    } else {
+      const documentUid = result.documentUid ?? result.id;
+      void this.router.navigate(['/doc', documentUid]);
+    }
   }
 
   private clearGlobalSearch(): void {
@@ -317,6 +323,16 @@ export class AppShellComponent {
   documentPreviewUrl(result: GlobalSearchSuggestion): string {
     const documentUid = result.documentUid ?? result.id;
     return `/nuxeo/api/v1/id/${encodeURIComponent(documentUid)}/@rendition/thumbnail`;
+  }
+
+  userGroupIcon(result: GlobalSearchSuggestion): string {
+    if (result.kind === 'group') return 'group';
+    if (result.kind === 'user') return 'person';
+    return 'insert_drive_file';
+  }
+
+  userGroupSubtext(result: GlobalSearchSuggestion): string {
+    return result.kind === 'group' ? 'Group' : 'User';
   }
 
   private getDeleteErrorMessage(err: unknown): string {

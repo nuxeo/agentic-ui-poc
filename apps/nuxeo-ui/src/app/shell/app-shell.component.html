@@ -74,14 +74,26 @@
                   class="header-search-option"
                   (click)="onGlobalSearchSelect(result)"
                 >
-                  <img
-                    class="header-search-option-preview"
-                    [src]="documentPreviewUrl(result)"
-                    alt="Document preview"
-                  />
+                  @if (result.kind === 'document') {
+                    <img
+                      class="header-search-option-preview"
+                      [src]="documentPreviewUrl(result)"
+                      [alt]="result.displayLabel"
+                    />
+                  } @else {
+                    <span class="header-search-option-avatar">
+                      <mat-icon>{{ userGroupIcon(result) }}</mat-icon>
+                    </span>
+                  }
                   <span class="header-search-option-meta">
                     <span class="header-search-option-text">{{ result.displayLabel }}</span>
-                    <span class="header-search-option-path">{{ result.path || '/' }}</span>
+                    <span class="header-search-option-path">
+                      @if (result.kind === 'document') {
+                        {{ result.path || '/' }}
+                      } @else {
+                        {{ userGroupSubtext(result) }}
+                      }
+                    </span>
                   </span>
                 </button>
               }
