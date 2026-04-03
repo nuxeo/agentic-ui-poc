@@ -188,6 +188,7 @@ export class NavDrawerComponent {
     const filters = this.searchAggregationService.drawerFilters();
     const request: SearchQueryParams = {
       q: (filters['q'] ?? '').trim() || undefined,
+      ecmFulltext: (filters['ecm_fulltext'] ?? '').trim() || undefined,
       modifiedDate: (filters['modifiedDate'] ?? '').trim() || undefined,
       author: (filters['author'] ?? '').trim() || undefined,
       collection: (filters['collection'] ?? '').trim() || undefined,
@@ -247,9 +248,18 @@ export class NavDrawerComponent {
         const aggregations =
           res.aggregations ?? this.computeAssetAggregationsFromEntries(res.entries ?? []);
         this.assetAggregationService.aggregations.set(aggregations);
+        this.assetAggregationService.items.set(
+          (res.entries ?? []).map((entry) => ({
+            id: entry.uid,
+            title: entry.title,
+            type: entry.type,
+            icon: docTypeIcon(entry.type),
+          })),
+        );
       },
       error: () => {
         this.assetAggregationService.aggregations.set({});
+        this.assetAggregationService.items.set([]);
       },
     });
   }

@@ -1,7 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter } from 'rxjs';
+import { Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -13,7 +13,12 @@ import {
   SatPlatformNavModule,
   SatPlatformNavStateService,
 } from '@hylandsoftware/satori-ui/platform-nav';
-import { CollectionService, SelectionService } from '@agentic-ui/shared/nuxeo-client';
+import {
+  CollectionService,
+  SearchService,
+  SelectionService,
+  type GlobalSearchSuggestion,
+} from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
 
 import { AuthService } from '../auth/auth.service';
@@ -39,6 +44,9 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
   styleUrl: './app-shell.component.scss',
 })
 export class AppShellComponent {
+  @ViewChild('globalSearchContainer')
+  private globalSearchContainer?: ElementRef<HTMLElement>;
+
   private readonly settingsDrawerItem: AppNavItem = {
     label: 'Settings',
     path: '/settings',
@@ -52,6 +60,8 @@ export class AppShellComponent {
   private readonly snackBar = inject(MatSnackBar);
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
+  private readonly searchService = inject(SearchService);
+  private readonly searchInput$ = new Subject<string>();
 
   /** Hides Administration for non-administrators. */
   protected readonly navItems = computed(() => {
@@ -66,6 +76,11 @@ export class AppShellComponent {
   readonly activeDrawerItem = signal<AppNavItem | null>(null);
   readonly clipboardCount = signal(this.readClipboardCount());
   readonly favoritesCount = signal(0);
+  readonly globalSearchTerm = signal('');
+  readonly globalSearchLoading = signal(false);
+  readonly globalSearchError = signal<string | null>(null);
+  readonly globalSearchResults = signal<GlobalSearchSuggestion[]>([]);
+  readonly globalSearchOpen = signal(false);
 
   private readonly currentUrl = signal(this.router.url.split('?')[0]);
 
@@ -115,12 +130,58 @@ export class AppShellComponent {
       .subscribe((e) => {
         this.currentUrl.set(e.urlAfterRedirects.split('?')[0]);
         this.refreshClipboardCount();
+        this.clearGlobalSearch();
       });
 
     window.addEventListener('storage', this.storageListener);
     window.addEventListener('clipboard-changed', () => this.refreshClipboardCount());
     window.addEventListener('favorites-changed', () => this.refreshFavoritesCount());
     this.refreshFavoritesCount();
+
+    this.searchInput$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap((value) => {
+          const term = value.trim();
+          if (term.length < 2) {
+            this.globalSearchLoading.set(false);
+            this.globalSearchError.set(null);
+            return of<GlobalSearchSuggestion[]>([]);
+          }
+
+          this.globalSearchLoading.set(true);
+          this.globalSearchError.set(null);
+
+          return this.searchService.suggest(term).pipe(
+            catchError(() => {
+              this.globalSearchError.set('Failed to load suggestions.');
+              return of<GlobalSearchSuggestion[]>([]);
+            }),
+            finalize(() => this.globalSearchLoading.set(false)),
+          );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((results) => {
+        this.globalSearchResults.set(
+          results.filter((result) => result.kind !== 'other' && !!(result.documentUid ?? result.id)),
+        );
+        this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
+      });
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const searchContainer = this.globalSearchContainer?.nativeElement;
+    const clickPath = event.composedPath?.() ?? [];
+    if (
+      searchContainer &&
+      (clickPath.includes(searchContainer) || searchContainer.contains(event.target as Node))
+    ) {
+      return;
+    }
+    this.globalSearchOpen.set(false);
   }
 
   private readClipboardCount(): number {
@@ -143,6 +204,7 @@ export class AppShellComponent {
 
   onNavClick(item: AppNavItem, event: Event): void {
     this.refreshClipboardCount();
+    this.clearGlobalSearch();
 
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
@@ -169,6 +231,7 @@ export class AppShellComponent {
   onDrawerItemSelected(path: string): void {
     this.drawerOpen.set(false);
     this.activeDrawerItem.set(null);
+    this.clearGlobalSearch();
     void this.router.navigateByUrl(path);
   }
 
@@ -188,6 +251,7 @@ export class AppShellComponent {
   }
 
   onNavigateKeepDrawer(path: string): void {
+    this.clearGlobalSearch();
     void this.router.navigateByUrl(path);
   }
 
@@ -218,6 +282,63 @@ export class AppShellComponent {
         this.selectionService.clear();
       },
     });
+  }
+
+  onGlobalSearchInput(value: string): void {
+    this.globalSearchTerm.set(value);
+    const hasEnoughChars = value.trim().length >= 2;
+    this.globalSearchOpen.set(hasEnoughChars);
+    this.searchInput$.next(value);
+  }
+
+  onGlobalSearchFocus(): void {
+    this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
+  }
+
+  onGlobalSearchFocusOut(event: FocusEvent): void {
+    const container = this.globalSearchContainer?.nativeElement;
+    const nextTarget = event.relatedTarget as Node | null;
+
+    if (container && nextTarget && container.contains(nextTarget)) {
+      return;
+    }
+
+    this.clearGlobalSearch();
+  }
+
+  onGlobalSearchSelect(result: GlobalSearchSuggestion): void {
+    this.clearGlobalSearch();
+    if (result.kind === 'user') {
+      void this.router.navigate(['/administration/users-groups/user', result.id]);
+    } else if (result.kind === 'group') {
+      void this.router.navigate(['/administration/users-groups/group', result.id]);
+    } else {
+      const documentUid = result.documentUid ?? result.id;
+      void this.router.navigate(['/doc', documentUid]);
+    }
+  }
+
+  private clearGlobalSearch(): void {
+    this.globalSearchTerm.set('');
+    this.globalSearchLoading.set(false);
+    this.globalSearchError.set(null);
+    this.globalSearchResults.set([]);
+    this.globalSearchOpen.set(false);
+  }
+
+  documentPreviewUrl(result: GlobalSearchSuggestion): string {
+    const documentUid = result.documentUid ?? result.id;
+    return `/nuxeo/api/v1/id/${encodeURIComponent(documentUid)}/@rendition/thumbnail`;
+  }
+
+  userGroupIcon(result: GlobalSearchSuggestion): string {
+    if (result.kind === 'group') return 'group';
+    if (result.kind === 'user') return 'person';
+    return 'insert_drive_file';
+  }
+
+  userGroupSubtext(result: GlobalSearchSuggestion): string {
+    return result.kind === 'group' ? 'Group' : 'User';
   }
 
   private getDeleteErrorMessage(err: unknown): string {

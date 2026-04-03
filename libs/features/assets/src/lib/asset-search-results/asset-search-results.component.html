@@ -1,4 +1,28 @@
 <div class="results-page">
+  <div class="results-top-actions">
+    @if (hasSavableFilters()) {
+      <button mat-stroked-button type="button" (click)="openSaveAsDialog()">Save As</button>
+    }
+    @if (hasSelectedSavedSearch()) {
+      <button mat-stroked-button type="button" (click)="onSaveSelectedSavedSearch()">Save</button>
+    }
+    @if (hasSelectedSavedSearch()) {
+      <button
+        mat-icon-button
+        type="button"
+        [matMenuTriggerFor]="resultsActionsMenu"
+        aria-label="Results actions"
+      >
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #resultsActionsMenu="matMenu">
+        <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
+        <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
+        <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">Delete</button>
+      </mat-menu>
+    }
+  </div>
+
   <!-- Toolbar -->
   <div class="results-toolbar">
     @if (resultCount() > 0) {
@@ -32,7 +56,7 @@
     </div>
   </div>
 
-  @if (!loading() && !error() && viewMode() === 'grid') {
+  @if (!loading() && viewMode() === 'grid') {
     <div class="grid-actions-bar">
       <div class="grid-actions-left">
         <mat-checkbox
@@ -71,20 +95,22 @@
   }
 
   <main class="results-content">
-    <!-- Loading -->
     @if (loading()) {
       <div class="results-loading">
         <mat-spinner diameter="32" />
       </div>
     }
 
-    <!-- Error -->
-    @if (error() && !loading()) {
+    @if (error()) {
       <div class="results-error">{{ error() }}</div>
     }
 
+    @if (!loading() && !error() && resultCount() === 0 && viewMode() === 'grid') {
+      <div class="results-empty">No Documents match the search criteria.</div>
+    }
+
     <!-- Grid View -->
-    @if (!loading() && !error() && viewMode() === 'grid') {
+    @if (!loading() && !error() && viewMode() === 'grid' && resultCount() > 0) {
       <div class="asset-grid">
         @for (asset of gridAssets(); track asset.id) {
           <button
@@ -219,6 +245,7 @@
               <span></span>
             </button>
           }
+
           @if (!loading() && resultCount() === 0) {
             <div class="results-empty">No Documents match the search criteria.</div>
           }

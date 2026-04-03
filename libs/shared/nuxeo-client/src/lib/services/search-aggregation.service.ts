@@ -6,4 +6,6 @@ export class SearchAggregationService {
   readonly aggregations = signal<SearchAggregations>({});
   readonly items = signal<SearchResultItem[]>([]);
   readonly drawerFilters = signal<Record<string, string>>({});
+  readonly selectedSavedSearchId = signal('');
+  readonly selectedSavedSearchTitle = signal('');
 }

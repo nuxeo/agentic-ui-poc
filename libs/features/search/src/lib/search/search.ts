@@ -10,6 +10,9 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
+import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
 import {
   SearchService,
   SearchAggregationService,
@@ -128,6 +131,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
     MatProgressSpinnerModule,
     MatSelectModule,
     MatSnackBarModule,
+    MatMenuModule,
   ],
   templateUrl: './search.html',
   styleUrl: './search.scss',
@@ -136,6 +140,7 @@ export class SearchComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly searchService = inject(SearchService);
@@ -160,6 +165,8 @@ export class SearchComponent {
   readonly sortDirection = signal<SortDirection>(null);
   readonly favoriteIds = signal<Set<string>>(new Set());
   readonly favoritePendingIds = signal<Set<string>>(new Set());
+  readonly selectedSavedSearchId = this.searchAggregationService.selectedSavedSearchId;
+  readonly selectedSavedSearchTitle = this.searchAggregationService.selectedSavedSearchTitle;
 
   private readonly results$ = combineLatest([
     this.route.queryParamMap,
@@ -194,6 +201,7 @@ export class SearchComponent {
 
       const request: {
         q?: string;
+        ecmFulltext?: string;
         quickFilters?: string;
         sortBy?: string | null;
         sortOrder?: ('asc' | 'desc') | null;
@@ -214,6 +222,7 @@ export class SearchComponent {
 
       // All drawer filters come from the shared service signal (not URL)
       const q = (drawerFilters['q'] ?? '').trim();
+      const ecmFulltext = (drawerFilters['ecm_fulltext'] ?? '').trim();
       const modifiedDate = (drawerFilters['modifiedDate'] ?? '').trim();
       const author = (drawerFilters['author'] ?? '').trim();
       const collection = (drawerFilters['collection'] ?? '').trim();
@@ -224,6 +233,7 @@ export class SearchComponent {
       const size = (drawerFilters['size'] ?? '').trim();
 
       if (q) request.q = q;
+      if (ecmFulltext) request.ecmFulltext = ecmFulltext;
       if (modifiedDate) request.modifiedDate = modifiedDate;
       if (author) request.author = author;
       if (collection) request.collection = collection;
@@ -615,6 +625,133 @@ export class SearchComponent {
         .map((v) => v.trim())
         .filter((v) => allowed.has(v)),
     );
+  }
+
+  openSaveAsDialog(): void {
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Saved Search',
+        placeholder: 'Enter a name for your saved search',
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.saveSavedSearch({
+        title: trimmedTitle,
+        params: this.buildSavedSearchParamsFromFilters(),
+        pageProviderName: 'default_search',
+      }).subscribe({
+        next: (saved) => {
+          this.searchAggregationService.selectedSavedSearchId.set(this.readSavedSearchId(saved));
+          this.searchAggregationService.selectedSavedSearchTitle.set(this.readSavedSearchTitle(saved) || trimmedTitle);
+        },
+      });
+    });
+  }
+
+  hasSelectedSavedSearch(): boolean {
+    return this.selectedSavedSearchId().trim().length > 0;
+  }
+
+  hasSavableFilters(): boolean {
+    return Object.keys(this.buildSavedSearchParamsFromFilters()).length > 0;
+  }
+
+  onSaveSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    const currentTitle = this.selectedSavedSearchTitle().trim() || 'Saved Search';
+    this.searchService.updateSavedSearch(id, {
+      title: currentTitle,
+      params: this.buildSavedSearchParamsFromFilters(),
+      pageProviderName: 'default_search',
+    }).subscribe({
+      next: () => {
+        this.searchAggregationService.selectedSavedSearchTitle.set(currentTitle);
+      },
+    });
+  }
+
+  onEditSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Edit Saved Search',
+        placeholder: 'Enter a name for your saved search',
+        initialValue: this.selectedSavedSearchTitle(),
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.updateSavedSearch(id, {
+        title: trimmedTitle,
+        params: this.buildSavedSearchParamsFromFilters(),
+        pageProviderName: 'default_search',
+      }).subscribe({
+        next: () => {
+          this.searchAggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+        },
+      });
+    });
+  }
+
+  onShareSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    this.dialog.open(ShareSavedSearchDialogComponent, {
+      width: '80vw',
+      maxWidth: '80vw',
+      height: '80vh',
+      data: {
+        title: this.selectedSavedSearchTitle().trim() || 'Saved Search',
+        id,
+      },
+    });
+  }
+
+  onDeleteSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
+    if (!window.confirm(`Delete saved search "${title}"?`)) return;
+
+    this.searchService.deleteSavedSearch(id).subscribe({
+      next: () => {
+        this.searchAggregationService.selectedSavedSearchId.set('');
+        this.searchAggregationService.selectedSavedSearchTitle.set('');
+      },
+    });
+  }
+
+  private buildSavedSearchParamsFromFilters(): Record<string, string> {
+    const drawerFilters = this.searchAggregationService.drawerFilters();
+    const saved: Record<string, string> = {};
+
+    for (const [key, value] of Object.entries(drawerFilters)) {
+      const trimmed = value.trim();
+      if (trimmed) saved[key] = trimmed;
+    }
+
+    return saved;
+  }
+
+  private readSavedSearchId(saved: unknown): string {
+    if (!saved || typeof saved !== 'object') return '';
+    const obj = saved as Record<string, unknown>;
+    return typeof obj['id'] === 'string' ? obj['id'] : '';
+  }
+
+  private readSavedSearchTitle(saved: unknown): string {
+    if (!saved || typeof saved !== 'object') return '';
+    const obj = saved as Record<string, unknown>;
+    return typeof obj['title'] === 'string' ? obj['title'] : '';
   }
 
   private loadThumbnails(items: SearchResultItem[]): void {

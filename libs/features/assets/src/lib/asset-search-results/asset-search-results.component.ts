@@ -4,7 +4,9 @@ import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { switchMap, map, catchError, of, tap } from 'rxjs';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -12,12 +14,14 @@ import { MatSelectModule } from '@angular/material/select';
 import {
   AssetService,
   AssetAggregationService,
+  SearchService,
   SelectionService,
   DocumentDetailService,
   docTypeIcon,
   type NuxeoDocument,
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
+import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -89,6 +93,7 @@ function buildApiParams(params: ParamMap) {
   const mimeTypeValues = get('asset-format');
 
   const sortBy = params.get('sortBy') ?? undefined;
+  const ecmFulltext = params.get('ecm_fulltext')?.trim() || undefined;
   const sortOrderRaw = params.get('sortOrder');
   const sortOrder: 'asc' | 'desc' | undefined =
     sortOrderRaw === 'asc' || sortOrderRaw === 'desc' ? sortOrderRaw : undefined;
@@ -101,6 +106,7 @@ function buildApiParams(params: ParamMap) {
     colorProfiles: get('color-profile'),
     colorDepths: get('color-depth'),
     videoDurations: get('video-duration'),
+    ecmFulltext,
     sortBy,
     sortOrder,
   };
@@ -272,6 +278,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
   standalone: true,
   imports: [
     MatButtonModule,
+    MatMenuModule,
     MatIconModule,
     MatTooltipModule,
     MatCheckboxModule,
@@ -289,6 +296,8 @@ export class AssetSearchResultsComponent {
   private readonly assetService = inject(AssetService);
   private readonly aggregationService = inject(AssetAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
+  private readonly dialog = inject(MatDialog);
+  private readonly searchService = inject(SearchService);
   readonly selectionService = inject(SelectionService);
 
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
@@ -296,6 +305,8 @@ export class AssetSearchResultsComponent {
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly selectedSavedSearchId = this.aggregationService.selectedSavedSearchId;
+  readonly selectedSavedSearchTitle = this.aggregationService.selectedSavedSearchTitle;
 
   private readonly assets$ = this.route.queryParamMap.pipe(
     tap(() => {
@@ -308,6 +319,14 @@ export class AssetSearchResultsComponent {
           const mapped = result.entries.map(mapToAssetResult);
           const aggs = mergeComputedAggregations(result.entries, mapped, result.aggregations);
           this.aggregationService.aggregations.set(aggs);
+          this.aggregationService.items.set(
+            mapped.map((asset) => ({
+              id: asset.id,
+              title: asset.name,
+              type: asset.type,
+              icon: asset.icon,
+            })),
+          );
           this.loadThumbnails(mapped);
           return mapped;
         }),
@@ -669,6 +688,145 @@ export class AssetSearchResultsComponent {
     anchor.download = 'assets.csv';
     anchor.click();
     URL.revokeObjectURL(url);
+  }
+
+  openSaveAsDialog(): void {
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Saved Search',
+        placeholder: 'Enter a name for your saved search',
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.saveSavedSearch({
+        title: trimmedTitle,
+        params: this.buildSavedSearchParamsFromQuery(),
+        pageProviderName: 'assets_search',
+      }).subscribe({
+        next: (saved) => {
+          this.aggregationService.selectedSavedSearchId.set(this.readSavedSearchId(saved));
+          this.aggregationService.selectedSavedSearchTitle.set(
+            this.readSavedSearchTitle(saved) || trimmedTitle,
+          );
+        },
+      });
+    });
+  }
+
+  hasSelectedSavedSearch(): boolean {
+    return this.selectedSavedSearchId().trim().length > 0;
+  }
+
+  hasSavableFilters(): boolean {
+    return Object.keys(this.buildSavedSearchParamsFromQuery()).length > 0;
+  }
+
+  onSaveSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    const currentTitle = this.selectedSavedSearchTitle().trim() || 'Saved Search';
+    this.searchService.updateSavedSearch(id, {
+      title: currentTitle,
+      params: this.buildSavedSearchParamsFromQuery(),
+      pageProviderName: 'assets_search',
+    }).subscribe({
+      next: () => {
+        this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
+      },
+    });
+  }
+
+  onEditSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Edit Saved Search',
+        placeholder: 'Enter a name for your saved search',
+        initialValue: this.selectedSavedSearchTitle(),
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.updateSavedSearch(id, {
+        title: trimmedTitle,
+        params: this.buildSavedSearchParamsFromQuery(),
+        pageProviderName: 'assets_search',
+      }).subscribe({
+        next: () => {
+          this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+        },
+      });
+    });
+  }
+
+  onShareSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    this.dialog.open(ShareSavedSearchDialogComponent, {
+      width: '80vw',
+      maxWidth: '80vw',
+      height: '80vh',
+      data: {
+        title: this.selectedSavedSearchTitle().trim() || 'Saved Search',
+        id,
+      },
+    });
+  }
+
+  onDeleteSelectedSavedSearch(): void {
+    const id = this.selectedSavedSearchId().trim();
+    if (!id) return;
+
+    const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
+    if (!window.confirm(`Delete saved search "${title}"?`)) return;
+
+    this.searchService.deleteSavedSearch(id).subscribe({
+      next: () => {
+        this.aggregationService.selectedSavedSearchId.set('');
+        this.aggregationService.selectedSavedSearchTitle.set('');
+      },
+    });
+  }
+
+  private buildSavedSearchParamsFromQuery(): Record<string, string> {
+    const params = this.queryParams();
+    const keys = [
+      'asset-type',
+      'asset-format',
+      'asset-width',
+      'asset-height',
+      'color-profile',
+      'color-depth',
+      'video-duration',
+      'ecm_fulltext',
+    ];
+
+    const saved: Record<string, string> = {};
+    for (const key of keys) {
+      const value = params.get(key)?.trim();
+      if (value) saved[key] = value;
+    }
+
+    return saved;
+  }
+
+  private readSavedSearchId(saved: unknown): string {
+    if (!saved || typeof saved !== 'object') return '';
+    const obj = saved as Record<string, unknown>;
+    return typeof obj['id'] === 'string' ? obj['id'] : '';
+  }
+
+  private readSavedSearchTitle(saved: unknown): string {
+    if (!saved || typeof saved !== 'object') return '';
+    const obj = saved as Record<string, unknown>;
+    return typeof obj['title'] === 'string' ? obj['title'] : '';
   }
 
   private loadThumbnails(assets: AssetResult[]): void {

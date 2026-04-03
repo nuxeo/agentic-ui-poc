@@ -1,12 +1,22 @@
-import { Component, effect, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { AssetAggregationService, type AssetAggregations } from '@agentic-ui/shared/nuxeo-client';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import {
+  AssetAggregationService,
+  SearchService,
+  type AssetAggregations,
+  type AssetQueueItem,
+  type SavedSearchOption,
+} from '@agentic-ui/shared/nuxeo-client';
+import { SavedSearchDialogComponent } from '@agentic-ui/shared/ui';
+import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
 
 export interface FilterOption {
   label: string;
@@ -21,7 +31,15 @@ export interface FilterGroup {
   options: FilterOption[];
 }
 
+interface SavedSearchSelectOption {
+  key: string;
+  value: string;
+  label: string;
+  query?: string;
+}
+
 const DYNAMIC_GROUPS = new Set(['asset-type', 'asset-format', 'color-profile', 'color-depth']);
+type DrawerViewMode = 'filter' | 'queue';
 
 function toMimeType(value: string): string {
   if (value.includes('/')) return value;
@@ -48,17 +66,28 @@ function toMimeType(value: string): string {
 @Component({
   selector: 'lib-assets-drawer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatCheckboxModule, MatDividerModule, MatSlideToggleModule],
+  imports: [MatIconModule, MatButtonModule, MatCheckboxModule, MatDividerModule, MatSlideToggleModule, MatTooltipModule, AssetsQueueComponent],
   templateUrl: './assets-drawer.component.html',
   styleUrl: './assets-drawer.component.scss',
 })
 export class AssetsDrawerComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly aggregationService = inject(AssetAggregationService);
+  private readonly searchService = inject(SearchService);
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   readonly dynamicGroups = DYNAMIC_GROUPS;
+  readonly viewMode = signal<DrawerViewMode>(this.loadViewModeFromStorage());
+  readonly selectedDocumentId = signal('');
+  readonly filterSearchInput = signal('');
+  readonly filterSearchOpen = signal(false);
+  readonly availableSavedSearches = signal<SavedSearchSelectOption[]>([]);
+  readonly selectedSavedSearch = signal('');
+  readonly savedSearchesLoading = signal(false);
+  readonly savedSearchesLoaded = signal(false);
+  readonly secondarySearchInput = signal('');
 
   private readonly GROUP_AGG_KEY: Record<string, keyof AssetAggregations> = {
     'asset-type':     'system_primaryType_agg',
@@ -71,6 +100,11 @@ export class AssetsDrawerComponent {
   };
 
   private readonly ALWAYS_SHOW_ZERO = new Set(['asset-width', 'asset-height', 'video-duration']);
+
+  readonly hasActiveFilters = computed(() =>
+    this.secondarySearchInput().trim().length > 0 ||
+    this.filterGroups().some((group) => group.options.some((option) => option.selected)),
+  );
 
   getCountText(groupId: string, aggKey?: string): string {
     if (!aggKey) return '';
@@ -125,9 +159,20 @@ export class AssetsDrawerComponent {
   constructor() {
     this.expandedFilters.set(new Set(['asset-type']));
 
+    this.syncSelectedDocumentFromUrl(this.router.url);
+
+    this.router.events
+      .pipe(takeUntilDestroyed())
+      .subscribe((event) => {
+        if (!(event instanceof NavigationEnd)) return;
+        this.syncSelectedDocumentFromUrl(event.urlAfterRedirects);
+      });
+
     effect(() => {
       const params = this.queryParams();
       const getSelected = (id: string) => new Set(params.get(id)?.split(',').filter(Boolean) ?? []);
+      const fulltext = params.get('ecm_fulltext') ?? '';
+      this.secondarySearchInput.set(fulltext);
       const aggs = this.aggregationService.aggregations();
       this.filterGroups.update(groups =>
         groups.map(g => {
@@ -156,6 +201,104 @@ export class AssetsDrawerComponent {
         })
       );
     });
+
+    effect(() => {
+      localStorage.setItem('assets_drawer_view_mode', this.viewMode());
+    });
+  }
+
+  switchToQueueView(): void {
+    this.viewMode.set('queue');
+
+    const items = this.aggregationService.items();
+    const docId = this.selectedDocumentId();
+    const selectedInResults = !!docId && items.some((item) => item.id === docId);
+
+    if (selectedInResults) {
+      void this.router.navigate(['/doc', docId], {
+        queryParams: this.buildFilterQueryParams(),
+      });
+      return;
+    }
+
+    if (items.length > 0) {
+      void this.router.navigate(['/doc', items[0].id], {
+        queryParams: this.buildFilterQueryParams(),
+      });
+    }
+  }
+
+  switchToFilterView(): void {
+    this.viewMode.set('filter');
+    void this.router.navigate(['/documents'], {
+      queryParams: this.buildFilterQueryParams(),
+    });
+  }
+
+  onQueueItemSelected(item: AssetQueueItem): void {
+    void this.router.navigate(['/doc', item.id], {
+      queryParams: this.buildFilterQueryParams(),
+    });
+  }
+
+  onFilterSearchFocus(): void {
+    this.filterSearchOpen.set(true);
+    this.loadSavedSearchesFromApi();
+  }
+
+  closeFilterSearchDropdown(): void {
+    setTimeout(() => this.filterSearchOpen.set(false), 120);
+  }
+
+  selectFilterOption(option: SavedSearchSelectOption): void {
+    this.filterSearchInput.set(option.label);
+    this.selectedSavedSearch.set(option.value);
+    this.filterSearchOpen.set(false);
+    this.aggregationService.selectedSavedSearchId.set(option.value);
+    this.aggregationService.selectedSavedSearchTitle.set(option.label);
+
+    this.searchService.getSavedSearchById(option.value).subscribe({
+      next: (params) => {
+        this.applySavedSearchParams(params);
+      },
+    });
+  }
+
+  onSecondarySearchInput(value: string): void {
+    this.secondarySearchInput.set(value);
+  }
+
+  onSecondarySearchEnter(): void {
+    const value = this.secondarySearchInput().trim();
+    void this.router.navigate(['/documents'], {
+      queryParams: {
+        ecm_fulltext: value ? value : null,
+      },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  openSaveAsDialog(): void {
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Saved Search',
+        placeholder: 'Enter a name for your saved search',
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.saveSavedSearch({
+        title: trimmedTitle,
+        params: this.buildSavedSearchParams(),
+        pageProviderName: 'assets_search',
+      }).subscribe({
+        next: () => {
+          this.savedSearchesLoaded.set(false);
+          this.loadSavedSearchesFromApi();
+        },
+      });
+    });
   }
 
   isExpanded(id: string): boolean {
@@ -172,12 +315,18 @@ export class AssetsDrawerComponent {
   }
 
   resetFilters(): void {
+    this.secondarySearchInput.set('');
     this.filterGroups.update((groups) =>
       groups.map((g) => ({ ...g, options: g.options.map((o) => ({ ...o, selected: false })) })),
     );
-    if (this.autoSearch()) {
-      void this.router.navigate(['/documents']);
-    }
+    this.filterSearchInput.set('');
+    this.selectedSavedSearch.set('');
+    this.aggregationService.selectedSavedSearchId.set('');
+    this.aggregationService.selectedSavedSearchTitle.set('');
+    void this.router.navigate(['/documents'], {
+      queryParams: { ecm_fulltext: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   applySearch(): void {
@@ -197,16 +346,13 @@ export class AssetsDrawerComponent {
     return queryParams;
   }
 
-  buildFilterUrl(): string {
-    const params = new URLSearchParams();
-    for (const group of this.filterGroups()) {
-      const selected = group.options.filter((o) => o.selected).map((o) => o.value);
-      if (selected.length > 0) {
-        params.set(group.id, selected.join(','));
-      }
+  private buildSavedSearchParams(): Record<string, string> {
+    const params = this.buildFilterQueryParams();
+    const ecmFulltext = this.secondarySearchInput().trim();
+    if (ecmFulltext) {
+      params['ecm_fulltext'] = ecmFulltext;
     }
-    const qs = params.toString();
-    return qs ? `/documents?${qs}` : '/documents';
+    return params;
   }
 
   toggleOption(groupId: string, value: string): void {
@@ -222,5 +368,88 @@ export class AssetsDrawerComponent {
         queryParams: this.buildFilterQueryParams(),
       });
     }
+  }
+
+  private applySavedSearchParams(params: Record<string, string>): void {
+    const get = (key: string) => params[key]?.trim() ?? '';
+    const parseJsonArray = (raw: string): string[] | null => {
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map(String).map((v) => v.trim()).filter(Boolean);
+        }
+      } catch {
+        // not JSON
+      }
+      return null;
+    };
+    const getValues = (...keys: string[]): string[] => {
+      for (const key of keys) {
+        const raw = get(key);
+        if (!raw) continue;
+
+        const parsed = parseJsonArray(raw);
+        if (parsed && parsed.length > 0) return parsed;
+
+        const split = raw.split(',').map((v) => v.trim()).filter(Boolean);
+        if (split.length > 0) return split;
+      }
+      return [];
+    };
+    const firstValue = (...keys: string[]): string => getValues(...keys)[0] ?? '';
+
+    const queryParams: Record<string, string | null> = {};
+    for (const group of this.filterGroups()) {
+      const values = getValues(group.id, this.GROUP_AGG_KEY[group.id] ?? '');
+      queryParams[group.id] = values.length > 0 ? values.join(',') : null;
+    }
+
+    const ecmFulltext = firstValue('ecm_fulltext', 'ecmFulltext');
+    queryParams['ecm_fulltext'] = ecmFulltext || null;
+
+    // Navigate with normalized saved params and clear missing filters to avoid stale state.
+    void this.router.navigate(['/documents'], { queryParams });
+  }
+
+  private syncSelectedDocumentFromUrl(url: string): void {
+    const urlParts = url.split('/');
+    const docIndex = urlParts.indexOf('doc');
+    if (docIndex !== -1 && docIndex + 1 < urlParts.length) {
+      this.selectedDocumentId.set(urlParts[docIndex + 1].split('?')[0]);
+      return;
+    }
+
+    this.selectedDocumentId.set('');
+  }
+
+  private loadViewModeFromStorage(): DrawerViewMode {
+    const mode = localStorage.getItem('assets_drawer_view_mode');
+    return mode === 'queue' ? 'queue' : 'filter';
+  }
+
+  private loadSavedSearchesFromApi(): void {
+    if (this.savedSearchesLoaded() || this.savedSearchesLoading()) return;
+
+    this.savedSearchesLoading.set(true);
+    this.searchService.getSavedSearches('assets_search').subscribe({
+      next: (items) => {
+        this.availableSavedSearches.set(items.map((item) => this.toSavedSearchOption(item)));
+        this.savedSearchesLoaded.set(true);
+        this.savedSearchesLoading.set(false);
+      },
+      error: () => {
+        this.savedSearchesLoading.set(false);
+      },
+    });
+  }
+
+  private toSavedSearchOption(item: SavedSearchOption): SavedSearchSelectOption {
+    return {
+      key: item.id,
+      value: item.id,
+      label: item.title,
+      query: item.query,
+    };
   }
 }

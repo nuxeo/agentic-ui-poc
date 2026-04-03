@@ -12,6 +12,8 @@ export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
 export type { DirectoryEntry, L10nDirectoryEntry } from './lib/models/directory.model';
 export type { NuxeoAce, NuxeoAcl } from './lib/models/acl.model';
+export type { SearchQueryParams, GlobalSearchSuggestion, SavedSearchOption } from './lib/services/search.service';
+export type { SearchAggregations, SearchResponse, SearchResultItem } from './lib/models/search.model';
 export type {
   AuthorizedApplication,
   ConnectedAccount,
@@ -20,12 +22,6 @@ export type {
   NuxeoOAuth2Token,
   NuxeoOAuth2TokenList,
 } from './lib/models/oauth2.model';
-export type { SearchQueryParams } from './lib/services/search.service';
-export type {
-  SearchAggregations,
-  SearchResponse,
-  SearchResultItem,
-} from './lib/models/search.model';
 export type {
   NuxeoWorkflow,
   NuxeoWorkflowList,
@@ -46,7 +42,7 @@ export { CURRENT_USERNAME } from './lib/current-user.token';
 // Services
 export { NuxeoApiBase } from './lib/services/nuxeo-api-base';
 export { AssetService } from './lib/services/asset.service';
-export { AssetAggregationService } from './lib/services/asset-aggregation.service';
+export { AssetAggregationService, type AssetQueueItem } from './lib/services/asset-aggregation.service';
 export { DocumentService } from './lib/services/document.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';

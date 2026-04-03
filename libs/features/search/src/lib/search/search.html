@@ -1,4 +1,28 @@
 <div class="results-page">
+  <div class="results-top-actions">
+    @if (hasSavableFilters()) {
+      <button mat-stroked-button type="button" (click)="openSaveAsDialog()">Save As</button>
+    }
+    @if (hasSelectedSavedSearch()) {
+      <button mat-stroked-button type="button" (click)="onSaveSelectedSavedSearch()">Save</button>
+    }
+    @if (hasSelectedSavedSearch()) {
+      <button
+        mat-icon-button
+        type="button"
+        [matMenuTriggerFor]="resultsActionsMenu"
+        aria-label="Results actions"
+      >
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #resultsActionsMenu="matMenu">
+        <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
+        <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
+        <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">Delete</button>
+      </mat-menu>
+    }
+  </div>
+
   <div class="results-toolbar">
     <div class="results-summary">
       @if (resultCount() > 0) {
@@ -63,11 +87,7 @@
     </div>
   }
 
-  @if (error() && !loading()) {
-    <div class="results-error">{{ error() }}</div>
-  }
-
-  @if (!loading() && !error() && viewMode() === 'grid') {
+  @if (!loading() && viewMode() === 'grid') {
     <div class="grid-container">
       <div class="grid-action-bar">
         <div class="grid-actions-left">
@@ -156,11 +176,15 @@
             </div>
           </button>
         }
+
+        @if (resultCount() === 0) {
+          <div class="results-empty results-empty--grid">No documents match the search criteria.</div>
+        }
       </div>
     </div>
   }
 
-  @if (!loading() && !error() && viewMode() === 'table') {
+  @if (!loading() && viewMode() === 'table') {
     <div class="list-wrapper">
       @if (columnPanelOpen()) {
         <button
@@ -265,13 +289,13 @@
         }
 
         @if (resultCount() === 0) {
-          <div class="results-empty">No Documents match the search criteria.</div>
+          <div class="results-empty">No documents match the search criteria.</div>
         }
       </div>
     </div>
   }
 
-  @if (!loading() && !error() && viewMode() === 'list') {
+  @if (!loading() && viewMode() === 'list') {
     <div class="list-action-bar">
       <div class="list-actions-left">
         <mat-checkbox
@@ -361,7 +385,7 @@
       }
 
       @if (resultCount() === 0) {
-        <div class="results-empty">No Documents match the search criteria.</div>
+        <div class="results-empty">No documents match the search criteria.</div>
       }
     </div>
   }

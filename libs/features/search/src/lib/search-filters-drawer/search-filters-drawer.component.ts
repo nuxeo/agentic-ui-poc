@@ -1,10 +1,22 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
-import { SearchAggregationService, SearchService, type AggregateResult, type SearchResultItem } from '@agentic-ui/shared/nuxeo-client';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import {
+  SearchAggregationService,
+  SearchService,
+  type AggregateResult,
+  type SavedSearchOption,
+  type SearchResultItem,
+} from '@agentic-ui/shared/nuxeo-client';
+import { SavedSearchDialogComponent } from '@agentic-ui/shared/ui';
+import { SearchQueueComponent } from '../search-queue/search-queue.component';
 
 interface CountOption {
   key: string;
@@ -13,10 +25,19 @@ interface CountOption {
   count: number;
 }
 
+interface SavedSearchSelectOption {
+  key: string;
+  value: string;
+  label: string;
+  query?: string;
+}
+
+type DrawerViewMode = 'filter' | 'queue';
+
 @Component({
   selector: 'lib-search-filters-drawer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatCheckboxModule, MatDividerModule],
+  imports: [MatIconModule, MatButtonModule, MatCheckboxModule, MatDividerModule, MatTooltipModule, SearchQueueComponent],
   templateUrl: './search-filters-drawer.component.html',
   styleUrl: './search-filters-drawer.component.scss',
 })
@@ -24,8 +45,19 @@ export class SearchFiltersDrawerComponent {
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly activatedRoute = inject(ActivatedRoute);
 
+  readonly viewMode = signal<DrawerViewMode>(this.loadViewModeFromStorage());
+  readonly selectedDocumentId = signal<string>('');
   readonly query = signal('');
+  readonly availableSavedSearches = signal<SavedSearchSelectOption[]>([]);
+  readonly selectedSavedSearch = signal('');
+  readonly savedSearchInput = signal('');
+  readonly secondarySearchInput = signal('');
+  readonly savedSearchOpen = signal(false);
+  readonly savedSearchesLoading = signal(false);
+  readonly savedSearchesLoaded = signal(false);
   readonly expandedFilters = signal<Set<string>>(new Set(['modification-date']));
 
   readonly modificationDateOptions = signal<CountOption[]>([]);
@@ -59,9 +91,12 @@ export class SearchFiltersDrawerComponent {
   readonly selectedTag = signal('');
   readonly tagInput = signal('');
   readonly tagOpen = signal(false);
+  readonly selectedQueueQuickFilters = signal<Set<string>>(new Set());
 
   readonly hasActiveFilters = computed(() =>
+    this.selectedSavedSearch().trim().length > 0 ||
     this.query().trim().length > 0 ||
+    this.secondarySearchInput().trim().length > 0 ||
     this.selectedModificationDates().size > 0 ||
     this.selectedNatures().size > 0 ||
     this.selectedSubjects().size > 0 ||
@@ -71,6 +106,15 @@ export class SearchFiltersDrawerComponent {
     this.selectedCollection().trim().length > 0 ||
     this.selectedTag().trim().length > 0,
   );
+
+  readonly activeFiltersForQueue = computed(() => {
+    const selected = this.selectedQueueQuickFilters();
+    return QUEUE_QUICK_FILTER_OPTIONS.map((option) => ({
+      label: option.label,
+      value: option.value,
+      selected: selected.has(option.value),
+    }));
+  });
 
   constructor() {
     effect(() => {
@@ -88,11 +132,137 @@ export class SearchFiltersDrawerComponent {
       this.coverageOptions.set(this.toFieldOptionsFromResults(items, (item) => item.coverage));
       this.sizeOptions.set(this.toSizeOptionsFromResults(items));
     });
+
+    effect(() => {
+      const fulltext = (this.searchAggregationService.drawerFilters()['ecm_fulltext'] ?? '').trim();
+      this.secondarySearchInput.set(fulltext);
+    });
+
+    this.activatedRoute.parent?.params
+      .pipe(takeUntilDestroyed())
+      .subscribe((params) => {
+        this.selectedDocumentId.set(params['id'] ?? '');
+      });
+
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(),
+      )
+      .subscribe((event) => {
+        const urlParts = event.urlAfterRedirects.split('/');
+        const docIndex = urlParts.indexOf('doc');
+        if (docIndex !== -1 && docIndex + 1 < urlParts.length) {
+          const docId = urlParts[docIndex + 1].split('?')[0]; // Remove query params
+          this.selectedDocumentId.set(docId);
+        } else {
+          this.selectedDocumentId.set('');
+        }
+      });
+
+    this.activatedRoute.queryParamMap
+      .pipe(takeUntilDestroyed())
+      .subscribe((params) => {
+        const quickFilters = params.get('quickFilters') ?? '';
+        this.selectedQueueQuickFilters.set(this.parseQuickFilters(quickFilters));
+      });
+
+    effect(() => {
+      const mode = this.viewMode();
+      localStorage.setItem('search_drawer_view_mode', mode);
+    });
+  }
+
+  switchToQueueView(): void {
+    this.viewMode.set('queue');
+    // Navigate to selected document (or first search result) when entering queue view.
+    const items = this.searchAggregationService.items();
+    const docId = this.selectedDocumentId();
+    const selectedInResults = !!docId && items.some((item) => item.id === docId);
+
+    if (selectedInResults) {
+      void this.router.navigate(['/doc', docId], {
+        queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
+        queryParamsHandling: 'merge',
+      });
+      return;
+    }
+
+    if (items.length > 0) {
+      void this.router.navigate(['/doc', items[0].id], {
+        queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
+        queryParamsHandling: 'merge',
+      });
+    }
+  }
+
+  switchToFilterView(): void {
+    this.viewMode.set('filter');
+    // Navigate back to search/filter view
+    void this.router.navigate(['/search'], {
+      queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  onQueueItemSelected(item: SearchResultItem): void {
+    void this.router.navigate(['/doc', item.id], {
+      queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
+      queryParamsHandling: 'merge',
+    });
+  }
+
+  toggleQueueQuickFilter(value: string): void {
+    const next = new Set(this.selectedQueueQuickFilters());
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+
+    this.selectedQueueQuickFilters.set(next);
+
+    const orderedSelected = QUEUE_QUICK_FILTER_OPTIONS
+      .map((filter) => filter.value)
+      .filter((filterValue) => next.has(filterValue));
+
+    void this.router.navigate(['/search'], {
+      queryParams: { quickFilters: orderedSelected.length > 0 ? orderedSelected.join(',') : null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   onQueryChange(value: string): void {
     this.query.set(value);
     this.updateDrawerFilters();
+  }
+
+  onSecondarySearchInput(value: string): void {
+    this.secondarySearchInput.set(value);
+  }
+
+  onSecondarySearchEnter(): void {
+    this.updateDrawerFilters();
+  }
+
+  openSaveAsDialog(): void {
+    this.dialog.open(SavedSearchDialogComponent, {
+      data: {
+        title: 'Saved Search',
+        placeholder: 'Enter a name for your saved search',
+      },
+    }).afterClosed().subscribe((title) => {
+      const trimmedTitle = title?.trim();
+      if (!trimmedTitle) return;
+
+      this.searchService.saveSavedSearch({
+        title: trimmedTitle,
+        params: this.buildFilters(),
+        pageProviderName: 'default_search',
+      }).subscribe({
+        next: () => {
+          this.savedSearchesLoaded.set(false);
+          this.loadSavedSearchesFromApi();
+        },
+      });
+    });
   }
 
   isExpanded(id: string): boolean {
@@ -181,6 +351,11 @@ export class SearchFiltersDrawerComponent {
     }
   }
 
+  onSavedSearchFocus(): void {
+    this.savedSearchOpen.set(true);
+    this.loadSavedSearchesFromApi();
+  }
+
   onCollectionInput(value: string): void {
     this.collectionInput.set(value);
     this.collectionOpen.set(true);
@@ -208,6 +383,109 @@ export class SearchFiltersDrawerComponent {
     this.onAuthorChange(option.value);
   }
 
+  selectSavedSearch(option: SavedSearchSelectOption): void {
+    this.savedSearchInput.set(option.label);
+    this.selectedSavedSearch.set(option.value);
+    this.savedSearchOpen.set(false);
+    this.searchAggregationService.selectedSavedSearchId.set(option.value);
+    this.searchAggregationService.selectedSavedSearchTitle.set(option.label);
+
+    this.searchService.getSavedSearchById(option.value).subscribe({
+      next: (params) => {
+        this.applySavedSearchParams(params);
+      },
+    });
+  }
+
+  selectDefaultSavedSearch(): void {
+    this.searchAggregationService.selectedSavedSearchId.set('');
+    this.searchAggregationService.selectedSavedSearchTitle.set('');
+    this.resetFilters();
+  }
+
+  private applySavedSearchParams(params: Record<string, string>): void {
+    const get = (key: string) => params[key]?.trim() ?? '';
+    const parseJsonArray = (raw: string): string[] | null => {
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return parsed.map(String).map((v) => v.trim()).filter(Boolean);
+        }
+      } catch {
+        // not JSON
+      }
+      return null;
+    };
+    const getSet = (key: string): Set<string> => {
+      const raw = get(key);
+      if (!raw) return new Set();
+      // Values may be stored as a JSON array string (e.g. '["val1","val2"]') or comma-separated
+      const parsed = parseJsonArray(raw);
+      if (parsed) return new Set(parsed);
+      return new Set(raw.split(',').map((v) => v.trim()).filter(Boolean));
+    };
+    const getScalar = (key: string): string => {
+      const raw = get(key);
+      if (!raw) return '';
+
+      const parsed = parseJsonArray(raw);
+      if (parsed && parsed.length > 0) return parsed[0];
+
+      return raw;
+    };
+    const fallbackSet = (...keys: string[]): Set<string> => {
+      for (const key of keys) {
+        const s = getSet(key);
+        if (s.size > 0) return s;
+      }
+      return new Set();
+    };
+    const fallback = (...keys: string[]): string => {
+      for (const key of keys) {
+        const v = getScalar(key);
+        if (v) return v;
+      }
+      return '';
+    };
+
+    // Support both drawer-style keys and API-style keys from persisted saved searches.
+    this.query.set(fallback('q', 'query'));
+    this.secondarySearchInput.set(fallback('ecm_fulltext', 'ecmFulltext'));
+
+    // Aggregation keys (dc_modified_agg etc.) take priority over URL-style keys (modifiedDate etc.)
+    this.selectedModificationDates.set(fallbackSet('dc_modified_agg', 'modifiedDate'));
+    this.selectedNatures.set(fallbackSet('dc_nature_agg', 'nature'));
+    this.selectedSubjects.set(fallbackSet('dc_subjects_agg', 'subjects'));
+    this.selectedCoverage.set(fallbackSet('dc_coverage_agg', 'coverage'));
+    this.selectedSizes.set(fallbackSet('common_size_agg', 'size'));
+
+    const author = fallback('dc_creator_agg', 'author');
+    this.selectedAuthor.set(author);
+    this.authorInput.set(author);
+
+    const collection = fallback('collection_agg', 'collection');
+    this.selectedCollection.set(collection);
+    this.collectionInput.set(collection);
+
+    const tag = fallback('ecm_tags', 'tag');
+    this.selectedTag.set(tag);
+    this.tagInput.set(tag);
+
+    // Expand filter groups that have active selections so the user can see them
+    this.expandedFilters.update((set) => {
+      const next = new Set(set);
+      if (this.selectedModificationDates().size > 0) next.add('modification-date');
+      if (this.selectedNatures().size > 0) next.add('nature');
+      if (this.selectedSubjects().size > 0) next.add('subjects');
+      if (this.selectedCoverage().size > 0) next.add('coverage');
+      if (this.selectedSizes().size > 0) next.add('size');
+      return next;
+    });
+
+    this.updateDrawerFilters();
+  }
+
   selectCollection(option: CountOption): void {
     this.collectionInput.set(option.label);
     this.collectionOpen.set(false);
@@ -222,6 +500,10 @@ export class SearchFiltersDrawerComponent {
 
   closeAuthorDropdown(): void {
     setTimeout(() => this.authorOpen.set(false), 120);
+  }
+
+  closeSavedSearchDropdown(): void {
+    setTimeout(() => this.savedSearchOpen.set(false), 120);
   }
 
   closeCollectionDropdown(): void {
@@ -296,7 +578,13 @@ export class SearchFiltersDrawerComponent {
   }
 
   resetFilters(): void {
+    this.selectedSavedSearch.set('');
+    this.savedSearchInput.set('');
+    this.savedSearchOpen.set(false);
+    this.searchAggregationService.selectedSavedSearchId.set('');
+    this.searchAggregationService.selectedSavedSearchTitle.set('');
     this.query.set('');
+    this.secondarySearchInput.set('');
     this.selectedModificationDates.set(new Set());
     this.selectedNatures.set(new Set());
     this.selectedSubjects.set(new Set());
@@ -332,6 +620,9 @@ export class SearchFiltersDrawerComponent {
 
     const q = this.query().trim();
     if (q) filters['q'] = q;
+
+    const ecmFulltext = this.secondarySearchInput().trim();
+    if (ecmFulltext) filters['ecm_fulltext'] = ecmFulltext;
 
     const modificationDates = [...this.selectedModificationDates()];
     if (modificationDates.length > 0) filters['modifiedDate'] = modificationDates.join(',');
@@ -379,8 +670,6 @@ export class SearchFiltersDrawerComponent {
   }
 
   private toModifiedDateOptionsFromResults(items: SearchResultItem[]): CountOption[] {
-    if (items.length === 0) return [];
-
     const nowMs = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
 
@@ -637,6 +926,31 @@ export class SearchFiltersDrawerComponent {
     });
   }
 
+  private loadSavedSearchesFromApi(): void {
+    if (this.savedSearchesLoaded() || this.savedSearchesLoading()) return;
+
+    this.savedSearchesLoading.set(true);
+    this.searchService.getSavedSearches('default_search').subscribe({
+      next: (items) => {
+        this.availableSavedSearches.set(items.map((item) => this.toSavedSearchOption(item)));
+        this.savedSearchesLoaded.set(true);
+        this.savedSearchesLoading.set(false);
+      },
+      error: () => {
+        this.savedSearchesLoading.set(false);
+      },
+    });
+  }
+
+  private toSavedSearchOption(item: SavedSearchOption): SavedSearchSelectOption {
+    return {
+      key: item.id,
+      value: item.id,
+      label: item.title,
+      query: item.query,
+    };
+  }
+
   private toggleInSet(set: Set<string>, value: string): Set<string> {
     const next = new Set(set);
     if (next.has(value)) next.delete(value);
@@ -650,6 +964,29 @@ export class SearchFiltersDrawerComponent {
       .replace(/\s+/g, ' ')
       .trim()
       .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  private loadViewModeFromStorage(): DrawerViewMode {
+    const stored = localStorage.getItem('search_drawer_view_mode');
+    return (stored === 'queue' || stored === 'filter') ? stored : 'filter';
+  }
+
+  private toQuickFiltersQueryParam(): string | null {
+    const selected = this.selectedQueueQuickFilters();
+    const orderedSelected = QUEUE_QUICK_FILTER_OPTIONS
+      .map((filter) => filter.value)
+      .filter((filterValue) => selected.has(filterValue));
+    return orderedSelected.length > 0 ? orderedSelected.join(',') : null;
+  }
+
+  private parseQuickFilters(value: string): Set<string> {
+    const allowed = new Set<string>(QUEUE_QUICK_FILTER_OPTIONS.map((f) => f.value));
+    return new Set(
+      value
+        .split(',')
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0 && allowed.has(item)),
+    );
   }
 }
 
@@ -686,3 +1023,9 @@ const SIZE_OPTION_DEFS: Array<{ value: SizeBucketId; label: string }> = [
     label: 'More than 100 MB',
   },
 ];
+
+const QUEUE_QUICK_FILTER_OPTIONS = [
+  { label: 'No Containers', value: 'noFolder' },
+  { label: 'Most Recent', value: 'mostRecent' },
+  { label: 'Validated', value: 'onlyValidated' },
+] as const;
