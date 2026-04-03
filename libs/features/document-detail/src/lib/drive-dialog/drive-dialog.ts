@@ -68,7 +68,7 @@ const DRIVE_PACKAGES: DrivePackage[] = [
             }
           </tbody>
         </table>
-        <button class="close-link" (click)="close()">Close</button>
+        <button type="button" class="close-link" (click)="close()">Close</button>
       }
     </div>
   `,
