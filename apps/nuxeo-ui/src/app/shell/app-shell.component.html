@@ -20,15 +20,9 @@
     }
 
     <sat-platform-nav-user>
-      <sat-platform-nav-user-profile [matMenuTriggerFor]="userMenu">
+      <sat-platform-nav-user-profile (click)="toggleSettingsDrawer()">
         {{ displayName() }}
       </sat-platform-nav-user-profile>
-      <mat-menu #userMenu="matMenu" satPlatformNavUserMenu>
-        <button mat-menu-item type="button">Settings</button>
-        <button mat-menu-item type="button" (click)="signOut()">
-          Sign out
-        </button>
-      </mat-menu>
     </sat-platform-nav-user>
   </sat-platform-nav>
 
@@ -87,6 +81,7 @@
           [activeItem]="activeDrawerItem()"
           (itemSelected)="onDrawerItemSelected($event)"
           (navigateKeepDrawer)="onNavigateKeepDrawer($event)"
+          (signOutSelected)="signOut()"
         />
       </mat-sidenav>
 

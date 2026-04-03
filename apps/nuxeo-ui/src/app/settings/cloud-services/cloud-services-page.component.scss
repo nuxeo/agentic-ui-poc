@@ -1,0 +1,82 @@
+:host {
+  display: block;
+}
+
+.connected-accounts-page {
+  padding: 1.5rem;
+}
+
+.connected-accounts-page__card {
+  width: 100%;
+  padding: 1.5rem;
+  border: 1px solid #e8e8e8;
+  border-radius: 12px;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.connected-accounts-page__title {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: #1a1a2e;
+}
+
+.connected-accounts-page__state {
+  padding: 1rem;
+  border-radius: 8px;
+  background: #f8f9fc;
+  color: #555;
+}
+
+.connected-accounts-page__state--error {
+  background: #fff3f2;
+  color: #b42318;
+}
+
+.connected-accounts-table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.connected-accounts-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.connected-accounts-table th,
+.connected-accounts-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid #e8e8e8;
+  text-align: left;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.connected-accounts-table th {
+  font-weight: 400;
+  color: #1a1a2e;
+  background: #f8f9fc;
+}
+
+.connected-accounts-table__empty {
+  color: #666;
+  vertical-align: middle;
+  padding: 0;
+}
+
+.connected-accounts-table__empty-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 88px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.connected-accounts-table th:last-child,
+.connected-accounts-table td:last-child {
+  width: 96px;
+}
