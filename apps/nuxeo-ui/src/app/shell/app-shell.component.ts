@@ -395,7 +395,8 @@ export class AppShellComponent {
     if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) return apiMessage;
 
     const defaultMessage = maybeObj?.message;
-    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0) return defaultMessage;
+    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0)
+      return defaultMessage;
 
     return 'Failed to delete selected documents. Please try again.';
   }

@@ -12,8 +12,16 @@ export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
 export type { DirectoryEntry, L10nDirectoryEntry } from './lib/models/directory.model';
 export type { NuxeoAce, NuxeoAcl } from './lib/models/acl.model';
-export type { SearchQueryParams, GlobalSearchSuggestion, SavedSearchOption } from './lib/services/search.service';
-export type { SearchAggregations, SearchResponse, SearchResultItem } from './lib/models/search.model';
+export type {
+  SearchQueryParams,
+  GlobalSearchSuggestion,
+  SavedSearchOption,
+} from './lib/services/search.service';
+export type {
+  SearchAggregations,
+  SearchResponse,
+  SearchResultItem,
+} from './lib/models/search.model';
 export type {
   AuthorizedApplication,
   ConnectedAccount,
@@ -38,11 +46,20 @@ export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 // Config
 export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
 export { CURRENT_USERNAME } from './lib/current-user.token';
+export type { NuxeoSamlLoginEndpoint } from './lib/saml-login.config';
+export {
+  NUXEO_SAML_LOGIN_ENDPOINTS,
+  NUXEO_SSO_POST_LOGIN_PATH,
+  NUXEO_SSO_RETURN_QUERY_PARAM,
+} from './lib/saml-login.config';
 
 // Services
 export { NuxeoApiBase } from './lib/services/nuxeo-api-base';
 export { AssetService } from './lib/services/asset.service';
-export { AssetAggregationService, type AssetQueueItem } from './lib/services/asset-aggregation.service';
+export {
+  AssetAggregationService,
+  type AssetQueueItem,
+} from './lib/services/asset-aggregation.service';
 export { DocumentService } from './lib/services/document.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
@@ -60,12 +77,19 @@ export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
 export { TagService } from './lib/services/tag.service';
+export { NuxeoDriveService } from './lib/services/nuxeo-drive.service';
+export { ARenderService } from './lib/services/arender.service';
+export { ARENDER_CONFIG, type ARenderConfig } from './lib/arender.config';
+export {
+  SettingsService,
+  type LocalPermissionRow,
+  type SynchronizationRootRow,
+} from './lib/services/settings.service';
 export {
   AdministrationService,
   FALLBACK_DIRECTORY_NAMES,
 } from './lib/services/administration.service';
 export { PrincipalPermissionsService } from './lib/services/principal-permissions.service';
-export { SettingsService, type LocalPermissionRow, type SynchronizationRootRow } from './lib/services/settings.service';
 export {
   TrashService,
   type TrashSearchParams,

@@ -14,6 +14,7 @@
   overflow: hidden;
 }
 
+/* ─── Content area ─── */
 .viewer-content {
   flex: 1;
   display: flex;
@@ -23,6 +24,11 @@
   overflow: auto;
   min-height: 0;
   background: #fafafa;
+
+  &.fit-real {
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
 }
 
 .viewer-loading {
@@ -32,6 +38,7 @@
   flex: 1;
 }
 
+/* ─── Image ─── */
 .viewer-image {
   max-width: 100%;
   max-height: 100%;
@@ -40,6 +47,20 @@
   box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
   transition: transform 0.2s ease;
   transform-origin: center center;
+
+  &.fit-real {
+    max-width: none;
+    max-height: none;
+  }
+}
+
+/* ─── Video ─── */
+.viewer-video-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .viewer-video {
@@ -47,8 +68,10 @@
   max-height: 100%;
   border-radius: 4px;
   box-shadow: 0 2px 12px rgb(0 0 0 / 10%);
+  background: #000;
 }
 
+/* ─── Audio ─── */
 .viewer-audio-wrapper {
   display: flex;
   flex-direction: column;
@@ -67,6 +90,151 @@
   min-width: 320px;
 }
 
+/* ─── Markdown ─── */
+.viewer-markdown-content {
+  width: 100%;
+  max-width: 800px;
+  padding: 32px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
+  font-size: 15px;
+  line-height: 1.7;
+  color: #333;
+  overflow-y: auto;
+  align-self: flex-start;
+}
+
+:host ::ng-deep .viewer-markdown-content {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin-top: 24px;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+
+  h1 {
+    font-size: 1.8em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 6px;
+  }
+
+  p {
+    margin: 0 0 16px;
+  }
+
+  code {
+    background: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+  }
+
+  pre {
+    background: #282c34;
+    color: #abb2bf;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.9em;
+    line-height: 1.5;
+
+    code {
+      background: transparent;
+      padding: 0;
+      color: inherit;
+    }
+  }
+
+  blockquote {
+    border-left: 4px solid #ddd;
+    margin: 0 0 16px;
+    padding: 8px 16px;
+    color: #666;
+    background: #f9f9f9;
+    border-radius: 0 4px 4px 0;
+  }
+
+  ul,
+  ol {
+    padding-left: 24px;
+    margin-bottom: 16px;
+  }
+
+  img {
+    max-width: 100%;
+    border-radius: 4px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  th,
+  td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  th {
+    background: #f5f5f5;
+    font-weight: 600;
+  }
+
+  a {
+    color: #0073e6;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 24px 0;
+  }
+}
+
+/* ─── Preformatted text (plain, xml) ─── */
+.viewer-preformatted {
+  width: 100%;
+  max-width: 900px;
+  padding: 24px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #333;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  align-self: flex-start;
+
+  &.viewer-xml {
+    color: #0d47a1;
+  }
+}
+
+/* ─── Iframe (PDF, HTML, preview, ARender) ─── */
 .viewer-iframe {
   width: 100%;
   height: 100%;
@@ -74,6 +242,16 @@
   border-radius: 4px;
 }
 
+.viewer-html-frame {
+  background: #fff;
+}
+
+.arender-frame {
+  border-radius: 0;
+  background: #fff;
+}
+
+/* ─── Placeholder ─── */
 .viewer-placeholder {
   display: flex;
   flex-direction: column;
@@ -91,8 +269,58 @@
     font-size: 14px;
     margin: 0;
   }
+
+  .mime-label {
+    font-size: 12px;
+    color: #bbb;
+  }
 }
 
+/* ─── Storyboard ─── */
+.viewer-storyboard {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  background: #1a1a1a;
+  flex-shrink: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #1a1a1a;
+}
+
+.storyboard-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  padding: 4px;
+  background: none;
+  transition: border-color 0.15s;
+  flex-shrink: 0;
+
+  &:hover {
+    border-color: #0073e6;
+  }
+}
+
+.storyboard-thumb {
+  width: 120px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 2px;
+  background: #333;
+}
+
+.storyboard-time {
+  font-size: 11px;
+  color: #aaa;
+  font-family: monospace;
+}
+
+/* ─── Image toolbar ─── */
 .viewer-toolbar {
   display: flex;
   align-items: center;
@@ -117,6 +345,7 @@
   }
 }
 
+/* ─── Footer ─── */
 .viewer-footer {
   display: flex;
   align-items: center;
@@ -153,5 +382,111 @@
 
   button {
     color: #555;
+
+    &.active-toggle {
+      color: #0073e6;
+    }
+  }
+}
+
+/* ─── Picture metadata cards ─── */
+.picture-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0;
+  border-top: 1px solid #e0e0e0;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.picture-card {
+  padding: 16px 20px;
+  border-right: 1px solid #eee;
+
+  &:last-child {
+    border-right: none;
+  }
+}
+
+.picture-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.picture-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #777;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.info-value {
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+}
+
+.format-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.format-name {
+  font-size: 12px;
+  color: #333;
+  font-weight: 500;
+  min-width: 100px;
+  white-space: nowrap;
+}
+
+.format-details {
+  font-size: 12px;
+  color: #666;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.format-size {
+  color: #999;
+}
+
+.format-type {
+  color: #999;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.format-download-btn {
+  width: 28px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+    color: #666;
   }
 }
