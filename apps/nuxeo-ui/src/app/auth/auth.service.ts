@@ -324,7 +324,7 @@ export class AuthService {
   }
 
   /**
-   * Refreshes `/me` so ` stays accurate (e.g. after restoring an older session).
+   * Refreshes `/me` so `isAdministrator` stays accurate (e.g. after restoring an older session).
    * No-op when not authenticated.
    */
   refreshCurrentUser(): Observable<void> {

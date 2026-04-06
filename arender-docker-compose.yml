@@ -10,8 +10,10 @@ services:
   nuxeo-auth-proxy:
     image: nginx:alpine
     container_name: nuxeo-auth-proxy
+    environment:
+      - "NUXEO_BASIC_AUTH=${NUXEO_BASIC_AUTH}"
     volumes:
-      - ./nginx-arender-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx-arender-proxy.conf:/etc/nginx/templates/default.conf.template:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

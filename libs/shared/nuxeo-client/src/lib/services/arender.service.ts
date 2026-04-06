@@ -1,13 +1,11 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, catchError, of } from 'rxjs';
-import { NuxeoApiBase } from './nuxeo-api-base';
 import { ARENDER_CONFIG } from '../arender.config';
 import { CURRENT_USERNAME } from '../current-user.token';
 
 @Injectable({ providedIn: 'root' })
 export class ARenderService {
-  private readonly api = inject(NuxeoApiBase);
   private readonly http = inject(HttpClient);
   private readonly cfg = inject(ARENDER_CONFIG);
   private readonly currentUsername = inject(CURRENT_USERNAME);

@@ -42,6 +42,7 @@ import {
   ARenderService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
+import DOMPurify from 'dompurify';
 import { forkJoin, Observable } from 'rxjs';
 import {
   ShareDialogComponent,
@@ -665,7 +666,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (noteText !== undefined && noteText !== null) {
       this.noteContent.set(noteText);
       if (noteMime === 'text/markdown') {
-        this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(this.renderMarkdown(noteText)));
+        const rawHtml = this.renderMarkdown(noteText);
+        const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
+        this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
       }
       return;
     }
@@ -677,9 +680,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       const content = fullHd['content'] as Record<string, unknown> | undefined;
       const dataUrl = (content?.['data'] as string) ?? '';
       if (dataUrl) {
+        const requestedDocUid = doc.uid;
         this.http.get(dataUrl, { responseType: 'blob' }).subscribe({
-          next: (blob) => this.setBlobUrl(blob),
-          error: () => this.loadFallbackBlob(doc),
+          next: (blob) => {
+            if (requestedDocUid !== this.docUid) return;
+            this.setBlobUrl(blob);
+          },
+          error: () => {
+            if (requestedDocUid !== this.docUid) return;
+            this.loadFallbackBlob(doc);
+          },
         });
         return;
       }
@@ -884,7 +894,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
       .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
       .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
       .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
@@ -1462,14 +1472,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.arenderUrl.set(null);
       return;
     }
-    // Match nuxeo-arender-page: clear iframe target before fetching a new previewer URL.
+    const requestedDocUid = doc.uid;
     this.arenderUrl.set(null);
     this.arenderService.getPreviewerUrl(doc.uid, xpath).subscribe({
       next: (url) => {
+        if (requestedDocUid !== this.docUid) return;
         this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
         this.arenderReloadId.update((n) => n + 1);
       },
       error: () => {
+        if (requestedDocUid !== this.docUid) return;
         this.arenderUrl.set(null);
       },
     });

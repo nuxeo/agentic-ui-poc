@@ -72,12 +72,18 @@ docker network create nuxeo-net
 
 ## Step 3: Configure Nuxeo Credentials
 
-The nginx auth-proxy injects Basic Auth when ARender fetches blobs from Nuxeo. If your Nuxeo credentials are **not** `Administrator:Administrator`, update `nginx-arender-proxy.conf`:
+The nginx auth-proxy injects Basic Auth when ARender fetches blobs from Nuxeo. Credentials are loaded from the `NUXEO_BASIC_AUTH` variable in `.env.arender` — **never hardcoded in config files**.
 
-```nginx
-# Generate your base64 credentials:
-#   echo -n "username:password" | base64
-proxy_set_header Authorization "Basic <your-base64-credentials>";
+The default value in `.env.arender` is `QWRtaW5pc3RyYXRvcjpBZG1pbmlzdHJhdG9y` (base64 for `Administrator:Administrator`). To use different credentials:
+
+```bash
+echo -n "username:password" | base64
+```
+
+Then update `.env.arender`:
+
+```
+NUXEO_BASIC_AUTH=<your-base64-output>
 ```
 
 For example, for `john:s3cret`:
@@ -87,11 +93,7 @@ echo -n "john:s3cret" | base64
 # Output: am9objpzM2NyZXQ=
 ```
 
-Then set:
-
-```nginx
-proxy_set_header Authorization "Basic am9objpzM2NyZXQ=";
-```
+Then set `NUXEO_BASIC_AUTH=am9objpzM2NyZXQ=` in `.env.arender`.
 
 ## Step 4: Verify Nuxeo Port
 
