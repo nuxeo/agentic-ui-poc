@@ -1,7 +1,7 @@
 import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -156,10 +156,6 @@ export class AppShellComponent {
           this.globalSearchError.set(null);
 
           return this.searchService.suggestFromSuggestersLauncher(term).pipe(
-            catchError(() => {
-              this.globalSearchError.set('Failed to load suggestions.');
-              return of<GlobalSearchSuggestion[]>([]);
-            }),
             finalize(() => this.globalSearchLoading.set(false)),
           );
         }),
