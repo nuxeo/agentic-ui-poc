@@ -300,7 +300,7 @@
   font-size: 12px;
   font-weight: 500;
   background: var(--mat-sys-primary-container);
-  color: #3949ab;
+  color: var(--mat-sys-on-primary-container);
   text-transform: capitalize;
 }
 
@@ -372,7 +372,7 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--mat-sys-primary);
-  background: #fff;
+  background: var(--mat-sys-surface);
   cursor: pointer;
 
   .version-arrow {
@@ -383,7 +383,7 @@
   }
 
   &:hover {
-    background: #f5f5ff;
+    background: color-mix(in srgb, var(--mat-sys-primary) 8%, var(--mat-sys-surface));
   }
 }
 
@@ -640,7 +640,7 @@
 
   &:hover {
     border-color: var(--mat-sys-primary);
-    background: #f9f9ff;
+    background: var(--mat-sys-surface-container-low);
   }
 }
 
@@ -658,7 +658,7 @@
   padding: 4px 10px;
   border-radius: 16px;
   background: var(--mat-sys-primary-container);
-  color: #3f51b5;
+  color: var(--mat-sys-on-primary-container);
   font-size: 12px;
   font-weight: 500;
   margin: 2px 4px 2px 0;
@@ -811,7 +811,7 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
-  color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary-container);
   background: var(--mat-sys-primary-container);
   text-transform: capitalize;
 }
@@ -1075,7 +1075,7 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary-container);
   background: var(--mat-sys-primary-container);
 }
 

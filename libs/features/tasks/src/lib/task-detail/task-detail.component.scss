@@ -48,7 +48,7 @@
   display: inline-block;
   padding: 0.15rem 0.6rem;
   background: var(--mat-sys-primary-container);
-  color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary-container);
   border-radius: 12px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -148,7 +148,7 @@
   display: inline-block;
   padding: 0.15rem 0.5rem;
   background: var(--mat-sys-primary-container);
-  color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary-container);
   border-radius: 10px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -413,7 +413,7 @@
   display: inline-block;
   padding: 0.15rem 0.45rem;
   background: var(--mat-sys-primary-container);
-  color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary-container);
   border-radius: 8px;
   font-size: 0.78rem;
   margin-left: 0.2rem;

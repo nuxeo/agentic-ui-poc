@@ -113,7 +113,7 @@ import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-c
         align-items: center;
         gap: 12px;
         padding: 16px 0;
-        color: #666;
+        color: var(--mat-sys-on-surface-variant);
         font-size: 13px;
       }
 
@@ -127,7 +127,7 @@ import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-c
         background: var(--mat-sys-primary-container);
         cursor: pointer;
         font-size: 13px;
-        color: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary-container);
         font-weight: 500;
         transition: background 0.15s;
 
@@ -144,7 +144,7 @@ import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-c
           font-size: 20px;
           width: 20px;
           height: 20px;
-          color: var(--mat-sys-primary);
+          color: var(--mat-sys-on-primary-container);
         }
       }
 
