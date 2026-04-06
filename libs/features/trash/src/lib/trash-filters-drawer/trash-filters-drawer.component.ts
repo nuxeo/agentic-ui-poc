@@ -6,12 +6,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
-import { catchError, filter, finalize, switchMap } from 'rxjs/operators';
-
-import { SaveSearchDialogComponent } from '../save-search-dialog/save-search-dialog.component';
+import { catchError } from 'rxjs/operators';
 
 import {
   TrashFilterService,
@@ -53,8 +49,6 @@ const SIZE_LABELS: Record<string, string> = {
     MatButtonModule,
     MatCheckboxModule,
     MatDividerModule,
-    MatDialogModule,
-    MatSnackBarModule,
     MatTooltipModule,
   ],
   templateUrl: './trash-filters-drawer.component.html',
@@ -62,8 +56,6 @@ const SIZE_LABELS: Record<string, string> = {
 })
 export class TrashFiltersDrawerComponent implements OnInit {
   private readonly router = inject(Router);
-  private readonly dialog = inject(MatDialog);
-  private readonly snackBar = inject(MatSnackBar);
   readonly trashFilterService = inject(TrashFilterService);
   private readonly trashService = inject(TrashService);
   private readonly detailService = inject(DocumentDetailService);
@@ -88,7 +80,6 @@ export class TrashFiltersDrawerComponent implements OnInit {
   readonly savedFilterDropdownOpen = signal(false);
   readonly savedFilterSearch = signal('');
   readonly savedFilters = signal<SavedSearch[]>([]);
-  readonly saving = signal(false);
 
   readonly filteredSavedFilters = computed(() => {
     const q = this.savedFilterSearch().toLowerCase();
@@ -320,70 +311,6 @@ export class TrashFiltersDrawerComponent implements OnInit {
 
   toggleSizeExpanded(): void {
     this.sizeExpanded.update((v) => !v);
-  }
-
-  saveCurrentSearch(): void {
-    const dialogRef = this.dialog.open(SaveSearchDialogComponent, {
-      width: '480px',
-      autoFocus: true,
-    });
-
-    dialogRef
-      .afterClosed()
-      .pipe(
-        filter((name): name is string => !!name?.trim()),
-        switchMap((name) => {
-          this.saving.set(true);
-          return this.trashService.saveSearch(name.trim(), this.buildFilterParams()).pipe(
-            finalize(() => this.saving.set(false)),
-            catchError(() => {
-              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
-              return of(null);
-            }),
-          );
-        }),
-      )
-      .subscribe((result) => {
-        if (!result) return;
-        this.trashFilterService.activeSavedFilterUid.set(result.uid);
-        this.trashFilterService.activeSavedFilterTitle.set(result.title);
-        this.snackBar.open(`Search "${result.title}" saved.`, 'OK', { duration: 3000 });
-        this.loadSavedSearches();
-      });
-  }
-
-  private buildFilterParams(): Record<string, unknown> {
-    const params: Record<string, unknown> = {};
-    if (this.fullText()) params['ecm_fulltext'] = this.fullText();
-    if (this.pathInput() && this.pathInput() !== '/') params['ecm_path'] = this.pathInput();
-    if (this.authorInput()) params['dc_creator'] = this.authorInput();
-    const sizes = [...this.selectedSizes()];
-    if (sizes.length > 0) params['common_size'] = sizes;
-    return params;
-  }
-
-  saveExistingSearch(): void {
-    const uid = this.trashFilterService.activeSavedFilterUid();
-    const title = this.trashFilterService.activeSavedFilterTitle();
-    if (!uid || !title) return;
-
-    this.saving.set(true);
-    const params = this.buildFilterParams();
-
-    this.trashService
-      .updateSearch(uid, title, params)
-      .pipe(
-        finalize(() => this.saving.set(false)),
-        catchError(() => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
-          return of(null);
-        }),
-      )
-      .subscribe((result) => {
-        if (!result) return;
-        this.snackBar.open(`Search "${title}" saved.`, 'OK', { duration: 3000 });
-        this.loadSavedSearches();
-      });
   }
 
   resetFilters(): void {
