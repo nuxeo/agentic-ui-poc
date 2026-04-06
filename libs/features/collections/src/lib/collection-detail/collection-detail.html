@@ -4,7 +4,9 @@
     <div class="header-left">
       <mat-icon class="header-icon">collections_bookmark</mat-icon>
       <div class="header-info">
-        <h1 class="header-title">{{ collection()?.title ?? 'Collection' }}</h1>
+        <div class="header-title" role="heading" aria-level="1">
+          {{ collection()?.title ?? 'Collection' }}
+        </div>
         @if (breadcrumbPath()) {
           <span class="header-path">{{ breadcrumbPath() }} &bull; {{ creator() }}</span>
         }
@@ -148,7 +150,9 @@
         <!-- Permissions defined locally -->
         <section class="perm-section">
           <div class="perm-section-header">
-            <h3 class="perm-section-title">Permissions defined locally</h3>
+            <div class="perm-section-title" role="heading" aria-level="3">
+              Permissions defined locally
+            </div>
             <button mat-button color="primary" class="perm-action-btn" (click)="addPermission()">
               New
             </button>
@@ -201,7 +205,9 @@
         <!-- Permissions inherited from upper levels -->
         <section class="perm-section">
           <div class="perm-section-header">
-            <h3 class="perm-section-title">Permissions inherited from upper levels</h3>
+            <div class="perm-section-title" role="heading" aria-level="3">
+              Permissions inherited from upper levels
+            </div>
             <button
               mat-button
               color="primary"
@@ -254,7 +260,9 @@
         <!-- Permissions Assigned to External Users -->
         <section class="perm-section">
           <div class="perm-section-header">
-            <h3 class="perm-section-title">Permissions Assigned to External Users</h3>
+            <div class="perm-section-title" role="heading" aria-level="3">
+              Permissions Assigned to External Users
+            </div>
             <button
               mat-button
               color="primary"

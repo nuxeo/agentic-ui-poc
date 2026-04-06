@@ -1,8 +1,8 @@
 <section class="nuxeo-drive-page">
-  <h2 class="nuxeo-drive-card__title">{{ title }}</h2>
+  <div class="nuxeo-drive-card__title" role="heading" aria-level="2">{{ title }}</div>
 
   <article class="nuxeo-drive-card">
-    <h3 class="nuxeo-drive-card__section-title">Packages</h3>
+    <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">Packages</div>
     <div class="nuxeo-drive-card__table-wrapper">
       <table class="nuxeo-drive-card__table">
         <thead>
@@ -57,7 +57,9 @@
   </article>
 
   <article class="nuxeo-drive-card">
-    <h3 class="nuxeo-drive-card__section-title">Synchronization Roots</h3>
+    <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">
+      Synchronization Roots
+    </div>
     <div class="nuxeo-drive-card__table-wrapper">
       <table class="nuxeo-drive-card__table">
         <thead>
@@ -71,13 +73,17 @@
           @if (synchronizationRootsLoading()) {
             <tr>
               <td colspan="3" class="nuxeo-drive-card__table-empty">
-                <div class="nuxeo-drive-card__table-empty-content">Loading synchronization roots…</div>
+                <div class="nuxeo-drive-card__table-empty-content">
+                  Loading synchronization roots…
+                </div>
               </td>
             </tr>
           } @else if (synchronizationRoots().length === 0) {
             <tr>
               <td colspan="3" class="nuxeo-drive-card__table-empty">
-                <div class="nuxeo-drive-card__table-empty-content">You currently don't have any synchronization roots</div>
+                <div class="nuxeo-drive-card__table-empty-content">
+                  You currently don't have any synchronization roots
+                </div>
               </td>
             </tr>
           } @else {
@@ -105,7 +111,7 @@
   </article>
 
   <article class="nuxeo-drive-card">
-    <h3 class="nuxeo-drive-card__section-title">Tokens</h3>
+    <div class="nuxeo-drive-card__section-title" role="heading" aria-level="3">Tokens</div>
     <div class="nuxeo-drive-card__table-wrapper">
       <table class="nuxeo-drive-card__table">
         <thead>
@@ -121,7 +127,9 @@
         <tbody>
           <tr>
             <td colspan="6" class="nuxeo-drive-card__table-empty">
-              <div class="nuxeo-drive-card__table-empty-content">You currently don't have any tokens</div>
+              <div class="nuxeo-drive-card__table-empty-content">
+                You currently don't have any tokens
+              </div>
             </td>
           </tr>
         </tbody>

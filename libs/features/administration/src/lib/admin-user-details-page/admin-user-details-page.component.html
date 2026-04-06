@@ -18,7 +18,7 @@
             <mat-icon>person</mat-icon>
           </div>
           <div class="ud-profile__text">
-            <h1 class="ud-title">{{ u.id }}</h1>
+            <div class="ud-title" role="heading" aria-level="1">{{ u.id }}</div>
             <p class="ud-sub">{{ u.properties.firstName }} {{ u.properties.lastName }}</p>
           </div>
         </div>
@@ -44,7 +44,7 @@
 
       <section class="ud-card mat-elevation-z1">
         <header class="ud-section-head ud-section-head--row">
-          <h2>Groups</h2>
+          <div class="ud-section-heading" role="heading" aria-level="2">Groups</div>
           <button type="button" mat-stroked-button color="primary" (click)="openEdit()">
             <mat-icon>add</mat-icon>
             Add To Group
@@ -87,80 +87,20 @@
 
       <section class="ud-card mat-elevation-z1">
         <header class="ud-section-head">
-          <h2>Local Permissions</h2>
+          <div class="ud-section-heading" role="heading" aria-level="2">Local Permissions</div>
         </header>
         @if (localPermLoading()) {
           <div class="ud-center"><mat-spinner diameter="32" /></div>
         } @else if (localPerm()) {
           @if (localPerm(); as lp) {
-          <table mat-table [dataSource]="lp.rows" class="ud-table ud-perm-table">
-            <ng-container matColumnDef="on">
-              <th mat-header-cell *matHeaderCellDef>On</th>
-              <td mat-cell *matCellDef="let row">
-                <div class="ud-on">
-                  <a class="ud-link" [routerLink]="['/doc', row.documentUid]">{{ row.documentTitle }}</a>
-                  <div class="ud-path">{{ row.documentPath }}</div>
-                </div>
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="right">
-              <th mat-header-cell *matHeaderCellDef>Right</th>
-              <td mat-cell *matCellDef="let row">{{ row.permission }}</td>
-            </ng-container>
-            <ng-container matColumnDef="timeFrame">
-              <th mat-header-cell *matHeaderCellDef>Time Frame</th>
-              <td mat-cell *matCellDef="let row">{{ timeFrameLabel(row) }}</td>
-            </ng-container>
-            <ng-container matColumnDef="grantedBy">
-              <th mat-header-cell *matHeaderCellDef>Granted by</th>
-              <td mat-cell *matCellDef="let row">{{ row.grantedBy ?? '—' }}</td>
-            </ng-container>
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef></th>
-              <td mat-cell *matCellDef="let row">
-                <button
-                  type="button"
-                  mat-icon-button
-                  (click)="removePermission(row)"
-                  aria-label="Remove permission"
-                  matTooltip="Remove permission"
-                >
-                  <mat-icon>delete_outline</mat-icon>
-                </button>
-              </td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="permColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: permColumns"></tr>
-          </table>
-          @if (lp.rows.length === 0) {
-            <p class="ud-empty">No local permissions.</p>
-          }
-          <mat-paginator
-            [length]="lp.totalDocuments"
-            [pageSize]="permPageSize"
-            [pageIndex]="localPageIndex()"
-            [hidePageSize]="true"
-            (page)="onLocalPermPage($event)"
-          />
-          }
-        }
-      </section>
-
-      @for (g of groupInfo(); track g.id) {
-        <section class="ud-card mat-elevation-z1">
-          <header class="ud-section-head">
-            <h2>{{ g.label }} permissions</h2>
-          </header>
-          @if (isGroupPermLoading(g.id)) {
-            <div class="ud-center"><mat-spinner diameter="32" /></div>
-          } @else if (groupPermPage(g.id)) {
-            @if (groupPermPage(g.id); as gp) {
-            <table mat-table [dataSource]="gp.rows" class="ud-table ud-perm-table">
+            <table mat-table [dataSource]="lp.rows" class="ud-table ud-perm-table">
               <ng-container matColumnDef="on">
                 <th mat-header-cell *matHeaderCellDef>On</th>
                 <td mat-cell *matCellDef="let row">
                   <div class="ud-on">
-                    <a class="ud-link" [routerLink]="['/doc', row.documentUid]">{{ row.documentTitle }}</a>
+                    <a class="ud-link" [routerLink]="['/doc', row.documentUid]">{{
+                      row.documentTitle
+                    }}</a>
                     <div class="ud-path">{{ row.documentPath }}</div>
                   </div>
                 </td>
@@ -194,16 +134,82 @@
               <tr mat-header-row *matHeaderRowDef="permColumns"></tr>
               <tr mat-row *matRowDef="let row; columns: permColumns"></tr>
             </table>
-            @if (gp.rows.length === 0) {
-              <p class="ud-empty">{{ g.label }} does not have permissions.</p>
+            @if (lp.rows.length === 0) {
+              <p class="ud-empty">No local permissions.</p>
             }
             <mat-paginator
-              [length]="gp.totalDocuments"
+              [length]="lp.totalDocuments"
               [pageSize]="permPageSize"
-              [pageIndex]="gp.currentPageIndex"
+              [pageIndex]="localPageIndex()"
               [hidePageSize]="true"
-              (page)="onGroupPermPage(g.id, $event)"
+              (page)="onLocalPermPage($event)"
             />
+          }
+        }
+      </section>
+
+      @for (g of groupInfo(); track g.id) {
+        <section class="ud-card mat-elevation-z1">
+          <header class="ud-section-head">
+            <div class="ud-section-heading" role="heading" aria-level="2">
+              {{ g.label }} permissions
+            </div>
+          </header>
+          @if (isGroupPermLoading(g.id)) {
+            <div class="ud-center"><mat-spinner diameter="32" /></div>
+          } @else if (groupPermPage(g.id)) {
+            @if (groupPermPage(g.id); as gp) {
+              <table mat-table [dataSource]="gp.rows" class="ud-table ud-perm-table">
+                <ng-container matColumnDef="on">
+                  <th mat-header-cell *matHeaderCellDef>On</th>
+                  <td mat-cell *matCellDef="let row">
+                    <div class="ud-on">
+                      <a class="ud-link" [routerLink]="['/doc', row.documentUid]">{{
+                        row.documentTitle
+                      }}</a>
+                      <div class="ud-path">{{ row.documentPath }}</div>
+                    </div>
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="right">
+                  <th mat-header-cell *matHeaderCellDef>Right</th>
+                  <td mat-cell *matCellDef="let row">{{ row.permission }}</td>
+                </ng-container>
+                <ng-container matColumnDef="timeFrame">
+                  <th mat-header-cell *matHeaderCellDef>Time Frame</th>
+                  <td mat-cell *matCellDef="let row">{{ timeFrameLabel(row) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="grantedBy">
+                  <th mat-header-cell *matHeaderCellDef>Granted by</th>
+                  <td mat-cell *matCellDef="let row">{{ row.grantedBy ?? '—' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef></th>
+                  <td mat-cell *matCellDef="let row">
+                    <button
+                      type="button"
+                      mat-icon-button
+                      (click)="removePermission(row)"
+                      aria-label="Remove permission"
+                      matTooltip="Remove permission"
+                    >
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="permColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: permColumns"></tr>
+              </table>
+              @if (gp.rows.length === 0) {
+                <p class="ud-empty">{{ g.label }} does not have permissions.</p>
+              }
+              <mat-paginator
+                [length]="gp.totalDocuments"
+                [pageSize]="permPageSize"
+                [pageIndex]="gp.currentPageIndex"
+                [hidePageSize]="true"
+                (page)="onGroupPermPage(g.id, $event)"
+              />
             }
           }
         </section>

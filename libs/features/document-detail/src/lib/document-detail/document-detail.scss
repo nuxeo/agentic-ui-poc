@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: #f5f6fa;
+  background: var(--mat-sys-surface-container-lowest);
 }
 
 // Loading / Error
@@ -56,7 +56,7 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -207,7 +207,7 @@
     flex: 1;
     font-size: 14px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--mat-sys-on-surface);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -238,7 +238,7 @@
   }
 
   &--active {
-    color: #5c6bc0;
+    color: var(--mat-sys-primary);
 
     &::after {
       content: '';
@@ -247,7 +247,7 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: #5c6bc0;
+      background: var(--mat-sys-primary);
     }
   }
 }
@@ -299,8 +299,8 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
-  background: #e8eaf6;
-  color: #3949ab;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
   text-transform: capitalize;
 }
 
@@ -367,23 +367,23 @@
   align-items: center;
   gap: 4px;
   padding: 6px 12px;
-  border: 1px solid #5c6bc0;
+  border: 1px solid var(--mat-sys-primary);
   border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
-  color: #5c6bc0;
-  background: #fff;
+  color: var(--mat-sys-primary);
+  background: var(--mat-sys-surface);
   cursor: pointer;
 
   .version-arrow {
     font-size: 18px;
     width: 18px;
     height: 18px;
-    color: #5c6bc0;
+    color: var(--mat-sys-primary);
   }
 
   &:hover {
-    background: #f5f5ff;
+    background: color-mix(in srgb, var(--mat-sys-primary) 8%, var(--mat-sys-surface));
   }
 }
 
@@ -429,7 +429,7 @@
   }
 
   &:hover {
-    background: #f5f6fa;
+    background: var(--mat-sys-surface-container-lowest);
   }
 
   &--current {
@@ -507,7 +507,7 @@
 
 .prop-value {
   font-size: 13px;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
   line-height: 1.4;
   word-break: break-word;
 
@@ -639,14 +639,14 @@
     background 0.15s;
 
   &:hover {
-    border-color: #5c6bc0;
-    background: #f9f9ff;
+    border-color: var(--mat-sys-primary);
+    background: var(--mat-sys-surface-container-low);
   }
 }
 
 .upload-link {
   font-size: 13px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -657,8 +657,8 @@
   gap: 4px;
   padding: 4px 10px;
   border-radius: 16px;
-  background: #e8eaf6;
-  color: #3f51b5;
+  background: var(--mat-sys-primary-container);
+  color: var(--mat-sys-on-primary-container);
   font-size: 12px;
   font-weight: 500;
   margin: 2px 4px 2px 0;
@@ -811,8 +811,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
-  color: #5c6bc0;
-  background: #e8eaf6;
+  color: var(--mat-sys-on-primary-container);
+  background: var(--mat-sys-primary-container);
   text-transform: capitalize;
 }
 
@@ -852,7 +852,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
 }
 
 .perm-action-btn {
@@ -964,7 +964,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
 }
 
 .publish-btn {
@@ -986,7 +986,7 @@
   .publish-info-accent {
     width: 3px;
     min-height: 100%;
-    background: #5c6bc0;
+    background: var(--mat-sys-primary);
     border-radius: 2px;
     flex-shrink: 0;
   }
@@ -1065,7 +1065,7 @@
   font-size: 18px;
   width: 18px;
   height: 18px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   flex-shrink: 0;
 }
 
@@ -1075,8 +1075,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  color: #5c6bc0;
-  background: #e8eaf6;
+  color: var(--mat-sys-on-primary-container);
+  background: var(--mat-sys-primary-container);
 }
 
 .pub-path {
@@ -1145,11 +1145,11 @@
   transition: background 0.15s;
 
   &:hover {
-    background: #f5f6fa;
+    background: var(--mat-sys-surface-container-lowest);
   }
 
   &--selected {
-    background: #e8eaf6;
+    background: var(--mat-sys-primary-container);
 
     &:hover {
       background: #dde0f5;
@@ -1209,7 +1209,7 @@
   font-size: 18px;
   width: 18px;
   height: 18px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   flex-shrink: 0;
 }
 
@@ -1317,7 +1317,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   font-size: 12px;
   padding: 2px 0;
 
@@ -1336,7 +1336,7 @@
   padding-left: 36px;
   margin-top: 4px;
   font-size: 12px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   font-weight: 500;
 }
 
@@ -1374,7 +1374,7 @@
 .comment-edit-input {
   flex: 1;
   border: none;
-  border-bottom: 2px solid #5c6bc0;
+  border-bottom: 2px solid var(--mat-sys-primary);
   outline: none;
   font-size: 13px;
   padding: 6px 0;
@@ -1394,7 +1394,7 @@
 .new-comment-input {
   flex: 1;
   border: none;
-  border-bottom: 2px solid #5c6bc0;
+  border-bottom: 2px solid var(--mat-sys-primary);
   outline: none;
   font-size: 13px;
   padding: 6px 0;

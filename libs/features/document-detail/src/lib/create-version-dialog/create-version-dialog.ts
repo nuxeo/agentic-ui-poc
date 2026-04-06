@@ -27,7 +27,9 @@ export interface CreateVersionDialogData {
   ],
   template: `
     <h2 mat-dialog-title>
-      Create Version for {{ data.documentTitle }} - Version {{ data.currentMajor }}.{{ data.currentMinor }}
+      Create Version for {{ data.documentTitle }} - Version {{ data.currentMajor }}.{{
+        data.currentMinor
+      }}
     </h2>
 
     <mat-dialog-content>
@@ -54,40 +56,46 @@ export interface CreateVersionDialogData {
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
-    h2 { font-size: 18px; font-weight: 500; margin: 0; }
+  styles: [
+    `
+      h2 {
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0;
+      }
 
-    .version-options {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      padding: 24px 0 8px;
-    }
+      .version-options {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 24px 0 8px;
+      }
 
-    .version-option {
-      display: flex;
-      align-items: center;
-    }
+      .version-option {
+        display: flex;
+        align-items: center;
+      }
 
-    .version-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 32px;
-      padding: 2px 8px;
-      border-radius: 4px;
-      background: #5c6bc0;
-      color: #fff;
-      font-size: 13px;
-      font-weight: 600;
-      margin-right: 8px;
-    }
+      .version-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: var(--mat-sys-primary);
+        color: var(--mat-sys-on-primary);
+        font-size: 13px;
+        font-weight: 600;
+        margin-right: 8px;
+      }
 
-    mat-dialog-actions {
-      padding: 16px 0 0;
-      gap: 8px;
-    }
-  `],
+      mat-dialog-actions {
+        padding: 16px 0 0;
+        gap: 8px;
+      }
+    `,
+  ],
 })
 export class CreateVersionDialogComponent {
   readonly data = inject<CreateVersionDialogData>(MAT_DIALOG_DATA);
@@ -105,9 +113,10 @@ export class CreateVersionDialogComponent {
     this.detailService.createVersion(this.data.documentUid, this.increment).subscribe({
       next: (doc) => {
         this.saving.set(false);
-        const label = this.increment === 'Major'
-          ? `${this.data.currentMajor + 1}.0`
-          : `${this.data.currentMajor}.${this.data.currentMinor + 1}`;
+        const label =
+          this.increment === 'Major'
+            ? `${this.data.currentMajor + 1}.0`
+            : `${this.data.currentMajor}.${this.data.currentMinor + 1}`;
         this.snackBar.open(`Version ${label} created`, 'OK', { duration: 3000 });
         this.dialogRef.close(doc);
       },

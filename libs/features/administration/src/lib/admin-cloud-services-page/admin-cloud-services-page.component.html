@@ -1,6 +1,6 @@
 <div class="cloud-page">
   <header class="cloud-page__header">
-    <h1 class="cloud-page__title">Cloud Services</h1>
+    <div class="cloud-page__title" role="heading" aria-level="1">Cloud Services</div>
   </header>
 
   <mat-tab-group animationDuration="0ms">
@@ -8,7 +8,9 @@
       <div class="tab-inner">
         <div class="subhead">
           <span>OAuth 2 Service Providers</span>
-          <button type="button" mat-button color="primary" (click)="refreshProviders()">Refresh</button>
+          <button type="button" mat-button color="primary" (click)="refreshProviders()">
+            Refresh
+          </button>
         </div>
         @if (loading()) {
           <div class="cloud-center"><mat-spinner diameter="36" /></div>
@@ -40,8 +42,8 @@
     <mat-tab label="Tokens">
       <div class="tab-inner">
         <p class="muted">
-          OAuth token management is not exposed via a stable public REST contract in all Nuxeo versions.
-          Use Nuxeo Admin or configure tokens through your identity provider.
+          OAuth token management is not exposed via a stable public REST contract in all Nuxeo
+          versions. Use Nuxeo Admin or configure tokens through your identity provider.
         </p>
       </div>
     </mat-tab>

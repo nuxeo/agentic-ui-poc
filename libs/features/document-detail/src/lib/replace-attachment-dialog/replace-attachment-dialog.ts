@@ -46,12 +46,12 @@ export interface ReplaceAttachmentDialogData {
         margin: 0 0 24px;
         font-size: 20px;
         font-weight: 600;
-        color: #1a1a1a;
+        color: var(--mat-sys-on-surface);
       }
 
       .upload-zone {
         display: block;
-        border: 2px dashed #ccc;
+        border: 2px dashed var(--mat-sys-outline-variant);
         border-radius: 6px;
         padding: 32px 16px;
         text-align: center;
@@ -63,26 +63,26 @@ export interface ReplaceAttachmentDialogData {
 
         &:hover,
         &.dragover {
-          border-color: #5c6bc0;
-          background: #f9f9ff;
+          border-color: var(--mat-sys-primary);
+          background: var(--mat-sys-primary-container);
         }
 
         &.has-file {
-          border-color: #5c6bc0;
-          background: #f5f5ff;
+          border-color: var(--mat-sys-primary);
+          background: var(--mat-sys-primary-container);
         }
       }
 
       .upload-link {
         font-size: 14px;
-        color: #5c6bc0;
+        color: var(--mat-sys-primary);
         text-decoration: underline;
         cursor: pointer;
       }
 
       .file-chosen {
         font-size: 14px;
-        color: #333;
+        color: var(--mat-sys-on-surface);
         font-weight: 500;
       }
 

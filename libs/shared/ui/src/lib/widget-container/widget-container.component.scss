@@ -1,6 +1,6 @@
 .widget {
-  background: #fff;
-  border: 1px solid #e0e0e0;
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   align-items: center;
   gap: 8px;
   padding: 16px 20px 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
   flex-shrink: 0;
 }
 
@@ -27,7 +27,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--mat-sys-on-surface);
   flex: 1;
 }
 

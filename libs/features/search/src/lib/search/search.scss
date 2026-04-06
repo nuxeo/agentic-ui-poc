@@ -45,7 +45,7 @@
 .results-count {
   font-size: 15px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
 }
 
 .results-summary {
@@ -316,7 +316,7 @@
   min-width: 0;
   font-size: 13px;
   font-weight: 500;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
