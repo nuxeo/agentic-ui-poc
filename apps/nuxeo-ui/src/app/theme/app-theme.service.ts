@@ -9,9 +9,10 @@ export class AppThemeService {
   applyStoredOrDefault(): void {
     try {
       const raw = localStorage.getItem(APP_THEME_STORAGE_KEY);
+      const hasValidStoredTheme = raw !== null && isAppThemeId(raw);
       const migrated = migrateLegacyThemeId(raw);
-      const id: AppThemeId = raw && isAppThemeId(raw) ? raw : (migrated ?? 'nuxeo');
-      this.setTheme(id, false);
+      const id: AppThemeId = hasValidStoredTheme ? raw : (migrated ?? 'nuxeo');
+      this.setTheme(id, !hasValidStoredTheme);
     } catch {
       this.setTheme('nuxeo', false);
     }
