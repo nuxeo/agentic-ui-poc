@@ -1,0 +1,104 @@
+# ARender stack with an nginx sidecar that proxies blob downloads to Nuxeo
+# with Basic Auth so the generic ARender image can fetch documents.
+x-ar-render-extra: &ar-render-extra
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+services:
+  # Nginx proxy that adds Basic Auth for ARender → Nuxeo blob downloads.
+  # ARender containers fetch blobs at http://nuxeo-auth-proxy/nuxeo/nxfile/…
+  nuxeo-auth-proxy:
+    image: nginx:alpine
+    container_name: nuxeo-auth-proxy
+    volumes:
+      - ./nginx-arender-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - nuxeo-net
+
+  ui:
+    <<: *ar-render-extra
+    image: docker-private-arondor-proxy.packages.nuxeo.com/arender-ui-springboot:${ARENDER_VERSION}
+    container_name: arender-ui
+    environment:
+      - "ARENDERSRV_ARENDER_SERVER_RENDITION_HOSTS=http://dsb-service:8761/"
+      - "ARENDERSRV_ARENDER_SERVER_DISPLAYNAME_PROVIDER="
+    ports:
+      - 8080:8080
+    depends_on:
+      - nuxeo-auth-proxy
+    volumes:
+      - arender-annotations:/home/arender/ARenderAnnotations
+    networks:
+      - nuxeo-net
+
+  service-broker:
+    <<: *ar-render-extra
+    image: docker-private-arondor-proxy.packages.nuxeo.com/arender-document-service-broker:${ARENDER_VERSION}
+    container_name: dsb-service
+    environment:
+      - "DSB_KUBEPROVIDER_KUBE.HOSTS_DCV-SERVICE=19999"
+      - "DSB_KUBEPROVIDER_KUBE.HOSTS_DRN-SERVICE=9091"
+      - "DSB_KUBEPROVIDER_KUBE.HOSTS_DTH-SERVICE=8899"
+      - "AUTHORIZED_URLS=http://nuxeo-auth-proxy/"
+      - "authorized.urls=http://nuxeo-auth-proxy/"
+    ports:
+      - 8761:8761
+    volumes:
+      - arender-tmp:/arender/tmp
+    networks:
+      - nuxeo-net
+
+  document-renderer:
+    <<: *ar-render-extra
+    image: docker-private-arondor-proxy.packages.nuxeo.com/arender-document-renderer:${ARENDER_VERSION}
+    container_name: drn-service
+    environment:
+      - "DRN_EUREKA_INSTANCE_METADATA.MAP_HOST.NAME=drn-service"
+      - "DRN_EUREKA_INSTANCE_HOSTNAME=dsb-service"
+      - "DRN_EUREKA_SERVER_PORT=8761"
+    ports:
+      - 9091:9091
+    volumes:
+      - arender-tmp:/arender/tmp
+    networks:
+      - nuxeo-net
+
+  document-text-handler:
+    <<: *ar-render-extra
+    image: docker-private-arondor-proxy.packages.nuxeo.com/arender-document-text-handler:${ARENDER_VERSION}
+    container_name: dth-service
+    environment:
+      - "DTH_EUREKA_INSTANCE_METADATA.MAP_HOST.NAME=dth-service"
+      - "DTH_EUREKA_INSTANCE_HOSTNAME=dsb-service"
+      - "DTH_EUREKA_SERVER_PORT=8761"
+    ports:
+      - 8899:8899
+    volumes:
+      - arender-tmp:/arender/tmp
+    networks:
+      - nuxeo-net
+
+  document-converter:
+    <<: *ar-render-extra
+    image: docker-private-arondor-proxy.packages.nuxeo.com/arender-document-converter:${ARENDER_VERSION}
+    container_name: dcv-service
+    environment:
+      - "DCV_EUREKA_INSTANCE_METADATA.MAP_HOST.NAME=dcv-service"
+      - "DCV_APP_EUREKA_HOSTNAME=dsb-service"
+      - "DCV_APP_EUREKA_PORT=8761"
+    ports:
+      - 19999:19999
+    volumes:
+      - arender-tmp:/arender/tmp
+    networks:
+      - nuxeo-net
+
+volumes:
+  arender-tmp:
+  arender-annotations:
+
+networks:
+  nuxeo-net:
+    external: true

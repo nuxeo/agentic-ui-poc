@@ -10,6 +10,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 
+import type { NuxeoSamlLoginEndpoint } from '@agentic-ui/shared/nuxeo-client';
+
 import { AuthService } from '../auth/auth.service';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
@@ -41,12 +43,12 @@ export class LoginPageComponent {
 
   readonly submitting = signal(false);
   readonly step = signal<LoginStep>('username');
+  /** SSO entry points from `nuxeo-sso.providers.ts` / app config. */
+  readonly samlEndpoints = this.auth.samlLoginOptions;
 
   readonly form = this.fb.nonNullable.group({
     username: [
-      typeof localStorage !== 'undefined'
-        ? localStorage.getItem(LAST_USER_KEY) ?? ''
-        : '',
+      typeof localStorage !== 'undefined' ? (localStorage.getItem(LAST_USER_KEY) ?? '') : '',
       Validators.required,
     ],
     password: [''],
@@ -109,10 +111,8 @@ export class LoginPageComponent {
     });
   }
 
-  samlNotAvailable(provider: string): void {
-    this.snackBar.open(`${provider} is not wired in this PoC.`, 'OK', {
-      duration: 4000,
-    });
+  startSamlLogin(endpoint: NuxeoSamlLoginEndpoint): void {
+    this.auth.startSamlLogin(endpoint);
   }
 
   /** Primary button enabled state per step. */
@@ -125,5 +125,4 @@ export class LoginPageComponent {
     }
     return this.form.invalid;
   }
-
 }

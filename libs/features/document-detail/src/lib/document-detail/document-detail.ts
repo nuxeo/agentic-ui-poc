@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, signal, computed, viewChild } fro
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -39,6 +39,7 @@ import {
   NuxeoWorkflowModel,
   CURRENT_USERNAME,
   avatarColor,
+  ARenderService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { forkJoin, Observable } from 'rxjs';
@@ -49,6 +50,12 @@ import {
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
+  type VideoSource,
+  type StoryboardItem,
+  type PictureInfo,
+  type PictureView,
+  type ExifData,
+  type IptcData,
 } from '@agentic-ui/shared/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
@@ -120,16 +127,33 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly taskService = inject(TaskService);
   private readonly workflowService = inject(WorkflowService);
   private readonly currentUsername = inject(CURRENT_USERNAME);
+  private readonly arenderService = inject(ARenderService);
 
-  readonly tabGroup = viewChild<MatTabGroup>('tabGroup');
+  /** Programmatic tab switches (e.g. Publishing link). */
+  private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
 
   readonly doc = signal<NuxeoDocument | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly blobUrl = signal<SafeResourceUrl | null>(null);
+  readonly noteContent = signal<string | null>(null);
+  readonly noteHtml = signal<SafeHtml | null>(null);
+  readonly videoSources = signal<VideoSource[]>([]);
+  readonly storyboard = signal<StoryboardItem[]>([]);
+  readonly posterUrl = signal<SafeResourceUrl | null>(null);
+  readonly hasPdfRendition = signal(false);
+  readonly previewUrl = signal<SafeResourceUrl | null>(null);
+  readonly pictureInfo = signal<PictureInfo | null>(null);
+  readonly pictureViews = signal<PictureView[]>([]);
+  readonly exifData = signal<ExifData | null>(null);
+  readonly iptcData = signal<IptcData | null>(null);
+  readonly arenderUrl = signal<SafeResourceUrl | null>(null);
+  /** Bumped when the ARender previewer URL changes so the iframe is recreated (avoids stale session / wrong doc). */
+  readonly arenderReloadId = signal(0);
   readonly propertiesPanelOpen = signal(true);
   readonly panelSubTab = signal<'properties' | 'comments' | 'activity'>('properties');
   private rawBlobUrl: string | null = null;
+  private videoObjectUrls: string[] = [];
   private docUid = '';
 
   // Comments state
@@ -235,6 +259,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly mimeType = computed(() => {
     const d = this.doc();
     if (!d) return '';
+    const noteMime = d.properties['note:mime_type'] as string | undefined;
+    if (noteMime) return noteMime;
     const fc = d.properties['file:content'] as Record<string, unknown> | null;
     return (fc?.['mime-type'] as string) ?? '';
   });
@@ -470,6 +496,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     this.doc.set(null);
     this.blobUrl.set(null);
+    this.arenderUrl.set(null);
     this.error.set(null);
     this.comments.set([]);
     this.repliesMap.set({});
@@ -488,6 +515,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
     }
+    for (const url of this.videoObjectUrls) {
+      URL.revokeObjectURL(url);
+    }
   }
 
   private loadDocument(uid: string): void {
@@ -503,6 +533,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.loadPublicationCount(uid);
         this.loadDocumentTasks(uid);
         this.loadDocumentWorkflows(uid);
+        this.loadARenderUrl(doc);
       },
       error: () => {
         this.error.set('Failed to load document.');
@@ -627,28 +658,239 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadBlob(doc: NuxeoDocument): void {
+    this.resetViewerState();
+
+    const noteText = doc.properties['note:note'] as string | undefined;
+    const noteMime = doc.properties['note:mime_type'] as string | undefined;
+    if (noteText !== undefined && noteText !== null) {
+      this.noteContent.set(noteText);
+      if (noteMime === 'text/markdown') {
+        this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(this.renderMarkdown(noteText)));
+      }
+      return;
+    }
+
+    const picViews = doc.properties['picture:views'] as Array<Record<string, unknown>> | undefined;
+    if (picViews && picViews.length > 0) {
+      this.extractPictureMetadata(doc, picViews);
+      const fullHd = picViews.find((v) => v['title'] === 'FullHD') ?? picViews[0];
+      const content = fullHd['content'] as Record<string, unknown> | undefined;
+      const dataUrl = (content?.['data'] as string) ?? '';
+      if (dataUrl) {
+        this.http.get(dataUrl, { responseType: 'blob' }).subscribe({
+          next: (blob) => this.setBlobUrl(blob),
+          error: () => this.loadFallbackBlob(doc),
+        });
+        return;
+      }
+    }
+
+    const transcodedVideos = doc.properties['vid:transcodedVideos'] as
+      | Array<Record<string, unknown>>
+      | undefined;
+    if (transcodedVideos && transcodedVideos.length > 0) {
+      this.loadVideoSources(doc, transcodedVideos);
+      return;
+    }
+
     const fc = doc.properties['file:content'] as Record<string, unknown> | null;
-    if (!fc) return;
+    if (!fc) {
+      this.loadPreviewFallback(doc);
+      return;
+    }
 
     const mime = (fc['mime-type'] as string) ?? '';
-    const isImg = mime.startsWith('image/');
-    const isPdfType = mime === 'application/pdf';
 
-    if (isImg || isPdfType) {
+    if (mime.startsWith('video/')) {
       this.detailService.fetchBlob(doc.uid).subscribe({
         next: (blob) => this.setBlobUrl(blob),
-        error: () => {
-          /* viewer will show fallback */
-        },
+        error: () => this.loadPreviewFallback(doc),
       });
-    } else {
+      this.loadStoryboard(doc);
+      return;
+    }
+
+    if (mime.startsWith('audio/') || mime.startsWith('image/') || mime === 'application/pdf') {
+      this.detailService.fetchBlob(doc.uid).subscribe({
+        next: (blob) => this.setBlobUrl(blob),
+        error: () => this.loadPreviewFallback(doc),
+      });
+      return;
+    }
+
+    const renditions = (doc.contextParameters?.['renditions'] ?? []) as Array<{ name: string }>;
+    if (renditions.some((r) => r.name === 'pdf')) {
+      this.hasPdfRendition.set(true);
       this.detailService.fetchPdfRendition(doc.uid).subscribe({
         next: (blob) => this.setBlobUrl(blob),
-        error: () => {
-          /* no preview available */
-        },
+        error: () => this.loadPreviewFallback(doc),
+      });
+      return;
+    }
+
+    this.loadPreviewFallback(doc);
+  }
+
+  private loadVideoSources(
+    doc: NuxeoDocument,
+    transcodedVideos: Array<Record<string, unknown>>,
+  ): void {
+    const sources: VideoSource[] = [];
+    for (const tv of transcodedVideos) {
+      const content = tv['content'] as Record<string, unknown> | undefined;
+      const dataUrl = (content?.['data'] as string) ?? '';
+      const tvMime = (content?.['mime-type'] as string) ?? 'video/mp4';
+      const label = (tv['name'] as string) ?? '';
+      if (dataUrl && tvMime.startsWith('video/')) {
+        sources.push({
+          url: this.sanitizer.bypassSecurityTrustResourceUrl(dataUrl),
+          mimeType: tvMime,
+          label,
+        });
+      }
+    }
+    if (sources.length > 0) {
+      this.videoSources.set(sources);
+    } else {
+      this.detailService.fetchBlob(doc.uid).subscribe({
+        next: (blob) => this.setBlobUrl(blob),
+        error: () => this.loadPreviewFallback(doc),
       });
     }
+    this.loadStoryboard(doc);
+  }
+
+  private loadStoryboard(doc: NuxeoDocument): void {
+    const sb = doc.properties['vid:storyboard'] as Array<Record<string, unknown>> | undefined;
+    if (!sb || sb.length === 0) return;
+    const items: StoryboardItem[] = sb.map((entry) => {
+      const content = entry['content'] as Record<string, unknown> | undefined;
+      const thumbUrl = (content?.['data'] as string) ?? '';
+      return {
+        timecode: Number(entry['timecode'] ?? 0),
+        thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(thumbUrl),
+        label: (entry['comment'] as string) ?? '',
+      };
+    });
+    this.storyboard.set(items);
+  }
+
+  private loadFallbackBlob(doc: NuxeoDocument): void {
+    this.detailService.fetchBlob(doc.uid).subscribe({
+      next: (blob) => this.setBlobUrl(blob),
+      error: () => this.loadPreviewFallback(doc),
+    });
+  }
+
+  private loadPreviewFallback(doc: NuxeoDocument): void {
+    const previewCtx = doc.contextParameters?.['preview'] as { url?: string } | undefined;
+    if (previewCtx?.url) {
+      this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(previewCtx.url));
+    }
+  }
+
+  private resetViewerState(): void {
+    this.blobUrl.set(null);
+    this.noteContent.set(null);
+    this.noteHtml.set(null);
+    this.videoSources.set([]);
+    this.storyboard.set([]);
+    this.posterUrl.set(null);
+    this.hasPdfRendition.set(false);
+    this.previewUrl.set(null);
+    this.pictureInfo.set(null);
+    this.pictureViews.set([]);
+    this.exifData.set(null);
+    this.iptcData.set(null);
+    for (const url of this.videoObjectUrls) {
+      URL.revokeObjectURL(url);
+    }
+    this.videoObjectUrls = [];
+  }
+
+  private extractPictureMetadata(
+    doc: NuxeoDocument,
+    picViews: Array<Record<string, unknown>>,
+  ): void {
+    const info = doc.properties['picture:info'] as Record<string, unknown> | undefined;
+    if (info) {
+      const weight = Number(info['weight'] ?? 0);
+      this.pictureInfo.set({
+        width: Number(info['width'] ?? 0),
+        height: Number(info['height'] ?? 0),
+        format: (info['format'] as string) ?? '',
+        colorSpace: (info['colorSpace'] as string) ?? '',
+        depth: Number(info['depth'] ?? 0),
+        weight: this.formatBytes(weight),
+      });
+    }
+
+    const views: PictureView[] = picViews.map((v) => {
+      const content = v['content'] as Record<string, unknown> | undefined;
+      const len = Number(content?.['length'] ?? 0);
+      return {
+        title: (v['title'] as string) ?? '',
+        width: Number(v['width'] ?? 0),
+        height: Number(v['height'] ?? 0),
+        fileSize: this.formatBytes(len),
+        format: ((content?.['mime-type'] as string) ?? '').replace('image/', '').toUpperCase(),
+        downloadUrl: (content?.['data'] as string) ?? '',
+      };
+    });
+    this.pictureViews.set(views);
+
+    const imd = doc.properties['imd:image_description'] as string | undefined;
+    const exif: ExifData = {};
+    const dateOrig = doc.properties['imd:date_time_original'] as string | undefined;
+    if (dateOrig) exif.dateTimeOriginal = dateOrig;
+    const orient = doc.properties['imd:orientation'] as string | undefined;
+    if (orient) exif.orientation = orient;
+    const fNum = doc.properties['imd:fnumber'] as string | number | undefined;
+    if (fNum) exif.fNumber = `f/${fNum}`;
+    const exposure = doc.properties['imd:exposure_time'] as string | number | undefined;
+    if (exposure) exif.exposureTime = String(exposure);
+    const iso = doc.properties['imd:iso_speed_ratings'] as string | number | undefined;
+    if (iso) exif.isoSpeedRatings = String(iso);
+    const focal = doc.properties['imd:focal_length'] as string | number | undefined;
+    if (focal) exif.focalLength = `${focal}mm`;
+    if (Object.keys(exif).length > 0) {
+      this.exifData.set(exif);
+    }
+
+    const iptc: IptcData = {};
+    const copyright = doc.properties['iptc:copyright'] as string | undefined;
+    if (copyright) iptc.copyright = copyright;
+    const rights = doc.properties['iptc:rights'] as string | undefined;
+    if (rights) iptc.rights = rights;
+    const source = doc.properties['iptc:source'] as string | undefined;
+    if (source) iptc.source = source;
+    const desc = imd ?? (doc.properties['iptc:description'] as string | undefined);
+    if (desc) iptc.description = desc;
+    if (Object.keys(iptc).length > 0) {
+      this.iptcData.set(iptc);
+    }
+  }
+
+  downloadPictureFormat(url: string): void {
+    if (!url) return;
+    window.open(url, '_blank');
+  }
+
+  private renderMarkdown(text: string): string {
+    return text
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+      .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/^(?!<[hubloa])(.+)$/gm, '<p>$1</p>')
+      .replace(/<p><\/p>/g, '');
   }
 
   private setBlobUrl(blob: Blob): void {
@@ -657,12 +899,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.rawBlobUrl));
   }
 
-  onTabChange(index: number): void {
-    if (index === 2 && !this.historyLoaded) {
+  onTabChange(raw: number): void {
+    const index = Math.floor(Number(raw));
+    if (!Number.isFinite(index) || index < 0) {
+      return;
+    }
+    if (index === 3 && !this.historyLoaded) {
       this.loadDirectoryEntries();
       this.loadAuditLog();
     }
-    if (index === 3 && !this.publishTabLoaded) {
+    if (index === 4 && !this.publishTabLoaded) {
       this.loadPublishingData();
     }
   }
@@ -867,11 +1113,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   goToPublishingTab(): void {
-    const tg = this.tabGroup();
-    if (tg) {
-      tg.selectedIndex = 3;
-      this.onTabChange(3);
+    const g = this.detailTabGroup();
+    if (g) {
+      g.selectedIndex = 4;
     }
+    this.onTabChange(4);
   }
 
   unpublishDocument(proxyDoc: NuxeoDocument): void {
@@ -1210,11 +1456,38 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  annotateMainBlob(): void {
-    const nuxeoOrigin = this.nuxeoApi.apiUrl('');
-    const uid = this.docUid;
-    if (!uid) return;
-    window.open(`${nuxeoOrigin}/nuxeo/ui/#!/doc/${uid}`, '_blank');
+  private loadARenderUrl(doc: NuxeoDocument): void {
+    const xpath = this.blobXPathForARender(doc);
+    if (!xpath) {
+      this.arenderUrl.set(null);
+      return;
+    }
+    // Match nuxeo-arender-page: clear iframe target before fetching a new previewer URL.
+    this.arenderUrl.set(null);
+    this.arenderService.getPreviewerUrl(doc.uid, xpath).subscribe({
+      next: (url) => {
+        this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+        this.arenderReloadId.update((n) => n + 1);
+      },
+      error: () => {
+        this.arenderUrl.set(null);
+      },
+    });
+  }
+
+  /**
+   * Blob xpath for Document.ARenderGetPreviewerUrl so annotations align with the main blob (file:content).
+   */
+  private blobXPathForARender(doc: NuxeoDocument): string | null {
+    if (doc.properties['note:note'] !== undefined && doc.properties['note:note'] !== null) {
+      return null;
+    }
+    const fc = doc.properties['file:content'] as Record<string, unknown> | null;
+    if (!fc || !(fc['digest'] ?? fc['data'])) {
+      const pics = doc.properties['picture:views'] as unknown[] | undefined;
+      if (!pics?.length) return null;
+    }
+    return 'file:content';
   }
 
   // ── Panel Sub-Tab Switching ──
