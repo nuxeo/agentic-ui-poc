@@ -4,6 +4,22 @@
   height: 100%;
 }
 
+.dialog-header {
+  position: relative;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  padding-right: 40px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #667085;
+}
+
 mat-dialog-content {
   padding: 16px 24px 0 !important;
   overflow: auto;

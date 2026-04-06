@@ -83,12 +83,22 @@
                     </span>
                   }
                   <span class="header-search-option-meta">
-                    <span class="header-search-option-text">{{ result.displayLabel }}</span>
+                    <span class="header-search-option-text" [title]="result.displayLabel">
+                      @for (part of labelHighlightParts(result); track $index) {
+                        @if (part.matched) {
+                          <mark class="header-search-highlight">{{ part.text }}</mark>
+                        } @else {
+                          <span>{{ part.text }}</span>
+                        }
+                      }
+                    </span>
                     <span class="header-search-option-path">
-                      @if (result.kind === 'document') {
-                        {{ result.path || '/' }}
-                      } @else {
-                        {{ userGroupSubtext(result) }}
+                      @for (part of subtextHighlightParts(result); track $index) {
+                        @if (part.matched) {
+                          <mark class="header-search-highlight">{{ part.text }}</mark>
+                        } @else {
+                          <span>{{ part.text }}</span>
+                        }
                       }
                     </span>
                   </span>

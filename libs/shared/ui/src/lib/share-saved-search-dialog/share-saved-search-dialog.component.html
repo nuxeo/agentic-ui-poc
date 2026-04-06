@@ -1,4 +1,15 @@
-<h2 mat-dialog-title>Share Saved Search</h2>
+<div class="dialog-header">
+  <h2 mat-dialog-title>Share Saved Search</h2>
+  <button
+    mat-icon-button
+    class="close-btn"
+    type="button"
+    aria-label="Close dialog"
+    (click)="dialogRef.close(null)"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
 
 <mat-dialog-content>
   @if (loading()) {

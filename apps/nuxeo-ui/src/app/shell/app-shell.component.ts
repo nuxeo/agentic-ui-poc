@@ -1,7 +1,7 @@
 import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -82,6 +82,8 @@ export class AppShellComponent {
   readonly globalSearchResults = signal<GlobalSearchSuggestion[]>([]);
   readonly globalSearchOpen = signal(false);
 
+  readonly highlightedSearchTerm = computed(() => this.globalSearchTerm().trim());
+
   private readonly currentUrl = signal(this.router.url.split('?')[0]);
 
   readonly pageTitle = computed(() => {
@@ -153,20 +155,14 @@ export class AppShellComponent {
           this.globalSearchLoading.set(true);
           this.globalSearchError.set(null);
 
-          return this.searchService.suggest(term).pipe(
-            catchError(() => {
-              this.globalSearchError.set('Failed to load suggestions.');
-              return of<GlobalSearchSuggestion[]>([]);
-            }),
+          return this.searchService.suggestFromSuggestersLauncher(term).pipe(
             finalize(() => this.globalSearchLoading.set(false)),
           );
         }),
         takeUntilDestroyed(),
       )
       .subscribe((results) => {
-        this.globalSearchResults.set(
-          results.filter((result) => result.kind !== 'other' && !!(result.documentUid ?? result.id)),
-        );
+        this.globalSearchResults.set(results);
         this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
       });
   }
@@ -339,6 +335,52 @@ export class AppShellComponent {
 
   userGroupSubtext(result: GlobalSearchSuggestion): string {
     return result.kind === 'group' ? 'Group' : 'User';
+  }
+
+  highlightText(value: string | null | undefined): Array<{ text: string; matched: boolean }> {
+    const text = value ?? '';
+    const term = this.highlightedSearchTerm();
+    if (!text || term.length < 2) {
+      return [{ text, matched: false }];
+    }
+
+    const loweredText = text.toLowerCase();
+    const loweredTerm = term.toLowerCase();
+    const parts: Array<{ text: string; matched: boolean }> = [];
+
+    let from = 0;
+    while (from < text.length) {
+      const matchStart = loweredText.indexOf(loweredTerm, from);
+      if (matchStart === -1) {
+        parts.push({ text: text.slice(from), matched: false });
+        break;
+      }
+
+      if (matchStart > from) {
+        parts.push({ text: text.slice(from, matchStart), matched: false });
+      }
+
+      const matchEnd = matchStart + loweredTerm.length;
+      parts.push({ text: text.slice(matchStart, matchEnd), matched: true });
+      from = matchEnd;
+    }
+
+    return parts.length > 0 ? parts : [{ text, matched: false }];
+  }
+
+  labelHighlightParts(result: GlobalSearchSuggestion): Array<{ text: string; matched: boolean }> {
+    return result.displayLabelHighlights?.length
+      ? result.displayLabelHighlights
+      : this.highlightText(result.displayLabel);
+  }
+
+  subtextHighlightParts(result: GlobalSearchSuggestion): Array<{ text: string; matched: boolean }> {
+    if (result.kind === 'document') {
+      if (result.pathHighlights?.length) return result.pathHighlights;
+      return this.highlightText(result.path || '/');
+    }
+
+    return this.highlightText(this.userGroupSubtext(result));
   }
 
   private getDeleteErrorMessage(err: unknown): string {
