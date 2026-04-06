@@ -187,27 +187,6 @@
       >
         Reset
       </button>
-      <button
-        mat-flat-button
-        color="primary"
-        class="footer-btn"
-        type="button"
-        [disabled]="saving() || !hasActiveFilters()"
-        (click)="saveCurrentSearch()"
-      >
-        {{ saving() ? 'Saving...' : 'Save As' }}
-      </button>
-      @if (trashFilterService.hasSavedFilter()) {
-        <button
-          mat-flat-button
-          class="footer-btn"
-          type="button"
-          [disabled]="saving()"
-          (click)="saveExistingSearch()"
-        >
-          {{ saving() ? 'Saving...' : 'Save' }}
-        </button>
-      }
     </div>
   </div>
 }
