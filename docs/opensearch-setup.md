@@ -180,21 +180,21 @@ Type in the global search bar in the app header. Suggestions should appear from 
 
 The Angular app uses two main Nuxeo page providers:
 
-| Page Provider    | Used By          | Purpose                             |
-| ---------------- | ---------------- | ----------------------------------- |
-| `default_search` | `SearchService`  | Document search with facet filters  |
-| `assets_search`  | `AssetService`   | Asset/DAM search with media facets  |
+| Page Provider    | Used By         | Purpose                            |
+| ---------------- | --------------- | ---------------------------------- |
+| `default_search` | `SearchService` | Document search with facet filters |
+| `assets_search`  | `AssetService`  | Asset/DAM search with media facets |
 
 ### SearchService (`libs/shared/nuxeo-client/src/lib/services/search.service.ts`)
 
 Key methods:
 
-| Method             | Endpoint                                                | Description                              |
-| ------------------ | ------------------------------------------------------- | ---------------------------------------- |
-| `search(params)`   | `GET /nuxeo/api/v1/search/pp/default_search/execute`    | Full-text + faceted document search      |
-| `suggest(term)`    | `POST /nuxeo/api/v1/automation/Search.SuggestersLauncher` | Global typeahead suggestions           |
-| `getSavedSearches` | `GET /nuxeo/api/v1/search/saved`                        | List saved searches                      |
-| `saveSavedSearch`  | `POST /nuxeo/api/v1/search/saved`                       | Create a saved search                    |
+| Method             | Endpoint                                                  | Description                         |
+| ------------------ | --------------------------------------------------------- | ----------------------------------- |
+| `search(params)`   | `GET /nuxeo/api/v1/search/pp/default_search/execute`      | Full-text + faceted document search |
+| `suggest(term)`    | `POST /nuxeo/api/v1/automation/Search.SuggestersLauncher` | Global typeahead suggestions        |
+| `getSavedSearches` | `GET /nuxeo/api/v1/search/saved`                          | List saved searches                 |
+| `saveSavedSearch`  | `POST /nuxeo/api/v1/search/saved`                         | Create a saved search               |
 
 #### Search parameters
 
@@ -220,33 +220,33 @@ The `search()` method accepts:
 
 These facets are returned by OpenSearch via Nuxeo and displayed in the search sidebar:
 
-| Aggregation Key    | Facet Label     | Type           |
-| ------------------ | --------------- | -------------- |
-| `dc_modified_agg`  | Modified Date   | Date range     |
-| `dc_creator_agg`   | Author          | Terms          |
-| `collection_agg`   | Collection      | Terms          |
-| `dc_nature_agg`    | Nature          | Terms          |
-| `dc_coverage_agg`  | Coverage        | Terms          |
-| `dc_subjects_agg`  | Subjects        | Terms          |
-| `common_size_agg`  | Size            | Range          |
+| Aggregation Key   | Facet Label   | Type       |
+| ----------------- | ------------- | ---------- |
+| `dc_modified_agg` | Modified Date | Date range |
+| `dc_creator_agg`  | Author        | Terms      |
+| `collection_agg`  | Collection    | Terms      |
+| `dc_nature_agg`   | Nature        | Terms      |
+| `dc_coverage_agg` | Coverage      | Terms      |
+| `dc_subjects_agg` | Subjects      | Terms      |
+| `common_size_agg` | Size          | Range      |
 
 ### AssetService (`libs/shared/nuxeo-client/src/lib/services/asset.service.ts`)
 
-| Method                  | Endpoint                                              | Description                    |
-| ----------------------- | ----------------------------------------------------- | ------------------------------ |
-| `searchAssets(params)`  | `GET /nuxeo/api/v1/search/pp/assets_search/execute`   | Asset search with media facets |
+| Method                 | Endpoint                                            | Description                    |
+| ---------------------- | --------------------------------------------------- | ------------------------------ |
+| `searchAssets(params)` | `GET /nuxeo/api/v1/search/pp/assets_search/execute` | Asset search with media facets |
 
 #### Asset search aggregations
 
-| Aggregation Key          | Facet Label    | Type   |
-| ------------------------ | -------------- | ------ |
-| `system_primaryType_agg` | Document Type  | Terms  |
-| `system_mimetype_agg`    | MIME Type      | Terms  |
-| `asset_width_agg`        | Width          | Range  |
-| `asset_height_agg`       | Height         | Range  |
-| `color_profile_agg`      | Color Profile  | Terms  |
-| `color_depth_agg`        | Color Depth    | Terms  |
-| `video_duration_agg`     | Video Duration | Range  |
+| Aggregation Key          | Facet Label    | Type  |
+| ------------------------ | -------------- | ----- |
+| `system_primaryType_agg` | Document Type  | Terms |
+| `system_mimetype_agg`    | MIME Type      | Terms |
+| `asset_width_agg`        | Width          | Range |
+| `asset_height_agg`       | Height         | Range |
+| `color_profile_agg`      | Color Profile  | Terms |
+| `color_depth_agg`        | Color Depth    | Terms |
+| `video_duration_agg`     | Video Duration | Range |
 
 ### Full-Text Search Fields
 
@@ -282,19 +282,24 @@ docker compose -f <your-compose-file>.yml down -v
 ### Search returns no results
 
 1. **Check OpenSearch is running:**
+
    ```bash
    curl http://localhost:9200/_cluster/health
    ```
+
    Status should be `green` or `yellow` (single-node clusters are always `yellow`).
 
 2. **Check the index exists and has documents:**
+
    ```bash
    curl http://localhost:9200/nuxeo/_count
    ```
+
    If count is `0`, trigger a reindex (see Step 3).
 
 3. **Check Nuxeo can reach OpenSearch:**
    Look in Nuxeo server logs for connection errors:
+
    ```bash
    docker logs <nuxeo-container> 2>&1 | grep -i "opensearch\|elastic"
    ```
@@ -355,16 +360,16 @@ If your Nuxeo server runs on a different port, update the `target` value.
 
 ## File Reference
 
-| File                                                                 | Purpose                                              |
-| -------------------------------------------------------------------- | ---------------------------------------------------- |
-| `libs/shared/nuxeo-client/src/lib/services/search.service.ts`       | Document search, suggestions, saved searches         |
-| `libs/shared/nuxeo-client/src/lib/services/asset.service.ts`        | Asset/DAM search with media facets                   |
-| `libs/shared/nuxeo-client/src/lib/services/search-aggregation.service.ts` | Client-side signal state for search aggregations |
-| `libs/shared/nuxeo-client/src/lib/services/asset-aggregation.service.ts`  | Client-side signal state for asset aggregations  |
-| `libs/shared/nuxeo-client/src/lib/models/search.model.ts`           | Search response and aggregation TypeScript models    |
-| `libs/shared/nuxeo-client/src/lib/models/asset.model.ts`            | Asset search params and aggregation models           |
-| `libs/features/search/src/lib/search/search.ts`                     | Search page component                                |
-| `libs/features/search/src/lib/search-filters-drawer/`               | Search filters sidebar (full-text, facets, saved)    |
-| `libs/features/assets/src/lib/asset-search-results/`                | Asset search results page                            |
-| `libs/features/assets/src/lib/assets-drawer/`                       | Asset filter sidebar                                 |
-| `apps/nuxeo-ui/proxy.conf.json`                                     | Dev server proxy to Nuxeo                            |
+| File                                                                      | Purpose                                           |
+| ------------------------------------------------------------------------- | ------------------------------------------------- |
+| `libs/shared/nuxeo-client/src/lib/services/search.service.ts`             | Document search, suggestions, saved searches      |
+| `libs/shared/nuxeo-client/src/lib/services/asset.service.ts`              | Asset/DAM search with media facets                |
+| `libs/shared/nuxeo-client/src/lib/services/search-aggregation.service.ts` | Client-side signal state for search aggregations  |
+| `libs/shared/nuxeo-client/src/lib/services/asset-aggregation.service.ts`  | Client-side signal state for asset aggregations   |
+| `libs/shared/nuxeo-client/src/lib/models/search.model.ts`                 | Search response and aggregation TypeScript models |
+| `libs/shared/nuxeo-client/src/lib/models/asset.model.ts`                  | Asset search params and aggregation models        |
+| `libs/features/search/src/lib/search/search.ts`                           | Search page component                             |
+| `libs/features/search/src/lib/search-filters-drawer/`                     | Search filters sidebar (full-text, facets, saved) |
+| `libs/features/assets/src/lib/asset-search-results/`                      | Asset search results page                         |
+| `libs/features/assets/src/lib/assets-drawer/`                             | Asset filter sidebar                              |
+| `apps/nuxeo-ui/proxy.conf.json`                                           | Dev server proxy to Nuxeo                         |
