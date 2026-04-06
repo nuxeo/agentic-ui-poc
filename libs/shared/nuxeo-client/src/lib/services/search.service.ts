@@ -712,7 +712,18 @@ export class SearchService {
   }
 
   private stripTags(value: string): string {
-    return value.replace(/<[^>]+>/g, '');
+    if (!value) {
+      return '';
+    }
+
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(value, 'text/html');
+      return doc.body.textContent ?? '';
+    } catch {
+      // Fallback to the original value if DOMParser is unavailable or parsing fails.
+      return value;
+    }
   }
 
   private asString(value: unknown): string | undefined {
