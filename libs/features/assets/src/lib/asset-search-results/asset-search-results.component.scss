@@ -20,6 +20,20 @@
   flex-shrink: 0;
 }
 
+.top-action-btn {
+  min-width: 88px;
+}
+
+.results-top-actions .save-as-btn {
+  background: var(--mat-sys-primary, #3f51b5);
+  color: #fff;
+}
+
+.results-top-actions .save-btn {
+  background: #43a047;
+  color: #fff;
+}
+
 /* Toolbar */
 .results-toolbar {
   display: flex;
@@ -227,6 +241,7 @@
 .asset-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  align-content: start;
   gap: 16px;
   overflow-y: auto;
   flex: 1;

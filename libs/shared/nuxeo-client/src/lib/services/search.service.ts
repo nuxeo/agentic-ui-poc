@@ -46,6 +46,8 @@ export interface SaveSavedSearchParams {
 export interface GlobalSearchSuggestion {
   id: string;
   displayLabel: string;
+  displayLabelHighlights?: Array<{ text: string; matched: boolean }>;
+  pathHighlights?: Array<{ text: string; matched: boolean }>;
   kind: 'document' | 'user' | 'group' | 'other';
   documentUid?: string;
   path?: string;
@@ -63,7 +65,7 @@ export class SearchService {
   private readonly savedSearchHighlight =
     'dc:title.fulltext,ecm:binarytext,dc:description.fulltext,ecm:tag,note:note.fulltext,file:content.name';
 
-  suggest(searchTerm: string, pageSize = 10): Observable<GlobalSearchSuggestion[]> {
+  suggestFromSuggestersLauncher(searchTerm: string, pageSize = 10): Observable<GlobalSearchSuggestion[]> {
     const term = searchTerm.trim();
     if (!term) return of([]);
 
@@ -81,8 +83,15 @@ export class SearchService {
       )
       .pipe(
         map((res) => this.normalizeSuggestions(res).slice(0, pageSize)),
-        catchError(() => this.suggestFallback(term, pageSize)),
+        catchError(() => of<GlobalSearchSuggestion[]>([])),
       );
+  }
+
+  suggest(searchTerm: string, pageSize = 10): Observable<GlobalSearchSuggestion[]> {
+    const term = searchTerm.trim();
+    if (!term) return of([]);
+
+    return this.suggestFromSuggestersLauncher(term, pageSize);
   }
 
   private suggestFallback(searchTerm: string, pageSize: number): Observable<GlobalSearchSuggestion[]> {
@@ -188,45 +197,44 @@ export class SearchService {
 
   getSavedSearchById(id: string): Observable<Record<string, string>> {
     const encodedId = encodeURIComponent(id);
+
     return this.api
-      .get<unknown>(`/nuxeo/api/v1/search/saved/${encodedId}`, new HttpParams(), { properties: '*' })
+      .get<Record<string, unknown>>(`/nuxeo/api/v1/search/saved/${encodedId}`, undefined, {
+        properties: '*',
+        'enrichers.document': 'thumbnail,permissions,highlight',
+      })
       .pipe(
-        map((res) => this.extractSavedSearchParams(res)),
+        map((saved) => {
+          const props = (saved['properties'] as Record<string, unknown>) ?? {};
+
+          const paramsRecord = saved['params'];
+          if (paramsRecord && typeof paramsRecord === 'object') {
+            const result: Record<string, string> = {};
+            for (const [key, value] of Object.entries(paramsRecord as Record<string, unknown>)) {
+              if (key !== 'highlight' && value !== null && value !== undefined) {
+                result[key] = String(value);
+              }
+            }
+            return result;
+          }
+
+          const namedParams = props['savedsearch:namedParams'];
+          if (Array.isArray(namedParams)) {
+            const result: Record<string, string> = {};
+            for (const entry of namedParams as Array<Record<string, unknown>>) {
+              const key = typeof entry['key'] === 'string' ? entry['key'] : null;
+              const value = entry['value'];
+              if (key && key !== 'highlight' && value !== null && value !== undefined) {
+                result[key] = String(value);
+              }
+            }
+            return result;
+          }
+
+          return {};
+        }),
         catchError(() => of<Record<string, string>>({})),
       );
-  }
-
-  private extractSavedSearchParams(res: unknown): Record<string, string> {
-    if (!res || typeof res !== 'object') return {};
-    const obj = res as Record<string, unknown>;
-
-    // Saved search entity format: top-level params object
-    if (obj['params'] && typeof obj['params'] === 'object' && !Array.isArray(obj['params'])) {
-      const result: Record<string, string> = {};
-      for (const [key, value] of Object.entries(obj['params'] as Record<string, unknown>)) {
-        if (key !== 'highlight' && value !== null && value !== undefined) {
-          result[key] = String(value);
-        }
-      }
-      return result;
-    }
-
-    // Document format: params stored in savedsearch schema namedParams
-    const props = (obj['properties'] as Record<string, unknown>) ?? {};
-    const namedParams = props['savedsearch:namedParams'];
-    if (Array.isArray(namedParams)) {
-      const result: Record<string, string> = {};
-      for (const entry of namedParams as Array<Record<string, unknown>>) {
-        const key = typeof entry['key'] === 'string' ? entry['key'] : null;
-        const value = entry['value'];
-        if (key && key !== 'highlight' && value !== null && value !== undefined) {
-          result[key] = String(value);
-        }
-      }
-      return result;
-    }
-
-    return {};
   }
 
   saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown> {
@@ -368,7 +376,7 @@ export class SearchService {
       })
       .pipe(
         map((res) => ({
-          items: res.entries.map((doc) => {
+          items: this.filterItemsByModifiedDate(res.entries.map((doc) => {
             const props = doc.properties ?? {};
             const fileContent = props['file:content'] as { 'mime-type'?: string; length?: number | string } | null;
             const tags = (props['dc:subjects'] as string[] | undefined) ?? [];
@@ -411,10 +419,34 @@ export class SearchService {
               tags,
               icon: docTypeIcon(doc.type),
             } satisfies SearchResultItem;
-          }),
+          }), modifiedDateValues),
           aggregations: this.normalizeAggregations(res.aggregations),
         })),
       );
+  }
+
+  private filterItemsByModifiedDate(
+    items: SearchResultItem[],
+    modifiedDateValues: string[],
+  ): SearchResultItem[] {
+    if (modifiedDateValues.length === 0) return items;
+
+    const selected = new Set(modifiedDateValues);
+    const nowMs = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    return items.filter((item) => {
+      const modifiedMs = Date.parse(item.modifiedDate);
+      if (!Number.isFinite(modifiedMs)) return false;
+
+      const diffMs = Math.max(0, nowMs - modifiedMs);
+      if (selected.has('last24h') && diffMs <= dayMs) return true;
+      if (selected.has('lastWeek') && diffMs > dayMs && diffMs <= 7 * dayMs) return true;
+      if (selected.has('lastMonth') && diffMs > 7 * dayMs && diffMs <= 30 * dayMs) return true;
+      if (selected.has('lastYear') && diffMs > 30 * dayMs && diffMs <= 365 * dayMs) return true;
+      if (selected.has('moreThan1YearAgo') && diffMs > 365 * dayMs) return true;
+      return false;
+    });
   }
 
   private asPrincipalName(value: unknown): string {
@@ -487,22 +519,49 @@ export class SearchService {
   }
 
   private extractSuggestionItems(payload: unknown): unknown[] {
-    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload)) {
+      const directItems = payload.filter((item) => this.looksLikeSuggestionItem(item));
+      if (directItems.length > 0) {
+        return directItems;
+      }
+
+      const nestedItems = payload
+        .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+        .flatMap((item) => this.extractArraysFromContainer(item));
+
+      return nestedItems;
+    }
     if (!payload || typeof payload !== 'object') return [];
 
     const obj = payload as Record<string, unknown>;
 
-    const directArrayKeys = ['entries', 'results', 'suggestions', 'documents', 'users', 'groups'];
-    const arrays = directArrayKeys
-      .map((key) => obj[key])
-      .filter(Array.isArray)
-      .flatMap((value) => value as unknown[]);
+    const arrays = this.extractArraysFromContainer(obj);
 
     if (arrays.length > 0) return arrays;
 
     return Object.values(obj)
       .filter(Array.isArray)
       .flatMap((value) => value as unknown[]);
+  }
+
+  private extractArraysFromContainer(container: Record<string, unknown>): unknown[] {
+    const directArrayKeys = ['entries', 'results', 'suggestions', 'documents', 'users', 'groups'];
+    return directArrayKeys
+      .map((key) => container[key])
+      .filter(Array.isArray)
+      .flatMap((value) => value as unknown[]);
+  }
+
+  private looksLikeSuggestionItem(value: unknown): boolean {
+    if (!value || typeof value !== 'object') return false;
+    const item = value as Record<string, unknown>;
+    return (
+      typeof item['id'] === 'string' ||
+      typeof item['uid'] === 'string' ||
+      typeof item['username'] === 'string' ||
+      typeof item['groupname'] === 'string' ||
+      typeof item['prefixed_id'] === 'string'
+    );
   }
 
   private mapSuggestion(value: unknown): GlobalSearchSuggestion | null {
@@ -527,6 +586,15 @@ export class SearchService {
       this.asString(properties['dc:title']) ??
       id;
 
+    const highlightsByField = this.extractHighlightsByField(item);
+    const displayLabelHighlights =
+      this.pickHighlightParts(
+        highlightsByField,
+        ['dc:title', 'file:content.name', 'displayLabel', 'label', 'username', 'groupname'],
+      ) ?? undefined;
+    const pathHighlights =
+      this.pickHighlightParts(highlightsByField, ['ecm:path', 'path', 'url']) ?? undefined;
+
     const prefixedId = this.asString(item['prefixed_id']);
     const path =
       this.asString(item['path']) ??
@@ -546,11 +614,105 @@ export class SearchService {
     return {
       id,
       displayLabel,
+      displayLabelHighlights,
       kind: isGroup ? 'group' : isUser ? 'user' : documentUid ? 'document' : 'other',
       documentUid,
       path,
+      pathHighlights,
       prefixedId,
     };
+  }
+
+  private extractHighlightsByField(item: Record<string, unknown>): Map<string, string[]> {
+    const map = new Map<string, string[]>();
+    const rawHighlights = item['highlights'];
+
+    if (Array.isArray(rawHighlights)) {
+      for (const entry of rawHighlights) {
+        if (!entry || typeof entry !== 'object') continue;
+        const obj = entry as Record<string, unknown>;
+        const field = this.asString(obj['field']);
+        const segments = Array.isArray(obj['segments'])
+          ? (obj['segments'] as unknown[])
+              .filter((segment): segment is string => typeof segment === 'string')
+              .map((segment) => segment.trim())
+              .filter(Boolean)
+          : [];
+        if (!field || segments.length === 0) continue;
+        map.set(field, segments);
+      }
+      return map;
+    }
+
+    if (rawHighlights && typeof rawHighlights === 'object') {
+      const obj = rawHighlights as Record<string, unknown>;
+      for (const [field, value] of Object.entries(obj)) {
+        if (!field) continue;
+        const segments = Array.isArray(value)
+          ? (value as unknown[])
+              .filter((segment): segment is string => typeof segment === 'string')
+              .map((segment) => segment.trim())
+              .filter(Boolean)
+          : [];
+        if (segments.length === 0) continue;
+        map.set(field, segments);
+      }
+    }
+
+    return map;
+  }
+
+  private pickHighlightParts(
+    highlightsByField: Map<string, string[]>,
+    candidateFields: string[],
+  ): Array<{ text: string; matched: boolean }> | null {
+    for (const field of candidateFields) {
+      const segments = highlightsByField.get(field);
+      if (!segments || segments.length === 0) continue;
+      const parts = this.toHighlightParts(segments.join(' '));
+      if (parts.length > 0) return parts;
+    }
+    return null;
+  }
+
+  private toHighlightParts(input: string): Array<{ text: string; matched: boolean }> {
+    const html = input.trim();
+    if (!html) return [];
+
+    const parts: Array<{ text: string; matched: boolean }> = [];
+    const re = /<em>(.*?)<\/em>/gi;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null = null;
+
+    while ((match = re.exec(html)) !== null) {
+      const start = match.index;
+      const end = re.lastIndex;
+
+      if (start > lastIndex) {
+        const plain = this.stripTags(html.slice(lastIndex, start));
+        if (plain) parts.push({ text: plain, matched: false });
+      }
+
+      const highlighted = this.stripTags(match[1] ?? '');
+      if (highlighted) parts.push({ text: highlighted, matched: true });
+      lastIndex = end;
+    }
+
+    if (lastIndex < html.length) {
+      const plain = this.stripTags(html.slice(lastIndex));
+      if (plain) parts.push({ text: plain, matched: false });
+    }
+
+    if (parts.length === 0) {
+      const plain = this.stripTags(html);
+      return plain ? [{ text: plain, matched: false }] : [];
+    }
+
+    return parts;
+  }
+
+  private stripTags(value: string): string {
+    return value.replace(/<[^>]+>/g, '');
   }
 
   private asString(value: unknown): string | undefined {

@@ -55,8 +55,9 @@ sat-platform-nav-container.has-selection-topbar {
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: clamp(240px, 28vw, 420px);
-  max-width: 420px;
+  width: clamp(340px, 42vw, 680px);
+  max-width: min(680px, calc(100vw - 360px));
+  min-width: 280px;
   margin: 0;
   z-index: 20;
 }
@@ -172,5 +173,28 @@ sat-platform-nav-container.has-selection-topbar {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.header-search-highlight {
+  background: #fff3bf;
+  color: inherit;
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 0;
+}
+
+@media (max-width: 1024px) {
+  .header-search {
+    width: clamp(280px, 48vw, 560px);
+    max-width: calc(100vw - 280px);
+  }
+}
+
+@media (max-width: 768px) {
+  .header-search {
+    width: min(540px, calc(100vw - 96px));
+    max-width: calc(100vw - 96px);
+    min-width: 220px;
+  }
 }
 

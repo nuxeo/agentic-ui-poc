@@ -54,6 +54,7 @@ export class SearchFiltersDrawerComponent {
   readonly availableSavedSearches = signal<SavedSearchSelectOption[]>([]);
   readonly selectedSavedSearch = signal('');
   readonly savedSearchInput = signal('');
+  readonly savedSearchFilter = signal('');
   readonly secondarySearchInput = signal('');
   readonly savedSearchOpen = signal(false);
   readonly savedSearchesLoading = signal(false);
@@ -106,6 +107,14 @@ export class SearchFiltersDrawerComponent {
     this.selectedCollection().trim().length > 0 ||
     this.selectedTag().trim().length > 0,
   );
+
+  readonly filteredSavedSearches = computed(() => {
+    const term = this.savedSearchFilter().trim().toLowerCase();
+    if (!term) return this.availableSavedSearches();
+    return this.availableSavedSearches().filter((option) =>
+      option.label.toLowerCase().includes(term),
+    );
+  });
 
   readonly activeFiltersForQueue = computed(() => {
     const selected = this.selectedQueueQuickFilters();
@@ -239,6 +248,11 @@ export class SearchFiltersDrawerComponent {
   }
 
   onSecondarySearchEnter(): void {
+    this.updateDrawerFilters();
+  }
+
+  onSecondarySearchClear(): void {
+    this.secondarySearchInput.set('');
     this.updateDrawerFilters();
   }
 
@@ -385,6 +399,7 @@ export class SearchFiltersDrawerComponent {
 
   selectSavedSearch(option: SavedSearchSelectOption): void {
     this.savedSearchInput.set(option.label);
+    this.savedSearchFilter.set('');
     this.selectedSavedSearch.set(option.value);
     this.savedSearchOpen.set(false);
     this.searchAggregationService.selectedSavedSearchId.set(option.value);
@@ -398,6 +413,7 @@ export class SearchFiltersDrawerComponent {
   }
 
   selectDefaultSavedSearch(): void {
+    this.savedSearchFilter.set('');
     this.searchAggregationService.selectedSavedSearchId.set('');
     this.searchAggregationService.selectedSavedSearchTitle.set('');
     this.resetFilters();
@@ -580,6 +596,7 @@ export class SearchFiltersDrawerComponent {
   resetFilters(): void {
     this.selectedSavedSearch.set('');
     this.savedSearchInput.set('');
+    this.savedSearchFilter.set('');
     this.savedSearchOpen.set(false);
     this.searchAggregationService.selectedSavedSearchId.set('');
     this.searchAggregationService.selectedSavedSearchTitle.set('');

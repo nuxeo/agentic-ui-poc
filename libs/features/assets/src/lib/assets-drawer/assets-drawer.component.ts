@@ -82,6 +82,7 @@ export class AssetsDrawerComponent {
   readonly viewMode = signal<DrawerViewMode>(this.loadViewModeFromStorage());
   readonly selectedDocumentId = signal('');
   readonly filterSearchInput = signal('');
+  readonly savedSearchFilter = signal('');
   readonly filterSearchOpen = signal(false);
   readonly availableSavedSearches = signal<SavedSearchSelectOption[]>([]);
   readonly selectedSavedSearch = signal('');
@@ -105,6 +106,14 @@ export class AssetsDrawerComponent {
     this.secondarySearchInput().trim().length > 0 ||
     this.filterGroups().some((group) => group.options.some((option) => option.selected)),
   );
+
+  readonly filteredSavedSearches = computed(() => {
+    const term = this.savedSearchFilter().trim().toLowerCase();
+    if (!term) return this.availableSavedSearches();
+    return this.availableSavedSearches().filter((option) =>
+      option.label.toLowerCase().includes(term),
+    );
+  });
 
   getCountText(groupId: string, aggKey?: string): string {
     if (!aggKey) return '';
@@ -252,6 +261,7 @@ export class AssetsDrawerComponent {
 
   selectFilterOption(option: SavedSearchSelectOption): void {
     this.filterSearchInput.set(option.label);
+    this.savedSearchFilter.set('');
     this.selectedSavedSearch.set(option.value);
     this.filterSearchOpen.set(false);
     this.aggregationService.selectedSavedSearchId.set(option.value);
@@ -276,6 +286,11 @@ export class AssetsDrawerComponent {
       },
       queryParamsHandling: 'merge',
     });
+  }
+
+  onSecondarySearchClear(): void {
+    this.secondarySearchInput.set('');
+    this.onSecondarySearchEnter();
   }
 
   openSaveAsDialog(): void {
@@ -320,6 +335,7 @@ export class AssetsDrawerComponent {
       groups.map((g) => ({ ...g, options: g.options.map((o) => ({ ...o, selected: false })) })),
     );
     this.filterSearchInput.set('');
+    this.savedSearchFilter.set('');
     this.selectedSavedSearch.set('');
     this.aggregationService.selectedSavedSearchId.set('');
     this.aggregationService.selectedSavedSearchTitle.set('');

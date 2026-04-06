@@ -1,10 +1,13 @@
 <div class="results-page">
   <div class="results-top-actions">
     @if (hasSavableFilters()) {
-      <button mat-stroked-button type="button" (click)="openSaveAsDialog()">Save As</button>
+      <button mat-flat-button color="primary" class="top-action-btn save-as-btn" type="button" (click)="openSaveAsDialog()">
+        <mat-icon>bookmark_add</mat-icon>
+        Save As
+      </button>
     }
     @if (hasSelectedSavedSearch()) {
-      <button mat-stroked-button type="button" (click)="onSaveSelectedSavedSearch()">Save</button>
+      <button mat-flat-button class="top-action-btn save-btn" type="button" (click)="onSaveSelectedSavedSearch()">Save</button>
     }
     @if (hasSelectedSavedSearch()) {
       <button

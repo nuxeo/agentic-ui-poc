@@ -1,33 +1,51 @@
 <div class="drawer-header-actions">
   <div class="drawer-search-row-primary">
-    <div class="drawer-search drawer-search-primary typeahead-input-wrap">
+    <div class="saved-filters-dropdown" (blur)="closeSavedSearchDropdown()">
       <button
-        class="typeahead-input"
+        class="saved-filters-trigger"
         type="button"
         [attr.aria-expanded]="savedSearchOpen()"
         [attr.aria-label]="savedSearchInput() || 'Saved Searches'"
         (click)="onSavedSearchFocus()"
         (focus)="onSavedSearchFocus()"
-        (blur)="closeSavedSearchDropdown()"
       >
-        {{ savedSearchInput() || 'Saved Searches' }}
+        <span class="saved-filters-label">{{ savedSearchInput() || 'Search Filters' }}</span>
+        <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
       </button>
-      <mat-icon class="typeahead-arrow">arrow_drop_down</mat-icon>
 
       @if (savedSearchOpen()) {
-        <div class="typeahead-panel">
+        <div class="saved-filters-panel">
           @if (savedSearchesLoading()) {
-            <div class="typeahead-hint">Loading saved searches...</div>
+            <div class="saved-filters-empty">Loading saved searches...</div>
           } @else if (availableSavedSearches().length === 0) {
-              <div class="typeahead-hint">Search filters</div>
+            <div class="saved-filters-empty">No saved searches</div>
           } @else {
-            <button class="typeahead-option" type="button" (mousedown)="selectDefaultSavedSearch()">
-              Search Filters
+            <div class="saved-filters-search">
+              <input
+                class="saved-filters-search-input"
+                type="text"
+                placeholder="Search..."
+                [value]="savedSearchFilter()"
+                (input)="savedSearchFilter.set($any($event.target).value)"
+              />
+            </div>
+            <button
+              class="saved-filters-option saved-filters-default"
+              type="button"
+              (mousedown)="selectDefaultSavedSearch()"
+            >
+              <mat-icon class="saved-filter-icon">search</mat-icon>
+              Default Search
             </button>
-            @for (option of availableSavedSearches(); track option.key) {
-              <button class="typeahead-option" type="button" (mousedown)="selectSavedSearch(option)">
-                {{ option.label }}
-              </button>
+            @if (filteredSavedSearches().length === 0) {
+              <div class="saved-filters-empty">No matching saved searches</div>
+            } @else {
+              @for (option of filteredSavedSearches(); track option.key) {
+                <button class="saved-filters-option" type="button" (mousedown)="selectSavedSearch(option)">
+                  <mat-icon class="saved-filter-icon">bookmark</mat-icon>
+                  {{ option.label }}
+                </button>
+              }
             }
           }
         </div>
@@ -46,28 +64,30 @@
     </button>
   </div>
 
-  @if (viewMode() === 'filter') {
-    <div class="drawer-search-row">
-      <div class="drawer-search drawer-search-secondary">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input
-          type="text"
-          class="search-input"
-          placeholder="Filter results"
-          [value]="secondarySearchInput()"
-          (input)="onSecondarySearchInput($any($event.target).value)"
-          (keydown.enter)="onSecondarySearchEnter()"
-        />
-      </div>
-    </div>
-  }
 </div>
 
 <mat-divider />
 
 @if (viewMode() === 'filter') {
   <div class="filters-section">
-    <p class="filters-heading">Filters</p>
+    <div class="filter-group">
+      <p class="filter-title">Full Text</p>
+      <div class="filter-input-wrap">
+        <input
+          class="filter-input"
+          type="text"
+          placeholder="Search for something..."
+          [value]="secondarySearchInput()"
+          (input)="onSecondarySearchInput($any($event.target).value)"
+          (keydown.enter)="onSecondarySearchEnter()"
+        />
+        @if (secondarySearchInput().trim()) {
+          <button class="clear-btn" type="button" (click)="onSecondarySearchClear()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
 
     <div class="filter-group">
       <button class="filter-btn" type="button" (click)="toggleFilter('modification-date')">
@@ -309,10 +329,10 @@
 
   <div class="drawer-footer">
     <div class="footer-actions">
-      <button mat-stroked-button class="reset-btn" type="button" [disabled]="!hasActiveFilters()" (click)="resetFilters()">
+      <button mat-stroked-button class="footer-btn reset-btn" type="button" [disabled]="!hasActiveFilters()" (click)="resetFilters()">
         Reset
       </button>
-      <button mat-stroked-button class="save-as-btn" type="button" [disabled]="!hasActiveFilters()" (click)="openSaveAsDialog()">
+      <button mat-flat-button color="primary" class="footer-btn save-as-btn" type="button" [disabled]="!hasActiveFilters()" (click)="openSaveAsDialog()">
         Save As
       </button>
     </div>
