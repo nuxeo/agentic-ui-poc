@@ -32,7 +32,7 @@
   font-size: 28px;
   width: 28px;
   height: 28px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   flex-shrink: 0;
 }
 
@@ -45,7 +45,7 @@
 .header-title {
   font-size: 16px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -68,7 +68,7 @@
     color: #555;
 
     &:hover {
-      color: #1a1a2e;
+      color: var(--mat-sys-on-surface);
     }
 
     &[disabled] {
@@ -317,7 +317,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
 }
 
 .perm-action-btn {
@@ -540,8 +540,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
-  color: #5c6bc0;
-  background: #e8eaf6;
+  color: var(--mat-sys-primary);
+  background: var(--mat-sys-primary-container);
   text-transform: capitalize;
 }
 

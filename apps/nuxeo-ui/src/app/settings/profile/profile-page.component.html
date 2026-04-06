@@ -2,11 +2,16 @@
   <div class="profile-cards">
     <article class="profile-card profile-card--primary">
       <header class="profile-card__header">
-        <h2 class="profile-card__title">
+        <div class="profile-card__title" role="heading" aria-level="2">
           <mat-icon aria-hidden="true">account_circle</mat-icon>
           <span>{{ username() }}</span>
-        </h2>
-        <button type="button" class="profile-card__password-btn" (click)="openChangePasswordDialog()" #changePasswordButton>
+        </div>
+        <button
+          type="button"
+          class="profile-card__password-btn"
+          (click)="openChangePasswordDialog()"
+          #changePasswordButton
+        >
           <mat-icon aria-hidden="true">lock</mat-icon>
           <span>Change password</span>
         </button>
@@ -29,7 +34,7 @@
     </article>
 
     <article class="profile-card">
-      <h3 class="profile-card__section-title">Groups</h3>
+      <div class="profile-card__section-title" role="heading" aria-level="3">Groups</div>
 
       @if (groupsLoading()) {
         <p class="profile-card__text">Loading groups…</p>
@@ -70,7 +75,7 @@
     </article>
 
     <article class="profile-card">
-      <h3 class="profile-card__section-title">Local Permissions</h3>
+      <div class="profile-card__section-title" role="heading" aria-level="3">Local Permissions</div>
 
       @if (localPermissionsLoading()) {
         <p class="profile-card__text">Loading local permissions…</p>
@@ -91,7 +96,13 @@
                   <td colspan="4" class="profile-card__table-empty">No local permissions found.</td>
                 </tr>
               } @else {
-                @for (permission of localPermissions(); track permission.on + permission.right + permission.timeFrame + permission.grantedBy) {
+                @for (
+                  permission of localPermissions();
+                  track permission.on +
+                    permission.right +
+                    permission.timeFrame +
+                    permission.grantedBy
+                ) {
                   <tr>
                     <td>{{ permission.on }}</td>
                     <td>{{ permission.right }}</td>
@@ -107,7 +118,9 @@
     </article>
 
     <article class="profile-card">
-      <h3 class="profile-card__section-title">Administrator Permissions</h3>
+      <div class="profile-card__section-title" role="heading" aria-level="3">
+        Administrator Permissions
+      </div>
       @if (adminPermissionsLoading()) {
         <p class="profile-card__text">Loading administrator permissions…</p>
       } @else {
@@ -124,7 +137,9 @@
             <tbody>
               @if (adminPermissions().length === 0) {
                 <tr>
-                  <td colspan="4" class="profile-card__table-empty">Administrators do not have any permissions.</td>
+                  <td colspan="4" class="profile-card__table-empty">
+                    Administrators do not have any permissions.
+                  </td>
                 </tr>
               } @else {
                 @for (permission of adminPagedRows(); track permission.on + permission.right) {
@@ -141,11 +156,25 @@
         </div>
         @if (adminTotalPages() > 1) {
           <div class="profile-card__pagination">
-            <button mat-icon-button type="button" [disabled]="adminPage() === 0" (click)="adminPrev()" aria-label="Previous page">
+            <button
+              mat-icon-button
+              type="button"
+              [disabled]="adminPage() === 0"
+              (click)="adminPrev()"
+              aria-label="Previous page"
+            >
               <mat-icon>chevron_left</mat-icon>
             </button>
-            <span class="profile-card__pagination-label">{{ adminPage() + 1 }} / {{ adminTotalPages() }}</span>
-            <button mat-icon-button type="button" [disabled]="adminPage() === adminTotalPages() - 1" (click)="adminNext()" aria-label="Next page">
+            <span class="profile-card__pagination-label"
+              >{{ adminPage() + 1 }} / {{ adminTotalPages() }}</span
+            >
+            <button
+              mat-icon-button
+              type="button"
+              [disabled]="adminPage() === adminTotalPages() - 1"
+              (click)="adminNext()"
+              aria-label="Next page"
+            >
               <mat-icon>chevron_right</mat-icon>
             </button>
           </div>

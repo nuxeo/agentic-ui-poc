@@ -1,8 +1,49 @@
+@use '@angular/material' as mat;
 @use '@hylandsoftware/satori-ui/theme' as sat;
 
-html {
+html[data-app-theme='nuxeo'],
+html:not([data-app-theme]) {
   color-scheme: light dark;
   @include sat.theme;
+}
+
+html[data-app-theme='dark'] {
+  color-scheme: dark;
+  @include sat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$azure-palette,
+        tertiary: mat.$violet-palette,
+      ),
+    )
+  );
+}
+
+html[data-app-theme='kawaii'] {
+  color-scheme: light;
+  @include sat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$rose-palette,
+        tertiary: mat.$magenta-palette,
+      ),
+    )
+  );
+}
+
+html[data-app-theme='light'] {
+  color-scheme: light;
+  @include sat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$cyan-palette,
+        tertiary: mat.$blue-palette,
+      ),
+    )
+  );
 }
 
 html,
@@ -14,6 +55,32 @@ body {
 app-root {
   display: block;
   height: 100%;
+}
+
+/*
+ * Material theme typography maps `h2` to display-medium (large `font` shorthand). Satori’s
+ * sidebar title is still an `h2.sat-platform-nav-title` — restore its intended type scale so it
+ * wins over `html[data-app-theme] .mat-typography h2` from the generated theme.
+ */
+html[data-app-theme] body.mat-typography sat-platform-nav h2.sat-platform-nav-title {
+  font-family: var(--sat-platform-nav-title-font);
+  font-size: var(--sat-platform-nav-title-medium-size, 1rem);
+  font-style: normal;
+  font-weight: 500;
+  line-height: var(--sat-platform-nav-title-line-height, 1.5rem);
+  letter-spacing: var(--sat-platform-nav-title-letter-spacing, 0.009rem);
+  margin: 0;
+}
+
+/* Same conflict before `data-app-theme` is applied (e.g. first paint). */
+html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-nav-title {
+  font-family: var(--sat-platform-nav-title-font);
+  font-size: var(--sat-platform-nav-title-medium-size, 1rem);
+  font-style: normal;
+  font-weight: 500;
+  line-height: var(--sat-platform-nav-title-line-height, 1.5rem);
+  letter-spacing: var(--sat-platform-nav-title-letter-spacing, 0.009rem);
+  margin: 0;
 }
 
 /* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */

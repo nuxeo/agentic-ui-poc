@@ -58,7 +58,7 @@ export interface ShareDialogData {
         border: none;
         background: transparent;
         font-size: 13px;
-        color: #333;
+        color: var(--mat-sys-on-surface);
         outline: none;
         min-width: 0;
         font-family: inherit;
@@ -66,7 +66,7 @@ export interface ShareDialogData {
 
       .copy-btn {
         flex-shrink: 0;
-        color: #5c6bc0;
+        color: var(--mat-sys-primary);
       }
 
       mat-dialog-actions {

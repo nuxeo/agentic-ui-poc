@@ -35,7 +35,7 @@
   padding: 12px 14px;
   border-bottom: 1px solid var(--mat-sys-surface-container-high, #e8e8eb);
 
-  h2 {
+  .drawer-header-title {
     margin: 0;
     font-size: 0.95rem;
     font-weight: 600;
@@ -373,7 +373,7 @@
   justify-content: space-between;
   margin-bottom: 4px;
 
-  h4 {
+  .action-panel-title {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;

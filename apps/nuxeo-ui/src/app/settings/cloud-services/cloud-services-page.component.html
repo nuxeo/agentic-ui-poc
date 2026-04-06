@@ -1,6 +1,6 @@
 <section class="connected-accounts-page">
   <div class="connected-accounts-page__card">
-    <h2 class="connected-accounts-page__title">{{ title }}</h2>
+    <div class="connected-accounts-page__title" role="heading" aria-level="2">{{ title }}</div>
 
     @if (loading()) {
       <div class="connected-accounts-page__state">Loading connected accounts…</div>
@@ -29,7 +29,10 @@
                   </td>
                 </tr>
               } @else {
-                @for (account of serviceAccounts(); track account.serviceName + account.serviceLogin) {
+                @for (
+                  account of serviceAccounts();
+                  track account.serviceName + account.serviceLogin
+                ) {
                   <tr>
                     <td>{{ account.serviceName }}</td>
                     <td>{{ account.nuxeoLogin }}</td>

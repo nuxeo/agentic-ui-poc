@@ -41,7 +41,7 @@
   margin: 0;
   font-size: 1.25rem;
   line-height: 1.2;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
 }
 
 .profile-card__title mat-icon {
@@ -54,7 +54,7 @@
   gap: 0.4rem;
   border: none;
   background: none;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
   font: inherit;
   font-size: 0.875rem;
   line-height: 1;
@@ -75,12 +75,12 @@
 }
 
 .profile-card__password-btn:hover {
-  background: #f5f6fa;
+  background: var(--mat-sys-surface-container-low);
 }
 
 .profile-card__password-btn:focus,
 .profile-card__password-btn:focus-visible {
-  background: #f5f6fa;
+  background: var(--mat-sys-surface-container-low);
   box-shadow: 0 0 0 3px rgba(52, 64, 84, 0.08);
   outline: none;
 }
@@ -109,14 +109,14 @@
 
 .profile-card__detail-row dd {
   margin: 0;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
 }
 
 .profile-card__section-title {
   margin: 0 0 0.5rem;
   font-size: 1rem;
   font-weight: 700;
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
 }
 
 .profile-card__text {
@@ -146,7 +146,7 @@
 }
 
 .profile-card__table th {
-  color: #1a1a2e;
+  color: var(--mat-sys-on-surface);
   background: #f8f9fc;
   font-weight: 400;
 }
@@ -181,4 +181,3 @@
 .profile-card__pill-link:hover {
   background: #dbeafe;
 }
-

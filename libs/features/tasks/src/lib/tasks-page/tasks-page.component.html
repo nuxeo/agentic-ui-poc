@@ -2,7 +2,9 @@
   <!-- ═══ LEFT: Task List Drawer ═══ -->
   <aside class="task-drawer">
     <div class="drawer-header">
-      <h2><mat-icon class="drawer-icon">assignment</mat-icon> Tasks</h2>
+      <div class="drawer-header-title" role="heading" aria-level="2">
+        <mat-icon class="drawer-icon">assignment</mat-icon> Tasks
+      </div>
       <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh">
         <mat-icon>refresh</mat-icon>
       </button>
@@ -67,7 +69,9 @@
           <mat-icon class="doc-header-type-icon">description</mat-icon>
           <div class="doc-header-titles">
             @if (targetDoc()) {
-              <h1 class="doc-main-title">{{ targetDoc()!.title }}</h1>
+              <div class="doc-main-title" role="heading" aria-level="1">
+                {{ targetDoc()!.title }}
+              </div>
               <div class="doc-breadcrumb">
                 @for (seg of breadcrumbs(); track seg; let last = $last) {
                   <span class="breadcrumb-seg">{{ seg }}</span>
@@ -77,7 +81,9 @@
                 }
               </div>
             } @else {
-              <h1 class="doc-main-title">{{ selectedTask()!.targetDocTitle || 'Document' }}</h1>
+              <div class="doc-main-title" role="heading" aria-level="1">
+                {{ selectedTask()!.targetDocTitle || 'Document' }}
+              </div>
             }
           </div>
         </div>
@@ -90,7 +96,9 @@
           <div class="task-form-scroll">
             <!-- Task title + Delegate / Reassign links -->
             <div class="task-form-header">
-              <h3 class="task-form-title">{{ taskDirective(selectedTask()!) }}</h3>
+              <div class="task-form-title" role="heading" aria-level="3">
+                {{ taskDirective(selectedTask()!) }}
+              </div>
               <div class="task-header-actions">
                 <button type="button" class="delegate-link" (click)="openDelegatePanel()">
                   Delegate
@@ -110,7 +118,7 @@
             @if (showDelegatePanel()) {
               <div class="action-panel delegate-panel">
                 <div class="action-panel-header">
-                  <h4>Delegate Task</h4>
+                  <div class="action-panel-title" role="heading" aria-level="4">Delegate Task</div>
                   <button mat-icon-button (click)="closeDelegatePanel()" matTooltip="Close">
                     <mat-icon>close</mat-icon>
                   </button>
@@ -195,7 +203,7 @@
             @if (showReassignPanel()) {
               <div class="action-panel reassign-panel">
                 <div class="action-panel-header">
-                  <h4>Reassign Task</h4>
+                  <div class="action-panel-title" role="heading" aria-level="4">Reassign Task</div>
                   <button mat-icon-button (click)="closeReassignPanel()" matTooltip="Close">
                     <mat-icon>close</mat-icon>
                   </button>
@@ -279,7 +287,7 @@
             @if (showGraphPanel()) {
               <div class="action-panel graph-panel">
                 <div class="action-panel-header">
-                  <h4>Workflow Graph</h4>
+                  <div class="action-panel-title" role="heading" aria-level="4">Workflow Graph</div>
                   <button mat-icon-button (click)="closeGraphPanel()" matTooltip="Close">
                     <mat-icon>close</mat-icon>
                   </button>

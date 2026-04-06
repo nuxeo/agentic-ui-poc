@@ -3,7 +3,7 @@ import { InjectionToken } from '@angular/core';
 /**
  * Base URL for Nuxeo API calls from the browser.
  * Use '' with `proxy.conf.json` during `nx serve` so requests go to `/nuxeo/...`
- * on the dev server and are proxied to http://localhost:8180 (Nuxeo).
+ * on the dev server and are proxied to http://localhost:8080 (Nuxeo).
  * For production behind a shared host, keep ''.
  * For cross-origin production, set the full origin (and configure CORS on Nuxeo).
  */

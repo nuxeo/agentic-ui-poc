@@ -35,7 +35,11 @@ import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-c
       } @else {
         <mat-form-field appearance="outline" class="collection-field">
           <mat-label>Collections</mat-label>
-          <mat-select [(ngModel)]="selectedCollectionId" placeholder="Select a Collection..." required>
+          <mat-select
+            [(ngModel)]="selectedCollectionId"
+            placeholder="Select a Collection..."
+            required
+          >
             @for (col of filteredCollections(); track col.uid) {
               <mat-option [value]="col.uid">{{ col.title }}</mat-option>
             }
@@ -43,15 +47,21 @@ import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-c
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
-          <input matInput
-                 placeholder="Search or create collection..."
-                 [ngModel]="searchTerm()"
-                 (ngModelChange)="searchTerm.set($event)"
-                 autocomplete="off" />
+          <input
+            matInput
+            placeholder="Search or create collection..."
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)"
+            autocomplete="off"
+          />
         </mat-form-field>
 
         @if (showCreateOption()) {
-          <button class="create-collection-btn" (click)="createNewCollection()" [disabled]="creating()">
+          <button
+            class="create-collection-btn"
+            (click)="createNewCollection()"
+            [disabled]="creating()"
+          >
             @if (creating()) {
               <mat-spinner diameter="16" />
             } @else {
@@ -65,10 +75,12 @@ import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-c
 
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancel</button>
-      <button mat-flat-button
-              color="primary"
-              [disabled]="!selectedCollectionId || adding()"
-              (click)="add()">
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="!selectedCollectionId || adding()"
+        (click)="add()"
+      >
         @if (adding()) {
           <mat-spinner diameter="18" />
         } @else {
@@ -77,68 +89,70 @@ import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-c
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
-    :host {
-      display: block;
-      min-width: 400px;
-    }
-
-    mat-dialog-content {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      padding-top: 8px !important;
-    }
-
-    .collection-field,
-    .search-field {
-      width: 100%;
-    }
-
-    .dialog-loading {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 0;
-      color: #666;
-      font-size: 13px;
-    }
-
-    .create-collection-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border: 1px dashed #5c6bc0;
-      border-radius: 6px;
-      background: #f5f6ff;
-      cursor: pointer;
-      font-size: 13px;
-      color: #5c6bc0;
-      font-weight: 500;
-      transition: background 0.15s;
-
-      &:hover:not(:disabled) {
-        background: #e8eaf6;
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 400px;
       }
 
-      &:disabled {
-        opacity: 0.6;
-        cursor: default;
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-top: 8px !important;
       }
 
-      .mat-icon {
-        font-size: 20px;
-        width: 20px;
-        height: 20px;
-        color: #5c6bc0;
+      .collection-field,
+      .search-field {
+        width: 100%;
       }
-    }
 
-    mat-dialog-actions {
-      padding: 8px 24px 16px;
-    }
-  `],
+      .dialog-loading {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 0;
+        color: #666;
+        font-size: 13px;
+      }
+
+      .create-collection-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border: 1px dashed var(--mat-sys-primary);
+        border-radius: 6px;
+        background: var(--mat-sys-primary-container);
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--mat-sys-primary);
+        font-weight: 500;
+        transition: background 0.15s;
+
+        &:hover:not(:disabled) {
+          background: color-mix(in srgb, var(--mat-sys-primary) 12%, var(--mat-sys-surface));
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+
+        .mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+          color: var(--mat-sys-primary);
+        }
+      }
+
+      mat-dialog-actions {
+        padding: 8px 24px 16px;
+      }
+    `,
+  ],
 })
 export class AddToCollectionDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<AddToCollectionDialogComponent>);
@@ -161,9 +175,7 @@ export class AddToCollectionDialogComponent implements OnInit {
   readonly showCreateOption = computed(() => {
     const term = this.searchTerm().trim();
     if (!term) return false;
-    const exact = this.collections().some(
-      (c) => c.title.toLowerCase() === term.toLowerCase(),
-    );
+    const exact = this.collections().some((c) => c.title.toLowerCase() === term.toLowerCase());
     return !exact;
   });
 

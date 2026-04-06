@@ -17,7 +17,9 @@
         <mat-icon>arrow_back</mat-icon>
       </button>
       <div class="task-detail-title-group">
-        <h2>{{ taskLabel(task()!) }}</h2>
+        <div class="task-detail-heading" role="heading" aria-level="2">
+          {{ taskLabel(task()!) }}
+        </div>
         <span class="task-workflow-badge">{{ taskWorkflow(task()!) }}</span>
       </div>
     </div>
@@ -70,7 +72,7 @@
         <!-- Participants picker (for Choose Participants step) -->
         @if (isChooseParticipants) {
           <div class="form-section">
-            <h3>Participants</h3>
+            <div class="form-section-heading" role="heading" aria-level="3">Participants</div>
 
             <div class="participant-chips">
               @for (p of participants; track p) {
@@ -192,7 +194,9 @@
       <!-- Right: Task metadata sidebar -->
       <div class="task-info-panel">
         <div class="info-card">
-          <h3><mat-icon class="section-icon">info</mat-icon> Task Info</h3>
+          <div class="info-card-heading" role="heading" aria-level="3">
+            <mat-icon class="section-icon">info</mat-icon> Task Info
+          </div>
           <div class="info-row">
             <span class="info-label">Created</span>
             <span class="info-value">{{ task()!.created | date: 'mediumDate' }}</span>

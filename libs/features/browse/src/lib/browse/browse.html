@@ -5,7 +5,7 @@
       @if (currentDoc(); as doc) {
         <mat-icon class="header-doc-icon">{{ docIcon(doc) }}</mat-icon>
         <div class="header-doc-info">
-          <h1 class="header-doc-title">{{ doc.title }}</h1>
+          <div class="header-doc-title" role="heading" aria-level="1">{{ doc.title }}</div>
           <span class="header-doc-type">{{ doc.type }}</span>
         </div>
       }
@@ -298,7 +298,9 @@
                 <!-- Permissions defined locally -->
                 <section class="perm-section">
                   <div class="perm-section-header">
-                    <h3 class="perm-section-title">Permissions defined locally</h3>
+                    <div class="perm-section-title" role="heading" aria-level="3">
+                      Permissions defined locally
+                    </div>
                     <button
                       mat-button
                       color="primary"
@@ -364,7 +366,9 @@
                 <!-- Permissions inherited from upper levels -->
                 <section class="perm-section">
                   <div class="perm-section-header">
-                    <h3 class="perm-section-title">Permissions inherited from upper levels</h3>
+                    <div class="perm-section-title" role="heading" aria-level="3">
+                      Permissions inherited from upper levels
+                    </div>
                     <button
                       mat-button
                       color="primary"
@@ -427,7 +431,9 @@
                 <!-- Permissions Assigned to External Users -->
                 <section class="perm-section">
                   <div class="perm-section-header">
-                    <h3 class="perm-section-title">Permissions Assigned to External Users</h3>
+                    <div class="perm-section-title" role="heading" aria-level="3">
+                      Permissions Assigned to External Users
+                    </div>
                     <button
                       mat-button
                       color="primary"
@@ -741,7 +747,7 @@
         @if (panelSubTab() === 'info') {
           <div class="panel-body">
             <div class="panel-info-section">
-              <h4 class="panel-section-title">Info</h4>
+              <div class="panel-section-title" role="heading" aria-level="4">Info</div>
               <div class="panel-info-row">
                 <span class="info-label">State</span>
                 <span class="info-value">
@@ -785,7 +791,7 @@
             </div>
 
             <div class="panel-info-section">
-              <h4 class="panel-section-title">Properties</h4>
+              <div class="panel-section-title" role="heading" aria-level="4">Properties</div>
               <div class="panel-info-row">
                 <span class="info-label">Title</span>
                 <span class="info-value">{{ doc.title }}</span>
@@ -801,7 +807,7 @@
         <!-- Tags sub-tab -->
         @if (panelSubTab() === 'tags') {
           <div class="panel-body">
-            <h4 class="panel-section-title">Tags</h4>
+            <div class="panel-section-title" role="heading" aria-level="4">Tags</div>
             <div class="tags-container">
               @for (tag of tags(); track tag) {
                 <span class="removable-tag">

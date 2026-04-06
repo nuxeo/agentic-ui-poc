@@ -1,6 +1,6 @@
 <div class="admin-page">
   <header class="admin-page__header">
-    <h1 class="admin-page__title">Analytics</h1>
+    <div class="admin-page__title" role="heading" aria-level="1">Analytics</div>
     <button type="button" mat-icon-button aria-label="Search (placeholder)">
       <mat-icon>search</mat-icon>
     </button>
@@ -66,7 +66,9 @@
         @if (repoLoading()) {
           <div class="center"><mat-spinner diameter="36" /></div>
         } @else {
-          <p class="muted">Showing {{ repoDocs().length }} of {{ repoTotal() }} (most recently modified).</p>
+          <p class="muted">
+            Showing {{ repoDocs().length }} of {{ repoTotal() }} (most recently modified).
+          </p>
           <div class="table-scroll mat-elevation-z1">
             <table mat-table [dataSource]="repoDocs()" class="mini-table">
               <ng-container matColumnDef="path">
