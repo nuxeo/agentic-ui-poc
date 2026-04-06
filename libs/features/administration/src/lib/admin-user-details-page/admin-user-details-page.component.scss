@@ -89,7 +89,7 @@
   }
 }
 
-.ud-section-head h2 {
+.ud-section-head .ud-section-heading {
   margin: 0 0 var(--admin-space-2, 0.75rem);
   font-size: 1rem;
   font-weight: 600;
@@ -103,7 +103,7 @@
   flex-wrap: wrap;
 }
 
-.ud-section-head--row h2 {
+.ud-section-head--row .ud-section-heading {
   margin: 0;
 }
 

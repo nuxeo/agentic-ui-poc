@@ -25,6 +25,7 @@ sat-platform-nav-container.has-selection-topbar {
   width: 280px;
   border-right: none;
   box-shadow: 2px 0 8px rgb(0 0 0 / 8%);
+  background: var(--mat-sys-surface);
 }
 
 :host ::ng-deep sat-app-header .sat-app-header-leading-container {
@@ -173,4 +174,3 @@ sat-platform-nav-container.has-selection-topbar {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-

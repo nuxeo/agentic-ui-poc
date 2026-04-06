@@ -15,7 +15,7 @@
       <mat-icon>arrow_back</mat-icon>
     </button>
     <div class="header-info">
-      <h1 class="header-title">{{ doc()!.title }}</h1>
+      <div class="header-title" role="heading" aria-level="1">{{ doc()!.title }}</div>
       <span class="header-path">{{ breadcrumbPath() }}</span>
     </div>
     <div class="header-actions">
@@ -174,7 +174,7 @@
       aria-label="Close start process dialog"
     ></button>
     <div class="start-process-dialog">
-      <h2 class="start-process-title">Start Process</h2>
+      <div class="start-process-title" role="heading" aria-level="2">Start Process</div>
 
       @if (workflowsLoading()) {
         <div class="start-process-loading">
@@ -291,7 +291,9 @@
               <!-- Permissions defined locally -->
               <section class="perm-section">
                 <div class="perm-section-header">
-                  <h3 class="perm-section-title">Permissions defined locally</h3>
+                  <div class="perm-section-title" role="heading" aria-level="3">
+                    Permissions defined locally
+                  </div>
                   <button mat-button color="primary" class="perm-action-btn">New</button>
                 </div>
                 @if (localAces().length === 0) {
@@ -336,7 +338,9 @@
               <!-- Permissions inherited from upper levels -->
               <section class="perm-section">
                 <div class="perm-section-header">
-                  <h3 class="perm-section-title">Permissions inherited from upper levels</h3>
+                  <div class="perm-section-title" role="heading" aria-level="3">
+                    Permissions inherited from upper levels
+                  </div>
                   <button mat-button color="primary" class="perm-action-btn">
                     {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
                   </button>
@@ -383,7 +387,9 @@
               <!-- Permissions Assigned to External Users -->
               <section class="perm-section">
                 <div class="perm-section-header">
-                  <h3 class="perm-section-title">Permissions Assigned to External Users</h3>
+                  <div class="perm-section-title" role="heading" aria-level="3">
+                    Permissions Assigned to External Users
+                  </div>
                   <button mat-button color="primary" class="perm-action-btn">New</button>
                 </div>
                 <div class="perm-info-bar">
@@ -614,7 +620,9 @@
               <!-- Publication details -->
               <section class="publish-section">
                 <div class="publish-section-header">
-                  <h3 class="publish-section-title">Publication details</h3>
+                  <div class="publish-section-title" role="heading" aria-level="3">
+                    Publication details
+                  </div>
                   @if (publishedDocs().length > 0) {
                     <button
                       mat-stroked-button
@@ -704,7 +712,9 @@
               <!-- Publish to Section -->
               <section class="publish-section">
                 <div class="publish-section-header">
-                  <h3 class="publish-section-title">Publish to a Section</h3>
+                  <div class="publish-section-title" role="heading" aria-level="3">
+                    Publish to a Section
+                  </div>
                   <button
                     mat-flat-button
                     color="primary"
@@ -937,7 +947,7 @@
             </div>
 
             <div class="indexing-header">
-              <h4 class="indexing-title">Indexing Properties</h4>
+              <div class="indexing-title" role="heading" aria-level="4">Indexing Properties</div>
             </div>
 
             <div class="prop-field">
@@ -983,7 +993,7 @@
 
             <div class="prop-section-divider"></div>
 
-            <h4 class="section-title">Attachments</h4>
+            <div class="section-title" role="heading" aria-level="4">Attachments</div>
             @if (attachments().length === 0) {
               <p class="section-empty">There are no attachments</p>
             } @else {
@@ -1041,7 +1051,7 @@
 
             <div class="prop-section-divider"></div>
 
-            <h4 class="section-title">Collections</h4>
+            <div class="section-title" role="heading" aria-level="4">Collections</div>
             @if (collections().length === 0) {
               <p class="section-empty">No collections</p>
             } @else {

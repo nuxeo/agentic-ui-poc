@@ -1,6 +1,6 @@
 @if (activeItem(); as item) {
   <div class="drawer-header">
-    <h2 class="drawer-title">{{ item.label }}</h2>
+    <div class="drawer-title" role="heading" aria-level="2">{{ item.label }}</div>
     @if (isTasksPanel) {
       <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
         <mat-icon>refresh</mat-icon>
@@ -271,11 +271,7 @@
   } @else if (isSettings) {
     <div class="settings-panel">
       @for (settingsItem of settingsItems; track settingsItem.path) {
-        <button
-          type="button"
-          class="settings-item"
-          (click)="navigateToSettings(settingsItem.path)"
-        >
+        <button type="button" class="settings-item" (click)="navigateToSettings(settingsItem.path)">
           {{ settingsItem.label }}
         </button>
       }

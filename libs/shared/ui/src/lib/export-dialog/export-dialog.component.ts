@@ -22,20 +22,13 @@ interface ExportOption {
 @Component({
   selector: 'lib-export-dialog',
   standalone: true,
-  imports: [
-    MatDialogModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-  ],
+  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatProgressSpinnerModule],
   template: `
     <h2 mat-dialog-title>Export</h2>
 
     <mat-dialog-content>
       @for (option of options; track option.type) {
-        <button class="export-option"
-                [disabled]="exporting()"
-                (click)="onExport(option.type)">
+        <button class="export-option" [disabled]="exporting()" (click)="onExport(option.type)">
           <mat-icon class="export-option-icon">{{ option.icon }}</mat-icon>
           <span class="export-option-label">{{ option.label }}</span>
           @if (exporting() === option.type) {
@@ -49,63 +42,65 @@ interface ExportOption {
       <button mat-stroked-button mat-dialog-close [disabled]="!!exporting()">Cancel</button>
     </mat-dialog-actions>
   `,
-  styles: [`
-    :host {
-      display: block;
-      min-width: 400px;
-    }
-
-    mat-dialog-content {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 16px 24px !important;
-    }
-
-    .export-option {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 14px 16px;
-      border: none;
-      background: none;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: background 0.15s;
-      width: 100%;
-      text-align: left;
-
-      &:hover:not(:disabled) {
-        background: #f5f6fa;
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 400px;
       }
 
-      &:disabled {
-        opacity: 0.6;
-        cursor: default;
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 16px 24px !important;
       }
-    }
 
-    .export-option-icon {
-      font-size: 22px;
-      width: 22px;
-      height: 22px;
-      color: #555;
-    }
+      .export-option {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 16px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: background 0.15s;
+        width: 100%;
+        text-align: left;
 
-    .export-option-label {
-      font-size: 14px;
-      color: #1565c0;
-      font-weight: 500;
-    }
+        &:hover:not(:disabled) {
+          background: var(--mat-sys-surface-container-low);
+        }
 
-    .export-spinner {
-      margin-left: auto;
-    }
+        &:disabled {
+          opacity: 0.6;
+          cursor: default;
+        }
+      }
 
-    mat-dialog-actions {
-      padding: 8px 24px 16px;
-    }
-  `],
+      .export-option-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+        color: var(--mat-sys-on-surface-variant);
+      }
+
+      .export-option-label {
+        font-size: 14px;
+        color: var(--mat-sys-primary);
+        font-weight: 500;
+      }
+
+      .export-spinner {
+        margin-left: auto;
+      }
+
+      mat-dialog-actions {
+        padding: 8px 24px 16px;
+      }
+    `,
+  ],
 })
 export class ExportDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ExportDialogComponent>);
@@ -124,7 +119,12 @@ export class ExportDialogComponent {
     if (this.exporting()) return;
     this.exporting.set(type);
 
-    const extMap: Record<ExportType, string> = { thumbnail: 'png', pdf: 'pdf', zip: 'zip', xml: 'xml' };
+    const extMap: Record<ExportType, string> = {
+      thumbnail: 'png',
+      pdf: 'pdf',
+      zip: 'zip',
+      xml: 'xml',
+    };
     const ext = extMap[type];
     const filename = `${this.data.documentTitle}.${ext}`;
 

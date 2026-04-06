@@ -1,3 +1,52 @@
 <section class="settings-page">
-  <h2 class="settings-page__title">{{ title }}</h2>
+  <div class="themes-toolbar">
+    <div class="settings-page__title" role="heading" aria-level="2">Themes</div>
+    <button type="button" mat-icon-button aria-label="Search (placeholder)">
+      <mat-icon>search</mat-icon>
+    </button>
+  </div>
+
+  <div class="themes-grid" role="list">
+    @for (t of themes; track t.id) {
+      <article
+        class="theme-card"
+        [class.theme-card--current]="theme.themeId() === t.id"
+        role="listitem"
+      >
+        <div class="theme-card__preview-wrap" [ngStyle]="previewVars(t)">
+          <div class="theme-preview" aria-hidden="true">
+            <div class="theme-preview__sidebar"></div>
+            <div class="theme-preview__body">
+              <div class="theme-preview__topbar"></div>
+              <div class="theme-preview__tiles">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="theme-preview__fab"></div>
+            </div>
+          </div>
+        </div>
+        <div class="theme-card__footer">
+          <span class="theme-card__name">{{ t.label }}</span>
+          @if (theme.themeId() === t.id) {
+            <button type="button" mat-stroked-button disabled class="theme-card__btn">
+              Current
+            </button>
+          } @else {
+            <button
+              type="button"
+              mat-flat-button
+              color="primary"
+              class="theme-card__btn"
+              (click)="theme.setTheme(t.id)"
+            >
+              Apply
+            </button>
+          }
+        </div>
+      </article>
+    }
+  </div>
 </section>

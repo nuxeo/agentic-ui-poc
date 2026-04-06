@@ -1,7 +1,7 @@
 :host {
   display: block;
   height: 100%;
-  background: #f5f6fa;
+  background: var(--mat-sys-surface-container-lowest);
 }
 
 .browse-container {
@@ -31,7 +31,7 @@
   font-size: 28px;
   width: 28px;
   height: 28px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
 }
 
 .header-doc-info {
@@ -71,7 +71,7 @@
 
 .breadcrumb-link {
   font-size: 13px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   text-decoration: none;
   font-weight: 500;
   &:hover {
@@ -127,7 +127,7 @@
   z-index: 2;
   color: #555;
   &:hover {
-    color: #3f51b5;
+    color: var(--mat-sys-primary);
   }
 }
 
@@ -185,7 +185,7 @@
     flex: 1;
     font-size: 14px;
     font-weight: 600;
-    color: #1a1a2e;
+    color: var(--mat-sys-on-surface);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -216,7 +216,7 @@
   }
 
   &--active {
-    color: #5c6bc0;
+    color: var(--mat-sys-primary);
 
     &::after {
       content: '';
@@ -225,7 +225,7 @@
       left: 0;
       right: 0;
       height: 2px;
-      background: #5c6bc0;
+      background: var(--mat-sys-primary);
     }
   }
 }
@@ -328,7 +328,7 @@
 
 .create-tag-option {
   font-weight: 500;
-  color: #3f51b5;
+  color: var(--mat-sys-primary);
 }
 
 // Activity items
@@ -432,8 +432,8 @@
 }
 
 .active-view {
-  color: #3f51b5 !important;
-  background: #e8eaf6;
+  color: var(--mat-sys-primary) !important;
+  background: var(--mat-sys-primary-container);
   border-radius: 4px;
 }
 
@@ -599,8 +599,8 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
-  color: #5c6bc0;
-  background: #e8eaf6;
+  color: var(--mat-sys-on-primary-container);
+  background: var(--mat-sys-primary-container);
   white-space: nowrap;
 }
 
@@ -634,7 +634,7 @@
   text-align: left;
 
   &:hover {
-    border-color: #5c6bc0;
+    border-color: var(--mat-sys-primary);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   }
 }
@@ -791,7 +791,7 @@
   font-size: 16px;
   width: 16px;
   height: 16px;
-  color: #5c6bc0;
+  color: var(--mat-sys-primary);
   vertical-align: middle;
   margin-right: 4px;
 }

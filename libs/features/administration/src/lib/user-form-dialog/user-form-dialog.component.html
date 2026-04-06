@@ -1,6 +1,6 @@
-<h2 mat-dialog-title>
+<div mat-dialog-title role="heading" aria-level="2">
   {{ data.mode === 'create' ? 'Create user' : 'Edit user' }}
-</h2>
+</div>
 <mat-dialog-content class="form">
   @if (loadingGroups) {
     <div class="spinner-wrap">
@@ -9,7 +9,13 @@
   }
   <mat-form-field appearance="outline" class="full">
     <mat-label>Username</mat-label>
-    <input matInput name="username" [(ngModel)]="username" [disabled]="data.mode === 'edit'" required />
+    <input
+      matInput
+      name="username"
+      [(ngModel)]="username"
+      [disabled]="data.mode === 'edit'"
+      required
+    />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
     <mat-label>First name</mat-label>
@@ -25,7 +31,13 @@
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
     <mat-label>{{ data.mode === 'create' ? 'Password' : 'New password (optional)' }}</mat-label>
-    <input matInput name="password" type="password" [(ngModel)]="password" [required]="data.mode === 'create'" />
+    <input
+      matInput
+      name="password"
+      type="password"
+      [(ngModel)]="password"
+      [required]="data.mode === 'create'"
+    />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
     <mat-label>Groups</mat-label>
@@ -58,7 +70,11 @@
       }
     </mat-hint>
   </mat-form-field>
-  <mat-autocomplete #groupAuto="matAutocomplete" autoActiveFirstOption (optionSelected)="onGroupSelected($event)">
+  <mat-autocomplete
+    #groupAuto="matAutocomplete"
+    autoActiveFirstOption
+    (optionSelected)="onGroupSelected($event)"
+  >
     @for (g of groupOptions; track g.groupname) {
       <mat-option [value]="g.groupname">{{ g.grouplabel }}</mat-option>
     }

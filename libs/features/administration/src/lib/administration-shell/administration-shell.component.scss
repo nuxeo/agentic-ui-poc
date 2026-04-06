@@ -58,13 +58,20 @@
   background: transparent;
 }
 
+/* Avoid --mat-sys-primary-container here: e.g. Light theme uses cyan primary and M3’s
+   primary-container is very saturated. Selection = subtle surface + primary bar + icon. */
 .admin-shell__link--active {
-  background: var(--mat-sys-primary-container, rgba(21, 101, 192, 0.12));
-  color: var(--mat-sys-primary, #1565c0);
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
   font-weight: 500;
 
   .admin-shell__link-bar {
-    background: var(--mat-sys-primary, #1565c0);
+    background: var(--mat-sys-primary);
+  }
+
+  .admin-shell__link-ico {
+    color: var(--mat-sys-primary);
+    opacity: 1;
   }
 }
 

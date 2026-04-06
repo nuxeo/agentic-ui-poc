@@ -1,10 +1,16 @@
-<h2 mat-dialog-title>
+<div mat-dialog-title role="heading" aria-level="2">
   {{ data.mode === 'create' ? 'Create group' : 'Edit group' }}
-</h2>
+</div>
 <mat-dialog-content class="form">
   <mat-form-field appearance="outline" class="full">
     <mat-label>Group name</mat-label>
-    <input matInput name="groupname" [(ngModel)]="groupname" [disabled]="data.mode === 'edit'" required />
+    <input
+      matInput
+      name="groupname"
+      [(ngModel)]="groupname"
+      [disabled]="data.mode === 'edit'"
+      required
+    />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
     <mat-label>Label</mat-label>

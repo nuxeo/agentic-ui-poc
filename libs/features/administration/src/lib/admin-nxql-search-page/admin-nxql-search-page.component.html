@@ -1,6 +1,6 @@
 <div class="nxql-page">
   <header class="nxql-page__header">
-    <h1 class="nxql-page__title">NXQL Search</h1>
+    <div class="nxql-page__title" role="heading" aria-level="1">NXQL Search</div>
   </header>
 
   <section class="nxql-panel" aria-label="NXQL query">
@@ -13,7 +13,11 @@
       </mat-expansion-panel>
     </mat-accordion>
 
-    <mat-form-field appearance="outline" class="nxql-field nxql-field--query" subscriptSizing="dynamic">
+    <mat-form-field
+      appearance="outline"
+      class="nxql-field nxql-field--query"
+      subscriptSizing="dynamic"
+    >
       <mat-label>NXQL Query (Ctrl + Enter to run)</mat-label>
       <textarea
         matInput
