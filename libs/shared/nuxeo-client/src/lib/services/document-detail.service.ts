@@ -16,7 +16,8 @@ export class DocumentDetailService {
   getFullDocument(uid: string): Observable<NuxeoDocument> {
     return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
       properties: '*',
-      'enrichers.document': 'acls,renditions,favorites,subscribedNotifications,collections',
+      'enrichers.document':
+        'acls,renditions,favorites,subscribedNotifications,collections,preview,thumbnail',
     });
   }
 
@@ -32,6 +33,12 @@ export class DocumentDetailService {
 
   fetchBlob(uid: string): Observable<Blob> {
     return this.http.get(this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/blobholder:0`), {
+      responseType: 'blob',
+    });
+  }
+
+  fetchBlobByXpath(uid: string, xpath: string): Observable<Blob> {
+    return this.http.get(this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/${xpath}`), {
       responseType: 'blob',
     });
   }

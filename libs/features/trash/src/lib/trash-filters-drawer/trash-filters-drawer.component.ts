@@ -9,7 +9,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { of } from 'rxjs';
-import { catchError, finalize } from 'rxjs/operators';
+import { catchError, filter, finalize, switchMap } from 'rxjs/operators';
+
+import { SaveSearchDialogComponent } from '../save-search-dialog/save-search-dialog.component';
 
 import {
   TrashFilterService,
@@ -321,24 +323,31 @@ export class TrashFiltersDrawerComponent implements OnInit {
   }
 
   saveCurrentSearch(): void {
-    const name = prompt('Enter a name for this saved search:');
-    if (!name?.trim()) return;
+    const dialogRef = this.dialog.open(SaveSearchDialogComponent, {
+      width: '480px',
+      autoFocus: true,
+    });
 
-    this.saving.set(true);
-    this.trashService
-      .saveSearch(name.trim(), this.buildFilterParams())
+    dialogRef
+      .afterClosed()
       .pipe(
-        finalize(() => this.saving.set(false)),
-        catchError(() => {
-          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
-          return of(null);
+        filter((name): name is string => !!name?.trim()),
+        switchMap((name) => {
+          this.saving.set(true);
+          return this.trashService.saveSearch(name.trim(), this.buildFilterParams()).pipe(
+            finalize(() => this.saving.set(false)),
+            catchError(() => {
+              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
+              return of(null);
+            }),
+          );
         }),
       )
       .subscribe((result) => {
         if (!result) return;
         this.trashFilterService.activeSavedFilterUid.set(result.uid);
         this.trashFilterService.activeSavedFilterTitle.set(result.title);
-        this.snackBar.open(`Search "${name.trim()}" saved.`, 'OK', { duration: 3000 });
+        this.snackBar.open(`Search "${result.title}" saved.`, 'OK', { duration: 3000 });
         this.loadSavedSearches();
       });
   }

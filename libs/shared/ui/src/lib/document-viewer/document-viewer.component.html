@@ -1,10 +1,24 @@
 <div class="viewer-panel">
   <!-- Content area -->
-  <div class="viewer-content">
+  <div class="viewer-content" [class.fit-real]="fitMode() === 'real' && contentType() === 'image'">
     @if (loading()) {
       <div class="viewer-loading">
         <mat-spinner diameter="36" />
       </div>
+    } @else if (annotationsTab() && !arenderAvailable()) {
+      <div class="viewer-placeholder">
+        <mat-icon class="placeholder-icon">edit_note</mat-icon>
+        <p>Annotations are not available for this document.</p>
+        <span class="mime-label">Use the View tab for the standard preview.</span>
+      </div>
+    } @else if (showARenderViewer()) {
+      @for (rid of [arenderReloadId()]; track rid) {
+        <iframe
+          [src]="arenderUrl()"
+          class="viewer-iframe arender-frame"
+          allow="fullscreen"
+        ></iframe>
+      }
     } @else {
       @switch (contentType()) {
         @case ('image') {
@@ -12,13 +26,23 @@
             [src]="blobUrl()"
             [alt]="fileName()"
             class="viewer-image"
+            [class.fit-real]="fitMode() === 'real'"
             [style.transform]="transform()"
           />
         }
         @case ('video') {
-          <video [src]="blobUrl()" controls class="viewer-video">
-            Your browser does not support video playback.
-          </video>
+          <div class="viewer-video-container">
+            <video #videoPlayer controls class="viewer-video" [poster]="posterUrl()">
+              @if (videoSources().length > 0) {
+                @for (src of videoSources(); track src.url) {
+                  <source [src]="src.url" [type]="src.mimeType" />
+                }
+              } @else {
+                <source [src]="blobUrl()" />
+              }
+              Your browser does not support video playback.
+            </video>
+          </div>
         }
         @case ('audio') {
           <div class="viewer-audio-wrapper">
@@ -26,40 +50,96 @@
             <audio [src]="blobUrl()" controls class="viewer-audio"></audio>
           </div>
         }
+        @case ('markdown') {
+          <div class="viewer-markdown-content" [innerHTML]="noteHtml()"></div>
+        }
+        @case ('html') {
+          <iframe
+            class="viewer-iframe viewer-html-frame"
+            [srcdoc]="noteContent()"
+            sandbox="allow-same-origin"
+          ></iframe>
+        }
+        @case ('xml') {
+          <pre class="viewer-preformatted viewer-xml">{{ noteContent() }}</pre>
+        }
+        @case ('text') {
+          <pre class="viewer-preformatted">{{ noteContent() }}</pre>
+        }
         @case ('pdf') {
           <iframe [src]="blobUrl()" class="viewer-iframe"></iframe>
         }
-        @case ('iframe') {
+        @case ('pdfRendition') {
           <iframe [src]="blobUrl()" class="viewer-iframe"></iframe>
+        }
+        @case ('preview') {
+          <iframe [src]="previewUrl()" class="viewer-iframe"></iframe>
         }
         @default {
           <div class="viewer-placeholder">
             <mat-icon class="placeholder-icon">insert_drive_file</mat-icon>
             <p>Preview not available</p>
+            @if (mimeType()) {
+              <span class="mime-label">{{ mimeType() }}</span>
+            }
           </div>
         }
       }
     }
   </div>
 
-  <!-- Toolbar -->
-  <div class="viewer-toolbar">
-    <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in" (click)="zoomIn()">
-      <mat-icon>zoom_in</mat-icon>
-    </button>
-    <button mat-icon-button matTooltip="Fit to width" aria-label="Fit to width" (click)="fitToWidth()">
-      <mat-icon>fit_screen</mat-icon>
-    </button>
-    <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out" (click)="zoomOut()">
-      <mat-icon>zoom_out</mat-icon>
-    </button>
-    <button mat-icon-button matTooltip="Rotate left" aria-label="Rotate left" (click)="rotateLeft()">
-      <mat-icon>rotate_left</mat-icon>
-    </button>
-    <button mat-icon-button matTooltip="Rotate right" aria-label="Rotate right" (click)="rotateRight()">
-      <mat-icon>rotate_right</mat-icon>
-    </button>
-  </div>
+  <!-- Video storyboard -->
+  @if (showVideoStoryboard()) {
+    <div class="viewer-storyboard">
+      @for (item of storyboard(); track item.timecode) {
+        <button
+          type="button"
+          class="storyboard-item"
+          [matTooltip]="item.label || formatTimecode(item.timecode)"
+          (click)="seekTo(item.timecode)"
+        >
+          <img [src]="item.thumbnailUrl" [alt]="item.label" class="storyboard-thumb" />
+          <span class="storyboard-time">{{ formatTimecode(item.timecode) }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Image toolbar (zoom/rotate) -->
+  @if (showImageToolbar()) {
+    <div class="viewer-toolbar">
+      <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in" (click)="zoomIn()">
+        <mat-icon>zoom_in</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        [matTooltip]="fitMode() === 'width' ? 'Actual size' : 'Fit to viewer'"
+        aria-label="Toggle fit"
+        (click)="toggleFit()"
+      >
+        <mat-icon>{{ fitMode() === 'width' ? 'crop_free' : 'fit_screen' }}</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out" (click)="zoomOut()">
+        <mat-icon>zoom_out</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        matTooltip="Rotate left"
+        aria-label="Rotate left"
+        (click)="rotateLeft()"
+      >
+        <mat-icon>rotate_left</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        matTooltip="Rotate right"
+        aria-label="Rotate right"
+        (click)="rotateRight()"
+      >
+        <mat-icon>rotate_right</mat-icon>
+      </button>
+    </div>
+  }
 
   <!-- Footer -->
   <div class="viewer-footer">
@@ -70,18 +150,125 @@
       }
     </div>
     <div class="viewer-footer-actions">
-      <button mat-icon-button matTooltip="Annotate" aria-label="Annotate"
-              (click)="annotateClicked.emit()">
-        <mat-icon>edit_note</mat-icon>
-      </button>
-      <button mat-icon-button matTooltip="Preview" aria-label="Preview"
-              (click)="previewClicked.emit()">
+      @if (!annotationsTab()) {
+        <button
+          mat-icon-button
+          matTooltip="Open with Nuxeo Drive"
+          aria-label="Open with Nuxeo Drive"
+          (click)="openWithDriveClicked.emit()"
+        >
+          <mat-icon>cloud_sync</mat-icon>
+        </button>
+      }
+      <button
+        mat-icon-button
+        matTooltip="Preview"
+        aria-label="Preview"
+        (click)="previewClicked.emit()"
+      >
         <mat-icon>visibility</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Download" aria-label="Download"
-              (click)="downloadClicked.emit()">
+      <button
+        mat-icon-button
+        matTooltip="Download"
+        aria-label="Download"
+        (click)="downloadClicked.emit()"
+      >
         <mat-icon>download</mat-icon>
       </button>
     </div>
   </div>
+
+  <!-- Picture metadata cards -->
+  @if (showPictureCards()) {
+    <div class="picture-cards">
+      <!-- Picture Info -->
+      <div class="picture-card">
+        <h4 class="picture-card-title">Picture Info</h4>
+        <div class="picture-card-body">
+          <div class="info-row">
+            <span class="info-label">Dimensions</span>
+            <span class="info-value">{{ pictureInfo()!.width }} x {{ pictureInfo()!.height }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Format</span>
+            <span class="info-value">{{ pictureInfo()!.format }}</span>
+          </div>
+          @if (pictureInfo()!.colorSpace) {
+            <div class="info-row">
+              <span class="info-label">Color Profile</span>
+              <span class="info-value">{{ pictureInfo()!.colorSpace }}</span>
+            </div>
+          }
+          @if (pictureInfo()!.depth) {
+            <div class="info-row">
+              <span class="info-label">Bit Depth per Channel</span>
+              <span class="info-value">{{ pictureInfo()!.depth }}</span>
+            </div>
+          }
+          <div class="info-row">
+            <span class="info-label">Weight</span>
+            <span class="info-value">{{ pictureInfo()!.weight }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Formats -->
+      @if (pictureViews().length > 0) {
+        <div class="picture-card">
+          <h4 class="picture-card-title">Additional Formats</h4>
+          <div class="picture-card-body">
+            @for (view of pictureViews(); track view.title) {
+              <div class="format-row">
+                <span class="format-name">{{ view.title }}</span>
+                <span class="format-details">
+                  {{ view.width }} x {{ view.height }}
+                  <span class="format-size">{{ view.fileSize }}</span>
+                  <span class="format-type">{{ view.format }}</span>
+                </span>
+                <button
+                  mat-icon-button
+                  class="format-download-btn"
+                  matTooltip="Download {{ view.title }}"
+                  (click)="formatDownload.emit(view.downloadUrl)"
+                >
+                  <mat-icon>download</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- EXIF -->
+      @if (exifEntries().length > 0) {
+        <div class="picture-card">
+          <h4 class="picture-card-title">EXIF</h4>
+          <div class="picture-card-body">
+            @for (entry of exifEntries(); track entry.label) {
+              <div class="info-row">
+                <span class="info-label">{{ entry.label }}</span>
+                <span class="info-value">{{ entry.value }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- IPTC -->
+      @if (iptcEntries().length > 0) {
+        <div class="picture-card">
+          <h4 class="picture-card-title">IPTC</h4>
+          <div class="picture-card-body">
+            @for (entry of iptcEntries(); track entry.label) {
+              <div class="info-row">
+                <span class="info-label">{{ entry.label }}</span>
+                <span class="info-value">{{ entry.value }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
 </div>

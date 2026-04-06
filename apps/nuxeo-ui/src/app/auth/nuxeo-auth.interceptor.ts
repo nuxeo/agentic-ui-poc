@@ -4,17 +4,17 @@ import { inject } from '@angular/core';
 import { AuthService } from './auth.service';
 
 /**
- * Attaches Nuxeo Basic credentials to same-origin `/nuxeo/**` requests.
+ * Sends cookies on `/nuxeo/**` requests (SSO after SAML) and attaches Basic when the user logged in with password.
  */
 export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
-  const basic = auth.basicCredentials();
-  if (!basic || !req.url.includes('/nuxeo/')) {
+  if (!req.url.includes('/nuxeo/')) {
     return next(req);
   }
-  return next(
-    req.clone({
-      setHeaders: { Authorization: `Basic ${basic}` },
-    }),
-  );
+  const basic = auth.basicCredentials();
+  let headers = req.headers;
+  if (basic) {
+    headers = headers.set('Authorization', `Basic ${basic}`);
+  }
+  return next(req.clone({ headers, withCredentials: true }));
 };

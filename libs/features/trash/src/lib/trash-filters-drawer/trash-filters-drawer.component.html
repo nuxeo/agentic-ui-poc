@@ -190,30 +190,22 @@
       <button
         mat-flat-button
         color="primary"
-        class="footer-btn save-as-btn"
+        class="footer-btn"
         type="button"
-        [disabled]="saving()"
+        [disabled]="saving() || !hasActiveFilters()"
         (click)="saveCurrentSearch()"
       >
-        @if (saving()) {
-          Saving...
-        } @else {
-          Save As
-        }
+        {{ saving() ? 'Saving...' : 'Save As' }}
       </button>
       @if (trashFilterService.hasSavedFilter()) {
         <button
           mat-flat-button
-          class="footer-btn save-btn"
+          class="footer-btn"
           type="button"
           [disabled]="saving()"
           (click)="saveExistingSearch()"
         >
-          @if (saving()) {
-            Saving...
-          } @else {
-            Save
-          }
+          {{ saving() ? 'Saving...' : 'Save' }}
         </button>
       }
     </div>

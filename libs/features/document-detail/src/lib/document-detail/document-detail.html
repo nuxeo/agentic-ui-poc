@@ -219,21 +219,71 @@
     <div class="detail-main">
       <div class="tabs-header-row">
         <mat-tab-group
-          #tabGroup
+          #detailTabGroup
           class="detail-tabs"
           animationDuration="0ms"
           (selectedIndexChange)="onTabChange($event)"
         >
           <mat-tab label="View">
-            <lib-document-viewer
-              [blobUrl]="blobUrl()"
-              [mimeType]="mimeType()"
-              [fileName]="fileName()"
-              [fileSize]="fileSize()"
-              (downloadClicked)="download()"
-              (previewClicked)="previewMainBlob()"
-              (annotateClicked)="annotateMainBlob()"
-            />
+            <ng-template matTabContent>
+              <lib-document-viewer
+                [blobUrl]="blobUrl()"
+                [mimeType]="mimeType()"
+                [fileName]="fileName()"
+                [fileSize]="fileSize()"
+                [loading]="loading()"
+                [noteContent]="noteContent()"
+                [noteHtml]="noteHtml()"
+                [videoSources]="videoSources()"
+                [storyboard]="storyboard()"
+                [posterUrl]="posterUrl()"
+                [hasPdfRendition]="hasPdfRendition()"
+                [previewUrl]="previewUrl()"
+                [pictureInfo]="pictureInfo()"
+                [pictureViews]="pictureViews()"
+                [exifData]="exifData()"
+                [iptcData]="iptcData()"
+                [arenderUrl]="arenderUrl()"
+                [arenderReloadId]="arenderReloadId()"
+                [viewerDocUid]="doc()?.uid ?? ''"
+                [annotationsTab]="false"
+                (downloadClicked)="download()"
+                (previewClicked)="previewMainBlob()"
+                (openWithDriveClicked)="openDriveDialog()"
+                (formatDownload)="downloadPictureFormat($event)"
+              />
+            </ng-template>
+          </mat-tab>
+
+          <mat-tab label="Annotations">
+            <ng-template matTabContent>
+              <lib-document-viewer
+                [blobUrl]="blobUrl()"
+                [mimeType]="mimeType()"
+                [fileName]="fileName()"
+                [fileSize]="fileSize()"
+                [loading]="loading()"
+                [noteContent]="noteContent()"
+                [noteHtml]="noteHtml()"
+                [videoSources]="videoSources()"
+                [storyboard]="storyboard()"
+                [posterUrl]="posterUrl()"
+                [hasPdfRendition]="hasPdfRendition()"
+                [previewUrl]="previewUrl()"
+                [pictureInfo]="pictureInfo()"
+                [pictureViews]="pictureViews()"
+                [exifData]="exifData()"
+                [iptcData]="iptcData()"
+                [arenderUrl]="arenderUrl()"
+                [arenderReloadId]="arenderReloadId()"
+                [viewerDocUid]="doc()?.uid ?? ''"
+                [annotationsTab]="true"
+                (downloadClicked)="download()"
+                (previewClicked)="previewMainBlob()"
+                (openWithDriveClicked)="openDriveDialog()"
+                (formatDownload)="downloadPictureFormat($event)"
+              />
+            </ng-template>
           </mat-tab>
 
           <mat-tab label="Permissions">

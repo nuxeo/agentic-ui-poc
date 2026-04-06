@@ -12,15 +12,8 @@
         @if (step() === 'username') {
           <mat-form-field appearance="outline" class="login-field-full">
             <mat-label>Username or email</mat-label>
-            <input
-              matInput
-              formControlName="username"
-              autocomplete="username"
-            />
-            @if (
-              form.controls.username.hasError('required') &&
-              form.controls.username.touched
-            ) {
+            <input matInput formControlName="username" autocomplete="username" />
+            @if (form.controls.username.hasError('required') && form.controls.username.touched) {
               <mat-error>Username or email is required</mat-error>
             }
           </mat-form-field>
@@ -39,15 +32,8 @@
         } @else {
           <div class="login-user-row">
             <mat-icon class="login-user-icon">person</mat-icon>
-            <span class="login-user-email">{{
-              form.controls.username.value || '—'
-            }}</span>
-            <button
-              type="button"
-              mat-button
-              color="primary"
-              (click)="backToUsername()"
-            >
+            <span class="login-user-email">{{ form.controls.username.value || '—' }}</span>
+            <button type="button" mat-button color="primary" (click)="backToUsername()">
               Change
             </button>
           </div>
@@ -61,10 +47,7 @@
               autocomplete="current-password"
               required
             />
-            @if (
-              form.controls.password.hasError('required') &&
-              form.controls.password.touched
-            ) {
+            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
               <mat-error>Password is required</mat-error>
             }
           </mat-form-field>
@@ -92,35 +75,29 @@
         }
       </form>
 
-      <div class="login-or">
-        <span class="login-or-line"></span>
-        <span class="login-or-text">OR</span>
-        <span class="login-or-line"></span>
-      </div>
+      @if (samlEndpoints().length > 0) {
+        <div class="login-or">
+          <span class="login-or-line"></span>
+          <span class="login-or-text">OR</span>
+          <span class="login-or-line"></span>
+        </div>
 
-      <div class="login-sso">
-        <button
-          type="button"
-          mat-stroked-button
-          class="login-sso-btn"
-          (click)="samlNotAvailable('Azure SAML')"
-        >
-          Log In With Azure SAML
-        </button>
-        <button
-          type="button"
-          mat-stroked-button
-          class="login-sso-btn"
-          (click)="samlNotAvailable('Okta SAML')"
-        >
-          Log In With Okta SAML
-        </button>
-      </div>
+        <div class="login-sso">
+          @for (ep of samlEndpoints(); track ep.id) {
+            <button
+              type="button"
+              mat-stroked-button
+              class="login-sso-btn"
+              (click)="startSamlLogin(ep)"
+            >
+              {{ ep.label }}
+            </button>
+          }
+        </div>
+      }
     </div>
 
-    <p class="login-footer">
-      Copyright (C) 1992–2026 Hyland Software, Inc.
-    </p>
+    <p class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</p>
   </div>
 
   <div
