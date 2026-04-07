@@ -288,7 +288,7 @@ export class CreateImportDialogComponent implements OnInit {
   getChoiceTabindex(mode: CreateMode): 0 | -1 {
     const selected = this.selectedMode();
     if (selected === null) {
-      return this.LANDING_MODES.length > 0 && mode === this.LANDING_MODES[0] ? 0 : -1;
+      return mode === this.LANDING_MODES[0] ? 0 : -1;
     }
     return selected === mode ? 0 : -1;
   }
@@ -296,7 +296,6 @@ export class CreateImportDialogComponent implements OnInit {
   /** Handles Arrow key navigation across the landing choice radio group. */
   onChoiceGridKeydown(event: KeyboardEvent): void {
     const modes = this.LANDING_MODES;
-    if (!modes.length) return;
     const current = this.selectedMode() ?? modes[0];
     const idx = modes.indexOf(current);
     let next = idx;
