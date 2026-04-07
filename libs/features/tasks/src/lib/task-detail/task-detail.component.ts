@@ -23,6 +23,7 @@ import {
   DocumentService,
   NuxeoApiBase,
 } from '@agentic-ui/shared/nuxeo-client';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 @Component({
   selector: 'lib-task-detail',
@@ -39,6 +40,7 @@ import {
     MatDatepickerModule,
     MatNativeDateModule,
     MatSnackBarModule,
+    SatTagModule,
   ],
   templateUrl: './task-detail.component.html',
   styleUrl: './task-detail.component.scss',

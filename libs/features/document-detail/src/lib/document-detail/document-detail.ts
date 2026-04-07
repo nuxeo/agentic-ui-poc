@@ -42,6 +42,8 @@ import {
   ARenderService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
+import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
+import { SatTagModule, SatTagCategory } from '@hylandsoftware/satori-ui/tag';
 import DOMPurify from 'dompurify';
 import { forkJoin, Observable } from 'rxjs';
 import {
@@ -75,14 +77,14 @@ export interface SectionNode {
   expanded: boolean;
 }
 
-const TAG_COLORS: string[] = [
-  '#e8a317',
-  '#3b82f6',
-  '#0d9488',
-  '#8b5cf6',
-  '#ef4444',
-  '#ec4899',
-  '#f97316',
+const TAG_CATEGORIES: SatTagCategory[] = [
+  'yellow',
+  'blue',
+  'teal',
+  'purple',
+  'red',
+  'pink',
+  'orange',
 ];
 
 @Component({
@@ -110,6 +112,8 @@ const TAG_COLORS: string[] = [
     MatPaginatorModule,
     DocumentViewerComponent,
     SatAvatarModule,
+    SatBreadcrumbsComponent,
+    SatTagModule,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
@@ -287,12 +291,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return `${(len / (1024 * 1024)).toFixed(2)} MB`;
   });
 
-  readonly breadcrumbPath = computed(() => {
+  readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
     const d = this.doc();
-    if (!d) return '';
+    if (!d) return [];
     const parts = d.path.split('/').filter(Boolean);
     parts.pop();
-    return parts.join(' > ');
+    return parts.map((s) => ({ label: decodeURIComponent(s) }));
   });
 
   readonly versionLabel = computed(() => {
@@ -990,8 +994,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   avatarColor = avatarColor;
 
-  tagColor(index: number): string {
-    return TAG_COLORS[index % TAG_COLORS.length];
+  tagCategory(index: number): SatTagCategory {
+    return TAG_CATEGORIES[index % TAG_CATEGORIES.length];
   }
 
   private loadPublicationCount(uid: string): void {

@@ -32,7 +32,9 @@
               </td>
               <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
               <td class="doc-contributor">
-                <span class="contributor-badge">{{ lastContributor(doc) }}</span>
+                <sat-status-tag status="neutral" [hideIcon]="true">{{
+                  lastContributor(doc)
+                }}</sat-status-tag>
               </td>
             </tr>
           }
@@ -104,7 +106,7 @@
                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
               </td>
               <td>
-                <span class="type-badge">{{ docTypeLabel(doc) }}</span>
+                <sat-category-tag category="blue">{{ docTypeLabel(doc) }}</sat-category-tag>
               </td>
               <td class="doc-date">{{ relativeTime(doc.lastModified) }}</td>
             </tr>
@@ -147,7 +149,9 @@
               </td>
               <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
               <td class="doc-contributor">
-                <span class="contributor-badge">{{ lastContributor(doc) }}</span>
+                <sat-status-tag status="neutral" [hideIcon]="true">{{
+                  lastContributor(doc)
+                }}</sat-status-tag>
               </td>
             </tr>
           }

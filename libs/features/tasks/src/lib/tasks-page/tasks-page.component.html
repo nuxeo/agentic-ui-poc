@@ -38,7 +38,9 @@
                 <div class="task-item-doc">{{ task.targetDocTitle }}</div>
               }
               <div class="task-item-meta">
-                <span class="wf-badge">{{ taskWorkflow(task) }}</span>
+                <sat-status-tag status="info" [hideIcon]="true">{{
+                  taskWorkflow(task)
+                }}</sat-status-tag>
                 <span class="due-text" [class.overdue]="isOverdue(task)">{{ dueLabel(task) }}</span>
               </div>
             </div>
@@ -72,14 +74,7 @@
               <div class="doc-main-title" role="heading" aria-level="1">
                 {{ targetDoc()!.title }}
               </div>
-              <div class="doc-breadcrumb">
-                @for (seg of breadcrumbs(); track seg; let last = $last) {
-                  <span class="breadcrumb-seg">{{ seg }}</span>
-                  @if (!last) {
-                    <span class="breadcrumb-sep">&gt;</span>
-                  }
-                }
-              </div>
+              <sat-breadcrumbs [items]="breadcrumbItems()"></sat-breadcrumbs>
             } @else {
               <div class="doc-main-title" role="heading" aria-level="1">
                 {{ selectedTask()!.targetDocTitle || 'Document' }}

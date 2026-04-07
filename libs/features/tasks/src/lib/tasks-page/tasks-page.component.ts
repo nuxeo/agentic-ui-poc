@@ -30,6 +30,8 @@ import {
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { DocumentViewerComponent } from '@agentic-ui/shared/ui';
+import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 @Component({
   selector: 'lib-tasks-page',
@@ -50,6 +52,8 @@ import { DocumentViewerComponent } from '@agentic-ui/shared/ui';
     MatTabsModule,
     MatDividerModule,
     DocumentViewerComponent,
+    SatBreadcrumbsComponent,
+    SatTagModule,
   ],
   templateUrl: './tasks-page.component.html',
   styleUrl: './tasks-page.component.scss',
@@ -670,10 +674,13 @@ export class TasksPageComponent implements OnInit {
     if (url) window.open(url, '_blank');
   }
 
-  breadcrumbs(): string[] {
+  breadcrumbItems(): SatBreadcrumbsItem[] {
     const doc = this.targetDoc();
     if (!doc?.path) return [];
-    return doc.path.split('/').filter(Boolean);
+    return doc.path
+      .split('/')
+      .filter(Boolean)
+      .map((s) => ({ label: decodeURIComponent(s) }));
   }
 
   fileSize(): string {

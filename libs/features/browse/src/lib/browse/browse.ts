@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
@@ -42,6 +42,7 @@ import {
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
+import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 
 import {
   ShareDialogComponent,
@@ -91,11 +92,6 @@ const FOLDERISH_TYPES = new Set([
   'Favorites',
 ]);
 
-interface BreadcrumbSegment {
-  label: string;
-  routerPath: string;
-}
-
 @Component({
   selector: 'lib-browse',
   standalone: true,
@@ -103,7 +99,6 @@ interface BreadcrumbSegment {
     DatePipe,
     NgClass,
     FormsModule,
-    RouterLink,
     MatIconModule,
     MatProgressSpinnerModule,
     MatButtonModule,
@@ -124,6 +119,7 @@ interface BreadcrumbSegment {
     MatAutocompleteModule,
     SatAvatarModule,
     SatTagModule,
+    SatBreadcrumbsComponent,
   ],
   templateUrl: './browse.html',
   styleUrl: './browse.scss',
@@ -352,19 +348,28 @@ export class BrowseComponent {
     return notifs && notifs.length > 0;
   });
 
-  // Breadcrumbs
-  readonly breadcrumbs = computed<BreadcrumbSegment[]>(() => {
+  readonly breadcrumbs = computed<SatBreadcrumbsItem[]>(() => {
     const doc = this.currentDoc();
-    const crumbs: BreadcrumbSegment[] = [{ label: 'Root', routerPath: '/browse' }];
+    const crumbs: SatBreadcrumbsItem[] = [{ label: 'Root', href: '/browse' }];
     if (!doc || doc.path === '/') return crumbs;
     const parts = doc.path.split('/').filter(Boolean);
     let accumulated = '/browse';
     for (const part of parts) {
       accumulated += `/${part}`;
-      crumbs.push({ label: decodeURIComponent(part), routerPath: accumulated });
+      crumbs.push({ label: decodeURIComponent(part), href: accumulated });
     }
+    const last = crumbs[crumbs.length - 1];
+    crumbs[crumbs.length - 1] = { label: last.label };
     return crumbs;
   });
+
+  onBreadcrumbClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a');
+    if (anchor?.getAttribute('href')) {
+      event.preventDefault();
+      this.router.navigateByUrl(anchor.getAttribute('href')!);
+    }
+  }
 
   constructor() {
     this.route.url.pipe(takeUntilDestroyed()).subscribe((segments) => {

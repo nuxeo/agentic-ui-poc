@@ -15,6 +15,7 @@ import { of, finalize, filter, switchMap } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { SaveSearchDialogComponent } from '../save-search-dialog/save-search-dialog.component';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 import {
   TrashService,
@@ -70,6 +71,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
     MatSelectModule,
     MatSnackBarModule,
     MatDialogModule,
+    SatTagModule,
   ],
   templateUrl: './trash.component.html',
   styleUrl: './trash.component.scss',

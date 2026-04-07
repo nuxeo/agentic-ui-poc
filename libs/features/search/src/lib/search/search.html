@@ -1,13 +1,26 @@
 <div class="results-page">
   <div class="results-top-actions">
     @if (hasSavableFilters()) {
-      <button mat-flat-button color="primary" class="top-action-btn save-as-btn" type="button" (click)="openSaveAsDialog()">
+      <button
+        mat-flat-button
+        color="primary"
+        class="top-action-btn save-as-btn"
+        type="button"
+        (click)="openSaveAsDialog()"
+      >
         <mat-icon>bookmark_add</mat-icon>
         Save As
       </button>
     }
     @if (hasSelectedSavedSearch()) {
-      <button mat-flat-button class="top-action-btn save-btn" type="button" (click)="onSaveSelectedSavedSearch()">Save</button>
+      <button
+        mat-flat-button
+        class="top-action-btn save-btn"
+        type="button"
+        (click)="onSaveSelectedSavedSearch()"
+      >
+        Save
+      </button>
     }
     @if (hasSelectedSavedSearch()) {
       <button
@@ -181,7 +194,9 @@
         }
 
         @if (resultCount() === 0) {
-          <div class="results-empty results-empty--grid">No documents match the search criteria.</div>
+          <div class="results-empty results-empty--grid">
+            No documents match the search criteria.
+          </div>
         }
       </div>
     </div>
@@ -360,7 +375,7 @@
           <div class="simple-list-body">
             <div class="simple-list-header">
               <p class="simple-list-title" [title]="row.name">{{ row.name }}</p>
-              <span class="simple-list-type-badge" [title]="row.type">{{ row.type }}</span>
+              <sat-category-tag category="blue">{{ row.type }}</sat-category-tag>
             </div>
             <div class="simple-list-actions col-hover-actions">
               <button

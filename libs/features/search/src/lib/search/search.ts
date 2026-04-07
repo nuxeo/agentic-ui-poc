@@ -12,6 +12,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
 import {
   SearchService,
@@ -132,6 +133,7 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
     MatSelectModule,
     MatSnackBarModule,
     MatMenuModule,
+    SatTagModule,
   ],
   templateUrl: './search.html',
   styleUrl: './search.scss',
@@ -628,26 +630,35 @@ export class SearchComponent {
   }
 
   openSaveAsDialog(): void {
-    this.dialog.open(SavedSearchDialogComponent, {
-      data: {
-        title: 'Saved Search',
-        placeholder: 'Enter a name for your saved search',
-      },
-    }).afterClosed().subscribe((title) => {
-      const trimmedTitle = title?.trim();
-      if (!trimmedTitle) return;
-
-      this.searchService.saveSavedSearch({
-        title: trimmedTitle,
-        params: this.buildSavedSearchParamsFromFilters(),
-        pageProviderName: 'default_search',
-      }).subscribe({
-        next: (saved) => {
-          this.searchAggregationService.selectedSavedSearchId.set(this.readSavedSearchId(saved));
-          this.searchAggregationService.selectedSavedSearchTitle.set(this.readSavedSearchTitle(saved) || trimmedTitle);
+    this.dialog
+      .open(SavedSearchDialogComponent, {
+        data: {
+          title: 'Saved Search',
+          placeholder: 'Enter a name for your saved search',
         },
+      })
+      .afterClosed()
+      .subscribe((title) => {
+        const trimmedTitle = title?.trim();
+        if (!trimmedTitle) return;
+
+        this.searchService
+          .saveSavedSearch({
+            title: trimmedTitle,
+            params: this.buildSavedSearchParamsFromFilters(),
+            pageProviderName: 'default_search',
+          })
+          .subscribe({
+            next: (saved) => {
+              this.searchAggregationService.selectedSavedSearchId.set(
+                this.readSavedSearchId(saved),
+              );
+              this.searchAggregationService.selectedSavedSearchTitle.set(
+                this.readSavedSearchTitle(saved) || trimmedTitle,
+              );
+            },
+          });
       });
-    });
   }
 
   hasSelectedSavedSearch(): boolean {
@@ -663,41 +674,48 @@ export class SearchComponent {
     if (!id) return;
 
     const currentTitle = this.selectedSavedSearchTitle().trim() || 'Saved Search';
-    this.searchService.updateSavedSearch(id, {
-      title: currentTitle,
-      params: this.buildSavedSearchParamsFromFilters(),
-      pageProviderName: 'default_search',
-    }).subscribe({
-      next: () => {
-        this.searchAggregationService.selectedSavedSearchTitle.set(currentTitle);
-      },
-    });
+    this.searchService
+      .updateSavedSearch(id, {
+        title: currentTitle,
+        params: this.buildSavedSearchParamsFromFilters(),
+        pageProviderName: 'default_search',
+      })
+      .subscribe({
+        next: () => {
+          this.searchAggregationService.selectedSavedSearchTitle.set(currentTitle);
+        },
+      });
   }
 
   onEditSelectedSavedSearch(): void {
     const id = this.selectedSavedSearchId().trim();
     if (!id) return;
 
-    this.dialog.open(SavedSearchDialogComponent, {
-      data: {
-        title: 'Edit Saved Search',
-        placeholder: 'Enter a name for your saved search',
-        initialValue: this.selectedSavedSearchTitle(),
-      },
-    }).afterClosed().subscribe((title) => {
-      const trimmedTitle = title?.trim();
-      if (!trimmedTitle) return;
-
-      this.searchService.updateSavedSearch(id, {
-        title: trimmedTitle,
-        params: this.buildSavedSearchParamsFromFilters(),
-        pageProviderName: 'default_search',
-      }).subscribe({
-        next: () => {
-          this.searchAggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+    this.dialog
+      .open(SavedSearchDialogComponent, {
+        data: {
+          title: 'Edit Saved Search',
+          placeholder: 'Enter a name for your saved search',
+          initialValue: this.selectedSavedSearchTitle(),
         },
+      })
+      .afterClosed()
+      .subscribe((title) => {
+        const trimmedTitle = title?.trim();
+        if (!trimmedTitle) return;
+
+        this.searchService
+          .updateSavedSearch(id, {
+            title: trimmedTitle,
+            params: this.buildSavedSearchParamsFromFilters(),
+            pageProviderName: 'default_search',
+          })
+          .subscribe({
+            next: () => {
+              this.searchAggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+            },
+          });
       });
-    });
   }
 
   onShareSelectedSavedSearch(): void {

@@ -17,6 +17,7 @@ import {
   docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -27,6 +28,7 @@ import { AuthService } from '../auth/auth.service';
     MatProgressSpinnerModule,
     WidgetGridComponent,
     WidgetContainerComponent,
+    SatTagModule,
   ],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss',
