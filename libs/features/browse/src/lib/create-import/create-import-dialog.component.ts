@@ -1,4 +1,14 @@
-import { Component, ElementRef, OnInit, QueryList, ViewChildren, computed, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnInit,
+  QueryList,
+  ViewChildren,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -18,8 +28,6 @@ import {
   DocumentImportService,
   sanitizeDocumentName,
   type CsvImportResult,
-  type ImportFilesOptions,
-  type NuxeoDocument,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import {
@@ -181,7 +189,9 @@ export class CreateImportDialogComponent implements OnInit {
 
   private readonly LANDING_MODES: CreateMode[] = ['template', 'upload', 'csv'];
 
-  @ViewChildren('choiceRadio') private readonly choiceButtons!: QueryList<ElementRef<HTMLButtonElement>>;
+  @ViewChildren('choiceRadio') private readonly choiceButtons!: QueryList<
+    ElementRef<HTMLButtonElement>
+  >;
 
   /** Template gallery */
   templateSearch = '';

@@ -53,7 +53,13 @@
       @switch (view()) {
         @case ('landing') {
           <div class="landing-panel">
-            <div class="choice-grid" role="radiogroup" aria-label="Create or upload option" (keydown)="onChoiceGridKeydown($event)">
+            <div
+              class="choice-grid"
+              role="radiogroup"
+              aria-label="Create or upload option"
+              tabindex="-1"
+              (keydown)="onChoiceGridKeydown($event)"
+            >
               <button
                 #choiceRadio
                 type="button"

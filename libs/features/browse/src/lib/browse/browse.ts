@@ -367,9 +367,10 @@ export class BrowseComponent {
 
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
-    if (anchor?.getAttribute('href')) {
+    const href = anchor?.getAttribute('href');
+    if (href) {
       event.preventDefault();
-      this.router.navigateByUrl(anchor.getAttribute('href')!);
+      this.router.navigateByUrl(href);
     }
   }
 
