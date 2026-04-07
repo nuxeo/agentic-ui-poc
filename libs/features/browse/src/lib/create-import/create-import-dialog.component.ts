@@ -14,16 +14,32 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 
+import { Observable } from 'rxjs';
 import {
   DocumentImportService,
   sanitizeDocumentName,
   type CsvImportResult,
+  type ImportFilesOptions,
+  type NuxeoDocument,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import {
   FolderPickerDialogComponent,
   type FolderPickerDialogResult,
 } from '../folder-picker/folder-picker-dialog.component';
+
+/**
+ * Some tooling resolves `DocumentImportService.importFiles` from the public API as a 2-arg
+ * signature even though the implementation accepts optional `ImportFilesOptions`. This alias
+ * matches the real method so calls stay type-checked without deep imports (Nx module boundaries).
+ */
+type DocumentImportServiceWithFileOptions = {
+  importFiles(
+    parentPath: string,
+    files: File[],
+    options?: ImportFilesOptions,
+  ): Observable<NuxeoDocument[]>;
+};
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, first workspace is used. */
@@ -410,7 +426,7 @@ export class CreateImportDialogComponent implements OnInit {
     if (!path || files.length === 0) return;
     this.busy.set(true);
     this.error.set(null);
-    this.importService
+    (this.importService as unknown as DocumentImportServiceWithFileOptions)
       .importFiles(path, files, { autoClassify: this.autoClassifyOnUpload })
       .subscribe({
         next: (docs) => {

@@ -232,7 +232,11 @@
             <div class="upload-section-head">
               <h3 class="upload-section-title">File upload</h3>
               <div class="classify-pill">
-                <mat-slide-toggle [(ngModel)]="autoClassifyOnUpload" color="primary">
+                <mat-slide-toggle
+                  class="classify-toggle"
+                  [(ngModel)]="autoClassifyOnUpload"
+                  color="primary"
+                >
                   Automatically classify on upload
                 </mat-slide-toggle>
                 <mat-icon class="sparkle-icon" aria-hidden="true">auto_awesome</mat-icon>
