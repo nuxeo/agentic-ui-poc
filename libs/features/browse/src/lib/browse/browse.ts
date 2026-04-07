@@ -80,20 +80,6 @@ import {
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
 
-const FOLDERISH_TYPES = new Set([
-  'Domain',
-  'Folder',
-  'OrderedFolder',
-  'Workspace',
-  'WorkspaceRoot',
-  'SectionRoot',
-  'Section',
-  'TemplateRoot',
-  'Collection',
-  'Collections',
-  'Favorites',
-]);
-
 @Component({
   selector: 'lib-browse',
   standalone: true,
@@ -850,8 +836,9 @@ export class BrowseComponent {
 
   // ── Helpers ──
 
+  /** Same predicate as create/import enablement: facet/type-based folderish, plus Favorites. */
   isFolderish(doc: NuxeoDocument): boolean {
-    return FOLDERISH_TYPES.has(doc.type);
+    return this.isBrowseFolderish(doc);
   }
 
   docIcon(doc: NuxeoDocument): string {

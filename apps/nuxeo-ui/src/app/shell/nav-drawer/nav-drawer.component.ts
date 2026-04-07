@@ -657,8 +657,7 @@ export class NavDrawerComponent {
     else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
 
     if (diff > 0) return `in ${label}`;
-    if (days >= 1) return `${label} overdue`;
-    return 'overdue';
+    return `${label} overdue`;
   }
 
   /** Workflow as a single sentence-style line (e.g. "Parallel document review"). */

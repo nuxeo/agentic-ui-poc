@@ -40,7 +40,7 @@
         No subfolders here. Use “Use this folder” to import into this location.
       </p>
     } @else {
-      <ul class="picker-list" role="listbox" aria-label="Subfolders">
+      <ul class="picker-list" aria-label="Subfolders">
         @for (doc of folders(); track doc.uid) {
           <li>
             <button type="button" class="picker-row" (click)="openFolder(doc)">

@@ -314,31 +314,63 @@ function titleFromFileName(fileName: string): string {
   return dot > 0 ? fileName.slice(0, dot) : fileName;
 }
 
+/** RFC 4180–friendly: quoted fields may contain commas and newlines. */
 function parseCsvTable(text: string): string[][] {
-  const lines = text.split(/\r?\n/).filter((l) => l.length > 0);
-  return lines.map(parseCsvLine);
-}
+  const rows: string[][] = [];
+  let currentRow: string[] = [];
+  let currentField = '';
+  let inQuotes = false;
+  let rowHasCharacters = false;
 
-function parseCsvLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = '';
-  let inQ = false;
-  for (let i = 0; i < line.length; i++) {
-    const c = line[i];
-    if (c === '"') {
-      if (inQ && line[i + 1] === '"') {
-        cur += '"';
+  const pushField = (): void => {
+    currentRow.push(currentField.trim());
+    currentField = '';
+  };
+
+  const pushRow = (): void => {
+    pushField();
+    if (rowHasCharacters) {
+      rows.push(currentRow);
+    }
+    currentRow = [];
+    rowHasCharacters = false;
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    if (char === '"') {
+      rowHasCharacters = true;
+      if (inQuotes && text[i + 1] === '"') {
+        currentField += '"';
         i++;
       } else {
-        inQ = !inQ;
+        inQuotes = !inQuotes;
       }
-    } else if (c === ',' && !inQ) {
-      out.push(cur);
-      cur = '';
-    } else {
-      cur += c;
+      continue;
     }
+
+    if (char === ',' && !inQuotes) {
+      rowHasCharacters = true;
+      pushField();
+      continue;
+    }
+
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      pushRow();
+      if (char === '\r' && text[i + 1] === '\n') {
+        i++;
+      }
+      continue;
+    }
+
+    currentField += char;
+    rowHasCharacters = true;
   }
-  out.push(cur);
-  return out.map((s) => s.trim());
+
+  if (rowHasCharacters || currentField.length > 0 || currentRow.length > 0) {
+    pushRow();
+  }
+
+  return rows;
 }

@@ -193,23 +193,28 @@ export class CreateImportDialogComponent implements OnInit {
     ElementRef<HTMLButtonElement>
   >;
 
-  /** Template gallery */
-  templateSearch = '';
-  filterA = '';
-  filterB = '';
-  filterC = '';
+  /** Template gallery (signals so `filteredBusinessTemplates` recomputes on change) */
+  readonly templateSearch = signal('');
+  readonly filterA = signal('');
+  readonly filterB = signal('');
+  readonly filterC = signal('');
   readonly templatePageIndex = signal(0);
   readonly templatePageSize = 10;
 
   readonly filteredBusinessTemplates = computed(() => {
-    const q = this.templateSearch.trim().toLowerCase();
-    let list = this.businessTemplates;
-    if (q) {
-      list = list.filter(
-        (t) => t.label.toLowerCase().includes(q) || t.description.toLowerCase().includes(q),
-      );
-    }
-    return list;
+    const q = this.templateSearch().trim().toLowerCase();
+    const filterA = this.filterA().trim().toLowerCase();
+    const filterB = this.filterB().trim().toLowerCase();
+    const filterC = this.filterC().trim().toLowerCase();
+
+    return this.businessTemplates.filter((t) => {
+      const searchableText = `${t.label} ${t.description} ${t.id} ${t.type}`.toLowerCase();
+      if (q && !searchableText.includes(q)) return false;
+      if (filterA && !searchableText.includes(filterA)) return false;
+      if (filterB && !this.templateFilterTokenMatches(searchableText, filterB)) return false;
+      if (filterC && !searchableText.includes(filterC)) return false;
+      return true;
+    });
   });
 
   readonly pagedTemplates = computed(() => {
@@ -235,6 +240,15 @@ export class CreateImportDialogComponent implements OnInit {
   readonly csvResult = signal<CsvImportResult | null>(null);
 
   readonly dragOverUpload = signal(false);
+
+  /**
+   * Matches filter dropdown values against template text (e.g. value `pnc` vs "P&C" in labels).
+   */
+  private templateFilterTokenMatches(searchableText: string, token: string): boolean {
+    if (searchableText.includes(token)) return true;
+    if (token === 'pnc') return searchableText.includes('p&c');
+    return false;
+  }
 
   ngOnInit(): void {
     const p = this.data.parentPath;
@@ -456,7 +470,7 @@ export class CreateImportDialogComponent implements OnInit {
     if (!path || files.length === 0) return;
     this.busy.set(true);
     this.error.set(null);
-    (this.importService as unknown as DocumentImportServiceWithFileOptions)
+    this.importService
       .importFiles(path, files, { autoClassify: this.autoClassifyOnUpload })
       .subscribe({
         next: (docs) => {

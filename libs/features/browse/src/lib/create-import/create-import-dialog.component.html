@@ -133,7 +133,7 @@
             <div class="template-filters">
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
                 <mat-label>Filter</mat-label>
-                <mat-select [(ngModel)]="filterA">
+                <mat-select [ngModel]="filterA()" (ngModelChange)="filterA.set($event)">
                   <mat-option value="">All</mat-option>
                   <mat-option value="claims">Claims</mat-option>
                   <mat-option value="risk">Risk</mat-option>
@@ -141,7 +141,7 @@
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
                 <mat-label>Filter</mat-label>
-                <mat-select [(ngModel)]="filterB">
+                <mat-select [ngModel]="filterB()" (ngModelChange)="filterB.set($event)">
                   <mat-option value="">All</mat-option>
                   <mat-option value="pnc">P&amp;C</mat-option>
                   <mat-option value="life">Life</mat-option>
@@ -149,7 +149,7 @@
               </mat-form-field>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
                 <mat-label>Filter</mat-label>
-                <mat-select [(ngModel)]="filterC">
+                <mat-select [ngModel]="filterC()" (ngModelChange)="filterC.set($event)">
                   <mat-option value="">All</mat-option>
                   <mat-option value="auto">Auto</mat-option>
                   <mat-option value="property">Property</mat-option>
@@ -158,7 +158,12 @@
             </div>
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="template-search">
               <mat-label>Search Templates</mat-label>
-              <input matInput [(ngModel)]="templateSearch" placeholder="Search" />
+              <input
+                matInput
+                [ngModel]="templateSearch()"
+                (ngModelChange)="templateSearch.set($event)"
+                placeholder="Search"
+              />
               <mat-icon matSuffix>search</mat-icon>
             </mat-form-field>
           </div>
