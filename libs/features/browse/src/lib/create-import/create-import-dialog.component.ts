@@ -42,7 +42,7 @@ type DocumentImportServiceWithFileOptions = {
 };
 
 export interface CreateImportDialogData {
-  /** Import target folder; if omitted, first workspace is used. */
+  /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
   parentPath?: string | null;
   parentTitle?: string;
 }
