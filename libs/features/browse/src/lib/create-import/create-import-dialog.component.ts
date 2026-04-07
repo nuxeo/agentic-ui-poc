@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, QueryList, ViewChildren, computed, effect, inject, signal } from '@angular/core';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -181,6 +181,8 @@ export class CreateImportDialogComponent implements OnInit {
 
   private readonly LANDING_MODES: CreateMode[] = ['template', 'upload', 'csv'];
 
+  @ViewChildren('choiceRadio') private readonly choiceButtons!: QueryList<ElementRef<HTMLButtonElement>>;
+
   /** Template gallery */
   templateSearch = '';
   filterA = '';
@@ -286,7 +288,7 @@ export class CreateImportDialogComponent implements OnInit {
   getChoiceTabindex(mode: CreateMode): 0 | -1 {
     const selected = this.selectedMode();
     if (selected === null) {
-      return mode === this.LANDING_MODES[0] ? 0 : -1;
+      return this.LANDING_MODES.length > 0 && mode === this.LANDING_MODES[0] ? 0 : -1;
     }
     return selected === mode ? 0 : -1;
   }
@@ -294,6 +296,7 @@ export class CreateImportDialogComponent implements OnInit {
   /** Handles Arrow key navigation across the landing choice radio group. */
   onChoiceGridKeydown(event: KeyboardEvent): void {
     const modes = this.LANDING_MODES;
+    if (!modes.length) return;
     const current = this.selectedMode() ?? modes[0];
     const idx = modes.indexOf(current);
     let next = idx;
@@ -309,9 +312,7 @@ export class CreateImportDialogComponent implements OnInit {
     }
 
     this.selectLandingMode(modes[next]);
-    const grid = event.currentTarget as HTMLElement;
-    const buttons = grid.querySelectorAll<HTMLButtonElement>('button[role="radio"]');
-    buttons[next]?.focus();
+    this.choiceButtons.get(next)?.nativeElement.focus();
   }
 
   /** Landing: Next → branch to template gallery, upload screen, or CSV */

@@ -55,6 +55,7 @@
           <div class="landing-panel">
             <div class="choice-grid" role="radiogroup" aria-label="Create or upload option" (keydown)="onChoiceGridKeydown($event)">
               <button
+                #choiceRadio
                 type="button"
                 class="choice-card"
                 role="radio"
@@ -75,6 +76,7 @@
                 <span class="choice-desc">Create a new file using a template</span>
               </button>
               <button
+                #choiceRadio
                 type="button"
                 class="choice-card"
                 role="radio"
@@ -95,6 +97,7 @@
                 <span class="choice-desc">Drop a file from your computer here</span>
               </button>
               <button
+                #choiceRadio
                 type="button"
                 class="choice-card"
                 role="radio"
