@@ -14,7 +14,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 
-import { Observable } from 'rxjs';
 import {
   DocumentImportService,
   sanitizeDocumentName,
