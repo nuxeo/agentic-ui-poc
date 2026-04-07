@@ -393,6 +393,7 @@ export class SearchService {
               id: doc.uid,
               title: doc.title,
               type: doc.type,
+              path: doc.path,
               isFavorite: doc.contextParameters?.favorites?.isFavorite ?? false,
               modifiedDate: doc.lastModified?.slice(0, 10) ?? '',
               sizeInBytes: this.parseSizeInBytes(fileContent?.length),

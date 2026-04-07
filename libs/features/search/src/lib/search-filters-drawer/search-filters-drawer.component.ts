@@ -36,6 +36,17 @@ interface SavedSearchSelectOption {
 
 type DrawerViewMode = 'filter' | 'queue';
 
+const FOLDERISH_TYPES = new Set([
+  'Domain',
+  'Folder',
+  'OrderedFolder',
+  'Workspace',
+  'WorkspaceRoot',
+  'SectionRoot',
+  'Section',
+  'TemplateRoot',
+]);
+
 @Component({
   selector: 'lib-search-filters-drawer',
   standalone: true,
@@ -207,19 +218,39 @@ export class SearchFiltersDrawerComponent {
     const selectedInResults = !!docId && items.some((item) => item.id === docId);
 
     if (selectedInResults) {
-      void this.router.navigate(['/doc', docId], {
+      const selectedItem = items.find((item) => item.id === docId);
+      if (selectedItem) {
+        this.navigateToItem(selectedItem);
+      }
+      return;
+    }
+
+    if (items.length > 0) {
+      this.navigateToItem(items[0]);
+    }
+  }
+
+  private navigateToItem(item: SearchResultItem): void {
+    if (item.type === 'Collection') {
+      void this.router.navigate(['/collections', item.id], {
         queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
         queryParamsHandling: 'merge',
       });
       return;
     }
 
-    if (items.length > 0) {
-      void this.router.navigate(['/doc', items[0].id], {
+    if (FOLDERISH_TYPES.has(item.type) && item.path) {
+      void this.router.navigate(['/browse' + item.path], {
         queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
         queryParamsHandling: 'merge',
       });
+      return;
     }
+
+    void this.router.navigate(['/doc', item.id], {
+      queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
+      queryParamsHandling: 'merge',
+    });
   }
 
   switchToFilterView(): void {
@@ -232,10 +263,7 @@ export class SearchFiltersDrawerComponent {
   }
 
   onQueueItemSelected(item: SearchResultItem): void {
-    void this.router.navigate(['/doc', item.id], {
-      queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
-      queryParamsHandling: 'merge',
-    });
+    this.navigateToItem(item);
   }
 
   toggleQueueQuickFilter(value: string): void {
