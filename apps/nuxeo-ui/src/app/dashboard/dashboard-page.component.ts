@@ -19,6 +19,17 @@ import {
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
+const FOLDERISH_TYPES = new Set([
+  'Domain',
+  'Folder',
+  'OrderedFolder',
+  'Workspace',
+  'WorkspaceRoot',
+  'SectionRoot',
+  'Section',
+  'TemplateRoot',
+]);
+
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
@@ -112,6 +123,16 @@ export class DashboardPageComponent {
   }
 
   navigateToDoc(doc: NuxeoDocument): void {
+    if (doc.type === 'Collection') {
+      void this.router.navigate(['/collections', doc.uid]);
+      return;
+    }
+
+    if (FOLDERISH_TYPES.has(doc.type)) {
+      void this.router.navigate(['/browse' + doc.path]);
+      return;
+    }
+
     void this.router.navigate(['/doc', doc.uid]);
   }
 
