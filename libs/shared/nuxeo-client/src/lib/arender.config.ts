@@ -18,7 +18,7 @@ export interface ARenderConfig {
 export const ARENDER_CONFIG = new InjectionToken<ARenderConfig>('ARENDER_CONFIG', {
   providedIn: 'root',
   factory: () => ({
-    viewerOrigin: 'http://localhost:8080',
+    viewerOrigin: 'http://localhost:8180',
     nuxeoInternalUrl: 'http://nuxeo-auth-proxy/nuxeo',
   }),
 });

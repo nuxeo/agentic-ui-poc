@@ -22,6 +22,7 @@ import {
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -284,6 +285,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
     MatCheckboxModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    SatTagModule,
   ],
   templateUrl: './asset-search-results.component.html',
   styleUrl: './asset-search-results.component.scss',
@@ -691,28 +693,33 @@ export class AssetSearchResultsComponent {
   }
 
   openSaveAsDialog(): void {
-    this.dialog.open(SavedSearchDialogComponent, {
-      data: {
-        title: 'Saved Search',
-        placeholder: 'Enter a name for your saved search',
-      },
-    }).afterClosed().subscribe((title) => {
-      const trimmedTitle = title?.trim();
-      if (!trimmedTitle) return;
-
-      this.searchService.saveSavedSearch({
-        title: trimmedTitle,
-        params: this.buildSavedSearchParamsFromQuery(),
-        pageProviderName: 'assets_search',
-      }).subscribe({
-        next: (saved) => {
-          this.aggregationService.selectedSavedSearchId.set(this.readSavedSearchId(saved));
-          this.aggregationService.selectedSavedSearchTitle.set(
-            this.readSavedSearchTitle(saved) || trimmedTitle,
-          );
+    this.dialog
+      .open(SavedSearchDialogComponent, {
+        data: {
+          title: 'Saved Search',
+          placeholder: 'Enter a name for your saved search',
         },
+      })
+      .afterClosed()
+      .subscribe((title) => {
+        const trimmedTitle = title?.trim();
+        if (!trimmedTitle) return;
+
+        this.searchService
+          .saveSavedSearch({
+            title: trimmedTitle,
+            params: this.buildSavedSearchParamsFromQuery(),
+            pageProviderName: 'assets_search',
+          })
+          .subscribe({
+            next: (saved) => {
+              this.aggregationService.selectedSavedSearchId.set(this.readSavedSearchId(saved));
+              this.aggregationService.selectedSavedSearchTitle.set(
+                this.readSavedSearchTitle(saved) || trimmedTitle,
+              );
+            },
+          });
       });
-    });
   }
 
   hasSelectedSavedSearch(): boolean {
@@ -728,41 +735,48 @@ export class AssetSearchResultsComponent {
     if (!id) return;
 
     const currentTitle = this.selectedSavedSearchTitle().trim() || 'Saved Search';
-    this.searchService.updateSavedSearch(id, {
-      title: currentTitle,
-      params: this.buildSavedSearchParamsFromQuery(),
-      pageProviderName: 'assets_search',
-    }).subscribe({
-      next: () => {
-        this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
-      },
-    });
+    this.searchService
+      .updateSavedSearch(id, {
+        title: currentTitle,
+        params: this.buildSavedSearchParamsFromQuery(),
+        pageProviderName: 'assets_search',
+      })
+      .subscribe({
+        next: () => {
+          this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
+        },
+      });
   }
 
   onEditSelectedSavedSearch(): void {
     const id = this.selectedSavedSearchId().trim();
     if (!id) return;
 
-    this.dialog.open(SavedSearchDialogComponent, {
-      data: {
-        title: 'Edit Saved Search',
-        placeholder: 'Enter a name for your saved search',
-        initialValue: this.selectedSavedSearchTitle(),
-      },
-    }).afterClosed().subscribe((title) => {
-      const trimmedTitle = title?.trim();
-      if (!trimmedTitle) return;
-
-      this.searchService.updateSavedSearch(id, {
-        title: trimmedTitle,
-        params: this.buildSavedSearchParamsFromQuery(),
-        pageProviderName: 'assets_search',
-      }).subscribe({
-        next: () => {
-          this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+    this.dialog
+      .open(SavedSearchDialogComponent, {
+        data: {
+          title: 'Edit Saved Search',
+          placeholder: 'Enter a name for your saved search',
+          initialValue: this.selectedSavedSearchTitle(),
         },
+      })
+      .afterClosed()
+      .subscribe((title) => {
+        const trimmedTitle = title?.trim();
+        if (!trimmedTitle) return;
+
+        this.searchService
+          .updateSavedSearch(id, {
+            title: trimmedTitle,
+            params: this.buildSavedSearchParamsFromQuery(),
+            pageProviderName: 'assets_search',
+          })
+          .subscribe({
+            next: () => {
+              this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+            },
+          });
       });
-    });
   }
 
   onShareSelectedSavedSearch(): void {

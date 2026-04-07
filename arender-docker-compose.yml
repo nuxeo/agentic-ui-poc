@@ -27,7 +27,7 @@ services:
       - "ARENDERSRV_ARENDER_SERVER_RENDITION_HOSTS=http://dsb-service:8761/"
       - "ARENDERSRV_ARENDER_SERVER_DISPLAYNAME_PROVIDER="
     ports:
-      - 8080:8080
+      - 8180:8080
     depends_on:
       - nuxeo-auth-proxy
     volumes:

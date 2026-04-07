@@ -36,6 +36,8 @@ import {
   avatarColor,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
+import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
+import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -87,6 +89,8 @@ import {
     MatDatepickerModule,
     MatNativeDateModule,
     SatAvatarModule,
+    SatBreadcrumbsComponent,
+    SatTagModule,
   ],
   templateUrl: './collection-detail.html',
   styleUrl: './collection-detail.scss',
@@ -246,12 +250,12 @@ export class CollectionDetailComponent {
     }
   }
 
-  breadcrumbPath(): string {
+  breadcrumbItems(): SatBreadcrumbsItem[] {
     const col = this.collection();
-    if (!col?.path) return '';
+    if (!col?.path) return [];
     const segments = col.path.split('/').filter(Boolean);
     segments.pop();
-    return segments.join(' > ');
+    return segments.map((s) => ({ label: decodeURIComponent(s) }));
   }
 
   creator(): string {

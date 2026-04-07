@@ -7,8 +7,11 @@
         <div class="header-title" role="heading" aria-level="1">
           {{ collection()?.title ?? 'Collection' }}
         </div>
-        @if (breadcrumbPath()) {
-          <span class="header-path">{{ breadcrumbPath() }} &bull; {{ creator() }}</span>
+        @if (breadcrumbItems().length) {
+          <div class="header-path-row">
+            <sat-breadcrumbs [items]="breadcrumbItems()"></sat-breadcrumbs>
+            <span>&bull; {{ creator() }}</span>
+          </div>
         }
       </div>
     </div>
@@ -465,7 +468,9 @@
               <ng-container matColumnDef="docLifeCycle">
                 <th mat-header-cell *matHeaderCellDef>State</th>
                 <td mat-cell *matCellDef="let entry">
-                  <span class="state-badge">{{ entry.docLifeCycle }}</span>
+                  <sat-status-tag status="info" [hideIcon]="true">{{
+                    entry.docLifeCycle
+                  }}</sat-status-tag>
                 </td>
               </ng-container>
 

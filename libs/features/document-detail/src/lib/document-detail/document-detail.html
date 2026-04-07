@@ -16,7 +16,7 @@
     </button>
     <div class="header-info">
       <div class="header-title" role="heading" aria-level="1">{{ doc()!.title }}</div>
-      <span class="header-path">{{ breadcrumbPath() }}</span>
+      <sat-breadcrumbs [items]="breadcrumbItems()"></sat-breadcrumbs>
     </div>
     <div class="header-actions">
       @if (!isTrashed()) {
@@ -591,7 +591,9 @@
                     <ng-container matColumnDef="docLifeCycle">
                       <th mat-header-cell *matHeaderCellDef>State</th>
                       <td mat-cell *matCellDef="let entry">
-                        <span class="state-badge">{{ entry.docLifeCycle }}</span>
+                        <sat-status-tag status="info" [hideIcon]="true">{{
+                          entry.docLifeCycle
+                        }}</sat-status-tag>
                       </td>
                     </ng-container>
 
@@ -669,7 +671,9 @@
                             </div>
                           </td>
                           <td>
-                            <span class="version-badge">{{ publishedVersion(pub) }}</span>
+                            <sat-status-tag status="neutral" [hideIcon]="true">{{
+                              publishedVersion(pub)
+                            }}</sat-status-tag>
                           </td>
                           <td>{{ publishedRendition(pub) }}</td>
                           <td>
@@ -818,9 +822,7 @@
                 <div class="doc-info-row">
                   <span class="doc-info-label">Process</span>
                   <span class="doc-info-value">
-                    <span class="state-chip" style="background: #ffebee; color: #c62828"
-                      >Running</span
-                    >
+                    <sat-status-tag status="important">Running</sat-status-tag>
                   </span>
                 </div>
               }
@@ -829,7 +831,9 @@
                 <div class="doc-info-row">
                   <span class="doc-info-label">State</span>
                   <span class="doc-info-value">
-                    <span class="state-chip">{{ docState() }}</span>
+                    <sat-status-tag status="info" [hideIcon]="true">{{
+                      docState()
+                    }}</sat-status-tag>
                   </span>
                 </div>
               }
@@ -972,13 +976,7 @@
                 <span class="prop-label">Tags</span>
                 <div class="tags-row">
                   @for (tag of tags(); track tag; let i = $index) {
-                    <span
-                      class="tag-chip"
-                      [style.border-color]="tagColor(i)"
-                      [style.color]="tagColor(i)"
-                    >
-                      {{ tag }}
-                    </span>
+                    <sat-category-tag [category]="tagCategory(i)">{{ tag }}</sat-category-tag>
                   }
                 </div>
               </div>
@@ -1056,10 +1054,10 @@
               <p class="section-empty">No collections</p>
             } @else {
               @for (col of collections(); track col.uid) {
-                <div class="collection-chip">
-                  <mat-icon class="collection-icon">bookmark</mat-icon>
-                  <span>{{ col.title }}</span>
-                </div>
+                <sat-category-tag category="blue">
+                  <mat-icon>bookmark</mat-icon>
+                  {{ col.title }}
+                </sat-category-tag>
               }
             }
           </div>

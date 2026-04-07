@@ -44,16 +44,7 @@
   </div>
 
   <!-- Breadcrumbs -->
-  <nav class="breadcrumb-bar">
-    @for (crumb of breadcrumbs(); track crumb.routerPath; let last = $last) {
-      @if (last) {
-        <span class="breadcrumb-current">{{ crumb.label }}</span>
-      } @else {
-        <a class="breadcrumb-link" [routerLink]="crumb.routerPath">{{ crumb.label }}</a>
-        <mat-icon class="breadcrumb-separator">chevron_right</mat-icon>
-      }
-    }
-  </nav>
+  <sat-breadcrumbs [items]="breadcrumbs()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
 
   <!-- Main body: tabs on left, details panel on right -->
   <div class="browse-body">
@@ -244,7 +235,7 @@
                                 <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
                               </div>
                             } @else if (col.key === 'type') {
-                              <span class="type-badge">{{ doc.type }}</span>
+                              <sat-category-tag category="blue">{{ doc.type }}</sat-category-tag>
                             } @else if (col.key === 'modified') {
                               {{ doc.lastModified | date: 'mediumDate' }}
                             } @else if (col.key === 'lastContributor') {
@@ -674,7 +665,7 @@
                             <span class="doc-title">{{ doc.title }}</span>
                           </td>
                           <td>
-                            <span class="type-badge">{{ doc.type }}</span>
+                            <sat-category-tag category="blue">{{ doc.type }}</sat-category-tag>
                           </td>
                           <td>{{ doc.lastModified | date: 'mediumDate' }}</td>
                           <td>

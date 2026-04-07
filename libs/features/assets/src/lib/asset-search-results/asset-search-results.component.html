@@ -1,13 +1,26 @@
 <div class="results-page">
   <div class="results-top-actions">
     @if (hasSavableFilters()) {
-      <button mat-flat-button color="primary" class="top-action-btn save-as-btn" type="button" (click)="openSaveAsDialog()">
+      <button
+        mat-flat-button
+        color="primary"
+        class="top-action-btn save-as-btn"
+        type="button"
+        (click)="openSaveAsDialog()"
+      >
         <mat-icon>bookmark_add</mat-icon>
         Save As
       </button>
     }
     @if (hasSelectedSavedSearch()) {
-      <button mat-flat-button class="top-action-btn save-btn" type="button" (click)="onSaveSelectedSavedSearch()">Save</button>
+      <button
+        mat-flat-button
+        class="top-action-btn save-btn"
+        type="button"
+        (click)="onSaveSelectedSavedSearch()"
+      >
+        Save
+      </button>
     }
     @if (hasSelectedSavedSearch()) {
       <button
@@ -136,7 +149,7 @@
               } @else {
                 <mat-icon class="asset-icon">{{ asset.icon }}</mat-icon>
               }
-              <span class="asset-type-badge">{{ asset.type }}</span>
+              <sat-category-tag category="teal">{{ asset.type }}</sat-category-tag>
             </div>
           </button>
         }

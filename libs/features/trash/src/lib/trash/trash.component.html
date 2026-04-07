@@ -156,7 +156,7 @@
             </div>
             <div class="result-card-body">
               <p class="result-name" [title]="doc.title">{{ doc.title }}</p>
-              <span class="result-type-tag">{{ doc.type }}</span>
+              <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
             </div>
           </button>
         }
@@ -355,7 +355,7 @@
           <div class="simple-list-body">
             <div class="simple-list-header">
               <p class="simple-list-title" [title]="doc.title">{{ doc.title }}</p>
-              <span class="simple-list-type-badge">{{ doc.type }}</span>
+              <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
             </div>
             <div class="simple-list-actions col-hover-actions">
               <button

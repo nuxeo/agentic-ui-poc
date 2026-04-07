@@ -255,17 +255,9 @@
   text-overflow: ellipsis;
 }
 
-.doc-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 4px;
+sat-breadcrumbs {
   font-size: 0.72rem;
-  color: var(--mat-sys-on-surface-variant, #474551);
   margin-top: 2px;
-}
-
-.breadcrumb-sep {
-  color: var(--mat-sys-outline-variant, #c8c5d3);
 }
 
 /* ═══════════════════════════════════════════════════════
