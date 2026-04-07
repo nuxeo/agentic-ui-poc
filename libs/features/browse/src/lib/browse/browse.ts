@@ -721,13 +721,18 @@ export class BrowseComponent {
     this.dialog.open(BrowseDriveDialogComponent, { data });
   }
 
+  private isBrowseFolderish(doc: NuxeoDocument | null | undefined): boolean {
+    if (!doc) return false;
+    return doc.type === 'Favorites' || isFolderishDocument(doc);
+  }
+
   isCurrentFolderish(): boolean {
-    return isFolderishDocument(this.currentDoc());
+    return this.isBrowseFolderish(this.currentDoc());
   }
 
   openCreateImportDialog(): void {
     const doc = this.currentDoc();
-    if (!doc || !isFolderishDocument(doc)) {
+    if (!this.isBrowseFolderish(doc)) {
       this.snackBar.open('Open a folder to create or import content.', 'OK', { duration: 4000 });
       return;
     }
