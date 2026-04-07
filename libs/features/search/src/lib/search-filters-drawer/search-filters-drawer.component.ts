@@ -12,6 +12,8 @@ import {
   SearchAggregationService,
   SearchService,
   type AggregateResult,
+  type SearchQueryParams,
+  type SearchAggregations,
   type SavedSearchOption,
   type SearchResultItem,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -93,6 +95,12 @@ export class SearchFiltersDrawerComponent {
   readonly tagInput = signal('');
   readonly tagOpen = signal(false);
   readonly selectedQueueQuickFilters = signal<Set<string>>(new Set());
+  readonly baselineItemsForCounts = signal<SearchResultItem[]>([]);
+  readonly baselineAggregationsForCounts = signal<SearchAggregations>({});
+  readonly baselineCountsReady = signal(false);
+
+  private baselineRequestSeq = 0;
+  private baselineSignature = '';
 
   readonly hasActiveFilters = computed(() =>
     this.selectedSavedSearch().trim().length > 0 ||
@@ -127,8 +135,17 @@ export class SearchFiltersDrawerComponent {
 
   constructor() {
     effect(() => {
-      const aggregations = this.searchAggregationService.aggregations();
-      const items = this.searchAggregationService.items();
+      const drawerFilters = this.searchAggregationService.drawerFilters();
+      const quickFilters = this.toQuickFiltersQueryParam();
+      this.refreshBaselineCounts(drawerFilters, quickFilters);
+    });
+
+    effect(() => {
+      const fallbackAggregations = this.searchAggregationService.aggregations();
+      const fallbackItems = this.searchAggregationService.items();
+      const hasBaseline = this.baselineCountsReady();
+      const aggregations = hasBaseline ? this.baselineAggregationsForCounts() : fallbackAggregations;
+      const items = hasBaseline ? this.baselineItemsForCounts() : fallbackItems;
 
       this.modificationDateOptions.set(this.toModifiedDateOptionsFromResults(items));
       this.availableAuthors.set(this.toAuthorOptionsFromResults(items));
@@ -984,8 +1001,7 @@ export class SearchFiltersDrawerComponent {
   }
 
   private loadViewModeFromStorage(): DrawerViewMode {
-    const stored = localStorage.getItem('search_drawer_view_mode');
-    return (stored === 'queue' || stored === 'filter') ? stored : 'filter';
+    return 'filter';
   }
 
   private toQuickFiltersQueryParam(): string | null {
@@ -1004,6 +1020,37 @@ export class SearchFiltersDrawerComponent {
         .map((item) => item.trim())
         .filter((item) => item.length > 0 && allowed.has(item)),
     );
+  }
+
+  private refreshBaselineCounts(drawerFilters: Record<string, string>, quickFilters: string | null): void {
+    const params: SearchQueryParams = {};
+    const q = (drawerFilters['q'] ?? '').trim();
+    const ecmFulltext = (drawerFilters['ecm_fulltext'] ?? '').trim();
+
+    if (q) params.q = q;
+    if (ecmFulltext) params.ecmFulltext = ecmFulltext;
+    if (quickFilters?.trim()) params.quickFilters = quickFilters;
+
+    const signature = JSON.stringify(params);
+    if (signature === this.baselineSignature) {
+      return;
+    }
+
+    this.baselineSignature = signature;
+    const requestSeq = ++this.baselineRequestSeq;
+
+    this.searchService.search(params).subscribe({
+      next: (response) => {
+        if (requestSeq !== this.baselineRequestSeq) return;
+        this.baselineItemsForCounts.set(response.items);
+        this.baselineAggregationsForCounts.set(response.aggregations);
+        this.baselineCountsReady.set(true);
+      },
+      error: () => {
+        if (requestSeq !== this.baselineRequestSeq) return;
+        this.baselineCountsReady.set(false);
+      },
+    });
   }
 }
 

@@ -298,14 +298,26 @@ export class TrashComponent {
   }
 
   toggleSelection(id: string): void {
-    this.selectionService.toggle(id);
+    const doc = this.documents().find((d) => d.uid === id);
+    this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null);
   }
 
   toggleAll(): void {
     if (this.isAllSelected()) {
       this.selectionService.clear();
     } else {
-      this.selectionService.selectAll(this.documents().map((d) => d.uid));
+      const docs = this.documents();
+      const labels: Record<string, string> = {};
+      const previews: Record<string, SafeUrl | null> = {};
+      docs.forEach((doc) => {
+        labels[doc.uid] = doc.title;
+        previews[doc.uid] = this.thumbnailMap()[doc.uid] ?? null;
+      });
+      this.selectionService.selectAll(
+        docs.map((d) => d.uid),
+        labels,
+        previews,
+      );
     }
   }
 

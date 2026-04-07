@@ -440,8 +440,7 @@ export class AssetsDrawerComponent {
   }
 
   private loadViewModeFromStorage(): DrawerViewMode {
-    const mode = localStorage.getItem('assets_drawer_view_mode');
-    return mode === 'queue' ? 'queue' : 'filter';
+    return 'filter';
   }
 
   private loadSavedSearchesFromApi(): void {

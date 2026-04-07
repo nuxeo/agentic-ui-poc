@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -12,6 +12,20 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 })
 export class SelectionTopbarComponent {
   readonly selectedCount = input.required<number>();
+  readonly selectedItems = input<Array<{ id: string; name: string; preview: any }>>([]);
   readonly cleared = output<void>();
+  readonly publishRequested = output<void>();
+  readonly addToClipboardRequested = output<void>();
+  readonly addToCollectionRequested = output<void>();
+  readonly downloadZipRequested = output<void>();
   readonly deleted = output<void>();
+  readonly selectionPopupOpen = signal(false);
+
+  openSelectionPopup(): void {
+    this.selectionPopupOpen.set(true);
+  }
+
+  closeSelectionPopup(): void {
+    this.selectionPopupOpen.set(false);
+  }
 }

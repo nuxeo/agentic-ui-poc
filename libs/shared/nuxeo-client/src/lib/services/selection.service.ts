@@ -9,20 +9,63 @@ export class SelectionService {
   private readonly documentDetailService = inject(DocumentDetailService);
 
   readonly selectedIds = signal<Set<string>>(new Set());
+  readonly selectedLabels = signal<Map<string, string>>(new Map());
+  readonly selectedPreviews = signal<Map<string, any>>(new Map());
 
   readonly selectedCount = () => this.selectedIds().size;
+  readonly selectedItems = () =>
+    [...this.selectedIds()].map((id) => ({
+      id,
+      name: this.selectedLabels().get(id) ?? id,
+      preview: this.selectedPreviews().get(id) ?? null,
+    }));
 
-  toggle(id: string): void {
+  toggle(id: string, label?: string, preview?: any): void {
     this.selectedIds.update((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+
+    this.selectedLabels.update((current) => {
+      const next = new Map(current);
+      if (this.selectedIds().has(id)) {
+        next.set(id, label?.trim() || next.get(id) || id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+
+    this.selectedPreviews.update((current) => {
+      const next = new Map(current);
+      if (this.selectedIds().has(id)) {
+        next.set(id, preview ?? next.get(id) ?? null);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
   }
 
-  selectAll(ids: string[]): void {
+  selectAll(ids: string[], labels?: Record<string, string>, previews?: Record<string, any>): void {
     this.selectedIds.set(new Set(ids));
+    this.selectedLabels.update((current) => {
+      const next = new Map<string, string>();
+      ids.forEach((id) => {
+        next.set(id, labels?.[id]?.trim() || current.get(id) || id);
+      });
+      return next;
+    });
+
+    this.selectedPreviews.update((current) => {
+      const next = new Map<string, any>();
+      ids.forEach((id) => {
+        next.set(id, previews?.[id] ?? current.get(id) ?? null);
+      });
+      return next;
+    });
   }
 
   isSelected(id: string): boolean {
@@ -39,6 +82,8 @@ export class SelectionService {
 
   clear(): void {
     this.selectedIds.set(new Set());
+    this.selectedLabels.set(new Map());
+    this.selectedPreviews.set(new Map());
   }
 
   deleteSelected(): Observable<NuxeoDocument[]> {

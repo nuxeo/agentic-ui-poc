@@ -396,6 +396,16 @@ export class NavDrawerComponent {
   }
 
   openRecentlyViewedDoc(doc: NuxeoDocument): void {
+    if (doc.type === 'Collection') {
+      this.navigateKeepDrawer.emit(`/collections/${doc.uid}`);
+      return;
+    }
+
+    if (FOLDERISH_TYPES.has(doc.type)) {
+      this.navigateKeepDrawer.emit(`/browse${doc.path}`);
+      return;
+    }
+
     this.navigateKeepDrawer.emit(`/doc/${doc.uid}`);
   }
 
