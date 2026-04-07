@@ -11,6 +11,16 @@
       }
     </div>
     <div class="header-actions">
+      <button
+        mat-flat-button
+        color="primary"
+        matTooltip="Create folder, upload files, or import CSV"
+        [disabled]="!isCurrentFolderish()"
+        (click)="openCreateImportDialog()"
+      >
+        <mat-icon>add</mat-icon>
+        Create / Import
+      </button>
       <button mat-icon-button matTooltip="Upload with Nuxeo Drive" (click)="openDriveDialog()">
         <mat-icon>cloud_upload</mat-icon>
       </button>

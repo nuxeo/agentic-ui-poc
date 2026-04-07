@@ -61,6 +61,13 @@ export {
   type AssetQueueItem,
 } from './lib/services/asset-aggregation.service';
 export { DocumentService } from './lib/services/document.service';
+export {
+  DocumentImportService,
+  isFolderishDocument,
+  sanitizeDocumentName,
+  type CsvImportResult,
+  type ImportFilesOptions,
+} from './lib/services/document-import.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';

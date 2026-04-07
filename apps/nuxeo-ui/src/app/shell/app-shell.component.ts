@@ -1,5 +1,13 @@
-import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
@@ -29,6 +37,7 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
   selector: 'app-shell',
   imports: [
     RouterOutlet,
+    RouterLink,
     SatPlatformNavModule,
     SatAppHeaderModule,
     SatLogoModule,
@@ -155,9 +164,9 @@ export class AppShellComponent {
           this.globalSearchLoading.set(true);
           this.globalSearchError.set(null);
 
-          return this.searchService.suggestFromSuggestersLauncher(term).pipe(
-            finalize(() => this.globalSearchLoading.set(false)),
-          );
+          return this.searchService
+            .suggestFromSuggestersLauncher(term)
+            .pipe(finalize(() => this.globalSearchLoading.set(false)));
         }),
         takeUntilDestroyed(),
       )
@@ -225,9 +234,13 @@ export class AppShellComponent {
   }
 
   onDrawerItemSelected(path: string): void {
-    this.drawerOpen.set(false);
-    this.activeDrawerItem.set(null);
     this.clearGlobalSearch();
+    const base = path.split('?')[0];
+    const keepTasksDrawer = /^\/tasks\/[^/]+$/.test(base);
+    if (!keepTasksDrawer) {
+      this.drawerOpen.set(false);
+      this.activeDrawerItem.set(null);
+    }
     void this.router.navigateByUrl(path);
   }
 

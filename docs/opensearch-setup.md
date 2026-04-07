@@ -17,8 +17,8 @@ This guide walks through setting up OpenSearch for full-text search in the Nuxeo
 └─────────────┼───────────────────────────────────────────────────┘
               │
    ┌──────────▼──────────┐
-   │  Nuxeo Server       │  ◀─── host port 8180
-   │  localhost:8180      │
+   │  Nuxeo Server       │  ◀─── host port 8080
+   │  localhost:8080      │
    │  ┌────────────────┐ │
    │  │ Page Providers │ │  default_search, assets_search, etc.
    │  │ ecm_fulltext   │ │  Nuxeo translates to OpenSearch DSL
@@ -46,7 +46,7 @@ This guide walks through setting up OpenSearch for full-text search in the Nuxeo
 ## Prerequisites
 
 - **Docker Desktop** (with Docker Compose v2)
-- **Nuxeo Server** running on `localhost:8180` (or your configured port)
+- **Nuxeo Server** running on `localhost:8080` (or your configured port)
 - **Nuxeo `nuxeo-platform-opensearch` package** installed on your Nuxeo instance
 
 ## Step 1: Start OpenSearch
@@ -140,7 +140,7 @@ After configuring Nuxeo with OpenSearch, trigger a full reindex to populate the 
 
 **Option B** — Use the Nuxeo Admin console:
 
-1. Open `http://localhost:8180/nuxeo/admin` (Admin > Elasticsearch/OpenSearch)
+1. Open `http://localhost:8080/nuxeo/admin` (Admin > Elasticsearch/OpenSearch)
 2. Click **Reindex Repository** for the `default` repository
 3. Wait for the indexing to complete (check the admin page or server logs)
 
@@ -148,7 +148,7 @@ After configuring Nuxeo with OpenSearch, trigger a full reindex to populate the 
 
 ```bash
 curl -u Administrator:Administrator -X POST \
-  "http://localhost:8180/nuxeo/site/automation/Elasticsearch.Index" \
+  "http://localhost:8080/nuxeo/site/automation/Elasticsearch.Index" \
   -H "Content-Type: application/json" \
   -d '{"params":{},"context":{}}'
 ```
@@ -307,7 +307,7 @@ docker compose -f <your-compose-file>.yml down -v
 4. **Check the page provider is configured:**
    ```bash
    curl -u Administrator:Administrator \
-     "http://localhost:8180/nuxeo/api/v1/search/pp/default_search/execute?pageSize=1"
+     "http://localhost:8080/nuxeo/api/v1/search/pp/default_search/execute?pageSize=1"
    ```
    Should return a JSON response with `entries` (even if empty) and `aggregations`.
 
@@ -345,7 +345,7 @@ The Angular app's search features require no special configuration beyond the st
 ```json
 {
   "/nuxeo": {
-    "target": "http://localhost:8180",
+    "target": "http://localhost:8080",
     "secure": false,
     "changeOrigin": true,
     "autoRewrite": true,

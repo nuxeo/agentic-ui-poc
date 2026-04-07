@@ -1,6 +1,13 @@
 @if (activeItem(); as item) {
-  <div class="drawer-header">
-    <div class="drawer-title" role="heading" aria-level="2">{{ item.label }}</div>
+  <div class="drawer-header" [class.drawer-header--tasks]="isTasksPanel">
+    <div
+      class="drawer-title"
+      [class.drawer-title--tasks]="isTasksPanel"
+      role="heading"
+      aria-level="2"
+    >
+      {{ item.label }}
+    </div>
     @if (isTasksPanel) {
       <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
         <mat-icon>refresh</mat-icon>
@@ -152,36 +159,63 @@
   } @else if (isTrash) {
     <app-dynamic-drawer [drawerComponent]="trashDrawerComponent()" />
   } @else if (isTasksPanel) {
-    @if (tasksLoading()) {
-      <div class="tree-loading">
-        <mat-spinner diameter="24" />
-      </div>
-    } @else if (tasksError()) {
-      <div class="tree-empty error">
-        <span>{{ tasksError() }}</span>
-        <button mat-stroked-button (click)="loadTasks()">Retry</button>
-      </div>
-    } @else if (tasks().length === 0) {
-      <div class="tree-empty">
-        <mat-icon class="empty-icon">task_alt</mat-icon>
-        <span>No pending tasks</span>
-      </div>
-    } @else {
-      <div class="task-list">
-        @for (task of tasks(); track task.id) {
-          <div class="task-item" (click)="selectTask(task)">
-            <mat-icon class="task-icon">assignment_turned_in</mat-icon>
-            <div class="task-body">
-              <div class="task-name">{{ taskLabel(task) }}</div>
-              @if (task.targetDocTitle) {
-                <div class="task-doc">{{ task.targetDocTitle }}</div>
-              }
-              <div class="task-due" [class.overdue]="isOverdue(task)">{{ dueLabel(task) }}</div>
+    <div class="tasks-panel-wrap">
+      @if (tasksLoading()) {
+        <div class="tree-loading">
+          <mat-spinner diameter="24" />
+        </div>
+      } @else if (tasksError()) {
+        <div class="tree-empty error">
+          <span>{{ tasksError() }}</span>
+          <button mat-stroked-button (click)="loadTasks()">Retry</button>
+        </div>
+      } @else {
+        <div class="tasks-panel-body">
+          @if (tasks().length === 0) {
+            <div class="tree-empty">
+              <mat-icon class="empty-icon">task_alt</mat-icon>
+              <span>No pending tasks</span>
             </div>
-          </div>
-        }
-      </div>
-    }
+          } @else {
+            <div class="task-list task-list--inbox">
+              @for (task of tasks(); track task.id) {
+                <button
+                  type="button"
+                  class="task-item"
+                  [class.active]="isTaskSelected(task)"
+                  (click)="selectTask(task)"
+                >
+                  <div class="task-body">
+                    <div class="task-title-line">{{ taskPrimaryTitle(task) }}</div>
+                    @if (task.targetDocTitle) {
+                      <div class="task-doc-line">{{ task.targetDocTitle }}</div>
+                    }
+                    @if (task.dueDate) {
+                      <div class="task-due-line">
+                        <span class="task-due-prefix">Due</span>
+                        <span
+                          class="task-due-value"
+                          [class.task-due-value--soon]="!isOverdue(task)"
+                          [class.task-due-value--overdue]="isOverdue(task)"
+                        >
+                          {{ dueRelativeOnly(task) }}
+                        </span>
+                      </div>
+                    }
+                    @if (taskWorkflowSentence(task); as wfLine) {
+                      <div class="task-workflow-line">{{ wfLine }}</div>
+                    }
+                  </div>
+                </button>
+              }
+            </div>
+          }
+        </div>
+        <div class="tasks-drawer-footer">
+          <a routerLink="/dashboard" class="tasks-dashboard-link">View Tasks Dashboard</a>
+        </div>
+      }
+    </div>
   } @else if (isFavorites) {
     <div class="favorites-panel">
       @if (favoritesLoading()) {
@@ -271,7 +305,13 @@
   } @else if (isSettings) {
     <div class="settings-panel">
       @for (settingsItem of settingsItems; track settingsItem.path) {
-        <button type="button" class="settings-item" (click)="navigateToSettings(settingsItem.path)">
+        <button
+          type="button"
+          class="settings-item"
+          [routerLink]="settingsItem.path"
+          routerLinkActive="settings-item--active"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
           {{ settingsItem.label }}
         </button>
       }

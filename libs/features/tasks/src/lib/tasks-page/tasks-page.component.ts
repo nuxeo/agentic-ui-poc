@@ -1,6 +1,6 @@
 import { Component, inject, signal, OnInit, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -31,14 +31,12 @@ import {
 
 import { DocumentViewerComponent } from '@agentic-ui/shared/ui';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
-import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 @Component({
   selector: 'lib-tasks-page',
   standalone: true,
   imports: [
     FormsModule,
-    RouterLink,
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
@@ -53,7 +51,6 @@ import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
     MatDividerModule,
     DocumentViewerComponent,
     SatBreadcrumbsComponent,
-    SatTagModule,
   ],
   templateUrl: './tasks-page.component.html',
   styleUrl: './tasks-page.component.scss',
@@ -275,10 +272,6 @@ export class TasksPageComponent implements OnInit {
     this.closeDelegatePanel();
     this.closeReassignPanel();
     this.closeGraphPanel();
-  }
-
-  isSelected(task: NuxeoTask): boolean {
-    return this.selectedTask()?.id === task.id;
   }
 
   /* ════════════════════════════════════════════════════════

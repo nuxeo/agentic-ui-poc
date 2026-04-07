@@ -115,3 +115,31 @@ sat-app-header sat-word-mark-logo.sat-app-header-logo,
 sat-app-header .sat-app-header-logo sat-word-mark-logo {
   flex-shrink: 0;
 }
+
+/*
+ * Floating action buttons: Angular Material defaults mat-fab / mat-mini-fab to color=accent
+ * (often blue). Map accent FABs to semantic primary so they match Satori / nav purple.
+ * App also sets MAT_FAB_DEFAULT_OPTIONS to primary; this covers explicit color="accent".
+ */
+.mat-mdc-fab.mat-accent {
+  --mdc-fab-container-color: var(--mat-sys-primary);
+  --mat-fab-foreground-color: var(--mat-sys-on-primary);
+}
+
+.mat-mdc-mini-fab.mat-accent {
+  --mdc-fab-small-container-color: var(--mat-sys-primary);
+  --mat-fab-small-foreground-color: var(--mat-sys-on-primary);
+}
+
+/*
+ * Outline fields: the floating label sits in the top notch. MDC sets overflow: hidden on
+ * .mat-mdc-text-field-wrapper (often with border-radius) which crops “Choose a …” style labels
+ * in dialogs, filters, and anywhere the wrapper is rounded — fix once app-wide.
+ */
+.mat-mdc-form-field-appearance-outline {
+  overflow: visible;
+
+  .mat-mdc-text-field-wrapper {
+    overflow: visible;
+  }
+}

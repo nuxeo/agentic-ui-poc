@@ -38,6 +38,7 @@ import {
   TagService,
   docTypeIcon,
   avatarColor,
+  isFolderishDocument,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -77,6 +78,7 @@ import {
   EditMetadataDialogComponent,
   EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
+import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
 
 const FOLDERISH_TYPES = new Set([
   'Domain',
@@ -717,6 +719,28 @@ export class BrowseComponent {
       docPath: doc?.path ?? '/',
     };
     this.dialog.open(BrowseDriveDialogComponent, { data });
+  }
+
+  isCurrentFolderish(): boolean {
+    return isFolderishDocument(this.currentDoc());
+  }
+
+  openCreateImportDialog(): void {
+    const doc = this.currentDoc();
+    if (!doc || !isFolderishDocument(doc)) {
+      this.snackBar.open('Open a folder to create or import content.', 'OK', { duration: 4000 });
+      return;
+    }
+    this.dialog
+      .open(CreateImportDialogComponent, {
+        width: '900px',
+        maxWidth: '95vw',
+        data: { parentPath: doc.path, parentTitle: doc.title },
+      })
+      .afterClosed()
+      .subscribe((result: { refreshed?: boolean } | undefined) => {
+        if (result?.refreshed) this.loadContent();
+      });
   }
 
   openEditDialog(): void {
