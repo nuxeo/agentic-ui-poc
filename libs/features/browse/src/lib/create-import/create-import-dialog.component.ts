@@ -206,26 +206,48 @@ export class CreateImportDialogComponent implements OnInit {
     const filterA = this.filterA().trim().toLowerCase();
     const filterB = this.filterB().trim().toLowerCase();
     const filterC = this.filterC().trim().toLowerCase();
+  filteredBusinessTemplates() {
+    const q = this.templateSearch.trim().toLowerCase();
+    const filterA = this.filterA.trim().toLowerCase();
+    const filterB = this.filterB.trim().toLowerCase();
+    const filterC = this.filterC.trim().toLowerCase();
 
     return this.businessTemplates.filter((t) => {
-      const searchableText = `${t.label} ${t.description} ${t.id} ${t.type}`.toLowerCase();
-      if (q && !searchableText.includes(q)) return false;
-      if (filterA && !searchableText.includes(filterA)) return false;
-      if (filterB && !this.templateFilterTokenMatches(searchableText, filterB)) return false;
-      if (filterC && !searchableText.includes(filterC)) return false;
+      const label = t.label.toLowerCase();
+      const description = t.description.toLowerCase();
+      const searchableText = `${label} ${description} ${JSON.stringify(t).toLowerCase()}`;
+
+      if (q && !searchableText.includes(q)) {
+        return false;
+      }
+
+      if (filterA && !searchableText.includes(filterA)) {
+        return false;
+      }
+
+      if (filterB && !searchableText.includes(filterB)) {
+        return false;
+      }
+
+      if (filterC && !searchableText.includes(filterC)) {
+        return false;
+      }
+
       return true;
     });
-  });
+  }
 
-  readonly pagedTemplates = computed(() => {
+  pagedTemplates() {
     const all = this.filteredBusinessTemplates();
-    const start = this.templatePageIndex() * this.templatePageSize;
+    const maxPageIndex = Math.max(0, Math.ceil(all.length / this.templatePageSize) - 1);
+    const pageIndex = Math.min(this.templatePageIndex(), maxPageIndex);
+    const start = pageIndex * this.templatePageSize;
     return all.slice(start, start + this.templatePageSize);
-  });
+  }
 
-  readonly templatePageCount = computed(() =>
-    Math.max(1, Math.ceil(this.filteredBusinessTemplates().length / this.templatePageSize)),
-  );
+  templatePageCount() {
+    return Math.max(1, Math.ceil(this.filteredBusinessTemplates().length / this.templatePageSize));
+  }
 
   docTitle = '';
   docName = '';
