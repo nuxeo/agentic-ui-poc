@@ -28,19 +28,6 @@ import {
   type FolderPickerDialogResult,
 } from '../folder-picker/folder-picker-dialog.component';
 
-/**
- * Some tooling resolves `DocumentImportService.importFiles` from the public API as a 2-arg
- * signature even though the implementation accepts optional `ImportFilesOptions`. This alias
- * matches the real method so calls stay type-checked without deep imports (Nx module boundaries).
- */
-type DocumentImportServiceWithFileOptions = {
-  importFiles(
-    parentPath: string,
-    files: File[],
-    options?: ImportFilesOptions,
-  ): Observable<NuxeoDocument[]>;
-};
-
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
   parentPath?: string | null;
