@@ -298,7 +298,7 @@ export class CreateImportDialogComponent implements OnInit {
     const modes = this.LANDING_MODES;
     const current = this.selectedMode() ?? modes[0];
     const idx = modes.indexOf(current);
-    let next = idx;
+    let next;
 
     if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
       next = (idx + 1) % modes.length;
