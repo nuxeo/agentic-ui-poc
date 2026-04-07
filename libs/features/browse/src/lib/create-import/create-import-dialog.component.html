@@ -53,10 +53,13 @@
       @switch (view()) {
         @case ('landing') {
           <div class="landing-panel">
-            <div class="choice-grid" role="radiogroup" aria-label="Create or upload option">
+            <div class="choice-grid" role="radiogroup" aria-label="Create or upload option" (keydown)="onChoiceGridKeydown($event)">
               <button
                 type="button"
                 class="choice-card"
+                role="radio"
+                [attr.aria-checked]="isModeSelected('template')"
+                [attr.tabindex]="getChoiceTabindex('template')"
                 [class.choice-card--selected]="isModeSelected('template')"
                 (click)="selectLandingMode('template')"
               >
@@ -74,6 +77,9 @@
               <button
                 type="button"
                 class="choice-card"
+                role="radio"
+                [attr.aria-checked]="isModeSelected('upload')"
+                [attr.tabindex]="getChoiceTabindex('upload')"
                 [class.choice-card--selected]="isModeSelected('upload')"
                 (click)="selectLandingMode('upload')"
               >
@@ -91,6 +97,9 @@
               <button
                 type="button"
                 class="choice-card"
+                role="radio"
+                [attr.aria-checked]="isModeSelected('csv')"
+                [attr.tabindex]="getChoiceTabindex('csv')"
                 [class.choice-card--selected]="isModeSelected('csv')"
                 (click)="selectLandingMode('csv')"
               >

@@ -179,6 +179,8 @@ export class CreateImportDialogComponent implements OnInit {
   readonly selectedMode = signal<CreateMode | null>(null);
   readonly selectedTemplate = signal<TemplateDef | null>(null);
 
+  private readonly LANDING_MODES: CreateMode[] = ['template', 'upload', 'csv'];
+
   /** Template gallery */
   templateSearch = '';
   filterA = '';
@@ -278,6 +280,38 @@ export class CreateImportDialogComponent implements OnInit {
 
   isModeSelected(mode: CreateMode): boolean {
     return this.selectedMode() === mode;
+  }
+
+  /** Returns tabindex for roving-tabindex keyboard navigation within the radio group. */
+  getChoiceTabindex(mode: CreateMode): 0 | -1 {
+    const selected = this.selectedMode();
+    if (selected === null) {
+      return mode === this.LANDING_MODES[0] ? 0 : -1;
+    }
+    return selected === mode ? 0 : -1;
+  }
+
+  /** Handles Arrow key navigation across the landing choice radio group. */
+  onChoiceGridKeydown(event: KeyboardEvent): void {
+    const modes = this.LANDING_MODES;
+    const current = this.selectedMode() ?? modes[0];
+    const idx = modes.indexOf(current);
+    let next = idx;
+
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      next = (idx + 1) % modes.length;
+      event.preventDefault();
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      next = (idx - 1 + modes.length) % modes.length;
+      event.preventDefault();
+    } else {
+      return;
+    }
+
+    this.selectLandingMode(modes[next]);
+    const grid = event.currentTarget as HTMLElement;
+    const buttons = grid.querySelectorAll<HTMLButtonElement>('button[role="radio"]');
+    buttons[next]?.focus();
   }
 
   /** Landing: Next → branch to template gallery, upload screen, or CSV */
