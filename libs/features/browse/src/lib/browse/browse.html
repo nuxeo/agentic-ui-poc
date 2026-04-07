@@ -200,9 +200,16 @@
                     class="col-panel-backdrop"
                     aria-label="Close column picker"
                     (click)="closeColumnPanel()"
-                    (keydown.escape)="closeColumnPanel()"
                   ></button>
-                  <div class="col-panel">
+                  <div
+                    #columnPanel
+                    class="col-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Column Settings"
+                    tabindex="-1"
+                    (keydown.escape)="closeColumnPanel()"
+                  >
                     <p class="col-panel-title">Column Settings</p>
                     <div class="col-panel-list">
                       @for (col of pendingColumns(); track col.key) {

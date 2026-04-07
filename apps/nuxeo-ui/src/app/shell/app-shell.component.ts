@@ -17,16 +17,17 @@ import {
 import {
   CollectionService,
   DocumentDetailService,
+  NuxeoDocument,
   SearchService,
   SelectionService,
   type GlobalSearchSuggestion,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
-import { AddToCollectionDialogComponent } from '../../../../../libs/features/document-detail/src/lib/add-to-collection-dialog/add-to-collection-dialog';
 import {
+  AddToCollectionDialogComponent,
   PublishDialogComponent,
   type PublishDialogData,
-} from '../../../../../libs/features/document-detail/src/lib/publish-dialog/publish-dialog';
+} from '@agentic-ui/feature-document-detail';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
@@ -306,7 +307,7 @@ export class AppShellComponent {
       });
     }
 
-    const openDialog = (versions: Array<{ uid: string; properties: Record<string, unknown> }>) => {
+    const openDialog = (versions: NuxeoDocument[]) => {
       const data: PublishDialogData = {
         documentUid: first.id,
         documentTitle: first.name,
@@ -317,7 +318,7 @@ export class AppShellComponent {
           { name: 'zipExport', label: 'ZIP Export' },
           { name: 'xmlExport', label: 'XML Export' },
         ],
-        versions: versions as any,
+        versions,
       };
 
       this.dialog.open(PublishDialogComponent, {
@@ -328,7 +329,7 @@ export class AppShellComponent {
     };
 
     this.detailService.getVersions(first.id).subscribe({
-      next: (res) => openDialog((res.entries ?? []) as any),
+      next: (res) => openDialog(res.entries ?? []),
       error: () => openDialog([]),
     });
   }
@@ -337,10 +338,15 @@ export class AppShellComponent {
     const selected = this.selectionService.selectedItems();
     if (selected.length === 0) return;
 
-    const current = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]') as Array<{
-      uid: string;
-      title: string;
-    }>;
+    let current: Array<{ uid: string; title: string }> = [];
+    try {
+      current = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]') as Array<{
+        uid: string;
+        title: string;
+      }>;
+    } catch {
+      current = [];
+    }
 
     const existing = new Set(current.map((item) => item.uid));
     const additions = selected
@@ -392,14 +398,15 @@ export class AppShellComponent {
     if (selected.length === 0) return;
 
     const ids = selected.map((item) => item.id);
+    const zipFileName = `selected-documents-${Date.now()}.zip`;
     this.detailService
-      .bulkDownload(ids, `selected-documents-${Date.now()}.zip`)
+      .bulkDownload(ids, zipFileName)
       .subscribe({
         next: (blob) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = 'selected-documents.zip';
+          a.download = zipFileName;
           a.click();
           URL.revokeObjectURL(url);
         },

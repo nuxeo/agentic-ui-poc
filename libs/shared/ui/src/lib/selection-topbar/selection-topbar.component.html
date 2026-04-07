@@ -78,11 +78,17 @@
     class="selection-popup-backdrop"
     aria-label="Close selected items popup"
     (click)="closeSelectionPopup()"
-    (keydown.escape)="closeSelectionPopup()"
   ></button>
-  <div class="selection-popup">
+  <div
+    #selectionPopupPanel
+    class="selection-popup"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="selection-popup-title"
+    tabindex="-1"
+  >
     <div class="selection-popup-header">
-      <span class="selection-popup-title">Selected Items</span>
+      <span id="selection-popup-title" class="selection-popup-title">Selected Items</span>
       <button
         mat-icon-button
         type="button"

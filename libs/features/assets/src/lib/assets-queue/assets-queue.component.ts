@@ -1,4 +1,5 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,6 +21,9 @@ export class AssetsQueueComponent {
   private readonly assetAggregationService = inject(AssetAggregationService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly objectUrls = new Map<string, string>();
+  private readonly inFlight = new Set<string>();
 
   readonly items = computed(() => this.assetAggregationService.items());
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
@@ -29,19 +33,36 @@ export class AssetsQueueComponent {
   constructor() {
     effect(() => {
       const queueItems = this.items();
+      const thumbnailMap = untracked(() => this.thumbnailMap());
       for (const item of queueItems) {
-        if (this.thumbnailMap()[item.id]) continue;
+        if (thumbnailMap[item.id] || this.inFlight.has(item.id)) continue;
+        this.inFlight.add(item.id);
         this.detailService.fetchThumbnail(item.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
           .pipe(catchError(() => of(null)))
           .subscribe((blob) => {
+            this.inFlight.delete(item.id);
             if (!blob) return;
+
+            const previousUrl = this.objectUrls.get(item.id);
+            if (previousUrl) URL.revokeObjectURL(previousUrl);
+
             const url = URL.createObjectURL(blob);
+            this.objectUrls.set(item.id, url);
             this.thumbnailMap.update((current) => ({
               ...current,
               [item.id]: this.sanitizer.bypassSecurityTrustUrl(url),
             }));
           });
       }
+    });
+
+    this.destroyRef.onDestroy(() => {
+      for (const url of this.objectUrls.values()) {
+        URL.revokeObjectURL(url);
+      }
+      this.objectUrls.clear();
+      this.inFlight.clear();
     });
   }
 

@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter } from 'rxjs';
+import { Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
@@ -11,6 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   SearchAggregationService,
   SearchService,
+  FOLDERISH_TYPES,
   type AggregateResult,
   type SearchQueryParams,
   type SearchAggregations,
@@ -35,17 +36,6 @@ interface SavedSearchSelectOption {
 }
 
 type DrawerViewMode = 'filter' | 'queue';
-
-const FOLDERISH_TYPES = new Set([
-  'Domain',
-  'Folder',
-  'OrderedFolder',
-  'Workspace',
-  'WorkspaceRoot',
-  'SectionRoot',
-  'Section',
-  'TemplateRoot',
-]);
 
 @Component({
   selector: 'lib-search-filters-drawer',
@@ -112,6 +102,7 @@ export class SearchFiltersDrawerComponent {
 
   private baselineRequestSeq = 0;
   private baselineSignature = '';
+  private readonly baselineRequests$ = new Subject<{ params: SearchQueryParams; requestSeq: number }>();
 
   readonly hasActiveFilters = computed(() =>
     this.selectedSavedSearch().trim().length > 0 ||
@@ -145,6 +136,28 @@ export class SearchFiltersDrawerComponent {
   });
 
   constructor() {
+    this.baselineRequests$
+      .pipe(
+        debounceTime(150),
+        switchMap(({ params, requestSeq }) =>
+          this.searchService.search(params).pipe(
+            map((response) => ({ response, requestSeq, failed: false })),
+            catchError(() => of({ response: null, requestSeq, failed: true })),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe(({ response, requestSeq, failed }) => {
+        if (requestSeq !== this.baselineRequestSeq) return;
+        if (failed || !response) {
+          this.baselineCountsReady.set(false);
+          return;
+        }
+        this.baselineItemsForCounts.set(response.items);
+        this.baselineAggregationsForCounts.set(response.aggregations);
+        this.baselineCountsReady.set(true);
+      });
+
     effect(() => {
       const drawerFilters = this.searchAggregationService.drawerFilters();
       const quickFilters = this.toQuickFiltersQueryParam();
@@ -1066,19 +1079,8 @@ export class SearchFiltersDrawerComponent {
 
     this.baselineSignature = signature;
     const requestSeq = ++this.baselineRequestSeq;
-
-    this.searchService.search(params).subscribe({
-      next: (response) => {
-        if (requestSeq !== this.baselineRequestSeq) return;
-        this.baselineItemsForCounts.set(response.items);
-        this.baselineAggregationsForCounts.set(response.aggregations);
-        this.baselineCountsReady.set(true);
-      },
-      error: () => {
-        if (requestSeq !== this.baselineRequestSeq) return;
-        this.baselineCountsReady.set(false);
-      },
-    });
+    this.baselineCountsReady.set(false);
+    this.baselineRequests$.next({ params, requestSeq });
   }
 }
 

@@ -1,8 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { SafeUrl } from '@angular/platform-browser';
 import { Observable } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { DocumentDetailService } from './document-detail.service';
 import type { NuxeoDocument } from '../models/document.model';
+
+type SelectionPreview = SafeUrl | string | null;
 
 @Injectable({ providedIn: 'root' })
 export class SelectionService {
@@ -10,7 +13,7 @@ export class SelectionService {
 
   readonly selectedIds = signal<Set<string>>(new Set());
   readonly selectedLabels = signal<Map<string, string>>(new Map());
-  readonly selectedPreviews = signal<Map<string, any>>(new Map());
+  readonly selectedPreviews = signal<Map<string, SelectionPreview>>(new Map());
 
   readonly selectedCount = () => this.selectedIds().size;
   readonly selectedItems = () =>
@@ -20,7 +23,7 @@ export class SelectionService {
       preview: this.selectedPreviews().get(id) ?? null,
     }));
 
-  toggle(id: string, label?: string, preview?: any): void {
+  toggle(id: string, label?: string, preview?: SelectionPreview): void {
     this.selectedIds.update((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -49,7 +52,7 @@ export class SelectionService {
     });
   }
 
-  selectAll(ids: string[], labels?: Record<string, string>, previews?: Record<string, any>): void {
+  selectAll(ids: string[], labels?: Record<string, string>, previews?: Record<string, SelectionPreview>): void {
     this.selectedIds.set(new Set(ids));
     this.selectedLabels.update((current) => {
       const next = new Map<string, string>();
@@ -60,7 +63,7 @@ export class SelectionService {
     });
 
     this.selectedPreviews.update((current) => {
-      const next = new Map<string, any>();
+      const next = new Map<string, SelectionPreview>();
       ids.forEach((id) => {
         next.set(id, previews?.[id] ?? current.get(id) ?? null);
       });

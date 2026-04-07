@@ -33,6 +33,7 @@ import {
   NuxeoTask,
   CURRENT_USERNAME,
   docTypeIcon,
+  FOLDERISH_TYPES,
   type SearchQueryParams,
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -48,17 +49,6 @@ export interface FolderNode {
   loading: boolean;
   isRoot?: boolean;
 }
-
-const FOLDERISH_TYPES = new Set([
-  'Domain',
-  'Folder',
-  'OrderedFolder',
-  'Workspace',
-  'WorkspaceRoot',
-  'SectionRoot',
-  'Section',
-  'TemplateRoot',
-]);
 
 @Component({
   selector: 'app-nav-drawer',

@@ -15,20 +15,10 @@ import {
   TaskService,
   CollectionService,
   docTypeIcon,
+  FOLDERISH_TYPES,
 } from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
-
-const FOLDERISH_TYPES = new Set([
-  'Domain',
-  'Folder',
-  'OrderedFolder',
-  'Workspace',
-  'WorkspaceRoot',
-  'SectionRoot',
-  'Section',
-  'TemplateRoot',
-]);
 
 @Component({
   selector: 'app-dashboard-page',

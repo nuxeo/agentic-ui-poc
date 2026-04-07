@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -39,6 +39,7 @@ import {
   TagService,
   docTypeIcon,
   avatarColor,
+  FOLDERISH_TYPES as BASE_FOLDERISH_TYPES,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -81,14 +82,7 @@ import {
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 
 const FOLDERISH_TYPES = new Set([
-  'Domain',
-  'Folder',
-  'OrderedFolder',
-  'Workspace',
-  'WorkspaceRoot',
-  'SectionRoot',
-  'Section',
-  'TemplateRoot',
+  ...BASE_FOLDERISH_TYPES,
   'Collection',
   'Collections',
   'Favorites',
@@ -128,6 +122,9 @@ const FOLDERISH_TYPES = new Set([
   styleUrl: './browse.scss',
 })
 export class BrowseComponent {
+  @ViewChild('columnPanel')
+  private columnPanel?: ElementRef<HTMLElement>;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -630,10 +627,18 @@ export class BrowseComponent {
   openColumnPanel(): void {
     this.pendingColumns.set(this.columns().map((c) => ({ ...c })));
     this.columnPanelOpen.set(true);
+    queueMicrotask(() => this.columnPanel?.nativeElement.focus());
   }
 
   closeColumnPanel(): void {
     this.columnPanelOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.columnPanelOpen()) {
+      this.closeColumnPanel();
+    }
   }
 
   isPendingColumn(key: string): boolean {
