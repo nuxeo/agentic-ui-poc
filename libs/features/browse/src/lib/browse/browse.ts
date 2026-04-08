@@ -719,7 +719,7 @@ export class BrowseComponent {
 
   openCreateImportDialog(): void {
     const doc = this.currentDoc();
-    if (!this.isBrowseFolderish(doc)) {
+    if (!doc || !this.isBrowseFolderish(doc)) {
       this.snackBar.open('Open a folder to create or import content.', 'OK', { duration: 4000 });
       return;
     }

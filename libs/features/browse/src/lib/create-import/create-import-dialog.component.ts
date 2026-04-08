@@ -206,11 +206,6 @@ export class CreateImportDialogComponent implements OnInit {
     const filterA = this.filterA().trim().toLowerCase();
     const filterB = this.filterB().trim().toLowerCase();
     const filterC = this.filterC().trim().toLowerCase();
-  filteredBusinessTemplates() {
-    const q = this.templateSearch.trim().toLowerCase();
-    const filterA = this.filterA.trim().toLowerCase();
-    const filterB = this.filterB.trim().toLowerCase();
-    const filterC = this.filterC.trim().toLowerCase();
 
     return this.businessTemplates.filter((t) => {
       const label = t.label.toLowerCase();
@@ -235,19 +230,19 @@ export class CreateImportDialogComponent implements OnInit {
 
       return true;
     });
-  }
+  });
 
-  pagedTemplates() {
+  readonly pagedTemplates = computed(() => {
     const all = this.filteredBusinessTemplates();
     const maxPageIndex = Math.max(0, Math.ceil(all.length / this.templatePageSize) - 1);
     const pageIndex = Math.min(this.templatePageIndex(), maxPageIndex);
     const start = pageIndex * this.templatePageSize;
     return all.slice(start, start + this.templatePageSize);
-  }
+  });
 
-  templatePageCount() {
+  readonly templatePageCount = computed(() => {
     return Math.max(1, Math.ceil(this.filteredBusinessTemplates().length / this.templatePageSize));
-  }
+  });
 
   docTitle = '';
   docName = '';
