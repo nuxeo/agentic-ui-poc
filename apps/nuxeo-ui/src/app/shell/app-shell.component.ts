@@ -1,7 +1,8 @@
 import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
+import { Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, forkJoin, of, switchMap } from 'rxjs';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -15,11 +16,18 @@ import {
 } from '@hylandsoftware/satori-ui/platform-nav';
 import {
   CollectionService,
+  DocumentDetailService,
+  NuxeoDocument,
   SearchService,
   SelectionService,
   type GlobalSearchSuggestion,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
+import {
+  AddToCollectionDialogComponent,
+  PublishDialogComponent,
+  type PublishDialogData,
+} from '@agentic-ui/feature-document-detail';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
@@ -32,6 +40,7 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
     SatPlatformNavModule,
     SatAppHeaderModule,
     SatLogoModule,
+    MatDialogModule,
     MatMenuModule,
     MatButtonModule,
     MatIconModule,
@@ -58,8 +67,10 @@ export class AppShellComponent {
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly dialog = inject(MatDialog);
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
+  private readonly detailService = inject(DocumentDetailService);
   private readonly searchService = inject(SearchService);
   private readonly searchInput$ = new Subject<string>();
 
@@ -130,7 +141,12 @@ export class AppShellComponent {
         takeUntilDestroyed(),
       )
       .subscribe((e) => {
-        this.currentUrl.set(e.urlAfterRedirects.split('?')[0]);
+        const nextPath = e.urlAfterRedirects.split('?')[0];
+        const previousPath = this.currentUrl();
+        if (previousPath !== nextPath) {
+          this.selectionService.clear();
+        }
+        this.currentUrl.set(nextPath);
         this.refreshClipboardCount();
         this.clearGlobalSearch();
       });
@@ -278,6 +294,128 @@ export class AppShellComponent {
         this.selectionService.clear();
       },
     });
+  }
+
+  onPublishSelected(): void {
+    const selected = this.selectionService.selectedItems();
+    if (selected.length === 0) return;
+
+    const first = selected[0];
+    if (selected.length > 1) {
+      this.snackBar.open('Opening publish dialog for the first selected item.', 'Dismiss', {
+        duration: 3000,
+      });
+    }
+
+    const openDialog = (versions: NuxeoDocument[]) => {
+      const data: PublishDialogData = {
+        documentUid: first.id,
+        documentTitle: first.name,
+        versionLabel: 'Current',
+        renditions: [
+          { name: 'thumbnail', label: 'Thumbnail' },
+          { name: 'pdf', label: 'PDF' },
+          { name: 'zipExport', label: 'ZIP Export' },
+          { name: 'xmlExport', label: 'XML Export' },
+        ],
+        versions,
+      };
+
+      this.dialog.open(PublishDialogComponent, {
+        width: '620px',
+        panelClass: 'publish-dialog-panel',
+        data,
+      });
+    };
+
+    this.detailService.getVersions(first.id).subscribe({
+      next: (res) => openDialog(res.entries ?? []),
+      error: () => openDialog([]),
+    });
+  }
+
+  onAddSelectedToClipboard(): void {
+    const selected = this.selectionService.selectedItems();
+    if (selected.length === 0) return;
+
+    let current: Array<{ uid: string; title: string }> = [];
+    try {
+      current = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]') as Array<{
+        uid: string;
+        title: string;
+      }>;
+    } catch {
+      current = [];
+    }
+
+    const existing = new Set(current.map((item) => item.uid));
+    const additions = selected
+      .filter((item) => !existing.has(item.id))
+      .map((item) => ({ uid: item.id, title: item.name }));
+
+    const updated = [...current, ...additions];
+    localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+    window.dispatchEvent(new Event('clipboard-changed'));
+
+    this.snackBar.open(
+      additions.length > 0
+        ? `Added ${additions.length} item(s) to clipboard.`
+        : 'Selected items are already in clipboard.',
+      'Dismiss',
+      { duration: 3000 },
+    );
+  }
+
+  onAddSelectedToCollection(): void {
+    const selected = this.selectionService.selectedItems();
+    if (selected.length === 0) return;
+
+    const ref = this.dialog.open(AddToCollectionDialogComponent, {
+      width: '440px',
+      autoFocus: false,
+    });
+
+    ref.afterClosed().subscribe((collectionId: string | undefined) => {
+      if (!collectionId) return;
+
+      forkJoin(
+        selected.map((item) =>
+          this.detailService
+            .addToCollection(item.id, collectionId)
+            .pipe(catchError(() => of(null))),
+        ),
+      ).subscribe((results) => {
+        const success = results.filter((r) => !!r).length;
+        this.snackBar.open(`Added ${success} item(s) to collection.`, 'Dismiss', {
+          duration: 3000,
+        });
+      });
+    });
+  }
+
+  onDownloadSelectedAsZip(): void {
+    const selected = this.selectionService.selectedItems();
+    if (selected.length === 0) return;
+
+    const ids = selected.map((item) => item.id);
+    const zipFileName = `selected-documents-${Date.now()}.zip`;
+    this.detailService
+      .bulkDownload(ids, zipFileName)
+      .subscribe({
+        next: (blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = zipFileName;
+          a.click();
+          URL.revokeObjectURL(url);
+        },
+        error: () => {
+          this.snackBar.open('Failed to download selected documents as ZIP.', 'Dismiss', {
+            duration: 4000,
+          });
+        },
+      });
   }
 
   onGlobalSearchInput(value: string): void {

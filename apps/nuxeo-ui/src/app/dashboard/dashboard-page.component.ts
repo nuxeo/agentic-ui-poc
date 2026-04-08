@@ -15,6 +15,7 @@ import {
   TaskService,
   CollectionService,
   docTypeIcon,
+  FOLDERISH_TYPES,
 } from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
@@ -112,6 +113,16 @@ export class DashboardPageComponent {
   }
 
   navigateToDoc(doc: NuxeoDocument): void {
+    if (doc.type === 'Collection') {
+      void this.router.navigate(['/collections', doc.uid]);
+      return;
+    }
+
+    if (FOLDERISH_TYPES.has(doc.type)) {
+      void this.router.navigate(['/browse' + doc.path]);
+      return;
+    }
+
     void this.router.navigate(['/doc', doc.uid]);
   }
 

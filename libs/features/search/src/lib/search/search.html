@@ -107,15 +107,6 @@
     <div class="grid-container">
       <div class="grid-action-bar">
         <div class="grid-actions-left">
-          <mat-checkbox
-            [checked]="isAllSelected()"
-            [indeterminate]="isIndeterminate()"
-            [disabled]="selectedCount() === 0 && displayResults().length === 0"
-            matTooltip="Select all on this page"
-            (change)="toggleAll()"
-            class="grid-select-all"
-          ></mat-checkbox>
-
           <mat-select
             [value]="gridGroupBy()"
             (selectionChange)="setGridGroupBy($event.value)"
@@ -233,13 +224,7 @@
 
       <div class="result-list">
         <div class="list-header" [style.grid-template-columns]="gridTemplate()">
-          <span class="col-checkbox">
-            <mat-checkbox
-              [checked]="isAllSelected()"
-              [indeterminate]="isIndeterminate()"
-              (change)="toggleAll()"
-            ></mat-checkbox>
-          </span>
+          <span class="col-checkbox"></span>
           @for (col of visibleColumns(); track col.key) {
             @if (SORTABLE_COLUMNS.has(col.key)) {
               <button
@@ -316,15 +301,6 @@
   @if (!loading() && viewMode() === 'list') {
     <div class="list-action-bar">
       <div class="list-actions-left">
-        <mat-checkbox
-          [checked]="isAllSelected()"
-          [indeterminate]="isIndeterminate()"
-          [disabled]="selectedCount() === 0 && displayResults().length === 0"
-          matTooltip="Select all on this page"
-          (change)="toggleAll()"
-          class="list-select-all"
-        ></mat-checkbox>
-
         <mat-select
           [value]="gridGroupBy()"
           (selectionChange)="setGridGroupBy($event.value)"

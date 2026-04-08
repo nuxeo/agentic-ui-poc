@@ -349,14 +349,26 @@ export class SearchComponent {
   }
 
   toggleSelection(id: string): void {
-    this.selectionService.toggle(id);
+    const row = this.displayResults().find((r) => r.id === id);
+    this.selectionService.toggle(id, row?.name ?? id, this.thumbnailMap()[id] ?? null);
   }
 
   toggleAll(): void {
     if (this.isAllSelected()) {
       this.selectionService.clear();
     } else {
-      this.selectionService.selectAll(this.displayResults().map((r) => r.id));
+      const rows = this.displayResults();
+      const labels: Record<string, string> = {};
+      const previews: Record<string, any> = {};
+      rows.forEach((row) => {
+        labels[row.id] = row.name;
+        previews[row.id] = this.thumbnailMap()[row.id] ?? null;
+      });
+      this.selectionService.selectAll(
+        rows.map((r) => r.id),
+        labels,
+        previews,
+      );
     }
   }
 
