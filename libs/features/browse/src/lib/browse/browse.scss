@@ -462,6 +462,14 @@ sat-breadcrumbs {
 }
 
 // ── Table (List view) ──
+.browse-list-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+}
+
 .browse-table-wrapper {
   flex: 1;
   overflow: auto;
@@ -510,6 +518,75 @@ sat-breadcrumbs {
   .col-checkbox {
     width: 40px;
   }
+
+  .col-gear {
+    width: 48px;
+    text-align: right;
+    padding: 0 4px;
+  }
+}
+
+.gear-btn {
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  color: var(--mat-sys-on-surface-variant, #7a7d87);
+  &:hover {
+    color: var(--mat-sys-primary, #5c6bc0);
+  }
+}
+
+.col-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.col-panel {
+  position: absolute;
+  top: 43px;
+  right: 0;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid var(--mat-sys-outline-variant, #d8dbe2);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  padding: 14px 16px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  max-height: 420px;
+}
+
+.col-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 10px;
+}
+
+.col-panel-list {
+  overflow-y: auto;
+  flex: 1;
+  margin-bottom: 2px;
+}
+
+.col-panel-option {
+  display: flex;
+  margin-bottom: 6px;
+}
+
+.col-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--mat-sys-outline-variant, #eceef3);
 }
 
 .th-label {

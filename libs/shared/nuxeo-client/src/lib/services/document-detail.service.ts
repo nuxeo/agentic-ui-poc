@@ -220,6 +220,15 @@ export class DocumentDetailService {
     );
   }
 
+  bulkDownload(uids: string[], filename = 'export.zip'): Observable<Blob> {
+    const input = `docs:${uids.join(',')}`;
+    return this.http.post(
+      this.api.apiUrl('/nuxeo/api/v1/automation/Blob.BulkDownload'),
+      { params: { filename }, input },
+      { responseType: 'blob' },
+    );
+  }
+
   exportXml(uid: string): Observable<Blob> {
     return this.http.get(this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@export?adapter=export`), {
       responseType: 'blob',

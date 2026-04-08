@@ -72,44 +72,6 @@
     </div>
   </div>
 
-  @if (!loading() && viewMode() === 'grid') {
-    <div class="grid-actions-bar">
-      <div class="grid-actions-left">
-        <mat-checkbox
-          [checked]="isAllSelected()"
-          [indeterminate]="isIndeterminate()"
-          [disabled]="selectedCount() === 0 && filteredAssets().length === 0"
-          matTooltip="Select all on this page"
-          (change)="toggleAll()"
-          class="grid-select-all"
-        ></mat-checkbox>
-
-        <mat-select
-          [value]="gridGroupBy()"
-          (selectionChange)="setGridGroupBy($event.value)"
-          class="grid-select"
-        >
-          <mat-option value="name">Title</mat-option>
-          <mat-option value="createdDate">Created</mat-option>
-          <mat-option value="modifiedDate">Modified</mat-option>
-          <mat-option value="lastContributor">Last contributor</mat-option>
-          <mat-option value="state">State</mat-option>
-          <mat-option value="nature">Nature</mat-option>
-          <mat-option value="coverage">Coverage</mat-option>
-        </mat-select>
-
-        <button
-          mat-icon-button
-          matTooltip="Revert sort order"
-          (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
-          class="action-btn"
-        >
-          <mat-icon>{{ gridSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
-        </button>
-      </div>
-    </div>
-  }
-
   <main class="results-content">
     @if (loading()) {
       <div class="results-loading">
@@ -135,21 +97,25 @@
             [class.selected]="isAssetSelected(asset.id)"
             (click)="openAsset(asset)"
           >
+            <div class="grid-card-checkbox col-hover-select">
+              <mat-checkbox
+                [checked]="isAssetSelected(asset.id)"
+                (click)="$event.stopPropagation()"
+                (change)="toggleAssetSelection(asset.id)"
+              ></mat-checkbox>
+            </div>
             <div class="asset-card-thumbnail">
-              <div class="asset-select" role="none" (click)="$event.stopPropagation()">
-                <mat-checkbox
-                  [checked]="isAssetSelected(asset.id)"
-                  (click)="$event.stopPropagation()"
-                  (change)="toggleAssetSelection(asset.id)"
-                ></mat-checkbox>
-              </div>
-              <div class="asset-name-overlay" [title]="asset.name">{{ asset.name }}</div>
               @if (thumbnailMap()[asset.id]; as thumb) {
                 <img class="asset-thumbnail-image" [src]="thumb" alt="" />
               } @else {
                 <mat-icon class="asset-icon">{{ asset.icon }}</mat-icon>
               }
-              <sat-category-tag category="teal">{{ asset.type }}</sat-category-tag>
+            </div>
+            <div class="asset-card-body">
+              <div class="asset-card-head">
+                <p class="asset-card-name" [title]="asset.name">{{ asset.name }}</p>
+                <span class="asset-type-pill" [title]="asset.type">{{ asset.type }}</span>
+              </div>
             </div>
           </button>
         }
@@ -189,13 +155,7 @@
 
         <div class="asset-list">
           <div class="list-header" [style.grid-template-columns]="gridTemplate()">
-            <span class="col-checkbox">
-              <mat-checkbox
-                [checked]="isAllSelected()"
-                [indeterminate]="isIndeterminate()"
-                (change)="toggleAll()"
-              ></mat-checkbox>
-            </span>
+            <span class="col-checkbox"></span>
             @for (col of visibleColumns(); track col.key) {
               @if (SORTABLE_COLUMNS.has(col.key)) {
                 <button

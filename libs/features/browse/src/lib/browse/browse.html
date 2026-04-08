@@ -171,9 +171,6 @@
                 >
                   <mat-icon>grid_view</mat-icon>
                 </button>
-                <button mat-icon-button matTooltip="Column settings" (click)="openColumnSettings()">
-                  <mat-icon>settings</mat-icon>
-                </button>
               </div>
             </div>
 
@@ -196,8 +193,43 @@
               </div>
             } @else if (viewMode() === 'list') {
               <!-- List view -->
-              <div class="browse-table-wrapper">
-                <table class="browse-table">
+              <div class="browse-list-container">
+                @if (columnPanelOpen()) {
+                  <button
+                    type="button"
+                    class="col-panel-backdrop"
+                    aria-label="Close column picker"
+                    (click)="closeColumnPanel()"
+                  ></button>
+                  <div
+                    #columnPanel
+                    class="col-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Column Settings"
+                    tabindex="-1"
+                    (keydown.escape)="closeColumnPanel()"
+                  >
+                    <p class="col-panel-title">Column Settings</p>
+                    <div class="col-panel-list">
+                      @for (col of pendingColumns(); track col.key) {
+                        <mat-checkbox
+                          class="col-panel-option"
+                          [checked]="isPendingColumn(col.key)"
+                          [disabled]="col.key === 'title'"
+                          (change)="togglePendingColumn(col.key)"
+                          >{{ col.label }}</mat-checkbox
+                        >
+                      }
+                    </div>
+                    <div class="col-panel-actions">
+                      <button mat-button (click)="resetColumns()">Reset</button>
+                      <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+                    </div>
+                  </div>
+                }
+                <div class="browse-table-wrapper">
+                  <table class="browse-table">
                   <thead>
                     <tr>
                       <th class="col-checkbox"></th>
@@ -211,6 +243,16 @@
                           }
                         </th>
                       }
+                      <th class="col-gear">
+                        <button
+                          mat-icon-button
+                          class="gear-btn"
+                          matTooltip="Manage columns"
+                          (click)="openColumnPanel()"
+                        >
+                          <mat-icon>tune</mat-icon>
+                        </button>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -257,6 +299,7 @@
                     }
                   </tbody>
                 </table>
+                </div>
               </div>
             } @else {
               <!-- Card view -->

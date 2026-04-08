@@ -2,7 +2,12 @@
   <lib-selection-topbar
     class="selection-topbar--sticky"
     [selectedCount]="selectionService.selectedCount()"
+    [selectedItems]="selectionService.selectedItems()"
     (cleared)="selectionService.clear()"
+    (publishRequested)="onPublishSelected()"
+    (addToClipboardRequested)="onAddSelectedToClipboard()"
+    (addToCollectionRequested)="onAddSelectedToCollection()"
+    (downloadZipRequested)="onDownloadSelectedAsZip()"
     (deleted)="onDeleteSelected()"
   />
 }
@@ -13,7 +18,7 @@
       <sat-platform-nav-list-item [active]="isActive(item.path)" (click)="onNavClick(item, $event)">
         <sat-platform-nav-avatar [item]="item" />
         {{ item.label }}
-      </sat-platform-nav-list-item>
+    </sat-platform-nav-list-item>
     }
 
     <sat-platform-nav-user>
