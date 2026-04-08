@@ -53,6 +53,8 @@ import {
   type SuggestedTag,
   type ClassifyResponse,
   type SimilarDoc,
+  type SentimentItem,
+  type SentimentResponse,
 } from '@agentic-ui/shared/ai-client';
 import DOMPurify from 'dompurify';
 import { forkJoin, Observable } from 'rxjs';
@@ -185,6 +187,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly aiSimilarDocs = signal<SimilarDoc[]>([]);
   readonly aiSimilarLoading = signal(false);
   readonly aiError = signal<string | null>(null);
+
+  readonly aiSentimentMap = signal<Record<string, SentimentItem>>({});
+  readonly aiThreadSummary = signal<string | null>(null);
+  readonly aiSentimentLoading = signal(false);
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -623,6 +629,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   openAiAssistant(): void {
     const docId = this.route.snapshot.paramMap.get('uid') ?? undefined;
     this.aiChatService.openPanel({ docId, page: this.router.url });
+  }
+
+  analyzeCommentSentiment(): void {
+    const allComments = this.comments();
+    if (!allComments.length) return;
+    this.aiSentimentLoading.set(true);
+    this.aiSentimentMap.set({});
+    this.aiThreadSummary.set(null);
+
+    const payload = allComments.map((c) => ({ id: c.id, text: c.text }));
+    this.aiGateway.analyzeSentiment(payload).subscribe({
+      next: (res: SentimentResponse) => {
+        const map: Record<string, SentimentItem> = {};
+        for (const item of res.sentiments) {
+          map[item.id] = item;
+        }
+        this.aiSentimentMap.set(map);
+        this.aiThreadSummary.set(res.threadSummary);
+        this.aiSentimentLoading.set(false);
+      },
+      error: () => {
+        this.aiSentimentLoading.set(false);
+      },
+    });
   }
 
   ngOnDestroy(): void {

@@ -1249,6 +1249,136 @@ sat-breadcrumbs {
   gap: 0;
 }
 
+// ── Sentiment Analysis ──
+.sentiment-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 0 12px;
+}
+
+.ai-sentiment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  mat-spinner {
+    display: inline-block;
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0;
+    svg {
+      width: 16px !important;
+      height: 16px !important;
+    }
+    circle {
+      stroke: #fff;
+    }
+  }
+}
+
+.sentiment-summary-panel {
+  background: #f5f3ff;
+  border: 1px solid #e0dbfa;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.sentiment-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #6366f1;
+  margin-bottom: 6px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #6366f1;
+  }
+}
+
+.sentiment-summary-text {
+  margin: 0;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.5;
+}
+
+.sentiment-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  margin-left: 6px;
+
+  &.sentiment-positive {
+    background: #d1fae5;
+    color: #065f46;
+  }
+  &.sentiment-neutral {
+    background: #e5e7eb;
+    color: #374151;
+  }
+  &.sentiment-negative {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+  &.sentiment-urgent {
+    background: #fef3c7;
+    color: #92400e;
+  }
+}
+
+.sentiment-inline-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.sentiment-inline-icon {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: #8b5cf6;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 .comment-card {
   padding: 12px 0;
   border-bottom: 1px solid #f0f0f0;

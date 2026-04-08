@@ -1361,6 +1361,34 @@
                 <mat-spinner diameter="28" />
               </div>
             } @else {
+              <!-- AI Sentiment Analysis -->
+              @if (featureFlags.aiEnabled() && comments().length > 0) {
+                <div class="sentiment-toolbar">
+                  <button
+                    class="ai-sentiment-btn"
+                    (click)="analyzeCommentSentiment()"
+                    [disabled]="aiSentimentLoading()"
+                  >
+                    @if (aiSentimentLoading()) {
+                      <mat-spinner diameter="16" />
+                    } @else {
+                      <mat-icon>psychology</mat-icon>
+                    }
+                    Analyze Sentiment
+                  </button>
+                </div>
+
+                @if (aiThreadSummary()) {
+                  <div class="sentiment-summary-panel">
+                    <div class="sentiment-summary-header">
+                      <mat-icon>forum</mat-icon>
+                      <span>Thread Summary</span>
+                    </div>
+                    <p class="sentiment-summary-text">{{ aiThreadSummary() }}</p>
+                  </div>
+                }
+              }
+
               <!-- Existing comments -->
               @for (comment of comments(); track comment.id) {
                 <div class="comment-card">
@@ -1375,6 +1403,11 @@
                     <span class="comment-time">{{ relativeTime(comment.creationDate) }}</span>
                     @if (isCommentEdited(comment)) {
                       <span class="comment-edited">(edited)</span>
+                    }
+                    @if (aiSentimentMap()[comment.id]; as sent) {
+                      <span class="sentiment-badge sentiment-{{ sent.sentiment }}">
+                        {{ sent.sentiment }}
+                      </span>
                     }
                     <button
                       mat-icon-button
@@ -1414,6 +1447,14 @@
                     </div>
                   } @else {
                     <p class="comment-text">{{ comment.text }}</p>
+                    @if (aiSentimentMap()[comment.id]; as sentItem) {
+                      @if (sentItem.summary; as sentSummary) {
+                        <p class="sentiment-inline-summary">
+                          <mat-icon class="sentiment-inline-icon">auto_awesome</mat-icon>
+                          {{ sentSummary }}
+                        </p>
+                      }
+                    }
                   }
 
                   <div class="comment-footer">
