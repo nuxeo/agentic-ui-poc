@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,6 +10,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 import {
   AdministrationService,
@@ -17,6 +18,13 @@ import {
   DirectoryEntry,
   DirectoryService,
 } from '@agentic-ui/shared/nuxeo-client';
+import {
+  AiGatewayService,
+  AiFeatureFlagService,
+  AuditAnomaly,
+  AuditSummaryResponse,
+  AuditFilterResponse,
+} from '@agentic-ui/shared/ai-client';
 
 @Component({
   selector: 'lib-admin-audit-page',
@@ -33,6 +41,7 @@ import {
     MatTableModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
   ],
   templateUrl: './admin-audit-page.component.html',
   styleUrl: './admin-audit-page.component.scss',
@@ -40,6 +49,8 @@ import {
 export class AdminAuditPageComponent implements OnInit {
   private readonly adminService = inject(AdministrationService);
   private readonly directoryService = inject(DirectoryService);
+  private readonly aiGateway = inject(AiGatewayService);
+  readonly featureFlags = inject(AiFeatureFlagService);
 
   readonly columns = ['action', 'date', 'username', 'category', 'document', 'comment'] as const;
 
@@ -58,10 +69,28 @@ export class AdminAuditPageComponent implements OnInit {
   eventTypes = signal<DirectoryEntry[]>([]);
   eventCategories = signal<DirectoryEntry[]>([]);
 
+  /* --- AI Anomaly Detection --- */
+  anomalies = signal<AuditAnomaly[]>([]);
+  anomalySummary = signal('');
+  anomalyLoading = signal(false);
+  anomalyDismissed = signal(false);
+  highSeverityCount = computed(() => this.anomalies().filter((a) => a.severity === 'high').length);
+
+  /* --- AI Natural-Language Search --- */
+  nlQuery = '';
+  nlLoading = signal(false);
+  nlExplanation = signal('');
+
+  /* --- AI Summarization --- */
+  auditSummary = signal<AuditSummaryResponse | null>(null);
+  summaryLoading = signal(false);
+  summaryOpen = signal(false);
+
   ngOnInit(): void {
     this.directoryService.getEventTypes().subscribe((e) => this.eventTypes.set(e));
     this.directoryService.getEventCategories().subscribe((e) => this.eventCategories.set(e));
     this.load();
+    this.loadAnomalies();
   }
 
   load(): void {
@@ -109,8 +138,97 @@ export class AdminAuditPageComponent implements OnInit {
   }
 
   actionLabel(e: AuditEntry): string {
-    return (
-      e.eventId?.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()) ?? '—'
-    );
+    return e.eventId?.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()) ?? '—';
+  }
+
+  /* --- AI: Anomaly Detection --- */
+  loadAnomalies(): void {
+    this.anomalyLoading.set(true);
+    this.aiGateway.detectAnomalies('24h').subscribe({
+      next: (res) => {
+        this.anomalies.set(res.anomalies ?? []);
+        this.anomalySummary.set(res.summary ?? '');
+        this.anomalyLoading.set(false);
+      },
+      error: () => this.anomalyLoading.set(false),
+    });
+  }
+
+  dismissAnomalies(): void {
+    this.anomalyDismissed.set(true);
+  }
+
+  severityIcon(sev: string): string {
+    return sev === 'high' ? 'error' : sev === 'medium' ? 'warning' : 'info';
+  }
+
+  /* --- AI: Natural-Language Search --- */
+  onNlSearch(): void {
+    if (!this.nlQuery.trim()) return;
+    this.nlLoading.set(true);
+    this.nlExplanation.set('');
+    this.aiGateway.auditNlFilter(this.nlQuery.trim()).subscribe({
+      next: (res: AuditFilterResponse) => {
+        this.applyAiFilter(res);
+        this.nlExplanation.set(res.explanation || '');
+        this.nlLoading.set(false);
+      },
+      error: () => this.nlLoading.set(false),
+    });
+  }
+
+  private applyAiFilter(f: AuditFilterResponse): void {
+    if (f.principalName) this.principalName = f.principalName;
+    if (f.eventId) this.eventAction = f.eventId;
+    if (f.category) this.eventCategory = f.category;
+    if (f.from) this.fromDate = new Date(f.from);
+    if (f.to) this.toDate = new Date(f.to);
+    this.applyFilters();
+  }
+
+  clearNlSearch(): void {
+    this.nlQuery = '';
+    this.nlExplanation.set('');
+    this.principalName = '';
+    this.eventAction = '';
+    this.eventCategory = '';
+    this.fromDate = null;
+    this.toDate = null;
+    this.applyFilters();
+  }
+
+  /* --- AI: Summarize --- */
+  summarizeEntries(): void {
+    const raw = this.entries();
+    if (!raw.length) return;
+    this.summaryLoading.set(true);
+    this.summaryOpen.set(true);
+    this.aiGateway.auditSummarize(raw as unknown[]).subscribe({
+      next: (res) => {
+        this.auditSummary.set(res);
+        this.summaryLoading.set(false);
+      },
+      error: () => {
+        this.auditSummary.set(null);
+        this.summaryLoading.set(false);
+      },
+    });
+  }
+
+  closeSummary(): void {
+    this.summaryOpen.set(false);
+  }
+
+  summaryStatIcon(icon: string): string {
+    const map: Record<string, string> = {
+      edit: 'edit',
+      delete: 'delete',
+      security: 'shield',
+      login: 'login',
+      download: 'download',
+      workflow: 'account_tree',
+      info: 'info',
+    };
+    return map[icon] || 'info';
   }
 }

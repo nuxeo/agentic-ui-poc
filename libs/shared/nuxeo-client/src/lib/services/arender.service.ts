@@ -1,12 +1,10 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, map, catchError, of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { ARENDER_CONFIG } from '../arender.config';
 import { CURRENT_USERNAME } from '../current-user.token';
 
 @Injectable({ providedIn: 'root' })
 export class ARenderService {
-  private readonly http = inject(HttpClient);
   private readonly cfg = inject(ARENDER_CONFIG);
   private readonly currentUsername = inject(CURRENT_USERNAME);
 
@@ -44,12 +42,21 @@ export class ARenderService {
   }
 
   /**
-   * Checks whether ARender is reachable by fetching its root page.
+   * Checks whether ARender is reachable. Uses `no-cors` fetch to avoid
+   * CORS blocks — the promise resolves for any server response and
+   * rejects only on a network error (server unreachable).
    */
   isAvailable(): Observable<boolean> {
-    return this.http.get(this.cfg.viewerOrigin, { responseType: 'text' }).pipe(
-      map(() => true),
-      catchError(() => of(false)),
-    );
+    return new Observable<boolean>((subscriber) => {
+      fetch(this.cfg.viewerOrigin, { mode: 'no-cors' })
+        .then(() => {
+          subscriber.next(true);
+          subscriber.complete();
+        })
+        .catch(() => {
+          subscriber.next(false);
+          subscriber.complete();
+        });
+    });
   }
 }

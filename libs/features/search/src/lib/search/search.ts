@@ -1,8 +1,20 @@
 import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { switchMap, catchError, of, tap, map, combineLatest, finalize } from 'rxjs';
+import {
+  switchMap,
+  catchError,
+  of,
+  tap,
+  map,
+  combineLatest,
+  finalize,
+  Subject,
+  debounceTime,
+  distinctUntilChanged,
+} from 'rxjs';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -12,6 +24,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
 import {
@@ -19,10 +32,12 @@ import {
   SearchAggregationService,
   SelectionService,
   DocumentDetailService,
+  NuxeoApiBase,
   type SearchResultItem,
   type SearchResponse,
   type SearchQueryParams,
 } from '@agentic-ui/shared/nuxeo-client';
+import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -133,7 +148,9 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
     MatSelectModule,
     MatSnackBarModule,
     MatMenuModule,
+    MatAutocompleteModule,
     SatTagModule,
+    FormsModule,
   ],
   templateUrl: './search.html',
   styleUrl: './search.scss',
@@ -148,9 +165,25 @@ export class SearchComponent {
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
+  private readonly nuxeoApi = inject(NuxeoApiBase);
+  private readonly aiGateway = inject(AiGatewayService);
+  readonly featureFlags = inject(AiFeatureFlagService);
   readonly selectionService = inject(SelectionService);
 
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+
+  // AI Search state
+  readonly aiSearchMode = signal(false);
+  readonly aiQuery = signal('');
+  readonly aiLoading = signal(false);
+  readonly aiGeneratedNxql = signal('');
+  readonly aiExplanation = signal('');
+  readonly aiSuggestions = signal<string[]>([]);
+  readonly showNxqlPanel = signal(false);
+  readonly aiError = signal<string | null>(null);
+  readonly aiResults = signal<SearchResultItem[]>([]);
+  readonly aiSearchExecuted = signal(false);
+  private readonly aiSuggestSubject = new Subject<string>();
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -283,7 +316,11 @@ export class SearchComponent {
     ['40px', ...this.visibleColumns().map((c) => c.width), '40px'].join(' '),
   );
 
-  readonly filteredResults = computed(() => this.results().map(mapToView));
+  readonly filteredResults = computed(() => {
+    const source =
+      this.aiSearchMode() && this.aiSearchExecuted() ? this.aiResults() : this.results();
+    return source.map(mapToView);
+  });
 
   readonly displayResults = computed(() => this.filteredResults());
 
@@ -782,6 +819,118 @@ export class SearchComponent {
     if (!saved || typeof saved !== 'object') return '';
     const obj = saved as Record<string, unknown>;
     return typeof obj['title'] === 'string' ? obj['title'] : '';
+  }
+
+  constructor() {
+    this.aiSuggestSubject
+      .pipe(
+        debounceTime(400),
+        distinctUntilChanged(),
+        switchMap((q) => {
+          if (q.length < 3) return of({ suggestions: [] as string[] });
+          return this.aiGateway
+            .nlToNxqlSuggestions(q)
+            .pipe(catchError(() => of({ suggestions: [] as string[] })));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((res) => this.aiSuggestions.set(res.suggestions));
+  }
+
+  toggleAiSearch(): void {
+    this.aiSearchMode.update((v) => !v);
+    if (!this.aiSearchMode()) {
+      this.aiQuery.set('');
+      this.aiGeneratedNxql.set('');
+      this.aiExplanation.set('');
+      this.aiSuggestions.set([]);
+      this.aiError.set(null);
+      this.showNxqlPanel.set(false);
+      this.aiResults.set([]);
+      this.aiSearchExecuted.set(false);
+    }
+  }
+
+  onAiQueryInput(value: string): void {
+    this.aiQuery.set(value);
+    this.aiSuggestSubject.next(value);
+  }
+
+  selectAiSuggestion(suggestion: string): void {
+    this.aiQuery.set(suggestion);
+    this.aiSuggestions.set([]);
+    this.executeAiSearch();
+  }
+
+  executeAiSearch(): void {
+    const query = this.aiQuery().trim();
+    if (!query) return;
+
+    this.aiLoading.set(true);
+    this.aiError.set(null);
+    this.aiGeneratedNxql.set('');
+    this.aiExplanation.set('');
+
+    this.aiGateway
+      .nlToNxql(query)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.aiGeneratedNxql.set(res.nxql);
+          this.aiExplanation.set(res.explanation);
+          this.showNxqlPanel.set(true);
+          this.runNxqlQuery(res.nxql);
+        },
+        error: (err) => {
+          this.aiError.set(err?.error?.error ?? 'AI search failed. Try again.');
+          this.aiLoading.set(false);
+        },
+      });
+  }
+
+  private runNxqlQuery(nxql: string): void {
+    this.loading.set(true);
+    this.nuxeoApi
+      .nxqlSearch(nxql, 40, {
+        properties: 'dublincore,file,common',
+        'enrichers.document': 'favorites',
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          const items: SearchResultItem[] = (result.entries ?? []).map((doc) => ({
+            id: doc.uid,
+            title: doc.title,
+            type: doc.type,
+            modifiedDate: doc.lastModified ?? '',
+            lastContributor: String(doc.properties?.['dc:lastContributor'] ?? ''),
+            state: doc.state ?? '',
+            version: String(doc.properties?.['uid:major_version'] ?? ''),
+            createdDate: String(doc.properties?.['dc:created'] ?? ''),
+            author: String(doc.properties?.['dc:creator'] ?? ''),
+            authorKey: String(doc.properties?.['dc:creator'] ?? ''),
+            nature: String(doc.properties?.['dc:nature'] ?? ''),
+            coverage: String(doc.properties?.['dc:coverage'] ?? ''),
+            subjects: ((doc.properties?.['dc:subjects'] as string[]) ?? []).join(', '),
+            collection: '',
+            collectionKey: '',
+            tags: [],
+            flags: '',
+            icon: 'description',
+            isFavorite: doc.contextParameters?.favorites?.isFavorite ?? false,
+          }));
+          this.aiResults.set(items);
+          this.aiSearchExecuted.set(true);
+          this.loading.set(false);
+          this.aiLoading.set(false);
+          this.loadThumbnails(items);
+        },
+        error: () => {
+          this.aiError.set('NXQL query execution failed. The generated query may be invalid.');
+          this.loading.set(false);
+          this.aiLoading.set(false);
+        },
+      });
   }
 
   private loadThumbnails(items: SearchResultItem[]): void {

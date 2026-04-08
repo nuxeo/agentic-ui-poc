@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import {
   Subject,
   catchError,
@@ -26,6 +27,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { SatAppHeaderModule } from '@hylandsoftware/satori-ui/app-header';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import {
@@ -39,12 +41,15 @@ import {
   SearchService,
   SelectionService,
   type GlobalSearchSuggestion,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
+import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
+import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
 
 @Component({
   selector: 'app-shell',
@@ -60,8 +65,11 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
     MatIconModule,
     MatSnackBarModule,
     MatSidenavModule,
+    MatTooltipModule,
     NavDrawerComponent,
     SelectionTopbarComponent,
+    FormsModule,
+    AiMarkdownPipe,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -86,6 +94,11 @@ export class AppShellComponent {
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly searchService = inject(SearchService);
+  readonly aiChat = inject(AiChatService);
+  readonly featureFlags = inject(AiFeatureFlagService);
+
+  readonly aiChatOpen = this.aiChat.panelOpen;
+  readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
   /** Hides Administration for non-administrators. */
@@ -576,5 +589,41 @@ export class AppShellComponent {
     this.activeDrawerItem.set(null);
     this.auth.logout();
     void this.router.navigateByUrl('/login');
+  }
+
+  toggleAiChat(): void {
+    this.aiChat.togglePanel();
+    const url = this.router.url;
+    const docMatch = url.match(/\/doc\/([a-f0-9-]+)/i);
+    this.aiChat.setContext({
+      docId: docMatch?.[1],
+      page: url,
+    });
+  }
+
+  sendAiMessage(): void {
+    const msg = this.aiChatInput().trim();
+    if (!msg) return;
+    this.aiChat.send(msg);
+    this.aiChatInput.set('');
+  }
+
+  clearAiChat(): void {
+    this.aiChat.clear();
+  }
+
+  openAiSource(uid: string, type?: string, path?: string): void {
+    this.aiChatOpen.set(false);
+    if (type === 'Collection') {
+      void this.router.navigate(['/collections', uid]);
+    } else if ((type === 'Folder' || type === 'OrderedFolder' || type === 'Workspace') && path) {
+      void this.router.navigateByUrl(`/browse${path}`);
+    } else {
+      void this.router.navigate(['/doc', uid]);
+    }
+  }
+
+  docTypeIcon(type: string): string {
+    return docTypeIcon(type);
   }
 }

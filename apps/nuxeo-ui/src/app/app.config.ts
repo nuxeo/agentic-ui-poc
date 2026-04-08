@@ -7,6 +7,7 @@ import { TranslateLoader, TranslateModule, TranslateNoOpLoader } from '@ngx-tran
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 
 import { CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
+import { AI_BACKEND_URL } from '@agentic-ui/shared/ai-client';
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
 import { nuxeoSamlProviders } from './nuxeo-sso.providers';
@@ -47,5 +48,6 @@ export const appConfig: ApplicationConfig = {
         return () => auth.username();
       },
     },
+    { provide: AI_BACKEND_URL, useValue: '' },
   ],
 };

@@ -118,5 +118,78 @@
         }
       </div>
     </mat-tab>
+    @if (featureFlags.aiEnabled()) {
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <mat-icon class="ai-tab-icon">auto_awesome</mat-icon>
+          AI Audit Anomalies
+        </ng-template>
+        <div class="tab-pad">
+          <div class="anomaly-controls">
+            <mat-form-field appearance="outline" class="time-range-field" subscriptSizing="dynamic">
+              <mat-label>Time Range</mat-label>
+              <select
+                matNativeControl
+                [ngModel]="aiAnomalyTimeRange()"
+                (ngModelChange)="aiAnomalyTimeRange.set($event)"
+              >
+                <option value="24h">Last 24 hours</option>
+                <option value="7d">Last 7 days</option>
+                <option value="30d">Last 30 days</option>
+              </select>
+            </mat-form-field>
+            <button
+              type="button"
+              mat-flat-button
+              class="ai-scan-btn"
+              [disabled]="aiAnomalyLoading()"
+              (click)="runAnomalyDetection()"
+            >
+              @if (aiAnomalyLoading()) {
+                <mat-spinner diameter="18"></mat-spinner>
+              } @else {
+                <mat-icon>auto_awesome</mat-icon>
+              }
+              Scan for Anomalies
+            </button>
+          </div>
+
+          @if (aiAnomalyLoading()) {
+            <div class="center"><mat-spinner diameter="36" /></div>
+          } @else if (aiAnomalySummary()) {
+            <div class="anomaly-summary">
+              <mat-icon>info</mat-icon>
+              <span>{{ aiAnomalySummary() }}</span>
+            </div>
+            @if (aiAnomalies().length) {
+              <div class="anomaly-list">
+                @for (anomaly of aiAnomalies(); track anomaly.description) {
+                  <div
+                    class="anomaly-card"
+                    [style.border-left-color]="severityColor(anomaly.severity)"
+                  >
+                    <div class="anomaly-header">
+                      <span
+                        class="anomaly-severity"
+                        [style.color]="severityColor(anomaly.severity)"
+                        >{{ anomaly.severity | uppercase }}</span
+                      >
+                      @if (anomaly.timestamp) {
+                        <span class="anomaly-time">{{ anomaly.timestamp }}</span>
+                      }
+                    </div>
+                    <p class="anomaly-desc">{{ anomaly.description }}</p>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="muted">No anomalies detected. Your system looks healthy.</p>
+            }
+          } @else {
+            <p class="muted">Click "Scan for Anomalies" to run AI-powered audit analysis.</p>
+          }
+        </div>
+      </mat-tab>
+    }
   </mat-tab-group>
 </div>

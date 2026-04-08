@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "ai-backend",
+  "projectType": "application",
+  "sourceRoot": "apps/ai-backend/src",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "npx tsx --watch apps/ai-backend/src/main.ts"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/ai-backend"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "npx tsc -p apps/ai-backend/tsconfig.json"
+      }
+    }
+  }
+}
