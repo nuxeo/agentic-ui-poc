@@ -1,22 +1,10 @@
 <div class="selection-topbar">
   <div class="topbar-left">
     <span class="selected-label">All {{ selectedCount() }} item(s) selected</span>
-    <button
-      mat-button
-      type="button"
-      class="clear-btn"
-      (click)="openSelectionPopup()"
-    >
+    <button mat-button type="button" class="clear-btn" (click)="openSelectionPopup()">
       Display selection
     </button>
-    <button
-      mat-button
-      type="button"
-      class="clear-btn"
-      (click)="cleared.emit()"
-    >
-      Clear
-    </button>
+    <button mat-button type="button" class="clear-btn" (click)="cleared.emit()">Clear</button>
   </div>
 
   <div class="topbar-actions">

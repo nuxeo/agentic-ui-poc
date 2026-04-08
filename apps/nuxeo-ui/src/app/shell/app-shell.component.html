@@ -18,7 +18,7 @@
       <sat-platform-nav-list-item [active]="isActive(item.path)" (click)="onNavClick(item, $event)">
         <sat-platform-nav-avatar [item]="item" />
         {{ item.label }}
-    </sat-platform-nav-list-item>
+      </sat-platform-nav-list-item>
     }
 
     <sat-platform-nav-user>
@@ -141,6 +141,10 @@
     </sat-app-header>
 
     <mat-menu #headerSettingsMenu="matMenu">
+      <a mat-menu-item routerLink="/settings/themes">
+        <mat-icon>palette</mat-icon>
+        Themes
+      </a>
       <button mat-menu-item type="button" (click)="featureFlags.toggle()">
         <mat-icon>{{ featureFlags.aiEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
         AI Features {{ featureFlags.aiEnabled() ? 'On' : 'Off' }}

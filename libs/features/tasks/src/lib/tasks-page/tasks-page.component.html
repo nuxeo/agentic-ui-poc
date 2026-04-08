@@ -1,66 +1,10 @@
 <div class="tasks-page">
-  <!-- ═══ LEFT: Task List Drawer ═══ -->
-  <aside class="task-drawer">
-    <div class="drawer-header">
-      <div class="drawer-header-title" role="heading" aria-level="2">
-        <mat-icon class="drawer-icon">assignment</mat-icon> Tasks
-      </div>
-      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    </div>
-
-    @if (listLoading()) {
-      <div class="drawer-status"><mat-spinner diameter="28" /></div>
-    } @else if (listError()) {
-      <div class="drawer-status error">
-        <span>{{ listError() }}</span>
-        <button mat-stroked-button (click)="loadTasks()">Retry</button>
-      </div>
-    } @else if (tasks().length === 0) {
-      <div class="drawer-status">
-        <mat-icon class="empty-icon">task_alt</mat-icon>
-        <span>No pending tasks</span>
-      </div>
-    } @else {
-      <div class="task-items">
-        @for (task of tasks(); track task.id) {
-          <button
-            type="button"
-            class="task-item"
-            [class.active]="isSelected(task)"
-            (click)="selectTask(task)"
-          >
-            <mat-icon class="task-item-icon">assignment_turned_in</mat-icon>
-            <div class="task-item-body">
-              <div class="task-item-name">{{ taskLabel(task) }}</div>
-              @if (task.targetDocTitle) {
-                <div class="task-item-doc">{{ task.targetDocTitle }}</div>
-              }
-              <div class="task-item-meta">
-                <sat-status-tag status="info" [hideIcon]="true">{{
-                  taskWorkflow(task)
-                }}</sat-status-tag>
-                <span class="due-text" [class.overdue]="isOverdue(task)">{{ dueLabel(task) }}</span>
-              </div>
-            </div>
-          </button>
-        }
-      </div>
-    }
-
-    <!-- Bottom link -->
-    <div class="drawer-footer">
-      <a class="view-dashboard-link" routerLink="/dashboard">View Tasks Dashboard</a>
-    </div>
-  </aside>
-
-  <!-- ═══ MIDDLE + RIGHT: Task Form + Document Preview ═══ -->
+  <!-- Task list lives in the shell nav drawer only (single inbox). -->
   <main class="detail-area">
     @if (!hasSelection()) {
       <div class="empty-detail">
         <mat-icon>assignment</mat-icon>
-        <p>Select a task from the list</p>
+        <p>Select a task from the <strong>Tasks</strong> panel on the left</p>
       </div>
     } @else if (taskLoading()) {
       <div class="loading-detail"><mat-spinner diameter="36" /><span>Loading…</span></div>

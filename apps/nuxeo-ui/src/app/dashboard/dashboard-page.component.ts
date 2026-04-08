@@ -1,8 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { catchError, of } from 'rxjs';
 import { WidgetContainerComponent, WidgetGridComponent } from '@agentic-ui/shared/ui';
@@ -26,8 +29,11 @@ import { AiGatewayService, AiFeatureFlagService, type Insight } from '@agentic-u
   standalone: true,
   imports: [
     DatePipe,
+    MatDialogModule,
+    MatButtonModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatTooltipModule,
     WidgetGridComponent,
     WidgetContainerComponent,
     SatTagModule,
@@ -37,6 +43,7 @@ import { AiGatewayService, AiFeatureFlagService, type Insight } from '@agentic-u
 })
 export class DashboardPageComponent {
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
   private readonly docService = inject(DocumentService);
   private readonly taskService = inject(TaskService);
   private readonly collectionService = inject(CollectionService);
@@ -142,6 +149,24 @@ export class DashboardPageComponent {
     }
 
     void this.router.navigate(['/doc', doc.uid]);
+  }
+
+  openCreateImport(): void {
+    void import('@agentic-ui/feature-browse').then((m) => {
+      this.dialog
+        .open(m.CreateImportDialogComponent, {
+          width: '900px',
+          maxWidth: '95vw',
+          data: {},
+        })
+        .afterClosed()
+        .subscribe((result: { refreshed?: boolean; path?: string } | undefined) => {
+          if (result?.refreshed && result.path) {
+            const parts = result.path.replace(/^\/+/, '').split('/').filter(Boolean);
+            void this.router.navigate(['/browse', ...parts]);
+          }
+        });
+    });
   }
 
   docIcon(doc: NuxeoDocument): string {

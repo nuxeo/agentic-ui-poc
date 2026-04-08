@@ -9,14 +9,14 @@ This guide walks through setting up the ARender document viewer for the Annotati
 │  Browser (localhost:4200)                                       │
 │  ┌──────────────────────┐    ┌────────────────────────────────┐ │
 │  │  Angular App         │    │  ARender UI (iframe)           │ │
-│  │  Annotations Tab     │───▶│  localhost:8080                │ │
+│  │  Annotations Tab     │───▶│  localhost:9080                │ │
 │  └──────────┬───────────┘    └────────────────────────────────┘ │
 │             │ /nuxeo proxy                                      │
 └─────────────┼───────────────────────────────────────────────────┘
               │
    ┌──────────▼──────────┐
-   │  Nuxeo Server       │  ◀─── host port 8180
-   │  localhost:8180      │
+   │  Nuxeo Server       │  ◀─── host port 8080
+   │  localhost:8080      │
    └──────────▲──────────┘
               │
 ┌─────────────┼───────────────────── Docker (nuxeo-net) ──────────┐
@@ -41,7 +41,7 @@ This guide walks through setting up the ARender document viewer for the Annotati
 
 **How it works:**
 
-1. The Angular app constructs an ARender URL: `http://localhost:8080/?url=<nxfile-url>`
+1. The Angular app constructs an ARender URL: `http://localhost:9080/?url=<nxfile-url>`
 2. The `nxfile-url` points to the nginx auth-proxy inside Docker: `http://nuxeo-auth-proxy/nuxeo/nxfile/default/{docUid}/file:content`
 3. ARender's `DefaultURLParser` picks up the `url` parameter and asks the service broker to fetch it
 4. The service broker downloads the blob through the nginx proxy, which injects Basic Auth credentials
@@ -51,7 +51,7 @@ This guide walks through setting up the ARender document viewer for the Annotati
 ## Prerequisites
 
 - **Docker Desktop** (with Docker Compose v2)
-- **Nuxeo Server** running on `localhost:8180`
+- **Nuxeo Server** running on `localhost:8080`
 - Access to the Nuxeo private Docker registry (`docker-private-arondor-proxy.packages.nuxeo.com`)
 
 ## Step 1: Log in to the Docker Registry
@@ -97,7 +97,7 @@ Then set `NUXEO_BASIC_AUTH=am9objpzM2NyZXQ=` in `.env.arender`.
 
 ## Step 4: Verify Nuxeo Port
 
-The proxy forwards requests to `host.docker.internal:8180`. If your Nuxeo runs on a different port, update `nginx-arender-proxy.conf`:
+The proxy forwards requests to `host.docker.internal:8080`. If your Nuxeo runs on a different port, update `nginx-arender-proxy.conf`:
 
 ```nginx
 proxy_pass http://host.docker.internal:<YOUR_PORT>/nuxeo/;
@@ -122,7 +122,7 @@ You should see 6 containers: `nuxeo-auth-proxy`, `arender-ui`, `dsb-service`, `d
 
 ## Step 6: Verify the Setup
 
-1. **Check ARender UI** — open http://localhost:8080 in a browser. You should see the ARender viewer (it will show a default demo PDF if no document is specified).
+1. **Check ARender UI** — open http://localhost:9080 in a browser. You should see the ARender viewer (it will show a default demo PDF if no document is specified).
 
 2. **Check nginx proxy** — from inside a container:
 
@@ -184,7 +184,7 @@ The ARender Docker images are built for `linux/amd64`. On Apple Silicon (M1/M2/M
 
 | Service        | Default Port | Override                                   |
 | -------------- | ------------ | ------------------------------------------ |
-| ARender UI     | 8080         | Change `ports` in compose for `ui`         |
+| ARender UI     | 9080 (host)  | Change `ports` in compose for `ui`         |
 | Service Broker | 8761         | Change `ports` for `service-broker`        |
 | Renderer       | 9091         | Change `ports` for `document-renderer`     |
 | Text Handler   | 8899         | Change `ports` for `document-text-handler` |
@@ -198,7 +198,7 @@ The `ARENDER_CONFIG` injection token in `libs/shared/nuxeo-client/src/lib/arende
 
 | Property           | Default                         | Description                             |
 | ------------------ | ------------------------------- | --------------------------------------- |
-| `viewerOrigin`     | `http://localhost:8080`         | ARender UI URL as seen by the browser   |
+| `viewerOrigin`     | `http://localhost:9080`         | ARender UI URL as seen by the browser   |
 | `nuxeoInternalUrl` | `http://nuxeo-auth-proxy/nuxeo` | Nuxeo URL as seen by ARender containers |
 
 Override in `app.config.ts` if needed:

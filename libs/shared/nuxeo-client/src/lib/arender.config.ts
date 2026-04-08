@@ -3,7 +3,7 @@ import { InjectionToken } from '@angular/core';
 export interface ARenderConfig {
   /**
    * Base URL of the ARender UI as seen by the browser.
-   * Default: `http://localhost:8080`
+   * Default: `http://localhost:9080` (Docker maps host 9080 → ARender UI container 8080)
    */
   viewerOrigin: string;
 

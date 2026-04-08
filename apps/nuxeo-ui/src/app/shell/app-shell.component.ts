@@ -7,7 +7,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import {
@@ -55,6 +55,7 @@ import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
   selector: 'app-shell',
   imports: [
     RouterOutlet,
+    RouterLink,
     SatPlatformNavModule,
     SatAppHeaderModule,
     SatLogoModule,
@@ -267,9 +268,13 @@ export class AppShellComponent {
   }
 
   onDrawerItemSelected(path: string): void {
-    this.drawerOpen.set(false);
-    this.activeDrawerItem.set(null);
     this.clearGlobalSearch();
+    const base = path.split('?')[0];
+    const keepTasksDrawer = /^\/tasks\/[^/]+$/.test(base);
+    if (!keepTasksDrawer) {
+      this.drawerOpen.set(false);
+      this.activeDrawerItem.set(null);
+    }
     void this.router.navigateByUrl(path);
   }
 

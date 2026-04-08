@@ -1,4 +1,12 @@
-import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -39,7 +47,7 @@ import {
   TagService,
   docTypeIcon,
   avatarColor,
-  FOLDERISH_TYPES as BASE_FOLDERISH_TYPES,
+  isFolderishDocument,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -80,13 +88,7 @@ import {
   EditMetadataDialogComponent,
   EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
-
-const FOLDERISH_TYPES = new Set([
-  ...BASE_FOLDERISH_TYPES,
-  'Collection',
-  'Collections',
-  'Favorites',
-]);
+import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
 
 @Component({
   selector: 'lib-browse',
@@ -367,9 +369,10 @@ export class BrowseComponent {
 
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
-    if (anchor?.getAttribute('href')) {
+    const href = anchor?.getAttribute('href');
+    if (href) {
       event.preventDefault();
-      this.router.navigateByUrl(anchor.getAttribute('href')!);
+      this.router.navigateByUrl(href);
     }
   }
 
@@ -751,6 +754,33 @@ export class BrowseComponent {
     this.dialog.open(BrowseDriveDialogComponent, { data });
   }
 
+  private isBrowseFolderish(doc: NuxeoDocument | null | undefined): boolean {
+    if (!doc) return false;
+    return doc.type === 'Favorites' || isFolderishDocument(doc);
+  }
+
+  isCurrentFolderish(): boolean {
+    return this.isBrowseFolderish(this.currentDoc());
+  }
+
+  openCreateImportDialog(): void {
+    const doc = this.currentDoc();
+    if (!doc || !this.isBrowseFolderish(doc)) {
+      this.snackBar.open('Open a folder to create or import content.', 'OK', { duration: 4000 });
+      return;
+    }
+    this.dialog
+      .open(CreateImportDialogComponent, {
+        width: '900px',
+        maxWidth: '95vw',
+        data: { parentPath: doc.path, parentTitle: doc.title },
+      })
+      .afterClosed()
+      .subscribe((result: { refreshed?: boolean } | undefined) => {
+        if (result?.refreshed) this.loadContent();
+      });
+  }
+
   openEditDialog(): void {
     const doc = this.currentDoc();
     if (!doc) return;
@@ -852,8 +882,9 @@ export class BrowseComponent {
 
   // ── Helpers ──
 
+  /** Same predicate as create/import enablement: facet/type-based folderish, plus Favorites. */
   isFolderish(doc: NuxeoDocument): boolean {
-    return FOLDERISH_TYPES.has(doc.type);
+    return this.isBrowseFolderish(doc);
   }
 
   docIcon(doc: NuxeoDocument): string {

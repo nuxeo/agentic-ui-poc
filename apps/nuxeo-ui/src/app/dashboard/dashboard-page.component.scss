@@ -4,6 +4,31 @@
   background: var(--mat-sys-surface-container-lowest, #f5f6fa);
 }
 
+.dashboard-page {
+  position: relative;
+  padding: 0 8px 96px;
+  box-sizing: border-box;
+}
+
+/**
+ * Nuxeo-style FAB: inset from edges (not flush to corner), theme primary fill + on-primary icon.
+ * Explicit MDC vars so the FAB always follows --mat-sys-* (matches app theme / Themes page).
+ */
+.dashboard-create-fab.mat-mdc-fab {
+  position: fixed;
+  z-index: 100;
+  right: max(40px, calc(24px + env(safe-area-inset-right, 0px)));
+  bottom: max(40px, calc(24px + env(safe-area-inset-bottom, 0px)));
+
+  --mdc-fab-container-color: var(--mat-sys-primary);
+  --mdc-fab-icon-color: var(--mat-sys-on-primary);
+  --mat-fab-foreground-color: var(--mat-sys-on-primary);
+
+  mat-icon {
+    color: var(--mat-sys-on-primary);
+  }
+}
+
 .widget-table {
   width: 100%;
   border-collapse: collapse;

@@ -39,6 +39,18 @@
   margin: 0;
 }
 
+.drawer-header--tasks {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.drawer-title--tasks {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--mat-sys-on-surface);
+  letter-spacing: -0.02em;
+}
+
 .refresh-btn {
   display: flex;
   align-items: center;
@@ -101,6 +113,9 @@
   cursor: pointer;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
   color: var(--mat-sys-on-surface);
+  text-decoration: none;
+  display: block;
+  box-sizing: border-box;
 
   &:hover {
     background: var(--mat-sys-surface-container-highest);
@@ -110,6 +125,12 @@
   &:focus-visible {
     outline: 2px solid var(--mat-sys-primary);
     outline-offset: -2px;
+  }
+
+  &.settings-item--active {
+    background: var(--mat-sys-primary-container, #e2dfff);
+    color: var(--mat-sys-on-primary-container, #3e3b92);
+    font-weight: 600;
   }
 }
 
@@ -609,64 +630,132 @@
   color: var(--mat-sys-outline);
 }
 
+.tasks-panel-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.tasks-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .task-list {
   flex: 1;
   overflow-y: auto;
 }
 
-.task-item {
+/* Tasks inbox — master list (title → doc → Due + date → workflow line) */
+.task-list--inbox {
+  padding: 0;
+}
+
+.task-list--inbox .task-item {
   display: flex;
-  gap: 8px;
-  padding: 10px 16px;
-  cursor: pointer;
+  align-items: stretch;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
   border-bottom: 1px solid var(--mat-sys-outline-variant);
-  transition: background 0.1s;
+  background: var(--mat-sys-surface);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:hover {
     background: var(--mat-sys-surface-container-low);
   }
+
+  &.active {
+    background: var(--mat-sys-surface);
+    box-shadow: inset 4px 0 0 0 var(--mat-sys-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -2px;
+  }
 }
 
-.task-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  color: var(--mat-sys-primary);
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.task-body {
+.task-list--inbox .task-body {
   flex: 1;
   min-width: 0;
+  padding: 14px 16px;
 }
 
-.task-name {
-  font-size: 13px;
-  font-weight: 500;
+.task-title-line {
+  font-size: 14px;
+  font-weight: 700;
   color: var(--mat-sys-on-surface);
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.task-doc-line {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.35;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.task-doc {
-  font-size: 11px;
-  color: var(--mat-sys-on-surface-variant);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 1px;
+.task-due-line {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
-.task-due {
-  font-size: 11px;
-  color: var(--mat-sys-on-surface-variant);
-  margin-top: 2px;
+.task-due-prefix {
+  color: var(--mat-sys-outline);
+  margin-right: 4px;
+}
 
-  &.overdue {
-    color: var(--mat-sys-error);
-    font-weight: 600;
+.task-due-value {
+  font-weight: 600;
+}
+
+.task-due-value--soon {
+  color: var(--mat-sys-tertiary);
+}
+
+.task-due-value--overdue {
+  color: var(--mat-sys-error);
+}
+
+.task-workflow-line {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+  line-height: 1.4;
+}
+
+.tasks-drawer-footer {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.tasks-dashboard-link {
+  font-size: 12px;
+  color: var(--mat-sys-primary);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
   }
 }
 
