@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { chatCompletion } from '../services/openai.service.js';
 import { getUserTasks, searchDocuments } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
+import { escapeNxql } from '../utils/nxql-escape.js';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.post('/insights', async (req, res, next) => {
     const [tasks, recentDocs] = await Promise.all([
       getUserTasks(userId).catch(() => ({ entries: [] })),
       searchDocuments(
-        `SELECT * FROM Document WHERE dc:creator = '${userId}' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ORDER BY dc:modified DESC`,
+        `SELECT * FROM Document WHERE dc:creator = '${escapeNxql(userId)}' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ORDER BY dc:modified DESC`,
         20,
       ).catch(() => ({ entries: [] })),
     ]);

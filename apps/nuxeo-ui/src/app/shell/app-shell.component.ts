@@ -31,9 +31,10 @@ import {
   SearchService,
   SelectionService,
   type GlobalSearchSuggestion,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
-import { AiChatService, AiFeatureFlagService, type ChatEntry } from '@agentic-ui/shared/ai-client';
+import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 @Pipe({ name: 'aiMarkdown', standalone: true })
 export class AiMarkdownPipe implements PipeTransform {
@@ -509,19 +510,7 @@ export class AppShellComponent {
     }
   }
 
-  docTypeIcon(title: string): string {
-    const lower = (title ?? '').toLowerCase();
-    if (
-      /\.(png|jpe?g|gif|svg|webp|bmp|tiff?)$/i.test(lower) ||
-      lower.includes('picture') ||
-      lower.includes('screenshot')
-    )
-      return 'image';
-    if (/\.(pdf)$/i.test(lower)) return 'picture_as_pdf';
-    if (/\.(xlsx?|csv)$/i.test(lower) || lower.includes('spreadsheet')) return 'table_chart';
-    if (/\.(pptx?)$/i.test(lower) || lower.includes('presentation')) return 'slideshow';
-    if (lower.includes('collection')) return 'folder_special';
-    if (lower.includes('folder') || lower.includes('workspace')) return 'folder';
-    return 'description';
+  docTypeIcon(type: string): string {
+    return docTypeIcon(type);
   }
 }

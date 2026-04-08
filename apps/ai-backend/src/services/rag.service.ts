@@ -71,8 +71,6 @@ export async function ragChat(
     { model: 'gpt-4o-mini', maxTokens: 256 },
   );
 
-  console.log('[rag] searchIntent raw:', searchIntent);
-
   let nxql: string | null = null;
   try {
     const parsed = JSON.parse(searchIntent);
@@ -86,12 +84,9 @@ export async function ragChat(
     }
   }
 
-  console.log('[rag] extracted nxql:', nxql ?? '(none)');
-
   if (nxql) {
     const appendSearchResults = (results: Record<string, unknown>) => {
       const entries = (results['entries'] as Array<Record<string, unknown>>) ?? [];
-      console.log('[rag] search returned', entries.length, 'documents');
       if (entries.length > 0) {
         nuxeoContext += `\n\nHere are the documents found in the Nuxeo repository (present these as results to the user):\n`;
         for (const entry of entries) {
@@ -137,7 +132,6 @@ export async function ragChat(
     try {
       const taskResult = (await getUserTasks('Administrator')) as Record<string, unknown>;
       const tasks = (taskResult['entries'] as Array<Record<string, unknown>>) ?? [];
-      console.log('[rag] fetched', tasks.length, 'tasks');
       if (tasks.length > 0) {
         nuxeoContext += `\n\nUser's pending tasks:\n`;
         for (const task of tasks) {

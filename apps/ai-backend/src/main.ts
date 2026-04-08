@@ -16,9 +16,26 @@ import insightsRoute from './routes/insights.route.js';
 import nlPermissionsRoute from './routes/nl-permissions.route.js';
 import auditAiRoute from './routes/audit-ai.route.js';
 
+const allowedOrigins = (
+  process.env['AI_BACKEND_ALLOWED_ORIGINS'] ?? 'http://localhost:4200,http://127.0.0.1:4200'
+)
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+
 const app = express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Origin not allowed by CORS'));
+    },
+  }),
+);
 app.use(express.json({ limit: '10mb' }));
 
 app.use('/ai', healthRoute);
@@ -37,7 +54,7 @@ app.use('/ai', auditAiRoute);
 app.use(errorHandler);
 
 app.listen(config.port, () => {
-  console.log(`[ai-backend] running on http://localhost:${config.port}`);
-  console.log(`[ai-backend] health check: http://localhost:${config.port}/ai/health`);
-  console.log(`[ai-backend] Nuxeo target: ${config.nuxeoUrl}`);
+  console.warn(`[ai-backend] running on http://localhost:${config.port}`);
+  console.warn(`[ai-backend] health check: http://localhost:${config.port}/ai/health`);
+  console.warn(`[ai-backend] Nuxeo target: ${config.nuxeoUrl}`);
 });

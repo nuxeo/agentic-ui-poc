@@ -39,15 +39,15 @@ export class AiChatService {
   }
 
   send(message: string): void {
-    const userEntry: ChatEntry = { role: 'user', content: message, timestamp: new Date() };
-    this.messages.update((msgs) => [...msgs, userEntry]);
-    this.loading.set(true);
-    this.error.set(null);
-
     const history: ChatMessage[] = this.messages().map((m) => ({
       role: m.role,
       content: m.content,
     }));
+
+    const userEntry: ChatEntry = { role: 'user', content: message, timestamp: new Date() };
+    this.messages.update((msgs) => [...msgs, userEntry]);
+    this.loading.set(true);
+    this.error.set(null);
 
     this.ai.chat({ message, history, context: this.currentContext }).subscribe({
       next: (response) => {

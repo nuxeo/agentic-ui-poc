@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { chatCompletion, createEmbedding } from '../services/openai.service.js';
 import { getDocumentById, nxqlSearch } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
+import { escapeNxql } from '../utils/nxql-escape.js';
 
 const embeddingCache = new Map<string, number[]>();
 
@@ -48,7 +49,7 @@ router.post('/similar', async (req, res, next) => {
     try {
       nxql = JSON.parse(queryResult).nxql;
     } catch {
-      nxql = `SELECT * FROM Document WHERE ecm:fulltext = '${title.replace(/'/g, "\\'")}' AND ecm:uuid != '${docId}' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`;
+      nxql = `SELECT * FROM Document WHERE ecm:fulltext = '${escapeNxql(title)}' AND ecm:uuid != '${escapeNxql(docId)}' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`;
     }
 
     const results = (await nxqlSearch(nxql, 20)) as Record<string, unknown>;

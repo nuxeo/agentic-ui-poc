@@ -255,7 +255,7 @@
                           (click)="openAiSource(source.uid, source.type, source.path)"
                         >
                           <mat-icon class="ai-source-card-icon">{{
-                            docTypeIcon(source.title)
+                            docTypeIcon(source.type ?? 'File')
                           }}</mat-icon>
                           <span class="ai-source-card-info">
                             <span class="ai-source-card-title">{{ source.title }}</span>

@@ -627,8 +627,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   openAiAssistant(): void {
-    const docId = this.route.snapshot.paramMap.get('uid') ?? undefined;
-    this.aiChatService.openPanel({ docId, page: this.router.url });
+    this.aiChatService.openPanel({ docId: this.docUid ?? undefined, page: this.router.url });
   }
 
   analyzeCommentSentiment(): void {

@@ -115,3 +115,9 @@ sat-app-header sat-word-mark-logo.sat-app-header-logo,
 sat-app-header .sat-app-header-logo sat-word-mark-logo {
   flex-shrink: 0;
 }
+
+/* Material typography adds `margin: 0 0 .75em` to all <p> tags via `.mat-typography p`.
+   This pushes the nav-rail label text down, misaligning it with the icon. Reset it. */
+sat-platform-nav p.sat-platform-nav-item-label {
+  margin: 0 !important;
+}

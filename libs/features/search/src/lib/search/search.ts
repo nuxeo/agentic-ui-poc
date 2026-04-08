@@ -879,7 +879,10 @@ export class SearchComponent {
   private runNxqlQuery(nxql: string): void {
     this.loading.set(true);
     this.nuxeoApi
-      .nxqlSearch(nxql, 40)
+      .nxqlSearch(nxql, 40, {
+        properties: 'dublincore,file,common',
+        'enrichers.document': 'favorites',
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {

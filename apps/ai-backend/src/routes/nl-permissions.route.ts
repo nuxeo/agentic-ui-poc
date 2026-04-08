@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { chatCompletion } from '../services/openai.service.js';
 import { nxqlSearch, getDocumentAcl } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
+import { escapeNxql } from '../utils/nxql-escape.js';
 
 const router = Router();
 
@@ -30,7 +31,7 @@ router.post('/nl-permissions', async (req, res, next) => {
       const intent = JSON.parse(intentResult);
       if (intent.path) {
         const docs = (await nxqlSearch(
-          `SELECT * FROM Document WHERE ecm:path STARTSWITH '${intent.path}' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`,
+          `SELECT * FROM Document WHERE ecm:path STARTSWITH '${escapeNxql(intent.path)}' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`,
           5,
         )) as Record<string, unknown>;
         const entries = (docs['entries'] as Array<Record<string, unknown>>) ?? [];
@@ -44,7 +45,7 @@ router.post('/nl-permissions', async (req, res, next) => {
         aclData = acls;
       } else if (intent.search) {
         const docs = (await nxqlSearch(
-          `SELECT * FROM Document WHERE dc:title ILIKE '%${intent.search}%' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`,
+          `SELECT * FROM Document WHERE dc:title ILIKE '%${escapeNxql(intent.search)}%' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0`,
           3,
         )) as Record<string, unknown>;
         const entries = (docs['entries'] as Array<Record<string, unknown>>) ?? [];
