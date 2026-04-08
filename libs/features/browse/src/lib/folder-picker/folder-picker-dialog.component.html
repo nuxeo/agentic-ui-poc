@@ -1,0 +1,60 @@
+<h2 mat-dialog-title class="picker-title">Choose destination folder</h2>
+
+<mat-dialog-content class="picker-body">
+  @if (loading()) {
+    <div class="picker-state">
+      <mat-spinner diameter="36" />
+      <span>Loading folders…</span>
+    </div>
+  } @else if (error()) {
+    <p class="picker-error">{{ error() }}</p>
+    @if (canGoUp()) {
+      <button mat-stroked-button type="button" (click)="goUp()">
+        <mat-icon>arrow_upward</mat-icon>
+        Up one level
+      </button>
+    }
+  } @else {
+    <p class="picker-current-label">Current location</p>
+    <p class="picker-breadcrumb">{{ breadcrumbDisplay() }}</p>
+
+    <div class="picker-actions-row">
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!canGoUp()"
+        (click)="goUp()"
+        aria-label="Parent folder"
+      >
+        <mat-icon>arrow_upward</mat-icon>
+        Up
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="selectCurrent()">
+        Use this folder
+      </button>
+    </div>
+
+    <p class="picker-subfolders-label">Subfolders</p>
+    @if (folders().length === 0) {
+      <p class="picker-empty">
+        No subfolders here. Use “Use this folder” to import into this location.
+      </p>
+    } @else {
+      <ul class="picker-list" aria-label="Subfolders">
+        @for (doc of folders(); track doc.uid) {
+          <li>
+            <button type="button" class="picker-row" (click)="openFolder(doc)">
+              <mat-icon class="picker-row-icon">folder</mat-icon>
+              <span class="picker-row-title">{{ doc.title }}</span>
+              <mat-icon class="picker-row-chevron">chevron_right</mat-icon>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancel</button>
+</mat-dialog-actions>

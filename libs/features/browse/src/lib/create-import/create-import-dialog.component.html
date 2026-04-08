@@ -1,0 +1,408 @@
+<div
+  class="create-import-root"
+  [class.wide]="view() === 'templateBrowse'"
+  [class.landing]="view() === 'landing'"
+  [class.upload-view]="view() === 'uploadScreen'"
+>
+  @if (view() === 'landing') {
+    <div mat-dialog-title class="dialog-title-stack">
+      <h2 class="dialog-heading">Create or upload</h2>
+      <p class="dialog-subtitle">Which would you like to do?</p>
+    </div>
+  } @else if (view() === 'templateBrowse') {
+    <h2 mat-dialog-title class="dialog-heading">Create file from template</h2>
+  } @else if (view() === 'uploadScreen') {
+    <div mat-dialog-title class="dialog-title-stack upload-header">
+      <h2 class="dialog-heading">Upload file(s)</h2>
+      <p class="upload-lead">
+        Upload files from your computer to a target destination folder inside Nuxeo.
+      </p>
+    </div>
+  } @else if (view() === 'csv') {
+    <h2 mat-dialog-title class="dialog-heading">Import from CSV</h2>
+  } @else if (view() === 'templateForm') {
+    <h2 mat-dialog-title class="dialog-heading">New document</h2>
+  } @else if (view() === 'success') {
+    <h2 mat-dialog-title class="dialog-heading">Done</h2>
+  }
+
+  <mat-dialog-content
+    class="dialog-body"
+    [class.dialog-body--landing]="view() === 'landing'"
+    [class.dialog-body--upload]="view() === 'uploadScreen'"
+  >
+    @if (resolvingPath()) {
+      <div class="state-row">
+        <mat-spinner diameter="32" />
+        <span>Resolving target folder…</span>
+      </div>
+    } @else if (pathError()) {
+      <p class="error-text">{{ pathError() }}</p>
+    } @else {
+      @if (busy()) {
+        <div class="state-row">
+          <mat-spinner diameter="32" />
+          <span>Working…</span>
+        </div>
+      }
+
+      @if (error()) {
+        <p class="error-text">{{ error() }}</p>
+      }
+
+      @switch (view()) {
+        @case ('landing') {
+          <div class="landing-panel">
+            <div
+              class="choice-grid"
+              role="radiogroup"
+              aria-label="Create or upload option"
+              tabindex="-1"
+              (keydown)="onChoiceGridKeydown($event)"
+            >
+              <button
+                #choiceRadio
+                type="button"
+                class="choice-card"
+                role="radio"
+                [attr.aria-checked]="isModeSelected('template')"
+                [attr.tabindex]="getChoiceTabindex('template')"
+                [class.choice-card--selected]="isModeSelected('template')"
+                (click)="selectLandingMode('template')"
+              >
+                <span class="choice-icon-stack" aria-hidden="true">
+                  <span class="choice-icon-doc">
+                    <mat-icon>description</mat-icon>
+                  </span>
+                  <span class="choice-icon-badge choice-icon-badge--search">
+                    <mat-icon>search</mat-icon>
+                  </span>
+                </span>
+                <span class="choice-title">Create file from template</span>
+                <span class="choice-desc">Create a new file using a template</span>
+              </button>
+              <button
+                #choiceRadio
+                type="button"
+                class="choice-card"
+                role="radio"
+                [attr.aria-checked]="isModeSelected('upload')"
+                [attr.tabindex]="getChoiceTabindex('upload')"
+                [class.choice-card--selected]="isModeSelected('upload')"
+                (click)="selectLandingMode('upload')"
+              >
+                <span class="choice-icon-stack" aria-hidden="true">
+                  <span class="choice-icon-doc">
+                    <mat-icon>description</mat-icon>
+                  </span>
+                  <span class="choice-icon-badge choice-icon-badge--upload">
+                    <mat-icon>arrow_upward</mat-icon>
+                  </span>
+                </span>
+                <span class="choice-title">Upload from computer</span>
+                <span class="choice-desc">Drop a file from your computer here</span>
+              </button>
+              <button
+                #choiceRadio
+                type="button"
+                class="choice-card"
+                role="radio"
+                [attr.aria-checked]="isModeSelected('csv')"
+                [attr.tabindex]="getChoiceTabindex('csv')"
+                [class.choice-card--selected]="isModeSelected('csv')"
+                (click)="selectLandingMode('csv')"
+              >
+                <span class="choice-icon-stack" aria-hidden="true">
+                  <span class="choice-icon-doc">
+                    <mat-icon>description</mat-icon>
+                  </span>
+                  <span class="choice-icon-badge choice-icon-badge--csv">
+                    <mat-icon>table_chart</mat-icon>
+                  </span>
+                </span>
+                <span class="choice-title">Import from CSV</span>
+                <span class="choice-desc"
+                  >Import rows from a CSV file (metadata and structure)</span
+                >
+              </button>
+            </div>
+          </div>
+        }
+        @case ('templateBrowse') {
+          <div class="template-toolbar">
+            <div class="template-filters">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                <mat-label>Filter</mat-label>
+                <mat-select [ngModel]="filterA()" (ngModelChange)="filterA.set($event)">
+                  <mat-option value="">All</mat-option>
+                  <mat-option value="claims">Claims</mat-option>
+                  <mat-option value="risk">Risk</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                <mat-label>Filter</mat-label>
+                <mat-select [ngModel]="filterB()" (ngModelChange)="filterB.set($event)">
+                  <mat-option value="">All</mat-option>
+                  <mat-option value="pnc">P&amp;C</mat-option>
+                  <mat-option value="life">Life</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                <mat-label>Filter</mat-label>
+                <mat-select [ngModel]="filterC()" (ngModelChange)="filterC.set($event)">
+                  <mat-option value="">All</mat-option>
+                  <mat-option value="auto">Auto</mat-option>
+                  <mat-option value="property">Property</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="template-search">
+              <mat-label>Search Templates</mat-label>
+              <input
+                matInput
+                [ngModel]="templateSearch()"
+                (ngModelChange)="templateSearch.set($event)"
+                placeholder="Search"
+              />
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+          </div>
+
+          <div class="template-card-grid">
+            @for (t of pagedTemplates(); track t.id) {
+              <div class="biz-template-card">
+                <mat-icon class="biz-template-icon">{{ t.icon }}</mat-icon>
+                <span class="biz-template-title">{{ t.label }}</span>
+                <p class="biz-template-desc">{{ t.description }}</p>
+                <button type="button" class="biz-template-cta" (click)="startTemplateFromCard(t)">
+                  Get Started
+                </button>
+              </div>
+            }
+          </div>
+
+          <div class="template-pager">
+            <button
+              type="button"
+              mat-icon-button
+              [disabled]="templatePageIndex() <= 0"
+              (click)="prevTemplatePage()"
+              aria-label="Previous page"
+            >
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <span class="template-pager-label"
+              >{{ templatePageIndex() + 1 }} / {{ templatePageCount() }}</span
+            >
+            <button
+              type="button"
+              mat-icon-button
+              [disabled]="templatePageIndex() >= templatePageCount() - 1"
+              (click)="nextTemplatePage()"
+              aria-label="Next page"
+            >
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        }
+        @case ('templateForm') {
+          @if (selectedTemplate(); as t) {
+            <p class="template-form-lead">
+              Template: <strong>{{ t.label }}</strong> ({{ t.type }})
+            </p>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Title</mat-label>
+              <input matInput [(ngModel)]="docTitle" />
+            </mat-form-field>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Document name (optional)</mat-label>
+              <input matInput [(ngModel)]="docName" placeholder="Uses title if empty" />
+            </mat-form-field>
+          }
+        }
+        @case ('uploadScreen') {
+          <div class="upload-step">
+            <div class="destination-block">
+              <div class="destination-row">
+                <mat-form-field
+                  appearance="outline"
+                  class="upload-destination destination-field-grow"
+                >
+                  <mat-label>Choose a destination *</mat-label>
+                  <input
+                    matInput
+                    readonly
+                    [value]="destinationBreadcrumb()"
+                    (click)="openFolderPicker()"
+                    class="destination-input"
+                  />
+                </mat-form-field>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="destination-change-btn"
+                  (click)="openFolderPicker()"
+                >
+                  <mat-icon>folder_open</mat-icon>
+                  Change
+                </button>
+              </div>
+              <p class="destination-hint">
+                Path is loaded from Nuxeo. Click the field or Change to pick another folder.
+              </p>
+            </div>
+
+            <div class="upload-section-head">
+              <h3 class="upload-section-title">File upload</h3>
+              <div class="classify-pill">
+                <mat-slide-toggle
+                  class="classify-toggle"
+                  [(ngModel)]="autoClassifyOnUpload"
+                  color="primary"
+                >
+                  Automatically classify on upload
+                </mat-slide-toggle>
+                <mat-icon class="sparkle-icon" aria-hidden="true">auto_awesome</mat-icon>
+              </div>
+            </div>
+
+            <div
+              class="dropzone"
+              [class.dropzone--active]="dragOverUpload()"
+              (dragover)="onUploadDragOver($event)"
+              (dragleave)="onUploadDragLeave($event)"
+              (drop)="onUploadDrop($event)"
+            >
+              <input
+                #fileInput
+                type="file"
+                multiple
+                (change)="onUploadInputChange($event)"
+                [disabled]="busy()"
+              />
+              <button type="button" class="dropzone-inner" (click)="fileInput.click()">
+                <mat-icon class="dropzone-upload-icon">cloud_upload</mat-icon>
+                <span class="dropzone-primary">Drag &amp; drop files here</span>
+                <span class="dropzone-browse">or <span class="browse-link">Browse</span></span>
+              </button>
+            </div>
+            <p class="file-types-hint">
+              <mat-icon class="file-types-icon" aria-hidden="true">info</mat-icon>
+              Nuxeo accepts common types (PDF, Office, images, etc.) per server configuration.
+              Restrictions are enforced by the repository, not this dialog.
+            </p>
+
+            @if (uploadFiles().length > 0) {
+              <ul class="file-list">
+                @for (f of uploadFiles(); track $index) {
+                  <li>
+                    <span class="file-name">{{ f.name }}</span>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="removeUploadAt($index)"
+                      aria-label="Remove"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+        @case ('csv') {
+          <p class="hint">
+            Headers must include <code>name</code> and <code>type</code>. Use
+            <code>parent/child</code> in <code>name</code> for a tree. Rows with
+            <code>file:content</code> are skipped (use Upload for binaries).
+          </p>
+          <label class="csv-pick">
+            <input type="file" accept=".csv,text/csv" (change)="onCsvInputChange($event)" />
+            <span>{{ csvFile()?.name ?? 'Choose CSV file…' }}</span>
+          </label>
+        }
+        @case ('success') {
+          <p class="success-text">{{ successMessage() }}</p>
+          @if (csvResult(); as cr) {
+            @if (cr.errors.length > 0) {
+              <ul class="detail-list error-list">
+                @for (e of cr.errors; track $index) {
+                  <li>{{ e }}</li>
+                }
+              </ul>
+            }
+            @if (cr.skipped.length > 0) {
+              <p class="subtle">Skipped: {{ cr.skipped.length }}</p>
+            }
+          }
+        }
+      }
+    }
+  </mat-dialog-content>
+
+  @if (!resolvingPath() && !pathError()) {
+    <mat-dialog-actions class="dialog-footer" [class.dialog-footer--with-hint]="uploadFooterHint()">
+      @if (showFooterBack()) {
+        <button
+          mat-button
+          type="button"
+          class="btn-back"
+          [disabled]="busy()"
+          (click)="onFooterBack()"
+        >
+          Back
+        </button>
+      }
+      <span class="footer-spacer"></span>
+      @if (uploadFooterHint(); as nextHint) {
+        <span class="footer-next-hint">{{ nextHint }}</span>
+      }
+      @if (view() !== 'success') {
+        <button mat-button type="button" class="btn-cancel" [disabled]="busy()" (click)="close()">
+          Cancel
+        </button>
+      }
+      @if (view() === 'success') {
+        <button mat-button type="button" (click)="close()">Close</button>
+        <button mat-flat-button color="primary" type="button" (click)="doneNavigateBrowse()">
+          OK
+        </button>
+      } @else if (view() === 'templateForm') {
+        <button
+          mat-flat-button
+          color="primary"
+          class="btn-primary-pill"
+          type="button"
+          [disabled]="busy()"
+          (click)="createFromTemplate()"
+        >
+          Create
+        </button>
+      } @else if (view() === 'csv') {
+        <button
+          mat-flat-button
+          color="primary"
+          class="btn-primary-pill"
+          type="button"
+          [disabled]="busy() || !csvFile()"
+          (click)="runCsv()"
+        >
+          Import
+        </button>
+      } @else if (showFooterNext()) {
+        <button
+          mat-flat-button
+          color="primary"
+          class="btn-primary-pill"
+          type="button"
+          [disabled]="footerNextDisabled()"
+          (click)="onFooterNext()"
+        >
+          {{ footerNextLabel() }}
+        </button>
+      }
+    </mat-dialog-actions>
+  }
+</div>

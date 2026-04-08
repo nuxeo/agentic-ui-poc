@@ -1,4 +1,14 @@
-import { Component, DestroyRef, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
@@ -47,7 +57,8 @@ export class SearchQueueComponent {
       for (const item of queueItems) {
         if (thumbnailMap[item.id] || this.inFlight.has(item.id)) continue;
         this.inFlight.add(item.id);
-        this.detailService.fetchThumbnail(item.id)
+        this.detailService
+          .fetchThumbnail(item.id)
           .pipe(takeUntilDestroyed(this.destroyRef))
           .pipe(catchError(() => of(null)))
           .subscribe((blob) => {

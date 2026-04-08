@@ -1,4 +1,12 @@
-import { Component, ElementRef, HostListener, ViewChild, input, output, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,7 +26,9 @@ export class SelectionTopbarComponent {
   private lastFocusedElement: HTMLElement | null = null;
 
   readonly selectedCount = input.required<number>();
-  readonly selectedItems = input<Array<{ id: string; name: string; preview: SafeUrl | string | null }>>([]);
+  readonly selectedItems = input<
+    Array<{ id: string; name: string; preview: SafeUrl | string | null }>
+  >([]);
   readonly cleared = output<void>();
   readonly publishRequested = output<void>();
   readonly addToClipboardRequested = output<void>();

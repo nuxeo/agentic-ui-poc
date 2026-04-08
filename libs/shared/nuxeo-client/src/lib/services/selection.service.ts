@@ -52,7 +52,11 @@ export class SelectionService {
     });
   }
 
-  selectAll(ids: string[], labels?: Record<string, string>, previews?: Record<string, SelectionPreview>): void {
+  selectAll(
+    ids: string[],
+    labels?: Record<string, string>,
+    previews?: Record<string, SelectionPreview>,
+  ): void {
     this.selectedIds.set(new Set(ids));
     this.selectedLabels.update((current) => {
       const next = new Map<string, string>();
@@ -91,8 +95,6 @@ export class SelectionService {
 
   deleteSelected(): Observable<NuxeoDocument[]> {
     const ids = [...this.selectedIds()];
-    return this.documentDetailService.trashDocuments(ids).pipe(
-      finalize(() => this.clear()),
-    );
+    return this.documentDetailService.trashDocuments(ids).pipe(finalize(() => this.clear()));
   }
 }

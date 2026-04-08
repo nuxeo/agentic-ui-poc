@@ -55,7 +55,10 @@ export interface GlobalSearchSuggestion {
 }
 
 interface SearchApiResponse extends NuxeoDocumentList {
-  aggregations?: Record<string, { buckets?: Array<{ key?: string; docCount?: number; doc_count?: number }> }>;
+  aggregations?: Record<
+    string,
+    { buckets?: Array<{ key?: string; docCount?: number; doc_count?: number }> }
+  >;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -65,7 +68,10 @@ export class SearchService {
   private readonly savedSearchHighlight =
     'dc:title.fulltext,ecm:binarytext,dc:description.fulltext,ecm:tag,note:note.fulltext,file:content.name';
 
-  suggestFromSuggestersLauncher(searchTerm: string, pageSize = 10): Observable<GlobalSearchSuggestion[]> {
+  suggestFromSuggestersLauncher(
+    searchTerm: string,
+    pageSize = 10,
+  ): Observable<GlobalSearchSuggestion[]> {
     const term = searchTerm.trim();
     if (!term) return of([]);
 
@@ -94,7 +100,10 @@ export class SearchService {
     return this.suggestFromSuggestersLauncher(term, pageSize);
   }
 
-  private suggestFallback(searchTerm: string, pageSize: number): Observable<GlobalSearchSuggestion[]> {
+  private suggestFallback(
+    searchTerm: string,
+    pageSize: number,
+  ): Observable<GlobalSearchSuggestion[]> {
     const userGroup$ = this.api
       .post<unknown[]>(
         '/nuxeo/api/v1/automation/UserGroup.Suggestion',
@@ -176,20 +185,22 @@ export class SearchService {
       })
       .pipe(
         map((res) =>
-          (res.entries ?? []).map((doc) => {
-            // Saved search API returns entries with `id`; document API returns `uid`.
-            const id = this.asString(doc['id']) ?? this.asString(doc['uid']) ?? '';
-            const title = this.asString(doc['title']) ?? id;
-            const props = (doc['properties'] as Record<string, unknown>) ?? {};
-            const query = this.firstString(
-              props['contentview:query'],
-              props['savedsearch:query'],
-              props['search:query'],
-              doc['query'],
-            );
+          (res.entries ?? [])
+            .map((doc) => {
+              // Saved search API returns entries with `id`; document API returns `uid`.
+              const id = this.asString(doc['id']) ?? this.asString(doc['uid']) ?? '';
+              const title = this.asString(doc['title']) ?? id;
+              const props = (doc['properties'] as Record<string, unknown>) ?? {};
+              const query = this.firstString(
+                props['contentview:query'],
+                props['savedsearch:query'],
+                props['search:query'],
+                doc['query'],
+              );
 
-            return { id, title, query } satisfies SavedSearchOption;
-          }).filter((item) => item.id.length > 0),
+              return { id, title, query } satisfies SavedSearchOption;
+            })
+            .filter((item) => item.id.length > 0),
         ),
         catchError(() => of<SavedSearchOption[]>([])),
       );
@@ -376,51 +387,65 @@ export class SearchService {
       })
       .pipe(
         map((res) => ({
-          items: this.filterItemsByModifiedDate(res.entries.map((doc) => {
-            const props = doc.properties ?? {};
-            const fileContent = props['file:content'] as { 'mime-type'?: string; length?: number | string } | null;
-            const tags = (props['dc:subjects'] as string[] | undefined) ?? [];
-            const lastContributor = this.asPrincipalName(props['dc:lastContributor']);
-            const author = this.asPrincipalName(props['dc:creator']);
-            const major = props['uid:major_version'];
-            const minor = props['uid:minor_version'];
-            const version =
-              typeof major === 'number' && typeof minor === 'number'
-                ? `${major}.${minor}`
-                : undefined;
+          items: this.filterItemsByModifiedDate(
+            res.entries.map((doc) => {
+              const props = doc.properties ?? {};
+              const fileContent = props['file:content'] as {
+                'mime-type'?: string;
+                length?: number | string;
+              } | null;
+              const tags = (props['dc:subjects'] as string[] | undefined) ?? [];
+              const lastContributor = this.asPrincipalName(props['dc:lastContributor']);
+              const author = this.asPrincipalName(props['dc:creator']);
+              const major = props['uid:major_version'];
+              const minor = props['uid:minor_version'];
+              const version =
+                typeof major === 'number' && typeof minor === 'number'
+                  ? `${major}.${minor}`
+                  : undefined;
 
-            return {
-              id: doc.uid,
-              title: doc.title,
-              type: doc.type,
-              path: doc.path,
-              isFavorite: doc.contextParameters?.favorites?.isFavorite ?? false,
-              modifiedDate: doc.lastModified?.slice(0, 10) ?? '',
-              sizeInBytes: this.parseSizeInBytes(fileContent?.length),
-              lastContributor,
-              createdDate: typeof props['dc:created'] === 'string'
-                ? (props['dc:created'] as string).slice(0, 10)
-                : undefined,
-              author,
-              authorKey: author.toLowerCase(),
-              state: typeof props['ecm:currentLifeCycleState'] === 'string'
-                ? (props['ecm:currentLifeCycleState'] as string)
-                : undefined,
-              version,
-              nature: typeof props['dc:nature'] === 'string' ? (props['dc:nature'] as string) : undefined,
-              coverage: typeof props['dc:coverage'] === 'string' ? (props['dc:coverage'] as string) : undefined,
-              subjects: tags.join(', ') || undefined,
-              flags: undefined,
-              collection: Array.isArray(props['collection:documentIds'])
-                ? (props['collection:documentIds'] as string[]).join(',')
-                : ((props['collection:documentIds'] as string) ?? ''),
-              collectionKey: Array.isArray(props['collection:documentIds'])
-                ? (props['collection:documentIds'] as string[]).join(',').toLowerCase()
-                : ((props['collection:documentIds'] as string) ?? '').toLowerCase(),
-              tags,
-              icon: docTypeIcon(doc.type),
-            } satisfies SearchResultItem;
-          }), modifiedDateValues),
+              return {
+                id: doc.uid,
+                title: doc.title,
+                type: doc.type,
+                path: doc.path,
+                isFavorite: doc.contextParameters?.favorites?.isFavorite ?? false,
+                modifiedDate: doc.lastModified?.slice(0, 10) ?? '',
+                sizeInBytes: this.parseSizeInBytes(fileContent?.length),
+                lastContributor,
+                createdDate:
+                  typeof props['dc:created'] === 'string'
+                    ? (props['dc:created'] as string).slice(0, 10)
+                    : undefined,
+                author,
+                authorKey: author.toLowerCase(),
+                state:
+                  typeof props['ecm:currentLifeCycleState'] === 'string'
+                    ? (props['ecm:currentLifeCycleState'] as string)
+                    : undefined,
+                version,
+                nature:
+                  typeof props['dc:nature'] === 'string'
+                    ? (props['dc:nature'] as string)
+                    : undefined,
+                coverage:
+                  typeof props['dc:coverage'] === 'string'
+                    ? (props['dc:coverage'] as string)
+                    : undefined,
+                subjects: tags.join(', ') || undefined,
+                flags: undefined,
+                collection: Array.isArray(props['collection:documentIds'])
+                  ? (props['collection:documentIds'] as string[]).join(',')
+                  : ((props['collection:documentIds'] as string) ?? ''),
+                collectionKey: Array.isArray(props['collection:documentIds'])
+                  ? (props['collection:documentIds'] as string[]).join(',').toLowerCase()
+                  : ((props['collection:documentIds'] as string) ?? '').toLowerCase(),
+                tags,
+                icon: docTypeIcon(doc.type),
+              } satisfies SearchResultItem;
+            }),
+            modifiedDateValues,
+          ),
           aggregations: this.normalizeAggregations(res.aggregations),
         })),
       );
@@ -483,12 +508,19 @@ export class SearchService {
     return undefined;
   }
 
-  private normalizeAggregations(aggregations?: SearchApiResponse['aggregations']): SearchAggregations {
-    const toAggregate = (agg?: { buckets?: Array<{ key?: string; docCount?: number; doc_count?: number }> }): AggregateResult | undefined => {
+  private normalizeAggregations(
+    aggregations?: SearchApiResponse['aggregations'],
+  ): SearchAggregations {
+    const toAggregate = (agg?: {
+      buckets?: Array<{ key?: string; docCount?: number; doc_count?: number }>;
+    }): AggregateResult | undefined => {
       if (!agg?.buckets?.length) return undefined;
       return {
         buckets: agg.buckets
-          .filter((b): b is { key: string; docCount?: number; doc_count?: number } => typeof b.key === 'string')
+          .filter(
+            (b): b is { key: string; docCount?: number; doc_count?: number } =>
+              typeof b.key === 'string',
+          )
           .map((b) => ({
             key: b.key,
             docCount: typeof b.docCount === 'number' ? b.docCount : (b.doc_count ?? 0),
@@ -589,10 +621,14 @@ export class SearchService {
 
     const highlightsByField = this.extractHighlightsByField(item);
     const displayLabelHighlights =
-      this.pickHighlightParts(
-        highlightsByField,
-        ['dc:title', 'file:content.name', 'displayLabel', 'label', 'username', 'groupname'],
-      ) ?? undefined;
+      this.pickHighlightParts(highlightsByField, [
+        'dc:title',
+        'file:content.name',
+        'displayLabel',
+        'label',
+        'username',
+        'groupname',
+      ]) ?? undefined;
     const pathHighlights =
       this.pickHighlightParts(highlightsByField, ['ecm:path', 'path', 'url']) ?? undefined;
 
@@ -610,7 +646,8 @@ export class SearchService {
       typeUpper.includes('USER') ||
       typeof item['username'] === 'string' ||
       prefixedId?.startsWith('user:') === true;
-    const documentUid = this.asString(item['uid']) ?? (typeUpper.includes('DOCUMENT') ? id : undefined);
+    const documentUid =
+      this.asString(item['uid']) ?? (typeUpper.includes('DOCUMENT') ? id : undefined);
 
     return {
       id,

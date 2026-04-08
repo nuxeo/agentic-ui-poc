@@ -39,6 +39,7 @@ import {
 } from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AppNavItem, SETTINGS_DRAWER_ITEMS } from '../../platform-nav-items';
 
 export interface FolderNode {
@@ -56,6 +57,8 @@ export interface FolderNode {
   imports: [
     NgTemplateOutlet,
     DatePipe,
+    RouterLink,
+    RouterLinkActive,
     MatIconModule,
     MatProgressSpinnerModule,
     MatButtonModule,
@@ -76,6 +79,7 @@ export class NavDrawerComponent {
   private readonly docService = inject(DocumentService);
   private readonly authService = inject(AuthService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly router = inject(Router);
 
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
@@ -308,10 +312,6 @@ export class NavDrawerComponent {
 
   onSettingsSignOut(): void {
     this.signOutSelected.emit();
-  }
-
-  navigateToSettings(path: string): void {
-    this.navigateKeepDrawer.emit(path);
   }
 
   get isTrash(): boolean {
@@ -626,15 +626,27 @@ export class NavDrawerComponent {
     this.itemSelected.emit('/tasks/' + task.id);
   }
 
-  taskLabel(task: NuxeoTask): string {
-    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
-    return key
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .replace(/\./g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+  /** Highlights the row that matches the current /tasks/:taskId route. */
+  isTaskSelected(task: NuxeoTask): boolean {
+    const path = this.router.url.split('?')[0];
+    const m = /^\/tasks\/([^/]+)/.exec(path);
+    return m ? m[1] === task.id : false;
   }
 
-  dueLabel(task: NuxeoTask): string {
+  /** Title row: directive when present (e.g. "Consolidate Review"), else task name. */
+  taskPrimaryTitle(task: NuxeoTask): string {
+    if (task.directive) {
+      const d = task.directive.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
+      return d
+        .replace(/([a-z])([A-Z])/g, '$1 $2')
+        .replace(/\./g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+    return this.taskLabel(task);
+  }
+
+  /** Relative due fragment only (pairs with the "Due"/"Overdue" prefix in the template). */
+  dueRelativeOnly(task: NuxeoTask): string {
     if (!task.dueDate) return '';
     const diff = new Date(task.dueDate).getTime() - Date.now();
     const absDiff = Math.abs(diff);
@@ -643,7 +655,27 @@ export class NavDrawerComponent {
     let label: string;
     if (days >= 1) label = days === 1 ? '1 day' : `${days} days`;
     else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
-    return diff > 0 ? `Due in ${label}` : `${label} overdue`;
+
+    if (diff > 0) return `in ${label}`;
+    return `by ${label}`;
+  }
+
+  /** Workflow as a single sentence-style line (e.g. "Parallel document review"). */
+  taskWorkflowSentence(task: NuxeoTask): string {
+    const raw = (task.workflowTitle || task.workflowModelName || '').trim();
+    if (!raw) return '';
+    const key = raw.replace(/^wf\.\w+\./, '');
+    const spaced = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/\./g, ' ');
+    const lower = spaced.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+
+  taskLabel(task: NuxeoTask): string {
+    const key = task.name.replace(/^wf\.\w+\./, '').replace(/\.(title|directive)$/i, '');
+    return key
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\./g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   isOverdue(task: NuxeoTask): boolean {

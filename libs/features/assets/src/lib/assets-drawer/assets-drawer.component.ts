@@ -66,7 +66,15 @@ function toMimeType(value: string): string {
 @Component({
   selector: 'lib-assets-drawer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatCheckboxModule, MatDividerModule, MatSlideToggleModule, MatTooltipModule, AssetsQueueComponent],
+  imports: [
+    MatIconModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatDividerModule,
+    MatSlideToggleModule,
+    MatTooltipModule,
+    AssetsQueueComponent,
+  ],
   templateUrl: './assets-drawer.component.html',
   styleUrl: './assets-drawer.component.scss',
 })
@@ -91,20 +99,21 @@ export class AssetsDrawerComponent {
   readonly secondarySearchInput = signal('');
 
   private readonly GROUP_AGG_KEY: Record<string, keyof AssetAggregations> = {
-    'asset-type':     'system_primaryType_agg',
-    'asset-format':   'system_mimetype_agg',
-    'asset-width':    'asset_width_agg',
-    'asset-height':   'asset_height_agg',
-    'color-profile':  'color_profile_agg',
-    'color-depth':    'color_depth_agg',
+    'asset-type': 'system_primaryType_agg',
+    'asset-format': 'system_mimetype_agg',
+    'asset-width': 'asset_width_agg',
+    'asset-height': 'asset_height_agg',
+    'color-profile': 'color_profile_agg',
+    'color-depth': 'color_depth_agg',
     'video-duration': 'video_duration_agg',
   };
 
   private readonly ALWAYS_SHOW_ZERO = new Set(['asset-width', 'asset-height', 'video-duration']);
 
-  readonly hasActiveFilters = computed(() =>
-    this.secondarySearchInput().trim().length > 0 ||
-    this.filterGroups().some((group) => group.options.some((option) => option.selected)),
+  readonly hasActiveFilters = computed(
+    () =>
+      this.secondarySearchInput().trim().length > 0 ||
+      this.filterGroups().some((group) => group.options.some((option) => option.selected)),
   );
 
   readonly filteredSavedSearches = computed(() => {
@@ -121,7 +130,7 @@ export class AssetsDrawerComponent {
     if (!aggField) return '';
     const agg = this.aggregationService.aggregations()[aggField];
     if (!agg) return this.ALWAYS_SHOW_ZERO.has(groupId) ? ' (0)' : '';
-    const bucket = agg.buckets.find(b => b.key === aggKey);
+    const bucket = agg.buckets.find((b) => b.key === aggKey);
     const count = bucket?.docCount ?? (this.ALWAYS_SHOW_ZERO.has(groupId) ? 0 : null);
     return count !== null ? ` (${count})` : '';
   }
@@ -129,36 +138,84 @@ export class AssetsDrawerComponent {
   readonly expandedFilters = signal<Set<string>>(new Set());
 
   readonly filterGroups = signal<FilterGroup[]>([
-    { id: 'asset-type',   label: 'Asset Type',              options: [] },
-    { id: 'asset-format', label: 'Asset Format',            options: [] },
+    { id: 'asset-type', label: 'Asset Type', options: [] },
+    { id: 'asset-format', label: 'Asset Format', options: [] },
     {
-      id: 'asset-width', label: 'Asset Width',
+      id: 'asset-width',
+      label: 'Asset Width',
       options: [
-        { label: 'Less than 500 px',            value: 'to_500_px',            selected: false, aggKey: 'to_500_px' },
-        { label: 'Between 500 px and 1500 px',  value: 'from_500_to_1500_px',  selected: false, aggKey: 'from_500_to_1500_px' },
-        { label: 'Between 1500 px and 2000 px', value: 'from_1500_to_2000_px', selected: false, aggKey: 'from_1500_to_2000_px' },
-        { label: 'More than 2000 px',           value: 'from_2000_px',         selected: false, aggKey: 'from_2000_px' },
+        { label: 'Less than 500 px', value: 'to_500_px', selected: false, aggKey: 'to_500_px' },
+        {
+          label: 'Between 500 px and 1500 px',
+          value: 'from_500_to_1500_px',
+          selected: false,
+          aggKey: 'from_500_to_1500_px',
+        },
+        {
+          label: 'Between 1500 px and 2000 px',
+          value: 'from_1500_to_2000_px',
+          selected: false,
+          aggKey: 'from_1500_to_2000_px',
+        },
+        {
+          label: 'More than 2000 px',
+          value: 'from_2000_px',
+          selected: false,
+          aggKey: 'from_2000_px',
+        },
       ],
     },
     {
-      id: 'asset-height', label: 'Asset Height',
+      id: 'asset-height',
+      label: 'Asset Height',
       options: [
-        { label: 'Less than 500 px',            value: 'to_500_px',            selected: false, aggKey: 'to_500_px' },
-        { label: 'Between 500 px and 1500 px',  value: 'from_500_to_1500_px',  selected: false, aggKey: 'from_500_to_1500_px' },
-        { label: 'Between 1500 px and 2000 px', value: 'from_1500_to_2000_px', selected: false, aggKey: 'from_1500_to_2000_px' },
-        { label: 'More than 2000 px',           value: 'from_2000_px',         selected: false, aggKey: 'from_2000_px' },
+        { label: 'Less than 500 px', value: 'to_500_px', selected: false, aggKey: 'to_500_px' },
+        {
+          label: 'Between 500 px and 1500 px',
+          value: 'from_500_to_1500_px',
+          selected: false,
+          aggKey: 'from_500_to_1500_px',
+        },
+        {
+          label: 'Between 1500 px and 2000 px',
+          value: 'from_1500_to_2000_px',
+          selected: false,
+          aggKey: 'from_1500_to_2000_px',
+        },
+        {
+          label: 'More than 2000 px',
+          value: 'from_2000_px',
+          selected: false,
+          aggKey: 'from_2000_px',
+        },
       ],
     },
-    { id: 'color-profile', label: 'Color Profile',          options: [] },
-    { id: 'color-depth',   label: 'Color Depth per Channel', options: [] },
+    { id: 'color-profile', label: 'Color Profile', options: [] },
+    { id: 'color-depth', label: 'Color Depth per Channel', options: [] },
     {
-      id: 'video-duration', label: 'Video Duration',
+      id: 'video-duration',
+      label: 'Video Duration',
       options: [
-        { label: 'Less than 30 s',           value: 'to_30_s',            selected: false, aggKey: 'to_30_s' },
-        { label: 'Between 30 s and 180 s',   value: 'from_30_to_180_s',   selected: false, aggKey: 'from_30_to_180_s' },
-        { label: 'Between 180 s and 600 s',  value: 'from_180_to_600_s',  selected: false, aggKey: 'from_180_to_600_s' },
-        { label: 'Between 600 s and 1800 s', value: 'from_600_to_1800_s', selected: false, aggKey: 'from_600_to_1800_s' },
-        { label: 'More than 1800 s',         value: 'from_1800_s',        selected: false, aggKey: 'from_1800_s' },
+        { label: 'Less than 30 s', value: 'to_30_s', selected: false, aggKey: 'to_30_s' },
+        {
+          label: 'Between 30 s and 180 s',
+          value: 'from_30_to_180_s',
+          selected: false,
+          aggKey: 'from_30_to_180_s',
+        },
+        {
+          label: 'Between 180 s and 600 s',
+          value: 'from_180_to_600_s',
+          selected: false,
+          aggKey: 'from_180_to_600_s',
+        },
+        {
+          label: 'Between 600 s and 1800 s',
+          value: 'from_600_to_1800_s',
+          selected: false,
+          aggKey: 'from_600_to_1800_s',
+        },
+        { label: 'More than 1800 s', value: 'from_1800_s', selected: false, aggKey: 'from_1800_s' },
       ],
     },
   ]);
@@ -170,12 +227,10 @@ export class AssetsDrawerComponent {
 
     this.syncSelectedDocumentFromUrl(this.router.url);
 
-    this.router.events
-      .pipe(takeUntilDestroyed())
-      .subscribe((event) => {
-        if (!(event instanceof NavigationEnd)) return;
-        this.syncSelectedDocumentFromUrl(event.urlAfterRedirects);
-      });
+    this.router.events.pipe(takeUntilDestroyed()).subscribe((event) => {
+      if (!(event instanceof NavigationEnd)) return;
+      this.syncSelectedDocumentFromUrl(event.urlAfterRedirects);
+    });
 
     effect(() => {
       const params = this.queryParams();
@@ -183,14 +238,14 @@ export class AssetsDrawerComponent {
       const fulltext = params.get('ecm_fulltext') ?? '';
       this.secondarySearchInput.set(fulltext);
       const aggs = this.aggregationService.aggregations();
-      this.filterGroups.update(groups =>
-        groups.map(g => {
+      this.filterGroups.update((groups) =>
+        groups.map((g) => {
           const selectedFromUrl = getSelected(g.id);
 
           if (!DYNAMIC_GROUPS.has(g.id)) {
             return {
               ...g,
-              options: g.options.map(o => ({
+              options: g.options.map((o) => ({
                 ...o,
                 selected: selectedFromUrl.has(o.value),
               })),
@@ -200,14 +255,14 @@ export class AssetsDrawerComponent {
           const aggField = this.GROUP_AGG_KEY[g.id];
           const buckets = aggs[aggField]?.buckets ?? [];
 
-          const options: FilterOption[] = buckets.map(b => {
+          const options: FilterOption[] = buckets.map((b) => {
             const label = g.id === 'asset-format' ? toMimeType(b.key) : b.key;
             const value = g.id === 'asset-format' ? toMimeType(b.key) : b.key;
             return { label, value, selected: selectedFromUrl.has(value), aggKey: b.key };
           });
 
           return { ...g, options };
-        })
+        }),
       );
     });
 
@@ -294,26 +349,31 @@ export class AssetsDrawerComponent {
   }
 
   openSaveAsDialog(): void {
-    this.dialog.open(SavedSearchDialogComponent, {
-      data: {
-        title: 'Saved Search',
-        placeholder: 'Enter a name for your saved search',
-      },
-    }).afterClosed().subscribe((title) => {
-      const trimmedTitle = title?.trim();
-      if (!trimmedTitle) return;
-
-      this.searchService.saveSavedSearch({
-        title: trimmedTitle,
-        params: this.buildSavedSearchParams(),
-        pageProviderName: 'assets_search',
-      }).subscribe({
-        next: () => {
-          this.savedSearchesLoaded.set(false);
-          this.loadSavedSearchesFromApi();
+    this.dialog
+      .open(SavedSearchDialogComponent, {
+        data: {
+          title: 'Saved Search',
+          placeholder: 'Enter a name for your saved search',
         },
+      })
+      .afterClosed()
+      .subscribe((title) => {
+        const trimmedTitle = title?.trim();
+        if (!trimmedTitle) return;
+
+        this.searchService
+          .saveSavedSearch({
+            title: trimmedTitle,
+            params: this.buildSavedSearchParams(),
+            pageProviderName: 'assets_search',
+          })
+          .subscribe({
+            next: () => {
+              this.savedSearchesLoaded.set(false);
+              this.loadSavedSearchesFromApi();
+            },
+          });
       });
-    });
   }
 
   isExpanded(id: string): boolean {
@@ -375,7 +435,12 @@ export class AssetsDrawerComponent {
     this.filterGroups.update((groups) =>
       groups.map((g) =>
         g.id === groupId
-          ? { ...g, options: g.options.map((o) => o.value === value ? { ...o, selected: !o.selected } : o) }
+          ? {
+              ...g,
+              options: g.options.map((o) =>
+                o.value === value ? { ...o, selected: !o.selected } : o,
+              ),
+            }
           : g,
       ),
     );
@@ -393,7 +458,10 @@ export class AssetsDrawerComponent {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          return parsed.map(String).map((v) => v.trim()).filter(Boolean);
+          return parsed
+            .map(String)
+            .map((v) => v.trim())
+            .filter(Boolean);
         }
       } catch {
         // not JSON
@@ -408,7 +476,10 @@ export class AssetsDrawerComponent {
         const parsed = parseJsonArray(raw);
         if (parsed && parsed.length > 0) return parsed;
 
-        const split = raw.split(',').map((v) => v.trim()).filter(Boolean);
+        const split = raw
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean);
         if (split.length > 0) return split;
       }
       return [];

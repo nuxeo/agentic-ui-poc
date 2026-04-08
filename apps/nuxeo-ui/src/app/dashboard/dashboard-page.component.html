@@ -1,162 +1,178 @@
-<lib-widget-grid [columns]="2">
-  <lib-widget-container title="Recently Edited" icon="edit" iconColor="var(--mat-sys-primary)">
-    @if (recentlyEditedLoading()) {
-      <div class="widget-loading">
-        <mat-spinner diameter="28" />
-      </div>
-    } @else if (recentlyEditedError()) {
-      <div class="widget-error">{{ recentlyEditedError() }}</div>
-    } @else if (recentlyEdited().length === 0) {
-      <div class="widget-empty">No recent edits</div>
-    } @else {
-      <table class="widget-table">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Modified</th>
-            <th>Last Contributor</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (doc of recentlyEdited(); track doc.uid) {
-            <tr class="widget-row" (click)="navigateToDoc(doc)">
-              <td class="doc-title-cell">
-                <div class="doc-thumb">
-                  @if (thumbnailMap()[doc.uid]; as thumb) {
-                    <img [src]="thumb" alt="" class="doc-thumb-img" />
-                  } @else {
-                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
-                  }
-                </div>
-                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
-              </td>
-              <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
-              <td class="doc-contributor">
-                <sat-status-tag status="neutral" [hideIcon]="true">{{
-                  lastContributor(doc)
-                }}</sat-status-tag>
-              </td>
+<div class="dashboard-page">
+  <lib-widget-grid [columns]="2">
+    <lib-widget-container title="Recently Edited" icon="edit" iconColor="var(--mat-sys-primary)">
+      @if (recentlyEditedLoading()) {
+        <div class="widget-loading">
+          <mat-spinner diameter="28" />
+        </div>
+      } @else if (recentlyEditedError()) {
+        <div class="widget-error">{{ recentlyEditedError() }}</div>
+      } @else if (recentlyEdited().length === 0) {
+        <div class="widget-empty">No recent edits</div>
+      } @else {
+        <table class="widget-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Modified</th>
+              <th>Last Contributor</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    }
-  </lib-widget-container>
-
-  <lib-widget-container title="Tasks" icon="assignment" iconColor="var(--mat-sys-error)">
-    @if (tasksLoading()) {
-      <div class="widget-loading">
-        <mat-spinner diameter="28" />
-      </div>
-    } @else if (tasksError()) {
-      <div class="widget-error">{{ tasksError() }}</div>
-    } @else if (tasks().length === 0) {
-      <div class="widget-empty">No pending tasks</div>
-    } @else {
-      <div class="task-list">
-        @for (task of tasks(); track task.id) {
-          <div class="task-card" (click)="goToTask(task)">
-            <div class="task-action">{{ taskLabel(task) }}</div>
-            @if (taskDocTitle(task)) {
-              <div class="task-doc-title">{{ taskDocTitle(task) }}</div>
+          </thead>
+          <tbody>
+            @for (doc of recentlyEdited(); track doc.uid) {
+              <tr class="widget-row" (click)="navigateToDoc(doc)">
+                <td class="doc-title-cell">
+                  <div class="doc-thumb">
+                    @if (thumbnailMap()[doc.uid]; as thumb) {
+                      <img [src]="thumb" alt="" class="doc-thumb-img" />
+                    } @else {
+                      <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                    }
+                  </div>
+                  <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+                </td>
+                <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
+                <td class="doc-contributor">
+                  <sat-status-tag status="neutral" [hideIcon]="true">{{
+                    lastContributor(doc)
+                  }}</sat-status-tag>
+                </td>
+              </tr>
             }
-            <div class="task-due" [class.task-overdue]="isOverdue(task)">
-              Due <span class="task-due-value">{{ relativeTime(task.dueDate) }}</span>
+          </tbody>
+        </table>
+      }
+    </lib-widget-container>
+
+    <lib-widget-container title="Tasks" icon="assignment" iconColor="var(--mat-sys-error)">
+      @if (tasksLoading()) {
+        <div class="widget-loading">
+          <mat-spinner diameter="28" />
+        </div>
+      } @else if (tasksError()) {
+        <div class="widget-error">{{ tasksError() }}</div>
+      } @else if (tasks().length === 0) {
+        <div class="widget-empty">No pending tasks</div>
+      } @else {
+        <div class="task-list">
+          @for (task of tasks(); track task.id) {
+            <div class="task-card" (click)="goToTask(task)">
+              <div class="task-action">{{ taskLabel(task) }}</div>
+              @if (taskDocTitle(task)) {
+                <div class="task-doc-title">{{ taskDocTitle(task) }}</div>
+              }
+              <div class="task-due" [class.task-overdue]="isOverdue(task)">
+                Due <span class="task-due-value">{{ relativeTime(task.dueDate) }}</span>
+              </div>
+              <div class="task-workflow">{{ taskWorkflow(task) }}</div>
             </div>
-            <div class="task-workflow">{{ taskWorkflow(task) }}</div>
-          </div>
-        }
-      </div>
-    }
-  </lib-widget-container>
+          }
+        </div>
+      }
+    </lib-widget-container>
 
-  <lib-widget-container
-    title="Recently Viewed"
-    icon="visibility"
-    iconColor="var(--mat-sys-secondary)"
+    <lib-widget-container
+      title="Recently Viewed"
+      icon="visibility"
+      iconColor="var(--mat-sys-secondary)"
+    >
+      @if (recentlyViewedLoading()) {
+        <div class="widget-loading">
+          <mat-spinner diameter="28" />
+        </div>
+      } @else if (recentlyViewedError()) {
+        <div class="widget-error">{{ recentlyViewedError() }}</div>
+      } @else if (recentlyViewed().length === 0) {
+        <div class="widget-empty">No recently viewed items</div>
+      } @else {
+        <table class="widget-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Last Viewed</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (doc of recentlyViewed(); track doc.uid) {
+              <tr class="widget-row" (click)="navigateToDoc(doc)">
+                <td class="doc-title-cell">
+                  <div class="doc-thumb">
+                    @if (thumbnailMap()[doc.uid]; as thumb) {
+                      <img [src]="thumb" alt="" class="doc-thumb-img" />
+                    } @else {
+                      <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                    }
+                  </div>
+                  <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+                </td>
+                <td>
+                  <sat-category-tag category="blue">{{ docTypeLabel(doc) }}</sat-category-tag>
+                </td>
+                <td class="doc-date">{{ relativeTime(doc.lastModified) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </lib-widget-container>
+
+    <lib-widget-container title="Favorite Items" icon="star" iconColor="var(--mat-sys-tertiary)">
+      @if (favoritesLoading()) {
+        <div class="widget-loading">
+          <mat-spinner diameter="28" />
+        </div>
+      } @else if (favoritesError()) {
+        <div class="widget-error">{{ favoritesError() }}</div>
+      } @else if (favorites().length === 0) {
+        <div class="widget-empty">You haven't starred documents yet.</div>
+      } @else {
+        <table class="widget-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Modified</th>
+              <th>Last Contributor</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (doc of favorites(); track doc.uid) {
+              <tr class="widget-row" (click)="navigateToDoc(doc)">
+                <td class="doc-title-cell">
+                  <div class="doc-thumb">
+                    @if (thumbnailMap()[doc.uid]; as thumb) {
+                      <img [src]="thumb" alt="" class="doc-thumb-img" />
+                    } @else {
+                      <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                    }
+                  </div>
+                  <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+                </td>
+                <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
+                <td class="doc-contributor">
+                  <sat-status-tag status="neutral" [hideIcon]="true">{{
+                    lastContributor(doc)
+                  }}</sat-status-tag>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </lib-widget-container>
+  </lib-widget-grid>
+
+  <button
+    mat-fab
+    color="primary"
+    type="button"
+    class="dashboard-create-fab"
+    (click)="openCreateImport()"
+    matTooltip="Create or import"
+    matTooltipPosition="above"
+    matTooltipShowDelay="300"
+    aria-label="Create or import"
   >
-    @if (recentlyViewedLoading()) {
-      <div class="widget-loading">
-        <mat-spinner diameter="28" />
-      </div>
-    } @else if (recentlyViewedError()) {
-      <div class="widget-error">{{ recentlyViewedError() }}</div>
-    } @else if (recentlyViewed().length === 0) {
-      <div class="widget-empty">No recently viewed items</div>
-    } @else {
-      <table class="widget-table">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Type</th>
-            <th>Last Viewed</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (doc of recentlyViewed(); track doc.uid) {
-            <tr class="widget-row" (click)="navigateToDoc(doc)">
-              <td class="doc-title-cell">
-                <div class="doc-thumb">
-                  @if (thumbnailMap()[doc.uid]; as thumb) {
-                    <img [src]="thumb" alt="" class="doc-thumb-img" />
-                  } @else {
-                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
-                  }
-                </div>
-                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
-              </td>
-              <td>
-                <sat-category-tag category="blue">{{ docTypeLabel(doc) }}</sat-category-tag>
-              </td>
-              <td class="doc-date">{{ relativeTime(doc.lastModified) }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    }
-  </lib-widget-container>
-
-  <lib-widget-container title="Favorite Items" icon="star" iconColor="var(--mat-sys-tertiary)">
-    @if (favoritesLoading()) {
-      <div class="widget-loading">
-        <mat-spinner diameter="28" />
-      </div>
-    } @else if (favoritesError()) {
-      <div class="widget-error">{{ favoritesError() }}</div>
-    } @else if (favorites().length === 0) {
-      <div class="widget-empty">You haven't starred documents yet.</div>
-    } @else {
-      <table class="widget-table">
-        <thead>
-          <tr>
-            <th>Title</th>
-            <th>Modified</th>
-            <th>Last Contributor</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (doc of favorites(); track doc.uid) {
-            <tr class="widget-row" (click)="navigateToDoc(doc)">
-              <td class="doc-title-cell">
-                <div class="doc-thumb">
-                  @if (thumbnailMap()[doc.uid]; as thumb) {
-                    <img [src]="thumb" alt="" class="doc-thumb-img" />
-                  } @else {
-                    <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
-                  }
-                </div>
-                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
-              </td>
-              <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
-              <td class="doc-contributor">
-                <sat-status-tag status="neutral" [hideIcon]="true">{{
-                  lastContributor(doc)
-                }}</sat-status-tag>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    }
-  </lib-widget-container>
-</lib-widget-grid>
+    <mat-icon>add</mat-icon>
+  </button>
+</div>
