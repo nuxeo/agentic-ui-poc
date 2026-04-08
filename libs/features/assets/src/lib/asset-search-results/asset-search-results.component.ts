@@ -409,14 +409,26 @@ export class AssetSearchResultsComponent {
   }
 
   toggleAssetSelection(id: string): void {
-    this.selectionService.toggle(id);
+    const asset = this.filteredAssets().find((a) => a.id === id);
+    this.selectionService.toggle(id, asset?.name ?? id, this.thumbnailMap()[id] ?? null);
   }
 
   toggleAll(): void {
     if (this.isAllSelected()) {
       this.selectionService.clear();
     } else {
-      this.selectionService.selectAll(this.filteredAssets().map((a) => a.id));
+      const assets = this.filteredAssets();
+      const labels: Record<string, string> = {};
+      const previews: Record<string, any> = {};
+      assets.forEach((asset) => {
+        labels[asset.id] = asset.name;
+        previews[asset.id] = this.thumbnailMap()[asset.id] ?? null;
+      });
+      this.selectionService.selectAll(
+        assets.map((a) => a.id),
+        labels,
+        previews,
+      );
     }
   }
 

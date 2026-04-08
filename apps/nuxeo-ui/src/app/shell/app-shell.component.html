@@ -2,7 +2,12 @@
   <lib-selection-topbar
     class="selection-topbar--sticky"
     [selectedCount]="selectionService.selectedCount()"
+    [selectedItems]="selectionService.selectedItems()"
     (cleared)="selectionService.clear()"
+    (publishRequested)="onPublishSelected()"
+    (addToClipboardRequested)="onAddSelectedToClipboard()"
+    (addToCollectionRequested)="onAddSelectedToCollection()"
+    (downloadZipRequested)="onDownloadSelectedAsZip()"
     (deleted)="onDeleteSelected()"
   />
 }

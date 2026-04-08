@@ -1,4 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -25,6 +33,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import {
   NuxeoDocument,
@@ -70,9 +79,10 @@ import {
 } from '../drive-dialog/drive-dialog';
 
 import {
+  ALL_COLUMNS,
   ColumnDef,
-  ColumnSettingsDialogComponent,
   loadColumnSettings,
+  saveColumnSettings,
 } from '../column-settings-dialog/column-settings-dialog';
 import {
   EditMetadataDialogComponent,
@@ -105,6 +115,7 @@ import { CreateImportDialogComponent } from '../create-import/create-import-dial
     MatNativeDateModule,
     MatChipsModule,
     MatAutocompleteModule,
+    MatCheckboxModule,
     SatAvatarModule,
     SatTagModule,
     SatBreadcrumbsComponent,
@@ -113,6 +124,9 @@ import { CreateImportDialogComponent } from '../create-import/create-import-dial
   styleUrl: './browse.scss',
 })
 export class BrowseComponent {
+  @ViewChild('columnPanel')
+  private columnPanel?: ElementRef<HTMLElement>;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -251,6 +265,8 @@ export class BrowseComponent {
   // Column settings
   readonly columns = signal<ColumnDef[]>(loadColumnSettings());
   readonly visibleColumns = computed(() => this.columns().filter((c) => c.visible));
+  readonly columnPanelOpen = signal(false);
+  readonly pendingColumns = signal<ColumnDef[]>([]);
 
   // Filters
   readonly filterText = signal('');
@@ -611,13 +627,43 @@ export class BrowseComponent {
 
   // ── Column settings ──
 
-  openColumnSettings(): void {
-    const ref = this.dialog.open(ColumnSettingsDialogComponent, {
-      data: this.columns(),
-    });
-    ref.afterClosed().subscribe((result: ColumnDef[] | undefined) => {
-      if (result) this.columns.set(result);
-    });
+  openColumnPanel(): void {
+    this.pendingColumns.set(this.columns().map((c) => ({ ...c })));
+    this.columnPanelOpen.set(true);
+    queueMicrotask(() => this.columnPanel?.nativeElement.focus());
+  }
+
+  closeColumnPanel(): void {
+    this.columnPanelOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.columnPanelOpen()) {
+      this.closeColumnPanel();
+    }
+  }
+
+  isPendingColumn(key: string): boolean {
+    return this.pendingColumns().find((c) => c.key === key)?.visible ?? false;
+  }
+
+  togglePendingColumn(key: string): void {
+    if (key === 'title') return;
+    this.pendingColumns.update((cols) =>
+      cols.map((c) => (c.key === key ? { ...c, visible: !c.visible } : c)),
+    );
+  }
+
+  resetColumns(): void {
+    this.pendingColumns.set(ALL_COLUMNS.map((c) => ({ ...c })));
+  }
+
+  applyColumns(): void {
+    const updated = this.pendingColumns();
+    this.columns.set(updated);
+    saveColumnSettings(updated);
+    this.columnPanelOpen.set(false);
   }
 
   // ── Filters ──

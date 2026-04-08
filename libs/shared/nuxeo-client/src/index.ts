@@ -112,6 +112,7 @@ export {
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { avatarColor } from './lib/constants/avatar-colors';
+export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
 
 // Queries (for advanced / custom use)
 export {

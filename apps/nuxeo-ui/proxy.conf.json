@@ -5,7 +5,8 @@
     "changeOrigin": true,
     "autoRewrite": true,
     "headers": {
-      "X-NXproperties": "*"
+      "X-NXproperties": "*",
+      "Origin": "http://localhost:8080"
     }
   }
 }

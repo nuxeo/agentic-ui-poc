@@ -27,7 +27,11 @@
         (click)="onItemClick(item)"
       >
         <div class="queue-item-preview">
-          <mat-icon class="queue-item-icon">{{ item.icon || 'description' }}</mat-icon>
+          @if (thumbnailFor(item.id); as preview) {
+            <img [src]="preview" [alt]="item.title" class="queue-item-image" />
+          } @else {
+            <mat-icon class="queue-item-icon">{{ item.icon || 'description' }}</mat-icon>
+          }
         </div>
         <div class="queue-item-content">
           <h4 class="queue-item-title">{{ item.title }}</h4>

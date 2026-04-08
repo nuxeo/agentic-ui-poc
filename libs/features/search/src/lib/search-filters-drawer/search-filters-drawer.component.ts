@@ -1,7 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { filter } from 'rxjs';
+import { Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
@@ -11,7 +11,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   SearchAggregationService,
   SearchService,
+  FOLDERISH_TYPES,
   type AggregateResult,
+  type SearchQueryParams,
+  type SearchAggregations,
   type SavedSearchOption,
   type SearchResultItem,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -37,7 +40,14 @@ type DrawerViewMode = 'filter' | 'queue';
 @Component({
   selector: 'lib-search-filters-drawer',
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, MatCheckboxModule, MatDividerModule, MatTooltipModule, SearchQueueComponent],
+  imports: [
+    MatIconModule,
+    MatButtonModule,
+    MatCheckboxModule,
+    MatDividerModule,
+    MatTooltipModule,
+    SearchQueueComponent,
+  ],
   templateUrl: './search-filters-drawer.component.html',
   styleUrl: './search-filters-drawer.component.scss',
 })
@@ -93,19 +103,30 @@ export class SearchFiltersDrawerComponent {
   readonly tagInput = signal('');
   readonly tagOpen = signal(false);
   readonly selectedQueueQuickFilters = signal<Set<string>>(new Set());
+  readonly baselineItemsForCounts = signal<SearchResultItem[]>([]);
+  readonly baselineAggregationsForCounts = signal<SearchAggregations>({});
+  readonly baselineCountsReady = signal(false);
 
-  readonly hasActiveFilters = computed(() =>
-    this.selectedSavedSearch().trim().length > 0 ||
-    this.query().trim().length > 0 ||
-    this.secondarySearchInput().trim().length > 0 ||
-    this.selectedModificationDates().size > 0 ||
-    this.selectedNatures().size > 0 ||
-    this.selectedSubjects().size > 0 ||
-    this.selectedCoverage().size > 0 ||
-    this.selectedSizes().size > 0 ||
-    this.selectedAuthor().trim().length > 0 ||
-    this.selectedCollection().trim().length > 0 ||
-    this.selectedTag().trim().length > 0,
+  private baselineRequestSeq = 0;
+  private baselineSignature = '';
+  private readonly baselineRequests$ = new Subject<{
+    params: SearchQueryParams;
+    requestSeq: number;
+  }>();
+
+  readonly hasActiveFilters = computed(
+    () =>
+      this.selectedSavedSearch().trim().length > 0 ||
+      this.query().trim().length > 0 ||
+      this.secondarySearchInput().trim().length > 0 ||
+      this.selectedModificationDates().size > 0 ||
+      this.selectedNatures().size > 0 ||
+      this.selectedSubjects().size > 0 ||
+      this.selectedCoverage().size > 0 ||
+      this.selectedSizes().size > 0 ||
+      this.selectedAuthor().trim().length > 0 ||
+      this.selectedCollection().trim().length > 0 ||
+      this.selectedTag().trim().length > 0,
   );
 
   readonly filteredSavedSearches = computed(() => {
@@ -126,14 +147,52 @@ export class SearchFiltersDrawerComponent {
   });
 
   constructor() {
+    this.baselineRequests$
+      .pipe(
+        debounceTime(150),
+        switchMap(({ params, requestSeq }) =>
+          this.searchService.search(params).pipe(
+            map((response) => ({ response, requestSeq, failed: false })),
+            catchError(() => of({ response: null, requestSeq, failed: true })),
+          ),
+        ),
+        takeUntilDestroyed(),
+      )
+      .subscribe(({ response, requestSeq, failed }) => {
+        if (requestSeq !== this.baselineRequestSeq) return;
+        if (failed || !response) {
+          this.baselineCountsReady.set(false);
+          return;
+        }
+        this.baselineItemsForCounts.set(response.items);
+        this.baselineAggregationsForCounts.set(response.aggregations);
+        this.baselineCountsReady.set(true);
+      });
+
     effect(() => {
-      const aggregations = this.searchAggregationService.aggregations();
-      const items = this.searchAggregationService.items();
+      const drawerFilters = this.searchAggregationService.drawerFilters();
+      const quickFilters = this.toQuickFiltersQueryParam();
+      this.refreshBaselineCounts(drawerFilters, quickFilters);
+    });
+
+    effect(() => {
+      const fallbackAggregations = this.searchAggregationService.aggregations();
+      const fallbackItems = this.searchAggregationService.items();
+      const hasBaseline = this.baselineCountsReady();
+      const aggregations = hasBaseline
+        ? this.baselineAggregationsForCounts()
+        : fallbackAggregations;
+      const items = hasBaseline ? this.baselineItemsForCounts() : fallbackItems;
 
       this.modificationDateOptions.set(this.toModifiedDateOptionsFromResults(items));
       this.availableAuthors.set(this.toAuthorOptionsFromResults(items));
       if (!this.collectionsLoaded()) {
-        this.availableCollections.set(this.toCountOptions(this.pickAggregation(aggregations.collection_agg, aggregations.dc_coverage_agg), {}));
+        this.availableCollections.set(
+          this.toCountOptions(
+            this.pickAggregation(aggregations.collection_agg, aggregations.dc_coverage_agg),
+            {},
+          ),
+        );
       }
       this.availableTags.set(this.toTagsOptionsFromResults(items));
       this.natureOptions.set(this.toFieldOptionsFromResults(items, (item) => item.nature));
@@ -147,11 +206,9 @@ export class SearchFiltersDrawerComponent {
       this.secondarySearchInput.set(fulltext);
     });
 
-    this.activatedRoute.parent?.params
-      .pipe(takeUntilDestroyed())
-      .subscribe((params) => {
-        this.selectedDocumentId.set(params['id'] ?? '');
-      });
+    this.activatedRoute.parent?.params.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.selectedDocumentId.set(params['id'] ?? '');
+    });
 
     this.router.events
       .pipe(
@@ -169,12 +226,10 @@ export class SearchFiltersDrawerComponent {
         }
       });
 
-    this.activatedRoute.queryParamMap
-      .pipe(takeUntilDestroyed())
-      .subscribe((params) => {
-        const quickFilters = params.get('quickFilters') ?? '';
-        this.selectedQueueQuickFilters.set(this.parseQuickFilters(quickFilters));
-      });
+    this.activatedRoute.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const quickFilters = params.get('quickFilters') ?? '';
+      this.selectedQueueQuickFilters.set(this.parseQuickFilters(quickFilters));
+    });
 
     effect(() => {
       const mode = this.viewMode();
@@ -190,19 +245,39 @@ export class SearchFiltersDrawerComponent {
     const selectedInResults = !!docId && items.some((item) => item.id === docId);
 
     if (selectedInResults) {
-      void this.router.navigate(['/doc', docId], {
+      const selectedItem = items.find((item) => item.id === docId);
+      if (selectedItem) {
+        this.navigateToItem(selectedItem);
+      }
+      return;
+    }
+
+    if (items.length > 0) {
+      this.navigateToItem(items[0]);
+    }
+  }
+
+  private navigateToItem(item: SearchResultItem): void {
+    if (item.type === 'Collection') {
+      void this.router.navigate(['/collections', item.id], {
         queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
         queryParamsHandling: 'merge',
       });
       return;
     }
 
-    if (items.length > 0) {
-      void this.router.navigate(['/doc', items[0].id], {
+    if (FOLDERISH_TYPES.has(item.type) && item.path) {
+      void this.router.navigate(['/browse' + item.path], {
         queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
         queryParamsHandling: 'merge',
       });
+      return;
     }
+
+    void this.router.navigate(['/doc', item.id], {
+      queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
+      queryParamsHandling: 'merge',
+    });
   }
 
   switchToFilterView(): void {
@@ -215,10 +290,7 @@ export class SearchFiltersDrawerComponent {
   }
 
   onQueueItemSelected(item: SearchResultItem): void {
-    void this.router.navigate(['/doc', item.id], {
-      queryParams: { quickFilters: this.toQuickFiltersQueryParam() },
-      queryParamsHandling: 'merge',
-    });
+    this.navigateToItem(item);
   }
 
   toggleQueueQuickFilter(value: string): void {
@@ -228,9 +300,9 @@ export class SearchFiltersDrawerComponent {
 
     this.selectedQueueQuickFilters.set(next);
 
-    const orderedSelected = QUEUE_QUICK_FILTER_OPTIONS
-      .map((filter) => filter.value)
-      .filter((filterValue) => next.has(filterValue));
+    const orderedSelected = QUEUE_QUICK_FILTER_OPTIONS.map((filter) => filter.value).filter(
+      (filterValue) => next.has(filterValue),
+    );
 
     void this.router.navigate(['/search'], {
       queryParams: { quickFilters: orderedSelected.length > 0 ? orderedSelected.join(',') : null },
@@ -257,26 +329,31 @@ export class SearchFiltersDrawerComponent {
   }
 
   openSaveAsDialog(): void {
-    this.dialog.open(SavedSearchDialogComponent, {
-      data: {
-        title: 'Saved Search',
-        placeholder: 'Enter a name for your saved search',
-      },
-    }).afterClosed().subscribe((title) => {
-      const trimmedTitle = title?.trim();
-      if (!trimmedTitle) return;
-
-      this.searchService.saveSavedSearch({
-        title: trimmedTitle,
-        params: this.buildFilters(),
-        pageProviderName: 'default_search',
-      }).subscribe({
-        next: () => {
-          this.savedSearchesLoaded.set(false);
-          this.loadSavedSearchesFromApi();
+    this.dialog
+      .open(SavedSearchDialogComponent, {
+        data: {
+          title: 'Saved Search',
+          placeholder: 'Enter a name for your saved search',
         },
+      })
+      .afterClosed()
+      .subscribe((title) => {
+        const trimmedTitle = title?.trim();
+        if (!trimmedTitle) return;
+
+        this.searchService
+          .saveSavedSearch({
+            title: trimmedTitle,
+            params: this.buildFilters(),
+            pageProviderName: 'default_search',
+          })
+          .subscribe({
+            next: () => {
+              this.savedSearchesLoaded.set(false);
+              this.loadSavedSearchesFromApi();
+            },
+          });
       });
-    });
   }
 
   isExpanded(id: string): boolean {
@@ -426,7 +503,10 @@ export class SearchFiltersDrawerComponent {
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          return parsed.map(String).map((v) => v.trim()).filter(Boolean);
+          return parsed
+            .map(String)
+            .map((v) => v.trim())
+            .filter(Boolean);
         }
       } catch {
         // not JSON
@@ -439,7 +519,12 @@ export class SearchFiltersDrawerComponent {
       // Values may be stored as a JSON array string (e.g. '["val1","val2"]') or comma-separated
       const parsed = parseJsonArray(raw);
       if (parsed) return new Set(parsed);
-      return new Set(raw.split(',').map((v) => v.trim()).filter(Boolean));
+      return new Set(
+        raw
+          .split(',')
+          .map((v) => v.trim())
+          .filter(Boolean),
+      );
     };
     const getScalar = (key: string): string => {
       const raw = get(key);
@@ -533,24 +618,24 @@ export class SearchFiltersDrawerComponent {
   filteredAuthors(): CountOption[] {
     const term = this.authorInput().trim().toLowerCase();
     if (!term) return this.availableAuthorsWithData();
-    return this.availableAuthorsWithData().filter((o) =>
-      o.label.toLowerCase().includes(term) || o.value.toLowerCase().includes(term),
+    return this.availableAuthorsWithData().filter(
+      (o) => o.label.toLowerCase().includes(term) || o.value.toLowerCase().includes(term),
     );
   }
 
   filteredCollections(): CountOption[] {
     const term = this.collectionInput().trim().toLowerCase();
     if (!term) return this.availableCollectionsWithData();
-    return this.availableCollectionsWithData().filter((o) =>
-      o.label.toLowerCase().includes(term) || o.value.toLowerCase().includes(term),
+    return this.availableCollectionsWithData().filter(
+      (o) => o.label.toLowerCase().includes(term) || o.value.toLowerCase().includes(term),
     );
   }
 
   filteredTags(): CountOption[] {
     const term = this.tagInput().trim().toLowerCase();
     if (!term) return [];
-    return this.availableTagsWithData().filter((o) =>
-      o.label.toLowerCase().includes(term) || o.value.toLowerCase().includes(term),
+    return this.availableTagsWithData().filter(
+      (o) => o.label.toLowerCase().includes(term) || o.value.toLowerCase().includes(term),
     );
   }
 
@@ -668,11 +753,16 @@ export class SearchFiltersDrawerComponent {
     return filters;
   }
 
-  private pickAggregation(...candidates: Array<AggregateResult | undefined>): AggregateResult | undefined {
+  private pickAggregation(
+    ...candidates: Array<AggregateResult | undefined>
+  ): AggregateResult | undefined {
     return candidates.find((agg) => (agg?.buckets?.length ?? 0) > 0);
   }
 
-  private toCountOptions(aggregation: AggregateResult | undefined, labelMap: Record<string, string>): CountOption[] {
+  private toCountOptions(
+    aggregation: AggregateResult | undefined,
+    labelMap: Record<string, string>,
+  ): CountOption[] {
     return (aggregation?.buckets ?? [])
       .map((bucket) => {
         const key = bucket.key;
@@ -798,10 +888,10 @@ export class SearchFiltersDrawerComponent {
     for (const item of items) {
       const rawValues = [
         ...(item.tags ?? []),
-        ...((item.subjects ?? '')
+        ...(item.subjects ?? '')
           .split(',')
           .map((value) => value.trim())
-          .filter(Boolean)),
+          .filter(Boolean),
       ];
 
       for (const rawValue of rawValues) {
@@ -984,15 +1074,14 @@ export class SearchFiltersDrawerComponent {
   }
 
   private loadViewModeFromStorage(): DrawerViewMode {
-    const stored = localStorage.getItem('search_drawer_view_mode');
-    return (stored === 'queue' || stored === 'filter') ? stored : 'filter';
+    return 'filter';
   }
 
   private toQuickFiltersQueryParam(): string | null {
     const selected = this.selectedQueueQuickFilters();
-    const orderedSelected = QUEUE_QUICK_FILTER_OPTIONS
-      .map((filter) => filter.value)
-      .filter((filterValue) => selected.has(filterValue));
+    const orderedSelected = QUEUE_QUICK_FILTER_OPTIONS.map((filter) => filter.value).filter(
+      (filterValue) => selected.has(filterValue),
+    );
     return orderedSelected.length > 0 ? orderedSelected.join(',') : null;
   }
 
@@ -1004,6 +1093,29 @@ export class SearchFiltersDrawerComponent {
         .map((item) => item.trim())
         .filter((item) => item.length > 0 && allowed.has(item)),
     );
+  }
+
+  private refreshBaselineCounts(
+    drawerFilters: Record<string, string>,
+    quickFilters: string | null,
+  ): void {
+    const params: SearchQueryParams = {};
+    const q = (drawerFilters['q'] ?? '').trim();
+    const ecmFulltext = (drawerFilters['ecm_fulltext'] ?? '').trim();
+
+    if (q) params.q = q;
+    if (ecmFulltext) params.ecmFulltext = ecmFulltext;
+    if (quickFilters?.trim()) params.quickFilters = quickFilters;
+
+    const signature = JSON.stringify(params);
+    if (signature === this.baselineSignature) {
+      return;
+    }
+
+    this.baselineSignature = signature;
+    const requestSeq = ++this.baselineRequestSeq;
+    this.baselineCountsReady.set(false);
+    this.baselineRequests$.next({ params, requestSeq });
   }
 }
 

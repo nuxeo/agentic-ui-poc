@@ -181,9 +181,6 @@
                 >
                   <mat-icon>grid_view</mat-icon>
                 </button>
-                <button mat-icon-button matTooltip="Column settings" (click)="openColumnSettings()">
-                  <mat-icon>settings</mat-icon>
-                </button>
               </div>
             </div>
 
@@ -206,67 +203,116 @@
               </div>
             } @else if (viewMode() === 'list') {
               <!-- List view -->
-              <div class="browse-table-wrapper">
-                <table class="browse-table">
-                  <thead>
-                    <tr>
-                      <th class="col-checkbox"></th>
-                      @for (col of visibleColumns(); track col.key) {
-                        <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
-                          <span class="th-label">{{ col.label }}</span>
-                          @if (browseSortKey() === col.key) {
-                            <mat-icon class="sort-arrow">
-                              {{ browseSortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
-                            </mat-icon>
-                          }
-                        </th>
+              <div class="browse-list-container">
+                @if (columnPanelOpen()) {
+                  <button
+                    type="button"
+                    class="col-panel-backdrop"
+                    aria-label="Close column picker"
+                    (click)="closeColumnPanel()"
+                  ></button>
+                  <div
+                    #columnPanel
+                    class="col-panel"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Column Settings"
+                    tabindex="-1"
+                    (keydown.escape)="closeColumnPanel()"
+                  >
+                    <p class="col-panel-title">Column Settings</p>
+                    <div class="col-panel-list">
+                      @for (col of pendingColumns(); track col.key) {
+                        <mat-checkbox
+                          class="col-panel-option"
+                          [checked]="isPendingColumn(col.key)"
+                          [disabled]="col.key === 'title'"
+                          (change)="togglePendingColumn(col.key)"
+                          >{{ col.label }}</mat-checkbox
+                        >
                       }
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (doc of filteredEntries(); track doc.uid) {
-                      <tr
-                        class="browse-row"
-                        [class.browse-row--folder]="isFolderish(doc)"
-                        (click)="onRowClick(doc)"
-                      >
-                        <td class="cell-checkbox"></td>
+                    </div>
+                    <div class="col-panel-actions">
+                      <button mat-button (click)="resetColumns()">Reset</button>
+                      <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+                    </div>
+                  </div>
+                }
+                <div class="browse-table-wrapper">
+                  <table class="browse-table">
+                    <thead>
+                      <tr>
+                        <th class="col-checkbox"></th>
                         @for (col of visibleColumns(); track col.key) {
-                          <td [ngClass]="'cell-' + col.key">
-                            @if (col.key === 'title') {
-                              <div class="cell-name-inner">
-                                @if (thumbnailMap()[doc.uid]; as thumb) {
-                                  <img [src]="thumb" alt="" class="doc-thumb" />
-                                } @else {
-                                  <mat-icon class="doc-icon" [class.folder-icon]="isFolderish(doc)">
-                                    {{ docIcon(doc) }}
-                                  </mat-icon>
-                                }
-                                <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
-                              </div>
-                            } @else if (col.key === 'type') {
-                              <sat-category-tag category="blue">{{ doc.type }}</sat-category-tag>
-                            } @else if (col.key === 'modified') {
-                              {{ doc.lastModified | date: 'mediumDate' }}
-                            } @else if (col.key === 'lastContributor') {
-                              <span class="contributor-cell">
-                                <sat-avatar
-                                  [initials]="lastContributor(doc)"
-                                  [category]="avatarColor(lastContributor(doc))"
-                                  size="24"
-                                  [borderless]="true"
-                                />
-                                {{ lastContributor(doc) }}
-                              </span>
-                            } @else {
-                              {{ getCellValue(doc, col.key) }}
+                          <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
+                            <span class="th-label">{{ col.label }}</span>
+                            @if (browseSortKey() === col.key) {
+                              <mat-icon class="sort-arrow">
+                                {{ browseSortDir() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}
+                              </mat-icon>
                             }
-                          </td>
+                          </th>
                         }
+                        <th class="col-gear">
+                          <button
+                            mat-icon-button
+                            class="gear-btn"
+                            matTooltip="Manage columns"
+                            (click)="openColumnPanel()"
+                          >
+                            <mat-icon>tune</mat-icon>
+                          </button>
+                        </th>
                       </tr>
-                    }
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      @for (doc of filteredEntries(); track doc.uid) {
+                        <tr
+                          class="browse-row"
+                          [class.browse-row--folder]="isFolderish(doc)"
+                          (click)="onRowClick(doc)"
+                        >
+                          <td class="cell-checkbox"></td>
+                          @for (col of visibleColumns(); track col.key) {
+                            <td [ngClass]="'cell-' + col.key">
+                              @if (col.key === 'title') {
+                                <div class="cell-name-inner">
+                                  @if (thumbnailMap()[doc.uid]; as thumb) {
+                                    <img [src]="thumb" alt="" class="doc-thumb" />
+                                  } @else {
+                                    <mat-icon
+                                      class="doc-icon"
+                                      [class.folder-icon]="isFolderish(doc)"
+                                    >
+                                      {{ docIcon(doc) }}
+                                    </mat-icon>
+                                  }
+                                  <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+                                </div>
+                              } @else if (col.key === 'type') {
+                                <sat-category-tag category="blue">{{ doc.type }}</sat-category-tag>
+                              } @else if (col.key === 'modified') {
+                                {{ doc.lastModified | date: 'mediumDate' }}
+                              } @else if (col.key === 'lastContributor') {
+                                <span class="contributor-cell">
+                                  <sat-avatar
+                                    [initials]="lastContributor(doc)"
+                                    [category]="avatarColor(lastContributor(doc))"
+                                    size="24"
+                                    [borderless]="true"
+                                  />
+                                  {{ lastContributor(doc) }}
+                                </span>
+                              } @else {
+                                {{ getCellValue(doc, col.key) }}
+                              }
+                            </td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
               </div>
             } @else {
               <!-- Card view -->

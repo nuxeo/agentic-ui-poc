@@ -1,17 +1,53 @@
 <div class="selection-topbar">
   <div class="topbar-left">
     <span class="selected-label">All {{ selectedCount() }} item(s) selected</span>
-    <button
-      mat-button
-      type="button"
-      class="clear-btn"
-      (click)="cleared.emit()"
-    >
-      Clear
+    <button mat-button type="button" class="clear-btn" (click)="openSelectionPopup()">
+      Display selection
     </button>
+    <button mat-button type="button" class="clear-btn" (click)="cleared.emit()">Clear</button>
   </div>
 
   <div class="topbar-actions">
+    <button
+      mat-icon-button
+      type="button"
+      class="topbar-icon-btn"
+      matTooltip="Download All as Zip"
+      aria-label="Download All as Zip"
+      (click)="downloadZipRequested.emit()"
+    >
+      <mat-icon>download</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      type="button"
+      class="topbar-icon-btn"
+      matTooltip="Add to Collection"
+      aria-label="Add to Collection"
+      (click)="addToCollectionRequested.emit()"
+    >
+      <mat-icon>library_add</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      type="button"
+      class="topbar-icon-btn"
+      matTooltip="Add to Clipboard"
+      aria-label="Add to Clipboard"
+      (click)="addToClipboardRequested.emit()"
+    >
+      <mat-icon>content_paste</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      type="button"
+      class="topbar-icon-btn"
+      matTooltip="Publish Document"
+      aria-label="Publish Document"
+      (click)="publishRequested.emit()"
+    >
+      <mat-icon>publish</mat-icon>
+    </button>
     <button
       mat-icon-button
       matTooltip="Delete selected"
@@ -23,3 +59,46 @@
     </button>
   </div>
 </div>
+
+@if (selectionPopupOpen()) {
+  <button
+    type="button"
+    class="selection-popup-backdrop"
+    aria-label="Close selected items popup"
+    (click)="closeSelectionPopup()"
+  ></button>
+  <div
+    #selectionPopupPanel
+    class="selection-popup"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="selection-popup-title"
+    tabindex="-1"
+  >
+    <div class="selection-popup-header">
+      <span id="selection-popup-title" class="selection-popup-title">Selected Items</span>
+      <button
+        mat-icon-button
+        type="button"
+        aria-label="Close"
+        class="selection-popup-close"
+        (click)="closeSelectionPopup()"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="selection-popup-body">
+      @for (item of selectedItems(); track item.id) {
+        <div class="selection-item">
+          @if (item.preview) {
+            <img class="selection-item-preview" [src]="item.preview" alt="" />
+          } @else {
+            <span class="selection-item-preview selection-item-preview--placeholder"></span>
+          }
+          <span class="selection-item-name">{{ item.name }}</span>
+        </div>
+      }
+    </div>
+  </div>
+}
