@@ -57,7 +57,7 @@ import {
   type SentimentResponse,
 } from '@agentic-ui/shared/ai-client';
 import DOMPurify from 'dompurify';
-import { forkJoin, Observable } from 'rxjs';
+import { forkJoin, Observable, of, switchMap } from 'rxjs';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -880,6 +880,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
+    if (mime.startsWith('text/') || mime === 'application/json') {
+      this.detailService.fetchBlob(doc.uid).subscribe({
+        next: (blob) => blob.text().then((text) => this.noteContent.set(text)),
+        error: () => this.loadPreviewFallback(doc),
+      });
+      return;
+    }
+
     const renditions = (doc.contextParameters?.['renditions'] ?? []) as Array<{ name: string }>;
     if (renditions.some((r) => r.name === 'pdf')) {
       this.hasPdfRendition.set(true);
@@ -1629,17 +1637,26 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     const requestedDocUid = doc.uid;
     this.arenderUrl.set(null);
-    this.arenderService.getPreviewerUrl(doc.uid, xpath).subscribe({
-      next: (url) => {
-        if (requestedDocUid !== this.docUid) return;
-        this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
-        this.arenderReloadId.update((n) => n + 1);
-      },
-      error: () => {
-        if (requestedDocUid !== this.docUid) return;
-        this.arenderUrl.set(null);
-      },
-    });
+    this.arenderService
+      .isAvailable()
+      .pipe(
+        switchMap((available) =>
+          available ? this.arenderService.getPreviewerUrl(doc.uid, xpath) : of(null),
+        ),
+      )
+      .subscribe({
+        next: (url) => {
+          if (requestedDocUid !== this.docUid) return;
+          if (url) {
+            this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+            this.arenderReloadId.update((n) => n + 1);
+          }
+        },
+        error: () => {
+          if (requestedDocUid !== this.docUid) return;
+          this.arenderUrl.set(null);
+        },
+      });
   }
 
   /**
