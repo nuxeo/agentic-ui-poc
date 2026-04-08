@@ -2,8 +2,6 @@ import {
   Component,
   ElementRef,
   HostListener,
-  Pipe,
-  PipeTransform,
   ViewChild,
   computed,
   inject,
@@ -11,10 +9,18 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { Subject, catchError, debounceTime, distinctUntilChanged, filter, finalize, forkJoin, of, switchMap } from 'rxjs';
+import {
+  Subject,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  finalize,
+  forkJoin,
+  of,
+  switchMap,
+} from 'rxjs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,49 +45,11 @@ import {
 } from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
-import {
-  AddToCollectionDialogComponent,
-  PublishDialogComponent,
-  type PublishDialogData,
-} from '@agentic-ui/feature-document-detail';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
-
-@Pipe({ name: 'aiMarkdown', standalone: true })
-export class AiMarkdownPipe implements PipeTransform {
-  private readonly sanitizer = inject(DomSanitizer);
-
-  transform(value: string): SafeHtml {
-    let html = this.escapeHtml(value);
-
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-
-    html = html.replace(/^(\d+)\.\s+(.*)$/gm, '<li class="ai-ol-item" value="$1">$2</li>');
-    html = html.replace(
-      /((?:<li class="ai-ol-item"[^>]*>.*?<\/li>\n?)+)/g,
-      '<ol class="ai-list">$1</ol>',
-    );
-
-    html = html.replace(/^[-•]\s+(.*)$/gm, '<li class="ai-ul-item">$1</li>');
-    html = html.replace(
-      /((?:<li class="ai-ul-item">.*?<\/li>\n?)+)/g,
-      '<ul class="ai-list">$1</ul>',
-    );
-
-    html = html.replace(/\n/g, '<br>');
-    html = html.replace(/(<\/?(?:ol|ul|li)[^>]*>)<br>/g, '$1');
-    html = html.replace(/<br>(<\/?(?:ol|ul|li)[^>]*>)/g, '$1');
-
-    return this.sanitizer.bypassSecurityTrustHtml(html);
-  }
-
-  private escapeHtml(text: string): string {
-    const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
-    return text.replace(/[&<>"]/g, (c) => map[c]);
-  }
-}
+import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
 
 @Component({
   selector: 'app-shell',
@@ -365,8 +333,9 @@ export class AppShellComponent {
       });
     }
 
-    const openDialog = (versions: NuxeoDocument[]) => {
-      const data: PublishDialogData = {
+    const openDialog = async (versions: NuxeoDocument[]) => {
+      const { PublishDialogComponent } = await import('@agentic-ui/feature-document-detail');
+      const data = {
         documentUid: first.id,
         documentTitle: first.name,
         versionLabel: 'Current',
@@ -428,24 +397,26 @@ export class AppShellComponent {
     const selected = this.selectionService.selectedItems();
     if (selected.length === 0) return;
 
-    const ref = this.dialog.open(AddToCollectionDialogComponent, {
-      width: '440px',
-      autoFocus: false,
-    });
+    import('@agentic-ui/feature-document-detail').then(({ AddToCollectionDialogComponent }) => {
+      const ref = this.dialog.open(AddToCollectionDialogComponent, {
+        width: '440px',
+        autoFocus: false,
+      });
 
-    ref.afterClosed().subscribe((collectionId: string | undefined) => {
-      if (!collectionId) return;
+      ref.afterClosed().subscribe((collectionId: string | undefined) => {
+        if (!collectionId) return;
 
-      forkJoin(
-        selected.map((item) =>
-          this.detailService
-            .addToCollection(item.id, collectionId)
-            .pipe(catchError(() => of(null))),
-        ),
-      ).subscribe((results) => {
-        const success = results.filter((r) => !!r).length;
-        this.snackBar.open(`Added ${success} item(s) to collection.`, 'Dismiss', {
-          duration: 3000,
+        forkJoin(
+          selected.map((item) =>
+            this.detailService
+              .addToCollection(item.id, collectionId)
+              .pipe(catchError(() => of(null))),
+          ),
+        ).subscribe((results) => {
+          const success = results.filter((r) => !!r).length;
+          this.snackBar.open(`Added ${success} item(s) to collection.`, 'Dismiss', {
+            duration: 3000,
+          });
         });
       });
     });
@@ -457,23 +428,21 @@ export class AppShellComponent {
 
     const ids = selected.map((item) => item.id);
     const zipFileName = `selected-documents-${Date.now()}.zip`;
-    this.detailService
-      .bulkDownload(ids, zipFileName)
-      .subscribe({
-        next: (blob) => {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = zipFileName;
-          a.click();
-          URL.revokeObjectURL(url);
-        },
-        error: () => {
-          this.snackBar.open('Failed to download selected documents as ZIP.', 'Dismiss', {
-            duration: 4000,
-          });
-        },
-      });
+    this.detailService.bulkDownload(ids, zipFileName).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = zipFileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.snackBar.open('Failed to download selected documents as ZIP.', 'Dismiss', {
+          duration: 4000,
+        });
+      },
+    });
   }
 
   onGlobalSearchInput(value: string): void {
