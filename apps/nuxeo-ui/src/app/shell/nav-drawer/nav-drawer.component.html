@@ -192,7 +192,9 @@
                     }
                     @if (task.dueDate) {
                       <div class="task-due-line">
-                        <span class="task-due-prefix">Due</span>
+                        <span class="task-due-prefix">{{
+                          isOverdue(task) ? 'Overdue' : 'Due'
+                        }}</span>
                         <span
                           class="task-due-value"
                           [class.task-due-value--soon]="!isOverdue(task)"
