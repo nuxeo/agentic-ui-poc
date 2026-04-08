@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nuxeo-dev-companion": {
+      "command": "node",
+      "args": ["./mcp-launch-nuxeo.mjs"]
+    }
+  }
+}
