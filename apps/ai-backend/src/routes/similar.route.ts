@@ -18,7 +18,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/similar', async (req, res, next) => {
   try {

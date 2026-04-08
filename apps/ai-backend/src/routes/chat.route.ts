@@ -3,7 +3,7 @@ import { chatCompletionStream } from '../services/openai.service.js';
 import { ragChat } from '../services/rag.service.js';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/chat', async (req, res, next) => {
   try {

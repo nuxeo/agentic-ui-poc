@@ -4,7 +4,7 @@ import { nxqlSearch, getDocumentAcl } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
 import { escapeNxql } from '../utils/nxql-escape.js';
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/nl-permissions', async (req, res, next) => {
   try {

@@ -3,7 +3,7 @@ import { chatCompletion } from '../services/openai.service.js';
 import { getDocumentById, getDocumentBlob } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
 
-const router = Router();
+const router: Router = Router();
 
 router.post('/summarize', async (req, res, next) => {
   try {
