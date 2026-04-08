@@ -50,3 +50,7 @@ Thumbs.db
 .angular
 
 vitest.config.*.timestamp*
+
+# Environment files
+.env
+apps/ai-backend/.env

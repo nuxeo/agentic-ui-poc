@@ -112,6 +112,18 @@
       <sat-word-mark-logo satAppHeaderLogo />
 
       <div satAppHeaderActions>
+        @if (featureFlags.aiEnabled()) {
+          <button
+            type="button"
+            mat-icon-button
+            aria-label="AI Assistant"
+            (click)="toggleAiChat()"
+            class="ai-chat-toggle"
+            [class.active]="aiChatOpen()"
+          >
+            <mat-icon>auto_awesome</mat-icon>
+          </button>
+        }
         <button
           type="button"
           mat-icon-button
@@ -124,9 +136,9 @@
     </sat-app-header>
 
     <mat-menu #headerSettingsMenu="matMenu">
-      <button mat-menu-item type="button">
-        <mat-icon>settings</mat-icon>
-        Feature Flags
+      <button mat-menu-item type="button" (click)="featureFlags.toggle()">
+        <mat-icon>{{ featureFlags.aiEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        AI Features {{ featureFlags.aiEnabled() ? 'On' : 'Off' }}
       </button>
       <button mat-menu-item type="button">
         <mat-icon>help_outline</mat-icon>
@@ -152,6 +164,149 @@
           (navigateKeepDrawer)="onNavigateKeepDrawer($event)"
           (signOutSelected)="signOut()"
         />
+      </mat-sidenav>
+
+      <mat-sidenav
+        mode="side"
+        position="end"
+        [opened]="featureFlags.aiEnabled() && aiChatOpen()"
+        (closed)="aiChatOpen.set(false)"
+        class="ai-chat-sidenav"
+      >
+        <div class="ai-chat-panel">
+          <div class="ai-chat-header">
+            <mat-icon class="ai-chat-header-icon">auto_awesome</mat-icon>
+            <span class="ai-chat-header-title">AI Assistant</span>
+            <button
+              mat-icon-button
+              class="ai-chat-clear"
+              (click)="clearAiChat()"
+              aria-label="Clear chat"
+            >
+              <mat-icon>delete_sweep</mat-icon>
+            </button>
+            <button mat-icon-button (click)="aiChatOpen.set(false)" aria-label="Close chat">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <div class="ai-chat-messages">
+            @if (!aiChat.hasMessages()) {
+              <div class="ai-chat-welcome">
+                <mat-icon class="ai-chat-welcome-icon">auto_awesome</mat-icon>
+                <h3>Nuxeo AI Assistant</h3>
+                <p>
+                  Ask me about your documents, search the repository, or get insights about
+                  workflows and tasks.
+                </p>
+                <div class="ai-chat-suggestions">
+                  <button
+                    class="ai-chat-suggestion"
+                    (click)="
+                      aiChatInput.set('What documents were modified today?'); sendAiMessage()
+                    "
+                  >
+                    What documents were modified today?
+                  </button>
+                  <button
+                    class="ai-chat-suggestion"
+                    (click)="aiChatInput.set('Summarize my pending tasks'); sendAiMessage()"
+                  >
+                    Summarize my pending tasks
+                  </button>
+                  <button
+                    class="ai-chat-suggestion"
+                    (click)="aiChatInput.set('Show me recent uploads'); sendAiMessage()"
+                  >
+                    Show me recent uploads
+                  </button>
+                </div>
+              </div>
+            }
+            @for (msg of aiChat.messages(); track msg.timestamp) {
+              <div
+                class="ai-chat-msg"
+                [class.user]="msg.role === 'user'"
+                [class.assistant]="msg.role === 'assistant'"
+              >
+                @if (msg.role === 'assistant') {
+                  <div class="ai-msg-avatar-wrap">
+                    <mat-icon class="ai-msg-avatar">auto_awesome</mat-icon>
+                  </div>
+                }
+                <div class="ai-msg-bubble">
+                  @if (msg.role === 'assistant') {
+                    <div class="ai-msg-content" [innerHTML]="msg.content | aiMarkdown"></div>
+                  } @else {
+                    <div class="ai-msg-content">{{ msg.content }}</div>
+                  }
+                  @if (msg.sources?.length) {
+                    <div class="ai-msg-sources">
+                      <div class="ai-sources-label">
+                        <mat-icon>link</mat-icon>
+                        Sources
+                      </div>
+                      @for (source of msg.sources!; track source.uid) {
+                        <button
+                          type="button"
+                          class="ai-source-card"
+                          [matTooltip]="source.path"
+                          matTooltipPosition="above"
+                          (click)="openAiSource(source.uid, source.type, source.path)"
+                        >
+                          <mat-icon class="ai-source-card-icon">{{
+                            docTypeIcon(source.title)
+                          }}</mat-icon>
+                          <span class="ai-source-card-info">
+                            <span class="ai-source-card-title">{{ source.title }}</span>
+                            <span class="ai-source-card-path">{{ source.path }}</span>
+                          </span>
+                          <mat-icon class="ai-source-card-arrow">open_in_new</mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            @if (aiChat.loading()) {
+              <div class="ai-chat-msg assistant">
+                <mat-icon class="ai-msg-avatar">auto_awesome</mat-icon>
+                <div class="ai-msg-bubble ai-msg-typing">
+                  <span class="typing-dot"></span>
+                  <span class="typing-dot"></span>
+                  <span class="typing-dot"></span>
+                </div>
+              </div>
+            }
+            @if (aiChat.error()) {
+              <div class="ai-chat-error">
+                <mat-icon>error_outline</mat-icon>
+                {{ aiChat.error() }}
+              </div>
+            }
+          </div>
+
+          <div class="ai-chat-input-bar">
+            <input
+              class="ai-chat-input"
+              type="text"
+              placeholder="Ask anything about your documents..."
+              [ngModel]="aiChatInput()"
+              (ngModelChange)="aiChatInput.set($event)"
+              (keydown.enter)="sendAiMessage()"
+              [disabled]="aiChat.loading()"
+            />
+            <button
+              mat-icon-button
+              class="ai-chat-send"
+              (click)="sendAiMessage()"
+              [disabled]="!aiChatInput().trim() || aiChat.loading()"
+            >
+              <mat-icon>send</mat-icon>
+            </button>
+          </div>
+        </div>
       </mat-sidenav>
 
       <mat-sidenav-content>

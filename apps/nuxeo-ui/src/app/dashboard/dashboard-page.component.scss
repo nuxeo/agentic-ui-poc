@@ -187,3 +187,266 @@
   color: #666;
   margin-top: 1px;
 }
+
+// ── AI Insights Banner ──
+.ai-insights-banner {
+  margin: 24px 24px 0;
+  padding: 20px 24px 24px;
+  background: linear-gradient(135deg, #f8f5ff 0%, #eef1ff 50%, #f5f8ff 100%);
+  border: 1px solid #e0d8f5;
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 160px;
+    height: 160px;
+    background: radial-gradient(circle, rgba(124, 77, 255, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+}
+
+.ai-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.ai-banner-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-banner-icon {
+  color: #7c4dff;
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.ai-banner-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1c2e;
+  letter-spacing: -0.02em;
+}
+
+.ai-banner-count {
+  font-size: 12px;
+  color: #7c4dff;
+  font-weight: 500;
+  background: rgba(124, 77, 255, 0.08);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.ai-banner-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 0;
+  color: #667085;
+  font-size: 13px;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #9aa0a9;
+  }
+}
+
+// KPI card row
+.ai-kpi-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 2px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.ai-kpi-card {
+  flex: 1 1 0;
+  min-width: 220px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid #e8eaef;
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  scroll-snap-align: start;
+  position: relative;
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    border-radius: 0 3px 3px 0;
+  }
+
+  &.high::after {
+    background: #d32f2f;
+  }
+  &.medium::after {
+    background: #ed6c02;
+  }
+  &.low::after {
+    background: #2e7d32;
+  }
+
+  &:hover {
+    box-shadow: 0 4px 16px rgb(0 0 0 / 8%);
+    transform: translateY(-2px);
+
+    .ai-kpi-arrow {
+      transform: translateX(2px);
+    }
+  }
+}
+
+.ai-kpi-card--skeleton {
+  pointer-events: none;
+  min-height: 100px;
+
+  .skeleton-bar {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.5s infinite;
+
+    &.wide {
+      width: 90%;
+    }
+    &.medium {
+      width: 60%;
+    }
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.ai-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ai-kpi-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &.high {
+    background: #fdecea;
+    color: #d32f2f;
+  }
+  &.medium {
+    background: #fff3e0;
+    color: #ed6c02;
+  }
+  &.low {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+}
+
+.ai-kpi-priority {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 4px;
+
+  &.high {
+    background: #fdecea;
+    color: #d32f2f;
+  }
+  &.medium {
+    background: #fff3e0;
+    color: #ed6c02;
+  }
+  &.low {
+    background: #e8f5e9;
+    color: #2e7d32;
+  }
+}
+
+.ai-kpi-text {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #344054;
+  margin: 0;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ai-kpi-action {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #7c4dff;
+  margin-top: auto;
+}
+
+.ai-kpi-arrow {
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  transition: transform 0.2s ease;
+}
+
+@media (max-width: 900px) {
+  .ai-insights-banner {
+    margin: 16px 16px 0;
+    padding: 16px;
+  }
+
+  .ai-kpi-card {
+    min-width: 200px;
+  }
+}

@@ -44,6 +44,55 @@
   font-size: 0.8125rem;
 }
 
+.ai-generate-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ai-nl-field {
+  flex: 1;
+}
+
+.ai-prefix-icon {
+  color: #7c4dff;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.ai-gen-btn {
+  min-height: 56px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #7c4dff 0%, #448aff 100%);
+  color: #fff;
+  font-weight: 500;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  mat-icon {
+    margin-right: 4px;
+  }
+
+  mat-spinner {
+    display: inline-block;
+    width: 18px !important;
+    height: 18px !important;
+    flex-shrink: 0;
+
+    svg {
+      width: 18px !important;
+      height: 18px !important;
+    }
+
+    circle {
+      stroke: #fff;
+    }
+  }
+}
+
 .nxql-actions {
   display: flex;
   justify-content: flex-end;

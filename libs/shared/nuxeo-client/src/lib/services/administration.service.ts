@@ -1,8 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, of, switchMap } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 
-import { AuditLogList } from '../models/audit.model';
+import { AuditEntry, AuditLogList } from '../models/audit.model';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoOAuth2Provider } from '../models/oauth.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
@@ -39,10 +39,13 @@ export class AdministrationService {
       .set('query', query)
       .set('pageSize', String(pageSize))
       .set('currentPageIndex', String(currentPageIndex));
-    return this.http.get<NuxeoDocumentList>(this.api.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'), {
-      params,
-      headers,
-    });
+    return this.http.get<NuxeoDocumentList>(
+      this.api.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
+      {
+        params,
+        headers,
+      },
+    );
   }
 
   /** Total documents matching the query (uses list metadata). */
@@ -88,31 +91,118 @@ export class AdministrationService {
       )
       .pipe(
         map((raw) => this.normalizeAuditResponse(raw)),
-        catchError(() =>
-          this.http.get<NuxeoDocument>(this.api.apiUrl('/nuxeo/api/v1/path/default-domain')).pipe(
-            switchMap((doc) =>
-              this.http.get<unknown>(
-                this.api.apiUrl(`/nuxeo/api/v1/id/${doc.uid}/@audit`),
-                {
-                  params: new HttpParams()
-                    .set('pageSize', String(params.pageSize))
-                    .set('currentPageIndex', String(params.currentPageIndex)),
-                },
-              ),
-            ),
-            map((raw) => this.normalizeAuditResponse(raw)),
-            catchError(() =>
-              of({
-                entries: [],
-                totalSize: 0,
-                currentPageSize: 0,
-                currentPageIndex: 0,
-                numberOfPages: 0,
-              }),
-            ),
-          ),
-        ),
+        catchError(() => this.auditFallback(params, named)),
       );
+  }
+
+  /**
+   * Fallback: fetch audit from multiple well-known documents, merge, deduplicate,
+   * apply client-side filters, and paginate.
+   */
+  private auditFallback(
+    params: {
+      pageSize: number;
+      currentPageIndex: number;
+      principalName?: string;
+      from?: string | null;
+      to?: string | null;
+      eventIds?: string[];
+      category?: string;
+    },
+    _named: Record<string, string | string[]>,
+  ): Observable<AuditLogList> {
+    const batchSize = 500;
+    return this.http.get<NuxeoDocument>(this.api.apiUrl('/nuxeo/api/v1/path/default-domain')).pipe(
+      switchMap((doc) => {
+        const domainUid = doc.uid;
+        const auditUrl = (uid: string) => this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@audit`);
+        const auditParams = new HttpParams()
+          .set('pageSize', String(batchSize))
+          .set('currentPageIndex', '0');
+
+        return forkJoin([
+          this.http
+            .get<unknown>(auditUrl(domainUid), { params: auditParams })
+            .pipe(catchError(() => of({ entries: [] }))),
+          this.nxqlSearch(
+            "SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ORDER BY dc:modified DESC",
+            10,
+            0,
+          ).pipe(
+            switchMap((docs) => {
+              const uids = (docs.entries ?? []).map((d) => d.uid).filter(Boolean);
+              if (!uids.length) return of([] as unknown[]);
+              return forkJoin(
+                uids.map((uid) =>
+                  this.http
+                    .get<unknown>(auditUrl(uid), { params: auditParams })
+                    .pipe(catchError(() => of({ entries: [] }))),
+                ),
+              );
+            }),
+            catchError(() => of([] as unknown[])),
+          ),
+        ]);
+      }),
+      map(([domainRaw, docRawList]) => {
+        const domainEntries = this.normalizeAuditResponse(domainRaw).entries ?? [];
+        const docEntries = (docRawList as unknown[]).flatMap(
+          (raw) => this.normalizeAuditResponse(raw).entries ?? [],
+        );
+
+        const seen = new Set<number>();
+        const merged: AuditEntry[] = [];
+        for (const e of [...docEntries, ...domainEntries]) {
+          if (!seen.has(e.id)) {
+            seen.add(e.id);
+            merged.push(e);
+          }
+        }
+
+        let filtered = merged;
+        if (params.principalName) {
+          const p = params.principalName.toLowerCase();
+          filtered = filtered.filter((e) => e.principalName?.toLowerCase().includes(p));
+        }
+        if (params.eventIds?.length) {
+          const ids = new Set(params.eventIds);
+          filtered = filtered.filter((e) => ids.has(e.eventId));
+        }
+        if (params.category) {
+          filtered = filtered.filter((e) => e.category === params.category);
+        }
+        if (params.from) {
+          const fromMs = new Date(params.from).getTime();
+          filtered = filtered.filter((e) => new Date(e.eventDate).getTime() >= fromMs);
+        }
+        if (params.to) {
+          const toMs = new Date(params.to).getTime();
+          filtered = filtered.filter((e) => new Date(e.eventDate).getTime() <= toMs);
+        }
+
+        filtered.sort((a, b) => new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime());
+
+        const start = params.currentPageIndex * params.pageSize;
+        const page = filtered.slice(start, start + params.pageSize);
+
+        return {
+          entries: page,
+          totalSize: filtered.length,
+          currentPageSize: page.length,
+          currentPageIndex: params.currentPageIndex,
+          numberOfPages: Math.ceil(filtered.length / params.pageSize),
+        } as AuditLogList;
+      }),
+      catchError(() =>
+        of({
+          entries: [],
+          totalSize: 0,
+          currentPageSize: 0,
+          currentPageIndex: 0,
+          numberOfPages: 0,
+        } as AuditLogList),
+      ),
+    );
   }
 
   private normalizeAuditResponse(raw: unknown): AuditLogList {
@@ -135,12 +225,14 @@ export class AdministrationService {
   }
 
   listOAuth2Providers(): Observable<NuxeoOAuth2Provider[]> {
-    return this.http.get<NuxeoOAuth2Provider[] | { entries?: NuxeoOAuth2Provider[] }>(
-      this.api.apiUrl('/nuxeo/api/v1/oauth2/provider'),
-    ).pipe(
-      map((res) => (Array.isArray(res) ? res : res.entries ?? [])),
-      catchError(() => of([])),
-    );
+    return this.http
+      .get<
+        NuxeoOAuth2Provider[] | { entries?: NuxeoOAuth2Provider[] }
+      >(this.api.apiUrl('/nuxeo/api/v1/oauth2/provider'))
+      .pipe(
+        map((res) => (Array.isArray(res) ? res : (res.entries ?? []))),
+        catchError(() => of([])),
+      );
   }
 
   /**
@@ -148,9 +240,9 @@ export class AdministrationService {
    */
   listDirectoryNames(): Observable<string[]> {
     return this.http
-      .get<{ directoryNames?: string[]; entries?: Array<{ name: string }> } | string[]>(
-        this.api.apiUrl('/nuxeo/api/v1/config/directory'),
-      )
+      .get<
+        { directoryNames?: string[]; entries?: Array<{ name: string }> } | string[]
+      >(this.api.apiUrl('/nuxeo/api/v1/config/directory'))
       .pipe(
         map((res) => {
           if (Array.isArray(res)) return res as string[];

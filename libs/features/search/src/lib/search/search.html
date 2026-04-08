@@ -1,4 +1,86 @@
 <div class="results-page">
+  <!-- AI Search Bar -->
+  @if (featureFlags.aiEnabled()) {
+    <div class="ai-search-section">
+      <div class="ai-search-header">
+        <button
+          mat-flat-button
+          class="ai-toggle-btn"
+          [class.active]="aiSearchMode()"
+          (click)="toggleAiSearch()"
+        >
+          <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
+          {{ aiSearchMode() ? 'AI Search Active' : 'AI Search' }}
+        </button>
+        @if (aiSearchMode() && aiGeneratedNxql()) {
+          <button
+            mat-stroked-button
+            class="nxql-toggle-btn"
+            (click)="showNxqlPanel.set(!showNxqlPanel())"
+          >
+            <mat-icon>code</mat-icon>
+            {{ showNxqlPanel() ? 'Hide Query' : 'View Query' }}
+          </button>
+        }
+      </div>
+
+      @if (aiSearchMode()) {
+        <div class="ai-search-bar">
+          <mat-icon class="ai-search-icon">auto_awesome</mat-icon>
+          <input
+            class="ai-search-input"
+            type="text"
+            placeholder="Ask in natural language... e.g. 'PDFs uploaded last week by Administrator'"
+            [ngModel]="aiQuery()"
+            (ngModelChange)="onAiQueryInput($event)"
+            (keydown.enter)="executeAiSearch()"
+            [matAutocomplete]="aiAutoComplete"
+          />
+          @if (aiLoading()) {
+            <mat-spinner diameter="20" class="ai-search-spinner"></mat-spinner>
+          } @else {
+            <button
+              mat-icon-button
+              class="ai-search-go"
+              (click)="executeAiSearch()"
+              [disabled]="!aiQuery().trim()"
+            >
+              <mat-icon>send</mat-icon>
+            </button>
+          }
+          <mat-autocomplete
+            #aiAutoComplete="matAutocomplete"
+            (optionSelected)="selectAiSuggestion($event.option.value)"
+          >
+            @for (suggestion of aiSuggestions(); track suggestion) {
+              <mat-option [value]="suggestion">
+                <mat-icon class="suggestion-icon">auto_awesome</mat-icon>
+                {{ suggestion }}
+              </mat-option>
+            }
+          </mat-autocomplete>
+        </div>
+
+        @if (aiError()) {
+          <div class="ai-error">
+            <mat-icon>error_outline</mat-icon>
+            {{ aiError() }}
+          </div>
+        }
+
+        @if (showNxqlPanel() && aiGeneratedNxql()) {
+          <div class="ai-nxql-panel">
+            <div class="ai-nxql-explanation">
+              <mat-icon>info_outline</mat-icon>
+              <span>{{ aiExplanation() }}</span>
+            </div>
+            <pre class="ai-nxql-code">{{ aiGeneratedNxql() }}</pre>
+          </div>
+        }
+      }
+    </div>
+  }
+
   <div class="results-top-actions">
     @if (hasSavableFilters()) {
       <button

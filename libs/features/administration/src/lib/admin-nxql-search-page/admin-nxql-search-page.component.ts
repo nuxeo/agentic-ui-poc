@@ -10,10 +10,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 
 import { AdministrationService, NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 const DEFAULT_NXQL =
   "SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 " +
-  "AND ecm:isVersion = 0 AND ecm:isTrashed = 0";
+  'AND ecm:isVersion = 0 AND ecm:isTrashed = 0';
 
 @Component({
   selector: 'lib-admin-nxql-search-page',
@@ -34,8 +35,13 @@ const DEFAULT_NXQL =
 })
 export class AdminNxqlSearchPageComponent {
   private readonly adminService = inject(AdministrationService);
+  private readonly aiGateway = inject(AiGatewayService);
+  readonly featureFlags = inject(AiFeatureFlagService);
 
   queryText = DEFAULT_NXQL;
+  aiNlQuery = '';
+  aiGenerating = signal(false);
+  aiGenError = signal<string | null>(null);
   results = signal<NuxeoDocument[]>([]);
   totalSize = signal(0);
   loading = signal(false);
@@ -85,5 +91,22 @@ export class AdminNxqlSearchPageComponent {
       ev.preventDefault();
       this.runSearch();
     }
+  }
+
+  generateFromNl(): void {
+    const q = this.aiNlQuery.trim();
+    if (!q) return;
+    this.aiGenerating.set(true);
+    this.aiGenError.set(null);
+    this.aiGateway.nlToNxql(q).subscribe({
+      next: (res) => {
+        this.queryText = res.nxql;
+        this.aiGenerating.set(false);
+      },
+      error: (err) => {
+        this.aiGenError.set(err?.error?.error ?? 'AI generation failed');
+        this.aiGenerating.set(false);
+      },
+    });
   }
 }

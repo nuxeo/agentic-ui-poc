@@ -1,12 +1,25 @@
-import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  Pipe,
+  PipeTransform,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, debounceTime, distinctUntilChanged, filter, finalize, of, switchMap } from 'rxjs';
+import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { SatAppHeaderModule } from '@hylandsoftware/satori-ui/app-header';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import {
@@ -20,6 +33,41 @@ import {
   type GlobalSearchSuggestion,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
+import { AiChatService, AiFeatureFlagService, type ChatEntry } from '@agentic-ui/shared/ai-client';
+
+@Pipe({ name: 'aiMarkdown', standalone: true })
+export class AiMarkdownPipe implements PipeTransform {
+  private readonly sanitizer = inject(DomSanitizer);
+
+  transform(value: string): SafeHtml {
+    let html = this.escapeHtml(value);
+
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    html = html.replace(/^(\d+)\.\s+(.*)$/gm, '<li class="ai-ol-item" value="$1">$2</li>');
+    html = html.replace(
+      /((?:<li class="ai-ol-item"[^>]*>.*?<\/li>\n?)+)/g,
+      '<ol class="ai-list">$1</ol>',
+    );
+
+    html = html.replace(/^[-•]\s+(.*)$/gm, '<li class="ai-ul-item">$1</li>');
+    html = html.replace(
+      /((?:<li class="ai-ul-item">.*?<\/li>\n?)+)/g,
+      '<ul class="ai-list">$1</ul>',
+    );
+
+    html = html.replace(/\n/g, '<br>');
+    html = html.replace(/(<\/?(?:ol|ul|li)[^>]*>)<br>/g, '$1');
+    html = html.replace(/<br>(<\/?(?:ol|ul|li)[^>]*>)/g, '$1');
+
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  private escapeHtml(text: string): string {
+    const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+    return text.replace(/[&<>"]/g, (c) => map[c]);
+  }
+}
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
@@ -37,8 +85,11 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
     MatIconModule,
     MatSnackBarModule,
     MatSidenavModule,
+    MatTooltipModule,
     NavDrawerComponent,
     SelectionTopbarComponent,
+    FormsModule,
+    AiMarkdownPipe,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -61,6 +112,11 @@ export class AppShellComponent {
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
   private readonly searchService = inject(SearchService);
+  readonly aiChat = inject(AiChatService);
+  readonly featureFlags = inject(AiFeatureFlagService);
+
+  readonly aiChatOpen = this.aiChat.panelOpen;
+  readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
   /** Hides Administration for non-administrators. */
@@ -155,9 +211,9 @@ export class AppShellComponent {
           this.globalSearchLoading.set(true);
           this.globalSearchError.set(null);
 
-          return this.searchService.suggestFromSuggestersLauncher(term).pipe(
-            finalize(() => this.globalSearchLoading.set(false)),
-          );
+          return this.searchService
+            .suggestFromSuggestersLauncher(term)
+            .pipe(finalize(() => this.globalSearchLoading.set(false)));
         }),
         takeUntilDestroyed(),
       )
@@ -419,5 +475,53 @@ export class AppShellComponent {
     this.activeDrawerItem.set(null);
     this.auth.logout();
     void this.router.navigateByUrl('/login');
+  }
+
+  toggleAiChat(): void {
+    this.aiChat.togglePanel();
+    const url = this.router.url;
+    const docMatch = url.match(/\/doc\/([a-f0-9-]+)/i);
+    this.aiChat.setContext({
+      docId: docMatch?.[1],
+      page: url,
+    });
+  }
+
+  sendAiMessage(): void {
+    const msg = this.aiChatInput().trim();
+    if (!msg) return;
+    this.aiChat.send(msg);
+    this.aiChatInput.set('');
+  }
+
+  clearAiChat(): void {
+    this.aiChat.clear();
+  }
+
+  openAiSource(uid: string, type?: string, path?: string): void {
+    this.aiChatOpen.set(false);
+    if (type === 'Collection') {
+      void this.router.navigate(['/collections', uid]);
+    } else if ((type === 'Folder' || type === 'OrderedFolder' || type === 'Workspace') && path) {
+      void this.router.navigateByUrl(`/browse${path}`);
+    } else {
+      void this.router.navigate(['/doc', uid]);
+    }
+  }
+
+  docTypeIcon(title: string): string {
+    const lower = (title ?? '').toLowerCase();
+    if (
+      /\.(png|jpe?g|gif|svg|webp|bmp|tiff?)$/i.test(lower) ||
+      lower.includes('picture') ||
+      lower.includes('screenshot')
+    )
+      return 'image';
+    if (/\.(pdf)$/i.test(lower)) return 'picture_as_pdf';
+    if (/\.(xlsx?|csv)$/i.test(lower) || lower.includes('spreadsheet')) return 'table_chart';
+    if (/\.(pptx?)$/i.test(lower) || lower.includes('presentation')) return 'slideshow';
+    if (lower.includes('collection')) return 'folder_special';
+    if (lower.includes('folder') || lower.includes('workspace')) return 'folder';
+    return 'description';
   }
 }

@@ -1,0 +1,38 @@
+---
+description: Keep AI features documentation in sync with code changes
+globs:
+  - apps/ai-backend/src/**/*.ts
+  - libs/shared/ai-client/src/**/*.ts
+  - libs/features/search/src/lib/search/search.ts
+  - libs/features/document-detail/src/lib/document-detail/document-detail.ts
+  - apps/nuxeo-ui/src/app/shell/app-shell.component.ts
+  - apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts
+  - libs/features/administration/src/lib/admin-analytics-page/*.ts
+  - libs/features/administration/src/lib/admin-nxql-search-page/*.ts
+alwaysApply: false
+---
+
+# AI Features Documentation Rule
+
+The application includes the following AI features (all powered by OpenAI via `apps/ai-backend`):
+
+1. **Natural Language Search** — Convert plain English to NXQL queries (Search page + Admin NXQL page)
+2. **Document Summarization** — AI-generated summary with key points (Document Detail > AI Insights tab)
+3. **AI Tag Suggestions** — Recommend tags with confidence scores, one-click apply (Document Detail > AI Insights tab)
+4. **Document Classification** — Suggest description, nature, subjects, workflow (Document Detail > AI Insights tab)
+5. **Similar Documents** — Find related documents via embeddings + cosine similarity (Document Detail > AI Insights tab)
+6. **AI Chat Assistant** — RAG-powered conversational assistant with context awareness (App header drawer)
+7. **Dashboard AI Insights** — Personalized actionable insights based on tasks and activity (Dashboard widget)
+8. **Audit Anomaly Detection** — AI analysis of audit events for security anomalies (Admin > Analytics tab)
+9. **Comment Sentiment Analysis** — Classify comment sentiment and summarize threads (API ready)
+10. **Natural Language Permission Queries** — Answer "who can access what" questions via ACL analysis (API ready)
+
+When modifying any AI-related code (backend routes, Angular AI components, AI client services), you MUST also update `docs/ai-features.md` to reflect the changes.
+
+Specifically:
+- If you add, remove, or rename an API endpoint, update the corresponding feature section and the Project Structure listing.
+- If you change request/response shapes, update the API examples in the relevant feature section.
+- If you add a new AI feature, add a new numbered section following the existing format (heading, location, description, table of files, API example).
+- If you change which OpenAI model a feature uses, update the Models Used table.
+- If you add new environment variables, update the Environment Variables table.
+- If you modify the project structure (new files/folders), update the Project Structure tree.

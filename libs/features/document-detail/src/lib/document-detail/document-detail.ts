@@ -40,10 +40,20 @@ import {
   CURRENT_USERNAME,
   avatarColor,
   ARenderService,
+  TagService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { SatTagModule, SatTagCategory } from '@hylandsoftware/satori-ui/tag';
+import {
+  AiGatewayService,
+  AiChatService,
+  AiFeatureFlagService,
+  type SummarizeResponse,
+  type SuggestedTag,
+  type ClassifyResponse,
+  type SimilarDoc,
+} from '@agentic-ui/shared/ai-client';
 import DOMPurify from 'dompurify';
 import { forkJoin, Observable } from 'rxjs';
 import {
@@ -133,6 +143,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly arenderService = inject(ARenderService);
+  private readonly tagService = inject(TagService);
+  private readonly aiGateway = inject(AiGatewayService);
+  private readonly aiChatService = inject(AiChatService);
+  readonly featureFlags = inject(AiFeatureFlagService);
 
   /** Programmatic tab switches (e.g. Publishing link). */
   private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
@@ -160,6 +174,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
   private docUid = '';
+
+  // AI Insights state
+  readonly aiSummary = signal<SummarizeResponse | null>(null);
+  readonly aiSummaryLoading = signal(false);
+  readonly aiSuggestedTags = signal<SuggestedTag[]>([]);
+  readonly aiTagsLoading = signal(false);
+  readonly aiClassification = signal<ClassifyResponse | null>(null);
+  readonly aiClassifyLoading = signal(false);
+  readonly aiSimilarDocs = signal<SimilarDoc[]>([]);
+  readonly aiSimilarLoading = signal(false);
+  readonly aiError = signal<string | null>(null);
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -516,6 +541,90 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.panelSubTab.set('properties');
   }
 
+  generateSummary(): void {
+    if (!this.docUid) return;
+    this.aiSummaryLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.summarize(this.docUid).subscribe({
+      next: (res) => {
+        this.aiSummary.set(res);
+        this.aiSummaryLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Summary generation failed');
+        this.aiSummaryLoading.set(false);
+      },
+    });
+  }
+
+  suggestTags(): void {
+    if (!this.docUid) return;
+    this.aiTagsLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.suggestTags(this.docUid).subscribe({
+      next: (res) => {
+        this.aiSuggestedTags.set(res.tags);
+        this.aiTagsLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Tag suggestion failed');
+        this.aiTagsLoading.set(false);
+      },
+    });
+  }
+
+  applyAiTag(tagLabel: string): void {
+    if (!this.docUid) return;
+    this.tagService.addTag(this.docUid, tagLabel).subscribe({
+      next: () => {
+        this.aiSuggestedTags.update((tags) => tags.filter((t) => t.label !== tagLabel));
+        this.snackBar.open(`Tag "${tagLabel}" applied`, 'OK', { duration: 3000 });
+      },
+      error: () => this.snackBar.open('Failed to apply tag', 'Dismiss', { duration: 3000 }),
+    });
+  }
+
+  classifyDocument(): void {
+    if (!this.docUid) return;
+    this.aiClassifyLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.classify(this.docUid).subscribe({
+      next: (res) => {
+        this.aiClassification.set(res);
+        this.aiClassifyLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Classification failed');
+        this.aiClassifyLoading.set(false);
+      },
+    });
+  }
+
+  findSimilar(): void {
+    if (!this.docUid) return;
+    this.aiSimilarLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.findSimilar(this.docUid).subscribe({
+      next: (res) => {
+        this.aiSimilarDocs.set(res.documents);
+        this.aiSimilarLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Similar doc search failed');
+        this.aiSimilarLoading.set(false);
+      },
+    });
+  }
+
+  navigateToDoc(uid: string): void {
+    void this.router.navigateByUrl(`/doc/${uid}`);
+  }
+
+  openAiAssistant(): void {
+    const docId = this.route.snapshot.paramMap.get('uid') ?? undefined;
+    this.aiChatService.openPanel({ docId, page: this.router.url });
+  }
+
   ngOnDestroy(): void {
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
@@ -709,7 +818,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     const fc = doc.properties['file:content'] as Record<string, unknown> | null;
     if (!fc) {
-      this.loadPreviewFallback(doc);
+      const noPreviewTypes = [
+        'Collection',
+        'Folder',
+        'Workspace',
+        'Domain',
+        'Section',
+        'OrderedFolder',
+      ];
+      if (!noPreviewTypes.includes(doc.type)) {
+        this.loadPreviewFallback(doc);
+      }
       return;
     }
 
