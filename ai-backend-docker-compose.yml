@@ -1,0 +1,35 @@
+# AI Backend service for Nuxeo Agentic UI
+# Runs alongside the ARender stack (arender-docker-compose.yml) on the same nuxeo-net network.
+#
+# Setup:
+#   1. Copy apps/ai-backend/.env.example to .env.ai-backend and fill in the values.
+#   2. Build:  docker compose -f ai-backend-docker-compose.yml build
+#   3. Start:  docker compose -f ai-backend-docker-compose.yml up -d
+#
+# The Angular UI (nginx) must proxy /ai/* to http://ai-backend:3000
+# See nginx config snippet in apps/ai-backend/.env.example for reference.
+
+services:
+  ai-backend:
+    build:
+      context: .
+      dockerfile: apps/ai-backend/Dockerfile
+    container_name: ai-backend
+    restart: unless-stopped
+    env_file: .env.ai-backend
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - nuxeo-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/ai/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  nuxeo-net:
+    external: true
