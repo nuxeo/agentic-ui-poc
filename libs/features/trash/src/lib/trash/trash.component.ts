@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { of, finalize, filter, switchMap } from 'rxjs';
+import { of, finalize, filter, switchMap, map } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { SaveSearchDialogComponent } from '../save-search-dialog/save-search-dialog.component';
@@ -253,22 +253,25 @@ export class TrashComponent {
         },
       })
       .afterClosed()
-      .subscribe((newTitle) => {
-        const trimmedTitle = newTitle?.trim();
-        if (!trimmedTitle) return;
-
-        this.trashService
-          .updateSearch(uid, trimmedTitle, this.buildFilterParams())
-          .subscribe({
-            next: () => {
-              this.trashFilterService.activeSavedFilterTitle.set(trimmedTitle);
-              this.trashFilterService.markSavedSearchDirty();
-              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', { duration: 3000 });
-            },
-            error: () => {
-              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
-            },
-          });
+      .pipe(
+        map((newTitle: unknown) => (typeof newTitle === 'string' ? newTitle.trim() : '')),
+        filter((trimmedTitle): trimmedTitle is string => !!trimmedTitle),
+        switchMap((trimmedTitle) =>
+          this.trashService
+            .updateSearch(uid, trimmedTitle, this.buildFilterParams())
+            .pipe(map(() => trimmedTitle)),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (trimmedTitle) => {
+          this.trashFilterService.activeSavedFilterTitle.set(trimmedTitle);
+          this.trashFilterService.markSavedSearchDirty();
+          this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', { duration: 3000 });
+        },
+        error: () => {
+          this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+        },
       });
   }
 
@@ -280,9 +283,14 @@ export class TrashComponent {
     // Copy link to clipboard for sharing
     const searchUrl = new URL(window.location.href);
     const link = searchUrl.toString();
-    navigator.clipboard.writeText(link).then(() => {
-      this.snackBar.open('Search link copied to clipboard.', 'OK', { duration: 3000 });
-    });
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        this.snackBar.open('Search link copied to clipboard.', 'OK', { duration: 3000 });
+      })
+      .catch(() => {
+        this.snackBar.open('Failed to copy search link.', 'Dismiss', { duration: 5000 });
+      });
   }
 
   onDeleteSelectedSavedSearch(): void {
@@ -298,24 +306,30 @@ export class TrashComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
-      if (!confirmed) return;
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
 
-      this.deletingSavedSearch.set(true);
-      this.searchService
-        .deleteSavedSearch(uid)
-        .pipe(finalize(() => this.deletingSavedSearch.set(false)))
-        .subscribe({
-          next: () => {
-            this.trashFilterService.reset();
-            this.trashFilterService.markSavedSearchDirty();
-            this.snackBar.open(`Search "${title}" deleted.`, 'OK', { duration: 3000 });
-          },
-          error: () => {
-            this.snackBar.open('Failed to delete search.', 'Dismiss', { duration: 5000 });
-          },
-        });
-    });
+        this.deletingSavedSearch.set(true);
+        this.searchService
+          .deleteSavedSearch(uid)
+          .pipe(
+            takeUntilDestroyed(this.destroyRef),
+            finalize(() => this.deletingSavedSearch.set(false)),
+          )
+          .subscribe({
+            next: () => {
+              this.trashFilterService.reset();
+              this.trashFilterService.markSavedSearchDirty();
+              this.snackBar.open(`Search "${title}" deleted.`, 'OK', { duration: 3000 });
+            },
+            error: () => {
+              this.snackBar.open('Failed to delete search.', 'Dismiss', { duration: 5000 });
+            },
+          });
+      });
   }
 
   private buildFilterParams(): Record<string, unknown> {

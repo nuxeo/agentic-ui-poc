@@ -866,18 +866,27 @@ export class SearchComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
-      if (!confirmed) return;
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
 
-      this.searchService.deleteSavedSearch(id).subscribe({
-        next: () => {
-          this.searchAggregationService.selectedSavedSearchId.set('');
-          this.searchAggregationService.selectedSavedSearchTitle.set('');
-          this.searchAggregationService.drawerFilters.set({});
-          this.searchAggregationService.markSavedSearchDirty();
-        },
+        this.searchService
+          .deleteSavedSearch(id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.searchAggregationService.selectedSavedSearchId.set('');
+              this.searchAggregationService.selectedSavedSearchTitle.set('');
+              this.searchAggregationService.drawerFilters.set({});
+              this.searchAggregationService.markSavedSearchDirty();
+            },
+            error: (error) => {
+              console.error('Failed to delete saved search.', error);
+            },
+          });
       });
-    });
   }
 
   private buildSavedSearchParamsFromFilters(): Record<string, string> {

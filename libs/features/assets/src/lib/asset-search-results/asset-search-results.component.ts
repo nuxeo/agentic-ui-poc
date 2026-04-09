@@ -821,34 +821,43 @@ export class AssetSearchResultsComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
-      if (!confirmed) return;
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
 
-      this.deletingSavedSearch.set(true);
-      this.searchService
-        .deleteSavedSearch(id)
-        .pipe(finalize(() => this.deletingSavedSearch.set(false)))
-        .subscribe({
-          next: () => {
-            this.aggregationService.selectedSavedSearchId.set('');
-            this.aggregationService.selectedSavedSearchTitle.set('');
-            this.aggregationService.markSavedSearchDirty();
+        this.deletingSavedSearch.set(true);
+        this.searchService
+          .deleteSavedSearch(id)
+          .pipe(
+            takeUntilDestroyed(this.destroyRef),
+            finalize(() => this.deletingSavedSearch.set(false)),
+          )
+          .subscribe({
+            next: () => {
+              this.aggregationService.selectedSavedSearchId.set('');
+              this.aggregationService.selectedSavedSearchTitle.set('');
+              this.aggregationService.markSavedSearchDirty();
 
-            void this.router.navigate(['/documents'], {
-              queryParams: {
-                'asset-type': null,
-                'asset-format': null,
-                'asset-width': null,
-                'asset-height': null,
-                'color-profile': null,
-                'color-depth': null,
-                'video-duration': null,
-                ecm_fulltext: null,
-              },
-            });
-          },
-        });
-    });
+              void this.router.navigate(['/documents'], {
+                queryParams: {
+                  'asset-type': null,
+                  'asset-format': null,
+                  'asset-width': null,
+                  'asset-height': null,
+                  'color-profile': null,
+                  'color-depth': null,
+                  'video-duration': null,
+                  ecm_fulltext: null,
+                },
+              });
+            },
+            error: (error) => {
+              console.error('Failed to delete saved search.', error);
+            },
+          });
+      });
   }
 
   private buildSavedSearchParamsFromQuery(): Record<string, string> {

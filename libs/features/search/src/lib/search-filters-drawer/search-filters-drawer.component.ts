@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked, DestroyRef } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
@@ -57,6 +57,7 @@ export class SearchFiltersDrawerComponent {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly viewMode = signal<DrawerViewMode>(this.loadViewModeFromStorage());
   readonly selectedDocumentId = signal<string>('');
@@ -213,11 +214,6 @@ export class SearchFiltersDrawerComponent {
     });
 
     effect(() => {
-      const fulltext = (this.searchAggregationService.drawerFilters()['ecm_fulltext'] ?? '').trim();
-      this.secondarySearchInput.set(fulltext);
-    });
-
-    effect(() => {
       const drawerFilters = this.searchAggregationService.drawerFilters();
 
       this.query.set((drawerFilters['q'] ?? '').trim());
@@ -253,15 +249,30 @@ export class SearchFiltersDrawerComponent {
 
         if (!hasDrawerFilters && !this.restoringSavedSearchFilters()) {
           this.restoringSavedSearchFilters.set(true);
-          this.searchService.getSavedSearchById(savedSearchId).subscribe({
-            next: (params) => {
-              this.applySavedSearchParams(params);
-              this.restoringSavedSearchFilters.set(false);
-            },
-            error: () => {
-              this.restoringSavedSearchFilters.set(false);
-            },
-          });
+          this.searchService
+            .getSavedSearchById(savedSearchId)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (params) => {
+                const currentSavedSearchId =
+                  this.searchAggregationService.selectedSavedSearchId().trim();
+                if (currentSavedSearchId !== savedSearchId) {
+                  return;
+                }
+
+                this.applySavedSearchParams(params);
+                this.restoringSavedSearchFilters.set(false);
+              },
+              error: () => {
+                const currentSavedSearchId =
+                  this.searchAggregationService.selectedSavedSearchId().trim();
+                if (currentSavedSearchId !== savedSearchId) {
+                  return;
+                }
+
+                this.restoringSavedSearchFilters.set(false);
+              },
+            });
         }
 
         return;
