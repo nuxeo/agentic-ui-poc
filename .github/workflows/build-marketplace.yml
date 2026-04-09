@@ -94,7 +94,7 @@ jobs:
           SATORI_GH_READONLY_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
 
       - name: Build Angular application
-        run: npx nx build nuxeo-ui --configuration=production
+        run: npx nx build nuxeo-ui --configuration=production --base-href=/nuxeo/agentic-ui/
 
       - name: Build Maven package
         run: |
