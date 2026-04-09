@@ -5,6 +5,7 @@ import { DatePipe } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -21,6 +22,7 @@ import {
   TrashService,
   TrashFilterService,
   SelectionService,
+  SearchService,
   DocumentDetailService,
   docTypeIcon,
   type NuxeoDocument,
@@ -70,6 +72,7 @@ const SORTABLE_COLUMNS = new Set(['title', 'modified', 'contributor', 'created',
     MatProgressSpinnerModule,
     MatSelectModule,
     MatSnackBarModule,
+    MatMenuModule,
     MatDialogModule,
     SatTagModule,
   ],
@@ -83,6 +86,7 @@ export class TrashComponent {
   private readonly dialog = inject(MatDialog);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly trashService = inject(TrashService);
+  private readonly searchService = inject(SearchService);
   private readonly detailService = inject(DocumentDetailService);
   readonly trashFilterService = inject(TrashFilterService);
   readonly selectionService = inject(SelectionService);
@@ -124,6 +128,7 @@ export class TrashComponent {
   readonly actionInProgress = signal<Set<string>>(new Set());
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   readonly saving = signal(false);
+  readonly deletingSavedSearch = signal(false);
 
   constructor() {
     effect(
@@ -205,6 +210,7 @@ export class TrashComponent {
         if (!result) return;
         this.trashFilterService.activeSavedFilterUid.set(result.uid);
         this.trashFilterService.activeSavedFilterTitle.set(result.title);
+        this.trashFilterService.markSavedSearchDirty();
         this.snackBar.open(`Search "${result.title}" saved.`, 'OK', { duration: 3000 });
       });
   }
@@ -227,7 +233,77 @@ export class TrashComponent {
       )
       .subscribe((result) => {
         if (!result) return;
+        this.trashFilterService.markSavedSearchDirty();
         this.snackBar.open(`Search "${title}" updated.`, 'OK', { duration: 3000 });
+      });
+  }
+
+  onEditSelectedSavedSearch(): void {
+    const uid = this.trashFilterService.activeSavedFilterUid();
+    const title = this.trashFilterService.activeSavedFilterTitle();
+    if (!uid || !title) return;
+
+    this.dialog
+      .open(SaveSearchDialogComponent, {
+        data: {
+          title: 'Edit Saved Search',
+          placeholder: 'Enter a name for your saved search',
+          initialValue: title.trim(),
+        },
+      })
+      .afterClosed()
+      .subscribe((newTitle) => {
+        const trimmedTitle = newTitle?.trim();
+        if (!trimmedTitle) return;
+
+        this.trashService
+          .updateSearch(uid, trimmedTitle, this.buildFilterParams())
+          .subscribe({
+            next: () => {
+              this.trashFilterService.activeSavedFilterTitle.set(trimmedTitle);
+              this.trashFilterService.markSavedSearchDirty();
+              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', { duration: 3000 });
+            },
+            error: () => {
+              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
+            },
+          });
+      });
+  }
+
+  onShareSelectedSavedSearch(): void {
+    const uid = this.trashFilterService.activeSavedFilterUid();
+    const title = this.trashFilterService.activeSavedFilterTitle();
+    if (!uid || !title) return;
+
+    // Copy link to clipboard for sharing
+    const searchUrl = new URL(window.location.href);
+    const link = searchUrl.toString();
+    navigator.clipboard.writeText(link).then(() => {
+      this.snackBar.open('Search link copied to clipboard.', 'OK', { duration: 3000 });
+    });
+  }
+
+  onDeleteSelectedSavedSearch(): void {
+    const uid = this.trashFilterService.activeSavedFilterUid();
+    const title = this.trashFilterService.activeSavedFilterTitle();
+    if (!uid || !title || this.deletingSavedSearch()) return;
+
+    if (!window.confirm(`Delete saved search "${title.trim()}"?`)) return;
+
+    this.deletingSavedSearch.set(true);
+    this.searchService
+      .deleteSavedSearch(uid)
+      .pipe(finalize(() => this.deletingSavedSearch.set(false)))
+      .subscribe({
+        next: () => {
+          this.trashFilterService.reset();
+          this.trashFilterService.markSavedSearchDirty();
+          this.snackBar.open(`Search "${title}" deleted.`, 'OK', { duration: 3000 });
+        },
+        error: () => {
+          this.snackBar.open('Failed to delete search.', 'Dismiss', { duration: 5000 });
+        },
       });
   }
 

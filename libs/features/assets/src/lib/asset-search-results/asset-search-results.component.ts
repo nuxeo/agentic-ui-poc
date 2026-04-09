@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal, DestroyRef, effect } from '@angular/core';
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
-import { switchMap, map, catchError, of, tap } from 'rxjs';
+import { switchMap, map, catchError, of, tap, finalize } from 'rxjs';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -307,6 +307,7 @@ export class AssetSearchResultsComponent {
   readonly error = signal<string | null>(null);
   readonly selectedSavedSearchId = this.aggregationService.selectedSavedSearchId;
   readonly selectedSavedSearchTitle = this.aggregationService.selectedSavedSearchTitle;
+  readonly deletingSavedSearch = signal(false);
 
   private readonly assets$ = this.route.queryParamMap.pipe(
     tap(() => {
@@ -727,6 +728,7 @@ export class AssetSearchResultsComponent {
               this.aggregationService.selectedSavedSearchTitle.set(
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
+              this.aggregationService.markSavedSearchDirty();
             },
           });
       });
@@ -754,6 +756,7 @@ export class AssetSearchResultsComponent {
       .subscribe({
         next: () => {
           this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
+          this.aggregationService.markSavedSearchDirty();
         },
       });
   }
@@ -784,6 +787,7 @@ export class AssetSearchResultsComponent {
           .subscribe({
             next: () => {
               this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+              this.aggregationService.markSavedSearchDirty();
             },
           });
       });
@@ -806,17 +810,35 @@ export class AssetSearchResultsComponent {
 
   onDeleteSelectedSavedSearch(): void {
     const id = this.selectedSavedSearchId().trim();
-    if (!id) return;
+    if (!id || this.deletingSavedSearch()) return;
 
     const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
     if (!window.confirm(`Delete saved search "${title}"?`)) return;
 
-    this.searchService.deleteSavedSearch(id).subscribe({
-      next: () => {
-        this.aggregationService.selectedSavedSearchId.set('');
-        this.aggregationService.selectedSavedSearchTitle.set('');
-      },
-    });
+    this.deletingSavedSearch.set(true);
+    this.searchService
+      .deleteSavedSearch(id)
+      .pipe(finalize(() => this.deletingSavedSearch.set(false)))
+      .subscribe({
+        next: () => {
+          this.aggregationService.selectedSavedSearchId.set('');
+          this.aggregationService.selectedSavedSearchTitle.set('');
+          this.aggregationService.markSavedSearchDirty();
+
+          void this.router.navigate(['/documents'], {
+            queryParams: {
+              'asset-type': null,
+              'asset-format': null,
+              'asset-width': null,
+              'asset-height': null,
+              'color-profile': null,
+              'color-depth': null,
+              'video-duration': null,
+              ecm_fulltext: null,
+            },
+          });
+        },
+      });
   }
 
   private buildSavedSearchParamsFromQuery(): Record<string, string> {

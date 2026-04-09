@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, effect, untracked } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -91,6 +91,29 @@ export class TrashFiltersDrawerComponent implements OnInit {
     return f.fullText !== '' || f.path !== '/' || f.author !== '' || f.sizeRanges.length > 0;
   });
 
+  constructor() {
+    effect(() => {
+      const version = this.trashFilterService.savedSearchVersion();
+      if (version === 0) return;
+      untracked(() => this.loadSavedSearches());
+    });
+
+    effect(() => {
+      const filters = this.trashFilterService.filters();
+      const activeUid = this.trashFilterService.activeSavedFilterUid() ?? '';
+
+      this.fullText.set(filters.fullText ?? '');
+      this.pathInput.set(filters.path || '/');
+      this.authorInput.set(filters.author ?? '');
+      this.selectedSizes.set(new Set(filters.sizeRanges ?? []));
+
+      if (activeUid) return;
+
+      this.savedFilterSearch.set('');
+      this.savedFilterDropdownOpen.set(false);
+    });
+  }
+
   ngOnInit(): void {
     this.ensureTrashRoute();
     this.loadAggregatedCounts();
@@ -101,7 +124,21 @@ export class TrashFiltersDrawerComponent implements OnInit {
     this.trashService
       .getSavedSearches()
       .pipe(catchError(() => of([] as SavedSearch[])))
-      .subscribe((results) => this.savedFilters.set(results));
+      .subscribe((results) => {
+        this.savedFilters.set(results);
+
+        const activeUid = this.trashFilterService.activeSavedFilterUid();
+        if (!activeUid) return;
+
+        // Preserve current filters during save/edit refresh; only hydrate from saved search
+        // when local filter state is empty (e.g., after navigation or explicit reset).
+        if (this.hasActiveFilters()) return;
+
+        const active = results.find((r) => r.uid === activeUid);
+        if (!active) return;
+
+        this.selectSavedFilter(active);
+      });
   }
 
   private loadAggregatedCounts(): void {
@@ -171,6 +208,13 @@ export class TrashFiltersDrawerComponent implements OnInit {
     setTimeout(() => this.savedFilterDropdownOpen.set(false), 200);
   }
 
+  onSavedFilterFocusOut(event: FocusEvent): void {
+    const host = event.currentTarget as HTMLElement | null;
+    const next = event.relatedTarget as Node | null;
+    if (!host || (next && host.contains(next))) return;
+    this.savedFilterDropdownOpen.set(false);
+  }
+
   selectSavedFilter(filter: SavedSearch): void {
     this.savedFilterDropdownOpen.set(false);
     this.trashFilterService.activeSavedFilterUid.set(filter.uid);
@@ -201,6 +245,10 @@ export class TrashFiltersDrawerComponent implements OnInit {
     for (const prefix of ['', 'defaults:']) {
       const val = params[`${prefix}${key}`];
       if (typeof val === 'string' && val.trim()) return val.trim();
+      if (Array.isArray(val) && val.length > 0) {
+        const first = String(val[0] ?? '').trim();
+        if (first) return first;
+      }
     }
     return fallback;
   }
@@ -208,7 +256,26 @@ export class TrashFiltersDrawerComponent implements OnInit {
   private extractParamArray(params: Record<string, unknown>, key: string): string[] {
     for (const prefix of ['', 'defaults:']) {
       const val = params[`${prefix}${key}`];
-      if (Array.isArray(val)) return val as string[];
+      if (Array.isArray(val)) {
+        return val
+          .map((item) => String(item ?? '').trim())
+          .filter(Boolean);
+      }
+      if (typeof val === 'string' && val.trim()) {
+        try {
+          const parsed = JSON.parse(val);
+          if (Array.isArray(parsed)) {
+            return parsed
+              .map((item) => String(item ?? '').trim())
+              .filter(Boolean);
+          }
+        } catch {
+          return val
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean);
+        }
+      }
     }
     return [];
   }

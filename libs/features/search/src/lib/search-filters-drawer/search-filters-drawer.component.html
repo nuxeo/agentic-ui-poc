@@ -6,8 +6,7 @@
         type="button"
         [attr.aria-expanded]="savedSearchOpen()"
         [attr.aria-label]="savedSearchInput() || 'Saved Searches'"
-        (click)="onSavedSearchFocus()"
-        (focus)="onSavedSearchFocus()"
+        (click)="onSavedSearchToggle()"
       >
         <span class="saved-filters-label">{{ savedSearchInput() || 'Search Filters' }}</span>
         <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
@@ -29,14 +28,6 @@
                 (input)="savedSearchFilter.set($any($event.target).value)"
               />
             </div>
-            <button
-              class="saved-filters-option saved-filters-default"
-              type="button"
-              (mousedown)="selectDefaultSavedSearch()"
-            >
-              <mat-icon class="saved-filter-icon">search</mat-icon>
-              Default Search
-            </button>
             @if (filteredSavedSearches().length === 0) {
               <div class="saved-filters-empty">No matching saved searches</div>
             } @else {

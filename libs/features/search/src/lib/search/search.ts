@@ -796,6 +796,7 @@ export class SearchComponent {
       .subscribe({
         next: () => {
           this.searchAggregationService.selectedSavedSearchTitle.set(currentTitle);
+          this.searchAggregationService.markSavedSearchDirty();
         },
       });
   }
@@ -826,6 +827,7 @@ export class SearchComponent {
           .subscribe({
             next: () => {
               this.searchAggregationService.selectedSavedSearchTitle.set(trimmedTitle);
+              this.searchAggregationService.markSavedSearchDirty();
             },
           });
       });
@@ -857,6 +859,8 @@ export class SearchComponent {
       next: () => {
         this.searchAggregationService.selectedSavedSearchId.set('');
         this.searchAggregationService.selectedSavedSearchTitle.set('');
+        this.searchAggregationService.drawerFilters.set({});
+        this.searchAggregationService.markSavedSearchDirty();
       },
     });
   }
