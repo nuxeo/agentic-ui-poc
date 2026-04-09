@@ -319,6 +319,20 @@
       }
       <button type="button" class="settings-item" (click)="onSettingsSignOut()">Sign Out</button>
     </div>
+  } @else if (isAdministration) {
+    <div class="settings-panel">
+      @for (adminItem of administrationItems; track adminItem.path) {
+        <button
+          type="button"
+          class="settings-item"
+          [routerLink]="adminItem.path"
+          routerLinkActive="settings-item--active"
+          [routerLinkActiveOptions]="{ exact: adminItem.path !== '/administration/users-groups' }"
+        >
+          {{ adminItem.label }}
+        </button>
+      }
+    </div>
   } @else {
     <div class="drawer-empty">
       <p>Content for "{{ item.label }}" will appear here.</p>

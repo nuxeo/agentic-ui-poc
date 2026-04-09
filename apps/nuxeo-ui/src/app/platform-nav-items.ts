@@ -27,7 +27,7 @@ export const PLATFORM_NAV_ITEMS: AppNavItem[] = [
   { label: 'Personal Space', path: '/personal-space', icon: 'grid_view', hasDrawer: true },
   { label: 'Clipboard', path: '/clipboard', icon: 'notepad', hasDrawer: true },
   { label: 'Trash', path: '/trash', icon: 'trash', hasDrawer: true },
-  { label: 'Administration', path: '/administration', icon: 'settings', hasDrawer: false },
+  { label: 'Administration', path: '/administration', icon: 'settings', hasDrawer: true },
 ];
 
 export const SETTINGS_DRAWER_ITEMS: DrawerLinkItem[] = [
@@ -36,4 +36,13 @@ export const SETTINGS_DRAWER_ITEMS: DrawerLinkItem[] = [
   { label: 'Authorized Applications', path: '/settings/authorized-applications' },
   { label: 'Cloud Services', path: '/settings/cloud-services' },
   { label: 'Themes', path: '/settings/themes' },
+];
+
+export const ADMINISTRATION_DRAWER_ITEMS: DrawerLinkItem[] = [
+  { label: 'Analytics', path: '/administration/analytics' },
+  { label: 'Users & Groups', path: '/administration/users-groups' },
+  { label: 'Vocabularies', path: '/administration/vocabularies' },
+  { label: 'Audit', path: '/administration/audit' },
+  { label: 'Cloud Services', path: '/administration/cloud-services' },
+  { label: 'NXQL Search', path: '/administration/nxql-search' },
 ];
