@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, catchError, of } from 'rxjs';
-import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
+import { NUXEO_SERVER_URL } from '../nuxeo-api.config';
 import { CURRENT_USERNAME } from '../current-user.token';
 import { NuxeoApiBase } from './nuxeo-api-base';
 
@@ -9,12 +9,11 @@ import { NuxeoApiBase } from './nuxeo-api-base';
 export class NuxeoDriveService {
   private readonly api = inject(NuxeoApiBase);
   private readonly http = inject(HttpClient);
-  private readonly apiOrigin = inject(NUXEO_API_ORIGIN);
+  private readonly serverUrl = inject(NUXEO_SERVER_URL);
   private readonly currentUsername = inject(CURRENT_USERNAME);
 
   private get baseUrl(): string {
-    const origin = this.apiOrigin || window.location.origin;
-    return `${origin}/nuxeo`;
+    return this.serverUrl;
   }
 
   private get username(): string {
@@ -65,6 +64,14 @@ export class NuxeoDriveService {
   }
 
   openDriveUrl(url: string): void {
-    window.open(url, '_top');
+    // Use a hidden anchor click so the OS protocol handler (Nuxeo Drive) is triggered
+    // without navigating the current tab away from the app. window.open(_top) causes
+    // ERR_UNKNOWN_URL_SCHEME in Chrome for custom protocol schemes.
+    const a = document.createElement('a');
+    a.href = url;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => document.body.removeChild(a), 500);
   }
 }
