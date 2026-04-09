@@ -1,7 +1,9 @@
 import {
+  AfterViewInit,
   Component,
   ElementRef,
   HostListener,
+  OnDestroy,
   ViewChild,
   computed,
   inject,
@@ -74,7 +76,7 @@ import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
 })
-export class AppShellComponent {
+export class AppShellComponent implements AfterViewInit, OnDestroy {
   @ViewChild('globalSearchContainer')
   private globalSearchContainer?: ElementRef<HTMLElement>;
 
@@ -157,6 +159,8 @@ export class AppShellComponent {
     }
   };
 
+  private platformNavTooltipObserver?: MutationObserver;
+
   constructor() {
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
@@ -210,6 +214,26 @@ export class AppShellComponent {
       });
   }
 
+  ngAfterViewInit(): void {
+    this.disablePlatformNavToggleTooltip();
+
+    if (typeof MutationObserver === 'undefined') return;
+
+    this.platformNavTooltipObserver = new MutationObserver(() => {
+      this.disablePlatformNavToggleTooltip();
+    });
+
+    this.platformNavTooltipObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.platformNavTooltipObserver?.disconnect();
+    window.removeEventListener('storage', this.storageListener);
+  }
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const searchContainer = this.globalSearchContainer?.nativeElement;
@@ -230,6 +254,72 @@ export class AppShellComponent {
     } catch {
       return 0;
     }
+  }
+
+  private disablePlatformNavToggleTooltip(): void {
+    const toggleButton = document.querySelector<HTMLElement>('#sat-platform-nav-title-icon');
+    if (!toggleButton) return;
+
+    this.stripTooltipAttributes(toggleButton);
+    this.blockTooltipTriggerEvents(toggleButton);
+
+    const tooltip = this.findMatTooltipInstance(toggleButton);
+    if (!tooltip) return;
+
+    tooltip.disabled = true;
+    tooltip.hide(0);
+    toggleButton.removeAttribute('aria-describedby');
+  }
+
+  private stripTooltipAttributes(element: HTMLElement): void {
+    element.removeAttribute('title');
+    element.removeAttribute('mattooltip');
+    element.removeAttribute('ng-reflect-message');
+    element.removeAttribute('aria-describedby');
+  }
+
+  private blockTooltipTriggerEvents(element: HTMLElement): void {
+    if (element.dataset['tooltipSuppressed'] === 'true') return;
+
+    const stopTrigger = (event: Event) => {
+      event.stopImmediatePropagation();
+    };
+
+    element.addEventListener('mouseenter', stopTrigger, true);
+    element.addEventListener('focusin', stopTrigger, true);
+    element.addEventListener('touchstart', stopTrigger, true);
+    element.dataset['tooltipSuppressed'] = 'true';
+  }
+
+  private findMatTooltipInstance(
+    element: HTMLElement,
+  ): { disabled: boolean; hide: (delay?: number) => void } | null {
+    const contextCandidate = (element as HTMLElement & { __ngContext__?: unknown }).__ngContext__;
+    if (!Array.isArray(contextCandidate)) return null;
+
+    for (const value of contextCandidate) {
+      if (!value || typeof value !== 'object') continue;
+
+      const candidate = value as {
+        constructor?: { name?: string };
+        disabled?: boolean;
+        hide?: (delay?: number) => void;
+        message?: string;
+        _message?: string;
+      };
+
+      const looksLikeTooltip =
+        candidate.constructor?.name === 'MatTooltip' ||
+        (typeof candidate.hide === 'function' &&
+          typeof candidate.disabled === 'boolean' &&
+          (typeof candidate.message === 'string' || typeof candidate._message === 'string'));
+
+      if (looksLikeTooltip) {
+        return candidate as { disabled: boolean; hide: (delay?: number) => void };
+      }
+    }
+
+    return null;
   }
 
   isActive(path: string): boolean {

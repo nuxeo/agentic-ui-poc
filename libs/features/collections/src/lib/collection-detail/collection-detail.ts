@@ -66,6 +66,20 @@ import {
   ShareExternalDialogData,
 } from '../share-external-dialog/share-external-dialog';
 
+const NON_THUMBNAILABLE_TYPES = new Set([
+  'favorites',
+  'domain',
+  'workspace',
+  'workspaceroot',
+  'folder',
+  'orderedfolder',
+  'sectionroot',
+  'section',
+  'collection',
+  'collections',
+  'templateroot',
+]);
+
 @Component({
   selector: 'lib-collection-detail',
   standalone: true,
@@ -150,10 +164,40 @@ export class CollectionDetailComponent {
   private eventCategoryLabelMap = new Map<string, string>();
   private sortActive = signal('');
   private sortDirection = signal<'asc' | 'desc' | ''>('');
+  private breadcrumbPathCache: string | null = null;
+  private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
   readonly isInClipboard = computed(() =>
     this.clipboardDocs().some((d) => d.uid === this.collectionUid),
   );
+
+  readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
+    const col = this.collection();
+    if (!col?.path) return [];
+
+    if (col.path === this.breadcrumbPathCache) {
+      return this.breadcrumbItemsCache;
+    }
+
+    const segments = col.path.split('/').filter(Boolean);
+    segments.pop();
+    this.breadcrumbPathCache = col.path;
+    let accumulated = '/browse';
+    this.breadcrumbItemsCache = segments.map((s) => {
+      accumulated += `/${s}`;
+      return { label: decodeURIComponent(s), href: accumulated };
+    });
+    return this.breadcrumbItemsCache;
+  });
+
+  onBreadcrumbClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a');
+    const href = anchor?.getAttribute('href');
+    if (href) {
+      event.preventDefault();
+      this.router.navigateByUrl(href);
+    }
+  }
 
   readonly localAces = computed<NuxeoAce[]>(() => {
     const acls = this.collection()?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
@@ -236,6 +280,7 @@ export class CollectionDetailComponent {
   private loadThumbnails(docs: NuxeoDocument[]): void {
     this.thumbnailMap.set({});
     for (const doc of docs) {
+      if (!this.canLoadThumbnail(doc)) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
         .pipe(catchError(() => of(null)))
@@ -250,17 +295,9 @@ export class CollectionDetailComponent {
     }
   }
 
-  breadcrumbItems(): SatBreadcrumbsItem[] {
-    const col = this.collection();
-    if (!col?.path) return [];
-    const segments = col.path.split('/').filter(Boolean);
-    segments.pop();
-    return segments.map((s) => ({ label: decodeURIComponent(s) }));
-  }
-
-  creator(): string {
-    const col = this.collection();
-    return (col?.properties?.['dc:creator'] as string) ?? '';
+  private canLoadThumbnail(doc: NuxeoDocument): boolean {
+    const normalizedType = doc.type.trim().toLowerCase();
+    return normalizedType.length > 0 && !NON_THUMBNAILABLE_TYPES.has(normalizedType);
   }
 
   docIcon(doc: NuxeoDocument): string {

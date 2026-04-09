@@ -11,6 +11,7 @@ import {
 } from '@agentic-ui/shared/nuxeo-client';
 
 const STORAGE_KEY = 'agentic_ui_nuxeo_session';
+const SIGNED_OUT_KEY = 'agentic_ui_signed_out';
 
 interface BasicStoredSession {
   kind: 'basic';
@@ -107,6 +108,18 @@ export class AuthService {
     return `${base}${path}`;
   }
 
+  private isExplicitlySignedOut(): boolean {
+    return sessionStorage.getItem(SIGNED_OUT_KEY) === '1';
+  }
+
+  private markSignedOut(): void {
+    sessionStorage.setItem(SIGNED_OUT_KEY, '1');
+  }
+
+  private clearSignedOut(): void {
+    sessionStorage.removeItem(SIGNED_OUT_KEY);
+  }
+
   /** Public Nuxeo origin for full-page SAML redirects (matches API proxy in dev when origin is ''). */
   private nuxeoBrowserOrigin(): string {
     const o = this.apiOrigin.replace(/\/$/, '');
@@ -186,6 +199,12 @@ export class AuthService {
   }
 
   private runHydration(): Observable<void> {
+    if (this.isExplicitlySignedOut()) {
+      this.state.set(null);
+      this.clearStorage();
+      return of(undefined);
+    }
+
     const existing = this.state();
     if (existing) {
       return this.http
@@ -257,6 +276,7 @@ export class AuthService {
    */
   startSamlLogin(endpoint: NuxeoSamlLoginEndpoint): void {
     if (typeof window === 'undefined') return;
+    this.clearSignedOut();
     const base = this.nuxeoBrowserOrigin();
     let path = endpoint.path.trim();
     if (!path.startsWith('/')) path = `/${path}`;
@@ -292,6 +312,7 @@ export class AuthService {
         };
         this.state.set(session);
         this.persist(session, remember);
+        this.clearSignedOut();
         this.hydration$ = of(undefined).pipe(shareReplay(1));
       }),
       map(() => undefined),
@@ -312,15 +333,10 @@ export class AuthService {
    * Clears local session. Cookie (SSO) sessions also navigate to Nuxeo logout so the HttpOnly cookie is cleared.
    */
   logout(): void {
-    const session = this.state();
-    const wasCookie = session?.kind === 'cookie';
     this.state.set(null);
     this.clearStorage();
+    this.markSignedOut();
     this.hydration$ = null;
-
-    if (wasCookie && typeof window !== 'undefined') {
-      window.location.assign(this.apiUrl('/nuxeo/logout'));
-    }
   }
 
   /**

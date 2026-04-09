@@ -149,3 +149,72 @@ sat-platform-nav p.sat-platform-nav-item-label {
     overflow: visible;
   }
 }
+
+/*
+ * App-wide pill normalization using the Asset Grid pill style as the single source.
+ */
+.asset-type-pill,
+.result-type-pill,
+.simple-list-type-badge,
+.type-badge,
+.doc-type-badge,
+.task-workflow-badge,
+.state-badge,
+.version-badge,
+.classify-pill,
+.platform-badge,
+.state-chip,
+.tag-chip,
+.collection-chip,
+.sentiment-badge,
+.ai-tag-chip,
+.ai-anomaly-badge,
+.overdue-badge,
+.sat-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  background: var(--mat-sys-surface-container-high, #eef0f4) !important;
+  border: 1px solid var(--mat-sys-outline-variant, #d8dbe2) !important;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.sat-tag {
+  min-height: auto !important;
+  box-shadow: none !important;
+}
+
+sat-category-tag,
+sat-status-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle;
+}
+
+.sat-tag .sat-tag-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.sat-tag .sat-tag-label {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+}
+

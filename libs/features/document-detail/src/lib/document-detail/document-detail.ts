@@ -82,6 +82,7 @@ import { DriveDialogComponent, type DriveDialogData } from '../drive-dialog/driv
 import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/attachment-preview-dialog';
 import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
+import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -176,6 +177,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
   private docUid = '';
+  private breadcrumbPathCache: string | null = null;
+  private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
   // AI Insights state
   readonly aiSummary = signal<SummarizeResponse | null>(null);
@@ -325,10 +328,31 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
     const d = this.doc();
     if (!d) return [];
-    const parts = d.path.split('/').filter(Boolean);
+
+    const path = d.path ?? '';
+    if (path === this.breadcrumbPathCache) {
+      return this.breadcrumbItemsCache;
+    }
+
+    const parts = path.split('/').filter(Boolean);
     parts.pop();
-    return parts.map((s) => ({ label: decodeURIComponent(s) }));
+    this.breadcrumbPathCache = path;
+    let accumulated = '/browse';
+    this.breadcrumbItemsCache = parts.map((s) => {
+      accumulated += `/${s}`;
+      return { label: decodeURIComponent(s), href: accumulated };
+    });
+    return this.breadcrumbItemsCache;
   });
+
+  onBreadcrumbClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a');
+    const href = anchor?.getAttribute('href');
+    if (href) {
+      event.preventDefault();
+      this.router.navigateByUrl(href);
+    }
+  }
 
   readonly versionLabel = computed(() => {
     const d = this.doc();
@@ -1573,6 +1597,24 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.toast('Failed to add to collection');
         },
       });
+    });
+  }
+
+  openEditDialog(): void {
+    const currentDoc = this.doc();
+    if (!currentDoc) return;
+
+    const ref = this.dialog.open(EditDocumentDialogComponent, {
+      width: '560px',
+      data: { document: currentDoc },
+    });
+
+    ref.afterClosed().subscribe((updatedDoc: NuxeoDocument | undefined) => {
+      if (!updatedDoc) return;
+      this.doc.set(updatedDoc);
+      this.syncActionStates(updatedDoc);
+      this.toast('Document updated');
+      this.loadDocument(this.docUid);
     });
   }
 
