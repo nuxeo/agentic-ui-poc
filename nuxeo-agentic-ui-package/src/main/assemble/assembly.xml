@@ -1,0 +1,39 @@
+<assembly xmlns="http://maven.apache.org/ASSEMBLY/2.1.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.1.0 http://maven.apache.org/xsd/assembly-2.1.0.xsd">
+  <id>package</id>
+  <formats>
+    <format>zip</format>
+  </formats>
+  <includeBaseDirectory>false</includeBaseDirectory>
+
+  <fileSets>
+    <!-- Marketplace metadata -->
+    <fileSet>
+      <directory>src/main/resources</directory>
+      <outputDirectory>/</outputDirectory>
+      <includes>
+        <include>package.xml</include>
+        <include>install.xml</include>
+      </includes>
+    </fileSet>
+
+    <!-- OSGi bundle JAR (built by antrun) -->
+    <fileSet>
+      <directory>${project.build.directory}</directory>
+      <outputDirectory>/install/bundles</outputDirectory>
+      <includes>
+        <include>nuxeo-agentic-core.jar</include>
+      </includes>
+    </fileSet>
+
+    <!-- Angular 19 frontend (output at dist/nuxeo-ui/browser/) -->
+    <fileSet>
+      <directory>../dist/nuxeo-ui/browser</directory>
+      <outputDirectory>/web/nuxeo.war/agentic-ui</outputDirectory>
+      <includes>
+        <include>**/*</include>
+      </includes>
+    </fileSet>
+  </fileSets>
+</assembly>
