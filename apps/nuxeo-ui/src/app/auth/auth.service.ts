@@ -330,7 +330,7 @@ export class AuthService {
   }
 
   /**
-   * Clears local session. Cookie (SSO) sessions also navigate to Nuxeo logout so the HttpOnly cookie is cleared.
+   * Clears local session state and marks the browser session as explicitly signed out.
    */
   logout(): void {
     this.state.set(null);

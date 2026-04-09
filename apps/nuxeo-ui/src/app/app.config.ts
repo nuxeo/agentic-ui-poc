@@ -3,8 +3,9 @@ import { APP_INITIALIZER, ApplicationConfig, importProvidersFrom, inject } from 
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { MAT_FAB_DEFAULT_OPTIONS } from '@angular/material/button';
-import { TranslateLoader, TranslateModule, TranslateNoOpLoader } from '@ngx-translate/core';
+import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
+import { Observable, of } from 'rxjs';
 
 import { CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
 import { AI_BACKEND_URL } from '@agentic-ui/shared/ai-client';
@@ -17,6 +18,15 @@ import { AppThemeService } from './theme/app-theme.service';
 /** `APP_INITIALIZER` values are invoked as `fn()` at startup; the factory must return that `fn`. */
 export function initializeAppTheme(theme: AppThemeService) {
   return () => theme.applyStoredOrDefault();
+}
+
+class AppTranslateLoader implements TranslateLoader {
+  getTranslation(_lang: string): Observable<Record<string, string>> {
+    return of({
+      'sat.platform-nav.expand': '',
+      'sat.platform-nav.collapse': '',
+    });
+  }
 }
 
 export const appConfig: ApplicationConfig = {
@@ -38,7 +48,7 @@ export const appConfig: ApplicationConfig = {
     },
     importProvidersFrom(
       TranslateModule.forRoot({
-        loader: { provide: TranslateLoader, useClass: TranslateNoOpLoader },
+        loader: { provide: TranslateLoader, useClass: AppTranslateLoader },
       }),
     ),
     {

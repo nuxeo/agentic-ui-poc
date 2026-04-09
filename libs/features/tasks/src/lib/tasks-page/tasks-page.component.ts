@@ -144,7 +144,7 @@ export class TasksPageComponent implements OnInit {
     const href = anchor?.getAttribute('href');
     if (href) {
       event.preventDefault();
-      this.router.navigateByUrl(href);
+      void this.router.navigateByUrl(href);
     }
   }
 

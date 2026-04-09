@@ -34,6 +34,7 @@ import {
   DirectoryEntry,
   docTypeIcon,
   avatarColor,
+  NON_CONTENT_DOCUMENT_TYPES,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -65,20 +66,6 @@ import {
   ShareExternalDialogComponent,
   ShareExternalDialogData,
 } from '../share-external-dialog/share-external-dialog';
-
-const NON_THUMBNAILABLE_TYPES = new Set([
-  'favorites',
-  'domain',
-  'workspace',
-  'workspaceroot',
-  'folder',
-  'orderedfolder',
-  'sectionroot',
-  'section',
-  'collection',
-  'collections',
-  'templateroot',
-]);
 
 @Component({
   selector: 'lib-collection-detail',
@@ -195,7 +182,7 @@ export class CollectionDetailComponent {
     const href = anchor?.getAttribute('href');
     if (href) {
       event.preventDefault();
-      this.router.navigateByUrl(href);
+      void this.router.navigateByUrl(href);
     }
   }
 
@@ -297,7 +284,7 @@ export class CollectionDetailComponent {
 
   private canLoadThumbnail(doc: NuxeoDocument): boolean {
     const normalizedType = doc.type.trim().toLowerCase();
-    return normalizedType.length > 0 && !NON_THUMBNAILABLE_TYPES.has(normalizedType);
+    return normalizedType.length > 0 && !NON_CONTENT_DOCUMENT_TYPES.has(normalizedType);
   }
 
   docIcon(doc: NuxeoDocument): string {

@@ -31,14 +31,6 @@ export class DocumentDetailService {
     });
   }
 
-  updateDocument(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument> {
-    return this.api.put<NuxeoDocument>(
-      `/nuxeo/api/v1/id/${uid}`,
-      { 'entity-type': 'document', properties },
-      { 'Content-Type': 'application/json', properties: '*' },
-    );
-  }
-
   fetchBlob(uid: string): Observable<Blob> {
     return this.http.get(this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/blobholder:0`), {
       responseType: 'blob',

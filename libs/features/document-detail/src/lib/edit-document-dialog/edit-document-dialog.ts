@@ -11,9 +11,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin } from 'rxjs';
 
 import {
+  BrowseService,
   DirectoryEntry,
   DirectoryService,
-  DocumentDetailService,
   L10nDirectoryEntry,
   NuxeoDocument,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -131,7 +131,7 @@ export interface EditDocumentDialogData {
 export class EditDocumentDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<EditDocumentDialogComponent>);
   private readonly data = inject<EditDocumentDialogData>(MAT_DIALOG_DATA);
-  private readonly detailService = inject(DocumentDetailService);
+  private readonly browseService = inject(BrowseService);
   private readonly directoryService = inject(DirectoryService);
 
   readonly natureEntries = signal<DirectoryEntry[]>([]);
@@ -184,7 +184,7 @@ export class EditDocumentDialogComponent implements OnInit {
       'dc:expired': this.expires?.toISOString() ?? null,
     };
 
-    this.detailService.updateDocument(this.data.document.uid, properties).subscribe({
+    this.browseService.updateDocument(this.data.document.uid, properties).subscribe({
       next: (updatedDoc) => {
         this.saving.set(false);
         this.dialogRef.close(updatedDoc);

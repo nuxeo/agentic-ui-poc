@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
+import { Component, DestroyRef, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -133,6 +134,7 @@ const TAG_CATEGORIES: SatTagCategory[] = [
   styleUrl: './document-detail.scss',
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly detailService = inject(DocumentDetailService);
@@ -350,7 +352,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const href = anchor?.getAttribute('href');
     if (href) {
       event.preventDefault();
-      this.router.navigateByUrl(href);
+      void this.router.navigateByUrl(href);
     }
   }
 
@@ -1609,13 +1611,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data: { document: currentDoc },
     });
 
-    ref.afterClosed().subscribe((updatedDoc: NuxeoDocument | undefined) => {
-      if (!updatedDoc) return;
-      this.doc.set(updatedDoc);
-      this.syncActionStates(updatedDoc);
-      this.toast('Document updated');
-      this.loadDocument(this.docUid);
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updatedDoc: NuxeoDocument | undefined) => {
+        if (!updatedDoc) return;
+        this.doc.set(updatedDoc);
+        this.syncActionStates(updatedDoc);
+        this.toast('Document updated');
+        this.loadDocument(this.docUid);
+      });
   }
 
   shareDocument(): void {

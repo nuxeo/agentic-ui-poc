@@ -31,6 +31,7 @@ import {
   SearchAggregationService,
   SelectionService,
   DocumentDetailService,
+  NON_CONTENT_DOCUMENT_TYPES,
   NuxeoApiBase,
   type SearchResultItem,
   type SearchResponse,
@@ -72,18 +73,6 @@ const QUICK_FILTER_OPTIONS: QuickFilterOption[] = [
   { label: 'Most Recent', value: 'mostRecent' },
   { label: 'Validated', value: 'onlyValidated' },
 ];
-
-const NON_DOWNLOADABLE_TYPES = new Set([
-  'favorites',
-  'domain',
-  'workspace',
-  'folder',
-  'orderedfolder',
-  'sectionroot',
-  'section',
-  'collection',
-  'collections',
-]);
 
 // Map display column keys to API field names
 const COLUMN_TO_API_FIELD: Record<string, string> = {
@@ -672,7 +661,7 @@ export class SearchComponent {
 
   isDownloadableType(type: string): boolean {
     const normalized = type.trim().toLowerCase();
-    return normalized.length > 0 && !NON_DOWNLOADABLE_TYPES.has(normalized);
+    return normalized.length > 0 && !NON_CONTENT_DOCUMENT_TYPES.has(normalized);
   }
 
   private buildDownloadFileName(name: string, mimeType: string): string {
