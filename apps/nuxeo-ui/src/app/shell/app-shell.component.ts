@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   HostListener,
+  OnDestroy,
   ViewChild,
   computed,
   inject,
@@ -74,7 +75,7 @@ import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
 })
-export class AppShellComponent {
+export class AppShellComponent implements OnDestroy {
   @ViewChild('globalSearchContainer')
   private globalSearchContainer?: ElementRef<HTMLElement>;
 
@@ -157,6 +158,9 @@ export class AppShellComponent {
     }
   };
 
+  private clipboardChangedListener = () => this.refreshClipboardCount();
+  private favoritesChangedListener = () => this.refreshFavoritesCount();
+
   constructor() {
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
@@ -179,8 +183,8 @@ export class AppShellComponent {
       });
 
     window.addEventListener('storage', this.storageListener);
-    window.addEventListener('clipboard-changed', () => this.refreshClipboardCount());
-    window.addEventListener('favorites-changed', () => this.refreshFavoritesCount());
+    window.addEventListener('clipboard-changed', this.clipboardChangedListener);
+    window.addEventListener('favorites-changed', this.favoritesChangedListener);
     this.refreshFavoritesCount();
 
     this.searchInput$
@@ -208,6 +212,12 @@ export class AppShellComponent {
         this.globalSearchResults.set(results);
         this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
       });
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('storage', this.storageListener);
+    window.removeEventListener('clipboard-changed', this.clipboardChangedListener);
+    window.removeEventListener('favorites-changed', this.favoritesChangedListener);
   }
 
   @HostListener('document:click', ['$event'])

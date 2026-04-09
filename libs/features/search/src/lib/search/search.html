@@ -253,14 +253,16 @@
                     isFavorited(row.id) ? 'star' : 'star_outline'
                   }}</mat-icon>
                 </button>
-                <button
-                  mat-icon-button
-                  matTooltip="Download"
-                  class="action-btn"
-                  (click)="downloadDocument(row.id, row.name, $event)"
-                >
-                  <mat-icon class="action-icon">download</mat-icon>
-                </button>
+                @if (isDownloadableType(row.type)) {
+                  <button
+                    mat-icon-button
+                    matTooltip="Download"
+                    class="action-btn"
+                    (click)="downloadDocument(row.id, row.name, $event)"
+                  >
+                    <mat-icon class="action-icon">download</mat-icon>
+                  </button>
+                }
               </div>
             </div>
           </button>
@@ -433,7 +435,7 @@
           <div class="simple-list-body">
             <div class="simple-list-header">
               <p class="simple-list-title" [title]="row.name">{{ row.name }}</p>
-              <sat-category-tag category="blue">{{ row.type }}</sat-category-tag>
+              <span class="simple-list-type-badge" [title]="row.type">{{ row.type }}</span>
             </div>
             <div class="simple-list-actions col-hover-actions">
               <button
@@ -447,14 +449,16 @@
                   isFavorited(row.id) ? 'star' : 'star_outline'
                 }}</mat-icon>
               </button>
-              <button
-                mat-icon-button
-                matTooltip="Download"
-                class="action-btn"
-                (click)="downloadDocument(row.id, row.name, $event)"
-              >
-                <mat-icon class="action-icon">download</mat-icon>
-              </button>
+              @if (isDownloadableType(row.type)) {
+                <button
+                  mat-icon-button
+                  matTooltip="Download"
+                  class="action-btn"
+                  (click)="downloadDocument(row.id, row.name, $event)"
+                >
+                  <mat-icon class="action-icon">download</mat-icon>
+                </button>
+              }
             </div>
           </div>
         </button>
