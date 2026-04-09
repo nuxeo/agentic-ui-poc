@@ -20,7 +20,7 @@ export const config = {
     process.env['HAIP_EMBEDDING_MODEL'] ?? 'bedrock-amazon-titan-text-embeddings-v2',
   haipEnvironmentId: process.env['HAIP_ENVIRONMENT_ID'] ?? '',
   nuxeoUrl: process.env['NUXEO_URL'] ?? 'http://localhost:8080',
-  nuxeoAuth: process.env['NUXEO_AUTH'] ?? 'Administrator:Administrator',
+  nuxeoAuth: process.env['NUXEO_AUTH'] ?? '',
 } as const;
 
 if (!config.haipApiKey) {
@@ -30,6 +30,13 @@ if (!config.haipApiKey) {
 
 if (!config.haipBaseUrl) {
   console.error('HAIP_BASE_URL is required. Set it in apps/ai-backend/.env');
+  process.exit(1);
+}
+
+if (!config.nuxeoAuth) {
+  console.error(
+    'NUXEO_AUTH is required. Set it in apps/ai-backend/.env (format: username:password)',
+  );
   process.exit(1);
 }
 
