@@ -45,6 +45,8 @@ import {
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
 } from '@agentic-ui/shared/ui';
 import {
   EditCollectionDialogComponent,
@@ -368,19 +370,29 @@ export class CollectionDetailComponent {
 
   deleteCollection(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Are you sure you want to delete this collection?')) return;
-    this.actionInProgress.set('trash');
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Collection',
+        message: 'Are you sure you want to delete this collection?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.detailService.trashDocument(this.collectionUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Collection moved to trash');
-        void this.router.navigateByUrl('/collections');
-      },
-      error: () => {
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionInProgress.set('trash');
+
+      this.detailService.trashDocument(this.collectionUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Collection moved to trash');
+          void this.router.navigateByUrl('/collections');
+        },
+        error: () => {
         this.actionInProgress.set(null);
         this.toast('Failed to delete collection');
       },
+      });
     });
   }
 

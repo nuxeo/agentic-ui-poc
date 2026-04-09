@@ -21,7 +21,7 @@ import {
   type NuxeoDocument,
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
-import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
+import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent, ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -813,32 +813,42 @@ export class AssetSearchResultsComponent {
     if (!id || this.deletingSavedSearch()) return;
 
     const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
-    if (!window.confirm(`Delete saved search "${title}"?`)) return;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Saved Search',
+        message: `Delete saved search "${title}"?`,
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.deletingSavedSearch.set(true);
-    this.searchService
-      .deleteSavedSearch(id)
-      .pipe(finalize(() => this.deletingSavedSearch.set(false)))
-      .subscribe({
-        next: () => {
-          this.aggregationService.selectedSavedSearchId.set('');
-          this.aggregationService.selectedSavedSearchTitle.set('');
-          this.aggregationService.markSavedSearchDirty();
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
 
-          void this.router.navigate(['/documents'], {
-            queryParams: {
-              'asset-type': null,
-              'asset-format': null,
-              'asset-width': null,
-              'asset-height': null,
-              'color-profile': null,
-              'color-depth': null,
-              'video-duration': null,
-              ecm_fulltext: null,
-            },
-          });
-        },
-      });
+      this.deletingSavedSearch.set(true);
+      this.searchService
+        .deleteSavedSearch(id)
+        .pipe(finalize(() => this.deletingSavedSearch.set(false)))
+        .subscribe({
+          next: () => {
+            this.aggregationService.selectedSavedSearchId.set('');
+            this.aggregationService.selectedSavedSearchTitle.set('');
+            this.aggregationService.markSavedSearchDirty();
+
+            void this.router.navigate(['/documents'], {
+              queryParams: {
+                'asset-type': null,
+                'asset-format': null,
+                'asset-width': null,
+                'asset-height': null,
+                'color-profile': null,
+                'color-depth': null,
+                'video-duration': null,
+                ecm_fulltext: null,
+              },
+            });
+          },
+        });
+    });
   }
 
   private buildSavedSearchParamsFromQuery(): Record<string, string> {

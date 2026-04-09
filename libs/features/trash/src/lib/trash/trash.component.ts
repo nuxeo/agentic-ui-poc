@@ -17,6 +17,7 @@ import { catchError } from 'rxjs/operators';
 
 import { SaveSearchDialogComponent } from '../save-search-dialog/save-search-dialog.component';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
+import { ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
 
 import {
   TrashService,
@@ -289,22 +290,32 @@ export class TrashComponent {
     const title = this.trashFilterService.activeSavedFilterTitle();
     if (!uid || !title || this.deletingSavedSearch()) return;
 
-    if (!window.confirm(`Delete saved search "${title.trim()}"?`)) return;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Saved Search',
+        message: `Delete saved search "${title.trim()}"?`,
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.deletingSavedSearch.set(true);
-    this.searchService
-      .deleteSavedSearch(uid)
-      .pipe(finalize(() => this.deletingSavedSearch.set(false)))
-      .subscribe({
-        next: () => {
-          this.trashFilterService.reset();
-          this.trashFilterService.markSavedSearchDirty();
-          this.snackBar.open(`Search "${title}" deleted.`, 'OK', { duration: 3000 });
-        },
-        error: () => {
-          this.snackBar.open('Failed to delete search.', 'Dismiss', { duration: 5000 });
-        },
-      });
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+
+      this.deletingSavedSearch.set(true);
+      this.searchService
+        .deleteSavedSearch(uid)
+        .pipe(finalize(() => this.deletingSavedSearch.set(false)))
+        .subscribe({
+          next: () => {
+            this.trashFilterService.reset();
+            this.trashFilterService.markSavedSearchDirty();
+            this.snackBar.open(`Search "${title}" deleted.`, 'OK', { duration: 3000 });
+          },
+          error: () => {
+            this.snackBar.open('Failed to delete search.', 'Dismiss', { duration: 5000 });
+          },
+        });
+    });
   }
 
   private buildFilterParams(): Record<string, unknown> {
@@ -430,34 +441,46 @@ export class TrashComponent {
   deleteSelected(): void {
     const ids = [...this.selectionService.selectedIds()];
     if (ids.length === 0) return;
-    if (!confirm(`Permanently delete ${ids.length} document(s)? This cannot be undone.`)) return;
-    const inProgress = new Set(this.actionInProgress());
-    ids.forEach((id) => inProgress.add(id));
-    this.actionInProgress.set(inProgress);
 
-    let completed = 0;
-    for (const uid of ids) {
-      this.trashService
-        .permanentlyDelete(uid)
-        .pipe(
-          finalize(() => {
-            this.markInProgress(uid, false);
-            completed++;
-            if (completed === ids.length) {
-              this.selectionService.clear();
-              this.snackBar.open(`${ids.length} document(s) permanently deleted.`, 'OK', {
-                duration: 3000,
-              });
-            }
-          }),
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe({
-          next: () => this.documents.update((docs) => docs.filter((d) => d.uid !== uid)),
-          error: () =>
-            this.snackBar.open('Failed to delete a document.', 'Dismiss', { duration: 3000 }),
-        });
-    }
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Permanently Delete Documents',
+        message: `Permanently delete ${ids.length} document(s)? This cannot be undone.`,
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+
+      const inProgress = new Set(this.actionInProgress());
+      ids.forEach((id) => inProgress.add(id));
+      this.actionInProgress.set(inProgress);
+
+      let completed = 0;
+      for (const uid of ids) {
+        this.trashService
+          .permanentlyDelete(uid)
+          .pipe(
+            finalize(() => {
+              this.markInProgress(uid, false);
+              completed++;
+              if (completed === ids.length) {
+                this.selectionService.clear();
+                this.snackBar.open(`${ids.length} document(s) permanently deleted.`, 'OK', {
+                  duration: 3000,
+                });
+              }
+            }),
+            takeUntilDestroyed(this.destroyRef),
+          )
+          .subscribe({
+            next: () => this.documents.update((docs) => docs.filter((d) => d.uid !== uid)),
+            error: () =>
+              this.snackBar.open('Failed to delete a document.', 'Dismiss', { duration: 3000 }),
+          });
+      }
+    });
   }
 
   restoreDocument(uid: string, event?: Event): void {
@@ -483,22 +506,33 @@ export class TrashComponent {
   permanentlyDelete(uid: string, event?: Event): void {
     event?.stopPropagation();
     if (this.actionInProgress().has(uid)) return;
-    if (!confirm('Permanently delete this document? This cannot be undone.')) return;
-    this.markInProgress(uid, true);
-    this.trashService
-      .permanentlyDelete(uid)
-      .pipe(
-        finalize(() => this.markInProgress(uid, false)),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: () => {
-          this.snackBar.open('Document permanently deleted.', 'OK', { duration: 3000 });
-          this.documents.update((docs) => docs.filter((d) => d.uid !== uid));
-        },
-        error: () =>
-          this.snackBar.open('Failed to delete document.', 'Dismiss', { duration: 5000 }),
-      });
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Permanently Delete Document',
+        message: 'Permanently delete this document? This cannot be undone.',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.markInProgress(uid, true);
+      this.trashService
+        .permanentlyDelete(uid)
+        .pipe(
+          finalize(() => this.markInProgress(uid, false)),
+          takeUntilDestroyed(this.destroyRef),
+        )
+        .subscribe({
+          next: () => {
+            this.snackBar.open('Document permanently deleted.', 'OK', { duration: 3000 });
+            this.documents.update((docs) => docs.filter((d) => d.uid !== uid));
+          },
+          error: () =>
+            this.snackBar.open('Failed to delete document.', 'Dismiss', { duration: 5000 }),
+        });
+    });
   }
 
   isPendingColumn(key: string): boolean {

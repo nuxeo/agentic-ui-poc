@@ -25,7 +25,12 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
+import {
+  SavedSearchDialogComponent,
+  ShareSavedSearchDialogComponent,
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '@agentic-ui/shared/ui';
 import {
   SearchService,
   SearchAggregationService,
@@ -853,15 +858,25 @@ export class SearchComponent {
     if (!id) return;
 
     const title = this.selectedSavedSearchTitle().trim() || 'this saved search';
-    if (!window.confirm(`Delete saved search "${title}"?`)) return;
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Saved Search',
+        message: `Delete saved search "${title}"?`,
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.searchService.deleteSavedSearch(id).subscribe({
-      next: () => {
-        this.searchAggregationService.selectedSavedSearchId.set('');
-        this.searchAggregationService.selectedSavedSearchTitle.set('');
-        this.searchAggregationService.drawerFilters.set({});
-        this.searchAggregationService.markSavedSearchDirty();
-      },
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+
+      this.searchService.deleteSavedSearch(id).subscribe({
+        next: () => {
+          this.searchAggregationService.selectedSavedSearchId.set('');
+          this.searchAggregationService.selectedSavedSearchTitle.set('');
+          this.searchAggregationService.drawerFilters.set({});
+          this.searchAggregationService.markSavedSearchDirty();
+        },
+      });
     });
   }
 
