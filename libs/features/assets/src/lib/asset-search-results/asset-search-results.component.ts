@@ -22,7 +22,6 @@ import {
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
-import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -285,7 +284,6 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
     MatCheckboxModule,
     MatProgressSpinnerModule,
     MatSelectModule,
-    SatTagModule,
   ],
   templateUrl: './asset-search-results.component.html',
   styleUrl: './asset-search-results.component.scss',

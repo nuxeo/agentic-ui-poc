@@ -147,6 +147,14 @@ export class SearchFiltersDrawerComponent {
   });
 
   constructor() {
+    // Reload the saved searches list whenever any component signals a new save.
+    effect(() => {
+      const version = this.searchAggregationService.savedSearchVersion();
+      if (version === 0) return;
+      this.savedSearchesLoaded.set(false);
+      this.loadSavedSearchesFromApi();
+    });
+
     this.baselineRequests$
       .pipe(
         debounceTime(150),
@@ -349,8 +357,7 @@ export class SearchFiltersDrawerComponent {
           })
           .subscribe({
             next: () => {
-              this.savedSearchesLoaded.set(false);
-              this.loadSavedSearchesFromApi();
+              this.searchAggregationService.markSavedSearchDirty();
             },
           });
       });
@@ -603,7 +610,12 @@ export class SearchFiltersDrawerComponent {
     setTimeout(() => this.authorOpen.set(false), 120);
   }
 
-  closeSavedSearchDropdown(): void {
+  onSavedSearchFocusOut(event: FocusEvent): void {
+    const container = event.currentTarget as HTMLElement;
+    const relatedTarget = event.relatedTarget as Node | null;
+    // If focus moved to another element still inside the dropdown, keep it open.
+    if (relatedTarget && container.contains(relatedTarget)) return;
+    // Small delay so (mousedown) on options fires before we close.
     setTimeout(() => this.savedSearchOpen.set(false), 120);
   }
 

@@ -25,13 +25,13 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent } from '@agentic-ui/shared/ui';
 import {
   SearchService,
   SearchAggregationService,
   SelectionService,
   DocumentDetailService,
+  NON_CONTENT_DOCUMENT_TYPES,
   NuxeoApiBase,
   type SearchResultItem,
   type SearchResponse,
@@ -149,7 +149,6 @@ function mapToView(item: SearchResultItem): SearchResultViewModel {
     MatSnackBarModule,
     MatMenuModule,
     MatAutocompleteModule,
-    SatTagModule,
     FormsModule,
   ],
   templateUrl: './search.html',
@@ -396,7 +395,7 @@ export class SearchComponent {
     } else {
       const rows = this.displayResults();
       const labels: Record<string, string> = {};
-      const previews: Record<string, any> = {};
+      const previews: Record<string, SafeUrl | null> = {};
       rows.forEach((row) => {
         labels[row.id] = row.name;
         previews[row.id] = this.thumbnailMap()[row.id] ?? null;
@@ -633,7 +632,71 @@ export class SearchComponent {
     if (event) {
       event.stopPropagation();
     }
-    console.warn('Document download is not yet implemented for document:', id, name);
+    if (!id) return;
+
+    const row = this.displayResults().find((r) => r.id === id);
+    if (row && !this.isDownloadableType(row.type)) {
+      return;
+    }
+
+    this.documentDetailService
+      .fetchBlob(id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = objectUrl;
+          anchor.download = this.buildDownloadFileName(name, blob.type);
+          anchor.click();
+          URL.revokeObjectURL(objectUrl);
+        },
+        error: (err) => {
+          this.snackBar.open(
+            this.getApiErrorMessage(err, 'Failed to download document.'),
+            'Dismiss',
+            {
+              duration: 5000,
+            },
+          );
+        },
+      });
+  }
+
+  isDownloadableType(type: string): boolean {
+    const normalized = type.trim().toLowerCase();
+    return normalized.length > 0 && !NON_CONTENT_DOCUMENT_TYPES.has(normalized);
+  }
+
+  private buildDownloadFileName(name: string, mimeType: string): string {
+    const trimmed = name.trim() || 'document';
+    // Keep existing extension if present.
+    if (/\.[a-z0-9]+$/i.test(trimmed)) return trimmed;
+
+    const extensionByMime: Record<string, string> = {
+      'application/pdf': 'pdf',
+      'text/plain': 'txt',
+      'text/csv': 'csv',
+      'application/json': 'json',
+      'application/xml': 'xml',
+      'text/xml': 'xml',
+      'application/zip': 'zip',
+      'application/msword': 'doc',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+      'application/vnd.ms-excel': 'xls',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+      'application/vnd.ms-powerpoint': 'ppt',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/gif': 'gif',
+      'image/webp': 'webp',
+      'video/mp4': 'mp4',
+      'audio/mpeg': 'mp3',
+    };
+
+    const ext = extensionByMime[mimeType.toLowerCase()];
+    return ext ? `${trimmed}.${ext}` : trimmed;
   }
 
   setGridGroupBy(value: string): void {
@@ -705,6 +768,7 @@ export class SearchComponent {
               this.searchAggregationService.selectedSavedSearchTitle.set(
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
+              this.searchAggregationService.markSavedSearchDirty();
             },
           });
       });
