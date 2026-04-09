@@ -269,15 +269,12 @@ export class DocumentDetailService {
   }
 
   createCollection(title: string, description = ''): Observable<NuxeoDocument> {
-    return this.api.post<NuxeoDocument>(
-      `/nuxeo/api/v1/path/default-domain/UserWorkspaces/Administrator`,
-      {
-        'entity-type': 'document',
-        type: 'Collection',
-        name: title.replace(/\s+/g, '-').toLowerCase(),
-        properties: { 'dc:title': title, 'dc:description': description },
-      },
-    );
+    return this.api.post<NuxeoDocument>(`/nuxeo/api/v1/path/@userWorkspace`, {
+      'entity-type': 'document',
+      type: 'Collection',
+      name: title.replace(/\s+/g, '-').toLowerCase(),
+      properties: { 'dc:title': title, 'dc:description': description },
+    });
   }
 
   searchUsersGroups(searchTerm: string): Observable<UserGroupSuggestion[]> {

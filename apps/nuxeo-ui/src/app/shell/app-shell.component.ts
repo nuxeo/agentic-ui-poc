@@ -21,6 +21,7 @@ import {
   forkJoin,
   of,
   switchMap,
+  Subscription,
 } from 'rxjs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -120,6 +121,8 @@ export class AppShellComponent implements OnDestroy {
   readonly globalSearchError = signal<string | null>(null);
   readonly globalSearchResults = signal<GlobalSearchSuggestion[]>([]);
   readonly globalSearchOpen = signal(false);
+  readonly thumbnailMap = signal<Record<string, string>>({});
+  private thumbnailSubs: Subscription[] = [];
 
   readonly highlightedSearchTerm = computed(() => this.globalSearchTerm().trim());
 
@@ -211,6 +214,7 @@ export class AppShellComponent implements OnDestroy {
       .subscribe((results) => {
         this.globalSearchResults.set(results);
         this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
+        this.loadThumbnailsForResults(results);
       });
   }
 
@@ -218,6 +222,7 @@ export class AppShellComponent implements OnDestroy {
     window.removeEventListener('storage', this.storageListener);
     window.removeEventListener('clipboard-changed', this.clipboardChangedListener);
     window.removeEventListener('favorites-changed', this.favoritesChangedListener);
+    this.revokeThumbnails();
   }
 
   @HostListener('document:click', ['$event'])
@@ -500,11 +505,40 @@ export class AppShellComponent implements OnDestroy {
     this.globalSearchError.set(null);
     this.globalSearchResults.set([]);
     this.globalSearchOpen.set(false);
+    this.revokeThumbnails();
   }
 
-  documentPreviewUrl(result: GlobalSearchSuggestion): string {
-    const documentUid = result.documentUid ?? result.id;
-    return `/nuxeo/api/v1/id/${encodeURIComponent(documentUid)}/@rendition/thumbnail`;
+  thumbnailUrl(result: GlobalSearchSuggestion): string | null {
+    const uid = result.documentUid ?? result.id;
+    return this.thumbnailMap()[uid] ?? null;
+  }
+
+  private loadThumbnailsForResults(results: GlobalSearchSuggestion[]): void {
+    this.revokeThumbnails();
+
+    const docResults = results.filter((r) => r.kind === 'document');
+    for (const result of docResults) {
+      const uid = result.documentUid ?? result.id;
+      const sub = this.detailService
+        .fetchThumbnail(uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((map) => ({ ...map, [uid]: url }));
+        });
+      this.thumbnailSubs.push(sub);
+    }
+  }
+
+  private revokeThumbnails(): void {
+    for (const sub of this.thumbnailSubs) sub.unsubscribe();
+    this.thumbnailSubs = [];
+    const map = this.thumbnailMap();
+    for (const url of Object.values(map)) {
+      URL.revokeObjectURL(url);
+    }
+    this.thumbnailMap.set({});
   }
 
   userGroupIcon(result: GlobalSearchSuggestion): string {

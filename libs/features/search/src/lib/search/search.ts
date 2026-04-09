@@ -652,9 +652,13 @@ export class SearchComponent {
           URL.revokeObjectURL(objectUrl);
         },
         error: (err) => {
-          this.snackBar.open(this.getApiErrorMessage(err, 'Failed to download document.'), 'Dismiss', {
-            duration: 5000,
-          });
+          this.snackBar.open(
+            this.getApiErrorMessage(err, 'Failed to download document.'),
+            'Dismiss',
+            {
+              duration: 5000,
+            },
+          );
         },
       });
   }
@@ -764,6 +768,7 @@ export class SearchComponent {
               this.searchAggregationService.selectedSavedSearchTitle.set(
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
+              this.searchAggregationService.markSavedSearchDirty();
             },
           });
       });
