@@ -9,12 +9,14 @@ export function errorHandler(
   console.error('[ai-backend]', err.message);
 
   if (err.message?.includes('rate_limit')) {
-    res.status(429).json({ error: 'OpenAI rate limit reached. Please try again shortly.' });
+    res
+      .status(429)
+      .json({ error: 'HAIP Model Gateway rate limit reached. Please try again shortly.' });
     return;
   }
 
   if (err.message?.includes('insufficient_quota')) {
-    res.status(402).json({ error: 'OpenAI quota exceeded. Check billing.' });
+    res.status(402).json({ error: 'HAIP Model Gateway quota exceeded. Check your API key.' });
     return;
   }
 

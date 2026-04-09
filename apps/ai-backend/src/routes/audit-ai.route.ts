@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { chatCompletion } from '../services/openai.service.js';
+import { config } from '../config.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
 
 const router: Router = Router();
@@ -18,7 +19,7 @@ router.post('/audit/nl-filter', async (req, res, next) => {
         { role: 'system', content: SYSTEM_PROMPTS.nlAuditFilter },
         { role: 'user', content: `Today is ${todayStr}. User query: "${query}"` },
       ],
-      { model: 'gpt-4o-mini', maxTokens: 256 },
+      { model: config.haipModelFast, maxTokens: 256 },
     );
 
     res.json(JSON.parse(result));

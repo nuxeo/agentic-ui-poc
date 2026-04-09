@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { chatCompletion } from '../services/openai.service.js';
+import { config } from '../config.js';
 import { getUserTasks, searchDocuments } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
 import { escapeNxql } from '../utils/nxql-escape.js';
@@ -25,7 +26,7 @@ router.post('/insights', async (req, res, next) => {
         { role: 'system', content: SYSTEM_PROMPTS.insights },
         { role: 'user', content: context },
       ],
-      { model: 'gpt-4o-mini', maxTokens: 1024 },
+      { model: config.haipModelFast, maxTokens: 1024 },
     );
 
     res.json(JSON.parse(result));

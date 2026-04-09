@@ -1,4 +1,4 @@
-import { openai } from '../config.js';
+import { openai, config } from '../config.js';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 export interface ChatOptions {
@@ -8,9 +8,14 @@ export interface ChatOptions {
 }
 
 const DEFAULTS: Required<ChatOptions> = {
-  model: 'gpt-4o',
+  model: config.haipModel,
   temperature: 0.3,
   maxTokens: 2048,
+};
+
+const HAIP_METADATA = {
+  environment_id: config.haipEnvironmentId,
+  user_id: 'nuxeo-agentic-ui',
 };
 
 export async function chatCompletion(
@@ -23,8 +28,10 @@ export async function chatCompletion(
     messages,
     temperature,
     max_tokens: maxTokens,
-  });
-  return response.choices[0]?.message?.content?.trim() ?? '';
+    metadata: HAIP_METADATA,
+  } as never);
+  const result = response as unknown as { choices: Array<{ message: { content: string | null } }> };
+  return result.choices[0]?.message?.content?.trim() ?? '';
 }
 
 export async function chatCompletionStream(
@@ -32,18 +39,19 @@ export async function chatCompletionStream(
   opts: ChatOptions = {},
 ) {
   const { model, temperature, maxTokens } = { ...DEFAULTS, ...opts };
-  return openai.chat.completions.create({
+  const stream = await openai.chat.completions.create({
     model,
     messages,
     temperature,
     max_tokens: maxTokens,
     stream: true,
   });
+  return stream;
 }
 
 export async function createEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
+    model: config.haipEmbeddingModel,
     input: text,
   });
   return response.data[0].embedding;

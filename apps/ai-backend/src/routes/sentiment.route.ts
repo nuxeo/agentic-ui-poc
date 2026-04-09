@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { chatCompletion } from '../services/openai.service.js';
+import { config } from '../config.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
 
 const router: Router = Router();
@@ -17,7 +18,7 @@ router.post('/sentiment', async (req, res, next) => {
         { role: 'system', content: SYSTEM_PROMPTS.sentiment },
         { role: 'user', content: JSON.stringify(comments) },
       ],
-      { model: 'gpt-4o-mini', maxTokens: 1024 },
+      { model: config.haipModelFast, maxTokens: 1024 },
     );
 
     res.json(JSON.parse(result));

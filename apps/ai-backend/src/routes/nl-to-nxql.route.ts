@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { chatCompletion } from '../services/openai.service.js';
+import { config } from '../config.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
 import { NXQL_SCHEMA } from '../context/nxql-schema.js';
 
@@ -19,7 +20,7 @@ router.post('/nl-to-nxql', async (req, res, next) => {
           { role: 'system', content: SYSTEM_PROMPTS.nlToNxqlSuggestions },
           { role: 'user', content: query },
         ],
-        { model: 'gpt-4o-mini', maxTokens: 512 },
+        { model: config.haipModelFast, maxTokens: 512 },
       );
       res.json(JSON.parse(result));
       return;
