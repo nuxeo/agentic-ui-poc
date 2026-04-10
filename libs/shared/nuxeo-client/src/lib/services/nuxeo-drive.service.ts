@@ -38,7 +38,9 @@ export class NuxeoDriveService {
 
   buildEditUrl(docUid: string, blobUrl: string, filename: string): string {
     const parts = blobUrl.split('/nxfile/');
-    const downloadUrl = parts.length > 1 ? `nxfile/${parts[1]}` : '';
+    // Strip query string (?changeToken=...) so it does not become a query string on the nxdrive:// URL
+    const nxfilePart = parts.length > 1 ? parts[1].split('?')[0] : '';
+    const downloadUrl = nxfilePart ? `nxfile/${nxfilePart}` : '';
 
     return [
       'nxdrive://edit',

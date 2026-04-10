@@ -2125,10 +2125,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       name?: string;
       data?: string;
     } | null;
+    // Derive parent folder path so Drive opens in the document's containing folder
+    const docPath = doc?.path ?? '';
+    const parentPath = docPath.includes('/') ? docPath.split('/').slice(0, -1).join('/') : '/';
     const data: DriveDialogData = {
       docUid: doc?.uid ?? this.docUid,
       filename: fileContent?.name ?? doc?.title ?? '',
       blobUrl: fileContent?.data ?? '',
+      docPath: parentPath || '/',
     };
     this.dialog.open(DriveDialogComponent, { width: '500px', data });
   }
