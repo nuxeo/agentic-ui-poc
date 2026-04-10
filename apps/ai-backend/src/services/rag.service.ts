@@ -1,3 +1,4 @@
+import { config } from '../config.js';
 import { chatCompletion } from './openai.service.js';
 import { nxqlSearch, getDocumentById, getDocumentBlob, getUserTasks } from './nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
@@ -68,7 +69,7 @@ export async function ragChat(
       { role: 'system', content: SYSTEM_PROMPTS.nlToNxql },
       { role: 'user', content: message },
     ],
-    { model: 'gpt-4o-mini', maxTokens: 256 },
+    { model: config.openaiModelFast, maxTokens: 256 },
   );
 
   let nxql: string | null = null;

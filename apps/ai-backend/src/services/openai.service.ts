@@ -1,4 +1,4 @@
-import { openai } from '../config.js';
+import { openai, config } from '../config.js';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
 export interface ChatOptions {
@@ -8,7 +8,7 @@ export interface ChatOptions {
 }
 
 const DEFAULTS: Required<ChatOptions> = {
-  model: 'gpt-4o',
+  model: config.openaiModel,
   temperature: 0.3,
   maxTokens: 2048,
 };
@@ -43,7 +43,7 @@ export async function chatCompletionStream(
 
 export async function createEmbedding(text: string): Promise<number[]> {
   const response = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
+    model: config.openaiEmbeddingModel,
     input: text,
   });
   return response.data[0].embedding;
