@@ -16,9 +16,9 @@ const envCandidates = [
   join(process.cwd(), '.env'),
   join(process.cwd(), 'nuxeo-mcp-server', '.env'),
 ];
-for (const path of envCandidates) {
-  if (existsSync(path)) {
-    loadEnv({ path });
+for (const p of envCandidates) {
+  if (existsSync(p)) {
+    loadEnv({ path: p, quiet: true });
     break;
   }
 }
