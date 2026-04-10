@@ -1,4 +1,13 @@
-import { Component, DestroyRef, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnInit,
+  OnDestroy,
+  inject,
+  signal,
+  computed,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -86,6 +95,12 @@ import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/a
 import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
 import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
+import {
+  AddPermissionDialogComponent,
+  AddPermissionDialogData,
+  ShareExternalDialogComponent,
+  ShareExternalDialogData,
+} from '@agentic-ui/feature-collections';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -2110,12 +2125,60 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       name?: string;
       data?: string;
     } | null;
+    // Derive parent folder path so Drive opens in the document's containing folder
+    const docPath = doc?.path ?? '';
+    const parentPath = docPath.includes('/') ? docPath.split('/').slice(0, -1).join('/') : '/';
     const data: DriveDialogData = {
       docUid: doc?.uid ?? this.docUid,
       filename: fileContent?.name ?? doc?.title ?? '',
       blobUrl: fileContent?.data ?? '',
+      docPath: parentPath || '/',
     };
     this.dialog.open(DriveDialogComponent, { width: '500px', data });
+  }
+
+  openAddPermissionDialog(): void {
+    const data: AddPermissionDialogData = { documentUid: this.docUid };
+    const ref = this.dialog.open(AddPermissionDialogComponent, {
+      width: '540px',
+      data,
+      autoFocus: false,
+    });
+    ref.afterClosed().subscribe((saved: boolean) => {
+      if (saved) this.loadDocument(this.docUid);
+    });
+  }
+
+  toggleInheritanceBlock(): void {
+    if (this.actionInProgress()) return;
+    const blocked = this.isInheritanceBlocked();
+    this.actionInProgress.set('block-inheritance');
+    const op = blocked
+      ? this.detailService.unblockPermissionInheritance(this.docUid)
+      : this.detailService.blockPermissionInheritance(this.docUid);
+    op.subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast(blocked ? 'Permission inheritance unblocked' : 'Permission inheritance blocked');
+        this.loadDocument(this.docUid);
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to update permission inheritance');
+      },
+    });
+  }
+
+  openExternalPermissionDialog(): void {
+    const data: ShareExternalDialogData = { documentUid: this.docUid };
+    const ref = this.dialog.open(ShareExternalDialogComponent, {
+      width: '540px',
+      data,
+      autoFocus: false,
+    });
+    ref.afterClosed().subscribe((saved: boolean) => {
+      if (saved) this.loadDocument(this.docUid);
+    });
   }
 
   uploadAttachment(event: Event): void {

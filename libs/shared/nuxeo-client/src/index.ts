@@ -44,7 +44,7 @@ export type {
 export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 
 // Config
-export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
+export { NUXEO_API_ORIGIN, NUXEO_SERVER_URL } from './lib/nuxeo-api.config';
 export { CURRENT_USERNAME } from './lib/current-user.token';
 export type { NuxeoSamlLoginEndpoint } from './lib/saml-login.config';
 export {

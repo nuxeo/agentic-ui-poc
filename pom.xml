@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.nuxeo.agentic</groupId>
+  <artifactId>nuxeo-agentic-ui-parent</artifactId>
+  <version>2026.0.1-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>Nuxeo Agentic UI - Parent</name>
+
+  <modules>
+    <module>apps/nuxeo-ui</module>
+    <module>nuxeo-agentic-ui-package</module>
+  </modules>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
+    <nuxeo.version>2023.0</nuxeo.version>
+    <node.version>v20.0.0</node.version>
+    <npm.version>11.6.2</npm.version>
+  </properties>
+
+  <repositories>
+    <repository>
+      <id>public</id>
+      <url>https://packages.nuxeo.com/repository/maven-public</url>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>false</enabled></snapshots>
+    </repository>
+    <repository>
+      <id>public-snapshot</id>
+      <url>https://packages.nuxeo.com/repository/maven-public-snapshot</url>
+      <releases><enabled>false</enabled></releases>
+      <snapshots><updatePolicy>always</updatePolicy><enabled>true</enabled></snapshots>
+    </repository>
+  </repositories>
+
+  <pluginRepositories>
+    <pluginRepository>
+      <id>public</id>
+      <url>https://packages.nuxeo.com/repository/maven-public</url>
+      <releases><enabled>true</enabled></releases>
+      <snapshots><enabled>false</enabled></snapshots>
+    </pluginRepository>
+  </pluginRepositories>
+
+</project>

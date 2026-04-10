@@ -1,0 +1,132 @@
+name: Build Marketplace Package
+
+on:
+  push:
+    branches:
+      - nuxeo-agentic-package
+  pull_request:
+    branches:
+      - nuxeo-agentic-package
+
+concurrency:
+  group: marketplace-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: >-
+    -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+    -Daether.syncContext.named.time=600
+    -Xms512m -Xmx1g
+
+permissions:
+  contents: read
+  packages: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  properties:
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.env.outputs.VERSION }}
+      IS_MAIN: ${{ steps.env.outputs.IS_MAIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version info
+        id: env
+        run: |
+          set -e
+          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -v '\[' | head -n 1 | xargs)
+          BASE_VERSION=${CURRENT_VERSION%-SNAPSHOT}
+          IS_MAIN=false
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            VERSION="${BASE_VERSION}-PR-${{ github.event.number }}-BUILD-${{ github.run_number }}"
+          elif [[ "${{ github.ref }}" == "refs/heads/nuxeo-agentic-package" ]]; then
+            VERSION="${BASE_VERSION}-$(date +%Y%m%d%H%M%S)"
+            IS_MAIN=true
+          else
+            VERSION="${BASE_VERSION}-SNAPSHOT"
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "IS_MAIN=$IS_MAIN" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: properties
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.properties.outputs.VERSION }}
+      IS_MAIN: ${{ needs.properties.outputs.IS_MAIN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@hylandsoftware'
+
+      - name: Update Maven version
+        run: mvn versions:set -DnewVersion=$VERSION -DgenerateBackupPoms=false
+
+      - name: Update package.xml version
+        run: |
+          PACKAGE_XML="nuxeo-agentic-ui-package/src/main/resources/package.xml"
+          sed -i "s/version=\"[^\"]*\"/version=\"$VERSION\"/" "$PACKAGE_XML"
+
+      - name: Install npm dependencies
+        run: npm ci
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
+          SATORI_GH_READONLY_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
+
+      - name: Build Angular application
+        run: npx nx build nuxeo-ui --configuration=production --base-href=/nuxeo/agentic-ui/
+
+      - name: Build Maven package
+        run: |
+          mvn clean package -pl nuxeo-agentic-ui-package -B -V -nsu --no-transfer-progress
+          ls nuxeo-agentic-ui-package/target/*.zip
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuxeo-agentic-ui-package
+          path: nuxeo-agentic-ui-package/target/*.zip
+          retention-days: 30
+          if-no-files-found: error
+
+  push-to-preprod:
+    needs: [properties, build]
+    runs-on: ubuntu-latest
+    if: needs.properties.outputs.IS_MAIN == 'true'
+    env:
+      VERSION: ${{ needs.properties.outputs.VERSION }}
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v4
+        with:
+          name: nuxeo-agentic-ui-package
+          path: packages
+
+      - name: Publish to Nuxeo Marketplace (Preprod)
+        uses: Alfresco/alfresco-build-tools/.github/actions/nuxeo/nos-publish@v12.10.3
+        with:
+          nos-env: staging
+          nos-username: ${{ secrets.CONNECT_PREPROD_USERNAME }}
+          nos-token: ${{ secrets.CONNECT_PREPROD_PASSWORD }}
+          skip-verify: 'false'
+          package-path: packages/nuxeo-agentic-ui-package-${{ env.VERSION }}.zip
