@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { config } from '../config.js';
 import { chatCompletion, createEmbedding } from '../services/openai.service.js';
 import { getDocumentById, nxqlSearch } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
@@ -42,7 +43,7 @@ router.post('/similar', async (req, res, next) => {
           content: `Document title: ${title}\nType: ${doc['type']}\nPath: ${doc['path']}\nDescription: ${description}`,
         },
       ],
-      { model: 'gpt-4o-mini', maxTokens: 256 },
+      { model: config.openaiModelFast, maxTokens: 256 },
     );
 
     let nxql: string;
