@@ -79,6 +79,7 @@ export interface AttachmentPreviewData {
     `
       :host {
         display: block;
+        width: min(90vw, 1200px);
       }
 
       .preview-viewer {

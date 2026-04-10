@@ -64,6 +64,11 @@ export interface CreateVersionDialogData {
         margin: 0;
       }
 
+      :host {
+        min-width: 400px;
+        display: block;
+      }
+
       .version-options {
         display: flex;
         flex-direction: column;

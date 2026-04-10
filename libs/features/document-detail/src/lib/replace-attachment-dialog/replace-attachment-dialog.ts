@@ -40,6 +40,7 @@ export interface ReplaceAttachmentDialogData {
     `
       .replace-dialog {
         padding: 28px 32px;
+        min-width: 400px;
       }
 
       h2 {

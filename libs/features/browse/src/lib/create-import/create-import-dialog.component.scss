@@ -4,6 +4,7 @@ $badge-purple: #6b5b95;
 
 :host {
   display: block;
+  min-width: 480px;
 }
 
 .dialog-title-stack {
