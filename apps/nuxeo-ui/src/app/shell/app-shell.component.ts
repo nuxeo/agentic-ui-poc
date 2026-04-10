@@ -45,7 +45,7 @@ import {
   type GlobalSearchSuggestion,
   docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
-import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
+import { SelectionTopbarComponent, ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 import { AuthService } from '../auth/auth.service';
@@ -323,22 +323,28 @@ export class AppShellComponent implements OnDestroy {
     const count = this.selectionService.selectedCount();
     if (count === 0) return;
 
-    const confirmed = window.confirm(
-      `Delete ${count} selected item${count === 1 ? '' : 's'}? This action cannot be undone.`,
-    );
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Selected Items',
+        message: `Delete ${count} selected item${count === 1 ? '' : 's'}? This action cannot be undone.`,
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    if (!confirmed) {
-      this.selectionService.clear();
-      return;
-    }
-
-    this.selectionService.deleteSelected().subscribe({
-      error: (err) => {
-        console.error('Failed to delete selected documents', err);
-        const message = this.getDeleteErrorMessage(err);
-        this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) {
         this.selectionService.clear();
-      },
+        return;
+      }
+
+      this.selectionService.deleteSelected().subscribe({
+        error: (err) => {
+          console.error('Failed to delete selected documents', err);
+          const message = this.getDeleteErrorMessage(err);
+          this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+          this.selectionService.clear();
+        },
+      });
     });
   }
 

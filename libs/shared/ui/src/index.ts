@@ -29,3 +29,7 @@ export {
   type ShareSavedSearchDialogData,
   type PermissionEntry,
 } from './lib/share-saved-search-dialog/share-saved-search-dialog.component';
+export {
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from './lib/confirm-dialog/confirm-dialog.component';

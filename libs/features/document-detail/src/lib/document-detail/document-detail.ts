@@ -66,6 +66,8 @@ import {
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
   type VideoSource,
   type StoryboardItem,
   type PictureInfo,
@@ -1490,19 +1492,29 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   trashDocument(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Are you sure you want to delete this document?')) return;
-    this.actionInProgress.set('trash');
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Document',
+        message: 'Are you sure you want to delete this document?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.detailService.trashDocument(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document moved to trash');
-        this.goBack();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to delete document');
-      },
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionInProgress.set('trash');
+
+      this.detailService.trashDocument(this.docUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document moved to trash');
+          this.goBack();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to delete document');
+        },
+      });
     });
   }
 
@@ -1524,18 +1536,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   permanentlyDelete(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Permanently delete this document? This cannot be undone.')) return;
-    this.actionInProgress.set('permanentDelete');
-    this.detailService.permanentlyDelete(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document permanently deleted');
-        this.goBack();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to permanently delete document');
-      },
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Permanently Delete Document',
+        message: 'Permanently delete this document? This cannot be undone.',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionInProgress.set('permanentDelete');
+      this.detailService.permanentlyDelete(this.docUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document permanently deleted');
+          this.goBack();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to permanently delete document');
+        },
+      });
     });
   }
 
@@ -1822,13 +1844,23 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   deleteComment(comment: NuxeoComment): void {
-    if (!confirm('Delete this comment?')) return;
-    this.detailService.deleteComment(this.docUid, comment.id).subscribe({
-      next: () => {
-        this.comments.update((list) => list.filter((c) => c.id !== comment.id));
-        this.toast('Comment deleted');
-      },
-      error: () => this.toast('Failed to delete comment'),
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Comment',
+        message: 'Delete this comment?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.detailService.deleteComment(this.docUid, comment.id).subscribe({
+        next: () => {
+          this.comments.update((list) => list.filter((c) => c.id !== comment.id));
+          this.toast('Comment deleted');
+        },
+        error: () => this.toast('Failed to delete comment'),
+      });
     });
   }
 
