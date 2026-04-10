@@ -65,8 +65,9 @@ export interface CreateVersionDialogData {
       }
 
       :host {
-        min-width: 400px;
         display: block;
+        width: min(95vw, 400px);
+        max-width: 95vw;
       }
 
       .version-options {

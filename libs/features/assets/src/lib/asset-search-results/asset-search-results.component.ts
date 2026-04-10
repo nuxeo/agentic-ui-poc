@@ -11,6 +11,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import {
   AssetService,
   AssetAggregationService,
@@ -284,6 +285,7 @@ function inVideoDurationBucket(durationSec: number | undefined, bucket: string):
     MatCheckboxModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    MatSnackBarModule,
   ],
   templateUrl: './asset-search-results.component.html',
   styleUrl: './asset-search-results.component.scss',
@@ -297,6 +299,7 @@ export class AssetSearchResultsComponent {
   private readonly aggregationService = inject(AssetAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly searchService = inject(SearchService);
   readonly selectionService = inject(SelectionService);
 
@@ -729,6 +732,10 @@ export class AssetSearchResultsComponent {
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
               this.aggregationService.markSavedSearchDirty();
+              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+            },
+            error: () => {
+              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
             },
           });
       });
@@ -757,6 +764,10 @@ export class AssetSearchResultsComponent {
         next: () => {
           this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
           this.aggregationService.markSavedSearchDirty();
+          this.snackBar.open(`Search "${currentTitle}" updated.`, 'OK', { duration: 3000 });
+        },
+        error: () => {
+          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
         },
       });
   }
@@ -788,6 +799,12 @@ export class AssetSearchResultsComponent {
             next: () => {
               this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
               this.aggregationService.markSavedSearchDirty();
+              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', {
+                duration: 3000,
+              });
+            },
+            error: () => {
+              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
             },
           });
       });
@@ -798,9 +815,8 @@ export class AssetSearchResultsComponent {
     if (!id) return;
 
     this.dialog.open(ShareSavedSearchDialogComponent, {
-      width: '80vw',
-      maxWidth: '80vw',
-      height: '80vh',
+      width: '95vw',
+      maxWidth: '1080px',
       data: {
         title: this.selectedSavedSearchTitle().trim() || 'Saved Search',
         id,

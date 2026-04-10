@@ -7,6 +7,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   SearchAggregationService,
@@ -45,6 +46,7 @@ type DrawerViewMode = 'filter' | 'queue';
     MatButtonModule,
     MatCheckboxModule,
     MatDividerModule,
+    MatSnackBarModule,
     MatTooltipModule,
     SearchQueueComponent,
   ],
@@ -56,6 +58,7 @@ export class SearchFiltersDrawerComponent {
   private readonly searchService = inject(SearchService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly activatedRoute = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -447,6 +450,10 @@ export class SearchFiltersDrawerComponent {
           .subscribe({
             next: () => {
               this.searchAggregationService.markSavedSearchDirty();
+              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+            },
+            error: () => {
+              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
             },
           });
       });

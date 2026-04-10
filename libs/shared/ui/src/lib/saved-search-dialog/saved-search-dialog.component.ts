@@ -40,17 +40,19 @@ export const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig> = {
     `
       :host {
         display: block;
-        width: min(95vw, clamp(400px, 60vw, 640px));
+        width: min(95vw, clamp(320px, 50vw, 520px));
         max-width: 95vw;
       }
 
       mat-dialog-content {
-        padding: 8px 24px 16px !important;
+        padding: 8px clamp(12px, 4vw, 24px) 16px !important;
         overflow: visible !important;
       }
 
       .saved-search-input {
+        display: block;
         width: 100%;
+        min-width: 0;
         border: 1px solid #d0d5dd;
         border-radius: 8px;
         padding: 10px 12px;
@@ -66,6 +68,8 @@ export const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig> = {
 
       mat-dialog-actions {
         padding: 16px 24px 20px;
+        flex-wrap: wrap;
+        row-gap: 8px;
       }
     `,
   ],

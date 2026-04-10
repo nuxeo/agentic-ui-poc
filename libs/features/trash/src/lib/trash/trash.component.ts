@@ -283,7 +283,8 @@ export class TrashComponent {
     if (!id) return;
 
     this.dialog.open(ShareSavedSearchDialogComponent, {
-      height: '80vh',
+      width: '95vw',
+      maxWidth: '1080px',
       data: {
         title: this.trashFilterService.activeSavedFilterTitle()?.trim() || 'Saved Search',
         id,
