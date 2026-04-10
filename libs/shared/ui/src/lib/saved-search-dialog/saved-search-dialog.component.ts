@@ -40,7 +40,8 @@ export const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig> = {
     `
       :host {
         display: block;
-        width: clamp(400px, 60vw, 640px);
+        width: min(95vw, clamp(400px, 60vw, 640px));
+        max-width: 95vw;
       }
 
       mat-dialog-content {

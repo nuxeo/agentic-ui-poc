@@ -238,7 +238,7 @@ sat-status-tag {
  * declare their own width/min-width so they still fill the appropriate area.
  */
 .cdk-overlay-pane.mat-mdc-dialog-panel {
-  width: auto !important;
-  max-width: 95vw !important;
+  width: auto;
+  max-width: 95vw;
 }
 
