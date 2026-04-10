@@ -19,9 +19,11 @@ import {
   CollectionService,
   docTypeIcon,
   FOLDERISH_TYPES,
+  avatarColor,
 } from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
+import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { AiGatewayService, AiFeatureFlagService, type Insight } from '@agentic-ui/shared/ai-client';
 
 @Component({
@@ -37,6 +39,7 @@ import { AiGatewayService, AiFeatureFlagService, type Insight } from '@agentic-u
     WidgetGridComponent,
     WidgetContainerComponent,
     SatTagModule,
+    SatAvatarModule,
   ],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss',
@@ -179,6 +182,10 @@ export class DashboardPageComponent {
 
   lastContributor(doc: NuxeoDocument): string {
     return (doc.properties['dc:lastContributor'] as string) ?? '';
+  }
+
+  avatarColor(name: string) {
+    return avatarColor(name);
   }
 
   taskLabel(task: NuxeoTask): string {
