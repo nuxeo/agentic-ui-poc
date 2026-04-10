@@ -1,0 +1,4 @@
+<install>
+  <update file="${package.root}/install/bundles" todir="${env.bundles}" />
+  <copy dir="${package.root}/web" todir="${env.server.home}/nxserver" overwrite="true" />
+</install>

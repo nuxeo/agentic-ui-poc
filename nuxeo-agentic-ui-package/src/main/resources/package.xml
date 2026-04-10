@@ -1,0 +1,17 @@
+<package type="addon" name="nuxeo-agentic-ui" version="@VERSION@">
+  <title>Nuxeo Agentic UI</title>
+  <description>
+    <p>Angular workspace application with AI-powered Nuxeo integration</p>
+  </description>
+  <vendor>Hyland Software</vendor>
+  <installer restart="true" />
+  <uninstaller restart="true" />
+  <require-terms-and-conditions-acceptance>false</require-terms-and-conditions-acceptance>
+  <license>Apache License, Version 2.0</license>
+  <license-url>http://www.apache.org/licenses/LICENSE-2.0</license-url>
+  <target-platform>
+    <name>lts</name>
+    <version>[2025.0,2026.0)</version>
+  </target-platform>
+  <visibility>PRIVATE</visibility>
+</package>

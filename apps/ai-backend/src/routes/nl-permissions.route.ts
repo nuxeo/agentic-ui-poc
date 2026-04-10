@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { config } from '../config.js';
 import { chatCompletion } from '../services/openai.service.js';
 import { nxqlSearch, getDocumentAcl } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
@@ -23,7 +24,7 @@ router.post('/nl-permissions', async (req, res, next) => {
         },
         { role: 'user', content: query },
       ],
-      { model: 'gpt-4o-mini', maxTokens: 256 },
+      { model: config.openaiModelFast, maxTokens: 256 },
     );
 
     let aclData: unknown = {};
