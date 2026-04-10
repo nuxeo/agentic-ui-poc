@@ -16,11 +16,14 @@
     </button>
     <div class="header-info">
       <div class="header-title" role="heading" aria-level="1">{{ doc()!.title }}</div>
-      <sat-breadcrumbs [items]="breadcrumbItems()"></sat-breadcrumbs>
+      <sat-breadcrumbs
+        [items]="breadcrumbItems()"
+        (click)="onBreadcrumbClick($event)"
+      ></sat-breadcrumbs>
     </div>
     <div class="header-actions">
       @if (!isTrashed()) {
-        <button mat-icon-button matTooltip="Edit" aria-label="Edit">
+        <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
           <mat-icon>edit</mat-icon>
         </button>
         <button
@@ -294,7 +297,14 @@
                   <div class="perm-section-title" role="heading" aria-level="3">
                     Permissions defined locally
                   </div>
-                  <button mat-button color="primary" class="perm-action-btn">New</button>
+                  <button
+                    mat-button
+                    color="primary"
+                    class="perm-action-btn"
+                    (click)="openAddPermissionDialog()"
+                  >
+                    New
+                  </button>
                 </div>
                 @if (localAces().length === 0) {
                   <div class="perm-empty">There are no local permissions.</div>
@@ -341,7 +351,13 @@
                   <div class="perm-section-title" role="heading" aria-level="3">
                     Permissions inherited from upper levels
                   </div>
-                  <button mat-button color="primary" class="perm-action-btn">
+                  <button
+                    mat-button
+                    color="primary"
+                    class="perm-action-btn"
+                    [disabled]="actionInProgress() === 'block-inheritance'"
+                    (click)="toggleInheritanceBlock()"
+                  >
                     {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
                   </button>
                 </div>
@@ -390,7 +406,14 @@
                   <div class="perm-section-title" role="heading" aria-level="3">
                     Permissions Assigned to External Users
                   </div>
-                  <button mat-button color="primary" class="perm-action-btn">New</button>
+                  <button
+                    mat-button
+                    color="primary"
+                    class="perm-action-btn"
+                    (click)="openExternalPermissionDialog()"
+                  >
+                    New
+                  </button>
                 </div>
                 <div class="perm-info-bar">
                   <span class="perm-info-accent"></span>

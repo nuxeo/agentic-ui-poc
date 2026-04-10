@@ -4,4 +4,5 @@ Bundle-Name: Nuxeo Agentic Core
 Bundle-SymbolicName: org.nuxeo.agentic.core;singleton:=true
 Bundle-Version: 0.0.1
 Bundle-Vendor: Hyland Software
-Nuxeo-Component: OSGI-INF/login-startup-page-agentic-contrib.xml
+Nuxeo-Component: OSGI-INF/login-startup-page-agentic-contrib.xml,
+ OSGI-INF/auth-config-agentic.xml

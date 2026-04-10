@@ -1,4 +1,14 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  OnInit,
+  OnDestroy,
+  inject,
+  signal,
+  computed,
+  viewChild,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -65,6 +75,8 @@ import {
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
   type VideoSource,
   type StoryboardItem,
   type PictureInfo,
@@ -82,6 +94,13 @@ import { DriveDialogComponent, type DriveDialogData } from '../drive-dialog/driv
 import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/attachment-preview-dialog';
 import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
+import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
+import {
+  AddPermissionDialogComponent,
+  AddPermissionDialogData,
+  ShareExternalDialogComponent,
+  ShareExternalDialogData,
+} from '@agentic-ui/feature-collections';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -132,6 +151,7 @@ const TAG_CATEGORIES: SatTagCategory[] = [
   styleUrl: './document-detail.scss',
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly detailService = inject(DocumentDetailService);
@@ -176,6 +196,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
   private docUid = '';
+  private breadcrumbPathCache: string | null = null;
+  private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
   // AI Insights state
   readonly aiSummary = signal<SummarizeResponse | null>(null);
@@ -325,10 +347,31 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
     const d = this.doc();
     if (!d) return [];
-    const parts = d.path.split('/').filter(Boolean);
+
+    const path = d.path ?? '';
+    if (path === this.breadcrumbPathCache) {
+      return this.breadcrumbItemsCache;
+    }
+
+    const parts = path.split('/').filter(Boolean);
     parts.pop();
-    return parts.map((s) => ({ label: decodeURIComponent(s) }));
+    this.breadcrumbPathCache = path;
+    let accumulated = '/browse';
+    this.breadcrumbItemsCache = parts.map((s) => {
+      accumulated += `/${s}`;
+      return { label: decodeURIComponent(s), href: accumulated };
+    });
+    return this.breadcrumbItemsCache;
   });
+
+  onBreadcrumbClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a');
+    const href = anchor?.getAttribute('href');
+    if (href) {
+      event.preventDefault();
+      void this.router.navigateByUrl(href);
+    }
+  }
 
   readonly versionLabel = computed(() => {
     const d = this.doc();
@@ -1464,19 +1507,29 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   trashDocument(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Are you sure you want to delete this document?')) return;
-    this.actionInProgress.set('trash');
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Document',
+        message: 'Are you sure you want to delete this document?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.detailService.trashDocument(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document moved to trash');
-        this.goBack();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to delete document');
-      },
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) return;
+      this.actionInProgress.set('trash');
+
+      this.detailService.trashDocument(this.docUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document moved to trash');
+          this.goBack();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to delete document');
+        },
+      });
     });
   }
 
@@ -1498,18 +1551,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   permanentlyDelete(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Permanently delete this document? This cannot be undone.')) return;
-    this.actionInProgress.set('permanentDelete');
-    this.detailService.permanentlyDelete(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document permanently deleted');
-        this.goBack();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to permanently delete document');
-      },
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Permanently Delete Document',
+        message: 'Permanently delete this document? This cannot be undone.',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) return;
+      this.actionInProgress.set('permanentDelete');
+      this.detailService.permanentlyDelete(this.docUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document permanently deleted');
+          this.goBack();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to permanently delete document');
+        },
+      });
     });
   }
 
@@ -1574,6 +1637,27 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         },
       });
     });
+  }
+
+  openEditDialog(): void {
+    const currentDoc = this.doc();
+    if (!currentDoc) return;
+
+    const ref = this.dialog.open(EditDocumentDialogComponent, {
+      width: '560px',
+      data: { document: currentDoc },
+    });
+
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updatedDoc: NuxeoDocument | undefined) => {
+        if (!updatedDoc) return;
+        this.doc.set(updatedDoc);
+        this.syncActionStates(updatedDoc);
+        this.toast('Document updated');
+        this.loadDocument(this.docUid);
+      });
   }
 
   shareDocument(): void {
@@ -1775,13 +1859,23 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   deleteComment(comment: NuxeoComment): void {
-    if (!confirm('Delete this comment?')) return;
-    this.detailService.deleteComment(this.docUid, comment.id).subscribe({
-      next: () => {
-        this.comments.update((list) => list.filter((c) => c.id !== comment.id));
-        this.toast('Comment deleted');
-      },
-      error: () => this.toast('Failed to delete comment'),
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Comment',
+        message: 'Delete this comment?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) return;
+      this.detailService.deleteComment(this.docUid, comment.id).subscribe({
+        next: () => {
+          this.comments.update((list) => list.filter((c) => c.id !== comment.id));
+          this.toast('Comment deleted');
+        },
+        error: () => this.toast('Failed to delete comment'),
+      });
     });
   }
 
@@ -2031,12 +2125,60 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       name?: string;
       data?: string;
     } | null;
+    // Derive parent folder path so Drive opens in the document's containing folder
+    const docPath = doc?.path ?? '';
+    const parentPath = docPath.includes('/') ? docPath.split('/').slice(0, -1).join('/') : '/';
     const data: DriveDialogData = {
       docUid: doc?.uid ?? this.docUid,
       filename: fileContent?.name ?? doc?.title ?? '',
       blobUrl: fileContent?.data ?? '',
+      docPath: parentPath || '/',
     };
     this.dialog.open(DriveDialogComponent, { width: '500px', data });
+  }
+
+  openAddPermissionDialog(): void {
+    const data: AddPermissionDialogData = { documentUid: this.docUid };
+    const ref = this.dialog.open(AddPermissionDialogComponent, {
+      width: '540px',
+      data,
+      autoFocus: false,
+    });
+    ref.afterClosed().subscribe((saved: boolean) => {
+      if (saved) this.loadDocument(this.docUid);
+    });
+  }
+
+  toggleInheritanceBlock(): void {
+    if (this.actionInProgress()) return;
+    const blocked = this.isInheritanceBlocked();
+    this.actionInProgress.set('block-inheritance');
+    const op = blocked
+      ? this.detailService.unblockPermissionInheritance(this.docUid)
+      : this.detailService.blockPermissionInheritance(this.docUid);
+    op.subscribe({
+      next: () => {
+        this.actionInProgress.set(null);
+        this.toast(blocked ? 'Permission inheritance unblocked' : 'Permission inheritance blocked');
+        this.loadDocument(this.docUid);
+      },
+      error: () => {
+        this.actionInProgress.set(null);
+        this.toast('Failed to update permission inheritance');
+      },
+    });
+  }
+
+  openExternalPermissionDialog(): void {
+    const data: ShareExternalDialogData = { documentUid: this.docUid };
+    const ref = this.dialog.open(ShareExternalDialogComponent, {
+      width: '540px',
+      data,
+      autoFocus: false,
+    });
+    ref.afterClosed().subscribe((saved: boolean) => {
+      if (saved) this.loadDocument(this.docUid);
+    });
   }
 
   uploadAttachment(event: Event): void {

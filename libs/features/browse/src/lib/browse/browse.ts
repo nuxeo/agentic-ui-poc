@@ -60,6 +60,8 @@ import {
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
 } from '@agentic-ui/shared/ui';
 
 import {
@@ -802,13 +804,24 @@ export class BrowseComponent {
   deleteDocument(): void {
     const doc = this.currentDoc();
     if (!doc) return;
-    if (!confirm(`Move "${doc.title}" to trash?`)) return;
-    this.detailService.trashDocument(doc.uid).subscribe({
-      next: () => {
-        this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
-        void this.router.navigateByUrl('/browse');
-      },
-      error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Move to Trash',
+        message: `Move "${doc.title}" to trash?`,
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (!confirmed) return;
+      this.detailService.trashDocument(doc.uid).subscribe({
+        next: () => {
+          this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
+          void this.router.navigateByUrl('/browse');
+        },
+        error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+      });
     });
   }
 

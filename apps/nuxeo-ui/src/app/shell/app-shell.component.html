@@ -77,11 +77,17 @@
                   (click)="onGlobalSearchSelect(result)"
                 >
                   @if (result.kind === 'document') {
-                    <img
-                      class="header-search-option-preview"
-                      [src]="documentPreviewUrl(result)"
-                      [alt]="result.displayLabel"
-                    />
+                    @if (thumbnailUrl(result); as thumb) {
+                      <img
+                        class="header-search-option-preview"
+                        [src]="thumb"
+                        [alt]="result.displayLabel"
+                      />
+                    } @else {
+                      <span class="header-search-option-preview header-search-option-preview--icon">
+                        <mat-icon>{{ docTypeIcon(result.kind) }}</mat-icon>
+                      </span>
+                    }
                   } @else {
                     <span class="header-search-option-avatar">
                       <mat-icon>{{ userGroupIcon(result) }}</mat-icon>
@@ -261,7 +267,6 @@
                         <button
                           type="button"
                           class="ai-source-card"
-                          [matTooltip]="source.path"
                           matTooltipPosition="above"
                           (click)="openAiSource(source.uid, source.type, source.path)"
                         >

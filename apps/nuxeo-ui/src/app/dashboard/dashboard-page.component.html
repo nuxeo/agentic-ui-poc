@@ -62,7 +62,11 @@
   }
 
   <lib-widget-grid [columns]="2">
-    <lib-widget-container title="Recently Edited" icon="edit" iconColor="var(--mat-sys-primary)">
+    <lib-widget-container
+      [title]="'Recently Edited'"
+      icon="edit"
+      iconColor="var(--mat-sys-primary)"
+    >
       @if (recentlyEditedLoading()) {
         <div class="widget-loading">
           <mat-spinner diameter="28" />
@@ -91,7 +95,7 @@
                       <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
                     }
                   </div>
-                  <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+                  <span class="doc-title">{{ doc.title }}</span>
                 </td>
                 <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
                 <td class="doc-contributor">
@@ -106,7 +110,7 @@
       }
     </lib-widget-container>
 
-    <lib-widget-container title="Tasks" icon="assignment" iconColor="var(--mat-sys-error)">
+    <lib-widget-container [title]="'Tasks'" icon="assignment" iconColor="var(--mat-sys-error)">
       @if (tasksLoading()) {
         <div class="widget-loading">
           <mat-spinner diameter="28" />
@@ -134,7 +138,7 @@
     </lib-widget-container>
 
     <lib-widget-container
-      title="Recently Viewed"
+      [title]="'Recently Viewed'"
       icon="visibility"
       iconColor="var(--mat-sys-secondary)"
     >
@@ -166,7 +170,7 @@
                       <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
                     }
                   </div>
-                  <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+                  <span class="doc-title">{{ doc.title }}</span>
                 </td>
                 <td>
                   <sat-category-tag category="blue">{{ docTypeLabel(doc) }}</sat-category-tag>
@@ -179,7 +183,11 @@
       }
     </lib-widget-container>
 
-    <lib-widget-container title="Favorite Items" icon="star" iconColor="var(--mat-sys-tertiary)">
+    <lib-widget-container
+      [title]="'Favorite Items'"
+      icon="star"
+      iconColor="var(--mat-sys-tertiary)"
+    >
       @if (favoritesLoading()) {
         <div class="widget-loading">
           <mat-spinner diameter="28" />
@@ -208,7 +216,7 @@
                       <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
                     }
                   </div>
-                  <span class="doc-title" [title]="doc.path">{{ doc.title }}</span>
+                  <span class="doc-title">{{ doc.title }}</span>
                 </td>
                 <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
                 <td class="doc-contributor">

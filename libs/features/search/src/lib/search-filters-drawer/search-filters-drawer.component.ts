@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked, DestroyRef } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject, catchError, debounceTime, filter, map, of, switchMap } from 'rxjs';
@@ -57,6 +57,7 @@ export class SearchFiltersDrawerComponent {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly activatedRoute = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly viewMode = signal<DrawerViewMode>(this.loadViewModeFromStorage());
   readonly selectedDocumentId = signal<string>('');
@@ -67,6 +68,7 @@ export class SearchFiltersDrawerComponent {
   readonly savedSearchFilter = signal('');
   readonly secondarySearchInput = signal('');
   readonly savedSearchOpen = signal(false);
+  readonly restoringSavedSearchFilters = signal(false);
   readonly savedSearchesLoading = signal(false);
   readonly savedSearchesLoaded = signal(false);
   readonly expandedFilters = signal<Set<string>>(new Set(['modification-date']));
@@ -147,6 +149,16 @@ export class SearchFiltersDrawerComponent {
   });
 
   constructor() {
+    // Reload the saved searches list whenever any component signals a new save.
+    effect(() => {
+      const version = this.searchAggregationService.savedSearchVersion();
+      if (version === 0) return;
+      untracked(() => {
+        this.savedSearchesLoaded.set(false);
+        this.loadSavedSearchesFromApi();
+      });
+    });
+
     this.baselineRequests$
       .pipe(
         debounceTime(150),
@@ -202,8 +214,95 @@ export class SearchFiltersDrawerComponent {
     });
 
     effect(() => {
-      const fulltext = (this.searchAggregationService.drawerFilters()['ecm_fulltext'] ?? '').trim();
-      this.secondarySearchInput.set(fulltext);
+      const drawerFilters = this.searchAggregationService.drawerFilters();
+
+      this.query.set((drawerFilters['q'] ?? '').trim());
+      this.secondarySearchInput.set((drawerFilters['ecm_fulltext'] ?? '').trim());
+      this.selectedModificationDates.set(this.parseCsvSet(drawerFilters['modifiedDate']));
+      this.selectedNatures.set(this.parseCsvSet(drawerFilters['nature']));
+      this.selectedSubjects.set(this.parseCsvSet(drawerFilters['subjects']));
+      this.selectedCoverage.set(this.parseCsvSet(drawerFilters['coverage']));
+      this.selectedSizes.set(this.parseCsvSet(drawerFilters['size']));
+
+      const author = (drawerFilters['author'] ?? '').trim();
+      this.selectedAuthor.set(author);
+      this.authorInput.set(author);
+
+      const collection = (drawerFilters['collection'] ?? '').trim();
+      this.selectedCollection.set(collection);
+      this.collectionInput.set(collection);
+
+      const tag = (drawerFilters['tag'] ?? '').trim();
+      this.selectedTag.set(tag);
+      this.tagInput.set(tag);
+    });
+
+    effect(() => {
+      const savedSearchId = this.searchAggregationService.selectedSavedSearchId().trim();
+      const savedSearchTitle = this.searchAggregationService.selectedSavedSearchTitle().trim();
+      const drawerFilters = this.searchAggregationService.drawerFilters();
+      const hasDrawerFilters = Object.keys(drawerFilters).length > 0;
+
+      if (savedSearchId) {
+        this.selectedSavedSearch.set(savedSearchId);
+        this.savedSearchInput.set(savedSearchTitle);
+
+        if (!hasDrawerFilters && !this.restoringSavedSearchFilters()) {
+          this.restoringSavedSearchFilters.set(true);
+          this.searchService
+            .getSavedSearchById(savedSearchId)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (params) => {
+                const currentSavedSearchId = this.searchAggregationService
+                  .selectedSavedSearchId()
+                  .trim();
+                if (currentSavedSearchId !== savedSearchId) {
+                  return;
+                }
+
+                this.applySavedSearchParams(params);
+                this.restoringSavedSearchFilters.set(false);
+              },
+              error: () => {
+                const currentSavedSearchId = this.searchAggregationService
+                  .selectedSavedSearchId()
+                  .trim();
+                if (currentSavedSearchId !== savedSearchId) {
+                  return;
+                }
+
+                this.restoringSavedSearchFilters.set(false);
+              },
+            });
+        }
+
+        return;
+      }
+
+      this.selectedSavedSearch.set('');
+      this.savedSearchInput.set('');
+      this.savedSearchFilter.set('');
+      this.savedSearchOpen.set(false);
+
+      if (hasDrawerFilters) return;
+
+      this.query.set('');
+      this.secondarySearchInput.set('');
+      this.selectedModificationDates.set(new Set());
+      this.selectedNatures.set(new Set());
+      this.selectedSubjects.set(new Set());
+      this.selectedCoverage.set(new Set());
+      this.selectedSizes.set(new Set());
+      this.selectedAuthor.set('');
+      this.authorInput.set('');
+      this.authorOpen.set(false);
+      this.selectedCollection.set('');
+      this.collectionInput.set('');
+      this.collectionOpen.set(false);
+      this.selectedTag.set('');
+      this.tagInput.set('');
+      this.tagOpen.set(false);
     });
 
     this.activatedRoute.parent?.params.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -349,8 +448,7 @@ export class SearchFiltersDrawerComponent {
           })
           .subscribe({
             next: () => {
-              this.savedSearchesLoaded.set(false);
-              this.loadSavedSearchesFromApi();
+              this.searchAggregationService.markSavedSearchDirty();
             },
           });
       });
@@ -447,6 +545,14 @@ export class SearchFiltersDrawerComponent {
     this.loadSavedSearchesFromApi();
   }
 
+  onSavedSearchToggle(): void {
+    if (this.savedSearchOpen()) {
+      this.savedSearchOpen.set(false);
+      return;
+    }
+    this.onSavedSearchFocus();
+  }
+
   onCollectionInput(value: string): void {
     this.collectionInput.set(value);
     this.collectionOpen.set(true);
@@ -489,15 +595,21 @@ export class SearchFiltersDrawerComponent {
     });
   }
 
-  selectDefaultSavedSearch(): void {
-    this.savedSearchFilter.set('');
-    this.searchAggregationService.selectedSavedSearchId.set('');
-    this.searchAggregationService.selectedSavedSearchTitle.set('');
-    this.resetFilters();
-  }
+  private applySavedSearchParams(params: Record<string, unknown>): void {
+    const getRaw = (key: string): unknown => {
+      const direct = params[key];
+      if (direct !== undefined && direct !== null) return direct;
 
-  private applySavedSearchParams(params: Record<string, string>): void {
-    const get = (key: string) => params[key]?.trim() ?? '';
+      const defaults = params[`defaults:${key}`];
+      if (defaults !== undefined && defaults !== null) return defaults;
+
+      return undefined;
+    };
+    const toStringValue = (raw: unknown): string => {
+      if (typeof raw === 'string') return raw.trim();
+      if (Array.isArray(raw) && raw.length > 0) return String(raw[0] ?? '').trim();
+      return '';
+    };
     const parseJsonArray = (raw: string): string[] | null => {
       if (!raw) return null;
       try {
@@ -514,8 +626,15 @@ export class SearchFiltersDrawerComponent {
       return null;
     };
     const getSet = (key: string): Set<string> => {
-      const raw = get(key);
+      const rawValue = getRaw(key);
+
+      if (Array.isArray(rawValue)) {
+        return new Set(rawValue.map((value) => String(value ?? '').trim()).filter(Boolean));
+      }
+
+      const raw = toStringValue(rawValue);
       if (!raw) return new Set();
+
       // Values may be stored as a JSON array string (e.g. '["val1","val2"]') or comma-separated
       const parsed = parseJsonArray(raw);
       if (parsed) return new Set(parsed);
@@ -527,7 +646,7 @@ export class SearchFiltersDrawerComponent {
       );
     };
     const getScalar = (key: string): string => {
-      const raw = get(key);
+      const raw = toStringValue(getRaw(key));
       if (!raw) return '';
 
       const parsed = parseJsonArray(raw);
@@ -555,17 +674,19 @@ export class SearchFiltersDrawerComponent {
     this.secondarySearchInput.set(fallback('ecm_fulltext', 'ecmFulltext'));
 
     // Aggregation keys (dc_modified_agg etc.) take priority over URL-style keys (modifiedDate etc.)
-    this.selectedModificationDates.set(fallbackSet('dc_modified_agg', 'modifiedDate'));
-    this.selectedNatures.set(fallbackSet('dc_nature_agg', 'nature'));
-    this.selectedSubjects.set(fallbackSet('dc_subjects_agg', 'subjects'));
-    this.selectedCoverage.set(fallbackSet('dc_coverage_agg', 'coverage'));
-    this.selectedSizes.set(fallbackSet('common_size_agg', 'size'));
+    this.selectedModificationDates.set(
+      fallbackSet('dc_modified_agg', 'modifiedDate', 'dc_modified'),
+    );
+    this.selectedNatures.set(fallbackSet('dc_nature_agg', 'nature', 'dc_nature'));
+    this.selectedSubjects.set(fallbackSet('dc_subjects_agg', 'subjects', 'dc_subjects'));
+    this.selectedCoverage.set(fallbackSet('dc_coverage_agg', 'coverage', 'dc_coverage'));
+    this.selectedSizes.set(fallbackSet('common_size_agg', 'common_size', 'size'));
 
-    const author = fallback('dc_creator_agg', 'author');
+    const author = fallback('dc_creator_agg', 'dc_creator', 'author');
     this.selectedAuthor.set(author);
     this.authorInput.set(author);
 
-    const collection = fallback('collection_agg', 'collection');
+    const collection = fallback('collection_agg', 'dc_coverage_agg', 'collection');
     this.selectedCollection.set(collection);
     this.collectionInput.set(collection);
 
@@ -603,7 +724,12 @@ export class SearchFiltersDrawerComponent {
     setTimeout(() => this.authorOpen.set(false), 120);
   }
 
-  closeSavedSearchDropdown(): void {
+  onSavedSearchFocusOut(event: FocusEvent): void {
+    const container = event.currentTarget as HTMLElement;
+    const relatedTarget = event.relatedTarget as Node | null;
+    // If focus moved to another element still inside the dropdown, keep it open.
+    if (relatedTarget && container.contains(relatedTarget)) return;
+    // Small delay so (mousedown) on options fires before we close.
     setTimeout(() => this.savedSearchOpen.set(false), 120);
   }
 
@@ -1063,6 +1189,16 @@ export class SearchFiltersDrawerComponent {
     if (next.has(value)) next.delete(value);
     else next.add(value);
     return next;
+  }
+
+  private parseCsvSet(value: string | undefined): Set<string> {
+    if (!value) return new Set();
+    return new Set(
+      value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    );
   }
 
   private humanize(value: string): string {
