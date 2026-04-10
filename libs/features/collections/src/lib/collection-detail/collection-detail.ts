@@ -34,6 +34,7 @@ import {
   DirectoryEntry,
   docTypeIcon,
   avatarColor,
+  NON_CONTENT_DOCUMENT_TYPES,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -44,6 +45,8 @@ import {
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
 } from '@agentic-ui/shared/ui';
 import {
   EditCollectionDialogComponent,
@@ -150,10 +153,40 @@ export class CollectionDetailComponent {
   private eventCategoryLabelMap = new Map<string, string>();
   private sortActive = signal('');
   private sortDirection = signal<'asc' | 'desc' | ''>('');
+  private breadcrumbPathCache: string | null = null;
+  private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
   readonly isInClipboard = computed(() =>
     this.clipboardDocs().some((d) => d.uid === this.collectionUid),
   );
+
+  readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
+    const col = this.collection();
+    if (!col?.path) return [];
+
+    if (col.path === this.breadcrumbPathCache) {
+      return this.breadcrumbItemsCache;
+    }
+
+    const segments = col.path.split('/').filter(Boolean);
+    segments.pop();
+    this.breadcrumbPathCache = col.path;
+    let accumulated = '/browse';
+    this.breadcrumbItemsCache = segments.map((s) => {
+      accumulated += `/${s}`;
+      return { label: decodeURIComponent(s), href: accumulated };
+    });
+    return this.breadcrumbItemsCache;
+  });
+
+  onBreadcrumbClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a');
+    const href = anchor?.getAttribute('href');
+    if (href) {
+      event.preventDefault();
+      void this.router.navigateByUrl(href);
+    }
+  }
 
   readonly localAces = computed<NuxeoAce[]>(() => {
     const acls = this.collection()?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
@@ -236,6 +269,7 @@ export class CollectionDetailComponent {
   private loadThumbnails(docs: NuxeoDocument[]): void {
     this.thumbnailMap.set({});
     for (const doc of docs) {
+      if (!this.canLoadThumbnail(doc)) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
         .pipe(catchError(() => of(null)))
@@ -250,17 +284,9 @@ export class CollectionDetailComponent {
     }
   }
 
-  breadcrumbItems(): SatBreadcrumbsItem[] {
-    const col = this.collection();
-    if (!col?.path) return [];
-    const segments = col.path.split('/').filter(Boolean);
-    segments.pop();
-    return segments.map((s) => ({ label: decodeURIComponent(s) }));
-  }
-
-  creator(): string {
-    const col = this.collection();
-    return (col?.properties?.['dc:creator'] as string) ?? '';
+  private canLoadThumbnail(doc: NuxeoDocument): boolean {
+    const normalizedType = doc.type.trim().toLowerCase();
+    return normalizedType.length > 0 && !NON_CONTENT_DOCUMENT_TYPES.has(normalizedType);
   }
 
   docIcon(doc: NuxeoDocument): string {
@@ -344,19 +370,29 @@ export class CollectionDetailComponent {
 
   deleteCollection(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Are you sure you want to delete this collection?')) return;
-    this.actionInProgress.set('trash');
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Collection',
+        message: 'Are you sure you want to delete this collection?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.detailService.trashDocument(this.collectionUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Collection moved to trash');
-        void this.router.navigateByUrl('/collections');
-      },
-      error: () => {
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionInProgress.set('trash');
+
+      this.detailService.trashDocument(this.collectionUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Collection moved to trash');
+          void this.router.navigateByUrl('/collections');
+        },
+        error: () => {
         this.actionInProgress.set(null);
         this.toast('Failed to delete collection');
       },
+      });
     });
   }
 

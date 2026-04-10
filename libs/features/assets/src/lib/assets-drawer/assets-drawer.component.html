@@ -29,10 +29,6 @@
                 (input)="savedSearchFilter.set($any($event.target).value)"
               />
             </div>
-            <button class="saved-filters-option saved-filters-default" type="button" (mousedown)="resetFilters()">
-              <mat-icon class="saved-filter-icon">search</mat-icon>
-              Default Search
-            </button>
             @if (filteredSavedSearches().length === 0) {
               <div class="saved-filters-empty">No matching saved searches</div>
             } @else {

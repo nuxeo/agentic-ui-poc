@@ -40,7 +40,11 @@ import {
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { AppNavItem, SETTINGS_DRAWER_ITEMS } from '../../platform-nav-items';
+import {
+  AppNavItem,
+  SETTINGS_DRAWER_ITEMS,
+  ADMINISTRATION_DRAWER_ITEMS,
+} from '../../platform-nav-items';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -86,6 +90,7 @@ export class NavDrawerComponent {
   readonly navigateKeepDrawer = output<string>();
   readonly signOutSelected = output<void>();
   readonly settingsItems = SETTINGS_DRAWER_ITEMS;
+  readonly administrationItems = ADMINISTRATION_DRAWER_ITEMS;
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
@@ -296,6 +301,10 @@ export class NavDrawerComponent {
 
   get isSettings(): boolean {
     return this.activeItem()?.path === '/settings';
+  }
+
+  get isAdministration(): boolean {
+    return this.activeItem()?.path === '/administration';
   }
 
   get isFavorites(): boolean {
@@ -645,7 +654,7 @@ export class NavDrawerComponent {
     return this.taskLabel(task);
   }
 
-  /** Relative due fragment only (line pairs with a separate "Due" prefix). */
+  /** Relative due fragment only (pairs with the "Due"/"Overdue" prefix in the template). */
   dueRelativeOnly(task: NuxeoTask): string {
     if (!task.dueDate) return '';
     const diff = new Date(task.dueDate).getTime() - Date.now();
@@ -657,7 +666,7 @@ export class NavDrawerComponent {
     else label = hours <= 1 ? 'less than an hour' : `${hours} hours`;
 
     if (diff > 0) return `in ${label}`;
-    return `${label} overdue`;
+    return `by ${label}`;
   }
 
   /** Workflow as a single sentence-style line (e.g. "Parallel document review"). */

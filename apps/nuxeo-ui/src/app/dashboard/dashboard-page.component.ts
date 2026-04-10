@@ -22,6 +22,8 @@ import {
 } from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
+import { AiGatewayService, AiFeatureFlagService, type Insight } from '@agentic-ui/shared/ai-client';
+
 @Component({
   selector: 'app-dashboard-page',
   standalone: true,
@@ -48,6 +50,8 @@ export class DashboardPageComponent {
   private readonly detailService = inject(DocumentDetailService);
   private readonly auth = inject(AuthService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly aiGateway = inject(AiGatewayService);
+  readonly featureFlags = inject(AiFeatureFlagService);
 
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
@@ -66,6 +70,10 @@ export class DashboardPageComponent {
   readonly favorites = signal<NuxeoDocument[]>([]);
   readonly favoritesLoading = signal(true);
   readonly favoritesError = signal<string | null>(null);
+
+  readonly aiInsights = signal<Insight[]>([]);
+  readonly aiInsightsLoading = signal(true);
+  readonly aiInsightsError = signal<string | null>(null);
 
   constructor() {
     const userId = this.auth.username() ?? 'Administrator';
@@ -114,6 +122,17 @@ export class DashboardPageComponent {
       error: () => {
         this.favoritesError.set('Failed to load favorite items.');
         this.favoritesLoading.set(false);
+      },
+    });
+
+    this.aiGateway.getInsights(userId).subscribe({
+      next: (res) => {
+        this.aiInsights.set(res.insights);
+        this.aiInsightsLoading.set(false);
+      },
+      error: () => {
+        this.aiInsightsError.set('AI insights unavailable.');
+        this.aiInsightsLoading.set(false);
       },
     });
   }
@@ -207,6 +226,25 @@ export class DashboardPageComponent {
 
   goToTask(task: NuxeoTask): void {
     this.router.navigate(['/tasks', task.id]);
+  }
+
+  insightIcon(icon: string): string {
+    const map: Record<string, string> = {
+      task: 'assignment',
+      document: 'description',
+      warning: 'warning',
+      info: 'info',
+      workflow: 'account_tree',
+    };
+    return map[icon] ?? 'info';
+  }
+
+  insightPriorityColor(priority: string): string {
+    return priority === 'high' ? '#d32f2f' : priority === 'medium' ? '#ed6c02' : '#2e7d32';
+  }
+
+  navigateToInsight(link: string): void {
+    if (link) void this.router.navigateByUrl(link);
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {

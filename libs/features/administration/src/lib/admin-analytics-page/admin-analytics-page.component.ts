@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, UpperCasePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,6 +10,11 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin } from 'rxjs';
 import { AdministrationService, type NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import {
+  AiGatewayService,
+  AiFeatureFlagService,
+  type AuditAnomaly,
+} from '@agentic-ui/shared/ai-client';
 function escapeNxqlLiteral(s: string): string {
   return s.replace(/'/g, "''");
 }
@@ -19,6 +24,7 @@ function escapeNxqlLiteral(s: string): string {
   standalone: true,
   imports: [
     DatePipe,
+    UpperCasePipe,
     FormsModule,
     MatButtonModule,
     MatIconModule,
@@ -33,6 +39,8 @@ function escapeNxqlLiteral(s: string): string {
 })
 export class AdminAnalyticsPageComponent implements OnInit {
   private readonly adminApi = inject(AdministrationService);
+  private readonly aiGateway = inject(AiGatewayService);
+  readonly featureFlags = inject(AiFeatureFlagService);
 
   readonly distPath = signal('/default-domain/');
   readonly repoPath = signal('/default-domain/');
@@ -50,6 +58,11 @@ export class AdminAnalyticsPageComponent implements OnInit {
   readonly wfTotal = signal<number | null>(null);
 
   readonly repoColumns = ['path', 'type', 'modified'] as const;
+
+  readonly aiAnomalies = signal<AuditAnomaly[]>([]);
+  readonly aiAnomalySummary = signal('');
+  readonly aiAnomalyLoading = signal(false);
+  readonly aiAnomalyTimeRange = signal<'24h' | '7d' | '30d'>('24h');
 
   private readonly primaryTypes = ['Folder', 'File', 'Note', 'Picture', 'Workspace', 'Collection'];
 
@@ -92,11 +105,10 @@ export class AdminAnalyticsPageComponent implements OnInit {
     const totalQ = `SELECT * FROM Document WHERE ${base}`;
     const countObs = [
       this.adminApi.getNxqlTotalSize(totalQ),
-      ...this.primaryTypes.map(
-        (t) =>
-          this.adminApi.getNxqlTotalSize(
-            `SELECT * FROM Document WHERE ${base} AND ecm:primaryType = '${t}'`,
-          ),
+      ...this.primaryTypes.map((t) =>
+        this.adminApi.getNxqlTotalSize(
+          `SELECT * FROM Document WHERE ${base} AND ecm:primaryType = '${t}'`,
+        ),
       ),
     ];
 
@@ -104,9 +116,7 @@ export class AdminAnalyticsPageComponent implements OnInit {
       next: (nums) => {
         const [total, ...counts] = nums;
         this.totalUnderPath.set(total);
-        this.typeRows.set(
-          this.primaryTypes.map((type, i) => ({ type, count: counts[i] ?? 0 })),
-        );
+        this.typeRows.set(this.primaryTypes.map((type, i) => ({ type, count: counts[i] ?? 0 })));
         this.distLoading.set(false);
       },
       error: () => {
@@ -148,6 +158,26 @@ export class AdminAnalyticsPageComponent implements OnInit {
       next: (n) => this.searchMetricTotal.set(n),
       error: () => this.searchMetricTotal.set(null),
     });
+  }
+
+  runAnomalyDetection(): void {
+    this.aiAnomalyLoading.set(true);
+    this.aiGateway.detectAnomalies(this.aiAnomalyTimeRange()).subscribe({
+      next: (res) => {
+        this.aiAnomalies.set(res.anomalies);
+        this.aiAnomalySummary.set(res.summary);
+        this.aiAnomalyLoading.set(false);
+      },
+      error: () => {
+        this.aiAnomalies.set([]);
+        this.aiAnomalySummary.set('Failed to detect anomalies');
+        this.aiAnomalyLoading.set(false);
+      },
+    });
+  }
+
+  severityColor(severity: string): string {
+    return severity === 'high' ? '#d32f2f' : severity === 'medium' ? '#ed6c02' : '#2e7d32';
   }
 
   refreshWorkflow(): void {

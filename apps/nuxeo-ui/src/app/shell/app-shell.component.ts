@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   HostListener,
+  OnDestroy,
   ViewChild,
   computed,
   inject,
@@ -9,6 +10,7 @@ import {
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
 import {
   Subject,
   catchError,
@@ -19,6 +21,7 @@ import {
   forkJoin,
   of,
   switchMap,
+  Subscription,
 } from 'rxjs';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -26,6 +29,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { SatAppHeaderModule } from '@hylandsoftware/satori-ui/app-header';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import {
@@ -39,12 +43,15 @@ import {
   SearchService,
   SelectionService,
   type GlobalSearchSuggestion,
+  docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
-import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
+import { SelectionTopbarComponent, ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
+import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
 
 @Component({
   selector: 'app-shell',
@@ -60,13 +67,16 @@ import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
     MatIconModule,
     MatSnackBarModule,
     MatSidenavModule,
+    MatTooltipModule,
     NavDrawerComponent,
     SelectionTopbarComponent,
+    FormsModule,
+    AiMarkdownPipe,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
 })
-export class AppShellComponent {
+export class AppShellComponent implements OnDestroy {
   @ViewChild('globalSearchContainer')
   private globalSearchContainer?: ElementRef<HTMLElement>;
 
@@ -86,6 +96,11 @@ export class AppShellComponent {
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly searchService = inject(SearchService);
+  readonly aiChat = inject(AiChatService);
+  readonly featureFlags = inject(AiFeatureFlagService);
+
+  readonly aiChatOpen = this.aiChat.panelOpen;
+  readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
   /** Hides Administration for non-administrators. */
@@ -106,6 +121,8 @@ export class AppShellComponent {
   readonly globalSearchError = signal<string | null>(null);
   readonly globalSearchResults = signal<GlobalSearchSuggestion[]>([]);
   readonly globalSearchOpen = signal(false);
+  readonly thumbnailMap = signal<Record<string, string>>({});
+  private thumbnailSubs: Subscription[] = [];
 
   readonly highlightedSearchTerm = computed(() => this.globalSearchTerm().trim());
 
@@ -144,6 +161,9 @@ export class AppShellComponent {
     }
   };
 
+  private clipboardChangedListener = () => this.refreshClipboardCount();
+  private favoritesChangedListener = () => this.refreshFavoritesCount();
+
   constructor() {
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
@@ -166,8 +186,8 @@ export class AppShellComponent {
       });
 
     window.addEventListener('storage', this.storageListener);
-    window.addEventListener('clipboard-changed', () => this.refreshClipboardCount());
-    window.addEventListener('favorites-changed', () => this.refreshFavoritesCount());
+    window.addEventListener('clipboard-changed', this.clipboardChangedListener);
+    window.addEventListener('favorites-changed', this.favoritesChangedListener);
     this.refreshFavoritesCount();
 
     this.searchInput$
@@ -194,7 +214,15 @@ export class AppShellComponent {
       .subscribe((results) => {
         this.globalSearchResults.set(results);
         this.globalSearchOpen.set(this.globalSearchTerm().trim().length >= 2);
+        this.loadThumbnailsForResults(results);
       });
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('storage', this.storageListener);
+    window.removeEventListener('clipboard-changed', this.clipboardChangedListener);
+    window.removeEventListener('favorites-changed', this.favoritesChangedListener);
+    this.revokeThumbnails();
   }
 
   @HostListener('document:click', ['$event'])
@@ -295,22 +323,28 @@ export class AppShellComponent {
     const count = this.selectionService.selectedCount();
     if (count === 0) return;
 
-    const confirmed = window.confirm(
-      `Delete ${count} selected item${count === 1 ? '' : 's'}? This action cannot be undone.`,
-    );
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Selected Items',
+        message: `Delete ${count} selected item${count === 1 ? '' : 's'}? This action cannot be undone.`,
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    if (!confirmed) {
-      this.selectionService.clear();
-      return;
-    }
-
-    this.selectionService.deleteSelected().subscribe({
-      error: (err) => {
-        console.error('Failed to delete selected documents', err);
-        const message = this.getDeleteErrorMessage(err);
-        this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) {
         this.selectionService.clear();
-      },
+        return;
+      }
+
+      this.selectionService.deleteSelected().subscribe({
+        error: (err) => {
+          console.error('Failed to delete selected documents', err);
+          const message = this.getDeleteErrorMessage(err);
+          this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+          this.selectionService.clear();
+        },
+      });
     });
   }
 
@@ -477,11 +511,40 @@ export class AppShellComponent {
     this.globalSearchError.set(null);
     this.globalSearchResults.set([]);
     this.globalSearchOpen.set(false);
+    this.revokeThumbnails();
   }
 
-  documentPreviewUrl(result: GlobalSearchSuggestion): string {
-    const documentUid = result.documentUid ?? result.id;
-    return `/nuxeo/api/v1/id/${encodeURIComponent(documentUid)}/@rendition/thumbnail`;
+  thumbnailUrl(result: GlobalSearchSuggestion): string | null {
+    const uid = result.documentUid ?? result.id;
+    return this.thumbnailMap()[uid] ?? null;
+  }
+
+  private loadThumbnailsForResults(results: GlobalSearchSuggestion[]): void {
+    this.revokeThumbnails();
+
+    const docResults = results.filter((r) => r.kind === 'document');
+    for (const result of docResults) {
+      const uid = result.documentUid ?? result.id;
+      const sub = this.detailService
+        .fetchThumbnail(uid)
+        .pipe(catchError(() => of(null)))
+        .subscribe((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          this.thumbnailMap.update((map) => ({ ...map, [uid]: url }));
+        });
+      this.thumbnailSubs.push(sub);
+    }
+  }
+
+  private revokeThumbnails(): void {
+    for (const sub of this.thumbnailSubs) sub.unsubscribe();
+    this.thumbnailSubs = [];
+    const map = this.thumbnailMap();
+    for (const url of Object.values(map)) {
+      URL.revokeObjectURL(url);
+    }
+    this.thumbnailMap.set({});
   }
 
   userGroupIcon(result: GlobalSearchSuggestion): string {
@@ -576,5 +639,41 @@ export class AppShellComponent {
     this.activeDrawerItem.set(null);
     this.auth.logout();
     void this.router.navigateByUrl('/login');
+  }
+
+  toggleAiChat(): void {
+    this.aiChat.togglePanel();
+    const url = this.router.url;
+    const docMatch = url.match(/\/doc\/([a-f0-9-]+)/i);
+    this.aiChat.setContext({
+      docId: docMatch?.[1],
+      page: url,
+    });
+  }
+
+  sendAiMessage(): void {
+    const msg = this.aiChatInput().trim();
+    if (!msg) return;
+    this.aiChat.send(msg);
+    this.aiChatInput.set('');
+  }
+
+  clearAiChat(): void {
+    this.aiChat.clear();
+  }
+
+  openAiSource(uid: string, type?: string, path?: string): void {
+    this.aiChatOpen.set(false);
+    if (type === 'Collection') {
+      void this.router.navigate(['/collections', uid]);
+    } else if ((type === 'Folder' || type === 'OrderedFolder' || type === 'Workspace') && path) {
+      void this.router.navigateByUrl(`/browse${path}`);
+    } else {
+      void this.router.navigate(['/doc', uid]);
+    }
+  }
+
+  docTypeIcon(type: string): string {
+    return docTypeIcon(type);
   }
 }

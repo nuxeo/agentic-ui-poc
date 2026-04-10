@@ -13,6 +13,44 @@
       </mat-expansion-panel>
     </mat-accordion>
 
+    @if (featureFlags.aiEnabled()) {
+      <div class="ai-generate-row">
+        <mat-form-field
+          appearance="outline"
+          class="nxql-field ai-nl-field"
+          subscriptSizing="dynamic"
+        >
+          <mat-label>Describe your query in English</mat-label>
+          <input
+            matInput
+            [(ngModel)]="aiNlQuery"
+            placeholder="e.g. All PDFs created last month"
+            (keydown.enter)="generateFromNl()"
+          />
+          <mat-icon matPrefix class="ai-prefix-icon">auto_awesome</mat-icon>
+        </mat-form-field>
+        @if (aiGenerating()) {
+          <button type="button" mat-flat-button class="ai-gen-btn" disabled>
+            <mat-spinner diameter="18"></mat-spinner>
+          </button>
+        } @else {
+          <button
+            type="button"
+            mat-flat-button
+            class="ai-gen-btn"
+            [disabled]="!aiNlQuery.trim()"
+            (click)="generateFromNl()"
+          >
+            <mat-icon>auto_awesome</mat-icon>
+            Generate NXQL
+          </button>
+        }
+      </div>
+      @if (aiGenError()) {
+        <p class="nxql-error">{{ aiGenError() }}</p>
+      }
+    }
+
     <mat-form-field
       appearance="outline"
       class="nxql-field nxql-field--query"

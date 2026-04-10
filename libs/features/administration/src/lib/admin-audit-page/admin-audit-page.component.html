@@ -6,6 +6,119 @@
     </button>
   </header>
 
+  <!-- ═══════ AI Anomaly Detection Banner ═══════ -->
+  @if (featureFlags.aiEnabled() && !anomalyDismissed()) {
+    <section class="ai-anomaly-banner" [class.ai-anomaly-banner--loading]="anomalyLoading()">
+      <div class="ai-anomaly-banner__header">
+        <div class="ai-anomaly-banner__title-row">
+          <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
+          <span class="ai-anomaly-banner__title">AI Anomaly Detection</span>
+          @if (highSeverityCount() > 0) {
+            <span class="ai-anomaly-badge ai-anomaly-badge--high"
+              >{{ highSeverityCount() }} critical</span
+            >
+          }
+        </div>
+        <div class="ai-anomaly-banner__actions">
+          <button
+            type="button"
+            mat-icon-button
+            matTooltip="Refresh"
+            (click)="loadAnomalies()"
+            [disabled]="anomalyLoading()"
+          >
+            <mat-icon>refresh</mat-icon>
+          </button>
+          <button type="button" mat-icon-button matTooltip="Dismiss" (click)="dismissAnomalies()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      @if (anomalyLoading()) {
+        <div class="ai-anomaly-banner__skeleton">
+          <div class="ai-skeleton-bar ai-skeleton-bar--long"></div>
+          <div class="ai-skeleton-row">
+            <div class="ai-skeleton-card"></div>
+            <div class="ai-skeleton-card"></div>
+            <div class="ai-skeleton-card"></div>
+          </div>
+        </div>
+      } @else if (anomalies().length === 0) {
+        <div class="ai-anomaly-banner__empty">
+          <mat-icon>verified</mat-icon>
+          <span>No anomalies detected in the last 24 hours — all clear!</span>
+        </div>
+      } @else {
+        <p class="ai-anomaly-banner__summary">{{ anomalySummary() }}</p>
+        <div class="ai-anomaly-cards">
+          @for (a of anomalies(); track a.description) {
+            <div class="ai-anomaly-card" [class]="'ai-anomaly-card--' + a.severity">
+              <div class="ai-anomaly-card__header">
+                <mat-icon [class]="'sev-icon sev-icon--' + a.severity">{{
+                  severityIcon(a.severity)
+                }}</mat-icon>
+                <span class="ai-anomaly-card__severity">{{ a.severity }}</span>
+                <span class="ai-anomaly-card__time">{{ a.timestamp }}</span>
+              </div>
+              <p class="ai-anomaly-card__desc">{{ a.description }}</p>
+              @if (a.events.length) {
+                <div class="ai-anomaly-card__events">{{ a.events.length }} related event(s)</div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ═══════ AI Natural Language Search ═══════ -->
+  @if (featureFlags.aiEnabled()) {
+    <section class="ai-nl-search">
+      <div class="ai-nl-search__input-row">
+        <mat-icon class="ai-nl-search__icon">auto_awesome</mat-icon>
+        <input
+          class="ai-nl-search__input"
+          type="text"
+          placeholder='Ask AI: e.g. "show login failures last week" or "what did Administrator do yesterday"'
+          [(ngModel)]="nlQuery"
+          (keydown.enter)="onNlSearch()"
+          [disabled]="nlLoading()"
+        />
+        @if (nlLoading()) {
+          <mat-spinner diameter="20" class="ai-nl-search__spinner" />
+        } @else {
+          <button
+            type="button"
+            mat-icon-button
+            (click)="onNlSearch()"
+            [disabled]="!nlQuery.trim()"
+            matTooltip="Search with AI"
+          >
+            <mat-icon>search</mat-icon>
+          </button>
+        }
+        @if (nlExplanation()) {
+          <button
+            type="button"
+            mat-icon-button
+            (click)="clearNlSearch()"
+            matTooltip="Clear AI filters"
+          >
+            <mat-icon>clear</mat-icon>
+          </button>
+        }
+      </div>
+      @if (nlExplanation()) {
+        <div class="ai-nl-search__explanation">
+          <mat-icon>lightbulb</mat-icon>
+          <span>{{ nlExplanation() }}</span>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ═══════ Standard Filters ═══════ -->
   <div class="audit-filters mat-elevation-z0">
     <mat-form-field appearance="outline" subscriptSizing="dynamic">
       <mat-label>Filter by username</mat-label>
@@ -44,10 +157,90 @@
     <button type="button" mat-flat-button color="primary" (click)="applyFilters()">Apply</button>
   </div>
 
+  <!-- ═══════ Results Toolbar ═══════ -->
+  @if (!loading()) {
+    <div class="audit-toolbar">
+      <p class="audit-meta">{{ totalSize() }} event(s)</p>
+      @if (featureFlags.aiEnabled()) {
+        <button
+          type="button"
+          mat-stroked-button
+          class="ai-summarize-btn"
+          (click)="summarizeEntries()"
+          [disabled]="summaryLoading() || entries().length === 0"
+          matTooltip="AI summarizes the currently visible entries"
+        >
+          <mat-icon>auto_awesome</mat-icon>
+          Summarize with AI
+        </button>
+      }
+    </div>
+  }
+
+  <!-- ═══════ AI Summary Panel ═══════ -->
+  @if (featureFlags.aiEnabled() && summaryOpen()) {
+    <section class="ai-summary-panel">
+      <div class="ai-summary-panel__header">
+        <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
+        <span>AI Summary</span>
+        <button type="button" mat-icon-button (click)="closeSummary()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      @if (summaryLoading()) {
+        <div class="ai-summary-panel__loading">
+          <mat-spinner diameter="28" />
+          <span>Analyzing {{ entries().length }} entries…</span>
+        </div>
+      } @else if (auditSummary()) {
+        <p class="ai-summary-panel__text">{{ auditSummary()!.summary }}</p>
+
+        @if (auditSummary()!.stats.length) {
+          <div class="ai-summary-stats">
+            @for (stat of auditSummary()!.stats; track stat.label) {
+              <div class="ai-summary-stat-card">
+                <mat-icon>{{ summaryStatIcon(stat.icon) }}</mat-icon>
+                <div class="ai-summary-stat-card__body">
+                  <span class="ai-summary-stat-card__value">{{ stat.value }}</span>
+                  <span class="ai-summary-stat-card__label">{{ stat.label }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (auditSummary()!.topUsers.length) {
+          <div class="ai-summary-section">
+            <h4>Most Active Users</h4>
+            <div class="ai-summary-users">
+              @for (u of auditSummary()!.topUsers; track u.name) {
+                <span class="ai-summary-user-chip">
+                  <mat-icon>person</mat-icon>
+                  {{ u.name }} <strong>({{ u.count }})</strong>
+                </span>
+              }
+            </div>
+          </div>
+        }
+
+        @if (auditSummary()!.highlights.length) {
+          <div class="ai-summary-section">
+            <h4>Highlights</h4>
+            <ul class="ai-summary-highlights">
+              @for (h of auditSummary()!.highlights; track h) {
+                <li>{{ h }}</li>
+              }
+            </ul>
+          </div>
+        }
+      }
+    </section>
+  }
+
+  <!-- ═══════ Audit Table ═══════ -->
   @if (loading()) {
     <div class="audit-center"><mat-spinner diameter="40" /></div>
   } @else {
-    <p class="audit-meta">{{ totalSize() }} event(s)</p>
     <div class="audit-table-wrap mat-elevation-z1">
       <table mat-table [dataSource]="entries()" class="audit-table">
         <ng-container matColumnDef="action">

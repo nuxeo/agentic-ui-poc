@@ -644,11 +644,15 @@ sat-breadcrumbs {
 }
 
 .type-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 2px 8px;
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
+  line-height: 1;
+  text-align: center;
   color: var(--mat-sys-on-primary-container);
   background: var(--mat-sys-primary-container);
   white-space: nowrap;

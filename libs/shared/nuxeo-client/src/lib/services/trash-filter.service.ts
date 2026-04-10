@@ -26,6 +26,7 @@ export class TrashFilterService {
   readonly resultThumbnails = signal<Record<string, SafeUrl>>({});
   readonly totalResults = signal(0);
   readonly resultsLoading = signal(false);
+  readonly savedSearchVersion = signal(0);
 
   readonly activeSavedFilterUid = signal<string | null>(null);
   readonly activeSavedFilterTitle = signal<string | null>(null);
@@ -39,5 +40,9 @@ export class TrashFilterService {
 
   toggleLayout(): void {
     this.layoutMode.update((m) => (m === 'filters' ? 'results' : 'filters'));
+  }
+
+  markSavedSearchDirty(): void {
+    this.savedSearchVersion.update((v) => v + 1);
   }
 }

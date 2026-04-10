@@ -19,7 +19,7 @@ import {
   UserService,
 } from '@agentic-ui/shared/nuxeo-client';
 
-import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
 import {
   GroupFormDialogComponent,
   GroupFormDialogData,

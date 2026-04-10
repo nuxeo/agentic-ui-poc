@@ -71,7 +71,7 @@
               }
             </div>
             <div class="rv-info">
-              <span class="rv-title" [title]="doc.path">{{ doc.title }}</span>
+              <span class="rv-title">{{ doc.title }}</span>
               <div class="rv-meta">
                 <span class="rv-type">{{ doc.type }}</span>
                 <span class="rv-sep">&middot;</span>
@@ -106,7 +106,7 @@
               }
             </div>
             <div class="expired-info">
-              <span class="expired-title" [title]="doc.path">{{ doc.title }}</span>
+              <span class="expired-title">{{ doc.title }}</span>
               <div class="expired-meta">
                 <span class="expired-type">{{ doc.type }}</span>
                 <span class="expired-sep">&middot;</span>
@@ -192,7 +192,9 @@
                     }
                     @if (task.dueDate) {
                       <div class="task-due-line">
-                        <span class="task-due-prefix">Due</span>
+                        <span class="task-due-prefix">{{
+                          isOverdue(task) ? 'Overdue' : 'Due'
+                        }}</span>
                         <span
                           class="task-due-value"
                           [class.task-due-value--soon]="!isOverdue(task)"
@@ -316,6 +318,20 @@
         </button>
       }
       <button type="button" class="settings-item" (click)="onSettingsSignOut()">Sign Out</button>
+    </div>
+  } @else if (isAdministration) {
+    <div class="settings-panel">
+      @for (adminItem of administrationItems; track adminItem.path) {
+        <button
+          type="button"
+          class="settings-item"
+          [routerLink]="adminItem.path"
+          routerLinkActive="settings-item--active"
+          [routerLinkActiveOptions]="{ exact: adminItem.path !== '/administration/users-groups' }"
+        >
+          {{ adminItem.label }}
+        </button>
+      }
     </div>
   } @else {
     <div class="drawer-empty">

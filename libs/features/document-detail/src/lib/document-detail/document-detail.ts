@@ -1,4 +1,5 @@
-import { Component, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
+import { Component, DestroyRef, OnInit, OnDestroy, inject, signal, computed, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -40,12 +41,24 @@ import {
   CURRENT_USERNAME,
   avatarColor,
   ARenderService,
+  TagService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { SatTagModule, SatTagCategory } from '@hylandsoftware/satori-ui/tag';
+import {
+  AiGatewayService,
+  AiChatService,
+  AiFeatureFlagService,
+  type SummarizeResponse,
+  type SuggestedTag,
+  type ClassifyResponse,
+  type SimilarDoc,
+  type SentimentItem,
+  type SentimentResponse,
+} from '@agentic-ui/shared/ai-client';
 import DOMPurify from 'dompurify';
-import { forkJoin, Observable } from 'rxjs';
+import { forkJoin, Observable, of, switchMap } from 'rxjs';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -53,6 +66,8 @@ import {
   ExportDialogComponent,
   ExportDialogData,
   ExportType,
+  ConfirmDialogComponent,
+  ConfirmDialogData,
   type VideoSource,
   type StoryboardItem,
   type PictureInfo,
@@ -70,6 +85,7 @@ import { DriveDialogComponent, type DriveDialogData } from '../drive-dialog/driv
 import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/attachment-preview-dialog';
 import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
+import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -120,6 +136,7 @@ const TAG_CATEGORIES: SatTagCategory[] = [
   styleUrl: './document-detail.scss',
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly detailService = inject(DocumentDetailService);
@@ -133,6 +150,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly arenderService = inject(ARenderService);
+  private readonly tagService = inject(TagService);
+  private readonly aiGateway = inject(AiGatewayService);
+  private readonly aiChatService = inject(AiChatService);
+  readonly featureFlags = inject(AiFeatureFlagService);
 
   /** Programmatic tab switches (e.g. Publishing link). */
   private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
@@ -160,6 +181,23 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
   private docUid = '';
+  private breadcrumbPathCache: string | null = null;
+  private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
+
+  // AI Insights state
+  readonly aiSummary = signal<SummarizeResponse | null>(null);
+  readonly aiSummaryLoading = signal(false);
+  readonly aiSuggestedTags = signal<SuggestedTag[]>([]);
+  readonly aiTagsLoading = signal(false);
+  readonly aiClassification = signal<ClassifyResponse | null>(null);
+  readonly aiClassifyLoading = signal(false);
+  readonly aiSimilarDocs = signal<SimilarDoc[]>([]);
+  readonly aiSimilarLoading = signal(false);
+  readonly aiError = signal<string | null>(null);
+
+  readonly aiSentimentMap = signal<Record<string, SentimentItem>>({});
+  readonly aiThreadSummary = signal<string | null>(null);
+  readonly aiSentimentLoading = signal(false);
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -294,10 +332,31 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
     const d = this.doc();
     if (!d) return [];
-    const parts = d.path.split('/').filter(Boolean);
+
+    const path = d.path ?? '';
+    if (path === this.breadcrumbPathCache) {
+      return this.breadcrumbItemsCache;
+    }
+
+    const parts = path.split('/').filter(Boolean);
     parts.pop();
-    return parts.map((s) => ({ label: decodeURIComponent(s) }));
+    this.breadcrumbPathCache = path;
+    let accumulated = '/browse';
+    this.breadcrumbItemsCache = parts.map((s) => {
+      accumulated += `/${s}`;
+      return { label: decodeURIComponent(s), href: accumulated };
+    });
+    return this.breadcrumbItemsCache;
   });
+
+  onBreadcrumbClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a');
+    const href = anchor?.getAttribute('href');
+    if (href) {
+      event.preventDefault();
+      void this.router.navigateByUrl(href);
+    }
+  }
 
   readonly versionLabel = computed(() => {
     const d = this.doc();
@@ -516,6 +575,113 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.panelSubTab.set('properties');
   }
 
+  generateSummary(): void {
+    if (!this.docUid) return;
+    this.aiSummaryLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.summarize(this.docUid).subscribe({
+      next: (res) => {
+        this.aiSummary.set(res);
+        this.aiSummaryLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Summary generation failed');
+        this.aiSummaryLoading.set(false);
+      },
+    });
+  }
+
+  suggestTags(): void {
+    if (!this.docUid) return;
+    this.aiTagsLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.suggestTags(this.docUid).subscribe({
+      next: (res) => {
+        this.aiSuggestedTags.set(res.tags);
+        this.aiTagsLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Tag suggestion failed');
+        this.aiTagsLoading.set(false);
+      },
+    });
+  }
+
+  applyAiTag(tagLabel: string): void {
+    if (!this.docUid) return;
+    this.tagService.addTag(this.docUid, tagLabel).subscribe({
+      next: () => {
+        this.aiSuggestedTags.update((tags) => tags.filter((t) => t.label !== tagLabel));
+        this.snackBar.open(`Tag "${tagLabel}" applied`, 'OK', { duration: 3000 });
+      },
+      error: () => this.snackBar.open('Failed to apply tag', 'Dismiss', { duration: 3000 }),
+    });
+  }
+
+  classifyDocument(): void {
+    if (!this.docUid) return;
+    this.aiClassifyLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.classify(this.docUid).subscribe({
+      next: (res) => {
+        this.aiClassification.set(res);
+        this.aiClassifyLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Classification failed');
+        this.aiClassifyLoading.set(false);
+      },
+    });
+  }
+
+  findSimilar(): void {
+    if (!this.docUid) return;
+    this.aiSimilarLoading.set(true);
+    this.aiError.set(null);
+    this.aiGateway.findSimilar(this.docUid).subscribe({
+      next: (res) => {
+        this.aiSimilarDocs.set(res.documents);
+        this.aiSimilarLoading.set(false);
+      },
+      error: (err) => {
+        this.aiError.set(err?.error?.error ?? 'Similar doc search failed');
+        this.aiSimilarLoading.set(false);
+      },
+    });
+  }
+
+  navigateToDoc(uid: string): void {
+    void this.router.navigateByUrl(`/doc/${uid}`);
+  }
+
+  openAiAssistant(): void {
+    this.aiChatService.openPanel({ docId: this.docUid ?? undefined, page: this.router.url });
+  }
+
+  analyzeCommentSentiment(): void {
+    const allComments = this.comments();
+    if (!allComments.length) return;
+    this.aiSentimentLoading.set(true);
+    this.aiSentimentMap.set({});
+    this.aiThreadSummary.set(null);
+
+    const payload = allComments.map((c) => ({ id: c.id, text: c.text }));
+    this.aiGateway.analyzeSentiment(payload).subscribe({
+      next: (res: SentimentResponse) => {
+        const map: Record<string, SentimentItem> = {};
+        for (const item of res.sentiments) {
+          map[item.id] = item;
+        }
+        this.aiSentimentMap.set(map);
+        this.aiThreadSummary.set(res.threadSummary);
+        this.aiSentimentLoading.set(false);
+      },
+      error: () => {
+        this.aiSentimentLoading.set(false);
+      },
+    });
+  }
+
   ngOnDestroy(): void {
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
@@ -709,7 +875,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     const fc = doc.properties['file:content'] as Record<string, unknown> | null;
     if (!fc) {
-      this.loadPreviewFallback(doc);
+      const noPreviewTypes = [
+        'Collection',
+        'Folder',
+        'Workspace',
+        'Domain',
+        'Section',
+        'OrderedFolder',
+      ];
+      if (!noPreviewTypes.includes(doc.type)) {
+        this.loadPreviewFallback(doc);
+      }
       return;
     }
 
@@ -727,6 +903,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (mime.startsWith('audio/') || mime.startsWith('image/') || mime === 'application/pdf') {
       this.detailService.fetchBlob(doc.uid).subscribe({
         next: (blob) => this.setBlobUrl(blob),
+        error: () => this.loadPreviewFallback(doc),
+      });
+      return;
+    }
+
+    if (mime.startsWith('text/') || mime === 'application/json') {
+      this.detailService.fetchBlob(doc.uid).subscribe({
+        next: (blob) => blob.text().then((text) => this.noteContent.set(text)),
         error: () => this.loadPreviewFallback(doc),
       });
       return;
@@ -1308,19 +1492,29 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   trashDocument(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Are you sure you want to delete this document?')) return;
-    this.actionInProgress.set('trash');
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Document',
+        message: 'Are you sure you want to delete this document?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
 
-    this.detailService.trashDocument(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document moved to trash');
-        this.goBack();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to delete document');
-      },
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionInProgress.set('trash');
+
+      this.detailService.trashDocument(this.docUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document moved to trash');
+          this.goBack();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to delete document');
+        },
+      });
     });
   }
 
@@ -1342,18 +1536,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   permanentlyDelete(): void {
     if (this.actionInProgress()) return;
-    if (!confirm('Permanently delete this document? This cannot be undone.')) return;
-    this.actionInProgress.set('permanentDelete');
-    this.detailService.permanentlyDelete(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document permanently deleted');
-        this.goBack();
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to permanently delete document');
-      },
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Permanently Delete Document',
+        message: 'Permanently delete this document? This cannot be undone.',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.actionInProgress.set('permanentDelete');
+      this.detailService.permanentlyDelete(this.docUid).subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document permanently deleted');
+          this.goBack();
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to permanently delete document');
+        },
+      });
     });
   }
 
@@ -1420,6 +1624,27 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  openEditDialog(): void {
+    const currentDoc = this.doc();
+    if (!currentDoc) return;
+
+    const ref = this.dialog.open(EditDocumentDialogComponent, {
+      width: '560px',
+      data: { document: currentDoc },
+    });
+
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updatedDoc: NuxeoDocument | undefined) => {
+        if (!updatedDoc) return;
+        this.doc.set(updatedDoc);
+        this.syncActionStates(updatedDoc);
+        this.toast('Document updated');
+        this.loadDocument(this.docUid);
+      });
+  }
+
   shareDocument(): void {
     this.dialog.open(ShareDialogComponent, {
       data: {
@@ -1481,17 +1706,26 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     const requestedDocUid = doc.uid;
     this.arenderUrl.set(null);
-    this.arenderService.getPreviewerUrl(doc.uid, xpath).subscribe({
-      next: (url) => {
-        if (requestedDocUid !== this.docUid) return;
-        this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
-        this.arenderReloadId.update((n) => n + 1);
-      },
-      error: () => {
-        if (requestedDocUid !== this.docUid) return;
-        this.arenderUrl.set(null);
-      },
-    });
+    this.arenderService
+      .isAvailable()
+      .pipe(
+        switchMap((available) =>
+          available ? this.arenderService.getPreviewerUrl(doc.uid, xpath) : of(null),
+        ),
+      )
+      .subscribe({
+        next: (url) => {
+          if (requestedDocUid !== this.docUid) return;
+          if (url) {
+            this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+            this.arenderReloadId.update((n) => n + 1);
+          }
+        },
+        error: () => {
+          if (requestedDocUid !== this.docUid) return;
+          this.arenderUrl.set(null);
+        },
+      });
   }
 
   /**
@@ -1610,13 +1844,23 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   deleteComment(comment: NuxeoComment): void {
-    if (!confirm('Delete this comment?')) return;
-    this.detailService.deleteComment(this.docUid, comment.id).subscribe({
-      next: () => {
-        this.comments.update((list) => list.filter((c) => c.id !== comment.id));
-        this.toast('Comment deleted');
-      },
-      error: () => this.toast('Failed to delete comment'),
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Delete Comment',
+        message: 'Delete this comment?',
+        confirmLabel: 'Delete',
+      } as ConfirmDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.detailService.deleteComment(this.docUid, comment.id).subscribe({
+        next: () => {
+          this.comments.update((list) => list.filter((c) => c.id !== comment.id));
+          this.toast('Comment deleted');
+        },
+        error: () => this.toast('Failed to delete comment'),
+      });
     });
   }
 
