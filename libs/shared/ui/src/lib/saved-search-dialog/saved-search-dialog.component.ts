@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialogConfig, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 
 export interface SavedSearchDialogData {
@@ -7,6 +7,10 @@ export interface SavedSearchDialogData {
   placeholder?: string;
   initialValue?: string;
 }
+
+export const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig> = {
+  autoFocus: true,
+};
 
 @Component({
   selector: 'lib-saved-search-dialog',
@@ -36,15 +40,19 @@ export interface SavedSearchDialogData {
     `
       :host {
         display: block;
-        min-width: 420px;
+        width: min(95vw, clamp(320px, 50vw, 520px));
+        max-width: 95vw;
       }
 
       mat-dialog-content {
-        padding: 8px 24px 0 !important;
+        padding: 8px clamp(12px, 4vw, 24px) 16px !important;
+        overflow: visible !important;
       }
 
       .saved-search-input {
+        display: block;
         width: 100%;
+        min-width: 0;
         border: 1px solid #d0d5dd;
         border-radius: 8px;
         padding: 10px 12px;
@@ -60,6 +68,8 @@ export interface SavedSearchDialogData {
 
       mat-dialog-actions {
         padding: 16px 24px 20px;
+        flex-wrap: wrap;
+        row-gap: 8px;
       }
     `,
   ],

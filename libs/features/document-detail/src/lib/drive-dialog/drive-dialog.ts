@@ -77,6 +77,9 @@ const DRIVE_PACKAGES: DrivePackage[] = [
     `
       .drive-dialog {
         padding: 28px 32px;
+        width: min(95vw, 460px);
+        max-width: 95vw;
+        box-sizing: border-box;
       }
       h2 {
         margin: 0 0 24px;

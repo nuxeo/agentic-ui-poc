@@ -22,6 +22,7 @@ export {
 } from './lib/export-dialog/export-dialog.component';
 export {
   SavedSearchDialogComponent,
+  SAVED_SEARCH_DIALOG_OPTIONS,
   type SavedSearchDialogData,
 } from './lib/saved-search-dialog/saved-search-dialog.component';
 export {

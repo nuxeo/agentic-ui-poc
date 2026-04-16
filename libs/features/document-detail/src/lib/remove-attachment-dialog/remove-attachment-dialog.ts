@@ -20,6 +20,9 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
     `
       .remove-dialog {
         padding: 28px 32px;
+        width: min(95vw, 340px);
+        max-width: 95vw;
+        box-sizing: border-box;
       }
 
       h2 {

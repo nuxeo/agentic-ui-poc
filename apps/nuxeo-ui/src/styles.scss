@@ -218,3 +218,27 @@ sat-status-tag {
   line-height: 1 !important;
 }
 
+/*
+ * Dialog title: Material's default maps mat-dialog-title to display-medium (~2rem).
+ * Reduce to title-large (1.375rem / 1.75rem line-height) for a more compact feel across
+ * all dialogs in the application.
+ */
+[mat-dialog-title],
+.mat-mdc-dialog-title {
+  font-size: 1.375rem !important;
+  line-height: 1.75rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+}
+
+/*
+ * Dialog panel: let every dialog size itself from its own component CSS (min-width / width)
+ * rather than a hardcoded pixel value passed to dialog.open(). The cap at 95vw ensures
+ * dialogs never overflow narrow viewports. Large dialogs (preview, share-saved-search)
+ * declare their own width/min-width so they still fill the appropriate area.
+ */
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  width: auto;
+  max-width: 95vw;
+}
+

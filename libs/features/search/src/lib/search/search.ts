@@ -774,6 +774,10 @@ export class SearchComponent {
                 this.readSavedSearchTitle(saved) || trimmedTitle,
               );
               this.searchAggregationService.markSavedSearchDirty();
+              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+            },
+            error: () => {
+              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
             },
           });
       });
@@ -802,6 +806,10 @@ export class SearchComponent {
         next: () => {
           this.searchAggregationService.selectedSavedSearchTitle.set(currentTitle);
           this.searchAggregationService.markSavedSearchDirty();
+          this.snackBar.open(`Search "${currentTitle}" updated.`, 'OK', { duration: 3000 });
+        },
+        error: () => {
+          this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
         },
       });
   }
@@ -833,6 +841,12 @@ export class SearchComponent {
             next: () => {
               this.searchAggregationService.selectedSavedSearchTitle.set(trimmedTitle);
               this.searchAggregationService.markSavedSearchDirty();
+              this.snackBar.open(`Search "${trimmedTitle}" updated.`, 'OK', {
+                duration: 3000,
+              });
+            },
+            error: () => {
+              this.snackBar.open('Failed to update search.', 'Dismiss', { duration: 5000 });
             },
           });
       });
@@ -843,9 +857,8 @@ export class SearchComponent {
     if (!id) return;
 
     this.dialog.open(ShareSavedSearchDialogComponent, {
-      width: '80vw',
-      maxWidth: '80vw',
-      height: '80vh',
+      width: '95vw',
+      maxWidth: '1080px',
       data: {
         title: this.selectedSavedSearchTitle().trim() || 'Saved Search',
         id,

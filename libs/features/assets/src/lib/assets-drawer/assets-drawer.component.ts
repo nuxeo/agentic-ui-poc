@@ -7,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AssetAggregationService,
@@ -72,6 +73,7 @@ function toMimeType(value: string): string {
     MatCheckboxModule,
     MatDividerModule,
     MatSlideToggleModule,
+    MatSnackBarModule,
     MatTooltipModule,
     AssetsQueueComponent,
   ],
@@ -82,6 +84,7 @@ export class AssetsDrawerComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly aggregationService = inject(AssetAggregationService);
   private readonly searchService = inject(SearchService);
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
@@ -396,6 +399,10 @@ export class AssetsDrawerComponent {
             next: () => {
               this.savedSearchesLoaded.set(false);
               this.loadSavedSearchesFromApi();
+              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+            },
+            error: () => {
+              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
             },
           });
       });

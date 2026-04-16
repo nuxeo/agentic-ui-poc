@@ -15,9 +15,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { of, finalize, filter, switchMap, map } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { SaveSearchDialogComponent } from '../save-search-dialog/save-search-dialog.component';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
-import { ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+import { ConfirmDialogComponent, SavedSearchDialogComponent, SAVED_SEARCH_DIALOG_OPTIONS, ShareSavedSearchDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
 
 import {
   TrashService,
@@ -186,9 +185,12 @@ export class TrashComponent {
   }
 
   saveAsSearch(): void {
-    const dialogRef = this.dialog.open(SaveSearchDialogComponent, {
-      width: '480px',
-      autoFocus: true,
+    const dialogRef = this.dialog.open(SavedSearchDialogComponent, {
+      ...SAVED_SEARCH_DIALOG_OPTIONS,
+      data: {
+        title: 'Saved Search',
+        placeholder: 'Enter a name for your saved search',
+      },
     });
 
     dialogRef
@@ -245,7 +247,8 @@ export class TrashComponent {
     if (!uid || !title) return;
 
     this.dialog
-      .open(SaveSearchDialogComponent, {
+      .open(SavedSearchDialogComponent, {
+        ...SAVED_SEARCH_DIALOG_OPTIONS,
         data: {
           title: 'Edit Saved Search',
           placeholder: 'Enter a name for your saved search',
@@ -276,21 +279,17 @@ export class TrashComponent {
   }
 
   onShareSelectedSavedSearch(): void {
-    const uid = this.trashFilterService.activeSavedFilterUid();
-    const title = this.trashFilterService.activeSavedFilterTitle();
-    if (!uid || !title) return;
+    const id = this.trashFilterService.activeSavedFilterUid()?.trim();
+    if (!id) return;
 
-    // Copy link to clipboard for sharing
-    const searchUrl = new URL(window.location.href);
-    const link = searchUrl.toString();
-    navigator.clipboard
-      .writeText(link)
-      .then(() => {
-        this.snackBar.open('Search link copied to clipboard.', 'OK', { duration: 3000 });
-      })
-      .catch(() => {
-        this.snackBar.open('Failed to copy search link.', 'Dismiss', { duration: 5000 });
-      });
+    this.dialog.open(ShareSavedSearchDialogComponent, {
+      width: '95vw',
+      maxWidth: '1080px',
+      data: {
+        title: this.trashFilterService.activeSavedFilterTitle()?.trim() || 'Saved Search',
+        id,
+      },
+    });
   }
 
   onDeleteSelectedSavedSearch(): void {
