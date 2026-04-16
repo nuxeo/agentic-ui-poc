@@ -1,0 +1,28 @@
+---
+description: Use Nuxeo MCP tools for querying or retrieving documents from Nuxeo; avoid raw shell HTTP unless MCP is unavailable.
+alwaysApply: true
+---
+
+# Nuxeo document fetches (MCP)
+
+When the user asks to **fetch**, **list**, **search**, or **query documents** (or tasks/paths) **in Nuxeo**, **use the configured Nuxeo MCP server tools first**—do not default to terminal `curl`, PowerShell `Invoke-RestMethod`, or ad-hoc HTTP scripts.
+
+## Prefer these MCP tools
+
+- **`nuxeo_nxql_search`** — NXQL `SELECT` (filter by type, path, metadata, etc.).
+- **`nuxeo_get_document`** — by document `uid`.
+- **`nuxeo_get_document_by_path`** / **`nuxeo_list_children`** — browse by repository path.
+- **`nuxeo_list_tasks`** — workflow tasks (needs `userId`; **`nuxeo_me`** can supply the username).
+- **`nuxeo_search_users`** / **`nuxeo_search_groups`** — user/group search (`q=*` for a broad list).
+- **`nuxeo_me`** — verify credentials / current user.
+
+Server config lives in [`.cursor/mcp.json`](.cursor/mcp.json); env defaults in [`apps/nuxeo-mcp/.env.example`](apps/nuxeo-mcp/.env.example).
+
+## When direct HTTP is OK
+
+Use shell/API calls **only if** MCP is not connected, tools fail with a clear connection error, or the user explicitly asks for a one-off `curl`/script.
+
+## Reference
+
+- Tool definitions: [`apps/nuxeo-mcp/src/main.ts`](apps/nuxeo-mcp/src/main.ts)
+- REST usage in the app: [`docs/api-integrations.md`](docs/api-integrations.md)

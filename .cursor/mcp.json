@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "nuxeo": {
+      "command": "npx",
+      "args": ["tsx", "apps/nuxeo-mcp/src/main.ts"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NUXEO_URL": "http://localhost:8080",
+        "NUXEO_AUTH": "Vivek:1234"
+      }
+    }
+  }
+}

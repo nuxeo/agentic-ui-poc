@@ -2,12 +2,14 @@
 
 # Compiled output
 /dist
+apps/nuxeo-mcp/dist
 /tmp
 /out-tsc
 /bazel-out
 
 # Node
 /node_modules
+apps/nuxeo-mcp/node_modules
 npm-debug.log
 yarn-error.log
 
@@ -54,3 +56,4 @@ vitest.config.*.timestamp*
 # Environment files
 .env
 apps/ai-backend/.env
+apps/nuxeo-mcp/.env

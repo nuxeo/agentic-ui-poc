@@ -1,0 +1,24 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "nuxeo-mcp",
+  "projectType": "application",
+  "sourceRoot": "apps/nuxeo-mcp/src",
+  "targets": {
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "npx tsx --watch apps/nuxeo-mcp/src/main.ts"
+      }
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/apps/nuxeo-mcp/dist"],
+      "options": {
+        "cwd": "{workspaceRoot}/apps/nuxeo-mcp",
+        "command": "npm run build"
+      }
+    }
+  }
+}
