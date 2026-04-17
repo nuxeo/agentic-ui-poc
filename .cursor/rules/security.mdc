@@ -1,0 +1,40 @@
+---
+description: Security rules — enforced on every change
+globs: "**/*.ts"
+alwaysApply: true
+---
+
+# Security Rules
+
+See AGENTS/07-security.md for full details. These rules are non-negotiable.
+
+## Credentials
+- NEVER hardcode usernames, passwords, API keys, or tokens in TypeScript files
+- NEVER commit .env files — they are gitignored
+- NEVER use Basic auth with hardcoded fallback defaults
+- All sensitive config MUST come from environment variables with startup validation
+
+## XSS Prevention
+- NEVER use innerHTML or outerHTML with user-provided content
+- NEVER use DomSanitizer.bypassSecurityTrust* unless source is server-controlled
+- Always use Angular's template binding ({{ }}, [attr]) for user content
+
+## Nuxeo Auth
+- NEVER add Authorization headers manually in components — use the interceptor
+- NEVER call Nuxeo URLs with fetch() — use NuxeoApiBase (HttpClient)
+- NEVER put credentials in URL query string parameters
+- NEVER bind <img [src]> directly to Nuxeo URLs — fetch via service, use blob URL
+
+## Blob URLs
+- ALWAYS revoke blob URLs in ngOnDestroy
+- Track all created URLs in an array and revoke all of them on destroy
+
+## Secure Coding in Development Agent
+When generating new code, proactively apply these rules without being asked:
+- Any new config value → from process.env with validation
+- Any new image display of Nuxeo content → fetch via service + blob URL
+- Any new subscription → takeUntilDestroyed()
+- Any new blob creation → tracked array + ngOnDestroy cleanup
+
+## PR blocker
+Any of the above violations MUST be fixed before the PR can be merged.

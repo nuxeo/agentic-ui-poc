@@ -1,0 +1,79 @@
+name: AGENTS.md Staleness Agent
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # weekly on Monday at 07:00 UTC
+  workflow_dispatch:
+
+jobs:
+  staleness-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for service files missing from AGENTS/01-services.md
+        id: check
+        run: |
+          MISSING=""
+
+          # Get all service file names (without path or extension)
+          for file in libs/shared/nuxeo-client/src/lib/services/*.service.ts; do
+            SERVICE=$(basename "$file" .service.ts)
+            # Skip spec files
+            [[ "$SERVICE" == *".spec"* ]] && continue
+
+            # Check if the service name appears in AGENTS/01-services.md
+            if ! grep -qi "$SERVICE" AGENTS/01-services.md 2>/dev/null; then
+              MISSING="${MISSING}\n- \`${SERVICE}.service.ts\` not found in AGENTS/01-services.md"
+            fi
+          done
+
+          echo "missing=${MISSING}" >> $GITHUB_OUTPUT
+
+          if [ -n "$MISSING" ]; then
+            echo "drift_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "drift_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for AGENTS/ files referenced but missing
+        run: |
+          # Verify all 11 AGENTS/ files exist
+          for i in $(seq -w 0 10); do
+            if ! ls AGENTS/${i}-*.md 1>/dev/null 2>&1; then
+              echo "WARNING: AGENTS/${i}-*.md is missing"
+            fi
+          done
+
+      - name: Open GitHub Issue if drift detected
+        if: steps.check.outputs.drift_detected == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          MISSING="${{ steps.check.outputs.missing }}"
+
+          # Check if an open issue already exists
+          EXISTING=$(gh issue list --label "agents-stale" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
+
+          if [ -z "$EXISTING" ]; then
+            gh issue create \
+              --title "AGENTS/ is out of date — ${DATE}" \
+              --body "## AGENTS.md Staleness Report
+
+The following service files exist in the codebase but are not documented in \`AGENTS/01-services.md\`:
+$(echo -e "$MISSING")
+
+### What to do
+1. Open \`AGENTS/01-services.md\`
+2. Add a section for each missing service with its public method signatures
+3. Commit: \`docs: update AGENTS/01-services.md with new services\`
+
+---
+*Generated automatically by the AGENTS.md Staleness Agent (staleness-check.yml).*" \
+              --label "agents-stale,documentation"
+          fi
+
+      - name: Log no drift
+        if: steps.check.outputs.drift_detected == 'false'
+        run: echo "AGENTS/01-services.md is up to date."

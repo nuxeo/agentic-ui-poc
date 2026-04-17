@@ -1,0 +1,28 @@
+name: Stale Branch Agent
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # daily at 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          stale-pr-message: |
+            This PR has had no activity for 14 days and has been marked as stale.
+            If this is still relevant, please leave a comment or push a commit.
+            It will be closed automatically in 7 more days of inactivity.
+          close-pr-message: |
+            This PR has been closed due to 21 days of inactivity.
+            It can be reopened if the work resumes.
+          days-before-pr-stale: 14
+          days-before-pr-close: 7
+          stale-pr-label: stale
+          exempt-pr-labels: 'pinned,no-stale,in-review'
+          # Do not mark issues as stale — PRs only
+          days-before-issue-stale: -1
+          days-before-issue-close: -1

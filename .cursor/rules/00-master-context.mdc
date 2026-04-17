@@ -1,0 +1,27 @@
+---
+description: Master context loader — reads AGENTS.md at the start of every session
+globs: "**/*"
+alwaysApply: true
+---
+
+# Master Context
+
+At the start of every session, read `AGENTS.md` in the root of this repository.
+Then read any `AGENTS/` files relevant to the current task.
+
+Do not proceed with any task until you have confirmed:
+1. The 4-layer architecture and what imports what (AGENTS/00-architecture.md)
+2. Where the relevant service/component for this task lives (AGENTS.md section 6)
+3. Which existing patterns to replicate (AGENTS/03-angular-conventions.md)
+4. The definition of done (AGENTS.md section 7)
+
+If AGENTS.md does not exist, stop and tell the developer to run:
+`git pull` — the file should be present on the main branch.
+
+## JIRA Integration
+
+If the developer provides a JIRA ticket ID (e.g. "implement NCO-1234"), use the
+Atlassian MCP to fetch the story before doing anything else:
+- Read the Acceptance Criteria as the technical requirements
+- Use them to expand the intent just as the Requirement Agent would from free text
+- Reference the ticket ID in the commit message and PR title
