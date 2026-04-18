@@ -48,16 +48,23 @@
                     <button
                       mat-icon-button
                       matTooltip="Toggle enabled"
+                      aria-label="Toggle enabled"
                       (click)="toggleAction(action); $event.stopPropagation()"
                     >
                       <mat-icon>{{ action.enabled ? 'visibility' : 'visibility_off' }}</mat-icon>
                     </button>
-                    <button mat-icon-button matTooltip="Edit" (click)="editAction(action)">
+                    <button
+                      mat-icon-button
+                      matTooltip="Edit"
+                      aria-label="Edit action"
+                      (click)="editAction(action)"
+                    >
                       <mat-icon>edit</mat-icon>
                     </button>
                     <button
                       mat-icon-button
                       matTooltip="Delete"
+                      aria-label="Delete action"
                       color="warn"
                       (click)="deleteAction(action.id)"
                     >
@@ -125,8 +132,8 @@
                       [ngModel]="action.slot"
                       (ngModelChange)="updateEditingAction('slot', $event)"
                     >
-                      @for (slot of slotOptions; track slot) {
-                        <mat-option [value]="slot">{{ slot }}</mat-option>
+                      @for (slot of slotOptions; track slot.value) {
+                        <mat-option [value]="slot.value">{{ slot.label }}</mat-option>
                       }
                     </mat-select>
                   </mat-form-field>
@@ -284,6 +291,7 @@
                       mat-icon-button
                       color="warn"
                       matTooltip="Delete"
+                      aria-label="Delete layout"
                       (click)="deleteLayout(layout.docType, layout.mode); $event.stopPropagation()"
                     >
                       <mat-icon>delete</mat-icon>
@@ -391,6 +399,7 @@
                             color="warn"
                             (click)="removeFieldFromLayout(si, fi)"
                             matTooltip="Remove"
+                            aria-label="Remove field"
                           >
                             <mat-icon>close</mat-icon>
                           </button>

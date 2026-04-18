@@ -126,6 +126,12 @@
     color: rgba(0, 0, 0, 0.7);
   }
 
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .editor-actions {
     display: flex;
     justify-content: flex-end;
@@ -141,7 +147,15 @@
 .row-2col {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: 8px 16px;
+}
+
+// Form fields with hints need extra bottom space so the hint
+// doesn't collide with the next field's label.
+mat-form-field.full-width {
+  &:has(mat-hint) {
+    margin-bottom: 8px;
+  }
 }
 
 .empty-state {

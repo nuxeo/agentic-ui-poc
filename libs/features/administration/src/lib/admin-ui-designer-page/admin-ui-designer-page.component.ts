@@ -105,7 +105,18 @@ export class AdminUiDesignerPageComponent {
 
   readonly iconOptions = ICON_OPTIONS;
   readonly widgetOptions = WIDGET_OPTIONS;
-  readonly slotOptions: ActionSlot[] = ['DOCUMENT_ACTIONS', 'DOCUMENT_MORE_ACTIONS'];
+  readonly slotOptions: { value: ActionSlot; label: string }[] = [
+    { value: 'BLOB_ACTIONS', label: 'Blob Actions' },
+    { value: 'COLLECTION_ACTIONS', label: 'Collection Actions' },
+    { value: 'DOCUMENT_ACTIONS', label: 'Document Actions' },
+    { value: 'DOCUMENT_CREATE_ACTIONS', label: 'Document Create Actions' },
+    { value: 'DOCUMENT_MORE_ACTIONS', label: 'Document More Actions' },
+    { value: 'FILE_UPLOAD_ACTIONS', label: 'File Upload Actions' },
+    { value: 'PUBLISH_PAGES', label: 'Publish Pages' },
+    { value: 'RESULTS_ACTIONS', label: 'Results Actions' },
+    { value: 'RESULTS_SELECTION_ACTIONS', label: 'Results Selection Actions' },
+    { value: 'TRASH_RESULTS_SELECTION_ACTIONS', label: 'Trash Results Selection Actions' },
+  ];
   readonly modeOptions: LayoutMode[] = ['create', 'edit', 'view', 'metadata', 'import'];
 
   // ── Actions tab ──
@@ -232,9 +243,55 @@ export class AdminUiDesignerPageComponent {
         this.availableSchemaFields.set(fields.sort((a, b) => a.xpath.localeCompare(b.xpath)));
       },
       error: () => {
-        this.availableSchemaFields.set([]);
+        const fallback = this.getFallbackFields(docType);
+        this.availableSchemaFields.set(fallback);
       },
     });
+  }
+
+  private getFallbackFields(docType: string): FieldWidgetConfig[] {
+    const dc: FieldWidgetConfig[] = [
+      { xpath: 'dc:title', widget: 'text', label: 'Title', required: true },
+      { xpath: 'dc:description', widget: 'textarea', label: 'Description' },
+      { xpath: 'dc:nature', widget: 'directory', label: 'Nature', directory: 'nature' },
+      {
+        xpath: 'dc:subjects',
+        widget: 'directory',
+        label: 'Subjects',
+        directory: 'l10nsubjects',
+        multiple: true,
+      },
+      { xpath: 'dc:coverage', widget: 'directory', label: 'Coverage', directory: 'l10ncoverage' },
+      { xpath: 'dc:expired', widget: 'date', label: 'Expires' },
+      { xpath: 'dc:creator', widget: 'text', label: 'Creator', readOnly: true },
+      { xpath: 'dc:created', widget: 'date', label: 'Created', readOnly: true },
+      { xpath: 'dc:modified', widget: 'date', label: 'Modified', readOnly: true },
+      { xpath: 'dc:lastContributor', widget: 'text', label: 'Last Contributor', readOnly: true },
+      { xpath: 'dc:contributors', widget: 'tag', label: 'Contributors', readOnly: true },
+    ];
+
+    const normalized = docType.toLowerCase();
+    const typeSpecific: Record<string, FieldWidgetConfig[]> = {
+      file: [{ xpath: 'file:content', widget: 'blob', label: 'File' }],
+      note: [
+        { xpath: 'note:note', widget: 'htmleditor', label: 'Content' },
+        { xpath: 'note:mime_type', widget: 'text', label: 'MIME Type', readOnly: true },
+      ],
+      picture: [
+        { xpath: 'file:content', widget: 'blob', label: 'Image' },
+        { xpath: 'imd:pixel_xdimension', widget: 'number', label: 'Width', readOnly: true },
+        { xpath: 'imd:pixel_ydimension', widget: 'number', label: 'Height', readOnly: true },
+      ],
+      video: [
+        { xpath: 'file:content', widget: 'blob', label: 'Video' },
+        { xpath: 'vid:duration', widget: 'number', label: 'Duration', readOnly: true },
+      ],
+      folder: [],
+      workspace: [],
+    };
+
+    const extra = typeSpecific[normalized] ?? [];
+    return [...dc, ...extra];
   }
 
   startLayoutDesign(): void {
