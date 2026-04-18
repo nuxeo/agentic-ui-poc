@@ -1,0 +1,439 @@
+<div class="designer-page">
+  <div class="designer-header">
+    <h1>UI Designer</h1>
+    <p class="subtitle">Configure custom actions and document form layouts</p>
+  </div>
+
+  <mat-tab-group animationDuration="200ms">
+    <!-- ════════ TAB 1: ACTIONS ════════ -->
+    <mat-tab label="Custom Actions">
+      <div class="tab-content">
+        <div class="actions-toolbar">
+          <h2>Document Actions</h2>
+          <button mat-raised-button color="primary" (click)="createAction()">
+            <mat-icon>add</mat-icon> New Action
+          </button>
+        </div>
+
+        <div class="actions-layout">
+          <!-- Left: action list -->
+          <div class="actions-list">
+            @if (actions().length === 0) {
+              <div class="empty-state">
+                <mat-icon class="empty-icon">touch_app</mat-icon>
+                <p>No custom actions configured yet.</p>
+                <p class="hint">Click "New Action" to add a custom button to document pages.</p>
+              </div>
+            }
+            @for (action of actions(); track action.id) {
+              <mat-card
+                class="action-card"
+                [class.disabled]="!action.enabled"
+                [class.selected]="editingAction()?.id === action.id"
+              >
+                <mat-card-content class="action-card-body">
+                  <div class="action-card-left">
+                    <mat-icon class="action-icon">{{ action.icon }}</mat-icon>
+                    <div class="action-info">
+                      <span class="action-label">{{ action.label }}</span>
+                      <span class="action-meta">
+                        {{ action.slot }} · {{ action.operationId || 'No operation' }}
+                        @if (action.filters.docTypes?.length) {
+                          · {{ action.filters.docTypes!.join(', ') }}
+                        }
+                      </span>
+                    </div>
+                  </div>
+                  <div class="action-card-right">
+                    <button
+                      mat-icon-button
+                      matTooltip="Toggle enabled"
+                      (click)="toggleAction(action); $event.stopPropagation()"
+                    >
+                      <mat-icon>{{ action.enabled ? 'visibility' : 'visibility_off' }}</mat-icon>
+                    </button>
+                    <button mat-icon-button matTooltip="Edit" (click)="editAction(action)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      matTooltip="Delete"
+                      color="warn"
+                      (click)="deleteAction(action.id)"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
+
+          <!-- Right: action editor -->
+          @if (editingAction(); as action) {
+            <mat-card class="action-editor">
+              <mat-card-content>
+                <h3>{{ action.id === '' ? 'New Action' : 'Edit Action' }}</h3>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Label</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="action.label"
+                    (ngModelChange)="updateEditingAction('label', $event)"
+                  />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Icon</mat-label>
+                  <mat-select
+                    [ngModel]="action.icon"
+                    (ngModelChange)="updateEditingAction('icon', $event)"
+                  >
+                    @for (icon of iconOptions; track icon) {
+                      <mat-option [value]="icon">
+                        <mat-icon>{{ icon }}</mat-icon> {{ icon }}
+                      </mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Tooltip</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="action.tooltip ?? ''"
+                    (ngModelChange)="updateEditingAction('tooltip', $event)"
+                  />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Automation Operation ID</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="action.operationId"
+                    (ngModelChange)="updateEditingAction('operationId', $event)"
+                    placeholder="e.g. Document.Lock, MyChain.CustomOp"
+                  />
+                  <mat-hint>The Nuxeo automation chain or operation to execute</mat-hint>
+                </mat-form-field>
+
+                <div class="row-2col">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Slot</mat-label>
+                    <mat-select
+                      [ngModel]="action.slot"
+                      (ngModelChange)="updateEditingAction('slot', $event)"
+                    >
+                      @for (slot of slotOptions; track slot) {
+                        <mat-option [value]="slot">{{ slot }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Order</mat-label>
+                    <input
+                      matInput
+                      type="number"
+                      [ngModel]="action.order"
+                      (ngModelChange)="updateEditingAction('order', +$event)"
+                    />
+                  </mat-form-field>
+                </div>
+
+                <mat-divider></mat-divider>
+                <h4>Visibility Filters</h4>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Document Types (comma-separated)</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="getFilterValue('docTypes')"
+                    (ngModelChange)="updateEditingFilter('docTypes', $event)"
+                    placeholder="e.g. File, Note, Picture"
+                  />
+                  <mat-hint>Leave empty to show for all types</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Required Permissions (comma-separated)</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="getFilterValue('permissions')"
+                    (ngModelChange)="updateEditingFilter('permissions', $event)"
+                    placeholder="e.g. Write, Everything"
+                  />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Required Facets (comma-separated)</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="getFilterValue('facets')"
+                    (ngModelChange)="updateEditingFilter('facets', $event)"
+                    placeholder="e.g. Versionable, Commentable"
+                  />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Exclude States (comma-separated)</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="getFilterValue('excludeStates')"
+                    (ngModelChange)="updateEditingFilter('excludeStates', $event)"
+                    placeholder="e.g. deleted"
+                  />
+                </mat-form-field>
+
+                <mat-divider></mat-divider>
+                <h4>Messages</h4>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Confirmation Message (optional)</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="action.confirmMessage ?? ''"
+                    (ngModelChange)="updateEditingAction('confirmMessage', $event || undefined)"
+                  />
+                  <mat-hint>If set, shows a confirm dialog before executing</mat-hint>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Success Message</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="action.successMessage ?? 'Action completed'"
+                    (ngModelChange)="updateEditingAction('successMessage', $event)"
+                  />
+                </mat-form-field>
+
+                <div class="editor-actions">
+                  <button mat-button (click)="cancelActionEdit()">Cancel</button>
+                  <button
+                    mat-raised-button
+                    color="primary"
+                    (click)="saveAction()"
+                    [disabled]="!action.label || !action.operationId"
+                  >
+                    Save Action
+                  </button>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          }
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- ════════ TAB 2: FORM LAYOUTS ════════ -->
+    <mat-tab label="Form Layouts">
+      <div class="tab-content">
+        <div class="layout-setup">
+          <h2>Document Form Designer</h2>
+          <div class="layout-setup-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Document Type</mat-label>
+              <input
+                matInput
+                [ngModel]="selectedDocType()"
+                (ngModelChange)="selectedDocType.set($event)"
+                placeholder="e.g. File, Note, SampleTestDocu"
+              />
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Layout Mode</mat-label>
+              <mat-select [ngModel]="selectedMode()" (ngModelChange)="selectedMode.set($event)">
+                @for (mode of modeOptions; track mode) {
+                  <mat-option [value]="mode">{{ mode }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="startLayoutDesign()"
+              [disabled]="!selectedDocType()"
+            >
+              <mat-icon>design_services</mat-icon> Design Layout
+            </button>
+          </div>
+        </div>
+
+        <!-- Existing layouts -->
+        @if (layouts().length > 0) {
+          <div class="existing-layouts">
+            <h3>Configured Layouts</h3>
+            <div class="layout-chips">
+              @for (layout of layouts(); track layout.docType + '::' + layout.mode) {
+                <mat-card
+                  class="layout-chip"
+                  (click)="
+                    selectedDocType.set(layout.docType);
+                    selectedMode.set(layout.mode);
+                    startLayoutDesign()
+                  "
+                >
+                  <mat-card-content class="layout-chip-body">
+                    <mat-icon>description</mat-icon>
+                    <span>{{ layout.docType }} / {{ layout.mode }}</span>
+                    <span class="field-count"
+                      >{{ layout.sections[0]?.fields?.length ?? 0 }} fields</span
+                    >
+                    <button
+                      mat-icon-button
+                      color="warn"
+                      matTooltip="Delete"
+                      (click)="deleteLayout(layout.docType, layout.mode); $event.stopPropagation()"
+                    >
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </mat-card-content>
+                </mat-card>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Layout designer -->
+        @if (editingLayout(); as layout) {
+          <mat-divider></mat-divider>
+
+          <div class="layout-designer">
+            <div class="designer-canvas">
+              <div class="canvas-header">
+                <h3>{{ layout.docType }} — {{ layout.mode }} layout</h3>
+                <div class="canvas-actions">
+                  <button mat-button (click)="showPreview.set(!showPreview())">
+                    <mat-icon>{{ showPreview() ? 'edit' : 'preview' }}</mat-icon>
+                    {{ showPreview() ? 'Edit' : 'Preview' }}
+                  </button>
+                  <button mat-raised-button color="primary" (click)="saveLayout()">
+                    <mat-icon>save</mat-icon> Save
+                  </button>
+                </div>
+              </div>
+
+              @if (showPreview()) {
+                <!-- Live preview -->
+                <div class="preview-container">
+                  @if (previewDoc(); as doc) {
+                    <nx-layout-renderer
+                      [docType]="layout.docType"
+                      [mode]="layout.mode"
+                      [document]="doc"
+                    />
+                  }
+                </div>
+              } @else {
+                <!-- Editable field list -->
+                @for (section of layout.sections; track $index; let si = $index) {
+                  <div class="section-container">
+                    <div class="section-header">
+                      <mat-form-field appearance="outline" class="section-label-field">
+                        <mat-label>Section Label</mat-label>
+                        <input
+                          matInput
+                          [ngModel]="section.label"
+                          (ngModelChange)="section.label = $event"
+                        />
+                      </mat-form-field>
+                    </div>
+
+                    @if (section.fields.length === 0) {
+                      <div class="empty-section">
+                        <mat-icon>drag_indicator</mat-icon>
+                        <p>Drag fields from the catalog or click <strong>+</strong> to add.</p>
+                      </div>
+                    }
+
+                    <div
+                      cdkDropList
+                      (cdkDropListDropped)="onFieldDrop($event, si)"
+                      class="field-list"
+                    >
+                      @for (field of section.fields; track field.xpath; let fi = $index) {
+                        <div cdkDrag class="field-row">
+                          <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+                          <div class="field-config">
+                            <mat-form-field appearance="outline" class="field-xpath">
+                              <mat-label>XPath</mat-label>
+                              <input matInput [value]="field.xpath" readonly />
+                            </mat-form-field>
+                            <mat-form-field appearance="outline" class="field-label-input">
+                              <mat-label>Label</mat-label>
+                              <input
+                                matInput
+                                [ngModel]="field.label"
+                                (ngModelChange)="updateFieldProp(si, fi, 'label', $event)"
+                              />
+                            </mat-form-field>
+                            <mat-form-field appearance="outline" class="field-widget-select">
+                              <mat-label>Widget</mat-label>
+                              <mat-select
+                                [ngModel]="field.widget"
+                                (ngModelChange)="updateFieldProp(si, fi, 'widget', $event)"
+                              >
+                                @for (w of widgetOptions; track w) {
+                                  <mat-option [value]="w">{{ w }}</mat-option>
+                                }
+                              </mat-select>
+                            </mat-form-field>
+                            <mat-checkbox
+                              [ngModel]="field.required"
+                              (ngModelChange)="updateFieldProp(si, fi, 'required', $event)"
+                            >
+                              Required
+                            </mat-checkbox>
+                          </div>
+                          <button
+                            mat-icon-button
+                            color="warn"
+                            (click)="removeFieldFromLayout(si, fi)"
+                            matTooltip="Remove"
+                          >
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+
+            <!-- Catalog sidebar -->
+            <div class="catalog-sidebar">
+              <h3>Field Catalog</h3>
+              <p class="catalog-hint">Click a field to add it to the layout.</p>
+
+              @if (availableSchemaFields().length === 0) {
+                <div class="catalog-empty">
+                  <mat-icon>info</mat-icon>
+                  <p>Enter a document type and click "Design Layout" to load available fields.</p>
+                </div>
+              }
+
+              @for (field of availableSchemaFields(); track field.xpath) {
+                <button
+                  class="catalog-field"
+                  [class.in-layout]="isFieldInLayout(field.xpath)"
+                  [disabled]="isFieldInLayout(field.xpath)"
+                  (click)="addFieldToLayout(field)"
+                >
+                  <mat-icon class="catalog-field-icon">
+                    {{ isFieldInLayout(field.xpath) ? 'check_circle' : 'add_circle_outline' }}
+                  </mat-icon>
+                  <div class="catalog-field-info">
+                    <span class="catalog-field-xpath">{{ field.xpath }}</span>
+                    <span class="catalog-field-type">{{ field.widget }}</span>
+                  </div>
+                </button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

@@ -45,4 +45,5 @@ export const ADMINISTRATION_DRAWER_ITEMS: DrawerLinkItem[] = [
   { label: 'Audit', path: '/administration/audit' },
   { label: 'Cloud Services', path: '/administration/cloud-services' },
   { label: 'NXQL Search', path: '/administration/nxql-search' },
+  { label: 'UI Designer', path: '/administration/ui-designer' },
 ];

@@ -62,6 +62,9 @@
       >
         <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
       </button>
+      <!-- Custom configured actions (toolbar slot) -->
+      <lib-custom-actions [document]="doc()!" slot="DOCUMENT_ACTIONS" />
+
       <button
         mat-icon-button
         [matMenuTriggerFor]="moreMenu"
@@ -107,6 +110,8 @@
         <mat-icon>play_circle</mat-icon>
         <span>Start Process</span>
       </button>
+      <!-- Custom configured actions (more menu slot) -->
+      <lib-custom-actions [document]="doc()!" slot="DOCUMENT_MORE_ACTIONS" />
     </mat-menu>
   </div>
 

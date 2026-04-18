@@ -67,6 +67,7 @@ import {
   type SentimentResponse,
 } from '@agentic-ui/shared/ai-client';
 import { LayoutRendererComponent } from '@agentic-ui/shared/nuxeo-studio';
+import { CustomActionsComponent } from '../custom-actions/custom-actions.component';
 import DOMPurify from 'dompurify';
 import { forkJoin, Observable, of, switchMap } from 'rxjs';
 import {
@@ -147,6 +148,7 @@ const TAG_CATEGORIES: SatTagCategory[] = [
     SatBreadcrumbsComponent,
     SatTagModule,
     LayoutRendererComponent,
+    CustomActionsComponent,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './document-detail.html',

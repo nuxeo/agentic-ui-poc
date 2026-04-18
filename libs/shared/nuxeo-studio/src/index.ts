@@ -1,13 +1,13 @@
 // Models
-export type {
-  NuxeoFieldType,
-  NuxeoFieldConstraint,
-  NuxeoFieldDef,
-  NuxeoSchemaDefinition,
-  NuxeoTypeDefinition,
-  NuxeoTypeResponse,
-  NuxeoFieldResponseEntry,
-  NuxeoSchemaResponse,
+export {
+  type NuxeoFieldType,
+  type NuxeoFieldConstraint,
+  type NuxeoFieldDef,
+  type NuxeoSchemaDefinition,
+  type NuxeoTypeDefinition,
+  type NuxeoTypeResponse,
+  type NuxeoFieldResponseEntry,
+  type NuxeoSchemaResponse,
 } from './lib/models/schema.model';
 
 export {
@@ -32,6 +32,8 @@ export {
   DEFAULT_WIDGET_MAP,
 } from './lib/models/widget.model';
 
+export type { ActionConfig, ActionSlot, ActionFilter } from './lib/models/action.model';
+
 // Services
 export { SchemaRegistryService } from './lib/services/schema-registry.service';
 export { LayoutRegistryService } from './lib/services/layout-registry.service';
@@ -44,6 +46,8 @@ export {
 export { SlotRegistryService, type SlotRegistration } from './lib/services/slot-registry.service';
 export { LayoutBlockRegistryService } from './lib/services/layout-block-registry.service';
 export { StudioLayoutService } from './lib/services/studio-layout.service';
+export { ConfigStorageService } from './lib/services/config-storage.service';
+export { ActionRegistryService } from './lib/services/action-registry.service';
 
 // Components
 export { LayoutRendererComponent } from './lib/components/layout-renderer/layout-renderer.component';

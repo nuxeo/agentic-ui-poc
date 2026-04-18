@@ -4,6 +4,7 @@ import { Observable, map, of, switchMap } from 'rxjs';
 import { SchemaRegistryService } from './schema-registry.service';
 import { LayoutBlockRegistryService } from './layout-block-registry.service';
 import { StudioLayoutService } from './studio-layout.service';
+import { ConfigStorageService } from './config-storage.service';
 import { NuxeoFieldDef } from '../models/schema.model';
 import {
   FieldValidator,
@@ -71,6 +72,7 @@ export class LayoutRegistryService {
   private readonly schemaRegistry = inject(SchemaRegistryService);
   private readonly blockRegistry = inject(LayoutBlockRegistryService);
   private readonly studioService = inject(StudioLayoutService);
+  private readonly configStorage = inject(ConfigStorageService);
 
   /** Explicitly registered layout configurations. */
   private readonly layouts = new Map<string, LayoutConfig>();
@@ -105,13 +107,19 @@ export class LayoutRegistryService {
    * Resolve the layout for a document type and mode.
    *
    * Resolution order:
-   *   1. Explicit layout registered via `registerLayout()` — immediate return
-   *   2. Studio Designer Polymer layout fetched from the Nuxeo server — parsed into LayoutConfig
-   *   3. Auto-generated layout from schema introspection — fallback
+   *   0. UI Designer config (from ConfigStorageService / localStorage)
+   *   1. Explicit layout registered via `registerLayout()`
+   *   2. Studio Designer Polymer layout (fetched + parsed from server)
+   *   3. Auto-generated layout from schema introspection (fallback)
    *
    * Block references in sections are resolved (inlined) before returning.
    */
   resolveLayout(docType: string, mode: LayoutMode): Observable<LayoutConfig> {
+    const designerConfig = this.configStorage.getLayoutConfig(docType, mode);
+    if (designerConfig && designerConfig.sections.some((s) => s.fields.length > 0)) {
+      return of(this.resolveBlocks(designerConfig));
+    }
+
     const key = layoutKey(docType, mode);
     const explicit = this.layouts.get(key);
     if (explicit) return of(this.resolveBlocks(explicit));

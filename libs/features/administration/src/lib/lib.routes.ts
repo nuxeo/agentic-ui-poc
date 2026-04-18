@@ -9,6 +9,7 @@ import { AdminVocabulariesPageComponent } from './admin-vocabularies-page/admin-
 import { AdminAuditPageComponent } from './admin-audit-page/admin-audit-page.component';
 import { AdminCloudServicesPageComponent } from './admin-cloud-services-page/admin-cloud-services-page.component';
 import { AdminNxqlSearchPageComponent } from './admin-nxql-search-page/admin-nxql-search-page.component';
+import { AdminUiDesignerPageComponent } from './admin-ui-designer-page/admin-ui-designer-page.component';
 
 export const administrationRoutes: Route[] = [
   {
@@ -24,6 +25,7 @@ export const administrationRoutes: Route[] = [
       { path: 'audit', component: AdminAuditPageComponent },
       { path: 'cloud-services', component: AdminCloudServicesPageComponent },
       { path: 'nxql-search', component: AdminNxqlSearchPageComponent },
+      { path: 'ui-designer', component: AdminUiDesignerPageComponent },
     ],
   },
 ];
