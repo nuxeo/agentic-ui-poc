@@ -218,6 +218,13 @@
               <mat-label>Document name (optional)</mat-label>
               <input matInput [(ngModel)]="docName" placeholder="Uses title if empty" />
             </mat-form-field>
+
+            <nx-layout-renderer
+              [docType]="t.type"
+              [mode]="'create'"
+              [saving]="busy()"
+              (save)="onCreateLayoutSave($event)"
+            />
           }
         }
         @case ('uploadScreen') {

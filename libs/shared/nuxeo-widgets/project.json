@@ -1,0 +1,13 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "shared-nuxeo-widgets",
+  "projectType": "library",
+  "sourceRoot": "libs/shared/nuxeo-widgets/src",
+  "prefix": "nx",
+  "tags": ["scope:shared", "type:ui"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

@@ -88,9 +88,14 @@ import {
 } from '../column-settings-dialog/column-settings-dialog';
 import {
   EditMetadataDialogComponent,
-  EditMetadataDialogData,
+  type EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
+import {
+  BulkEditDialogComponent,
+  type BulkEditDialogData,
+} from '../bulk-edit-dialog/bulk-edit-dialog.component';
+import { LayoutRendererComponent } from '@agentic-ui/shared/nuxeo-studio';
 
 @Component({
   selector: 'lib-browse',
@@ -121,6 +126,7 @@ import { CreateImportDialogComponent } from '../create-import/create-import-dial
     SatAvatarModule,
     SatTagModule,
     SatBreadcrumbsComponent,
+    LayoutRendererComponent,
   ],
   templateUrl: './browse.html',
   styleUrl: './browse.scss',
@@ -147,6 +153,13 @@ export class BrowseComponent {
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
+
+  // Multi-select for bulk edit
+  readonly selectedUids = signal(new Set<string>());
+  readonly selectedDocuments = computed(() => {
+    const uids = this.selectedUids();
+    return this.entries().filter((d) => uids.has(d.uid));
+  });
 
   // Details side panel
   readonly panelOpen = signal(false);
@@ -786,18 +799,39 @@ export class BrowseComponent {
   openEditDialog(): void {
     const doc = this.currentDoc();
     if (!doc) return;
-    const data: EditMetadataDialogData = {
-      uid: doc.uid,
-      title: doc.title,
-      description: (doc.properties?.['dc:description'] as string) ?? '',
-      nature: (doc.properties?.['dc:nature'] as string) ?? '',
-      subjects: (doc.properties?.['dc:subjects'] as string[]) ?? [],
-      coverage: (doc.properties?.['dc:coverage'] as string) ?? '',
-      expires: (doc.properties?.['dc:expired'] as string) ?? null,
-    };
+    const data: EditMetadataDialogData = { document: doc };
     const ref = this.dialog.open(EditMetadataDialogComponent, { data });
     ref.afterClosed().subscribe((result) => {
       if (result) this.loadContent();
+    });
+  }
+
+  toggleSelect(uid: string): void {
+    this.selectedUids.update((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) {
+        next.delete(uid);
+      } else {
+        next.add(uid);
+      }
+      return next;
+    });
+  }
+
+  isSelected(uid: string): boolean {
+    return this.selectedUids().has(uid);
+  }
+
+  openBulkEditDialog(): void {
+    const docs = this.selectedDocuments();
+    if (docs.length === 0) return;
+    const data: BulkEditDialogData = { documents: docs };
+    const ref = this.dialog.open(BulkEditDialogComponent, { data, width: '640px' });
+    ref.afterClosed().subscribe((result) => {
+      if (result) {
+        this.selectedUids.set(new Set());
+        this.loadContent();
+      }
     });
   }
 
@@ -813,7 +847,7 @@ export class BrowseComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.detailService.trashDocument(doc.uid).subscribe({
         next: () => {

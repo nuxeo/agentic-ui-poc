@@ -1263,44 +1263,8 @@
               }
             </div>
 
-            <div class="indexing-header">
-              <div class="indexing-title" role="heading" aria-level="4">Indexing Properties</div>
-            </div>
-
-            <div class="prop-field">
-              <span class="prop-label">Title</span>
-              <span class="prop-value">{{ doc()!.title }}</span>
-            </div>
-
-            <div class="prop-field">
-              <span class="prop-label">File Name</span>
-              <span class="prop-value">{{ fileName() }}</span>
-            </div>
-
-            @if (expires()) {
-              <div class="prop-field">
-                <span class="prop-label">Expires</span>
-                <span class="prop-value">{{ expires() | date: 'longDate' }}</span>
-              </div>
-            }
-
-            @if (tags().length > 0) {
-              <div class="prop-field">
-                <span class="prop-label">Tags</span>
-                <div class="tags-row">
-                  @for (tag of tags(); track tag; let i = $index) {
-                    <sat-category-tag [category]="tagCategory(i)">{{ tag }}</sat-category-tag>
-                  }
-                </div>
-              </div>
-            }
-
-            @if (description()) {
-              <div class="prop-field">
-                <span class="prop-label">Description</span>
-                <p class="prop-description">{{ description() }}</p>
-              </div>
-            }
+            <!-- Layout Engine: dynamic property rendering based on document type -->
+            <nx-layout-renderer [docType]="doc()!.type" [mode]="'view'" [document]="doc()" />
 
             <div class="prop-section-divider"></div>
 

@@ -1,0 +1,12 @@
+<h2 mat-dialog-title>Edit Document</h2>
+
+<mat-dialog-content>
+  <nx-layout-renderer
+    [docType]="documentType"
+    [mode]="'edit'"
+    [document]="document"
+    [saving]="saving()"
+    (save)="onLayoutSave($event)"
+    (cancel)="dialogRef.close()"
+  />
+</mat-dialog-content>

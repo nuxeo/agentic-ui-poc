@@ -254,3 +254,100 @@ post<T>(path: string, body: unknown, options?: HttpOptions): Observable<T>
 put<T>(path: string, body: unknown, options?: HttpOptions): Observable<T>
 delete<T>(path: string, options?: HttpOptions): Observable<T>
 ```
+
+---
+
+## Nuxeo Studio Services (`libs/shared/nuxeo-studio/`)
+
+Import path: `@agentic-ui/shared/nuxeo-studio`
+
+These services power the Layout Engine — dynamic form rendering based on Nuxeo document type/schema metadata.
+
+### SchemaRegistryService (`schema-registry.service.ts`)
+
+```typescript
+getType(docType: string): Observable<NuxeoTypeDefinition>
+getSchema(schemaName: string): Observable<NuxeoSchemaDefinition>
+getAllTypeNames(): Observable<string[]>
+getFieldsForType(docType: string): Observable<NuxeoFieldDef[]>
+getField(docType: string, xpath: string): Observable<NuxeoFieldDef | undefined>
+getFieldsForFacets(facets: string[], existingSchemas: string[]): Observable<NuxeoFieldDef[]>
+getFieldsForTypeWithFacets(docType: string): Observable<NuxeoFieldDef[]>
+clearCache(): void
+```
+
+### LayoutRegistryService (`layout-registry.service.ts`)
+
+Resolution order: (1) explicit registration, (2) Studio Designer Polymer layout, (3) auto-generated from schema.
+
+```typescript
+registerLayout(config: LayoutConfig): void
+registerLayouts(configs: LayoutConfig[]): void
+removeLayout(docType: string, mode: LayoutMode): void
+hasExplicitLayout(docType: string, mode: LayoutMode): boolean
+resolveLayout(docType: string, mode: LayoutMode): Observable<LayoutConfig>
+```
+
+### StudioLayoutService (`studio-layout.service.ts`)
+
+Fetches Polymer HTML layout files deployed by Nuxeo Studio Designer from `/nuxeo/ui/document/{type}/`. Caches results; returns null on 404.
+
+```typescript
+fetchStudioLayout(docType: string, mode: LayoutMode): Observable<string | null>
+hasStudioLayout(docType: string, mode: LayoutMode): Observable<boolean>
+clearCache(): void
+```
+
+### PolymerLayoutParser (`polymer-layout-parser.ts`)
+
+Stateless utility that parses Polymer HTML into LayoutConfig. Maps `<nuxeo-input>`, `<nuxeo-directory-suggestion>`, `<nuxeo-date-picker>`, etc. to Angular widget types.
+
+```typescript
+parsePolymerLayout(html: string, docType: string, mode: LayoutMode): LayoutConfig | null
+```
+
+### WidgetRegistryService (`widget-registry.service.ts`)
+
+```typescript
+register(descriptor: WidgetDescriptor): void
+registerAll(descriptors: WidgetDescriptor[]): void
+getDescriptor(widgetType: WidgetType): WidgetDescriptor | undefined
+getComponent(widgetType: WidgetType): Type<unknown> | undefined
+resolveComponent(widgetType?: WidgetType, fieldType?: NuxeoFieldType): Type<unknown> | undefined
+has(widgetType: WidgetType): boolean
+getRegisteredTypes(): WidgetType[]
+getAll(): WidgetDescriptor[]
+getCompatibleWidgets(fieldType: NuxeoFieldType): WidgetDescriptor[]
+```
+
+### ValidationService (`validation.service.ts`)
+
+```typescript
+registerCustomValidator(name: string, fn: CustomValidatorFn): void
+removeCustomValidator(name: string): void
+validateField(field: FieldWidgetConfig, value: unknown, allValues: Record<string, unknown>): ValidationResult
+validateAll(fields: FieldWidgetConfig[], allValues: Record<string, unknown>, getFieldValue: (xpath: string) => unknown): Map<string, string[]>
+```
+
+### SlotRegistryService (`slot-registry.service.ts`)
+
+```typescript
+register(registration: SlotRegistration): void
+registerAll(registrations: SlotRegistration[]): void
+getSlotComponents(slotName: string, docType?: string): Type<unknown>[]
+has(slotName: string): boolean
+getSlotNames(): string[]
+remove(slotName: string, component: Type<unknown>): void
+```
+
+### LayoutBlockRegistryService (`layout-block-registry.service.ts`)
+
+```typescript
+register(block: LayoutBlock): void
+registerAll(blocks: LayoutBlock[]): void
+get(name: string): LayoutBlock | undefined
+has(name: string): boolean
+remove(name: string): void
+getAll(): LayoutBlock[]
+resolveFields(blockName: string): FieldWidgetConfig[]
+```

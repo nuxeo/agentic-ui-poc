@@ -1,0 +1,20 @@
+{
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "name": "shared-nuxeo-studio",
+  "projectType": "library",
+  "sourceRoot": "libs/shared/nuxeo-studio/src",
+  "prefix": "nx",
+  "tags": ["scope:shared", "type:data-access"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/shared/nuxeo-studio"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

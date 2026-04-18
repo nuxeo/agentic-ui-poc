@@ -1,0 +1,53 @@
+:host {
+  display: block;
+}
+
+.nx-bulk-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: #666;
+}
+
+.nx-bulk-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nx-bulk-summary {
+  color: #555;
+  margin: 0 0 8px;
+}
+
+.nx-bulk-section {
+  margin-bottom: 4px;
+}
+
+.nx-bulk-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nx-bulk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nx-bulk-checkbox {
+  font-weight: 500;
+}
+
+.nx-bulk-widget {
+  padding-left: 32px;
+}
+
+.nx-bulk-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 16px 0;
+}

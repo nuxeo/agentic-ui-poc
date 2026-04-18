@@ -69,6 +69,16 @@
           }
         </div>
 
+        <!-- Document properties via Layout Engine -->
+        @if (targetDoc(); as tDoc) {
+          <div class="form-section">
+            <div class="form-section-heading" role="heading" aria-level="3">
+              Document Properties
+            </div>
+            <nx-layout-renderer [docType]="tDoc.type" [mode]="'view'" [document]="tDoc" />
+          </div>
+        }
+
         <!-- Participants picker (for Choose Participants step) -->
         @if (isChooseParticipants) {
           <div class="form-section">

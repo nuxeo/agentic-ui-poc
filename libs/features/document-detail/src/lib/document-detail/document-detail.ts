@@ -66,6 +66,7 @@ import {
   type SentimentItem,
   type SentimentResponse,
 } from '@agentic-ui/shared/ai-client';
+import { LayoutRendererComponent } from '@agentic-ui/shared/nuxeo-studio';
 import DOMPurify from 'dompurify';
 import { forkJoin, Observable, of, switchMap } from 'rxjs';
 import {
@@ -145,6 +146,7 @@ const TAG_CATEGORIES: SatTagCategory[] = [
     SatAvatarModule,
     SatBreadcrumbsComponent,
     SatTagModule,
+    LayoutRendererComponent,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './document-detail.html',
@@ -1515,7 +1517,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.actionInProgress.set('trash');
 
@@ -1559,7 +1561,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.actionInProgress.set('permanentDelete');
       this.detailService.permanentlyDelete(this.docUid).subscribe({
@@ -1867,7 +1869,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.detailService.deleteComment(this.docUid, comment.id).subscribe({
         next: () => {

@@ -1,0 +1,11 @@
+<h2 mat-dialog-title>Bulk Edit ({{ documents.length }} documents)</h2>
+
+<mat-dialog-content>
+  <nx-bulk-edit-renderer
+    [docType]="docType"
+    [documents]="documents"
+    [saving]="saving()"
+    (apply)="onApply($event)"
+    (cancel)="onCancel()"
+  />
+</mat-dialog-content>

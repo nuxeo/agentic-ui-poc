@@ -1,0 +1,78 @@
+@if (loading()) {
+  <div class="nx-bulk-loading">
+    <mat-spinner diameter="32" />
+    <span>Loading bulk edit form...</span>
+  </div>
+} @else if (resolvedLayout()) {
+  <div class="nx-bulk-edit">
+    <p class="nx-bulk-summary">
+      Editing {{ documents().length }} document(s). Check the fields you want to update.
+    </p>
+
+    @for (section of resolvedLayout()!.sections; track section.label) {
+      <mat-expansion-panel [expanded]="true" class="nx-bulk-section">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ section.label }}</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <div class="nx-bulk-fields">
+          @for (field of section.fields; track field.xpath) {
+            <div class="nx-bulk-field">
+              <mat-checkbox
+                [checked]="isFieldSelected(field.xpath)"
+                (change)="toggleField(field.xpath)"
+                class="nx-bulk-checkbox"
+              >
+                {{ field.label || field.xpath }}
+              </mat-checkbox>
+
+              @if (isFieldSelected(field.xpath)) {
+                <div class="nx-bulk-widget">
+                  <ng-template
+                    nxWidgetHost
+                    [widgetType]="field.widget"
+                    [xpath]="field.xpath"
+                    [value]="getFieldValue(field.xpath)"
+                    [mode]="'edit'"
+                    [label]="field.label || field.xpath"
+                    [required]="false"
+                    [placeholder]="field.placeholder || ''"
+                    [readOnly]="false"
+                    [multiple]="field.multiple || false"
+                    [directory]="field.directory"
+                    [min]="field.min"
+                    [max]="field.max"
+                    [maxLength]="field.maxLength"
+                    [rows]="field.rows"
+                    [accept]="field.accept"
+                    [disabled]="false"
+                    [widgetProperties]="field.properties"
+                    [fields]="field.fields"
+                    [validationErrors]="getFieldErrors(field.xpath)"
+                    (widgetValueChange)="onFieldChange(field.xpath, $event)"
+                  />
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </mat-expansion-panel>
+    }
+
+    <div class="nx-bulk-actions">
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="saving() || selectedFieldsSet().size === 0"
+        (click)="onApply()"
+      >
+        @if (saving()) {
+          <mat-spinner diameter="18" />
+        } @else {
+          Apply to {{ documents().length }} document(s)
+        }
+      </button>
+      <button mat-stroked-button (click)="onCancel()" [disabled]="saving()">Cancel</button>
+    </div>
+  </div>
+}

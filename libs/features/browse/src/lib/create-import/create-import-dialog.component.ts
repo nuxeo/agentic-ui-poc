@@ -29,6 +29,7 @@ import {
   sanitizeDocumentName,
   type CsvImportResult,
 } from '@agentic-ui/shared/nuxeo-client';
+import { LayoutRendererComponent } from '@agentic-ui/shared/nuxeo-studio';
 
 import {
   FolderPickerDialogComponent,
@@ -138,6 +139,7 @@ const BUSINESS_TEMPLATES: TemplateDef[] = [
     MatSlideToggleModule,
     MatProgressSpinnerModule,
     FormsModule,
+    LayoutRendererComponent,
   ],
   templateUrl: './create-import-dialog.component.html',
   styleUrl: './create-import-dialog.component.scss',
@@ -246,6 +248,7 @@ export class CreateImportDialogComponent implements OnInit {
 
   docTitle = '';
   docName = '';
+  readonly createProperties = signal<Record<string, unknown>>({});
 
   readonly uploadFiles = signal<File[]>([]);
   autoClassifyOnUpload = false;
@@ -415,6 +418,10 @@ export class CreateImportDialogComponent implements OnInit {
     }
   }
 
+  onCreateLayoutSave(properties: Record<string, unknown>): void {
+    this.createProperties.set(properties);
+  }
+
   createFromTemplate(): void {
     const path = this.parentPath();
     const t = this.selectedTemplate();
@@ -423,7 +430,10 @@ export class CreateImportDialogComponent implements OnInit {
     const name = sanitizeDocumentName(this.docName.trim() || title);
     this.busy.set(true);
     this.error.set(null);
-    const props: Record<string, unknown> = { 'dc:title': title };
+    const props: Record<string, unknown> = {
+      ...this.createProperties(),
+      'dc:title': title,
+    };
     if (t.type === 'Note') {
       props['note:note'] = '<p></p>';
     }

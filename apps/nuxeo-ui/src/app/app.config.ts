@@ -9,6 +9,7 @@ import { Observable, of } from 'rxjs';
 
 import { CURRENT_USERNAME, NUXEO_SERVER_URL } from '@agentic-ui/shared/nuxeo-client';
 import { AI_BACKEND_URL } from '@agentic-ui/shared/ai-client';
+import { provideNuxeoWidgets } from '@agentic-ui/shared/nuxeo-widgets';
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
 import { nuxeoSamlProviders } from './nuxeo-sso.providers';
@@ -58,6 +59,7 @@ export const appConfig: ApplicationConfig = {
         return () => auth.username();
       },
     },
+    provideNuxeoWidgets(),
     { provide: AI_BACKEND_URL, useValue: '' },
     {
       // Nuxeo Drive connects directly to the Nuxeo server (bypassing the Angular dev proxy).

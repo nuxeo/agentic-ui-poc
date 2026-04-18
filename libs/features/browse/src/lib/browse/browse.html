@@ -242,7 +242,18 @@
                   <table class="browse-table">
                     <thead>
                       <tr>
-                        <th class="col-checkbox"></th>
+                        <th class="col-checkbox">
+                          @if (selectedDocuments().length > 0) {
+                            <button
+                              mat-stroked-button
+                              class="bulk-edit-btn"
+                              (click)="openBulkEditDialog()"
+                            >
+                              <mat-icon>edit_note</mat-icon>
+                              Bulk Edit ({{ selectedDocuments().length }})
+                            </button>
+                          }
+                        </th>
                         @for (col of visibleColumns(); track col.key) {
                           <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
                             <span class="th-label">{{ col.label }}</span>
@@ -272,7 +283,12 @@
                           [class.browse-row--folder]="isFolderish(doc)"
                           (click)="onRowClick(doc)"
                         >
-                          <td class="cell-checkbox"></td>
+                          <td class="cell-checkbox" (click)="$event.stopPropagation()">
+                            <mat-checkbox
+                              [checked]="isSelected(doc.uid)"
+                              (change)="toggleSelect(doc.uid)"
+                            />
+                          </td>
                           @for (col of visibleColumns(); track col.key) {
                             <td [ngClass]="'cell-' + col.key">
                               @if (col.key === 'title') {
@@ -839,14 +855,7 @@
 
             <div class="panel-info-section">
               <div class="panel-section-title" role="heading" aria-level="4">Properties</div>
-              <div class="panel-info-row">
-                <span class="info-label">Title</span>
-                <span class="info-value">{{ doc.title }}</span>
-              </div>
-              <div class="panel-info-row">
-                <span class="info-label">Type</span>
-                <span class="info-value">{{ doc.type }}</span>
-              </div>
+              <nx-layout-renderer [docType]="doc.type" [mode]="'view'" [document]="doc" />
             </div>
           </div>
         }

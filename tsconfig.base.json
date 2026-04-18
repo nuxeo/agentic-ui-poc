@@ -30,7 +30,9 @@
       "@agentic-ui/feature-tasks": ["libs/features/tasks/src/index.ts"],
       "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
       "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"],
-      "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"]
+      "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"],
+      "@agentic-ui/shared/nuxeo-studio": ["libs/shared/nuxeo-studio/src/index.ts"],
+      "@agentic-ui/shared/nuxeo-widgets": ["libs/shared/nuxeo-widgets/src/index.ts"]
     }
   }
 }

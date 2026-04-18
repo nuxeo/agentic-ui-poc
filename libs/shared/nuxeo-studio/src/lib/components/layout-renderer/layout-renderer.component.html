@@ -1,0 +1,110 @@
+@if (loading()) {
+  <div class="nx-layout-loading">
+    <mat-spinner diameter="32" />
+    <span>Loading layout...</span>
+  </div>
+} @else if (error()) {
+  <div class="nx-layout-error">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ error() }}</span>
+  </div>
+} @else if (resolvedLayout()) {
+  <div class="nx-layout" [class]="'nx-layout--' + mode()">
+    <!-- Global extension points: before -->
+    @for (slot of globalSlotsBefore(); track slot.name) {
+      @for (comp of getSlotComponents(slot.name); track comp) {
+        <ng-container *ngComponentOutlet="comp" />
+      }
+    }
+
+    @for (section of resolvedLayout()!.sections; track section.label) {
+      <mat-expansion-panel [expanded]="!section.collapsed" class="nx-layout-section">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ section.label }}</mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <!-- Section extension points: before -->
+        @for (slot of getSectionSlots(section, 'before'); track slot.name) {
+          @for (comp of getSlotComponents(slot.name); track comp) {
+            <ng-container *ngComponentOutlet="comp" />
+          }
+        }
+
+        <div
+          class="nx-layout-fields"
+          [class.nx-layout-fields--cols-2]="section.columns === 2"
+          [class.nx-layout-fields--cols-3]="section.columns === 3"
+        >
+          @for (field of section.fields; track field.xpath) {
+            @if (isFieldVisible(field)) {
+              <div
+                class="nx-layout-field"
+                [class.nx-layout-field--full]="field.width === 'full' || !field.width"
+                [class.nx-layout-field--half]="field.width === 'half'"
+                [class.nx-layout-field--third]="field.width === 'third'"
+                [class.nx-layout-field--error]="hasFieldError(field.xpath)"
+                [class]="field.cssClass || ''"
+              >
+                <ng-template
+                  nxWidgetHost
+                  [widgetType]="field.widget"
+                  [xpath]="field.xpath"
+                  [value]="getFieldValue(field.xpath)"
+                  [mode]="mode()"
+                  [label]="field.label || field.xpath"
+                  [required]="field.required || false"
+                  [placeholder]="field.placeholder || ''"
+                  [readOnly]="field.readOnly || false"
+                  [multiple]="field.multiple || false"
+                  [directory]="field.directory"
+                  [min]="field.min"
+                  [max]="field.max"
+                  [maxLength]="field.maxLength"
+                  [rows]="field.rows"
+                  [accept]="field.accept"
+                  [disabled]="false"
+                  [widgetProperties]="field.properties"
+                  [fields]="field.fields"
+                  [validationErrors]="getFieldErrors(field.xpath)"
+                  (widgetValueChange)="onFieldChange(field.xpath, $event)"
+                />
+              </div>
+            }
+          }
+        </div>
+
+        <!-- Section extension points: after -->
+        @for (slot of getSectionSlots(section, 'after'); track slot.name) {
+          @for (comp of getSlotComponents(slot.name); track comp) {
+            <ng-container *ngComponentOutlet="comp" />
+          }
+        }
+      </mat-expansion-panel>
+    }
+
+    <!-- Global extension points: after -->
+    @for (slot of globalSlotsAfter(); track slot.name) {
+      @for (comp of getSlotComponents(slot.name); track comp) {
+        <ng-container *ngComponentOutlet="comp" />
+      }
+    }
+
+    @if (isEditableMode()) {
+      <div class="nx-layout-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          [disabled]="saving() || !isValid()"
+          (click)="onSave()"
+        >
+          @if (saving()) {
+            <mat-spinner diameter="18" />
+          } @else {
+            Save
+          }
+        </button>
+        <button mat-stroked-button (click)="onCancel()" [disabled]="saving()">Cancel</button>
+      </div>
+    }
+  </div>
+}
