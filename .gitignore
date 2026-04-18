@@ -51,6 +51,10 @@ Thumbs.db
 
 vitest.config.*.timestamp*
 
+# Playwright
+playwright-report/
+test-results/
+
 # Environment files
 .env
 apps/ai-backend/.env
