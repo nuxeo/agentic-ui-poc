@@ -39,19 +39,22 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number }}
-          SUMMARY=$(cat /tmp/summary.md)
 
-          gh pr comment ${PR_NUMBER} --body "## Agent Fix Ready
+          # Build the comment body in a file to avoid YAML/shell quoting issues
+          {
+            echo "## Agent Fix Ready"
+            echo ""
+            echo "To fix all review comments automatically, open Cursor Agent and run:"
+            echo ""
+            echo "    fix all PR review comments on PR #${PR_NUMBER}"
+            echo ""
+            echo "The agent will fetch these comments, implement fixes following project"
+            echo "conventions (AGENTS/08-bug-patterns.md, AGENTS/07-security.md), and"
+            echo "push a follow-up commit."
+            echo ""
+            echo "---"
+            echo ""
+            cat /tmp/summary.md
+          } > /tmp/comment-body.md
 
-To fix all review comments automatically, open Cursor Agent and run:
-
-\`\`\`
-fix all PR review comments on PR #${PR_NUMBER}
-\`\`\`
-
-The agent will fetch these comments, implement fixes following project conventions
-(AGENTS/08-bug-patterns.md, AGENTS/07-security.md), and push a follow-up commit.
-
----
-
-${SUMMARY}"
+          gh pr comment "${PR_NUMBER}" --body-file /tmp/comment-body.md

@@ -57,20 +57,26 @@ jobs:
           EXISTING=$(gh issue list --label "agents-stale" --state open --json number --jq '.[0].number' 2>/dev/null || echo "")
 
           if [ -z "$EXISTING" ]; then
+            # Build the issue body in a file to avoid YAML/shell quoting issues
+            {
+              echo "## AGENTS.md Staleness Report"
+              echo ""
+              echo "The following service files exist in the codebase but are not documented in \`AGENTS/01-services.md\`:"
+              echo ""
+              echo -e "$MISSING"
+              echo ""
+              echo "### What to do"
+              echo "1. Open \`AGENTS/01-services.md\`"
+              echo "2. Add a section for each missing service with its public method signatures"
+              echo "3. Commit: \`docs: update AGENTS/01-services.md with new services\`"
+              echo ""
+              echo "---"
+              echo "*Generated automatically by the AGENTS.md Staleness Agent (staleness-check.yml).*"
+            } > /tmp/issue-body.md
+
             gh issue create \
               --title "AGENTS/ is out of date — ${DATE}" \
-              --body "## AGENTS.md Staleness Report
-
-The following service files exist in the codebase but are not documented in \`AGENTS/01-services.md\`:
-$(echo -e "$MISSING")
-
-### What to do
-1. Open \`AGENTS/01-services.md\`
-2. Add a section for each missing service with its public method signatures
-3. Commit: \`docs: update AGENTS/01-services.md with new services\`
-
----
-*Generated automatically by the AGENTS.md Staleness Agent (staleness-check.yml).*" \
+              --body-file /tmp/issue-body.md \
               --label "agents-stale,documentation"
           fi
 
