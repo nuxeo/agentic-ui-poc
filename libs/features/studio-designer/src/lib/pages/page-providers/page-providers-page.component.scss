@@ -1,0 +1,262 @@
+.search-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 0;
+  align-items: start;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.items-list {
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  padding-right: 16px;
+  min-height: 400px;
+}
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.item-card {
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  margin-bottom: 4px;
+
+  &.selected {
+    outline: 2px solid #1976d2;
+    background: #e3f2fd;
+  }
+  &.disabled {
+    opacity: 0.5;
+  }
+
+  .item-card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+
+  .item-card-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+  .item-icon {
+    color: #1976d2;
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+  .item-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .item-label {
+    font-weight: 500;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item-meta {
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.54);
+  }
+  .item-card-right {
+    display: flex;
+    gap: 0;
+    flex-shrink: 0;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(0, 0, 0, 0.54);
+  .empty-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+  }
+  .hint {
+    font-size: 12px;
+  }
+}
+
+.item-editor {
+  padding-left: 24px;
+
+  .editor-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+    }
+    .spacer {
+      flex: 1;
+    }
+  }
+
+  mat-expansion-panel {
+    margin-bottom: 12px;
+  }
+}
+
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px;
+
+  &.full-width {
+    grid-template-columns: 140px 1fr;
+  }
+
+  > .field-label {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.7);
+    text-align: right;
+    padding-right: 8px;
+    &.required-label::after {
+      content: ' *';
+      color: #f44336;
+    }
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+  mat-checkbox,
+  mat-slide-toggle {
+    margin-left: 0;
+  }
+}
+
+.draggable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.draggable-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  padding: 4px 8px;
+  transition: box-shadow 0.15s;
+
+  &:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .drag-handle {
+    cursor: grab;
+    color: rgba(0, 0, 0, 0.3);
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    &:active {
+      cursor: grabbing;
+    }
+  }
+}
+
+.field-inline {
+  flex: 1;
+  min-width: 100px;
+}
+.field-inline-sm {
+  width: 100px;
+  min-width: 80px;
+}
+
+.add-row-btn {
+  margin-top: 8px;
+}
+
+.cdk-drag-preview {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+}
+.cdk-drag-placeholder {
+  opacity: 0.3;
+}
+
+.platform-providers-section {
+  padding: 0 8px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(0, 0, 0, 0.5);
+  margin: 8px 8px 4px;
+}
+
+.custom-label {
+  margin-top: 8px;
+}
+
+.platform-provider-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.7);
+  border-radius: 4px;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+
+  .platform-pp-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: #1976d2;
+  }
+
+  .platform-pp-name {
+    font-family: monospace;
+    font-size: 11px;
+  }
+}

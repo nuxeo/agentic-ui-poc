@@ -742,6 +742,38 @@ $badge-purple: #6b5b95;
   }
 }
 
+.import-metadata-section {
+  margin-top: 8px;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--mat-sys-outline-variant, #e4e6ec);
+  background: var(--mat-sys-surface-container-low, #f9fafb);
+}
+
+.import-metadata-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: var(--mat-sys-primary);
+  }
+}
+
+.import-metadata-hint {
+  margin: 0 0 16px;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+}
+
 .full-width {
   width: 100%;
 }

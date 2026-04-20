@@ -1,0 +1,277 @@
+.how-it-works {
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 500;
+  }
+
+  > p {
+    margin: 0 0 16px;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 14px;
+  }
+}
+
+.button-type-cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.button-type-card {
+  cursor: pointer;
+  flex: 1;
+  min-width: 260px;
+  max-width: 420px;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    border-color: #1976d2;
+  }
+
+  mat-card-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  mat-icon {
+    color: #1976d2;
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  strong {
+    font-size: 15px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.6);
+    line-height: 1.4;
+  }
+}
+
+.actions-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 0;
+  align-items: start;
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.actions-list {
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  padding-right: 16px;
+  min-height: 400px;
+}
+
+.actions-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.action-card {
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  margin-bottom: 4px;
+
+  &.selected {
+    outline: 2px solid #1976d2;
+    background: #e3f2fd;
+  }
+
+  &.disabled {
+    opacity: 0.5;
+  }
+
+  .action-card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+
+  .action-card-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .action-icon {
+    color: #1976d2;
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+
+  .action-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .action-label {
+    font-weight: 500;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .action-meta {
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.54);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .action-card-right {
+    display: flex;
+    gap: 0;
+    flex-shrink: 0;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: rgba(0, 0, 0, 0.54);
+
+  .empty-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
+  }
+
+  .hint {
+    font-size: 12px;
+  }
+}
+
+.action-editor {
+  padding-left: 24px;
+
+  .editor-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .spacer {
+      flex: 1;
+    }
+  }
+
+  mat-expansion-panel {
+    margin-bottom: 12px;
+  }
+}
+
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px;
+
+  > .field-label {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.7);
+    text-align: right;
+    padding-right: 8px;
+
+    &.required-label::after {
+      content: ' *';
+      color: #f44336;
+    }
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+
+  mat-checkbox,
+  mat-slide-toggle {
+    margin-left: 0;
+  }
+}
+
+.custom-attr-row {
+  grid-template-columns: 160px 1fr auto;
+
+  .custom-attr-value {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+.add-attribute-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  padding-left: 176px;
+
+  .attr-key-field {
+    width: 160px;
+  }
+
+  .attr-value-field {
+    flex: 1;
+  }
+}
+
+.filter-hint {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.54);
+  margin: 0 0 12px 176px;
+}
+
+mat-form-field {
+  &:has(mat-hint) {
+    margin-bottom: 8px;
+  }
+}

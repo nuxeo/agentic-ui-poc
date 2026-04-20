@@ -316,6 +316,25 @@
                   </li>
                 }
               </ul>
+
+              @if (hasImportLayout()) {
+                <div class="import-metadata-section">
+                  <h3 class="import-metadata-title">
+                    <mat-icon>edit_note</mat-icon>
+                    Document Metadata
+                  </h3>
+                  <p class="import-metadata-hint">
+                    Fill in the metadata fields below. These values will be applied to all uploaded
+                    files.
+                  </p>
+                  <nx-layout-renderer
+                    [docType]="'File'"
+                    [mode]="'import'"
+                    [saving]="busy()"
+                    (save)="onImportLayoutSave($event)"
+                  />
+                </div>
+              }
             }
           </div>
         }

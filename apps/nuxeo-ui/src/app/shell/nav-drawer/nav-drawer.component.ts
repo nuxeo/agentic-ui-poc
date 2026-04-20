@@ -522,9 +522,16 @@ export class NavDrawerComponent {
     });
   }
 
+  private static readonly HIDDEN_TREE_NAMES = new Set(['studio-configs']);
+
   private toFolderNodes(entries: NuxeoDocument[]): FolderNode[] {
     return entries
-      .filter((e) => FOLDERISH_TYPES.has(e.type))
+      .filter(
+        (e) =>
+          FOLDERISH_TYPES.has(e.type) &&
+          !e.facets?.includes('HiddenInNavigation') &&
+          !NavDrawerComponent.HIDDEN_TREE_NAMES.has(e.title),
+      )
       .map((doc) => ({
         doc,
         children: [],

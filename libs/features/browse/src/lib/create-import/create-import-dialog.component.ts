@@ -26,10 +26,11 @@ import { FormsModule } from '@angular/forms';
 
 import {
   DocumentImportService,
+  type ImportFilesOptions,
   sanitizeDocumentName,
   type CsvImportResult,
 } from '@agentic-ui/shared/nuxeo-client';
-import { LayoutRendererComponent } from '@agentic-ui/shared/nuxeo-studio';
+import { LayoutRendererComponent, ConfigStorageService } from '@agentic-ui/shared/nuxeo-studio';
 
 import {
   FolderPickerDialogComponent,
@@ -149,8 +150,17 @@ export class CreateImportDialogComponent implements OnInit {
   private readonly matDialog = inject(MatDialog);
   readonly data = inject<CreateImportDialogData>(MAT_DIALOG_DATA);
   private readonly importService = inject(DocumentImportService);
+  private readonly configStorage = inject(ConfigStorageService);
 
   readonly businessTemplates = BUSINESS_TEMPLATES;
+
+  /**
+   * Whether a custom import layout exists for the File type.
+   * When true, we show the layout renderer in the upload screen so users
+   * can fill metadata fields before uploading.
+   */
+  readonly hasImportLayout = signal(false);
+  readonly importProperties = signal<Record<string, unknown>>({});
 
   constructor() {
     effect(() => {
@@ -287,6 +297,11 @@ export class CreateImportDialogComponent implements OnInit {
         },
       });
     }
+
+    const importLayout = this.configStorage.getLayoutConfig('File', 'import');
+    this.hasImportLayout.set(
+      !!importLayout && importLayout.sections.some((s) => s.fields.length > 0),
+    );
   }
 
   /** Open Nuxeo-backed folder picker; path is live data from the repository, not fixed text. */
@@ -422,6 +437,10 @@ export class CreateImportDialogComponent implements OnInit {
     this.createProperties.set(properties);
   }
 
+  onImportLayoutSave(properties: Record<string, unknown>): void {
+    this.importProperties.set(properties);
+  }
+
   createFromTemplate(): void {
     const path = this.parentPath();
     const t = this.selectedTemplate();
@@ -497,19 +516,24 @@ export class CreateImportDialogComponent implements OnInit {
     if (!path || files.length === 0) return;
     this.busy.set(true);
     this.error.set(null);
-    this.importService
-      .importFiles(path, files, { autoClassify: this.autoClassifyOnUpload })
-      .subscribe({
-        next: (docs) => {
-          this.busy.set(false);
-          this.successMessage.set(`Uploaded ${docs.length} file(s).`);
-          this.view.set('success');
-        },
-        error: (err: { error?: { message?: string }; message?: string }) => {
-          this.busy.set(false);
-          this.error.set(err?.error?.message ?? err?.message ?? 'Upload failed');
-        },
-      });
+
+    const importMeta = this.importProperties();
+    const options: ImportFilesOptions = { autoClassify: this.autoClassifyOnUpload };
+    if (Object.keys(importMeta).length > 0) {
+      options.properties = importMeta;
+    }
+
+    this.importService.importFiles(path, files, options).subscribe({
+      next: (docs) => {
+        this.busy.set(false);
+        this.successMessage.set(`Uploaded ${docs.length} file(s).`);
+        this.view.set('success');
+      },
+      error: (err: { error?: { message?: string }; message?: string }) => {
+        this.busy.set(false);
+        this.error.set(err?.error?.message ?? err?.message ?? 'Upload failed');
+      },
+    });
   }
 
   runCsv(): void {

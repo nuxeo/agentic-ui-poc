@@ -1,0 +1,41 @@
+<div class="studio-shell">
+  <nav class="studio-sidebar">
+    <div class="sidebar-header">
+      <mat-icon class="studio-logo">design_services</mat-icon>
+      <span class="studio-title">Studio Designer</span>
+    </div>
+    <mat-nav-list>
+      @for (item of navItems; track item.path) {
+        <a mat-list-item [routerLink]="item.path" routerLinkActive="active">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+    <mat-divider></mat-divider>
+    <div class="sidebar-actions">
+      <button
+        mat-button
+        class="action-btn"
+        matTooltip="Export all configs as JSON"
+        (click)="exportConfigs()"
+      >
+        <mat-icon>download</mat-icon>
+        <span>Export</span>
+      </button>
+      <button
+        mat-button
+        class="action-btn"
+        matTooltip="Import configs from JSON file"
+        (click)="importInput.click()"
+      >
+        <mat-icon>upload</mat-icon>
+        <span>Import</span>
+      </button>
+      <input #importInput type="file" accept=".json" hidden (change)="importConfigs($event)" />
+    </div>
+  </nav>
+  <main class="studio-content">
+    <router-outlet />
+  </main>
+</div>

@@ -1,0 +1,314 @@
+<div class="search-layout">
+  <!-- Left: search list -->
+  <div class="items-list">
+    <div class="list-toolbar">
+      <h3>Page Providers</h3>
+      <button mat-mini-fab color="primary" aria-label="New Search Config" (click)="createSearch()">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    @if (platformPageProviders().length > 0) {
+      <div class="platform-providers-section">
+        <h4 class="section-label">Platform Registered</h4>
+        @for (pp of platformPageProviders(); track pp) {
+          <div class="platform-provider-item">
+            <mat-icon class="platform-pp-icon">cloud</mat-icon>
+            <span class="platform-pp-name">{{ pp }}</span>
+          </div>
+        }
+      </div>
+      <mat-divider></mat-divider>
+      <h4 class="section-label custom-label">Custom Configurations</h4>
+    }
+
+    @if (searches().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">search</mat-icon>
+        <p>No custom search configurations.</p>
+        <p class="hint">Click "+" to create a page provider.</p>
+      </div>
+    }
+
+    @for (search of searches(); track search.id) {
+      <mat-card
+        class="item-card"
+        [class.disabled]="!search.available"
+        [class.selected]="editingSearch()?.id === search.id"
+        (click)="editSearch(search)"
+      >
+        <mat-card-content class="item-card-body">
+          <div class="item-card-left">
+            <mat-icon class="item-icon">{{ search.icon || 'search' }}</mat-icon>
+            <div class="item-info">
+              <span class="item-label">{{ search.label || 'Untitled' }}</span>
+              <span class="item-meta"
+                >{{ search.searchFields.length }} fields ·
+                {{ search.resultColumns.length }} columns</span
+              >
+            </div>
+          </div>
+          <div class="item-card-right">
+            <button
+              mat-icon-button
+              matTooltip="Toggle"
+              aria-label="Toggle"
+              (click)="toggleSearch(search); $event.stopPropagation()"
+            >
+              <mat-icon>{{ search.available ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              matTooltip="Delete"
+              aria-label="Delete"
+              color="warn"
+              (click)="deleteSearch(search.id); $event.stopPropagation()"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+
+  <!-- Right: editor -->
+  @if (editingSearch(); as search) {
+    <div class="item-editor">
+      <div class="editor-header">
+        <button mat-icon-button (click)="cancelEdit()" aria-label="Back">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <h2>Page Provider</h2>
+        <span class="spacer"></span>
+        <button mat-button (click)="cancelEdit()">Discard</button>
+        <button mat-raised-button color="primary" (click)="saveSearch()" [disabled]="!canSave">
+          Save
+        </button>
+      </div>
+
+      <!-- Identity -->
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Identity</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label required-label">Name</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="search.name"
+                (ngModelChange)="updateTop('name', $event)"
+                placeholder="Unique provider name"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label required-label">Label</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="search.label"
+                (ngModelChange)="updateTop('label', $event)"
+                placeholder="Display label"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Icon</span>
+            <mat-form-field appearance="outline">
+              <input matInput [ngModel]="search.icon" (ngModelChange)="updateTop('icon', $event)" />
+              <mat-icon matSuffix *ngIf="search.icon">{{ search.icon }}</mat-icon>
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Available</span>
+            <mat-slide-toggle
+              [ngModel]="search.available"
+              (ngModelChange)="updateTop('available', $event)"
+            ></mat-slide-toggle>
+          </div>
+        </div>
+      </mat-expansion-panel>
+
+      <!-- Query -->
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Query</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row full-width">
+            <span class="field-label">NXQL Pattern</span>
+            <mat-form-field appearance="outline">
+              <textarea
+                matInput
+                rows="3"
+                [ngModel]="search.queryPattern"
+                (ngModelChange)="updateTop('queryPattern', $event)"
+              ></textarea>
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Default Sort</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="search.defaultSort"
+                (ngModelChange)="updateTop('defaultSort', $event)"
+                placeholder="e.g. dc:modified"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Sort Order</span>
+            <mat-form-field appearance="outline">
+              <mat-select
+                [ngModel]="search.defaultSortOrder"
+                (ngModelChange)="updateTop('defaultSortOrder', $event)"
+              >
+                <mat-option value="ASC">Ascending</mat-option>
+                <mat-option value="DESC">Descending</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Page Size</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                type="number"
+                [ngModel]="search.pageSize"
+                (ngModelChange)="updateTop('pageSize', +$event)"
+              />
+            </mat-form-field>
+          </div>
+        </div>
+      </mat-expansion-panel>
+
+      <!-- Search Form Fields -->
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Search Form Fields</mat-panel-title>
+          <mat-panel-description>{{ search.searchFields.length }} field(s)</mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div cdkDropList (cdkDropListDropped)="onFieldDrop($event)" class="draggable-list">
+          @for (field of search.searchFields; track $index; let i = $index) {
+            <div cdkDrag class="draggable-row">
+              <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+              <mat-form-field appearance="outline" class="field-inline">
+                <mat-label>XPath</mat-label>
+                <input
+                  matInput
+                  [ngModel]="field.xpath"
+                  (ngModelChange)="updateSearchField(i, 'xpath', $event)"
+                />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="field-inline">
+                <mat-label>Label</mat-label>
+                <input
+                  matInput
+                  [ngModel]="field.label"
+                  (ngModelChange)="updateSearchField(i, 'label', $event)"
+                />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="field-inline-sm">
+                <mat-label>Widget</mat-label>
+                <mat-select
+                  [ngModel]="field.widget"
+                  (ngModelChange)="updateSearchField(i, 'widget', $event)"
+                >
+                  @for (w of widgetOptions; track w) {
+                    <mat-option [value]="w">{{ w }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="field-inline-sm">
+                <mat-label>Operator</mat-label>
+                <mat-select
+                  [ngModel]="field.operator"
+                  (ngModelChange)="updateSearchField(i, 'operator', $event)"
+                >
+                  @for (op of operators; track op) {
+                    <mat-option [value]="op">{{ op }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="removeSearchField(i)"
+                aria-label="Remove field"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+
+        <button mat-stroked-button (click)="addSearchField()" class="add-row-btn">
+          <mat-icon>add</mat-icon> Add Search Field
+        </button>
+      </mat-expansion-panel>
+
+      <!-- Result Columns -->
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Result Columns</mat-panel-title>
+          <mat-panel-description>{{ search.resultColumns.length }} column(s)</mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div cdkDropList (cdkDropListDropped)="onColumnDrop($event)" class="draggable-list">
+          @for (col of search.resultColumns; track $index; let i = $index) {
+            <div cdkDrag class="draggable-row">
+              <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+              <mat-form-field appearance="outline" class="field-inline">
+                <mat-label>XPath</mat-label>
+                <input
+                  matInput
+                  [ngModel]="col.xpath"
+                  (ngModelChange)="updateResultColumn(i, 'xpath', $event)"
+                />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="field-inline">
+                <mat-label>Label</mat-label>
+                <input
+                  matInput
+                  [ngModel]="col.label"
+                  (ngModelChange)="updateResultColumn(i, 'label', $event)"
+                />
+              </mat-form-field>
+              <mat-checkbox
+                [ngModel]="col.sortable"
+                (ngModelChange)="updateResultColumn(i, 'sortable', $event)"
+                >Sortable</mat-checkbox
+              >
+              <mat-form-field appearance="outline" class="field-inline-sm">
+                <mat-label>Width</mat-label>
+                <input
+                  matInput
+                  [ngModel]="col.width ?? ''"
+                  (ngModelChange)="updateResultColumn(i, 'width', $event)"
+                  placeholder="e.g. 200px"
+                />
+              </mat-form-field>
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="removeResultColumn(i)"
+                aria-label="Remove column"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+
+        <button mat-stroked-button (click)="addResultColumn()" class="add-row-btn">
+          <mat-icon>add</mat-icon> Add Column
+        </button>
+      </mat-expansion-panel>
+    </div>
+  }
+</div>

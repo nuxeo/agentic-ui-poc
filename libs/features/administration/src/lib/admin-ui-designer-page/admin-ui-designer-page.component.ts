@@ -14,11 +14,16 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 
 import {
   type ActionConfig,
   type ActionSlot,
+  type ButtonType,
+  type ElementBinding,
+  type ActionAttributes,
+  createDefaultAction,
   ConfigStorageService,
   SchemaRegistryService,
   type FieldWidgetConfig,
@@ -30,33 +35,14 @@ import {
   LayoutRendererComponent,
 } from '@agentic-ui/shared/nuxeo-studio';
 
-const ICON_OPTIONS = [
-  'play_arrow',
-  'send',
-  'download',
-  'upload',
-  'print',
-  'share',
-  'delete',
-  'archive',
-  'verified',
-  'approval',
-  'check_circle',
-  'cancel',
-  'refresh',
-  'mail',
-  'notifications',
-  'star',
-  'bookmark',
-  'flag',
-  'label',
-  'lock',
-  'lock_open',
-  'visibility',
-  'edit',
-  'content_copy',
-  'link',
+const TOOLTIP_POSITIONS: Array<ElementBinding['tooltipPosition']> = [
+  'top',
+  'bottom',
+  'left',
+  'right',
 ];
+
+const INPUT_OPTIONS = ['[[document]]', '[[selection]]', '[[blob]]'];
 
 const WIDGET_OPTIONS: WidgetType[] = [
   'text',
@@ -92,6 +78,7 @@ const WIDGET_OPTIONS: WidgetType[] = [
     MatSnackBarModule,
     MatTooltipModule,
     MatExpansionModule,
+    MatSlideToggleModule,
     DragDropModule,
     LayoutRendererComponent,
   ],
@@ -103,8 +90,24 @@ export class AdminUiDesignerPageComponent {
   private readonly schemaRegistry = inject(SchemaRegistryService);
   private readonly snackBar = inject(MatSnackBar);
 
-  readonly iconOptions = ICON_OPTIONS;
+  readonly tooltipPositions = TOOLTIP_POSITIONS;
+  readonly inputOptions = INPUT_OPTIONS;
   readonly widgetOptions = WIDGET_OPTIONS;
+
+  readonly buttonTypeOptions: { value: ButtonType; label: string; description: string }[] = [
+    {
+      value: 'operation',
+      label: 'Button',
+      description: 'Configure a button and attach an automation operation, chain or script to it.',
+    },
+    {
+      value: 'custom',
+      label: 'Custom button',
+      description:
+        'Use code to create your custom element and bind it to a button. A typical example is displaying a confirmation dialog that will execute specific logic.',
+    },
+  ];
+
   readonly slotOptions: { value: ActionSlot; label: string }[] = [
     { value: 'BLOB_ACTIONS', label: 'Blob Actions' },
     { value: 'COLLECTION_ACTIONS', label: 'Collection Actions' },
@@ -117,30 +120,35 @@ export class AdminUiDesignerPageComponent {
     { value: 'RESULTS_SELECTION_ACTIONS', label: 'Results Selection Actions' },
     { value: 'TRASH_RESULTS_SELECTION_ACTIONS', label: 'Trash Results Selection Actions' },
   ];
+
   readonly modeOptions: LayoutMode[] = ['create', 'edit', 'view', 'metadata', 'import'];
 
   // ── Actions tab ──
 
   readonly actions = signal<ActionConfig[]>(this.storage.getActions());
   readonly editingAction = signal<ActionConfig | null>(null);
-  readonly docTypeFilter = signal<string>('');
+  readonly showFiltersPanel = signal(false);
+  readonly customAttrKey = signal('');
+  readonly customAttrValue = signal('');
 
   createAction(): void {
-    const action: ActionConfig = {
-      id: crypto.randomUUID(),
-      label: 'New Action',
-      icon: 'play_arrow',
-      operationId: '',
-      slot: 'DOCUMENT_ACTIONS',
-      order: (this.actions().length + 1) * 10,
-      filters: {},
-      enabled: true,
-    };
+    this.editingAction.set(createDefaultAction());
+    this.showFiltersPanel.set(false);
+  }
+
+  createActionWithType(type: ButtonType): void {
+    const action = createDefaultAction();
+    action.buttonType = type;
+    if (type === 'custom') {
+      action.binding.element = 'my-custom-button';
+    }
     this.editingAction.set(action);
+    this.showFiltersPanel.set(false);
   }
 
   editAction(action: ActionConfig): void {
-    this.editingAction.set({ ...action, filters: { ...action.filters } });
+    this.editingAction.set(JSON.parse(JSON.stringify(action)));
+    this.showFiltersPanel.set(false);
   }
 
   saveAction(): void {
@@ -160,10 +168,10 @@ export class AdminUiDesignerPageComponent {
     this.snackBar.open('Action saved', 'OK', { duration: 2000 });
   }
 
-  updateEditingAction(prop: string, value: unknown): void {
-    const editing = this.editingAction();
-    if (!editing) return;
-    this.editingAction.set({ ...editing, [prop]: value });
+  get canSave(): boolean {
+    const a = this.editingAction();
+    if (!a) return false;
+    return !!(a.binding.label && a.binding.operation);
   }
 
   cancelActionEdit(): void {
@@ -181,29 +189,126 @@ export class AdminUiDesignerPageComponent {
   }
 
   toggleAction(action: ActionConfig): void {
-    const all = this.actions().map((a) => (a.id === action.id ? { ...a, enabled: !a.enabled } : a));
+    const all = this.actions().map((a) =>
+      a.id === action.id ? { ...a, available: !a.available } : a,
+    );
     this.actions.set(all);
     this.storage.saveActions(all);
   }
 
-  updateEditingFilter(field: string, value: string): void {
-    const editing = this.editingAction();
-    if (!editing) return;
+  // Binding field updaters
+  updateBinding<K extends keyof ElementBinding>(prop: K, value: ElementBinding[K]): void {
+    const a = this.editingAction();
+    if (!a) return;
+    this.editingAction.set({
+      ...a,
+      binding: { ...a.binding, [prop]: value },
+    });
+  }
+
+  // Attribute field updaters
+  updateAttribute<K extends keyof ActionAttributes>(prop: K, value: ActionAttributes[K]): void {
+    const a = this.editingAction();
+    if (!a) return;
+    this.editingAction.set({
+      ...a,
+      attributes: { ...a.attributes, [prop]: value },
+    });
+  }
+
+  // Top-level field updaters
+  updateTop(prop: string, value: unknown): void {
+    const a = this.editingAction();
+    if (!a) return;
+    this.editingAction.set({ ...a, [prop]: value });
+  }
+
+  // Custom attribute management
+  addCustomAttribute(): void {
+    const key = this.customAttrKey().trim();
+    const val = this.customAttrValue().trim();
+    if (!key) return;
+
+    const a = this.editingAction();
+    if (!a) return;
+
+    this.editingAction.set({
+      ...a,
+      attributes: {
+        ...a.attributes,
+        custom: { ...a.attributes.custom, [key]: val },
+      },
+    });
+    this.customAttrKey.set('');
+    this.customAttrValue.set('');
+  }
+
+  removeCustomAttribute(key: string): void {
+    const a = this.editingAction();
+    if (!a) return;
+    const custom = { ...a.attributes.custom };
+    delete custom[key];
+    this.editingAction.set({
+      ...a,
+      attributes: { ...a.attributes, custom },
+    });
+  }
+
+  // Filter updaters
+  updateFilter(field: string, value: string): void {
+    const a = this.editingAction();
+    if (!a) return;
     const arr = value
       .split(',')
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
     this.editingAction.set({
-      ...editing,
-      filters: { ...editing.filters, [field]: arr.length > 0 ? arr : undefined },
+      ...a,
+      filters: { ...a.filters, [field]: arr.length > 0 ? arr : undefined },
     });
   }
 
   getFilterValue(field: string): string {
-    const editing = this.editingAction();
-    if (!editing) return '';
-    const filters = editing.filters as Record<string, string[] | undefined>;
+    const a = this.editingAction();
+    if (!a) return '';
+    const filters = a.filters as Record<string, string[] | undefined>;
     return (filters[field] ?? []).join(', ');
+  }
+
+  updateFilterBool(field: string, value: boolean): void {
+    const a = this.editingAction();
+    if (!a) return;
+    this.editingAction.set({
+      ...a,
+      filters: { ...a.filters, [field]: value || undefined },
+    });
+  }
+
+  updateFilterExpression(value: string): void {
+    const a = this.editingAction();
+    if (!a) return;
+    this.editingAction.set({
+      ...a,
+      filters: { ...a.filters, expression: value || undefined },
+    });
+  }
+
+  hasActiveFilters(): boolean {
+    const a = this.editingAction();
+    if (!a) return false;
+    const f = a.filters;
+    return !!(
+      f.docTypes?.length ||
+      f.permissions?.length ||
+      f.facets?.length ||
+      f.excludeFacets?.length ||
+      f.states?.length ||
+      f.excludeStates?.length ||
+      f.schemas?.length ||
+      f.groups?.length ||
+      f.isAdmin ||
+      f.expression
+    );
   }
 
   // ── Layouts tab ──

@@ -1,0 +1,153 @@
+<div class="dashboard-designer">
+  <div class="page-header">
+    <h2>Dashboard Configuration</h2>
+    <div class="header-actions">
+      <button mat-button (click)="resetToDefault()"><mat-icon>restart_alt</mat-icon> Reset</button>
+      <button mat-raised-button color="primary" (click)="save()">
+        <mat-icon>save</mat-icon> Save
+      </button>
+    </div>
+  </div>
+
+  <div class="dashboard-layout">
+    <!-- Widget palette -->
+    <div class="widget-palette">
+      <h4>Add Widget</h4>
+      @for (wt of widgetTypes; track wt.value) {
+        <button class="palette-item" (click)="addWidget(wt.value)">
+          <mat-icon>{{ wt.icon }}</mat-icon>
+          <span>{{ wt.label }}</span>
+        </button>
+      }
+
+      <div class="grid-config">
+        <h4>Grid Columns</h4>
+        <mat-form-field appearance="outline">
+          <mat-select [ngModel]="dashboard().columns" (ngModelChange)="updateColumns($event)">
+            <mat-option [value]="2">2 Columns</mat-option>
+            <mat-option [value]="3">3 Columns</mat-option>
+            <mat-option [value]="4">4 Columns</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <!-- Dashboard grid preview -->
+    <div class="grid-preview">
+      <h4>Dashboard Layout</h4>
+      <div
+        cdkDropList
+        (cdkDropListDropped)="onWidgetDrop($event)"
+        class="widget-grid"
+        [style.grid-template-columns]="'repeat(' + dashboard().columns + ', 1fr)'"
+      >
+        @for (widget of dashboard().widgets; track widget.id) {
+          <div
+            cdkDrag
+            class="widget-tile"
+            [class.selected]="selectedWidget()?.id === widget.id"
+            [class.disabled]="!widget.available"
+            [style.grid-column]="'span ' + widget.width"
+            (click)="selectWidget(widget)"
+          >
+            <div class="tile-header">
+              <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+              <mat-icon class="widget-icon">{{ widget.icon }}</mat-icon>
+              <span class="widget-label">{{ widget.label }}</span>
+              <div class="tile-actions">
+                <button
+                  mat-icon-button
+                  matTooltip="Toggle"
+                  (click)="toggleWidget(widget.id); $event.stopPropagation()"
+                >
+                  <mat-icon>{{ widget.available ? 'visibility' : 'visibility_off' }}</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  matTooltip="Remove"
+                  (click)="removeWidget(widget.id); $event.stopPropagation()"
+                >
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+            </div>
+            <div class="tile-body">
+              <span class="widget-type-badge">{{ widget.type }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (dashboard().widgets.length === 0) {
+        <div class="empty-grid">
+          <mat-icon>space_dashboard</mat-icon>
+          <p>No widgets configured. Add widgets from the palette.</p>
+        </div>
+      }
+    </div>
+
+    <!-- Widget properties -->
+    @if (selectedWidget(); as widget) {
+      <div class="widget-properties">
+        <h4>Widget Properties</h4>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label">Label</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="widget.label"
+                (ngModelChange)="updateWidgetProp(widget.id, 'label', $event)"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Icon</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="widget.icon"
+                (ngModelChange)="updateWidgetProp(widget.id, 'icon', $event)"
+              />
+              <mat-icon matSuffix>{{ widget.icon }}</mat-icon>
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Type</span>
+            <mat-form-field appearance="outline">
+              <mat-select
+                [ngModel]="widget.type"
+                (ngModelChange)="updateWidgetProp(widget.id, 'type', $event)"
+              >
+                @for (wt of widgetTypes; track wt.value) {
+                  <mat-option [value]="wt.value">{{ wt.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Width (cols)</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                type="number"
+                [ngModel]="widget.width"
+                (ngModelChange)="updateWidgetProp(widget.id, 'width', +$event)"
+                min="1"
+                [max]="dashboard().columns"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Available</span>
+            <mat-slide-toggle
+              [ngModel]="widget.available"
+              (ngModelChange)="updateWidgetProp(widget.id, 'available', $event)"
+            ></mat-slide-toggle>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>

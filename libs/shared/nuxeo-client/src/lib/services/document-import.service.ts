@@ -44,6 +44,8 @@ export interface CsvImportResult {
 export interface ImportFilesOptions {
   /** When true, run post-upload classification hook after each File document is created. */
   autoClassify?: boolean;
+  /** Extra metadata properties to set on each uploaded document (e.g. from an import layout form). */
+  properties?: Record<string, unknown>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -126,12 +128,14 @@ export class DocumentImportService {
     batchId: string,
     fileIndex: number,
     batchNoDrop = false,
+    extraProperties?: Record<string, unknown>,
   ): Observable<NuxeoDocument> {
     const body = {
       'entity-type': 'document',
       name: sanitizeDocumentName(fileName),
       type: 'File',
       properties: {
+        ...extraProperties,
         'dc:title': title,
         'file:content': {
           'upload-batch': batchId,
@@ -171,6 +175,7 @@ export class DocumentImportService {
   ): Observable<NuxeoDocument[]> {
     if (files.length === 0) return of([]);
     const autoClassify = options?.autoClassify === true;
+    const extraProps = options?.properties;
     return this.initUploadBatch().pipe(
       switchMap((batchId) => {
         const last = files.length - 1;
@@ -184,6 +189,7 @@ export class DocumentImportService {
                 batchId,
                 index,
                 index < last,
+                extraProps,
               ).pipe(
                 switchMap((doc) => this.runPostUploadClassificationIfEnabled(doc, autoClassify)),
               ),

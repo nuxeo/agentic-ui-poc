@@ -1,0 +1,196 @@
+<div class="drawer-layout">
+  <!-- Left: item list -->
+  <div class="items-list">
+    <div class="list-toolbar">
+      <h3>Drawer Items</h3>
+      <button mat-mini-fab color="primary" aria-label="New Drawer Item" (click)="createItem()">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    @if (items().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">menu</mat-icon>
+        <p>No custom drawer items configured.</p>
+        <p class="hint">Click "+" to add a navigation entry to the left sidebar.</p>
+      </div>
+    }
+
+    @for (item of items(); track item.id) {
+      <mat-card
+        class="item-card"
+        [class.disabled]="!item.available"
+        [class.selected]="editingItem()?.id === item.id"
+        (click)="editItem(item)"
+      >
+        <mat-card-content class="item-card-body">
+          <div class="item-card-left">
+            <mat-icon class="item-icon">{{ item.icon || 'folder' }}</mat-icon>
+            <div class="item-info">
+              <span class="item-label">{{ item.label || 'Untitled' }}</span>
+              <span class="item-meta"
+                >{{ item.routePath || 'No route' }} · order {{ item.order }}</span
+              >
+            </div>
+          </div>
+          <div class="item-card-right">
+            <button
+              mat-icon-button
+              matTooltip="Toggle"
+              aria-label="Toggle"
+              (click)="toggleItem(item); $event.stopPropagation()"
+            >
+              <mat-icon>{{ item.available ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              matTooltip="Delete"
+              aria-label="Delete"
+              color="warn"
+              (click)="deleteItem(item.id); $event.stopPropagation()"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+
+  <!-- Right: editor -->
+  @if (editingItem(); as item) {
+    <div class="item-editor">
+      <div class="editor-header">
+        <button mat-icon-button (click)="cancelEdit()" aria-label="Back">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <h2>Drawer Item</h2>
+        <span class="spacer"></span>
+        <button mat-button (click)="cancelEdit()">Discard</button>
+        <button mat-raised-button color="primary" (click)="saveItem()" [disabled]="!canSave">
+          Save
+        </button>
+      </div>
+
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Identity</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label required-label">Name</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="item.name"
+                (ngModelChange)="updateTop('name', $event)"
+                placeholder="Unique identifier"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label required-label">Label</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="item.label"
+                (ngModelChange)="updateTop('label', $event)"
+                placeholder="Display label"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Icon</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="item.icon"
+                (ngModelChange)="updateTop('icon', $event)"
+                placeholder="Material icon"
+              />
+              <mat-icon matSuffix *ngIf="item.icon">{{ item.icon }}</mat-icon>
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Order</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                type="number"
+                [ngModel]="item.order"
+                (ngModelChange)="updateTop('order', +$event)"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Available</span>
+            <mat-slide-toggle
+              [ngModel]="item.available"
+              (ngModelChange)="updateTop('available', $event)"
+            ></mat-slide-toggle>
+          </div>
+        </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Navigation</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label">Route Path</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="item.routePath"
+                (ngModelChange)="updateTop('routePath', $event)"
+                placeholder="e.g. /custom-page"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Custom Element</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="item.customElement ?? ''"
+                (ngModelChange)="updateTop('customElement', $event)"
+                placeholder="Optional: custom element tag"
+              />
+            </mat-form-field>
+          </div>
+        </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Activation Filters</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label">Permissions</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="getFilterValue('permissions')"
+                (ngModelChange)="updateFilter('permissions', $event)"
+                placeholder="e.g. Write, Everything"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Groups</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="getFilterValue('groups')"
+                (ngModelChange)="updateFilter('groups', $event)"
+                placeholder="e.g. administrators, members"
+              />
+            </mat-form-field>
+          </div>
+        </div>
+      </mat-expansion-panel>
+    </div>
+  }
+</div>

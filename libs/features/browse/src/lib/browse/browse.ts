@@ -295,8 +295,11 @@ export class BrowseComponent {
     return Array.from(types).sort();
   });
 
+  /** Folder names hidden from Browse (internal system storage). */
+  private readonly HIDDEN_FOLDER_NAMES = new Set(['studio-configs']);
+
   readonly filteredEntries = computed(() => {
-    let docs = this.entries();
+    let docs = this.entries().filter((d) => !this.HIDDEN_FOLDER_NAMES.has(d.title));
     const text = this.filterText();
     const type = this.filterType();
     const modFrom = this.filterModifiedFrom();

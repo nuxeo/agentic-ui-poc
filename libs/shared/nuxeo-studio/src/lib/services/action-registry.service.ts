@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActionConfig, ActionFilter, ActionSlot } from '../models/action.model';
+import type { ActionConfig, ActivationFilter, ActionSlot } from '../models/action.model';
 import { ConfigStorageService } from './config-storage.service';
 
 interface DocumentContext {
@@ -12,7 +12,7 @@ interface DocumentContext {
 
 /**
  * Resolves configured custom actions for a given document context.
- * Applies type/facet/permission/state filters to determine visibility.
+ * Applies activation filters to determine visibility.
  */
 @Injectable({ providedIn: 'root' })
 export class ActionRegistryService {
@@ -21,12 +21,12 @@ export class ActionRegistryService {
   getActionsForDocument(doc: DocumentContext, slot: ActionSlot): ActionConfig[] {
     return this.storage
       .getActions()
-      .filter((a) => a.enabled && a.slot === slot)
+      .filter((a) => a.available && a.slot === slot)
       .filter((a) => this.matchesFilters(a.filters, doc))
       .sort((a, b) => a.order - b.order);
   }
 
-  private matchesFilters(filters: ActionFilter, doc: DocumentContext): boolean {
+  private matchesFilters(filters: ActivationFilter, doc: DocumentContext): boolean {
     if (filters.docTypes && filters.docTypes.length > 0) {
       if (!doc.type || !filters.docTypes.includes(doc.type)) return false;
     }

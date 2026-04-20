@@ -83,6 +83,12 @@ export const routes: Routes = [
           import('@agentic-ui/feature-administration').then((m) => m.administrationRoutes),
       },
       {
+        path: 'studio-designer',
+        canActivate: [adminGuard],
+        loadChildren: () =>
+          import('@agentic-ui/feature-studio-designer').then((m) => m.studioDesignerRoutes),
+      },
+      {
         path: 'settings/nuxeo-drive',
         loadComponent: () =>
           import('./settings/nuxeo-drive/nuxeo-drive-page.component').then(

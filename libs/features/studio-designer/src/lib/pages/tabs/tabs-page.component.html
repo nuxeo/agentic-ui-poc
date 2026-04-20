@@ -1,0 +1,227 @@
+<div class="tabs-layout">
+  <!-- Left: tab list -->
+  <div class="tabs-list">
+    <div class="list-toolbar">
+      <h3>Tabs</h3>
+      <button mat-mini-fab color="primary" aria-label="New Tab" (click)="createTab()">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    @if (tabs().length === 0) {
+      <div class="empty-state">
+        <mat-icon class="empty-icon">tab</mat-icon>
+        <p>No custom tabs configured.</p>
+        <p class="hint">Click "+" to add a custom tab to document pages.</p>
+      </div>
+    }
+
+    @for (tab of tabs(); track tab.id) {
+      <mat-card
+        class="item-card"
+        [class.disabled]="!tab.available"
+        [class.selected]="editingTab()?.id === tab.id"
+        (click)="editTab(tab)"
+      >
+        <mat-card-content class="item-card-body">
+          <div class="item-card-left">
+            <mat-icon class="item-icon">{{ tab.icon || 'tab' }}</mat-icon>
+            <div class="item-info">
+              <span class="item-label">{{ tab.label || 'Untitled' }}</span>
+              <span class="item-meta">{{ tab.contentMode }} · order {{ tab.order }}</span>
+            </div>
+          </div>
+          <div class="item-card-right">
+            <button
+              mat-icon-button
+              matTooltip="Toggle"
+              aria-label="Toggle"
+              (click)="toggleTab(tab); $event.stopPropagation()"
+            >
+              <mat-icon>{{ tab.available ? 'visibility' : 'visibility_off' }}</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              matTooltip="Delete"
+              aria-label="Delete tab"
+              color="warn"
+              (click)="deleteTab(tab.id); $event.stopPropagation()"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+
+  <!-- Right: editor -->
+  @if (editingTab(); as tab) {
+    <div class="item-editor">
+      <div class="editor-header">
+        <button mat-icon-button (click)="cancelEdit()" aria-label="Back">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <h2>Tab Configuration</h2>
+        <span class="spacer"></span>
+        <button mat-button (click)="cancelEdit()">Discard</button>
+        <button mat-raised-button color="primary" (click)="saveTab()" [disabled]="!canSave">
+          Save
+        </button>
+      </div>
+
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Identity</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label required-label">Name</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="tab.name"
+                (ngModelChange)="updateTop('name', $event)"
+                placeholder="Unique tab identifier"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label required-label">Label</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="tab.label"
+                (ngModelChange)="updateTop('label', $event)"
+                placeholder="Display label"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Icon</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="tab.icon"
+                (ngModelChange)="updateTop('icon', $event)"
+                placeholder="Material icon name"
+              />
+              <mat-icon matSuffix *ngIf="tab.icon">{{ tab.icon }}</mat-icon>
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Order</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                type="number"
+                [ngModel]="tab.order"
+                (ngModelChange)="updateTop('order', +$event)"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Available</span>
+            <mat-slide-toggle
+              [ngModel]="tab.available"
+              (ngModelChange)="updateTop('available', $event)"
+            ></mat-slide-toggle>
+          </div>
+        </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel expanded>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Content</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label">Content Mode</span>
+            <mat-form-field appearance="outline">
+              <mat-select
+                [ngModel]="tab.contentMode"
+                (ngModelChange)="updateTop('contentMode', $event)"
+              >
+                @for (mode of contentModes; track mode.value) {
+                  <mat-option [value]="mode.value">{{ mode.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+          @if (tab.contentMode === 'custom') {
+            <div class="form-row">
+              <span class="field-label">Custom Element</span>
+              <mat-form-field appearance="outline">
+                <input
+                  matInput
+                  [ngModel]="tab.customElement ?? ''"
+                  (ngModelChange)="updateTop('customElement', $event)"
+                  placeholder="e.g. my-custom-tab"
+                />
+              </mat-form-field>
+            </div>
+          }
+        </div>
+      </mat-expansion-panel>
+
+      <mat-expansion-panel>
+        <mat-expansion-panel-header>
+          <mat-panel-title>Activation Filters</mat-panel-title>
+        </mat-expansion-panel-header>
+        <div class="form-grid">
+          <div class="form-row">
+            <span class="field-label">Document Types</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                list="platformDocTypes"
+                [ngModel]="getFilterValue('docTypes')"
+                (ngModelChange)="updateFilter('docTypes', $event)"
+                placeholder="e.g. File, Note, SampleTestDocu"
+              />
+              <mat-hint>Comma-separated — includes types from Nuxeo Studio</mat-hint>
+            </mat-form-field>
+            <datalist id="platformDocTypes">
+              @for (dt of platformDocTypes(); track dt.name) {
+                <option [value]="dt.name"></option>
+              }
+            </datalist>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Permissions</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="getFilterValue('permissions')"
+                (ngModelChange)="updateFilter('permissions', $event)"
+                placeholder="e.g. Write, Everything"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">Facets</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="getFilterValue('facets')"
+                (ngModelChange)="updateFilter('facets', $event)"
+                placeholder="e.g. Versionable"
+              />
+            </mat-form-field>
+          </div>
+          <div class="form-row">
+            <span class="field-label">States</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="getFilterValue('states')"
+                (ngModelChange)="updateFilter('states', $event)"
+                placeholder="e.g. project, approved"
+              />
+            </mat-form-field>
+          </div>
+        </div>
+      </mat-expansion-panel>
+    </div>
+  }
+</div>

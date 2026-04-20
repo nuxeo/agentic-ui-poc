@@ -1,8 +1,8 @@
 /**
  * Configuration models for custom document actions/buttons.
  *
- * Mirrors the Nuxeo Web UI slot system (DOCUMENT_ACTIONS, BLOB_ACTIONS, etc.)
- * but stores configuration as JSON rather than Polymer HTML.
+ * Mirrors the Nuxeo Studio Designer button configuration:
+ *   Identity → Element Binding → Attributes → Activation Filters
  */
 
 export type ActionSlot =
@@ -17,26 +17,103 @@ export type ActionSlot =
   | 'RESULTS_SELECTION_ACTIONS'
   | 'TRASH_RESULTS_SELECTION_ACTIONS';
 
-export interface ActionFilter {
+export type ButtonType = 'operation' | 'custom';
+
+// ── Element Binding ──
+
+export interface ElementBinding {
+  element: string;
+  icon: string;
+  label: string;
+  tooltip: string;
+  tooltipPosition: 'top' | 'bottom' | 'left' | 'right';
+  showLabel: boolean;
+  operation: string;
+  input: string;
+  syncIndexing: boolean;
+}
+
+// ── Attributes ──
+
+export interface ActionAttributes {
+  params: string;
+  response: string;
+  notification: string;
+  download: boolean;
+  event: string;
+  detail: string;
+  async: boolean;
+  pollInterval: number;
+  errorLabel: string;
+  custom: Record<string, string>;
+}
+
+// ── Activation Filters ──
+
+export interface ActivationFilter {
   docTypes?: string[];
   permissions?: string[];
   facets?: string[];
   excludeFacets?: string[];
   states?: string[];
   excludeStates?: string[];
+  schemas?: string[];
+  groups?: string[];
+  isAdmin?: boolean;
+  expression?: string;
 }
+
+// ── Full Action Config ──
 
 export interface ActionConfig {
   id: string;
-  label: string;
-  icon: string;
-  tooltip?: string;
-  operationId: string;
-  operationParams?: Record<string, unknown>;
+  /** Identity */
+  name: string;
+  available: boolean;
+  buttonType: ButtonType;
+  /** Slot placement */
   slot: ActionSlot;
   order: number;
-  filters: ActionFilter;
-  confirmMessage?: string;
-  successMessage?: string;
-  enabled: boolean;
+  /** Element Binding */
+  binding: ElementBinding;
+  /** Attributes */
+  attributes: ActionAttributes;
+  /** Activation Filters */
+  filters: ActivationFilter;
+}
+
+/** Creates a blank ActionConfig with Studio Designer defaults. */
+export function createDefaultAction(): ActionConfig {
+  return {
+    id: crypto.randomUUID(),
+    name: '',
+    available: true,
+    buttonType: 'operation',
+    slot: 'DOCUMENT_ACTIONS',
+    order: 1,
+    binding: {
+      element: 'nuxeo-operation-button',
+      icon: '',
+      label: '',
+      tooltip: '',
+      tooltipPosition: 'bottom',
+      showLabel: false,
+      operation: '',
+      input: '[[document]]',
+      syncIndexing: false,
+    },
+    attributes: {
+      params: '',
+      response: 'null',
+      notification: '',
+      download: false,
+      event: 'operation-executed',
+      detail: '',
+      async: false,
+      pollInterval: 1000,
+      errorLabel: '',
+      custom: {},
+    },
+    filters: {},
+  };
 }

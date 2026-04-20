@@ -8,39 +8,61 @@
     <!-- ════════ TAB 1: ACTIONS ════════ -->
     <mat-tab label="Custom Actions">
       <div class="tab-content">
-        <div class="actions-toolbar">
-          <h2>Document Actions</h2>
-          <button mat-raised-button color="primary" (click)="createAction()">
-            <mat-icon>add</mat-icon> New Action
-          </button>
+        <!-- How does it work -->
+        <div class="how-it-works">
+          <h2>Buttons | How does it work</h2>
+          <p>Create buttons and select where to place them in the user interface.</p>
+          <div class="button-type-cards">
+            @for (bt of buttonTypeOptions; track bt.value) {
+              <mat-card class="button-type-card" (click)="createActionWithType(bt.value)">
+                <mat-card-content>
+                  <mat-icon>{{ bt.value === 'operation' ? 'smart_button' : 'code' }}</mat-icon>
+                  <div>
+                    <strong>{{ bt.label }}</strong>
+                    <p>{{ bt.description }}</p>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
         </div>
 
         <div class="actions-layout">
-          <!-- Left: action list -->
+          <!-- Left sidebar: action list -->
           <div class="actions-list">
+            <div class="actions-toolbar">
+              <h3>Buttons</h3>
+              <button mat-mini-fab color="primary" aria-label="New Action" (click)="createAction()">
+                <mat-icon>add</mat-icon>
+              </button>
+            </div>
+
             @if (actions().length === 0) {
               <div class="empty-state">
                 <mat-icon class="empty-icon">touch_app</mat-icon>
                 <p>No custom actions configured yet.</p>
-                <p class="hint">Click "New Action" to add a custom button to document pages.</p>
+                <p class="hint">Click "+" or a button type above to add a custom button.</p>
               </div>
             }
             @for (action of actions(); track action.id) {
               <mat-card
                 class="action-card"
-                [class.disabled]="!action.enabled"
+                [class.disabled]="!action.available"
                 [class.selected]="editingAction()?.id === action.id"
+                (click)="editAction(action)"
               >
                 <mat-card-content class="action-card-body">
                   <div class="action-card-left">
-                    <mat-icon class="action-icon">{{ action.icon }}</mat-icon>
+                    <mat-icon class="action-icon">{{
+                      action.binding.icon || 'smart_button'
+                    }}</mat-icon>
                     <div class="action-info">
-                      <span class="action-label">{{ action.label }}</span>
+                      <span class="action-label">{{
+                        action.name || action.binding.label || 'Untitled'
+                      }}</span>
                       <span class="action-meta">
-                        {{ action.slot }} · {{ action.operationId || 'No operation' }}
-                        @if (action.filters.docTypes?.length) {
-                          · {{ action.filters.docTypes!.join(', ') }}
-                        }
+                        {{ action.binding.element }} ·
+                        {{ action.binding.operation || 'No operation' }}
                       </span>
                     </div>
                   </div>
@@ -51,22 +73,14 @@
                       aria-label="Toggle enabled"
                       (click)="toggleAction(action); $event.stopPropagation()"
                     >
-                      <mat-icon>{{ action.enabled ? 'visibility' : 'visibility_off' }}</mat-icon>
-                    </button>
-                    <button
-                      mat-icon-button
-                      matTooltip="Edit"
-                      aria-label="Edit action"
-                      (click)="editAction(action)"
-                    >
-                      <mat-icon>edit</mat-icon>
+                      <mat-icon>{{ action.available ? 'visibility' : 'visibility_off' }}</mat-icon>
                     </button>
                     <button
                       mat-icon-button
                       matTooltip="Delete"
                       aria-label="Delete action"
                       color="warn"
-                      (click)="deleteAction(action.id)"
+                      (click)="deleteAction(action.id); $event.stopPropagation()"
                     >
                       <mat-icon>delete</mat-icon>
                     </button>
@@ -76,158 +90,500 @@
             }
           </div>
 
-          <!-- Right: action editor -->
+          <!-- Right: action editor (Studio Designer style sections) -->
           @if (editingAction(); as action) {
-            <mat-card class="action-editor">
-              <mat-card-content>
-                <h3>{{ action.id === '' ? 'New Action' : 'Edit Action' }}</h3>
+            <div class="action-editor">
+              <div class="editor-header">
+                <button mat-icon-button (click)="cancelActionEdit()" aria-label="Back">
+                  <mat-icon>arrow_back</mat-icon>
+                </button>
+                <h2>Buttons</h2>
+                <span class="spacer"></span>
+                <button mat-button (click)="cancelActionEdit()">Discard</button>
+                <button
+                  mat-raised-button
+                  color="primary"
+                  (click)="saveAction()"
+                  [disabled]="!canSave"
+                >
+                  Save
+                </button>
+              </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Label</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="action.label"
-                    (ngModelChange)="updateEditingAction('label', $event)"
-                  />
-                </mat-form-field>
+              <!-- ── Identity ── -->
+              <mat-expansion-panel expanded>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Identity</mat-panel-title>
+                </mat-expansion-panel-header>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Icon</mat-label>
-                  <mat-select
-                    [ngModel]="action.icon"
-                    (ngModelChange)="updateEditingAction('icon', $event)"
-                  >
-                    @for (icon of iconOptions; track icon) {
-                      <mat-option [value]="icon">
-                        <mat-icon>{{ icon }}</mat-icon> {{ icon }}
-                      </mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
+                <div class="form-grid">
+                  <div class="form-row">
+                    <span class="field-label">Name</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.name"
+                        (ngModelChange)="updateTop('name', $event)"
+                        placeholder="Button name"
+                      />
+                    </mat-form-field>
+                  </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Tooltip</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="action.tooltip ?? ''"
-                    (ngModelChange)="updateEditingAction('tooltip', $event)"
-                  />
-                </mat-form-field>
+                  <div class="form-row">
+                    <span class="field-label">Available</span>
+                    <mat-slide-toggle
+                      [ngModel]="action.available"
+                      (ngModelChange)="updateTop('available', $event)"
+                    ></mat-slide-toggle>
+                  </div>
+                </div>
+              </mat-expansion-panel>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Automation Operation ID</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="action.operationId"
-                    (ngModelChange)="updateEditingAction('operationId', $event)"
-                    placeholder="e.g. Document.Lock, MyChain.CustomOp"
-                  />
-                  <mat-hint>The Nuxeo automation chain or operation to execute</mat-hint>
-                </mat-form-field>
+              <!-- ── User will access it from — an action slot ── -->
+              <mat-expansion-panel expanded>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>User will access it from</mat-panel-title>
+                  <mat-panel-description>an action slot</mat-panel-description>
+                </mat-expansion-panel-header>
 
-                <div class="row-2col">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Slot</mat-label>
-                    <mat-select
-                      [ngModel]="action.slot"
-                      (ngModelChange)="updateEditingAction('slot', $event)"
-                    >
-                      @for (slot of slotOptions; track slot.value) {
-                        <mat-option [value]="slot.value">{{ slot.label }}</mat-option>
+                <div class="form-grid">
+                  <div class="form-row">
+                    <span class="field-label">Slot</span>
+                    <mat-form-field appearance="outline">
+                      <mat-select
+                        [ngModel]="action.slot"
+                        (ngModelChange)="updateTop('slot', $event)"
+                      >
+                        @for (slot of slotOptions; track slot.value) {
+                          <mat-option [value]="slot.value">{{ slot.label }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Order</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        type="number"
+                        [ngModel]="action.order"
+                        (ngModelChange)="updateTop('order', +$event)"
+                        placeholder="1 will be the first pill displayed"
+                      />
+                    </mat-form-field>
+                  </div>
+                </div>
+              </mat-expansion-panel>
+
+              <!-- ── Element Binding ── -->
+              <mat-expansion-panel expanded>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Element Binding</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="form-grid">
+                  <div class="form-row">
+                    <span class="field-label">Element</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.binding.element"
+                        (ngModelChange)="updateBinding('element', $event)"
+                        placeholder="nuxeo-operation-button"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">icon</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.binding.icon"
+                        (ngModelChange)="updateBinding('icon', $event)"
+                        placeholder="Select or start typing"
+                      />
+                      <mat-icon matSuffix *ngIf="action.binding.icon">{{
+                        action.binding.icon
+                      }}</mat-icon>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label required-label">label</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.binding.label"
+                        (ngModelChange)="updateBinding('label', $event)"
+                        required
+                      />
+                      @if (!action.binding.label) {
+                        <mat-error
+                          >"label" is a required attribute of "nuxeo-operation-button".</mat-error
+                        >
                       }
-                    </mat-select>
-                  </mat-form-field>
+                    </mat-form-field>
+                  </div>
 
-                  <mat-form-field appearance="outline">
-                    <mat-label>Order</mat-label>
-                    <input
-                      matInput
-                      type="number"
-                      [ngModel]="action.order"
-                      (ngModelChange)="updateEditingAction('order', +$event)"
-                    />
-                  </mat-form-field>
+                  <div class="form-row">
+                    <span class="field-label">tooltip</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.binding.tooltip"
+                        (ngModelChange)="updateBinding('tooltip', $event)"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">tooltip-position</span>
+                    <mat-form-field appearance="outline">
+                      <mat-select
+                        [ngModel]="action.binding.tooltipPosition"
+                        (ngModelChange)="updateBinding('tooltipPosition', $event)"
+                      >
+                        @for (pos of tooltipPositions; track pos) {
+                          <mat-option [value]="pos">{{ pos }}</mat-option>
+                        }
+                      </mat-select>
+                      <mat-hint>default: bottom</mat-hint>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">show-label</span>
+                    <mat-checkbox
+                      [ngModel]="action.binding.showLabel"
+                      (ngModelChange)="updateBinding('showLabel', $event)"
+                    ></mat-checkbox>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">operation</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.binding.operation"
+                        (ngModelChange)="updateBinding('operation', $event)"
+                        placeholder="e.g. Document.Lock, MyChain.CustomOp"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">input</span>
+                    <mat-form-field appearance="outline">
+                      <mat-select
+                        [ngModel]="action.binding.input"
+                        (ngModelChange)="updateBinding('input', $event)"
+                      >
+                        @for (opt of inputOptions; track opt) {
+                          <mat-option [value]="opt">{{ opt }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">sync-indexing</span>
+                    <mat-checkbox
+                      [ngModel]="action.binding.syncIndexing"
+                      (ngModelChange)="updateBinding('syncIndexing', $event)"
+                    ></mat-checkbox>
+                  </div>
                 </div>
+              </mat-expansion-panel>
 
-                <mat-divider></mat-divider>
-                <h4>Visibility Filters</h4>
+              <!-- ── Attributes ── -->
+              <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Attributes</mat-panel-title>
+                </mat-expansion-panel-header>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Document Types (comma-separated)</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="getFilterValue('docTypes')"
-                    (ngModelChange)="updateEditingFilter('docTypes', $event)"
-                    placeholder="e.g. File, Note, Picture"
-                  />
-                  <mat-hint>Leave empty to show for all types</mat-hint>
-                </mat-form-field>
+                <div class="form-grid">
+                  <div class="form-row">
+                    <span class="field-label">params</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.attributes.params"
+                        (ngModelChange)="updateAttribute('params', $event)"
+                        placeholder='e.g. {"comment": "auto-locked"}'
+                      />
+                    </mat-form-field>
+                  </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Required Permissions (comma-separated)</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="getFilterValue('permissions')"
-                    (ngModelChange)="updateEditingFilter('permissions', $event)"
-                    placeholder="e.g. Write, Everything"
-                  />
-                </mat-form-field>
+                  <div class="form-row">
+                    <span class="field-label">response</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.attributes.response"
+                        (ngModelChange)="updateAttribute('response', $event)"
+                        placeholder="null"
+                      />
+                    </mat-form-field>
+                  </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Required Facets (comma-separated)</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="getFilterValue('facets')"
-                    (ngModelChange)="updateEditingFilter('facets', $event)"
-                    placeholder="e.g. Versionable, Commentable"
-                  />
-                </mat-form-field>
+                  <div class="form-row">
+                    <span class="field-label">notification</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.attributes.notification"
+                        (ngModelChange)="updateAttribute('notification', $event)"
+                      />
+                    </mat-form-field>
+                  </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Exclude States (comma-separated)</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="getFilterValue('excludeStates')"
-                    (ngModelChange)="updateEditingFilter('excludeStates', $event)"
-                    placeholder="e.g. deleted"
-                  />
-                </mat-form-field>
+                  <div class="form-row">
+                    <span class="field-label">download</span>
+                    <mat-checkbox
+                      [ngModel]="action.attributes.download"
+                      (ngModelChange)="updateAttribute('download', $event)"
+                    ></mat-checkbox>
+                  </div>
 
-                <mat-divider></mat-divider>
-                <h4>Messages</h4>
+                  <div class="form-row">
+                    <span class="field-label">event</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.attributes.event"
+                        (ngModelChange)="updateAttribute('event', $event)"
+                        placeholder="default: operation-executed"
+                      />
+                    </mat-form-field>
+                  </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Confirmation Message (optional)</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="action.confirmMessage ?? ''"
-                    (ngModelChange)="updateEditingAction('confirmMessage', $event || undefined)"
-                  />
-                  <mat-hint>If set, shows a confirm dialog before executing</mat-hint>
-                </mat-form-field>
+                  <div class="form-row">
+                    <span class="field-label">detail</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.attributes.detail"
+                        (ngModelChange)="updateAttribute('detail', $event)"
+                      />
+                    </mat-form-field>
+                  </div>
 
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Success Message</mat-label>
-                  <input
-                    matInput
-                    [ngModel]="action.successMessage ?? 'Action completed'"
-                    (ngModelChange)="updateEditingAction('successMessage', $event)"
-                  />
-                </mat-form-field>
+                  <div class="form-row">
+                    <span class="field-label">async</span>
+                    <mat-checkbox
+                      [ngModel]="action.attributes.async"
+                      (ngModelChange)="updateAttribute('async', $event)"
+                    ></mat-checkbox>
+                  </div>
 
-                <div class="editor-actions">
-                  <button mat-button (click)="cancelActionEdit()">Cancel</button>
-                  <button
-                    mat-raised-button
-                    color="primary"
-                    (click)="saveAction()"
-                    [disabled]="!action.label || !action.operationId"
-                  >
-                    Save Action
-                  </button>
+                  <div class="form-row">
+                    <span class="field-label">poll-interval</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        type="number"
+                        [ngModel]="action.attributes.pollInterval"
+                        (ngModelChange)="updateAttribute('pollInterval', +$event)"
+                        placeholder="default: 1000"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">error-label</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.attributes.errorLabel"
+                        (ngModelChange)="updateAttribute('errorLabel', $event)"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <!-- Custom attributes -->
+                  @for (entry of action.attributes.custom | keyvalue; track entry.key) {
+                    <div class="form-row custom-attr-row">
+                      <span class="field-label">{{ entry.key }}</span>
+                      <span class="custom-attr-value">{{ entry.value }}</span>
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        aria-label="Remove attribute"
+                        (click)="removeCustomAttribute(entry.key)"
+                      >
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  }
+
+                  <div class="add-attribute-row">
+                    <mat-form-field appearance="outline" class="attr-key-field">
+                      <mat-label>Key</mat-label>
+                      <input
+                        matInput
+                        [ngModel]="customAttrKey()"
+                        (ngModelChange)="customAttrKey.set($event)"
+                      />
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="attr-value-field">
+                      <mat-label>Value</mat-label>
+                      <input
+                        matInput
+                        [ngModel]="customAttrValue()"
+                        (ngModelChange)="customAttrValue.set($event)"
+                      />
+                    </mat-form-field>
+                    <button
+                      mat-stroked-button
+                      (click)="addCustomAttribute()"
+                      [disabled]="!customAttrKey()"
+                    >
+                      ADD ATTRIBUTE
+                    </button>
+                  </div>
                 </div>
-              </mat-card-content>
-            </mat-card>
+              </mat-expansion-panel>
+
+              <!-- ── Activation Filter ── -->
+              <mat-expansion-panel [expanded]="showFiltersPanel()">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>Activation filter</mat-panel-title>
+                  <mat-panel-description>
+                    @if (hasActiveFilters()) {
+                      Filters active
+                    } @else {
+                      This item will be available to anyone in any condition.
+                    }
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <p class="filter-hint">
+                  Define filters to display the item only if some conditions are met.
+                </p>
+
+                <div class="form-grid">
+                  <div class="form-row">
+                    <span class="field-label">Document Types</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('docTypes')"
+                        (ngModelChange)="updateFilter('docTypes', $event)"
+                        placeholder="e.g. File, Note, Picture"
+                      />
+                      <mat-hint>Comma-separated. Leave empty for all types</mat-hint>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Required Permissions</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('permissions')"
+                        (ngModelChange)="updateFilter('permissions', $event)"
+                        placeholder="e.g. Write, Everything"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Required Facets</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('facets')"
+                        (ngModelChange)="updateFilter('facets', $event)"
+                        placeholder="e.g. Versionable, Commentable"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Exclude Facets</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('excludeFacets')"
+                        (ngModelChange)="updateFilter('excludeFacets', $event)"
+                        placeholder="e.g. HiddenInNavigation"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Document States</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('states')"
+                        (ngModelChange)="updateFilter('states', $event)"
+                        placeholder="e.g. project, approved"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Exclude States</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('excludeStates')"
+                        (ngModelChange)="updateFilter('excludeStates', $event)"
+                        placeholder="e.g. deleted"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Schemas</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('schemas')"
+                        (ngModelChange)="updateFilter('schemas', $event)"
+                        placeholder="e.g. dublincore, file"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Groups</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="getFilterValue('groups')"
+                        (ngModelChange)="updateFilter('groups', $event)"
+                        placeholder="e.g. members, administrators"
+                      />
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">Is Administrator</span>
+                    <mat-checkbox
+                      [ngModel]="action.filters.isAdmin ?? false"
+                      (ngModelChange)="updateFilterBool('isAdmin', $event)"
+                    ></mat-checkbox>
+                  </div>
+
+                  <div class="form-row">
+                    <span class="field-label">EL Expression</span>
+                    <mat-form-field appearance="outline">
+                      <input
+                        matInput
+                        [ngModel]="action.filters.expression ?? ''"
+                        (ngModelChange)="updateFilterExpression($event)"
+                        placeholder="e.g. #{currentDocument.type == 'File'}"
+                      />
+                      <mat-hint>Server-side EL expression for advanced filtering</mat-hint>
+                    </mat-form-field>
+                  </div>
+                </div>
+              </mat-expansion-panel>
+            </div>
           }
         </div>
       </div>
@@ -323,7 +679,6 @@
               </div>
 
               @if (showPreview()) {
-                <!-- Live preview -->
                 <div class="preview-container">
                   @if (previewDoc(); as doc) {
                     <nx-layout-renderer
@@ -334,7 +689,6 @@
                   }
                 </div>
               } @else {
-                <!-- Editable field list -->
                 @for (section of layout.sections; track $index; let si = $index) {
                   <div class="section-container">
                     <div class="section-header">

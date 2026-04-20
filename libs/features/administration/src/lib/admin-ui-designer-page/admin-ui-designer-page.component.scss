@@ -24,24 +24,81 @@
   padding: 24px 0;
 }
 
-// ── Actions tab ──
+// ── How it works / button type picker ──
 
-.actions-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+.how-it-works {
+  margin-bottom: 24px;
 
   h2 {
-    margin: 0;
+    margin: 0 0 4px;
     font-size: 18px;
+    font-weight: 500;
+  }
+
+  > p {
+    margin: 0 0 16px;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 14px;
   }
 }
 
+.button-type-cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.button-type-card {
+  cursor: pointer;
+  flex: 1;
+  min-width: 260px;
+  max-width: 420px;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    border-color: #1976d2;
+  }
+
+  mat-card-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  mat-icon {
+    color: #1976d2;
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  strong {
+    font-size: 15px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.6);
+    line-height: 1.4;
+  }
+}
+
+// ── Actions layout ──
+
 .actions-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  grid-template-columns: 260px 1fr;
+  gap: 0;
   align-items: start;
 
   @media (max-width: 960px) {
@@ -49,18 +106,35 @@
   }
 }
 
+// ── Left sidebar: action list ──
+
 .actions-list {
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  padding-right: 16px;
+  min-height: 400px;
+}
+
+.actions-toolbar {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+  }
 }
 
 .action-card {
   cursor: pointer;
   transition: box-shadow 0.15s;
+  margin-bottom: 4px;
 
   &.selected {
     outline: 2px solid #1976d2;
+    background: #e3f2fd;
   }
 
   &.disabled {
@@ -71,21 +145,22 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 0;
+    padding: 6px 0;
   }
 
   .action-card-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
+    flex: 1;
   }
 
   .action-icon {
     color: #1976d2;
-    font-size: 28px;
-    width: 28px;
-    height: 28px;
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
   }
 
   .action-info {
@@ -96,11 +171,14 @@
 
   .action-label {
     font-weight: 500;
-    font-size: 14px;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .action-meta {
-    font-size: 12px;
+    font-size: 11px;
     color: rgba(0, 0, 0, 0.54);
     white-space: nowrap;
     overflow: hidden;
@@ -109,69 +187,129 @@
 
   .action-card-right {
     display: flex;
-    gap: 2px;
+    gap: 0;
     flex-shrink: 0;
-  }
-}
-
-.action-editor {
-  h3 {
-    margin: 0 0 16px;
-    font-size: 16px;
-  }
-
-  h4 {
-    margin: 16px 0 8px;
-    font-size: 14px;
-    color: rgba(0, 0, 0, 0.7);
-  }
-
-  mat-card-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .editor-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 16px;
-  }
-}
-
-.full-width {
-  width: 100%;
-}
-
-.row-2col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 16px;
-}
-
-// Form fields with hints need extra bottom space so the hint
-// doesn't collide with the next field's label.
-mat-form-field.full-width {
-  &:has(mat-hint) {
-    margin-bottom: 8px;
   }
 }
 
 .empty-state {
   text-align: center;
-  padding: 48px 24px;
+  padding: 48px 16px;
   color: rgba(0, 0, 0, 0.54);
 
   .empty-icon {
-    font-size: 48px;
-    width: 48px;
-    height: 48px;
-    margin-bottom: 16px;
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    margin-bottom: 12px;
   }
 
   .hint {
+    font-size: 12px;
+  }
+}
+
+// ── Right: action editor (Studio Designer style) ──
+
+.action-editor {
+  padding-left: 24px;
+
+  .editor-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .spacer {
+      flex: 1;
+    }
+  }
+
+  mat-expansion-panel {
+    margin-bottom: 12px;
+  }
+}
+
+// ── Form grid (label + control rows like Studio) ──
+
+.form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: 16px;
+  min-height: 48px;
+
+  > .field-label {
     font-size: 13px;
+    color: rgba(0, 0, 0, 0.7);
+    text-align: right;
+    padding-right: 8px;
+
+    &.required-label::after {
+      content: ' *';
+      color: #f44336;
+    }
+  }
+
+  mat-form-field {
+    width: 100%;
+  }
+
+  mat-checkbox,
+  mat-slide-toggle {
+    margin-left: 0;
+  }
+}
+
+.custom-attr-row {
+  grid-template-columns: 160px 1fr auto;
+
+  .custom-attr-value {
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+.add-attribute-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  padding-left: 176px;
+
+  .attr-key-field {
+    width: 160px;
+  }
+
+  .attr-value-field {
+    flex: 1;
+  }
+}
+
+.filter-hint {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.54);
+  margin: 0 0 12px 176px;
+}
+
+// Spacing for form fields with hints
+mat-form-field {
+  &:has(mat-hint) {
+    margin-bottom: 8px;
   }
 }
 

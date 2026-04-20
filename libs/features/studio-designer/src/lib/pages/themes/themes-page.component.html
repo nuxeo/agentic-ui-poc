@@ -1,0 +1,220 @@
+<!-- ============ LIST VIEW ============ -->
+@if (viewMode() === 'list') {
+  <div class="themes-list-page">
+    <div class="themes-header">
+      <h2>Themes</h2>
+      <mat-form-field appearance="outline" class="filter-field">
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          placeholder="Filter"
+          [ngModel]="filterText()"
+          (ngModelChange)="filterText.set($event)"
+        />
+      </mat-form-field>
+    </div>
+
+    <div class="info-banner">
+      <div class="info-header">
+        <span class="info-title">Themes</span>
+        <span class="info-separator">|</span>
+        <span class="info-subtitle">How does it work</span>
+      </div>
+      <p class="info-description">
+        Create new UI themes that users can select. Based primarily on CSS custom properties but can
+        include any type of CSS.
+      </p>
+      <div class="info-actions">
+        <button
+          mat-stroked-button
+          [class.active]="onlyCustom()"
+          (click)="onlyCustom.set(!onlyCustom())"
+        >
+          Only Custom
+        </button>
+      </div>
+    </div>
+
+    <div class="theme-rows">
+      @for (theme of filteredThemes(); track theme.id) {
+        <div
+          class="theme-row"
+          (click)="theme.isCustom ? editTheme(theme) : null"
+          [class.clickable]="theme.isCustom"
+        >
+          <mat-icon class="theme-icon">palette</mat-icon>
+          <span class="theme-name">{{ theme.name }}</span>
+          @if (theme.isCustom) {
+            <span class="custom-badge">CUSTOM</span>
+          }
+          @if (theme.isCustom) {
+            <button
+              mat-icon-button
+              color="warn"
+              matTooltip="Delete"
+              (click)="deleteTheme(theme); $event.stopPropagation()"
+              class="delete-btn"
+            >
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          }
+        </div>
+      }
+
+      @if (filteredThemes().length === 0) {
+        <div class="empty-state">
+          <mat-icon>palette</mat-icon>
+          <p>No themes match your filter.</p>
+        </div>
+      }
+    </div>
+
+    <button
+      mat-fab
+      color="primary"
+      class="add-theme-fab"
+      (click)="openNewThemeDialog()"
+      matTooltip="Create new theme"
+    >
+      <mat-icon>add</mat-icon>
+    </button>
+  </div>
+}
+
+<!-- ============ EDITOR VIEW ============ -->
+@if (viewMode() === 'editor' && editingTheme(); as theme) {
+  <div class="theme-editor-page">
+    <div class="editor-top-bar">
+      <div class="editor-breadcrumb">
+        <button mat-icon-button (click)="backToList()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <span class="breadcrumb-text">Themes</span>
+        <mat-icon class="breadcrumb-sep">chevron_right</mat-icon>
+        <span class="breadcrumb-current">{{ theme.name }}</span>
+      </div>
+      <div class="editor-actions">
+        <button mat-button (click)="discardChanges()">Discard</button>
+        <button mat-raised-button color="primary" (click)="saveTheme()">Save</button>
+      </div>
+    </div>
+
+    <div class="editor-layout">
+      <!-- LEFT: CSS code/variable editor -->
+      <div class="css-editor-panel">
+        <pre class="css-code"><code>{{ cssPreview() }}</code></pre>
+
+        <div class="variable-editor">
+          @for (cat of theme.categories; track cat.label; let ci = $index) {
+            <div class="var-category">
+              <h4 class="cat-label">/* {{ cat.label }} */</h4>
+              @for (v of cat.variables; track v.name; let vi = $index) {
+                <div class="var-row">
+                  <code class="var-name">{{ v.name }}:</code>
+                  <input
+                    class="var-value-input"
+                    [ngModel]="v.value"
+                    (ngModelChange)="updateVariable(ci, vi, $event)"
+                  />
+                  @if (v.value.startsWith('#') && v.value.length <= 9) {
+                    <input
+                      type="color"
+                      class="var-color-swatch"
+                      [ngModel]="v.value"
+                      (ngModelChange)="updateVariable(ci, vi, $event)"
+                    />
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- RIGHT: metadata panel -->
+      <div class="metadata-panel">
+        <div class="meta-section">
+          <label class="meta-label">Name</label>
+          <div class="meta-name-row">
+            <input
+              class="meta-input"
+              [ngModel]="theme.name"
+              (ngModelChange)="updateThemeName($event)"
+            />
+            <button mat-icon-button matTooltip="Edit name"><mat-icon>edit</mat-icon></button>
+          </div>
+        </div>
+
+        <div class="meta-section">
+          <mat-checkbox [ngModel]="theme.isDefault" (ngModelChange)="toggleDefault()">
+            Set this theme as default
+          </mat-checkbox>
+        </div>
+
+        <div class="meta-section">
+          <label class="meta-label">Logo</label>
+          <div class="upload-placeholder">
+            @if (theme.logoUrl) {
+              <img [src]="theme.logoUrl" alt="Logo" class="preview-thumb" />
+            } @else {
+              <mat-icon>image</mat-icon>
+            }
+          </div>
+          <mat-form-field appearance="outline" class="meta-url-field">
+            <input
+              matInput
+              placeholder="Logo URL"
+              [ngModel]="theme.logoUrl"
+              (ngModelChange)="updateLogoUrl($event)"
+            />
+          </mat-form-field>
+        </div>
+
+        <div class="meta-section">
+          <label class="meta-label">Background</label>
+          <div class="upload-placeholder">
+            @if (theme.backgroundUrl) {
+              <img [src]="theme.backgroundUrl" alt="Background" class="preview-thumb" />
+            } @else {
+              <mat-icon>wallpaper</mat-icon>
+            }
+          </div>
+          <mat-form-field appearance="outline" class="meta-url-field">
+            <input
+              matInput
+              placeholder="Background URL"
+              [ngModel]="theme.backgroundUrl"
+              (ngModelChange)="updateBackgroundUrl($event)"
+            />
+          </mat-form-field>
+        </div>
+
+        <div class="meta-section">
+          <label class="meta-label">Screenshot</label>
+          <div class="upload-placeholder">
+            @if (theme.screenshotUrl) {
+              <img [src]="theme.screenshotUrl" alt="Screenshot" class="preview-thumb" />
+            } @else {
+              <mat-icon>photo_camera</mat-icon>
+            }
+          </div>
+          <mat-form-field appearance="outline" class="meta-url-field">
+            <input
+              matInput
+              placeholder="Screenshot URL"
+              [ngModel]="theme.screenshotUrl"
+              (ngModelChange)="updateScreenshotUrl($event)"
+            />
+          </mat-form-field>
+        </div>
+
+        <div class="meta-section resources-section">
+          <div class="resources-header">
+            <label class="meta-label">Resources</label>
+            <button mat-icon-button matTooltip="Add resource"><mat-icon>add</mat-icon></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+}

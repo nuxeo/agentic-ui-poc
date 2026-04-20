@@ -1,0 +1,466 @@
+<div class="layouts-shell">
+  <!-- Left panel: doc type browser -->
+  <div class="doc-type-browser">
+    <div class="browser-header">
+      <h3>Document Types</h3>
+    </div>
+
+    <!-- Add custom doc type -->
+    <div class="add-doctype-row">
+      <mat-form-field appearance="outline" class="add-doctype-field">
+        <mat-label>New type</mat-label>
+        <input
+          matInput
+          [ngModel]="customDocType()"
+          (ngModelChange)="customDocType.set($event)"
+          (keyup.enter)="addCustomDocType()"
+          placeholder="e.g. Contract, Invoice"
+        />
+      </mat-form-field>
+      <button
+        mat-mini-fab
+        color="primary"
+        (click)="addCustomDocType()"
+        [disabled]="!customDocType()"
+        aria-label="Add document type"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+
+    <mat-tree [dataSource]="dataSource" [treeControl]="treeControl">
+      <!-- Category nodes -->
+      <mat-nested-tree-node *matTreeNodeDef="let node; when: hasChild">
+        <div class="tree-category" [class.selected-category]="selectedCategory() === node.name">
+          <button mat-icon-button matTreeNodeToggle aria-label="Toggle">
+            <mat-icon>
+              {{ treeControl.isExpanded(node) ? 'expand_more' : 'chevron_right' }}
+            </mat-icon>
+          </button>
+          <span class="category-label" (click)="selectCategory(node.name)">{{ node.name }}</span>
+          <span class="category-count">{{ node.children?.length ?? 0 }}</span>
+        </div>
+        <div class="tree-children" [class.hidden]="!treeControl.isExpanded(node)">
+          <ng-container matTreeNodeOutlet></ng-container>
+        </div>
+      </mat-nested-tree-node>
+
+      <!-- Leaf doc type nodes -->
+      <mat-tree-node *matTreeNodeDef="let node" matTreeNodePadding>
+        <div class="tree-doctype">
+          <mat-icon class="doctype-icon">description</mat-icon>
+          <span class="doctype-name">{{ node.name }}</span>
+        </div>
+        <div class="mode-chips">
+          @for (mode of allModes; track mode) {
+            <button
+              class="mode-chip"
+              [class.has-layout]="modeHasLayout(node.name, mode)"
+              [class.has-studio-layout]="
+                modeHasStudioLayout(node.name, mode) && !modeHasLayout(node.name, mode)
+              "
+              [class.active]="
+                editingLayout()?.docType === node.name && editingLayout()?.mode === mode
+              "
+              (click)="selectDocTypeMode(node.name, mode)"
+              [matTooltip]="
+                mode +
+                (modeHasLayout(node.name, mode)
+                  ? ' (custom)'
+                  : modeHasStudioLayout(node.name, mode)
+                    ? ' (from Studio)'
+                    : '')
+              "
+            >
+              {{ mode[0] | uppercase }}
+            </button>
+          }
+        </div>
+      </mat-tree-node>
+    </mat-tree>
+  </div>
+
+  <!-- Center: layout canvas -->
+  <div class="layout-canvas-area">
+    @if (selectedCategory(); as category) {
+      <div class="category-content">
+        <h2>{{ category }}</h2>
+        <div class="category-type-grid">
+          @for (dt of getCategoryTypes(category); track dt) {
+            <div class="category-type-card" (click)="selectDocTypeMode(dt, 'view')">
+              <mat-icon class="category-type-icon">description</mat-icon>
+              <span class="category-type-name">{{ dt }}</span>
+            </div>
+          }
+          @if (getCategoryTypes(category).length === 0) {
+            <p class="category-empty-hint">No document types in this category.</p>
+          }
+        </div>
+      </div>
+    } @else if (loadingStudioLayout()) {
+      <div class="no-selection">
+        <mat-icon class="no-selection-icon spinning">sync</mat-icon>
+        <h2>Loading layout from server...</h2>
+        <p>Checking for a Studio-deployed layout.</p>
+      </div>
+    } @else if (!editingLayout()) {
+      <div class="no-selection">
+        <mat-icon class="no-selection-icon">dashboard_customize</mat-icon>
+        <h2>Layout Designer</h2>
+        <p>Select a document type and mode from the left panel to start designing.</p>
+      </div>
+    } @else {
+      @if (editingLayout(); as layout) {
+        @if (layoutSource() === 'studio') {
+          <div class="studio-source-banner">
+            <mat-icon>cloud_done</mat-icon>
+            <span
+              >This layout was loaded from <strong>Nuxeo Studio Designer</strong>. You can edit and
+              save it as a custom override.</span
+            >
+          </div>
+        }
+
+        <div class="canvas-header">
+          <div class="canvas-title">
+            <h3>{{ layout.docType }} — {{ layout.mode }} layout</h3>
+            <div class="canvas-mode-tabs">
+              @for (mode of allModes; track mode) {
+                <button
+                  class="mode-tab"
+                  [class.active]="layout.mode === mode"
+                  (click)="selectDocTypeMode(layout.docType, mode)"
+                >
+                  {{ mode }}
+                </button>
+              }
+            </div>
+          </div>
+          <div class="canvas-actions">
+            <button mat-button (click)="showPreview.set(!showPreview())">
+              <mat-icon>{{ showPreview() ? 'edit' : 'preview' }}</mat-icon>
+              {{ showPreview() ? 'Edit' : 'Preview' }}
+            </button>
+            <button mat-raised-button color="primary" (click)="saveLayout()">
+              <mat-icon>save</mat-icon> Save
+            </button>
+          </div>
+        </div>
+
+        @if (showPreview()) {
+          <div class="preview-container">
+            @if (previewDoc(); as doc) {
+              <nx-layout-renderer
+                [docType]="layout.docType"
+                [mode]="layout.mode"
+                [document]="doc"
+              />
+            }
+          </div>
+        } @else {
+          <!-- Sections -->
+          @for (section of layout.sections; track $index; let si = $index) {
+            <div class="section-container">
+              <div class="section-header">
+                <div class="section-header-left">
+                  <mat-form-field appearance="outline" class="section-label-field">
+                    <input
+                      matInput
+                      [ngModel]="section.label"
+                      (ngModelChange)="updateSectionLabel(section, $event)"
+                      placeholder="Section name"
+                    />
+                  </mat-form-field>
+                  <div class="column-selector">
+                    @for (col of columnOptions; track col) {
+                      <button
+                        class="col-btn"
+                        [class.active]="(section.columns ?? 1) === col"
+                        (click)="updateSectionColumns(section, col)"
+                        [matTooltip]="col + ' column' + (col > 1 ? 's' : '')"
+                      >
+                        {{ col }}
+                      </button>
+                    }
+                  </div>
+                  <button
+                    mat-icon-button
+                    [matTooltip]="section.collapsed ? 'Start expanded' : 'Start collapsed'"
+                    (click)="toggleSectionCollapsed(section)"
+                  >
+                    <mat-icon>{{ section.collapsed ? 'unfold_more' : 'unfold_less' }}</mat-icon>
+                  </button>
+                </div>
+                <div class="section-header-right">
+                  <button
+                    mat-icon-button
+                    matTooltip="Move up"
+                    [disabled]="si === 0"
+                    (click)="moveSectionUp(si)"
+                  >
+                    <mat-icon>arrow_upward</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    matTooltip="Move down"
+                    [disabled]="si === layout.sections.length - 1"
+                    (click)="moveSectionDown(si)"
+                  >
+                    <mat-icon>arrow_downward</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    color="warn"
+                    matTooltip="Remove section"
+                    [disabled]="layout.sections.length <= 1"
+                    (click)="removeSection(si)"
+                  >
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              @if (section.fields.length === 0) {
+                <div class="empty-section">
+                  <mat-icon>drag_indicator</mat-icon>
+                  <p>Click fields from the catalog to add them here.</p>
+                </div>
+              }
+
+              <div
+                cdkDropList
+                (cdkDropListDropped)="onFieldDrop($event, si)"
+                class="field-list"
+                [class.columns-2]="section.columns === 2"
+                [class.columns-3]="section.columns === 3"
+              >
+                @for (field of section.fields; track field.xpath; let fi = $index) {
+                  <div
+                    cdkDrag
+                    class="field-row"
+                    [class.selected]="isFieldSelected(si, fi)"
+                    (click)="selectField(si, fi)"
+                  >
+                    <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+                    <div class="field-summary">
+                      <span class="field-xpath">{{ field.xpath }}</span>
+                      <span class="field-widget-badge">{{ field.widget }}</span>
+                      @if (field.required) {
+                        <span class="field-required-badge">required</span>
+                      }
+                    </div>
+                    <button
+                      mat-icon-button
+                      color="warn"
+                      (click)="removeFieldFromLayout(si, fi); $event.stopPropagation()"
+                      matTooltip="Remove"
+                      aria-label="Remove field"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <button mat-stroked-button class="add-section-btn" (click)="addSection()">
+            <mat-icon>add</mat-icon> Add Section
+          </button>
+        }
+      }
+    }
+  </div>
+
+  <!-- Right panel: catalog + properties -->
+  @if (editingLayout()) {
+    <div class="right-panel">
+      <!-- Field properties panel -->
+      @if (selectedField(); as field) {
+        <div class="properties-panel">
+          <div class="panel-header">
+            <h4>Field Properties</h4>
+            <button mat-icon-button (click)="selectedFieldIndex.set(null)" aria-label="Close">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <div class="prop-grid">
+            <span class="prop-label">XPath</span>
+            <span class="prop-value">{{ field.xpath }}</span>
+
+            <span class="prop-label">Label</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="field.label"
+                (ngModelChange)="updateFieldProp('label', $event)"
+              />
+            </mat-form-field>
+
+            <span class="prop-label">Widget</span>
+            <mat-form-field appearance="outline">
+              <mat-select
+                [ngModel]="field.widget"
+                (ngModelChange)="updateFieldProp('widget', $event)"
+              >
+                @for (w of widgetOptions; track w) {
+                  <mat-option [value]="w">{{ w }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <span class="prop-label">Required</span>
+            <mat-checkbox
+              [ngModel]="field.required"
+              (ngModelChange)="updateFieldProp('required', $event)"
+            ></mat-checkbox>
+
+            <span class="prop-label">Read Only</span>
+            <mat-checkbox
+              [ngModel]="field.readOnly"
+              (ngModelChange)="updateFieldProp('readOnly', $event)"
+            ></mat-checkbox>
+
+            <span class="prop-label">Placeholder</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="field.placeholder ?? ''"
+                (ngModelChange)="updateFieldProp('placeholder', $event)"
+              />
+            </mat-form-field>
+
+            <span class="prop-label">Width</span>
+            <mat-form-field appearance="outline">
+              <mat-select
+                [ngModel]="field.width ?? 'full'"
+                (ngModelChange)="updateFieldProp('width', $event)"
+              >
+                <mat-option value="full">Full</mat-option>
+                <mat-option value="half">Half</mat-option>
+                <mat-option value="third">Third</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <span class="prop-label">CSS Class</span>
+            <mat-form-field appearance="outline">
+              <input
+                matInput
+                [ngModel]="field.cssClass ?? ''"
+                (ngModelChange)="updateFieldProp('cssClass', $event)"
+              />
+            </mat-form-field>
+
+            @if (field.widget === 'directory' || field.widget === 'select') {
+              <span class="prop-label">Directory</span>
+              <mat-form-field appearance="outline">
+                <input
+                  matInput
+                  [ngModel]="field.directory ?? ''"
+                  (ngModelChange)="updateFieldProp('directory', $event)"
+                  placeholder="e.g. nature, country"
+                />
+              </mat-form-field>
+
+              <span class="prop-label">Multiple</span>
+              <mat-checkbox
+                [ngModel]="field.multiple"
+                (ngModelChange)="updateFieldProp('multiple', $event)"
+              ></mat-checkbox>
+            }
+
+            @if (field.widget === 'number') {
+              <span class="prop-label">Min</span>
+              <mat-form-field appearance="outline">
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="field.min"
+                  (ngModelChange)="updateFieldProp('min', $event)"
+                />
+              </mat-form-field>
+
+              <span class="prop-label">Max</span>
+              <mat-form-field appearance="outline">
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="field.max"
+                  (ngModelChange)="updateFieldProp('max', $event)"
+                />
+              </mat-form-field>
+            }
+
+            @if (field.widget === 'text' || field.widget === 'textarea') {
+              <span class="prop-label">Max Length</span>
+              <mat-form-field appearance="outline">
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="field.maxLength"
+                  (ngModelChange)="updateFieldProp('maxLength', $event)"
+                />
+              </mat-form-field>
+            }
+
+            @if (field.widget === 'textarea') {
+              <span class="prop-label">Rows</span>
+              <mat-form-field appearance="outline">
+                <input
+                  matInput
+                  type="number"
+                  [ngModel]="field.rows ?? 3"
+                  (ngModelChange)="updateFieldProp('rows', $event)"
+                />
+              </mat-form-field>
+            }
+
+            @if (field.widget === 'blob') {
+              <span class="prop-label">Accept</span>
+              <mat-form-field appearance="outline">
+                <input
+                  matInput
+                  [ngModel]="field.accept ?? ''"
+                  (ngModelChange)="updateFieldProp('accept', $event)"
+                  placeholder=".pdf,.docx"
+                />
+              </mat-form-field>
+            }
+          </div>
+        </div>
+        <mat-divider></mat-divider>
+      }
+
+      <!-- Field catalog -->
+      <div class="catalog-sidebar">
+        <h4>Field Catalog</h4>
+        <p class="catalog-hint">Click a field to add it to the first section.</p>
+
+        @if (availableSchemaFields().length === 0) {
+          <div class="catalog-empty">
+            <mat-icon>info</mat-icon>
+            <p>Select a document type to load available fields.</p>
+          </div>
+        }
+
+        @for (field of availableSchemaFields(); track field.xpath) {
+          <button
+            class="catalog-field"
+            [class.in-layout]="isFieldInLayout(field.xpath)"
+            [disabled]="isFieldInLayout(field.xpath)"
+            (click)="addFieldToLayout(field)"
+          >
+            <mat-icon class="catalog-field-icon">
+              {{ isFieldInLayout(field.xpath) ? 'check_circle' : 'add_circle_outline' }}
+            </mat-icon>
+            <div class="catalog-field-info">
+              <span class="catalog-field-xpath">{{ field.xpath }}</span>
+              <span class="catalog-field-type">{{ field.widget }}</span>
+            </div>
+          </button>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,144 @@
+<div class="translations-page">
+  <div class="page-header">
+    <h2>Translations</h2>
+    <button mat-raised-button color="primary" (click)="save()">
+      <mat-icon>save</mat-icon> Save
+    </button>
+  </div>
+
+  <div class="translations-layout">
+    <!-- Left: locale list -->
+    <div class="locale-list">
+      <h4>Locales</h4>
+
+      @for (trans of translations(); track trans.locale) {
+        <mat-card
+          class="locale-card"
+          [class.selected]="selectedLocale() === trans.locale"
+          (click)="selectLocale(trans.locale)"
+        >
+          <mat-card-content class="locale-card-body">
+            <div class="locale-info">
+              <span class="locale-code">{{ trans.locale }}</span>
+              <span class="locale-name">{{ trans.displayName }}</span>
+              <span class="locale-count">{{ (trans.entries | keyvalue).length }} keys</span>
+            </div>
+            <button
+              mat-icon-button
+              color="warn"
+              matTooltip="Remove locale"
+              aria-label="Remove"
+              (click)="removeLocale(trans.locale); $event.stopPropagation()"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <div class="add-locale-section">
+        <p class="add-locale-hint">Add a locale:</p>
+        <div class="locale-chips">
+          @for (loc of defaultLocales; track loc.locale) {
+            <button
+              class="locale-chip"
+              [class.active]="selectedLocale() === loc.locale"
+              (click)="addLocale(loc.locale, loc.displayName)"
+              [matTooltip]="loc.displayName"
+            >
+              {{ loc.locale }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: key-value editor -->
+    @if (selectedTranslation(); as trans) {
+      <div class="entries-editor">
+        <div class="entries-header">
+          <h3>{{ trans.displayName }} ({{ trans.locale }})</h3>
+          <span class="entry-count">{{ entryCount() }} entries</span>
+          <mat-form-field appearance="outline" class="filter-field">
+            <mat-icon matPrefix>search</mat-icon>
+            <input
+              matInput
+              [ngModel]="filterText()"
+              (ngModelChange)="filterText.set($event)"
+              placeholder="Filter keys..."
+            />
+          </mat-form-field>
+        </div>
+
+        <!-- Add new entry -->
+        <div class="add-entry-row">
+          <mat-form-field appearance="outline" class="key-field">
+            <mat-label>Key</mat-label>
+            <input
+              matInput
+              [ngModel]="newKey()"
+              (ngModelChange)="newKey.set($event)"
+              placeholder="e.g. app.title"
+              (keyup.enter)="addEntry()"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="value-field">
+            <mat-label>Value</mat-label>
+            <input
+              matInput
+              [ngModel]="newValue()"
+              (ngModelChange)="newValue.set($event)"
+              (keyup.enter)="addEntry()"
+            />
+          </mat-form-field>
+          <button
+            mat-mini-fab
+            color="primary"
+            (click)="addEntry()"
+            [disabled]="!newKey()"
+            aria-label="Add entry"
+          >
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        <!-- Entries list -->
+        <div class="entries-list">
+          @for (entry of filteredEntries(); track entry[0]) {
+            <div class="entry-row">
+              <code class="entry-key">{{ entry[0] }}</code>
+              <mat-form-field appearance="outline" class="entry-value-field">
+                <input
+                  matInput
+                  [ngModel]="entry[1]"
+                  (ngModelChange)="updateEntry(entry[0], $event)"
+                />
+              </mat-form-field>
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="removeEntry(entry[0])"
+                aria-label="Remove entry"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+
+          @if (filteredEntries().length === 0 && entryCount() > 0) {
+            <div class="no-results">No entries match the filter.</div>
+          }
+
+          @if (entryCount() === 0) {
+            <div class="no-results">No translations yet. Add your first key-value pair above.</div>
+          }
+        </div>
+      </div>
+    } @else {
+      <div class="no-selection">
+        <mat-icon class="no-selection-icon">translate</mat-icon>
+        <p>Select or add a locale to manage translations.</p>
+      </div>
+    }
+  </div>
+</div>

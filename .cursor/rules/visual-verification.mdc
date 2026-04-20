@@ -1,0 +1,53 @@
+---
+description: Enforce visual verification with Playwright screenshots after every UI change
+alwaysApply: true
+---
+
+# Visual Verification — Develop, Screenshot, Fix Loop
+
+After ANY UI-facing change (component, template, style, route, or layout), you MUST run the visual verification loop before considering the task done.
+
+## The Loop
+
+1. **Develop** — Make the code change
+2. **Screenshot** — Run Playwright to capture screenshots of affected pages
+3. **Inspect** — Read the screenshot images and check for:
+   - Blank/empty pages (component failed to render)
+   - Missing icons or broken assets
+   - Layout overlaps or overflow issues
+   - Missing content that should be visible
+   - Console errors captured during the test
+4. **Fix** — If any issue is found, fix it and go back to step 2
+5. **Done** — Only mark the task complete when screenshots confirm correct rendering
+
+## How to Run
+
+```bash
+# Take screenshots of all Studio Designer pages
+npx playwright test --config=e2e/playwright.config.ts e2e/tests/visual-check.spec.ts
+
+# Screenshots are saved to e2e/screenshots/
+# Read them with the Read tool to inspect visually
+```
+
+## When Capturing Console Errors
+
+For debugging blank pages or rendering failures, capture console errors:
+
+```typescript
+const errors: string[] = [];
+page.on('console', (msg) => {
+  if (msg.type() === 'error') errors.push(msg.text());
+});
+page.on('pageerror', (err) => {
+  errors.push(`PAGE ERROR: ${err.message}`);
+});
+```
+
+## Rules
+
+- NEVER tell the user "please verify" or "check the UI" — YOU verify it
+- NEVER skip screenshots for "small" CSS changes — even 1px can break layouts
+- If the dev server is not running, start it before taking screenshots
+- If a page is blank, check console errors FIRST — they reveal the root cause
+- Always read the actual screenshot image files to confirm visually

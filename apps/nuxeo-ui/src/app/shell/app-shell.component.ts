@@ -45,8 +45,13 @@ import {
   type GlobalSearchSuggestion,
   docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
-import { SelectionTopbarComponent, ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+import {
+  SelectionTopbarComponent,
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import { DrawerRegistryService, type DrawerItemConfig } from '@agentic-ui/shared/nuxeo-studio';
 
 import { AuthService } from '../auth/auth.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
@@ -98,17 +103,31 @@ export class AppShellComponent implements OnDestroy {
   private readonly searchService = inject(SearchService);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
+  private readonly drawerRegistry = inject(DrawerRegistryService);
 
   readonly aiChatOpen = this.aiChat.panelOpen;
   readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
-  /** Hides Administration for non-administrators. */
+  /** Hides Administration and Studio Designer for non-administrators. */
   protected readonly navItems = computed(() => {
     if (!this.auth.isAdministrator()) {
-      return PLATFORM_NAV_ITEMS.filter((i) => i.path !== '/administration');
+      return PLATFORM_NAV_ITEMS.filter(
+        (i) => i.path !== '/administration' && i.path !== '/studio-designer',
+      );
     }
     return PLATFORM_NAV_ITEMS;
+  });
+
+  /** Custom drawer items defined in Studio Designer. */
+  readonly customDrawerItems = computed<DrawerItemConfig[]>(() => {
+    const isAdmin = this.auth.isAdministrator();
+    const groups: string[] = [];
+    return this.drawerRegistry.getDrawerItems({
+      permissions: isAdmin ? ['Everything'] : ['Read'],
+      groups,
+      isAdmin,
+    });
   });
 
   readonly displayName = computed(() => this.auth.username() ?? 'User');
@@ -331,7 +350,7 @@ export class AppShellComponent implements OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) {
         this.selectionService.clear();
         return;

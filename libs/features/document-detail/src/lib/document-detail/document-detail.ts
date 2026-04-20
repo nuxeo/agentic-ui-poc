@@ -66,7 +66,11 @@ import {
   type SentimentItem,
   type SentimentResponse,
 } from '@agentic-ui/shared/ai-client';
-import { LayoutRendererComponent } from '@agentic-ui/shared/nuxeo-studio';
+import {
+  LayoutRendererComponent,
+  TabRegistryService,
+  type TabConfig,
+} from '@agentic-ui/shared/nuxeo-studio';
 import { CustomActionsComponent } from '../custom-actions/custom-actions.component';
 import DOMPurify from 'dompurify';
 import { forkJoin, Observable, of, switchMap } from 'rxjs';
@@ -173,6 +177,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly aiGateway = inject(AiGatewayService);
   private readonly aiChatService = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
+  private readonly tabRegistry = inject(TabRegistryService);
 
   /** Programmatic tab switches (e.g. Publishing link). */
   private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
@@ -396,6 +401,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly publicationCount = computed(() => this.publishedDocs().length);
+
+  readonly customTabs = computed<TabConfig[]>(() => {
+    const d = this.doc();
+    if (!d) return [];
+    return this.tabRegistry.getTabsForContext({
+      docType: d.type,
+      facets: d.facets ?? [],
+      permissions: (d.contextParameters?.['permissions'] as string[]) ?? [],
+      state: d.state,
+      schemas: Object.keys(d.properties)
+        .map((k) => k.split(':')[0])
+        .filter((v, i, a) => a.indexOf(v) === i),
+    });
+  });
 
   readonly contributors = computed(() => {
     const d = this.doc();

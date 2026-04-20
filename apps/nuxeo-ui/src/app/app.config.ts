@@ -5,11 +5,17 @@ import { provideRouter, withComponentInputBinding, withHashLocation } from '@ang
 import { MAT_FAB_DEFAULT_OPTIONS } from '@angular/material/button';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
-import { Observable, of } from 'rxjs';
+import { Observable, firstValueFrom, of } from 'rxjs';
 
 import { CURRENT_USERNAME, NUXEO_SERVER_URL } from '@agentic-ui/shared/nuxeo-client';
 import { AI_BACKEND_URL } from '@agentic-ui/shared/ai-client';
 import { provideNuxeoWidgets } from '@agentic-ui/shared/nuxeo-widgets';
+import {
+  ConfigStorageService,
+  ThemeEngineService,
+  TranslationLoaderService,
+  PlatformRegistryService,
+} from '@agentic-ui/shared/nuxeo-studio';
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
 import { nuxeoSamlProviders } from './nuxeo-sso.providers';
@@ -19,6 +25,22 @@ import { AppThemeService } from './theme/app-theme.service';
 /** `APP_INITIALIZER` values are invoked as `fn()` at startup; the factory must return that `fn`. */
 export function initializeAppTheme(theme: AppThemeService) {
   return () => theme.applyStoredOrDefault();
+}
+
+export function initializeStudioConfigs(
+  storage: ConfigStorageService,
+  themeEngine: ThemeEngineService,
+  translationLoader: TranslationLoaderService,
+  platformRegistry: PlatformRegistryService,
+) {
+  return () =>
+    firstValueFrom(storage.init()).then(() => {
+      themeEngine.apply();
+      translationLoader.init();
+      return firstValueFrom(platformRegistry.loadAll()).catch(() => {
+        // Non-critical — designer pages will use fallback data
+      });
+    });
 }
 
 class AppTranslateLoader implements TranslateLoader {
@@ -37,6 +59,17 @@ export const appConfig: ApplicationConfig = {
       provide: APP_INITIALIZER,
       useFactory: initializeAppTheme,
       deps: [AppThemeService],
+      multi: true,
+    },
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeStudioConfigs,
+      deps: [
+        ConfigStorageService,
+        ThemeEngineService,
+        TranslationLoaderService,
+        PlatformRegistryService,
+      ],
       multi: true,
     },
     provideAnimations(),

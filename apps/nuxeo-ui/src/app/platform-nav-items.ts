@@ -28,6 +28,7 @@ export const PLATFORM_NAV_ITEMS: AppNavItem[] = [
   { label: 'Clipboard', path: '/clipboard', icon: 'notepad', hasDrawer: true },
   { label: 'Trash', path: '/trash', icon: 'trash', hasDrawer: true },
   { label: 'Administration', path: '/administration', icon: 'settings', hasDrawer: true },
+  { label: 'Studio Designer', path: '/studio-designer', icon: 'brush' },
 ];
 
 export const SETTINGS_DRAWER_ITEMS: DrawerLinkItem[] = [
@@ -45,5 +46,4 @@ export const ADMINISTRATION_DRAWER_ITEMS: DrawerLinkItem[] = [
   { label: 'Audit', path: '/administration/audit' },
   { label: 'Cloud Services', path: '/administration/cloud-services' },
   { label: 'NXQL Search', path: '/administration/nxql-search' },
-  { label: 'UI Designer', path: '/administration/ui-designer' },
 ];
