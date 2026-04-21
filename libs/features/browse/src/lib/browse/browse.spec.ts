@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { vi } from 'vitest';
 import { EMPTY, of, throwError } from 'rxjs';
@@ -52,6 +53,7 @@ describe('BrowseComponent', () => {
     await TestBed.configureTestingModule({
       imports: [BrowseComponent],
       providers: [
+        provideExperimentalZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
         { provide: BrowseService, useValue: mockBrowseService },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
