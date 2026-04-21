@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { EMPTY, of, throwError } from 'rxjs';
@@ -54,7 +54,7 @@ describe('BrowseComponent', () => {
     await TestBed.configureTestingModule({
       imports: [BrowseComponent, TranslateModule.forRoot(), NoopAnimationsModule],
       providers: [
-        provideRouter([]),
+        provideRouter([], withDisabledInitialNavigation()),
         { provide: BrowseService, useValue: mockBrowseService },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
         { provide: DirectoryService, useValue: mockDirectoryService },
@@ -64,7 +64,7 @@ describe('BrowseComponent', () => {
 
     fixture = TestBed.createComponent(BrowseComponent);
     component = fixture.componentInstance;
-    await fixture.whenStable();
+    fixture.detectChanges();
   });
 
   it('should create', () => {
