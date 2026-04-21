@@ -29,8 +29,7 @@ jobs:
             # Check if the service name appears in AGENTS/01-services.md
             if ! grep -qi "$SERVICE" AGENTS/01-services.md 2>/dev/null; then
               if [ -n "$MISSING" ]; then
-                MISSING="${MISSING}
-- \`${SERVICE}.service.ts\` not found in AGENTS/01-services.md"
+                MISSING="${MISSING}"$'\n'"- \`${SERVICE}.service.ts\` not found in AGENTS/01-services.md"
               else
                 MISSING="- \`${SERVICE}.service.ts\` not found in AGENTS/01-services.md"
               fi
