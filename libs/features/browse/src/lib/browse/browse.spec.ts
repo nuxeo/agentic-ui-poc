@@ -64,7 +64,6 @@ describe('BrowseComponent', () => {
 
     fixture = TestBed.createComponent(BrowseComponent);
     component = fixture.componentInstance;
-    fixture.detectChanges();
   });
 
   it('should create', () => {

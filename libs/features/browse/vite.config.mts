@@ -20,6 +20,9 @@ export default defineConfig(() => ({
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     setupFiles: ['src/test-setup.ts'],
     reporters: ['default'],
+    // zone.js keeps the Node.js event loop alive after Angular TestBed teardown;
+    // forceExit ensures Vitest can always exit cleanly in CI.
+    forceExit: true,
     coverage: {
       reportsDirectory: '../../../coverage/libs/features/browse',
       provider: 'v8' as const,
