@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { EMPTY, of, throwError } from 'rxjs';
 import { TranslateModule } from '@ngx-translate/core';
@@ -52,10 +52,9 @@ describe('BrowseComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent, TranslateModule.forRoot()],
+      imports: [BrowseComponent, TranslateModule.forRoot(), NoopAnimationsModule],
       providers: [
         provideRouter([]),
-        provideAnimations(),
         { provide: BrowseService, useValue: mockBrowseService },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
         { provide: DirectoryService, useValue: mockDirectoryService },

@@ -51,7 +51,7 @@ jobs:
         run: npx nx affected -t build --base=$NX_BASE --head=$NX_HEAD
 
       - name: Test affected projects
-        run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD
+        run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD --output-style=stream
 
       - name: Check bundle size (nuxeo-ui)
         shell: bash
