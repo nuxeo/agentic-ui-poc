@@ -1,0 +1,65 @@
+name: PR Review Summary
+
+on:
+  pull_request_review:
+    types: [submitted]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  collect-review-comments:
+    if: |
+      (github.event_name == 'issue_comment' &&
+       contains(github.event.comment.body, '/fix-comments') &&
+       github.event.issue.pull_request != null) ||
+      (github.event_name == 'pull_request_review' &&
+       github.event.review.state == 'CHANGES_REQUESTED')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Collect all open review comments
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number }}
+
+          echo "## Open PR Review Comments — PR #${PR_NUMBER}" > /tmp/summary.md
+          echo "" >> /tmp/summary.md
+          echo "The following comments need to be addressed:" >> /tmp/summary.md
+          echo "" >> /tmp/summary.md
+
+          gh api repos/${{ github.repository }}/pulls/${PR_NUMBER}/comments \
+            | jq -r '.[] | "### `\(.path)` line \(.line // "N/A")\n> \(.body)\n"' \
+            >> /tmp/summary.md
+
+          cat /tmp/summary.md
+
+      - name: Post summary as PR comment with agent instructions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number }}
+
+          # Build the comment body in a file to avoid YAML/shell quoting issues
+          {
+            echo "## Agent Fix Ready"
+            echo ""
+            echo "To fix all review comments automatically, open Cursor Agent and run:"
+            echo ""
+            echo "    fix all PR review comments on PR #${PR_NUMBER}"
+            echo ""
+            echo "The agent will fetch these comments, implement fixes following project"
+            echo "conventions (AGENTS/08-bug-patterns.md, AGENTS/07-security.md), and"
+            echo "push a follow-up commit."
+            echo ""
+            echo "---"
+            echo ""
+            cat /tmp/summary.md
+          } > /tmp/comment-body.md
+
+          gh pr comment "${PR_NUMBER}" --body-file /tmp/comment-body.md

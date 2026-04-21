@@ -1,0 +1,74 @@
+---
+description: How to correctly call Nuxeo APIs from Angular services
+globs: "libs/shared/nuxeo-client/**"
+alwaysApply: false
+---
+
+# Nuxeo API Patterns
+
+Before adding a new API call, check AGENTS/01-services.md — the method may already exist.
+If it does not exist, add it to the appropriate service file.
+
+## Always inject NuxeoApiBase — never HttpClient directly
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class MyDomainService {
+  private readonly api = inject(NuxeoApiBase);  // correct
+  // private readonly http = inject(HttpClient); // NEVER in services
+}
+```
+
+## Standard GET
+
+```typescript
+getDocument(uid: string): Observable<NuxeoDocument> {
+  return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`);
+}
+```
+
+## GET with enrichers
+
+```typescript
+getDocumentWithThumbnail(uid: string): Observable<NuxeoDocument> {
+  return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, {
+    headers: { 'enrichers-document': 'thumbnail,permissions' }
+  });
+}
+```
+
+## Automation operation
+
+```typescript
+createCollection(title: string, description = ''): Observable<NuxeoDocument> {
+  return this.api.post<NuxeoDocument>('/nuxeo/api/v1/automation/Collection.Create', {
+    params: { name: title, description },
+    context: {},
+  });
+}
+```
+
+## File upload (multipart)
+
+```typescript
+uploadFile(batchId: string, index: number, file: File): Observable<void> {
+  const form = new FormData();
+  form.append('file', file);
+  return this.api.post<void>(`/nuxeo/api/v1/upload/${batchId}/${index}`, form);
+}
+```
+
+## NEVER
+
+- Never call HttpClient directly from a feature component
+- Never hardcode `/nuxeo/api/v1` URLs in components — use services
+- Never use `.snapshot` for route params in reusable components
+- Never use the native `fetch()` API for Nuxeo calls (bypasses auth interceptor)
+- Never add Authorization headers manually — the interceptor handles this
+
+## After adding a new method
+
+1. Export from `libs/shared/nuxeo-client/src/index.ts` if needed
+2. Update `docs/api-integrations.md` with the new endpoint
+3. Update `AGENTS/01-services.md` with the new method signature
+4. Write a unit test in the same folder

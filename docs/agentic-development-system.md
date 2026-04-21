@@ -92,8 +92,14 @@ The four critical gaps that prevent full autonomy today:
 ┌──────────────────────────────────────────────────────────────────┐
 │  INTENT LAYER                                                     │
 │                                                                   │
-│  Developer: "Add bulk export to search results"                  │
-│  (one sentence — no technical detail required)                   │
+│  Option A — Free text:                                           │
+│    "Add bulk export to search results"                           │
+│                                                                   │
+│  Option B — JIRA user story (recommended):                       │
+│    "Implement NCO-1234"  →  agent fetches story via Atlassian   │
+│    MCP, extracts Acceptance Criteria, and treats them as the    │
+│    technical spec input for the Requirement Agent               │
+│                                                                   │
 │  Works from: Cursor, VS Code + Copilot, Claude Code,            │
 │              Windsurf, JetBrains AI, or any LLM CLI             │
 └─────────────────────────┬────────────────────────────────────────┘

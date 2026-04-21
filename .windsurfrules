@@ -1,0 +1,31 @@
+Read AGENTS.md in the root directory and all files in AGENTS/ before any task.
+These files contain the complete codebase context for this Angular 19 + Nx monorepo.
+
+## Architecture
+4-layer system: App Shell → Feature Modules → Shared Libraries → Nuxeo Server
+Features never import from other features (Nx boundary rule enforced by lint).
+
+## Non-negotiable conventions
+- standalone: true on every component — no NgModules anywhere
+- inject() for all dependency injection — never constructor parameters
+- signal() for all mutable state — no BehaviorSubject for UI state
+- computed() for derived state — no redundant recalculation
+- takeUntilDestroyed() on every .subscribe() call — no manual unsubscribe
+- templateUrl always — no inline templates
+- Never <img [src]="nuxeoUrl"> — fetch via DocumentDetailService, use blob URL
+- Never fetch() for Nuxeo calls — use NuxeoApiBase (HttpClient interceptor handles auth)
+- Never cross-feature imports — shared code goes in libs/shared/
+- Never hardcode credentials — use process.env and validate at startup
+
+## Where things live
+- New service method → libs/shared/nuxeo-client/src/lib/services/<domain>.service.ts
+- New shared component → libs/shared/ui/src/lib/<name>/
+- New feature page → libs/features/<feature>/src/lib/<feature>/<feature>.ts
+- New AI endpoint → apps/ai-backend/src/routes/<name>.route.ts
+- Routing → apps/nuxeo-ui/src/app/app.routes.ts
+- Auth → apps/nuxeo-ui/src/app/auth/
+
+## Definition of done
+npx nx affected -t lint && npx nx affected -t build && npx nx affected -t test
+Unit tests required for every new service method.
+PR on feature/* or fix/* branch — never commit directly to main.

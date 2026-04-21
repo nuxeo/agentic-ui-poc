@@ -1,0 +1,59 @@
+---
+description: Exact scaffold pattern for new feature modules
+globs: "libs/features/**"
+alwaysApply: false
+---
+
+# Feature Module Scaffold
+
+When creating a new feature module, follow AGENTS/04-feature-scaffold.md exactly.
+
+## Required structure
+
+```
+libs/features/<name>/
+├── src/
+│   ├── index.ts                    ← barrel: export routes + main component
+│   └── lib/
+│       ├── lib.routes.ts           ← Routes array exported as <name>Routes
+│       └── <name>/
+│           ├── <name>.ts           ← Main smart container component
+│           └── <name>.html         ← External template (always external)
+```
+
+## Required files content
+
+### lib.routes.ts
+```typescript
+import { Routes } from '@angular/router';
+import { MyFeatureComponent } from './my-feature/my-feature';
+
+export const myFeatureRoutes: Routes = [
+  { path: '', component: MyFeatureComponent },
+];
+```
+
+### index.ts
+```typescript
+export { myFeatureRoutes } from './lib/lib.routes';
+export { MyFeatureComponent } from './lib/my-feature/my-feature';
+```
+
+### Component
+```typescript
+@Component({
+  standalone: true,          // mandatory
+  templateUrl: './name.html', // external always
+  imports: [...],
+})
+export class NameComponent {
+  private readonly service = inject(SomeService); // inject(), not constructor
+  readonly items = signal<Item[]>([]);             // signal() for state
+  readonly loading = signal(false);
+}
+```
+
+## After creating
+1. Add lazy route to `apps/nuxeo-ui/src/app/app.routes.ts`
+2. Add nav item to `apps/nuxeo-ui/src/app/platform-nav-items.ts`
+3. Run `npx nx affected -t lint && npx nx affected -t build`
