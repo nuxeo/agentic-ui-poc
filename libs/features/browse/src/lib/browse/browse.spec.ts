@@ -1,9 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 import { EMPTY, of, throwError } from 'rxjs';
-import { TranslateModule } from '@ngx-translate/core';
 import { BrowseComponent } from './browse';
 import {
   BrowseService,
@@ -52,7 +50,7 @@ describe('BrowseComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [BrowseComponent, TranslateModule.forRoot(), NoopAnimationsModule],
+      imports: [BrowseComponent],
       providers: [
         provideRouter([], withDisabledInitialNavigation()),
         { provide: BrowseService, useValue: mockBrowseService },
@@ -60,7 +58,14 @@ describe('BrowseComponent', () => {
         { provide: DirectoryService, useValue: mockDirectoryService },
         { provide: TagService, useValue: mockTagService },
       ],
-    }).compileComponents();
+    })
+      // Shallow-render: replace the complex Material/Satori template with a stub.
+      // This avoids zone.js-tracked handles from 20+ imported modules that cause
+      // the test process to hang in Node 20/Linux CI environments.
+      .overrideComponent(BrowseComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(BrowseComponent);
     component = fixture.componentInstance;
