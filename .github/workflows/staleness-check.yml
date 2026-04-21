@@ -5,6 +5,10 @@ on:
     - cron: '0 7 * * 1'  # weekly on Monday at 07:00 UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   staleness-check:
     runs-on: ubuntu-latest
@@ -24,16 +28,25 @@ jobs:
 
             # Check if the service name appears in AGENTS/01-services.md
             if ! grep -qi "$SERVICE" AGENTS/01-services.md 2>/dev/null; then
-              MISSING="${MISSING}\n- \`${SERVICE}.service.ts\` not found in AGENTS/01-services.md"
+              if [ -n "$MISSING" ]; then
+                MISSING="${MISSING}
+- \`${SERVICE}.service.ts\` not found in AGENTS/01-services.md"
+              else
+                MISSING="- \`${SERVICE}.service.ts\` not found in AGENTS/01-services.md"
+              fi
             fi
           done
 
-          echo "missing=${MISSING}" >> $GITHUB_OUTPUT
+          {
+            echo "missing<<EOF"
+            echo "$MISSING"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
           if [ -n "$MISSING" ]; then
-            echo "drift_detected=true" >> $GITHUB_OUTPUT
+            echo "drift_detected=true" >> "$GITHUB_OUTPUT"
           else
-            echo "drift_detected=false" >> $GITHUB_OUTPUT
+            echo "drift_detected=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Check for AGENTS/ files referenced but missing

@@ -6,11 +6,16 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   collect-review-comments:
     if: |
       (github.event_name == 'issue_comment' &&
-       contains(github.event.comment.body, '/fix-comments')) ||
+       contains(github.event.comment.body, '/fix-comments') &&
+       github.event.issue.pull_request != null) ||
       (github.event_name == 'pull_request_review' &&
        github.event.review.state == 'CHANGES_REQUESTED')
     runs-on: ubuntu-latest

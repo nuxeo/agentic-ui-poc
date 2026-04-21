@@ -37,12 +37,14 @@ Rules:
 ## Before Every Commit
 
 ```bash
-npx nx affected -t lint    # must pass — Husky pre-commit hook runs this automatically
+npx nx affected -t lint    # must pass — run manually or enforced by CI
 npx nx affected -t build   # must pass
 npx nx affected -t test    # must pass
 ```
 
-If Husky pre-commit hook fails, **fix the lint errors before retrying**. Never use `--no-verify`.
+The Husky pre-commit hook runs `lint-staged` (not `nx affected`), which lints and formats only staged files.
+Run `npx nx affected -t lint` manually before committing to catch all affected project lint errors.
+If the pre-commit hook fails, **fix the errors before retrying**. Never use `--no-verify`.
 
 ---
 

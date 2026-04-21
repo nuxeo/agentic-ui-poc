@@ -54,8 +54,33 @@ jobs:
         run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD
 
       - name: Check bundle size (nuxeo-ui)
+        shell: bash
+        env:
+          NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES: 5242880
         run: |
-          if npx nx affected --base=$NX_BASE --head=$NX_HEAD --plain | grep -q "nuxeo-ui"; then
-            npx nx build nuxeo-ui --configuration=production 2>/dev/null || true
+          set -euo pipefail
+
+          if npx nx show projects --affected --base=$NX_BASE --head=$NX_HEAD --plain | grep -q "^nuxeo-ui$"; then
+            rm -rf dist
+            npx nx build nuxeo-ui --configuration=production
+
+            bundle_size_bytes=$(
+              find dist -type f \( -name '*.js' -o -name '*.css' \) -path '*/nuxeo-ui/*' -printf '%s\n' \
+                | awk '{ total += $1 } END { print total + 0 }'
+            )
+
+            if [ "$bundle_size_bytes" -eq 0 ]; then
+              echo "Failed to measure bundle size for nuxeo-ui: no built JS/CSS assets were found under dist."
+              exit 1
+            fi
+
+            echo "nuxeo-ui bundle size: ${bundle_size_bytes} bytes"
+            echo "nuxeo-ui bundle size limit: ${NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES} bytes"
+
+            if [ "$bundle_size_bytes" -gt "$NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES" ]; then
+              echo "nuxeo-ui bundle size exceeds limit."
+              exit 1
+            fi
+          else
+            echo "nuxeo-ui is not affected; skipping bundle size check."
           fi
-        continue-on-error: true

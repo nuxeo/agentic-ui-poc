@@ -77,17 +77,18 @@ describe('DocumentDetailService', () => {
 ```typescript
 import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
+import { vi } from 'vitest';
 import { MyFeatureComponent } from './my-feature';
 import { DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
 
 describe('MyFeatureComponent', () => {
   let component: MyFeatureComponent;
-  let mockService: jest.Mocked<DocumentDetailService>;
+  let mockService: { getItems: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockService = {
-      getItems: jest.fn(),
-    } as unknown as jest.Mocked<DocumentDetailService>;
+      getItems: vi.fn(),
+    };
 
     await TestBed.configureTestingModule({
       imports: [MyFeatureComponent],
