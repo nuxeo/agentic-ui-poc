@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { config } from '../config.js';
 import { chatCompletion } from '../services/openai.service.js';
 import { getDocumentById, getDocumentBlob } from '../services/nuxeo.service.js';
 import { SYSTEM_PROMPTS } from '../context/system-prompts.js';
@@ -33,7 +34,7 @@ router.post('/suggest-tags', async (req, res, next) => {
         { role: 'system', content: SYSTEM_PROMPTS.suggestTags },
         { role: 'user', content },
       ],
-      { model: 'gpt-4o-mini', maxTokens: 512 },
+      { model: config.haipModelFast, maxTokens: 512 },
     );
 
     res.json(JSON.parse(result));
