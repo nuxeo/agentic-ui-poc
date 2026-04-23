@@ -1,7 +1,10 @@
 export {
   DEFAULT_KD_CIC_OPERATIONS,
+  DEFAULT_KD_UPSTREAM_PATHS,
   KD_CIC_OPERATIONS,
+  KD_UPSTREAM_PATHS,
   type KdCicOperations,
+  type KdUpstreamPaths,
 } from './lib/kd.config';
 export { KdClientService } from './lib/kd-client.service';
 export type {

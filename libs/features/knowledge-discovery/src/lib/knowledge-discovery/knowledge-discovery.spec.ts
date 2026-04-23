@@ -31,7 +31,7 @@ const mockKdClient = {
   listModels: vi.fn(() => of([{ name: 'model-1', status: 'Active' }])),
   listGuardrails: vi.fn(() => of({ guardrailGroups: [] })),
   getQuestionHistory: vi.fn(() => of({ data: [], pagination: {} })),
-  submitQuestion: vi.fn(() => of({ questionId: 'question-1', status: 'Submitted' })),
+  submitQuestion: vi.fn(() => of({ questionId: 'question-1', status: 'Complete' })),
   getAnswer: vi.fn(() =>
     of({
       questionId: 'question-1',

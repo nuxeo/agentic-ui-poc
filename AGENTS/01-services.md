@@ -86,9 +86,14 @@ saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown>
 
 ## KdClientService (`kd-client.service.ts`)
 
-Frontend client for Knowledge Discovery. Each method POSTs to the corresponding
-Nuxeo automation operation (`/nuxeo/site/automation/<OpName>`) provided by the
-CIC connector. Operation names are configurable via the `KD_CIC_OPERATIONS` token.
+Frontend client for Knowledge Discovery. Talks to the Hyland Content
+Intelligence Connector (`nuxeo-labs-content-intelligence-connector`) via
+Nuxeo automation endpoints (`/nuxeo/site/automation/<OpName>`). Uses the
+connector's first-class ops (`HylandKnowledgeDiscovery.getAllAgents`,
+`askQuestionAndGetAnswer`) where available and its generic
+`HylandKnowledgeDiscovery.Invoke` passthrough for everything else. Op
+names and upstream paths are overridable via the `KD_CIC_OPERATIONS` and
+`KD_UPSTREAM_PATHS` tokens.
 
 ```typescript
 listAgents(): Observable<KdAgentSummary[]>

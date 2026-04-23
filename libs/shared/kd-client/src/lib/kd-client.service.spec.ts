@@ -1,11 +1,21 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { firstValueFrom, lastValueFrom } from 'rxjs';
 
 import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
-import { DEFAULT_KD_CIC_OPERATIONS, KD_CIC_OPERATIONS } from './kd.config';
+import {
+  DEFAULT_KD_CIC_OPERATIONS,
+  DEFAULT_KD_UPSTREAM_PATHS,
+  KD_CIC_OPERATIONS,
+  KD_UPSTREAM_PATHS,
+} from './kd.config';
 import { KdClientService } from './kd-client.service';
+
+function envelope<T>(response: T, responseCode = 200, responseMessage = 'OK'): unknown {
+  return { response, responseCode, responseMessage };
+}
 
 describe('KdClientService', () => {
   let service: KdClientService;
@@ -18,6 +28,7 @@ describe('KdClientService', () => {
         provideHttpClientTesting(),
         { provide: NUXEO_API_ORIGIN, useValue: '' },
         { provide: KD_CIC_OPERATIONS, useValue: DEFAULT_KD_CIC_OPERATIONS },
+        { provide: KD_UPSTREAM_PATHS, useValue: DEFAULT_KD_UPSTREAM_PATHS },
       ],
     });
 
@@ -27,75 +38,143 @@ describe('KdClientService', () => {
 
   afterEach(() => httpMock.verify());
 
-  it('should invoke the configured CIC list-agents operation', () => {
-    service.listAgents().subscribe((agents) => {
-      expect(agents).toHaveLength(1);
-      expect(agents[0]?.id).toBe('agent-1');
-    });
-
-    const req = httpMock.expectOne(
-      `/nuxeo/site/automation/${encodeURIComponent(DEFAULT_KD_CIC_OPERATIONS.listAgents)}`,
-    );
+  function expectAutomation(operation: string) {
+    const req = httpMock.expectOne(`/nuxeo/site/automation/${encodeURIComponent(operation)}`);
     expect(req.request.method).toBe('POST');
+    return req;
+  }
+
+  it('lists agents via HylandKnowledgeDiscovery.getAllAgents and unwraps the CIC envelope', async () => {
+    const agents$ = firstValueFrom(service.listAgents());
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.getAllAgents);
     expect(req.request.body).toEqual({});
-    req.flush([{ id: 'agent-1', name: 'Contracts Agent', description: '', modelName: 'model-1' }]);
+    req.flush(envelope([{ id: 'agent-1', name: 'Contracts', description: '', modelName: 'm' }]));
+    const agents = await agents$;
+    expect(agents).toHaveLength(1);
+    expect(agents[0]?.id).toBe('agent-1');
   });
 
-  it('should unwrap a wrapped agents payload', () => {
-    service.listAgents().subscribe((agents) => {
-      expect(agents).toHaveLength(1);
-      expect(agents[0]?.id).toBe('agent-2');
-    });
-
-    const req = httpMock.expectOne(
-      `/nuxeo/site/automation/${encodeURIComponent(DEFAULT_KD_CIC_OPERATIONS.listAgents)}`,
+  it('unwraps a wrapped {agents: [...]} payload', async () => {
+    const agents$ = firstValueFrom(service.listAgents());
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.getAllAgents);
+    req.flush(
+      envelope({
+        agents: [{ id: 'agent-2', name: 'Policies', description: '', modelName: 'm' }],
+      }),
     );
-    req.flush({
-      agents: [{ id: 'agent-2', name: 'Policies Agent', description: '', modelName: 'model-1' }],
-    });
+    const agents = await agents$;
+    expect(agents[0]?.id).toBe('agent-2');
   });
 
-  it('should submit a question through the CIC submit-question operation', () => {
-    service
-      .submitQuestion({
+  it('getAgent routes through the Invoke passthrough with the upstream path', async () => {
+    const agent$ = firstValueFrom(service.getAgent('agent-1'));
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
+    expect(req.request.body).toEqual({
+      params: { httpMethod: 'GET', endpoint: '/agent/agents/agent-1' },
+    });
+    req.flush(envelope({ id: 'agent-1', name: 'Contracts', description: '', modelName: 'm' }));
+    const agent = await agent$;
+    expect(agent.id).toBe('agent-1');
+  });
+
+  it('createAgent sends the payload as stringified jsonPayloadStr via Invoke', async () => {
+    const payload = {
+      name: 'New Agent',
+      description: '',
+      modelName: 'm',
+      instructions: '',
+      sourceIds: [],
+      accessRights: [],
+      staticFilterExpression: null,
+      dynamicFilterTemplate: null,
+      guardrails: [],
+    };
+    const call$ = firstValueFrom(service.createAgent(payload));
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
+    expect(req.request.body).toEqual({
+      params: {
+        httpMethod: 'POST',
+        endpoint: '/agent/agents',
+        jsonPayloadStr: JSON.stringify(payload),
+      },
+    });
+    req.flush(envelope({ ...payload, id: 'agent-9' }));
+    const agent = await call$;
+    expect(agent.id).toBe('agent-9');
+  });
+
+  it('deleteAgent issues DELETE through the Invoke passthrough', async () => {
+    const done$ = firstValueFrom(service.deleteAgent('agent-1'));
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
+    expect(req.request.body).toEqual({
+      params: { httpMethod: 'DELETE', endpoint: '/agent/agents/agent-1' },
+    });
+    req.flush(envelope(null, 204, 'No Content'));
+    await expect(done$).resolves.toBeUndefined();
+  });
+
+  it('submitQuestion uses askQuestionAndGetAnswer and caches the one-shot result', async () => {
+    const submission$ = firstValueFrom(
+      service.submitQuestion({ agentId: 'agent-1', question: 'Q?' }),
+    );
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer);
+    expect(req.request.body).toEqual({
+      params: { agentId: 'agent-1', question: 'Q?' },
+    });
+    req.flush(
+      envelope({
+        questionId: 'qid-1',
         agentId: 'agent-1',
-        question: 'What contracts mention renewal clauses?',
-      })
-      .subscribe((result) => {
-        expect(result.questionId).toBe('question-1');
-        expect(result.status).toBe('Submitted');
-      });
-
-    const req = httpMock.expectOne(
-      `/nuxeo/site/automation/${encodeURIComponent(DEFAULT_KD_CIC_OPERATIONS.submitQuestion)}`,
+        question: 'Q?',
+        status: 'Complete',
+        answer: 'A.',
+        citations: [],
+      }),
     );
-    expect(req.request.method).toBe('POST');
+    const submission = await submission$;
+    expect(submission.questionId).toBe('qid-1');
+    expect(submission.status).toBe('Complete');
+
+    const answer = await firstValueFrom(service.getAnswer('qid-1'));
+    expect(answer.answer).toBe('A.');
+    expect(answer.status).toBe('Complete');
+  });
+
+  it('submitQuestion serializes dynamicFilter as extraPayloadJsonStr', async () => {
+    const submission$ = firstValueFrom(
+      service.submitQuestion({
+        agentId: 'agent-1',
+        question: 'Q?',
+        dynamicFilter: { tenant: 'acme' },
+      }),
+    );
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer);
     expect(req.request.body).toEqual({
       params: {
         agentId: 'agent-1',
-        question: 'What contracts mention renewal clauses?',
-        dynamicFilter: null,
+        question: 'Q?',
+        extraPayloadJsonStr: JSON.stringify({ dynamicFilter: { tenant: 'acme' } }),
       },
     });
-    req.flush({ questionId: 'question-1', status: 'Submitted' });
+    req.flush(envelope({ status: 'Complete', answer: 'A.', citations: [] }));
+    await submission$;
   });
 
-  it('should call the configured get-answer operation with the question id', () => {
-    service.getAnswer('question-1').subscribe((answer) => {
-      expect(answer.status).toBe('Complete');
-    });
+  it('throws when the CIC envelope carries an error code', async () => {
+    const agents$ = firstValueFrom(service.listAgents());
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.getAllAgents);
+    req.flush(envelope({}, 401, 'Unauthorized'));
+    await expect(agents$).rejects.toThrow(/Unauthorized/);
+  });
 
-    const req = httpMock.expectOne(
-      `/nuxeo/site/automation/${encodeURIComponent(DEFAULT_KD_CIC_OPERATIONS.getAnswer)}`,
-    );
-    expect(req.request.body).toEqual({ params: { questionId: 'question-1' } });
-    req.flush({
-      questionId: 'question-1',
-      agentId: 'agent-1',
-      question: 'What contracts mention renewal clauses?',
-      status: 'Complete',
-      answer: 'Yes.',
-      citations: [],
-    });
+  it('submitFeedback updates the cached answer locally', async () => {
+    const sub$ = firstValueFrom(service.submitQuestion({ agentId: 'a', question: 'Q?' }));
+    const post = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer);
+    post.flush(envelope({ questionId: 'qid-9', status: 'Complete', answer: 'A.', citations: [] }));
+    await sub$;
+
+    await lastValueFrom(service.submitFeedback('qid-9', { feedback: 'Good' }));
+    const answer = await firstValueFrom(service.getAnswer('qid-9'));
+    expect(answer.feedback).toBe('Good');
   });
 });

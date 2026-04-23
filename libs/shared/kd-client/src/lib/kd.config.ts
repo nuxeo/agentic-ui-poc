@@ -1,42 +1,72 @@
 import { InjectionToken } from '@angular/core';
 
 /**
- * Names of Nuxeo automation operations exposed by the Hyland Content Intelligence
- * Connector (CIC) for Knowledge Discovery.
+ * Names of the Knowledge Discovery automation operations exposed by the
+ * Hyland Content Intelligence Connector (`nuxeo-labs-content-intelligence-
+ * connector`).
  *
- * These names are connector-version dependent. Override this token in `app.config.ts`
- * to match whatever operations your Nuxeo instance actually exposes without touching
- * `KdClientService`.
+ * Values default to the operation IDs shipped with connector 2025.x. If your
+ * Nuxeo instance renames or adds operations, override the token in
+ * `app.config.ts` rather than editing this file.
+ *
+ * The connector exposes a small, stable first-class surface (getAllAgents,
+ * askQuestionAndGetAnswer, conversation ops, feedback) plus a generic
+ * `HylandKnowledgeDiscovery.Invoke` passthrough that can call any upstream
+ * KD API path when the connector does not wrap it (CRUD on agents, models,
+ * guardrails, history, etc.).
  */
 export interface KdCicOperations {
-  listAgents: string;
-  getAgent: string;
-  createAgent: string;
-  updateAgent: string;
-  deleteAgent: string;
-  listModels: string;
-  listGuardrails: string;
-  submitQuestion: string;
-  getAnswer: string;
-  submitFeedback: string;
-  getQuestionHistory: string;
+  getAllAgents: string;
+  askQuestionAndGetAnswer: string;
+  startConversation: string;
+  continueConversation: string;
+  conversationFeedback: string;
+  invoke: string;
 }
 
 export const DEFAULT_KD_CIC_OPERATIONS: KdCicOperations = {
-  listAgents: 'HylandCIC.KnowledgeDiscovery.ListAgents',
-  getAgent: 'HylandCIC.KnowledgeDiscovery.GetAgent',
-  createAgent: 'HylandCIC.KnowledgeDiscovery.CreateAgent',
-  updateAgent: 'HylandCIC.KnowledgeDiscovery.UpdateAgent',
-  deleteAgent: 'HylandCIC.KnowledgeDiscovery.DeleteAgent',
-  listModels: 'HylandCIC.KnowledgeDiscovery.ListModels',
-  listGuardrails: 'HylandCIC.KnowledgeDiscovery.ListGuardrails',
-  submitQuestion: 'HylandCIC.KnowledgeDiscovery.SubmitQuestion',
-  getAnswer: 'HylandCIC.KnowledgeDiscovery.GetAnswer',
-  submitFeedback: 'HylandCIC.KnowledgeDiscovery.SubmitFeedback',
-  getQuestionHistory: 'HylandCIC.KnowledgeDiscovery.GetQuestionHistory',
+  getAllAgents: 'HylandKnowledgeDiscovery.getAllAgents',
+  askQuestionAndGetAnswer: 'HylandKnowledgeDiscovery.askQuestionAndGetAnswer',
+  startConversation: 'HylandKnowledgeDiscovery.startConversation',
+  continueConversation: 'HylandKnowledgeDiscovery.continueConversation',
+  conversationFeedback: 'HylandKnowledgeDiscovery.conversationFeedback',
+  invoke: 'HylandKnowledgeDiscovery.Invoke',
 };
 
 export const KD_CIC_OPERATIONS = new InjectionToken<KdCicOperations>('KD_CIC_OPERATIONS', {
   providedIn: 'root',
   factory: () => DEFAULT_KD_CIC_OPERATIONS,
+});
+
+/**
+ * Upstream Knowledge Discovery API paths used by the client via the
+ * `HylandKnowledgeDiscovery.Invoke` passthrough. These are the paths the
+ * connector will call directly against the Discovery base URL configured in
+ * `nuxeo.conf` (`nuxeo.hyland.cic.discovery.baseUrl`).
+ */
+export interface KdUpstreamPaths {
+  getAgent: (agentId: string) => string;
+  createAgent: string;
+  updateAgent: (agentId: string) => string;
+  deleteAgent: (agentId: string) => string;
+  listModels: string;
+  listGuardrails: string;
+  getQuestionHistory: (agentId: string, pageNumber: number, pageSize: number) => string;
+}
+
+export const DEFAULT_KD_UPSTREAM_PATHS: KdUpstreamPaths = {
+  getAgent: (agentId) => `/agent/agents/${encodeURIComponent(agentId)}`,
+  createAgent: '/agent/agents',
+  updateAgent: (agentId) => `/agent/agents/${encodeURIComponent(agentId)}`,
+  deleteAgent: (agentId) => `/agent/agents/${encodeURIComponent(agentId)}`,
+  listModels: '/agent/models',
+  listGuardrails: '/agent/guardrails',
+  getQuestionHistory: (agentId, pageNumber, pageSize) =>
+    `/agent/questions?agentId=${encodeURIComponent(agentId)}` +
+    `&pageNumber=${pageNumber}&pageSize=${pageSize}`,
+};
+
+export const KD_UPSTREAM_PATHS = new InjectionToken<KdUpstreamPaths>('KD_UPSTREAM_PATHS', {
+  providedIn: 'root',
+  factory: () => DEFAULT_KD_UPSTREAM_PATHS,
 });

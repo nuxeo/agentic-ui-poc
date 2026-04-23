@@ -279,6 +279,28 @@ export class KnowledgeDiscoveryComponent {
         next: (result) => {
           this.submittingQuestion.set(false);
           this.activeQuestionId.set(result.questionId);
+
+          const terminalStatuses: KdAnswerResponse['status'][] = ['Complete', 'Error', 'Blocked'];
+          if (terminalStatuses.includes(result.status)) {
+            this.kdClient
+              .getAnswer(result.questionId)
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe({
+                next: (answer) => {
+                  this.answer.set(answer);
+                  if (this.selectedAgentId()) {
+                    this.loadHistory(this.selectedAgentId() ?? '');
+                  }
+                },
+                error: (err) => {
+                  this.questionError.set(
+                    err?.error?.detail ?? 'Failed to retrieve the Knowledge Discovery answer.',
+                  );
+                },
+              });
+            return;
+          }
+
           this.answer.set({
             questionId: result.questionId,
             agentId,

@@ -966,37 +966,63 @@ by the **Hyland Content Intelligence Connector (CIC)** installed on the Nuxeo se
 There is no separate backend in this repo — only the Angular app is deployed to the
 marketplace.
 
-**Operation mapping (overridable via `KD_CIC_OPERATIONS`):**
+**Operation mapping (overridable via `KD_CIC_OPERATIONS` / `KD_UPSTREAM_PATHS`):**
 
-| Client method        | Default automation operation                      |
-| -------------------- | ------------------------------------------------- |
-| `listAgents`         | `HylandCIC.KnowledgeDiscovery.ListAgents`         |
-| `getAgent`           | `HylandCIC.KnowledgeDiscovery.GetAgent`           |
-| `createAgent`        | `HylandCIC.KnowledgeDiscovery.CreateAgent`        |
-| `updateAgent`        | `HylandCIC.KnowledgeDiscovery.UpdateAgent`        |
-| `deleteAgent`        | `HylandCIC.KnowledgeDiscovery.DeleteAgent`        |
-| `listModels`         | `HylandCIC.KnowledgeDiscovery.ListModels`         |
-| `listGuardrails`     | `HylandCIC.KnowledgeDiscovery.ListGuardrails`     |
-| `submitQuestion`     | `HylandCIC.KnowledgeDiscovery.SubmitQuestion`     |
-| `getAnswer`          | `HylandCIC.KnowledgeDiscovery.GetAnswer`          |
-| `submitFeedback`     | `HylandCIC.KnowledgeDiscovery.SubmitFeedback`     |
-| `getQuestionHistory` | `HylandCIC.KnowledgeDiscovery.GetQuestionHistory` |
+The connector only exposes a handful of first-class ops. Everything else
+goes through `HylandKnowledgeDiscovery.Invoke` (a generic passthrough
+that takes `httpMethod`, `endpoint`, `jsonPayloadStr`).
 
-**Request body (all operations):**
+| Client method        | Automation op (first-class)                        | Or: Invoke upstream path           |
+| -------------------- | -------------------------------------------------- | ---------------------------------- |
+| `listAgents`         | `HylandKnowledgeDiscovery.getAllAgents`            | —                                  |
+| `submitQuestion`     | `HylandKnowledgeDiscovery.askQuestionAndGetAnswer` | —                                  |
+| `getAgent`           | — (via Invoke)                                     | `GET /agent/agents/{id}`           |
+| `createAgent`        | — (via Invoke)                                     | `POST /agent/agents`               |
+| `updateAgent`        | — (via Invoke)                                     | `PUT /agent/agents/{id}`           |
+| `deleteAgent`        | — (via Invoke)                                     | `DELETE /agent/agents/{id}`        |
+| `listModels`         | — (via Invoke)                                     | `GET /agent/models`                |
+| `listGuardrails`     | — (via Invoke)                                     | `GET /agent/guardrails`            |
+| `getQuestionHistory` | — (via Invoke)                                     | `GET /agent/questions?agentId=...` |
+| `getAnswer`          | — (served from client-side cache after submit)     | —                                  |
+| `submitFeedback`     | — (client-side only for one-shot answers)          | —                                  |
+
+**Request body for a first-class op (e.g. `askQuestionAndGetAnswer`):**
 
 ```json
 {
   "params": {
     "agentId": "agent-123",
     "question": "What contracts mention renewal clauses?",
-    "dynamicFilter": {
-      "property": "region",
-      "operator": "equals",
-      "value": "EMEA"
-    }
+    "extraPayloadJsonStr": "{\"dynamicFilter\":{\"property\":\"region\",\"operator\":\"equals\",\"value\":\"EMEA\"}}"
   }
 }
 ```
+
+**Request body for an Invoke call (e.g. `createAgent`):**
+
+```json
+{
+  "params": {
+    "httpMethod": "POST",
+    "endpoint": "/agent/agents",
+    "jsonPayloadStr": "{\"name\":\"Contracts\",\"modelName\":\"gpt-4o\",\"instructions\":\"...\"}"
+  }
+}
+```
+
+**Response envelope (all ops):**
+
+```json
+{
+  "response": {
+    /* upstream JSON */
+  },
+  "responseCode": 200,
+  "responseMessage": "OK"
+}
+```
+
+`KdClientService` unwraps this and surfaces non-2xx `responseCode` as a thrown error.
 
 **Normalized answer payload (returned by the CIC operation):**
 
