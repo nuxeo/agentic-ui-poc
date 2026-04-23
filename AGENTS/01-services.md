@@ -79,6 +79,17 @@ saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown>
 
 ---
 
+## KnowledgeDiscoveryService (`knowledge-discovery.service.ts`)
+
+Shared Nuxeo-backed client for Knowledge Discovery responses exposed by a Nuxeo automation
+operation or equivalent server endpoint.
+
+```typescript
+query(request: KnowledgeDiscoveryQueryRequest): Observable<KnowledgeDiscoveryResponse>
+```
+
+---
+
 ## CollectionService (`collection.service.ts`)
 
 ```typescript

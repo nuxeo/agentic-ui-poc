@@ -23,6 +23,12 @@ export type {
   SearchResultItem,
 } from './lib/models/search.model';
 export type {
+  KnowledgeDiscoveryQueryRequest,
+  KnowledgeDiscoveryResponse,
+  KnowledgeDiscoverySource,
+  KnowledgeDiscoveryStatus,
+} from './lib/models/knowledge-discovery.model';
+export type {
   AuthorizedApplication,
   ConnectedAccount,
   NuxeoOAuth2ServiceProvider,
@@ -80,6 +86,7 @@ export {
 export { DirectoryService } from './lib/services/directory.service';
 export { SearchService } from './lib/services/search.service';
 export { SearchAggregationService } from './lib/services/search-aggregation.service';
+export { KnowledgeDiscoveryService } from './lib/services/knowledge-discovery.service';
 export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';
