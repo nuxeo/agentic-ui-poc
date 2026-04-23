@@ -1,0 +1,348 @@
+<div class="kd-page">
+  <header class="kd-topbar">
+    <div class="kd-topbar__title">
+      <span class="kd-eyebrow">Knowledge Discovery</span>
+      <h1>Ask grounded questions with citations</h1>
+    </div>
+    <div class="kd-topbar__actions">
+      <button mat-stroked-button (click)="loadReferenceData()">
+        <mat-icon>sync</mat-icon>
+        Refresh metadata
+      </button>
+      <button mat-stroked-button (click)="loadAgents()">
+        <mat-icon>refresh</mat-icon>
+        Refresh agents
+      </button>
+      <button mat-flat-button color="primary" (click)="openCreateAgentDialog()">
+        <mat-icon>add</mat-icon>
+        New agent
+      </button>
+    </div>
+  </header>
+
+  @if (agentsError()) {
+    <div class="kd-banner kd-banner--error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ agentsError() }}</span>
+    </div>
+  }
+  @if (referenceDataError()) {
+    <div class="kd-banner kd-banner--muted">
+      <mat-icon>info_outline</mat-icon>
+      <span>{{ referenceDataError() }}</span>
+    </div>
+  }
+  @if (agentActionError()) {
+    <div class="kd-banner kd-banner--error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ agentActionError() }}</span>
+    </div>
+  }
+
+  <div class="kd-layout">
+    <main class="kd-main">
+      <section class="kd-card kd-composer">
+        <div class="kd-card__header">
+          <div>
+            <span class="kd-section-label">Ask</span>
+            <h2>What would you like to know?</h2>
+          </div>
+
+          @if (pollingAnswer()) {
+            <span class="kd-inline-status">
+              <mat-spinner diameter="16" />
+              Generating answer
+            </span>
+          } @else {
+            @if (selectedAgent(); as agent) {
+              <span class="kd-inline-status kd-inline-status--muted">
+                <mat-icon>smart_toy</mat-icon>
+                {{ agent.name }}
+              </span>
+            }
+          }
+        </div>
+
+        @if (!hasSelection()) {
+          <p class="kd-helper">
+            Select an agent on the right or create one to start asking questions.
+          </p>
+        }
+
+        <mat-form-field appearance="outline" class="kd-block-field">
+          <mat-label>Your question</mat-label>
+          <textarea
+            matInput
+            rows="3"
+            [ngModel]="questionText()"
+            (ngModelChange)="questionText.set($event)"
+            placeholder="e.g. Which contracts mention renewal clauses?"
+          ></textarea>
+        </mat-form-field>
+
+        <details class="kd-advanced">
+          <summary>Advanced filter (JSON, optional)</summary>
+          <mat-form-field appearance="outline" class="kd-block-field">
+            <mat-label>Dynamic filter JSON</mat-label>
+            <textarea
+              matInput
+              rows="3"
+              [ngModel]="dynamicFilterText()"
+              (ngModelChange)="dynamicFilterText.set($event)"
+              placeholder='{"property":"region","operator":"equals","value":"EMEA"}'
+            ></textarea>
+          </mat-form-field>
+        </details>
+
+        @if (questionError()) {
+          <p class="kd-error">{{ questionError() }}</p>
+        }
+
+        <div class="kd-actions">
+          <button mat-flat-button color="primary" [disabled]="!canAsk()" (click)="submitQuestion()">
+            <mat-icon>send</mat-icon>
+            Ask
+          </button>
+        </div>
+      </section>
+
+      <section class="kd-card kd-answer">
+        <div class="kd-card__header">
+          <div>
+            <span class="kd-section-label">Response</span>
+            <h2>Answer &amp; citations</h2>
+          </div>
+
+          @if (answer(); as currentAnswer) {
+            <span
+              class="kd-status-chip"
+              [class.kd-status-chip--submitted]="currentAnswer.status === 'Submitted'"
+              [class.kd-status-chip--complete]="currentAnswer.status === 'Complete'"
+              [class.kd-status-chip--error]="currentAnswer.status === 'Error'"
+              [class.kd-status-chip--blocked]="currentAnswer.status === 'Blocked'"
+            >
+              {{ currentAnswer.status }}
+            </span>
+          }
+        </div>
+
+        @if (answer(); as currentAnswer) {
+          <div class="kd-answer__layout">
+            <div class="kd-answer__body">
+              @if (currentAnswer.answer) {
+                <p class="kd-answer__text">{{ currentAnswer.answer }}</p>
+              } @else {
+                <p class="kd-empty">No answer text yet.</p>
+              }
+
+              @if (currentAnswer.error) {
+                <p class="kd-error">{{ currentAnswer.error }}</p>
+              }
+
+              <div class="kd-feedback">
+                <button
+                  mat-stroked-button
+                  [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                  (click)="submitFeedback('Good')"
+                >
+                  <mat-icon>thumb_up</mat-icon>
+                  Helpful
+                </button>
+                <button
+                  mat-stroked-button
+                  [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                  (click)="submitFeedback('Bad')"
+                >
+                  <mat-icon>thumb_down</mat-icon>
+                  Not helpful
+                </button>
+                <button
+                  mat-stroked-button
+                  [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                  (click)="submitFeedback('Retry')"
+                >
+                  <mat-icon>refresh</mat-icon>
+                  Retry
+                </button>
+              </div>
+            </div>
+
+            <aside class="kd-citations">
+              <div class="kd-citations__header">
+                <span class="kd-section-label">Citations</span>
+                <span class="kd-pill">{{ currentAnswer.citations.length }}</span>
+              </div>
+
+              @if (currentAnswer.citations.length === 0) {
+                <p class="kd-empty">No citations returned.</p>
+              } @else {
+                @for (
+                  citation of currentAnswer.citations;
+                  track citation.objectId + '-' + (citation.referenceId ?? 'citation')
+                ) {
+                  <article class="kd-citation">
+                    <p class="kd-citation__title">{{ citation.title || citation.objectId }}</p>
+                    @if (citation.excerpt) {
+                      <p class="kd-citation__excerpt">{{ citation.excerpt }}</p>
+                    }
+                    @if (citation.score !== undefined) {
+                      <p class="kd-citation__meta">Score: {{ citation.score }}</p>
+                    }
+                  </article>
+                }
+              }
+            </aside>
+          </div>
+        } @else {
+          <div class="kd-empty-state">
+            <mat-icon>psychology</mat-icon>
+            <p>Ask a question to see the grounded answer and citations here.</p>
+          </div>
+        }
+      </section>
+    </main>
+
+    <aside class="kd-side">
+      <section class="kd-card kd-agents">
+        <div class="kd-card__header">
+          <div>
+            <span class="kd-section-label">Agents</span>
+            <h3>Available ({{ agents().length }})</h3>
+          </div>
+          <button
+            mat-icon-button
+            matTooltip="Create agent"
+            (click)="openCreateAgentDialog()"
+            aria-label="Create agent"
+          >
+            <mat-icon>add</mat-icon>
+          </button>
+        </div>
+
+        @if (loadingAgents()) {
+          <div class="kd-state"><mat-spinner diameter="20" /></div>
+        } @else if (agents().length === 0) {
+          <p class="kd-empty">No agents yet. Create one to begin.</p>
+        } @else {
+          <ul class="kd-agent-list">
+            @for (agent of agents(); track agent.id) {
+              <li>
+                <button
+                  type="button"
+                  class="kd-agent-item"
+                  [class.active]="selectedAgentId() === agent.id"
+                  (click)="selectAgent(agent.id)"
+                >
+                  <span class="kd-agent-item__name">{{ agent.name }}</span>
+                  <span class="kd-agent-item__meta">{{ agent.modelName }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      @if (selectedAgent(); as agent) {
+        <section class="kd-card kd-agent-summary">
+          <div class="kd-card__header">
+            <div>
+              <span class="kd-section-label">Selected</span>
+              <h3>{{ agent.name }}</h3>
+            </div>
+            <div class="kd-agent-summary__actions">
+              <button
+                mat-icon-button
+                matTooltip="Edit agent"
+                (click)="openEditAgentDialog()"
+                aria-label="Edit agent"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                matTooltip="Delete agent"
+                color="warn"
+                [disabled]="deletingAgent()"
+                (click)="deleteAgent()"
+                aria-label="Delete agent"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          @if (agent.description) {
+            <p class="kd-muted">{{ agent.description }}</p>
+          }
+          <div class="kd-chip-row">
+            <span class="kd-chip">{{ agent.modelName }}</span>
+            <span class="kd-chip kd-chip--ghost">{{ agent.agentType || 'standard' }}</span>
+            @if (agent.sourceIds.length > 0) {
+              <span class="kd-chip kd-chip--ghost">{{ agent.sourceIds.length }} sources</span>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="kd-card">
+        <div class="kd-card__header">
+          <div>
+            <span class="kd-section-label">History</span>
+            <h3>Recent questions</h3>
+          </div>
+          @if (selectedAgentId()) {
+            <button
+              mat-icon-button
+              matTooltip="Reload history"
+              (click)="loadHistory(selectedAgentId() ?? '')"
+              aria-label="Reload history"
+            >
+              <mat-icon>refresh</mat-icon>
+            </button>
+          }
+        </div>
+
+        @if (loadingHistory()) {
+          <div class="kd-state"><mat-spinner diameter="20" /></div>
+        } @else if (history().length === 0) {
+          <p class="kd-empty">No recent questions.</p>
+        } @else {
+          <ul class="kd-history">
+            @for (item of history(); track item.id) {
+              <li class="kd-history__item">
+                <p class="kd-history__question">{{ item.question }}</p>
+                <p class="kd-history__meta">
+                  {{ item.status }} · {{ item.dateCreated | date: 'short' }}
+                </p>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="kd-card">
+        <div class="kd-card__header">
+          <div>
+            <span class="kd-section-label">Models</span>
+            <h3>Reference data</h3>
+          </div>
+        </div>
+
+        @if (loadingReferenceData()) {
+          <div class="kd-state"><mat-spinner diameter="20" /></div>
+        } @else if (models().length === 0) {
+          <p class="kd-empty">No models loaded.</p>
+        } @else {
+          <ul class="kd-reference">
+            @for (model of models(); track model.name) {
+              <li class="kd-reference__item">
+                <span>{{ model.name }}</span>
+                <span class="kd-reference__meta">{{ model.status || 'Unknown' }}</span>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+    </aside>
+  </div>
+</div>

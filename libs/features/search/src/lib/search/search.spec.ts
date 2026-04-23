@@ -6,13 +6,12 @@ import {
   provideRouter,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { SearchComponent } from './search';
 import {
   DocumentDetailService,
-  KnowledgeDiscoveryService,
   NuxeoApiBase,
   SearchAggregationService,
   SearchService,
@@ -55,10 +54,6 @@ const mockAiFeatureFlagService = {
   aiEnabled: signal(true),
 };
 
-const mockKnowledgeDiscoveryService = {
-  query: vi.fn(),
-};
-
 const mockNuxeoApiBase = {
   nxqlSearch: vi.fn(() => of({ entries: [] })),
 };
@@ -70,14 +65,6 @@ describe('SearchComponent', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockSearchService.search.mockReturnValue(of({ items: [], aggregations: {} }));
-    mockKnowledgeDiscoveryService.query.mockReturnValue(
-      of({
-        answer: '',
-        status: 'Complete',
-        items: [],
-        sources: [],
-      }),
-    );
 
     await TestBed.configureTestingModule({
       imports: [SearchComponent],
@@ -96,7 +83,6 @@ describe('SearchComponent', () => {
         { provide: SelectionService, useValue: mockSelectionService },
         { provide: AiGatewayService, useValue: mockAiGatewayService },
         { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
-        { provide: KnowledgeDiscoveryService, useValue: mockKnowledgeDiscoveryService },
         { provide: NuxeoApiBase, useValue: mockNuxeoApiBase },
       ],
     })
@@ -111,49 +97,5 @@ describe('SearchComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
-  });
-
-  it('should execute Knowledge Discovery and populate answer state', () => {
-    mockKnowledgeDiscoveryService.query.mockReturnValue(
-      of({
-        answer: 'Renewal terms are present in the MSA.',
-        status: 'Complete',
-        items: [],
-        sources: [{ objectId: 'doc-1', title: 'MSA', excerpt: 'Renewal terms...' }],
-      }),
-    );
-
-    component.toggleKnowledgeDiscovery();
-    component.knowledgeDiscoveryQuery.set('renewal terms');
-    component.executeKnowledgeDiscovery();
-
-    expect(mockKnowledgeDiscoveryService.query).toHaveBeenCalledWith({
-      query: 'renewal terms',
-      limit: 10,
-    });
-    expect(component.knowledgeDiscoveryAnswer()).toContain('Renewal terms');
-    expect(component.knowledgeDiscoveryStatus()).toBe('Complete');
-    expect(component.knowledgeDiscoverySources()).toHaveLength(1);
-    expect(component.knowledgeDiscoveryError()).toBeNull();
-    expect(component.knowledgeDiscoverySearchExecuted()).toBe(true);
-    expect(component.knowledgeDiscoveryLoading()).toBe(false);
-  });
-
-  it('should set a Knowledge Discovery error when the endpoint fails', () => {
-    mockKnowledgeDiscoveryService.query.mockReturnValue(
-      throwError(() => ({
-        error: { message: 'Knowledge Discovery endpoint is not deployed.' },
-      })),
-    );
-
-    component.toggleKnowledgeDiscovery();
-    component.knowledgeDiscoveryQuery.set('renewal terms');
-    component.executeKnowledgeDiscovery();
-
-    expect(component.knowledgeDiscoveryError()).toBe(
-      'Knowledge Discovery endpoint is not deployed.',
-    );
-    expect(component.knowledgeDiscoveryLoading()).toBe(false);
-    expect(component.knowledgeDiscoverySearchExecuted()).toBe(false);
   });
 });

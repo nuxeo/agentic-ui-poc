@@ -12,15 +12,6 @@
           <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
           {{ aiSearchMode() ? 'AI Search Active' : 'AI Search' }}
         </button>
-        <button
-          mat-flat-button
-          class="kd-toggle-btn"
-          [class.active]="knowledgeDiscoveryMode()"
-          (click)="toggleKnowledgeDiscovery()"
-        >
-          <mat-icon class="kd-search-icon">travel_explore</mat-icon>
-          {{ knowledgeDiscoveryMode() ? 'Knowledge Discovery Active' : 'Knowledge Discovery' }}
-        </button>
         @if (aiSearchMode() && aiGeneratedNxql()) {
           <button
             mat-stroked-button
@@ -84,82 +75,6 @@
               <span>{{ aiExplanation() }}</span>
             </div>
             <pre class="ai-nxql-code">{{ aiGeneratedNxql() }}</pre>
-          </div>
-        }
-      }
-
-      @if (knowledgeDiscoveryMode()) {
-        <div class="kd-search-bar">
-          <mat-icon class="kd-search-icon">travel_explore</mat-icon>
-          <input
-            class="kd-search-input"
-            type="text"
-            placeholder="Ask Knowledge Discovery... e.g. 'What contracts mention renewal clauses?'"
-            [ngModel]="knowledgeDiscoveryQuery()"
-            (ngModelChange)="knowledgeDiscoveryQuery.set($event)"
-            (keydown.enter)="executeKnowledgeDiscovery()"
-          />
-          @if (knowledgeDiscoveryLoading()) {
-            <mat-spinner diameter="20" class="kd-search-spinner"></mat-spinner>
-          } @else {
-            <button
-              mat-icon-button
-              class="kd-search-go"
-              (click)="executeKnowledgeDiscovery()"
-              [disabled]="!knowledgeDiscoveryQuery().trim()"
-            >
-              <mat-icon>send</mat-icon>
-            </button>
-          }
-        </div>
-
-        @if (knowledgeDiscoveryError()) {
-          <div class="kd-error">
-            <mat-icon>error_outline</mat-icon>
-            {{ knowledgeDiscoveryError() }}
-          </div>
-        }
-
-        @if (knowledgeDiscoverySearchExecuted()) {
-          <div class="kd-answer-panel">
-            <div class="kd-answer-header">
-              <div>
-                <p class="kd-answer-title">Knowledge Discovery Answer</p>
-                @if (knowledgeDiscoveryStatus(); as status) {
-                  <p class="kd-answer-status">Status: {{ status }}</p>
-                }
-              </div>
-            </div>
-
-            @if (knowledgeDiscoveryAnswer()) {
-              <p class="kd-answer-copy">{{ knowledgeDiscoveryAnswer() }}</p>
-            } @else {
-              <p class="kd-answer-copy kd-answer-copy--muted">
-                No grounded answer was returned for this question.
-              </p>
-            }
-
-            @if (knowledgeDiscoverySources().length > 0) {
-              <div class="kd-sources">
-                <p class="kd-sources-title">Sources</p>
-                <div class="kd-source-list">
-                  @for (
-                    source of knowledgeDiscoverySources();
-                    track source.objectId + '-' + (source.referenceId ?? 'source')
-                  ) {
-                    <div class="kd-source-card">
-                      <p class="kd-source-title">{{ source.title }}</p>
-                      @if (source.path) {
-                        <p class="kd-source-path">{{ source.path }}</p>
-                      }
-                      @if (source.excerpt) {
-                        <p class="kd-source-excerpt">{{ source.excerpt }}</p>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-            }
           </div>
         }
       }

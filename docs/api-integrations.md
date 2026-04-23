@@ -952,79 +952,87 @@ No API call — copies the current page URL to the system clipboard using `navig
 
 <!-- TEMPLATE: Copy the block below when adding a new API integration -->
 
-## 22. Knowledge Discovery Query
+## 22. Knowledge Discovery (via Nuxeo CIC connector)
 
-| Field           | Value                                                                                                    |
-| --------------- | -------------------------------------------------------------------------------------------------------- |
-| **Service**     | `KnowledgeDiscoveryService` (`libs/shared/nuxeo-client/src/lib/services/knowledge-discovery.service.ts`) |
-| **Method**      | `query({ query, limit })`                                                                                |
-| **HTTP Method** | `POST`                                                                                                   |
-| **Endpoint**    | `/nuxeo/api/v1/automation/KnowledgeDiscovery.Query`                                                      |
+| Field           | Value                                                                             |
+| --------------- | --------------------------------------------------------------------------------- |
+| **Service**     | `KdClientService` (`libs/shared/kd-client/src/lib/kd-client.service.ts`)          |
+| **Methods**     | `listAgents`, `getAgent`, `submitQuestion`, `getAnswer`, `submitFeedback`, others |
+| **HTTP Method** | `POST`                                                                            |
+| **Endpoint**    | `/nuxeo/site/automation/<OpName>` (Hyland CIC automation operations)              |
 
-**Request Payload:**
+The Angular app calls Knowledge Discovery through Nuxeo automation operations exposed
+by the **Hyland Content Intelligence Connector (CIC)** installed on the Nuxeo server.
+There is no separate backend in this repo — only the Angular app is deployed to the
+marketplace.
+
+**Operation mapping (overridable via `KD_CIC_OPERATIONS`):**
+
+| Client method        | Default automation operation                      |
+| -------------------- | ------------------------------------------------- |
+| `listAgents`         | `HylandCIC.KnowledgeDiscovery.ListAgents`         |
+| `getAgent`           | `HylandCIC.KnowledgeDiscovery.GetAgent`           |
+| `createAgent`        | `HylandCIC.KnowledgeDiscovery.CreateAgent`        |
+| `updateAgent`        | `HylandCIC.KnowledgeDiscovery.UpdateAgent`        |
+| `deleteAgent`        | `HylandCIC.KnowledgeDiscovery.DeleteAgent`        |
+| `listModels`         | `HylandCIC.KnowledgeDiscovery.ListModels`         |
+| `listGuardrails`     | `HylandCIC.KnowledgeDiscovery.ListGuardrails`     |
+| `submitQuestion`     | `HylandCIC.KnowledgeDiscovery.SubmitQuestion`     |
+| `getAnswer`          | `HylandCIC.KnowledgeDiscovery.GetAnswer`          |
+| `submitFeedback`     | `HylandCIC.KnowledgeDiscovery.SubmitFeedback`     |
+| `getQuestionHistory` | `HylandCIC.KnowledgeDiscovery.GetQuestionHistory` |
+
+**Request body (all operations):**
 
 ```json
 {
   "params": {
-    "query": "What contracts mention renewal clauses?",
-    "limit": 10
-  },
-  "context": {}
+    "agentId": "agent-123",
+    "question": "What contracts mention renewal clauses?",
+    "dynamicFilter": {
+      "property": "region",
+      "operator": "equals",
+      "value": "EMEA"
+    }
+  }
 }
 ```
 
-**Headers:**
-
-| Header          | Value                                                                         |
-| --------------- | ----------------------------------------------------------------------------- |
-| `Authorization` | `Basic <credentials>` or same-origin session via the existing Nuxeo auth flow |
-| `Content-Type`  | `application/json`                                                            |
-| `properties`    | `dublincore,file,common`                                                      |
-
-**Expected Response (200 OK):**
+**Normalized answer payload (returned by the CIC operation):**
 
 ```json
 {
+  "questionId": "question-123",
+  "agentId": "agent-123",
+  "question": "What contracts mention renewal clauses?",
+  "status": "Complete",
   "answer": "The renewal clause appears in the master services agreement.",
-  "responseCompleteness": "Complete",
-  "items": [
-    {
-      "uid": "doc-123",
-      "title": "MSA",
-      "type": "File",
-      "path": "/default-domain/workspaces/msa.pdf"
-    }
-  ],
-  "objectReferences": [
+  "citations": [
     {
       "objectId": "doc-123",
-      "objectTitle": "MSA",
-      "references": [
-        {
-          "referenceId": "section-4",
-          "rankScore": 0.98,
-          "content": "The agreement includes renewal terms for successive one-year periods."
-        }
-      ]
+      "referenceId": "section-4",
+      "title": "MSA",
+      "excerpt": "The agreement includes renewal terms for successive one-year periods.",
+      "score": 0.98
     }
-  ]
+  ],
+  "error": null
 }
 ```
 
-**Frontend Contract Notes:**
+**Auth & secrets:**
 
-- This repo expects the Nuxeo-side implementation to keep KD credentials and OAuth handling server-side.
-- The Angular app consumes a normalized response shaped as `KnowledgeDiscoveryResponse`.
-- `items` is optional but recommended when the endpoint can map grounded answers back to Nuxeo documents for reuse in the existing Search results UI.
-- `objectReferences` / `sources` should provide grounded citations or excerpts that can be shown even when no `items` are returned.
+- The browser authenticates to Nuxeo through the existing `nuxeoAuthInterceptor` (SAML cookie or Basic).
+- KD client credentials and OAuth token caching live on the **Nuxeo server** (inside the CIC connector), never in the Angular app.
 
 **Error Handling:**
 
-| Status        | Behavior                                                                                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------- |
-| `404`         | Treat as endpoint not deployed; show Knowledge Discovery unavailable state while keeping normal Search usable |
-| `401` / `403` | Show authorization failure message for the KD flow                                                            |
-| `5xx`         | Show transient upstream failure message and preserve normal Search results                                    |
+| Status        | Behavior                                                                   |
+| ------------- | -------------------------------------------------------------------------- |
+| `400`         | Invalid agent payload, malformed filter JSON, or other request-shape issue |
+| `401` / `403` | Surface authorization failure from Nuxeo / CIC                             |
+| `404`         | Show missing agent/question state in the dedicated KD page                 |
+| `5xx`         | Treat as transient Nuxeo/CIC/KD upstream failure                           |
 
 <!--
 ## N. Title

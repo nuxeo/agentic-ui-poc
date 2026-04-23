@@ -36,6 +36,11 @@ export const routes: Routes = [
         loadChildren: () => import('@agentic-ui/feature-search').then((m) => m.searchRoutes),
       },
       {
+        path: 'knowledge-discovery',
+        loadChildren: () =>
+          import('@agentic-ui/feature-knowledge-discovery').then((m) => m.knowledgeDiscoveryRoutes),
+      },
+      {
         path: 'expired-queue',
         loadComponent: placeholder,
       },

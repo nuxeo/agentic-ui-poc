@@ -1,7 +1,12 @@
 # Services — All Public Methods
 
-All services live in `libs/shared/nuxeo-client/src/lib/services/`.
-Import path: `@agentic-ui/shared/nuxeo-client`.
+Most frontend data services live in `libs/shared/nuxeo-client/src/lib/services/` and are
+imported from `@agentic-ui/shared/nuxeo-client`.
+
+Knowledge Discovery uses the dedicated shared client in `libs/shared/kd-client/src/lib/`
+and is imported from `@agentic-ui/shared/kd-client`. It calls Knowledge Discovery through
+Nuxeo automation operations exposed by the Hyland Content Intelligence Connector (CIC) —
+there is no separate backend in this repo.
 
 ---
 
@@ -79,13 +84,24 @@ saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown>
 
 ---
 
-## KnowledgeDiscoveryService (`knowledge-discovery.service.ts`)
+## KdClientService (`kd-client.service.ts`)
 
-Shared Nuxeo-backed client for Knowledge Discovery responses exposed by a Nuxeo automation
-operation or equivalent server endpoint.
+Frontend client for Knowledge Discovery. Each method POSTs to the corresponding
+Nuxeo automation operation (`/nuxeo/site/automation/<OpName>`) provided by the
+CIC connector. Operation names are configurable via the `KD_CIC_OPERATIONS` token.
 
 ```typescript
-query(request: KnowledgeDiscoveryQueryRequest): Observable<KnowledgeDiscoveryResponse>
+listAgents(): Observable<KdAgentSummary[]>
+getAgent(agentId: string): Observable<KdAgentDetails>
+createAgent(request: KdAgentUpsertRequest): Observable<KdAgentDetails>
+updateAgent(agentId: string, request: KdAgentUpsertRequest): Observable<KdAgentDetails>
+deleteAgent(agentId: string): Observable<void>
+listModels(): Observable<KdModelInfo[]>
+listGuardrails(): Observable<{ guardrailGroups: KdGuardrailGroup[] }>
+submitQuestion(request: KdQuestionRequest): Observable<KdQuestionSubmission>
+getAnswer(questionId: string): Observable<KdAnswerResponse>
+submitFeedback(questionId: string, request: KdFeedbackRequest): Observable<void>
+getQuestionHistory(agentId: string, pageNumber?: number, pageSize?: number): Observable<KdQuestionHistoryPage>
 ```
 
 ---

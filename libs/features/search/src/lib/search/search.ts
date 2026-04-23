@@ -36,14 +36,11 @@ import {
   SearchAggregationService,
   SelectionService,
   DocumentDetailService,
-  KnowledgeDiscoveryService,
   NON_CONTENT_DOCUMENT_TYPES,
   NuxeoApiBase,
   type SearchResultItem,
   type SearchResponse,
   type SearchQueryParams,
-  type KnowledgeDiscoverySource,
-  type KnowledgeDiscoveryStatus,
 } from '@agentic-ui/shared/nuxeo-client';
 import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
@@ -172,7 +169,6 @@ export class SearchComponent {
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
-  private readonly knowledgeDiscoveryService = inject(KnowledgeDiscoveryService);
   private readonly nuxeoApi = inject(NuxeoApiBase);
   private readonly aiGateway = inject(AiGatewayService);
   readonly featureFlags = inject(AiFeatureFlagService);
@@ -192,17 +188,6 @@ export class SearchComponent {
   readonly aiResults = signal<SearchResultItem[]>([]);
   readonly aiSearchExecuted = signal(false);
   private readonly aiSuggestSubject = new Subject<string>();
-
-  // Knowledge Discovery state
-  readonly knowledgeDiscoveryMode = signal(false);
-  readonly knowledgeDiscoveryQuery = signal('');
-  readonly knowledgeDiscoveryLoading = signal(false);
-  readonly knowledgeDiscoveryError = signal<string | null>(null);
-  readonly knowledgeDiscoveryAnswer = signal('');
-  readonly knowledgeDiscoveryStatus = signal<KnowledgeDiscoveryStatus | null>(null);
-  readonly knowledgeDiscoverySources = signal<KnowledgeDiscoverySource[]>([]);
-  readonly knowledgeDiscoveryResults = signal<SearchResultItem[]>([]);
-  readonly knowledgeDiscoverySearchExecuted = signal(false);
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -337,11 +322,7 @@ export class SearchComponent {
 
   readonly filteredResults = computed(() => {
     const source =
-      this.knowledgeDiscoveryMode() && this.knowledgeDiscoverySearchExecuted()
-        ? this.knowledgeDiscoveryResults()
-        : this.aiSearchMode() && this.aiSearchExecuted()
-          ? this.aiResults()
-          : this.results();
+      this.aiSearchMode() && this.aiSearchExecuted() ? this.aiResults() : this.results();
     return source.map(mapToView);
   });
 
@@ -964,14 +945,7 @@ export class SearchComponent {
   toggleAiSearch(): void {
     const next = !this.aiSearchMode();
     this.aiSearchMode.set(next);
-
-    if (next) {
-      this.knowledgeDiscoveryMode.set(false);
-      this.resetKnowledgeDiscoveryState();
-      return;
-    }
-
-    this.resetAiSearchState();
+    if (!next) this.resetAiSearchState();
   }
 
   onAiQueryInput(value: string): void {
@@ -1007,56 +981,6 @@ export class SearchComponent {
         error: (err) => {
           this.aiError.set(err?.error?.error ?? 'AI search failed. Try again.');
           this.aiLoading.set(false);
-        },
-      });
-  }
-
-  toggleKnowledgeDiscovery(): void {
-    const next = !this.knowledgeDiscoveryMode();
-    this.knowledgeDiscoveryMode.set(next);
-
-    if (next) {
-      this.aiSearchMode.set(false);
-      this.resetAiSearchState();
-      return;
-    }
-
-    this.resetKnowledgeDiscoveryState();
-  }
-
-  executeKnowledgeDiscovery(): void {
-    const query = this.knowledgeDiscoveryQuery().trim();
-    if (!query) return;
-
-    this.knowledgeDiscoveryLoading.set(true);
-    this.knowledgeDiscoveryError.set(null);
-    this.knowledgeDiscoveryAnswer.set('');
-    this.knowledgeDiscoveryStatus.set(null);
-    this.knowledgeDiscoverySources.set([]);
-
-    this.knowledgeDiscoveryService
-      .query({ query, limit: 10 })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (response) => {
-          this.knowledgeDiscoveryAnswer.set(response.answer);
-          this.knowledgeDiscoveryStatus.set(response.status);
-          this.knowledgeDiscoverySources.set(response.sources);
-          this.knowledgeDiscoveryResults.set(response.items);
-          this.knowledgeDiscoverySearchExecuted.set(true);
-          this.knowledgeDiscoveryLoading.set(false);
-
-          if (response.items.length > 0) {
-            this.loadThumbnails(response.items);
-          }
-        },
-        error: (err) => {
-          this.knowledgeDiscoveryError.set(
-            err?.error?.error ??
-              err?.error?.message ??
-              'Knowledge Discovery is unavailable right now. Try again later.',
-          );
-          this.knowledgeDiscoveryLoading.set(false);
         },
       });
   }
@@ -1133,16 +1057,5 @@ export class SearchComponent {
     this.aiResults.set([]);
     this.aiSearchExecuted.set(false);
     this.aiLoading.set(false);
-  }
-
-  private resetKnowledgeDiscoveryState(): void {
-    this.knowledgeDiscoveryQuery.set('');
-    this.knowledgeDiscoveryLoading.set(false);
-    this.knowledgeDiscoveryError.set(null);
-    this.knowledgeDiscoveryAnswer.set('');
-    this.knowledgeDiscoveryStatus.set(null);
-    this.knowledgeDiscoverySources.set([]);
-    this.knowledgeDiscoveryResults.set([]);
-    this.knowledgeDiscoverySearchExecuted.set(false);
   }
 }
