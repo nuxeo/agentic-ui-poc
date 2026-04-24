@@ -58,7 +58,8 @@ export const appConfig: ApplicationConfig = {
         return () => auth.username();
       },
     },
-    { provide: AI_BACKEND_URL, useValue: '' },
+    // AI operations served by the Java nuxeo-ai-package via Nuxeo Automation API
+    { provide: AI_BACKEND_URL, useValue: '/nuxeo' },
     {
       // Nuxeo Drive connects directly to the Nuxeo server (bypassing the Angular dev proxy).
       // When served via the Angular dev server (:4200), use the real Nuxeo URL (:8080).
