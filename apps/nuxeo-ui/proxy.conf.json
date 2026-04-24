@@ -8,10 +8,5 @@
       "X-NXproperties": "*",
       "Origin": "http://localhost:8080"
     }
-  },
-  "/ai": {
-    "target": "http://localhost:3000",
-    "secure": false,
-    "changeOrigin": true
   }
 }
