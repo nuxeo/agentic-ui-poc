@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Nuxeo Marketplace install script.
+  Copies the AI core bundle JAR into Nuxeo's bundles directory.
+  No server-side configuration required here — keys go in nuxeo.conf.
+-->
+<install>
+  <update
+    file="${package.root}/install/bundles/nuxeo-ai-core-${package.version}.jar"
+    todir="${env.bundles}" />
+</install>

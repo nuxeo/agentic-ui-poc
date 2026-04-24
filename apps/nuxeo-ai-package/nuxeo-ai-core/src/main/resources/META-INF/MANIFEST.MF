@@ -1,0 +1,15 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Nuxeo AI Operations (HAIP)
+Bundle-SymbolicName: com.hyland.nuxeo.ai.core;singleton:=true
+Bundle-Version: 1.0.0
+Bundle-Vendor: Hyland Software
+Nuxeo-Component: OSGI-INF/ai-operations-contrib.xml
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+Import-Package: org.nuxeo.ecm.automation.core.annotations,
+ org.nuxeo.ecm.core.api,
+ org.nuxeo.ecm.core.api.security,
+ org.nuxeo.runtime.api,
+ com.fasterxml.jackson.databind,
+ org.slf4j
+

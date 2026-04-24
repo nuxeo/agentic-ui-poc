@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<component name="com.hyland.nuxeo.ai.operations" version="1.0">
+
+  <documentation>
+    Registers all AI Automation Operations backed by the Hyland AI Platform (HAIP).
+    Configure the HAIP connection in nuxeo.conf:
+      haip.api.key=sk-...
+      haip.base.url=https://ai-platform-public.api.ai.dev.app.hyland.com
+      haip.model=anthropic.claude-3-5-sonnet-20241022-v2:0
+      haip.model.fast=amazon.nova-micro-v1:0
+      haip.environment.id=  (optional)
+  </documentation>
+
+  <require>org.nuxeo.ecm.core.CoreExtensions</require>
+  <require>org.nuxeo.ecm.automation.core.AutomationServiceComponent</require>
+
+  <extension target="org.nuxeo.ecm.core.operation.OperationServiceComponent"
+             point="operations">
+
+    <operation class="com.hyland.nuxeo.ai.operations.AISummarizeOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AIInsightsOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AISuggestTagsOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AIClassifyOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AINlToNxqlOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AISentimentOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AISimilarOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AIAnomaliesOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AINlPermissionsOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AIAuditOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AIAuditSummarizeOperation"/>
+    <operation class="com.hyland.nuxeo.ai.operations.AIChatOperation"/>
+
+  </extension>
+
+</component>

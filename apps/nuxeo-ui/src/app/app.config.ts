@@ -48,6 +48,7 @@ export const appConfig: ApplicationConfig = {
         return () => auth.username();
       },
     },
-    { provide: AI_BACKEND_URL, useValue: '' },
+    // Points to the Nuxeo server — the Java AI package registers operations under /nuxeo/api/v1/automation/AI.*
+    { provide: AI_BACKEND_URL, useValue: '/nuxeo' },
   ],
 };

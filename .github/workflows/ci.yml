@@ -11,6 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ──────────────────────────────────────────────
+  # Angular / Node — Nx affected build
+  # ──────────────────────────────────────────────
   lint-build-test:
     runs-on: ubuntu-latest
     steps:
@@ -52,3 +55,51 @@ jobs:
 
       # - name: Test affected projects
       #   run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD
+
+  # ──────────────────────────────────────────────
+  # Java — Nuxeo AI Marketplace Package
+  # Only runs when files under apps/nuxeo-ai-package/ change
+  # ──────────────────────────────────────────────
+  build-java-package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/nuxeo-ai-package
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check if Java package files changed
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            java:
+              - 'apps/nuxeo-ai-package/**'
+
+      - name: Set up Java 11
+        if: steps.changes.outputs.java == 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build Nuxeo AI package
+        if: steps.changes.outputs.java == 'true'
+        run: mvn clean package -DskipTests -B
+        env:
+          # Nuxeo Maven repo requires no auth for public packages
+          MAVEN_OPTS: -Xmx1024m
+
+      - name: Upload Marketplace ZIP artifact
+        if: steps.changes.outputs.java == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuxeo-ai-operations-${{ github.sha }}
+          path: apps/nuxeo-ai-package/nuxeo-ai-package/target/nuxeo-ai-operations-*.zip
+          retention-days: 30
+
+      - name: No Java changes detected — skipping build
+        if: steps.changes.outputs.java != 'true'
+        run: echo "No changes in apps/nuxeo-ai-package/ — Java build skipped."
