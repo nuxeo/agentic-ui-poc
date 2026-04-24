@@ -77,42 +77,6 @@ describe('KdClientService', () => {
     expect(agent.id).toBe('agent-1');
   });
 
-  it('createAgent sends the payload as stringified jsonPayloadStr via Invoke', async () => {
-    const payload = {
-      name: 'New Agent',
-      description: '',
-      modelName: 'm',
-      instructions: '',
-      sourceIds: [],
-      accessRights: [],
-      staticFilterExpression: null,
-      dynamicFilterTemplate: null,
-      guardrails: [],
-    };
-    const call$ = firstValueFrom(service.createAgent(payload));
-    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
-    expect(req.request.body).toEqual({
-      params: {
-        httpMethod: 'POST',
-        endpoint: '/agent/agents',
-        jsonPayloadStr: JSON.stringify(payload),
-      },
-    });
-    req.flush(envelope({ ...payload, id: 'agent-9' }));
-    const agent = await call$;
-    expect(agent.id).toBe('agent-9');
-  });
-
-  it('deleteAgent issues DELETE through the Invoke passthrough', async () => {
-    const done$ = firstValueFrom(service.deleteAgent('agent-1'));
-    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
-    expect(req.request.body).toEqual({
-      params: { httpMethod: 'DELETE', endpoint: '/agent/agents/agent-1' },
-    });
-    req.flush(envelope(null, 204, 'No Content'));
-    await expect(done$).resolves.toBeUndefined();
-  });
-
   it('submitQuestion uses askQuestionAndGetAnswer and caches the one-shot result', async () => {
     const submission$ = firstValueFrom(
       service.submitQuestion({ agentId: 'agent-1', question: 'Q?' }),

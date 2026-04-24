@@ -28,11 +28,19 @@ export interface KdGuardrailGroup {
   guardrails: KdGuardrail[];
 }
 
+/**
+ * Model entry as returned by `GET /agent/models` on the Knowledge Discovery
+ * service. We mirror the upstream field names exactly (`modelName`,
+ * `displayName`, `status`, `eolDate`, `replacementModelName`) so the UI
+ * can render the catalogue verbatim, including deprecation metadata.
+ */
 export interface KdModelInfo {
-  name: string;
+  modelName: string;
+  displayName?: string;
+  /** Typically one of 'Active' | 'Deprecated' | 'Unavailable'. */
   status?: string;
-  eolDate?: string;
-  replacementModelName?: string;
+  eolDate?: string | null;
+  replacementModelName?: string | null;
 }
 
 export interface KdAgentDetails extends KdAgentSummary {
@@ -46,8 +54,6 @@ export interface KdAgentDetails extends KdAgentSummary {
   agentType?: string;
   knowledgeGraphDomainId?: string;
 }
-
-export type KdAgentUpsertRequest = Omit<KdAgentDetails, 'id' | 'version'>;
 
 export interface KdQuestionRequest {
   agentId: string;

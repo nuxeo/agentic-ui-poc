@@ -13,7 +13,6 @@ import {
 import type {
   KdAgentDetails,
   KdAgentSummary,
-  KdAgentUpsertRequest,
   KdAnswerResponse,
   KdFeedbackRequest,
   KdGuardrailGroup,
@@ -39,6 +38,27 @@ interface CicEnvelope<T> {
 }
 
 /**
+ * Error thrown when the upstream Discovery service returns a non-2xx
+ * `responseCode` in the CIC envelope. Carries the upstream HTTP status so
+ * the UI can render targeted advice (e.g. a 400 for an incompatible dynamic
+ * filter vs. a 403 for a tenant-provisioning problem).
+ */
+export class KdDiscoveryError extends Error {
+  constructor(
+    public readonly responseCode: number,
+    public readonly responseMessage: string,
+    public readonly upstreamBody: unknown,
+  ) {
+    super(
+      responseMessage
+        ? `Knowledge Discovery error (${responseCode}): ${responseMessage}`
+        : `Knowledge Discovery returned HTTP ${responseCode}.`,
+    );
+    this.name = 'KdDiscoveryError';
+  }
+}
+
+/**
  * Talks to Knowledge Discovery through the Hyland Content Intelligence
  * Connector (CIC) installed on the Nuxeo server.
  *
@@ -48,11 +68,14 @@ interface CicEnvelope<T> {
  * `hxai-environment` header before reaching the Discovery API. No tenant
  * secrets touch the Angular bundle.
  *
- * The connector exposes a small first-class surface (getAllAgents,
- * askQuestionAndGetAnswer, conversation ops, feedback). For CRUD + metadata
- * (agent create/update/delete, list models, list guardrails, history) we
- * use its generic `HylandKnowledgeDiscovery.Invoke` operation with the
- * upstream KD API path.
+ * The CIC connector is read- and invoke-only: it exposes a small first-class
+ * surface (`getAllAgents`, `askQuestionAndGetAnswer`, conversation ops,
+ * feedback) plus a generic `HylandKnowledgeDiscovery.Invoke` that supports
+ * `GET`, `POST`, and `PUT` against the Discovery API. It does NOT expose
+ * agent create/update/delete — those flows live in the Hyland Insight admin
+ * UI and are intentionally not exposed by this service. The client
+ * therefore sticks to agent listing/details, model and guardrail metadata,
+ * question submission, question history, and feedback.
  *
  * `askQuestionAndGetAnswer` is synchronous on the server side — it polls
  * the Discovery API until the answer is ready (or until the connector's
@@ -79,25 +102,29 @@ export class KdClientService {
     return this.runInvoke<KdAgentDetails>('GET', this.paths.getAgent(agentId));
   }
 
-  createAgent(request: KdAgentUpsertRequest): Observable<KdAgentDetails> {
-    return this.runInvoke<KdAgentDetails>('POST', this.paths.createAgent, request);
-  }
-
-  updateAgent(agentId: string, request: KdAgentUpsertRequest): Observable<KdAgentDetails> {
-    return this.runInvoke<KdAgentDetails>('PUT', this.paths.updateAgent(agentId), request);
-  }
-
-  deleteAgent(agentId: string): Observable<void> {
-    return this.runInvoke<unknown>('DELETE', this.paths.deleteAgent(agentId)).pipe(
-      map(() => undefined),
-    );
-  }
-
   listModels(): Observable<KdModelInfo[]> {
-    return this.runInvoke<KdModelInfo[] | { models: KdModelInfo[] }>(
-      'GET',
-      this.paths.listModels,
-    ).pipe(map((response) => (Array.isArray(response) ? response : (response?.models ?? []))));
+    return this.runInvoke<unknown>('GET', this.paths.listModels).pipe(
+      map((response): KdModelInfo[] => {
+        const raw = Array.isArray(response)
+          ? response
+          : ((response as { models?: unknown } | null)?.models ?? []);
+        if (!Array.isArray(raw)) return [];
+        return raw.flatMap((entry): KdModelInfo[] => {
+          const m = entry as Partial<KdModelInfo> & { name?: string };
+          const modelName = m.modelName ?? m.name;
+          if (typeof modelName !== 'string' || modelName.length === 0) return [];
+          return [
+            {
+              modelName,
+              displayName: m.displayName ?? modelName,
+              status: m.status,
+              eolDate: m.eolDate ?? null,
+              replacementModelName: m.replacementModelName ?? null,
+            },
+          ];
+        });
+      }),
+    );
   }
 
   listGuardrails(): Observable<{ guardrailGroups: KdGuardrailGroup[] }> {
@@ -183,8 +210,16 @@ export class KdClientService {
       .pipe(map((envelope) => this.unwrap<T>(envelope)));
   }
 
+  /**
+   * Generic passthrough to `HylandKnowledgeDiscovery.Invoke`. The CIC
+   * connector intentionally only supports `GET`, `POST`, and `PUT`; any
+   * `DELETE` request is rejected with
+   * `Only GET, POST and PUT are supported.` Agent deletion therefore cannot
+   * be performed through this connector — it must happen in the Hyland
+   * Insight admin UI.
+   */
   private runInvoke<T>(
-    httpMethod: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    httpMethod: 'GET' | 'POST' | 'PUT',
     endpoint: string,
     payload?: unknown,
   ): Observable<T> {
@@ -201,11 +236,7 @@ export class KdClientService {
     }
     const { response, responseCode, responseMessage } = envelope;
     if (responseCode !== undefined && (responseCode < 200 || responseCode >= 300)) {
-      throw new Error(
-        responseMessage
-          ? `Knowledge Discovery error (${responseCode}): ${responseMessage}`
-          : `Knowledge Discovery returned HTTP ${responseCode}.`,
-      );
+      throw new KdDiscoveryError(responseCode, responseMessage ?? '', response);
     }
     return response;
   }

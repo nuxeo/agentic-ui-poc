@@ -43,12 +43,14 @@ export const KD_CIC_OPERATIONS = new InjectionToken<KdCicOperations>('KD_CIC_OPE
  * `HylandKnowledgeDiscovery.Invoke` passthrough. These are the paths the
  * connector will call directly against the Discovery base URL configured in
  * `nuxeo.conf` (`nuxeo.hyland.cic.discovery.baseUrl`).
+ *
+ * Only read-only paths are exposed. Agent create/update/delete are not
+ * available through the CIC connector (the Invoke op is GET/POST/PUT-only
+ * and the upstream Discovery API rejects agent creation over this auth);
+ * agent management is done in the Hyland Insight admin UI.
  */
 export interface KdUpstreamPaths {
   getAgent: (agentId: string) => string;
-  createAgent: string;
-  updateAgent: (agentId: string) => string;
-  deleteAgent: (agentId: string) => string;
   listModels: string;
   listGuardrails: string;
   getQuestionHistory: (agentId: string, pageNumber: number, pageSize: number) => string;
@@ -56,9 +58,6 @@ export interface KdUpstreamPaths {
 
 export const DEFAULT_KD_UPSTREAM_PATHS: KdUpstreamPaths = {
   getAgent: (agentId) => `/agent/agents/${encodeURIComponent(agentId)}`,
-  createAgent: '/agent/agents',
-  updateAgent: (agentId) => `/agent/agents/${encodeURIComponent(agentId)}`,
-  deleteAgent: (agentId) => `/agent/agents/${encodeURIComponent(agentId)}`,
   listModels: '/agent/models',
   listGuardrails: '/agent/guardrails',
   getQuestionHistory: (agentId, pageNumber, pageSize) =>

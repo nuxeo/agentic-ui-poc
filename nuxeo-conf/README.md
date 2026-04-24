@@ -39,7 +39,48 @@ docker exec nuxeo curl -s -u Administrator:Administrator \
   -X POST -H "Content-Type: application/json" \
   http://localhost:8080/nuxeo/site/automation/HylandContentIntelligence.GetContributionNames \
   -d '{"params": {"which": "knowledgeDiscovery"}}'
+
+# 4. Exercise the real Discovery API through the connector.
+docker exec nuxeo curl -s -u Administrator:Administrator \
+  -X POST -H "Content-Type: application/json" \
+  http://localhost:8080/nuxeo/site/automation/HylandKnowledgeDiscovery.getAllAgents \
+  -d '{"params": {}}'
 ```
+
+## Ingesting Nuxeo documents
+
+The CIC labs connector configured here only **queries** Knowledge Discovery.
+To actually ship Nuxeo documents into the Content Lake indexes that KD
+searches, install the companion `nuxeo-hxai-connector` marketplace package
+(different namespace: `hxai.*`). See the **Ingesting Nuxeo documents**
+section in [`../docs/knowledge-discovery.md`](../docs/knowledge-discovery.md)
+for the one-shot install command and the `hxai.ingest.*` config block.
+
+## Known gotchas
+
+- **Discovery host vs Insight UI host.** `https://discovery.<env>.experience.hyland.com`
+  is the API root; the `<env-key>.insight.<env>.ncp.hyland.com` hosts only serve
+  the Insight UI (HTML) and will fail every automation call with empty-body
+  401/404s.
+- **Scopes for the new service-account format.** Clients minted in the Hyland
+  Experience Admin Portal (IDs starting with `sc-`, secrets starting with
+  `hyx_cs_`) are rejected by the Dev IDP for the connector's baked-in scope
+  `hxp hxp.integrations environment_authorization iam.jti-capture` with
+  `{"error":"invalid_scope"}`. Set the scope explicitly:
+
+  ```conf
+  nuxeo.hyland.cic.discovery.auth.scope=hxp iam.jti-capture
+  ```
+
+  The connector surfaces this as
+  `No authentication info for calling the Knowledge Discovery service` —
+  because the token request returned 400, so `getToken()` returns `null`.
+
+- **Agent model compatibility.** If `askQuestionAndGetAnswer` returns
+  `Model '...' is not recognized` from the upstream Discovery API, that agent
+  was created against a model no longer served on the target environment.
+  Re-create the agent in the Insight UI against a supported model (e.g.
+  `meta.llama4-scout-17b-instruct-v1:0`).
 
 ## Making the mount permanent
 

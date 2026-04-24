@@ -6,12 +6,11 @@ export {
   type KdCicOperations,
   type KdUpstreamPaths,
 } from './lib/kd.config';
-export { KdClientService } from './lib/kd-client.service';
+export { KdClientService, KdDiscoveryError } from './lib/kd-client.service';
 export type {
   KdAgentAccessRight,
   KdAgentDetails,
   KdAgentSummary,
-  KdAgentUpsertRequest,
   KdAnswerResponse,
   KdCitation,
   KdFeedbackRequest,

@@ -977,14 +977,17 @@ that takes `httpMethod`, `endpoint`, `jsonPayloadStr`).
 | `listAgents`         | `HylandKnowledgeDiscovery.getAllAgents`            | —                                  |
 | `submitQuestion`     | `HylandKnowledgeDiscovery.askQuestionAndGetAnswer` | —                                  |
 | `getAgent`           | — (via Invoke)                                     | `GET /agent/agents/{id}`           |
-| `createAgent`        | — (via Invoke)                                     | `POST /agent/agents`               |
-| `updateAgent`        | — (via Invoke)                                     | `PUT /agent/agents/{id}`           |
-| `deleteAgent`        | — (via Invoke)                                     | `DELETE /agent/agents/{id}`        |
 | `listModels`         | — (via Invoke)                                     | `GET /agent/models`                |
 | `listGuardrails`     | — (via Invoke)                                     | `GET /agent/guardrails`            |
 | `getQuestionHistory` | — (via Invoke)                                     | `GET /agent/questions?agentId=...` |
 | `getAnswer`          | — (served from client-side cache after submit)     | —                                  |
 | `submitFeedback`     | — (client-side only for one-shot answers)          | —                                  |
+
+> Agent create/update/delete are intentionally NOT exposed. The CIC
+> connector has no write-side agent ops, its `Invoke` passthrough rejects
+> `DELETE` at the connector layer, and `POST /agent/agents` returns
+> `400 Bad Request` from the upstream Discovery API through this auth.
+> Agent management is handled in the Hyland Insight admin UI.
 
 **Request body for a first-class op (e.g. `askQuestionAndGetAnswer`):**
 
@@ -998,14 +1001,13 @@ that takes `httpMethod`, `endpoint`, `jsonPayloadStr`).
 }
 ```
 
-**Request body for an Invoke call (e.g. `createAgent`):**
+**Request body for an Invoke call (e.g. `getAgent`):**
 
 ```json
 {
   "params": {
-    "httpMethod": "POST",
-    "endpoint": "/agent/agents",
-    "jsonPayloadStr": "{\"name\":\"Contracts\",\"modelName\":\"gpt-4o\",\"instructions\":\"...\"}"
+    "httpMethod": "GET",
+    "endpoint": "/agent/agents/agent-123"
   }
 }
 ```

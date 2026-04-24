@@ -403,9 +403,23 @@
   color: #6b7280;
 }
 
-.kd-agent-summary__actions {
+.kd-helper--muted {
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  color: #6b7280;
+
+  strong {
+    color: #1a1c1e;
+  }
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+  }
 }
 
 .kd-chip-row {

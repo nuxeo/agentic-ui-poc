@@ -91,16 +91,20 @@ Intelligence Connector (`nuxeo-labs-content-intelligence-connector`) via
 Nuxeo automation endpoints (`/nuxeo/site/automation/<OpName>`). Uses the
 connector's first-class ops (`HylandKnowledgeDiscovery.getAllAgents`,
 `askQuestionAndGetAnswer`) where available and its generic
-`HylandKnowledgeDiscovery.Invoke` passthrough for everything else. Op
+`HylandKnowledgeDiscovery.Invoke` passthrough for read-only metadata. Op
 names and upstream paths are overridable via the `KD_CIC_OPERATIONS` and
 `KD_UPSTREAM_PATHS` tokens.
+
+Agent create/update/delete are **not** exposed: the CIC connector has
+no write-side ops for agents, its `Invoke` passthrough rejects `DELETE`
+with `Only GET, POST and PUT are supported.`, and the upstream Discovery
+service returns `400 Bad Request` for `POST /agent/agents` through this
+auth surface. Agent management is done in the Hyland Insight admin UI;
+new agents appear here automatically through `listAgents`.
 
 ```typescript
 listAgents(): Observable<KdAgentSummary[]>
 getAgent(agentId: string): Observable<KdAgentDetails>
-createAgent(request: KdAgentUpsertRequest): Observable<KdAgentDetails>
-updateAgent(agentId: string, request: KdAgentUpsertRequest): Observable<KdAgentDetails>
-deleteAgent(agentId: string): Observable<void>
 listModels(): Observable<KdModelInfo[]>
 listGuardrails(): Observable<{ guardrailGroups: KdGuardrailGroup[] }>
 submitQuestion(request: KdQuestionRequest): Observable<KdQuestionSubmission>

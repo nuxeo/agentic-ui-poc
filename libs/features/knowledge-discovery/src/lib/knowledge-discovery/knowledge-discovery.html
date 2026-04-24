@@ -13,10 +13,6 @@
         <mat-icon>refresh</mat-icon>
         Refresh agents
       </button>
-      <button mat-flat-button color="primary" (click)="openCreateAgentDialog()">
-        <mat-icon>add</mat-icon>
-        New agent
-      </button>
     </div>
   </header>
 
@@ -32,10 +28,10 @@
       <span>{{ referenceDataError() }}</span>
     </div>
   }
-  @if (agentActionError()) {
+  @if (agentDetailsError()) {
     <div class="kd-banner kd-banner--error">
       <mat-icon>error_outline</mat-icon>
-      <span>{{ agentActionError() }}</span>
+      <span>{{ agentDetailsError() }}</span>
     </div>
   }
 
@@ -64,9 +60,7 @@
         </div>
 
         @if (!hasSelection()) {
-          <p class="kd-helper">
-            Select an agent on the right or create one to start asking questions.
-          </p>
+          <p class="kd-helper">Select an agent on the right to start asking questions.</p>
         }
 
         <mat-form-field appearance="outline" class="kd-block-field">
@@ -80,19 +74,27 @@
           ></textarea>
         </mat-form-field>
 
-        <details class="kd-advanced">
-          <summary>Advanced filter (JSON, optional)</summary>
-          <mat-form-field appearance="outline" class="kd-block-field">
-            <mat-label>Dynamic filter JSON</mat-label>
-            <textarea
-              matInput
-              rows="3"
-              [ngModel]="dynamicFilterText()"
-              (ngModelChange)="dynamicFilterText.set($event)"
-              placeholder='{"property":"region","operator":"equals","value":"EMEA"}'
-            ></textarea>
-          </mat-form-field>
-        </details>
+        @if (agentSupportsDynamicFilter()) {
+          <details class="kd-advanced">
+            <summary>Advanced filter (JSON, optional)</summary>
+            <mat-form-field appearance="outline" class="kd-block-field">
+              <mat-label>Dynamic filter JSON</mat-label>
+              <textarea
+                matInput
+                rows="3"
+                [ngModel]="dynamicFilterText()"
+                (ngModelChange)="dynamicFilterText.set($event)"
+                placeholder='{"property":"region","operator":"equals","value":"EMEA"}'
+              ></textarea>
+            </mat-form-field>
+          </details>
+        } @else if (hasSelection()) {
+          <p class="kd-helper">
+            <mat-icon inline>filter_alt_off</mat-icon>
+            This agent has no <code>dynamicFilterTemplate</code>, so the Discovery service will
+            reject any filter. Configure one in Hyland Insight to enable the advanced filter here.
+          </p>
+        }
 
         @if (questionError()) {
           <p class="kd-error">{{ questionError() }}</p>
@@ -209,20 +211,15 @@
             <span class="kd-section-label">Agents</span>
             <h3>Available ({{ agents().length }})</h3>
           </div>
-          <button
-            mat-icon-button
-            matTooltip="Create agent"
-            (click)="openCreateAgentDialog()"
-            aria-label="Create agent"
-          >
-            <mat-icon>add</mat-icon>
-          </button>
         </div>
 
         @if (loadingAgents()) {
           <div class="kd-state"><mat-spinner diameter="20" /></div>
         } @else if (agents().length === 0) {
-          <p class="kd-empty">No agents yet. Create one to begin.</p>
+          <p class="kd-empty">
+            No agents yet. Create one in the
+            <strong>Hyland Insight</strong> admin UI, then use <em>Refresh agents</em> above.
+          </p>
         } @else {
           <ul class="kd-agent-list">
             @for (agent of agents(); track agent.id) {
@@ -239,6 +236,11 @@
               </li>
             }
           </ul>
+          <p class="kd-helper kd-helper--muted">
+            <mat-icon inline>info_outline</mat-icon>
+            Agents are created and edited in the
+            <strong>Hyland Insight</strong> admin UI. This page is read-only for agent management.
+          </p>
         }
       </section>
 
@@ -248,26 +250,6 @@
             <div>
               <span class="kd-section-label">Selected</span>
               <h3>{{ agent.name }}</h3>
-            </div>
-            <div class="kd-agent-summary__actions">
-              <button
-                mat-icon-button
-                matTooltip="Edit agent"
-                (click)="openEditAgentDialog()"
-                aria-label="Edit agent"
-              >
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button
-                mat-icon-button
-                matTooltip="Delete agent"
-                color="warn"
-                [disabled]="deletingAgent()"
-                (click)="deleteAgent()"
-                aria-label="Delete agent"
-              >
-                <mat-icon>delete</mat-icon>
-              </button>
             </div>
           </div>
 
@@ -334,9 +316,9 @@
           <p class="kd-empty">No models loaded.</p>
         } @else {
           <ul class="kd-reference">
-            @for (model of models(); track model.name) {
+            @for (model of models(); track model.modelName) {
               <li class="kd-reference__item">
-                <span>{{ model.name }}</span>
+                <span>{{ model.displayName || model.modelName }}</span>
                 <span class="kd-reference__meta">{{ model.status || 'Unknown' }}</span>
               </li>
             }

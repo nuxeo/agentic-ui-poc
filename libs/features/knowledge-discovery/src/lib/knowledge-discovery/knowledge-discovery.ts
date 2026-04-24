@@ -3,20 +3,18 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription, catchError, forkJoin, of, switchMap, timer } from 'rxjs';
 
 import {
   KdClientService,
+  KdDiscoveryError,
   type KdAgentDetails,
   type KdAgentSummary,
-  type KdAgentUpsertRequest,
   type KdAnswerResponse,
   type KdFeedbackValue,
   type KdGuardrail,
@@ -24,12 +22,15 @@ import {
   type KdQuestionHistoryItem,
 } from '@agentic-ui/shared/kd-client';
 
-import {
-  KD_AGENT_DIALOG_OPTIONS,
-  KdAgentDialogComponent,
-  type KdAgentDialogData,
-} from '../kd-agent-dialog/kd-agent-dialog';
-
+/**
+ * Consumer-facing Knowledge Discovery page.
+ *
+ * Agent management (create/edit/delete) deliberately lives outside of this
+ * app: the Hyland Content Intelligence Connector exposes only read/invoke
+ * operations (no CRUD) and the upstream Discovery API rejects agent create
+ * requests over the connector's auth. Users manage agents in the Hyland
+ * Insight admin UI; we just pick one, ask questions, and render the answer.
+ */
 @Component({
   selector: 'lib-knowledge-discovery',
   standalone: true,
@@ -41,7 +42,6 @@ import {
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule,
     MatTooltipModule,
   ],
   templateUrl: './knowledge-discovery.html',
@@ -50,8 +50,6 @@ import {
 export class KnowledgeDiscoveryComponent {
   private readonly kdClient = inject(KdClientService);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly snackBar = inject(MatSnackBar);
-  private readonly dialog = inject(MatDialog);
   private answerPollSub: Subscription | null = null;
 
   readonly loadingAgents = signal(false);
@@ -60,16 +58,13 @@ export class KnowledgeDiscoveryComponent {
   readonly selectedAgentId = signal<string | null>(null);
   readonly selectedAgent = signal<KdAgentDetails | null>(null);
   readonly loadingAgentDetails = signal(false);
+  readonly agentDetailsError = signal<string | null>(null);
   readonly models = signal<KdModelInfo[]>([]);
   readonly guardrailGroups = signal<
     { displayName: string; description: string; guardrails: KdGuardrail[] }[]
   >([]);
   readonly loadingReferenceData = signal(false);
   readonly referenceDataError = signal<string | null>(null);
-
-  readonly savingAgent = signal(false);
-  readonly deletingAgent = signal(false);
-  readonly agentActionError = signal<string | null>(null);
 
   readonly questionText = signal('');
   readonly dynamicFilterText = signal('');
@@ -88,6 +83,18 @@ export class KnowledgeDiscoveryComponent {
     () =>
       this.hasSelection() && this.questionText().trim().length > 0 && !this.submittingQuestion(),
   );
+
+  /**
+   * The Discovery API only accepts a `dynamicFilter` on agents that were
+   * configured with a `dynamicFilterTemplate`. Sending one on an agent
+   * without a template comes back as a hard 400 Bad Request. We therefore
+   * only show the Advanced Filter field when the selected agent declares a
+   * template.
+   */
+  readonly agentSupportsDynamicFilter = computed(() => {
+    const template = this.selectedAgent()?.dynamicFilterTemplate;
+    return template !== null && template !== undefined;
+  });
 
   constructor() {
     this.loadReferenceData();
@@ -154,7 +161,7 @@ export class KnowledgeDiscoveryComponent {
     this.stopAnswerPolling();
     this.selectedAgentId.set(agentId);
     this.loadingAgentDetails.set(true);
-    this.agentActionError.set(null);
+    this.agentDetailsError.set(null);
 
     this.kdClient
       .getAgent(agentId)
@@ -166,90 +173,8 @@ export class KnowledgeDiscoveryComponent {
           this.loadHistory(agent.id);
         },
         error: (err) => {
-          this.agentActionError.set(err?.error?.detail ?? 'Failed to load agent details.');
+          this.agentDetailsError.set(err?.error?.detail ?? 'Failed to load agent details.');
           this.loadingAgentDetails.set(false);
-        },
-      });
-  }
-
-  openCreateAgentDialog(): void {
-    this.openAgentDialog(null);
-  }
-
-  openEditAgentDialog(): void {
-    const agent = this.selectedAgent();
-    if (!agent) return;
-    this.openAgentDialog(agent);
-  }
-
-  private openAgentDialog(agent: KdAgentDetails | null): void {
-    const data: KdAgentDialogData = {
-      agent,
-      models: this.models(),
-      guardrailGroups: this.guardrailGroups(),
-    };
-
-    this.dialog
-      .open<KdAgentDialogComponent, KdAgentDialogData, KdAgentUpsertRequest | undefined>(
-        KdAgentDialogComponent,
-        {
-          ...KD_AGENT_DIALOG_OPTIONS,
-          data,
-        },
-      )
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((payload) => {
-        if (!payload) return;
-        this.saveAgent(payload, agent?.id ?? null);
-      });
-  }
-
-  private saveAgent(payload: KdAgentUpsertRequest, existingId: string | null): void {
-    this.savingAgent.set(true);
-    this.agentActionError.set(null);
-
-    const request$ = existingId
-      ? this.kdClient.updateAgent(existingId, payload)
-      : this.kdClient.createAgent(payload);
-
-    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (agent) => {
-        this.savingAgent.set(false);
-        this.snackBar.open(`Agent "${agent.name}" saved.`, 'OK', { duration: 3000 });
-        this.loadAgents(agent.id);
-      },
-      error: (err) => {
-        const message = err?.error?.detail ?? 'Failed to save the Knowledge Discovery agent.';
-        this.agentActionError.set(message);
-        this.savingAgent.set(false);
-        this.snackBar.open(message, 'Dismiss', { duration: 5000 });
-      },
-    });
-  }
-
-  deleteAgent(): void {
-    const agentId = this.selectedAgentId();
-    if (!agentId) return;
-
-    this.deletingAgent.set(true);
-    this.kdClient
-      .deleteAgent(agentId)
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.stopAnswerPolling();
-          this.snackBar.open('Agent deleted.', 'OK', { duration: 3000 });
-          this.deletingAgent.set(false);
-          this.selectedAgentId.set(null);
-          this.selectedAgent.set(null);
-          this.history.set([]);
-          this.answer.set(null);
-          this.loadAgents();
-        },
-        error: (err) => {
-          this.agentActionError.set(err?.error?.detail ?? 'Failed to delete the selected agent.');
-          this.deletingAgent.set(false);
         },
       });
   }
@@ -260,12 +185,14 @@ export class KnowledgeDiscoveryComponent {
     if (!agentId || !question) return;
 
     let dynamicFilter: Record<string, unknown> | null = null;
-    try {
-      dynamicFilter = this.parseJsonText(this.dynamicFilterText(), 'dynamic filter');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Dynamic filter JSON is invalid.';
-      this.questionError.set(message);
-      return;
+    if (this.agentSupportsDynamicFilter()) {
+      try {
+        dynamicFilter = this.parseJsonText(this.dynamicFilterText(), 'dynamic filter');
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Dynamic filter JSON is invalid.';
+        this.questionError.set(message);
+        return;
+      }
     }
 
     this.submittingQuestion.set(true);
@@ -294,7 +221,10 @@ export class KnowledgeDiscoveryComponent {
                 },
                 error: (err) => {
                   this.questionError.set(
-                    err?.error?.detail ?? 'Failed to retrieve the Knowledge Discovery answer.',
+                    this.resolveQuestionError(
+                      err,
+                      'Failed to retrieve the Knowledge Discovery answer.',
+                    ),
                   );
                 },
               });
@@ -313,11 +243,49 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.questionError.set(
-            err?.error?.detail ?? 'Failed to submit the Knowledge Discovery question.',
+            this.resolveQuestionError(err, 'Failed to submit the Knowledge Discovery question.'),
           );
           this.submittingQuestion.set(false);
         },
       });
+  }
+
+  /**
+   * Format an error coming back from `KdClientService.submitQuestion`.
+   * A 400 on a `dynamicFilter` payload is almost always the template
+   * mismatch diagnosed in [docs/knowledge-discovery.md]; we surface that
+   * as a targeted hint instead of the generic upstream message.
+   */
+  private resolveQuestionError(err: unknown, fallback: string): string {
+    if (err instanceof KdDiscoveryError) {
+      if (err.responseCode === 400) {
+        if (this.dynamicFilterText().trim().length > 0) {
+          return (
+            'The Discovery service rejected the dynamic filter (HTTP 400). ' +
+            "Make sure the selected agent has a compatible 'dynamicFilterTemplate' " +
+            'configured in Hyland Insight — or clear the filter to ask without it.'
+          );
+        }
+        const agent = this.selectedAgent();
+        const model = this.models().find((entry) => entry.modelName === agent?.modelName);
+        if (model && model.status && model.status !== 'Active') {
+          const replacement = model.replacementModelName
+            ? ` Replacement suggested by the catalogue: ${model.replacementModelName}.`
+            : '';
+          return (
+            `The Discovery service rejected the question (HTTP 400). The agent's model ` +
+            `'${agent?.modelName}' is marked '${model.status}' on this tenant.` +
+            replacement +
+            ' Update the agent in Hyland Insight and pick an Active model.'
+          );
+        }
+      }
+      return err.message;
+    }
+    const maybeDetail = (err as { error?: { detail?: string }; message?: string } | null)?.error
+      ?.detail;
+    const maybeMessage = (err as { message?: string } | null)?.message;
+    return maybeDetail ?? maybeMessage ?? fallback;
   }
 
   submitFeedback(feedback: KdFeedbackValue): void {
