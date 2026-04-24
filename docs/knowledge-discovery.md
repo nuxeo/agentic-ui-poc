@@ -104,12 +104,29 @@ server-side). `KdClientService` stringifies request bodies into
 `GET`/`POST`/`PUT`; any `DELETE` is rejected by the connector with
 `Only GET, POST and PUT are supported.`
 
-| Client method        | HTTP | Upstream path (default)            |
-| -------------------- | ---- | ---------------------------------- |
-| `getAgent(id)`       | GET  | `/agent/agents/{id}`               |
-| `listModels`         | GET  | `/agent/models`                    |
-| `listGuardrails`     | GET  | `/agent/guardrails`                |
-| `getQuestionHistory` | GET  | `/agent/questions?agentId=...&...` |
+| Client method        | HTTP | Upstream path (default)                                    |
+| -------------------- | ---- | ---------------------------------------------------------- |
+| `getAgent(id)`       | GET  | `/agent/agents/{id}`                                       |
+| `listModels`         | GET  | `/agent/models`                                            |
+| `listGuardrails`     | GET  | `/agent/guardrails`                                        |
+| `getQuestionHistory` | GET  | `/qna/agents/{id}/questions/history?pageNumber=&pageSize=` |
+
+The Discovery product is actually two services on the same host; both are
+hit through the same `Invoke` passthrough:
+
+- **Agent API** (`/agent/*`) — agents, models, guardrails, avatars.
+  Swagger: `https://discovery.<env>.experience.hyland.com/agent/swagger`
+- **QnA API** (`/qna/*`) — questions, answers, conversations, feedback,
+  question history, feedback breakdowns.
+  Swagger: `https://discovery.<env>.experience.hyland.com/qna/swagger`
+
+Question history specifically lives on the QnA side; earlier attempts
+against `/agent/questions?agentId=...` returned `404 Not Found` because
+that endpoint does not exist on the Agent service. The current client
+path is verified live against the QnA Swagger and returns
+`{pagination, data}` (`data[]` elements carry a
+`responseCompleteness` field that `KdClientService` normalises to the
+shared `KdResponseStatus` enum).
 
 ### Agent management (create / edit / delete) is NOT exposed here
 

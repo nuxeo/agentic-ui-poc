@@ -17,9 +17,11 @@ import type {
   KdFeedbackRequest,
   KdGuardrailGroup,
   KdModelInfo,
+  KdQuestionHistoryItem,
   KdQuestionHistoryPage,
   KdQuestionRequest,
   KdQuestionSubmission,
+  KdResponseStatus,
 } from './kd.models';
 
 type AutomationBody = { params?: Record<string, unknown>; input?: unknown };
@@ -182,20 +184,52 @@ export class KdClientService {
     return of(undefined);
   }
 
+  /**
+   * Hits `GET /qna/agents/{agentId}/questions/history` on the Discovery
+   * QnA service via the connector's `Invoke` passthrough. The upstream
+   * payload uses `responseCompleteness` rather than a `status` field, and
+   * emits `feedback` as a nullable object; we normalise both so the UI can
+   * treat a history item the same shape as an in-flight answer.
+   */
   getQuestionHistory(
     agentId: string,
     pageNumber = 1,
     pageSize = 25,
   ): Observable<KdQuestionHistoryPage> {
-    return this.runInvoke<KdQuestionHistoryPage>(
-      'GET',
-      this.paths.getQuestionHistory(agentId, pageNumber, pageSize),
-    ).pipe(
+    return this.runInvoke<{
+      pagination?: Record<string, unknown>;
+      data?: Array<Partial<KdQuestionHistoryItem> & { responseCompleteness?: string }>;
+    }>('GET', this.paths.getQuestionHistory(agentId, pageNumber, pageSize)).pipe(
       map((response) => ({
-        data: response?.data ?? [],
+        data: (response?.data ?? []).map(
+          (item): KdQuestionHistoryItem => ({
+            id: item.id ?? '',
+            question: item.question ?? '',
+            answer: item.answer ?? '',
+            dateCreated: item.dateCreated ?? '',
+            dateAnswered: item.dateAnswered ?? '',
+            agentVersion: item.agentVersion,
+            status: this.mapCompletenessToStatus(item.responseCompleteness ?? item.status),
+            feedback: typeof item.feedback === 'string' ? item.feedback : (item.feedback ?? null),
+            staticFilter: item.staticFilter ?? null,
+            dynamicFilter: item.dynamicFilter ?? null,
+          }),
+        ),
         pagination: response?.pagination ?? {},
       })),
     );
+  }
+
+  private mapCompletenessToStatus(raw: string | undefined): KdResponseStatus {
+    switch (raw) {
+      case 'Complete':
+      case 'Submitted':
+      case 'Error':
+      case 'Blocked':
+        return raw;
+      default:
+        return raw ? 'Unknown' : 'Complete';
+    }
   }
 
   private runNamed<T>(operation: string, params?: Record<string, unknown>): Observable<T> {

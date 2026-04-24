@@ -44,10 +44,19 @@ export const KD_CIC_OPERATIONS = new InjectionToken<KdCicOperations>('KD_CIC_OPE
  * connector will call directly against the Discovery base URL configured in
  * `nuxeo.conf` (`nuxeo.hyland.cic.discovery.baseUrl`).
  *
- * Only read-only paths are exposed. Agent create/update/delete are not
- * available through the CIC connector (the Invoke op is GET/POST/PUT-only
- * and the upstream Discovery API rejects agent creation over this auth);
- * agent management is done in the Hyland Insight admin UI.
+ * The Discovery product is split across two services served from the same
+ * host; both are hit through `Invoke`:
+ *   - Agent API  (`/agent/*`) — agents, models, guardrails, avatars.
+ *     Swagger: https://discovery.<env>.experience.hyland.com/agent/swagger
+ *   - QnA API    (`/qna/*`)   — questions, answers, conversations, feedback,
+ *     question history, feedback breakdowns.
+ *     Swagger: https://discovery.<env>.experience.hyland.com/qna/swagger
+ *
+ * Only read-only paths are exposed here. Agent create/update/delete are
+ * supported by the Discovery API itself but are not reachable through the
+ * CIC connector's `Invoke` op today (it is GET/POST/PUT-only and its
+ * payload passthrough does not satisfy the `POST /agents` validation);
+ * agent management therefore lives in the Hyland Insight admin UI.
  */
 export interface KdUpstreamPaths {
   getAgent: (agentId: string) => string;
@@ -60,9 +69,17 @@ export const DEFAULT_KD_UPSTREAM_PATHS: KdUpstreamPaths = {
   getAgent: (agentId) => `/agent/agents/${encodeURIComponent(agentId)}`,
   listModels: '/agent/models',
   listGuardrails: '/agent/guardrails',
+  /**
+   * Verified live against the QnA swagger:
+   *   GET /qna/agents/{agentId}/questions/history?pageNumber=&pageSize=
+   * returns `{ pagination: { totalItems, pageNumber, totalPages, pageSize },
+   * data: QuestionHistoryDto[] }`.
+   * The earlier `/agent/questions` path 404'd because question history is
+   * served by the separate QnA service, not the Agent service.
+   */
   getQuestionHistory: (agentId, pageNumber, pageSize) =>
-    `/agent/questions?agentId=${encodeURIComponent(agentId)}` +
-    `&pageNumber=${pageNumber}&pageSize=${pageSize}`,
+    `/qna/agents/${encodeURIComponent(agentId)}/questions/history` +
+    `?pageNumber=${pageNumber}&pageSize=${pageSize}`,
 };
 
 export const KD_UPSTREAM_PATHS = new InjectionToken<KdUpstreamPaths>('KD_UPSTREAM_PATHS', {

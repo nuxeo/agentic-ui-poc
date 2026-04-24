@@ -141,4 +141,64 @@ describe('KdClientService', () => {
     const answer = await firstValueFrom(service.getAnswer('qid-9'));
     expect(answer.feedback).toBe('Good');
   });
+
+  it('getQuestionHistory hits the QnA service path and maps responseCompleteness to status', async () => {
+    const history$ = firstValueFrom(service.getQuestionHistory('agent-1', 2, 10));
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
+    expect(req.request.body).toEqual({
+      params: {
+        httpMethod: 'GET',
+        endpoint: '/qna/agents/agent-1/questions/history?pageNumber=2&pageSize=10',
+      },
+    });
+    req.flush(
+      envelope({
+        pagination: { totalItems: 1, pageNumber: 2, totalPages: 1, pageSize: 10 },
+        data: [
+          {
+            id: 'qid-42',
+            question: 'tell me about nuxeo',
+            answer: 'A.',
+            dateCreated: '2026-04-24T11:35:25Z',
+            dateAnswered: '2026-04-24T11:35:29Z',
+            agentVersion: 2,
+            responseCompleteness: 'Complete',
+            feedback: null,
+            staticFilter: null,
+            dynamicFilter: null,
+          },
+        ],
+      }),
+    );
+
+    const page = await history$;
+    expect(page.data).toHaveLength(1);
+    expect(page.data[0]).toEqual(
+      expect.objectContaining({
+        id: 'qid-42',
+        question: 'tell me about nuxeo',
+        answer: 'A.',
+        status: 'Complete',
+        feedback: null,
+      }),
+    );
+    expect(page.pagination).toEqual({
+      totalItems: 1,
+      pageNumber: 2,
+      totalPages: 1,
+      pageSize: 10,
+    });
+  });
+
+  it('getQuestionHistory falls back gracefully on an empty payload', async () => {
+    const history$ = firstValueFrom(service.getQuestionHistory('agent-1'));
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
+    expect(req.request.body.params.endpoint).toBe(
+      '/qna/agents/agent-1/questions/history?pageNumber=1&pageSize=25',
+    );
+    req.flush(envelope(null));
+    const page = await history$;
+    expect(page.data).toEqual([]);
+    expect(page.pagination).toEqual({});
+  });
 });
