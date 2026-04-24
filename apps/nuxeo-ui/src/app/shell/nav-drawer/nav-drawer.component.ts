@@ -40,7 +40,11 @@ import {
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { AppNavItem, SETTINGS_DRAWER_ITEMS } from '../../platform-nav-items';
+import {
+  AppNavItem,
+  SETTINGS_DRAWER_ITEMS,
+  ADMINISTRATION_DRAWER_ITEMS,
+} from '../../platform-nav-items';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -86,6 +90,7 @@ export class NavDrawerComponent {
   readonly navigateKeepDrawer = output<string>();
   readonly signOutSelected = output<void>();
   readonly settingsItems = SETTINGS_DRAWER_ITEMS;
+  readonly administrationItems = ADMINISTRATION_DRAWER_ITEMS;
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
@@ -296,6 +301,10 @@ export class NavDrawerComponent {
 
   get isSettings(): boolean {
     return this.activeItem()?.path === '/settings';
+  }
+
+  get isAdministration(): boolean {
+    return this.activeItem()?.path === '/administration';
   }
 
   get isFavorites(): boolean {

@@ -22,6 +22,7 @@ export {
 } from './lib/export-dialog/export-dialog.component';
 export {
   SavedSearchDialogComponent,
+  SAVED_SEARCH_DIALOG_OPTIONS,
   type SavedSearchDialogData,
 } from './lib/saved-search-dialog/saved-search-dialog.component';
 export {
@@ -29,3 +30,7 @@ export {
   type ShareSavedSearchDialogData,
   type PermissionEntry,
 } from './lib/share-saved-search-dialog/share-saved-search-dialog.component';
+export {
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from './lib/confirm-dialog/confirm-dialog.component';

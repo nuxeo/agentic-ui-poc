@@ -195,7 +195,7 @@
       } @else if (auditSummary()) {
         <p class="ai-summary-panel__text">{{ auditSummary()!.summary }}</p>
 
-        @if (auditSummary()!.stats?.length) {
+        @if (auditSummary()!.stats.length) {
           <div class="ai-summary-stats">
             @for (stat of auditSummary()!.stats; track stat.label) {
               <div class="ai-summary-stat-card">
@@ -209,7 +209,7 @@
           </div>
         }
 
-        @if (auditSummary()!.topUsers?.length) {
+        @if (auditSummary()!.topUsers.length) {
           <div class="ai-summary-section">
             <h4>Most Active Users</h4>
             <div class="ai-summary-users">
@@ -223,7 +223,7 @@
           </div>
         }
 
-        @if (auditSummary()!.highlights?.length) {
+        @if (auditSummary()!.highlights.length) {
           <div class="ai-summary-section">
             <h4>Highlights</h4>
             <ul class="ai-summary-highlights">

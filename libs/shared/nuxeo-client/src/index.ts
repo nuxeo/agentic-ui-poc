@@ -44,7 +44,7 @@ export type {
 export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 
 // Config
-export { NUXEO_API_ORIGIN } from './lib/nuxeo-api.config';
+export { NUXEO_API_ORIGIN, NUXEO_SERVER_URL } from './lib/nuxeo-api.config';
 export { CURRENT_USERNAME } from './lib/current-user.token';
 export type { NuxeoSamlLoginEndpoint } from './lib/saml-login.config';
 export {
@@ -113,6 +113,7 @@ export {
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { avatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
+export { NON_CONTENT_DOCUMENT_TYPES } from './lib/constants/non-content-document-types';
 
 // Queries (for advanced / custom use)
 export {

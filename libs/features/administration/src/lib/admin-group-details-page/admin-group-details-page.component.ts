@@ -19,7 +19,7 @@ import {
   UserService,
 } from '@agentic-ui/shared/nuxeo-client';
 
-import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
 import {
   GroupFormDialogComponent,
   GroupFormDialogData,
@@ -130,7 +130,9 @@ export class AdminGroupDetailsPageComponent implements OnInit {
               this.load();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', { duration: 5000 }),
+              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
+                duration: 5000,
+              }),
           });
       });
   }
@@ -139,14 +141,17 @@ export class AdminGroupDetailsPageComponent implements OnInit {
     const group = this.group();
     if (!group) return;
     this.dialog
-      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(ConfirmDialogComponent, {
-        width: '400px',
-        data: {
-          title: 'Delete group',
-          message: `Delete group "${group.groupname}"?`,
-          confirmLabel: 'Delete',
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(
+        ConfirmDialogComponent,
+        {
+          width: '400px',
+          data: {
+            title: 'Delete group',
+            message: `Delete group "${group.groupname}"?`,
+            confirmLabel: 'Delete',
+          },
         },
-      })
+      )
       .afterClosed()
       .subscribe((ok) => {
         if (!ok) return;
@@ -171,28 +176,32 @@ export class AdminGroupDetailsPageComponent implements OnInit {
         this.load();
       },
       error: (e) =>
-        this.snackBar.open(e?.error?.message ?? 'Could not remove member', 'Dismiss', { duration: 5000 }),
+        this.snackBar.open(e?.error?.message ?? 'Could not remove member', 'Dismiss', {
+          duration: 5000,
+        }),
     });
   }
 
   loadLocalPerms(): void {
     this.localPermLoading.set(true);
-    this.permService.listLocalPermissionRows(this.groupId, this.permPageSize, this.localPageIndex()).subscribe({
-      next: (p) => {
-        this.localPerm.set(p);
-        this.localPermLoading.set(false);
-      },
-      error: () => {
-        this.localPerm.set({
-          rows: [],
-          totalDocuments: 0,
-          numberOfPages: 0,
-          currentPageIndex: 0,
-          currentPageSize: 0,
-        });
-        this.localPermLoading.set(false);
-      },
-    });
+    this.permService
+      .listLocalPermissionRows(this.groupId, this.permPageSize, this.localPageIndex())
+      .subscribe({
+        next: (p) => {
+          this.localPerm.set(p);
+          this.localPermLoading.set(false);
+        },
+        error: () => {
+          this.localPerm.set({
+            rows: [],
+            totalDocuments: 0,
+            numberOfPages: 0,
+            currentPageIndex: 0,
+            currentPageSize: 0,
+          });
+          this.localPermLoading.set(false);
+        },
+      });
   }
 
   onLocalPermPage(e: PageEvent): void {

@@ -114,9 +114,39 @@ export class TasksPageComponent implements OnInit {
   readonly userResults = signal<NuxeoUser[]>([]);
   readonly groupResults = signal<NuxeoGroup[]>([]);
   readonly searching = signal(false);
+  private breadcrumbPathCache: string | null = null;
+  private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
   /* ─── Computed ─── */
   readonly hasSelection = computed(() => this.selectedTask() !== null);
+  readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
+    const doc = this.targetDoc();
+    if (!doc?.path) return [];
+
+    if (doc.path === this.breadcrumbPathCache) {
+      return this.breadcrumbItemsCache;
+    }
+
+    this.breadcrumbPathCache = doc.path;
+    let accumulated = '/browse';
+    this.breadcrumbItemsCache = doc.path
+      .split('/')
+      .filter(Boolean)
+      .map((s) => {
+        accumulated += `/${s}`;
+        return { label: decodeURIComponent(s), href: accumulated };
+      });
+    return this.breadcrumbItemsCache;
+  });
+
+  onBreadcrumbClick(event: MouseEvent): void {
+    const anchor = (event.target as HTMLElement).closest('a');
+    const href = anchor?.getAttribute('href');
+    if (href) {
+      event.preventDefault();
+      void this.router.navigateByUrl(href);
+    }
+  }
 
   /** Actors assigned to the current task (from task actors list). */
   readonly taskActors = computed<string[]>(() => {
@@ -665,15 +695,6 @@ export class TasksPageComponent implements OnInit {
   download(): void {
     const url = this.downloadUrl();
     if (url) window.open(url, '_blank');
-  }
-
-  breadcrumbItems(): SatBreadcrumbsItem[] {
-    const doc = this.targetDoc();
-    if (!doc?.path) return [];
-    return doc.path
-      .split('/')
-      .filter(Boolean)
-      .map((s) => ({ label: decodeURIComponent(s) }));
   }
 
   fileSize(): string {

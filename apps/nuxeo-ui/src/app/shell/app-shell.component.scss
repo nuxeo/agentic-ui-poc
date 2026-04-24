@@ -136,6 +136,20 @@ sat-platform-nav-container.has-selection-topbar {
   object-fit: cover;
   border: 1px solid #eaecf0;
   flex-shrink: 0;
+
+  &--icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f4f6f8;
+    color: #8a94a0;
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
 }
 
 .header-search-option-avatar {

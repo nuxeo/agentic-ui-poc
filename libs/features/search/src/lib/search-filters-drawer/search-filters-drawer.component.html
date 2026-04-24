@@ -1,13 +1,12 @@
 <div class="drawer-header-actions">
   <div class="drawer-search-row-primary">
-    <div class="saved-filters-dropdown" (blur)="closeSavedSearchDropdown()">
+    <div class="saved-filters-dropdown" (focusout)="onSavedSearchFocusOut($event)">
       <button
         class="saved-filters-trigger"
         type="button"
         [attr.aria-expanded]="savedSearchOpen()"
         [attr.aria-label]="savedSearchInput() || 'Saved Searches'"
-        (click)="onSavedSearchFocus()"
-        (focus)="onSavedSearchFocus()"
+        (click)="onSavedSearchToggle()"
       >
         <span class="saved-filters-label">{{ savedSearchInput() || 'Search Filters' }}</span>
         <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
@@ -29,19 +28,15 @@
                 (input)="savedSearchFilter.set($any($event.target).value)"
               />
             </div>
-            <button
-              class="saved-filters-option saved-filters-default"
-              type="button"
-              (mousedown)="selectDefaultSavedSearch()"
-            >
-              <mat-icon class="saved-filter-icon">search</mat-icon>
-              Default Search
-            </button>
             @if (filteredSavedSearches().length === 0) {
               <div class="saved-filters-empty">No matching saved searches</div>
             } @else {
               @for (option of filteredSavedSearches(); track option.key) {
-                <button class="saved-filters-option" type="button" (mousedown)="selectSavedSearch(option)">
+                <button
+                  class="saved-filters-option"
+                  type="button"
+                  (mousedown)="selectSavedSearch(option)"
+                >
                   <mat-icon class="saved-filter-icon">bookmark</mat-icon>
                   {{ option.label }}
                 </button>
@@ -63,7 +58,6 @@
       <mat-icon>{{ viewMode() === 'filter' ? 'view_list' : 'filter_list' }}</mat-icon>
     </button>
   </div>
-
 </div>
 
 <mat-divider />
@@ -172,7 +166,11 @@
               <div class="typeahead-hint">No results found</div>
             } @else {
               @for (collection of filteredCollections(); track collection.key) {
-                <button class="typeahead-option" type="button" (mousedown)="selectCollection(collection)">
+                <button
+                  class="typeahead-option"
+                  type="button"
+                  (mousedown)="selectCollection(collection)"
+                >
                   {{ collection.label }}{{ getCountText(collection.count) }}
                 </button>
               }
@@ -329,10 +327,23 @@
 
   <div class="drawer-footer">
     <div class="footer-actions">
-      <button mat-stroked-button class="footer-btn reset-btn" type="button" [disabled]="!hasActiveFilters()" (click)="resetFilters()">
+      <button
+        mat-stroked-button
+        class="footer-btn reset-btn"
+        type="button"
+        [disabled]="!hasActiveFilters()"
+        (click)="resetFilters()"
+      >
         Reset
       </button>
-      <button mat-flat-button color="primary" class="footer-btn save-as-btn" type="button" [disabled]="!hasActiveFilters()" (click)="openSaveAsDialog()">
+      <button
+        mat-flat-button
+        color="primary"
+        class="footer-btn save-as-btn"
+        type="button"
+        [disabled]="!hasActiveFilters()"
+        (click)="openSaveAsDialog()"
+      >
         Save As
       </button>
     </div>

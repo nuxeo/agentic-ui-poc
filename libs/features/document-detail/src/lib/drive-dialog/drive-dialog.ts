@@ -7,6 +7,7 @@ export interface DriveDialogData {
   docUid: string;
   filename: string;
   blobUrl: string;
+  docPath?: string;
 }
 
 interface DrivePackage {
@@ -76,6 +77,9 @@ const DRIVE_PACKAGES: DrivePackage[] = [
     `
       .drive-dialog {
         padding: 28px 32px;
+        width: min(95vw, 460px);
+        max-width: 95vw;
+        box-sizing: border-box;
       }
       h2 {
         margin: 0 0 24px;
@@ -156,11 +160,11 @@ export class DriveDialogComponent implements OnInit {
   ngOnInit(): void {
     this.driveService.hasDriveToken().subscribe((hasToken) => {
       if (hasToken) {
-        const url = this.driveService.buildEditUrl(
-          this.data.docUid,
-          this.data.blobUrl ?? '',
-          this.data.filename,
-        );
+        // Use direct-transfer (same as the working browse page button) with the document's
+        // parent folder path. nxdrive://edit requires username matching that fails on some
+        // Drive configurations, while direct-transfer only matches by server URL.
+        const docPath = this.data.docPath ?? '/';
+        const url = this.driveService.buildDirectTransferUrl(docPath);
         this.driveService.openDriveUrl(url);
         this.dialogRef.close();
       } else {

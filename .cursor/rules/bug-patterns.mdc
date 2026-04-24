@@ -1,0 +1,42 @@
+---
+description: Known bug patterns — scan every file you touch
+globs: "**/*.ts"
+alwaysApply: false
+---
+
+# Known Bug Patterns
+
+See AGENTS/08-bug-patterns.md for full BAD/GOOD examples.
+
+When reading or modifying any file, check for these patterns and fix them:
+
+## Memory leaks
+BAD:  `this.service.getData().subscribe(...)`
+GOOD: `this.service.getData().pipe(takeUntilDestroyed()).subscribe(...)`
+
+BAD:  `this.url = URL.createObjectURL(blob)` (never revoked)
+GOOD: Push to `this.blobUrls[]`, revoke all in `ngOnDestroy`
+
+## Auth failures
+BAD:  `<img [src]="doc.contextParameters['thumbnail']?.url">`
+GOOD: Fetch via `fetchThumbnail(uid)`, set signal with blob URL
+
+BAD:  `fetch('/nuxeo/api/v1/id/' + uid)` (no auth header)
+GOOD: `this.api.get('/nuxeo/api/v1/id/' + uid)` (interceptor adds auth)
+
+## State bugs
+BAD:  No state reset when route input changes
+GOOD: `effect(() => { this.doc.set(null); this.loading.set(true); ... })`
+
+BAD:  `error: () => { this.error.set('Failed'); }` (loading stays true)
+GOOD: `error: () => { this.error.set('Failed'); this.loading.set(false); }`
+
+## Security
+BAD:  `nuxeoAuth: 'Administrator:Administrator'`
+GOOD: `nuxeoAuth: process.env['NUXEO_AUTH'] ?? ''` + startup validation
+
+## Architecture
+BAD:  `import { X } from '@agentic-ui/feature-search'` (inside feature-browse)
+GOOD: Move shared logic to `libs/shared/`, import from there
+
+## Copilot will flag these — fix before creating the PR

@@ -29,15 +29,15 @@
                 (input)="savedSearchFilter.set($any($event.target).value)"
               />
             </div>
-            <button class="saved-filters-option saved-filters-default" type="button" (mousedown)="resetFilters()">
-              <mat-icon class="saved-filter-icon">search</mat-icon>
-              Default Search
-            </button>
             @if (filteredSavedSearches().length === 0) {
               <div class="saved-filters-empty">No matching saved searches</div>
             } @else {
               @for (option of filteredSavedSearches(); track option.key) {
-                <button class="saved-filters-option" type="button" (mousedown)="selectFilterOption(option)">
+                <button
+                  class="saved-filters-option"
+                  type="button"
+                  (mousedown)="selectFilterOption(option)"
+                >
                   <mat-icon class="saved-filter-icon">bookmark</mat-icon>
                   {{ option.label }}
                 </button>
@@ -59,7 +59,6 @@
       <mat-icon>{{ viewMode() === 'filter' ? 'view_list' : 'filter_list' }}</mat-icon>
     </button>
   </div>
-
 </div>
 
 <mat-divider />
@@ -130,14 +129,32 @@
     </div>
 
     <div class="footer-actions">
-      <button mat-stroked-button class="footer-btn reset-btn" type="button" (click)="resetFilters()">
+      <button
+        mat-stroked-button
+        class="footer-btn reset-btn"
+        type="button"
+        (click)="resetFilters()"
+      >
         Reset
       </button>
-      <button mat-flat-button color="primary" class="footer-btn save-as-btn" type="button" [disabled]="!hasActiveFilters()" (click)="openSaveAsDialog()">
+      <button
+        mat-flat-button
+        color="primary"
+        class="footer-btn save-as-btn"
+        type="button"
+        [disabled]="!hasActiveFilters()"
+        (click)="openSaveAsDialog()"
+      >
         Save As
       </button>
       @if (!autoSearch()) {
-        <button mat-flat-button color="primary" class="footer-btn search-btn" type="button" (click)="applySearch()">
+        <button
+          mat-flat-button
+          color="primary"
+          class="footer-btn search-btn"
+          type="button"
+          (click)="applySearch()"
+        >
           Search
         </button>
       }

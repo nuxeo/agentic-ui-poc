@@ -9,8 +9,10 @@
         </div>
         @if (breadcrumbItems().length) {
           <div class="header-path-row">
-            <sat-breadcrumbs [items]="breadcrumbItems()"></sat-breadcrumbs>
-            <span>&bull; {{ creator() }}</span>
+            <sat-breadcrumbs
+              [items]="breadcrumbItems()"
+              (click)="onBreadcrumbClick($event)"
+            ></sat-breadcrumbs>
           </div>
         }
       </div>

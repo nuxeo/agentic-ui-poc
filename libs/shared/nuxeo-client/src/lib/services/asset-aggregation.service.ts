@@ -14,4 +14,9 @@ export class AssetAggregationService {
   readonly items = signal<AssetQueueItem[]>([]);
   readonly selectedSavedSearchId = signal('');
   readonly selectedSavedSearchTitle = signal('');
+  readonly savedSearchVersion = signal(0);
+
+  markSavedSearchDirty(): void {
+    this.savedSearchVersion.update((v) => v + 1);
+  }
 }

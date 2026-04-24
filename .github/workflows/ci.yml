@@ -53,53 +53,37 @@ jobs:
       - name: Build affected projects
         run: npx nx affected -t build --base=$NX_BASE --head=$NX_HEAD
 
-      # - name: Test affected projects
-      #   run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD
+      - name: Test affected projects
+        run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD --output-style=stream
 
-  # ──────────────────────────────────────────────
-  # Java — Nuxeo AI Marketplace Package
-  # Only runs when files under apps/nuxeo-ai-package/ change
-  # ──────────────────────────────────────────────
-  build-java-package:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/nuxeo-ai-package
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check if Java package files changed
-        id: changes
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            java:
-              - 'apps/nuxeo-ai-package/**'
-
-      - name: Set up Java 11
-        if: steps.changes.outputs.java == 'true'
-        uses: actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'temurin'
-          cache: maven
-
-      - name: Build Nuxeo AI package
-        if: steps.changes.outputs.java == 'true'
-        run: mvn clean package -DskipTests -B
+      - name: Check bundle size (nuxeo-ui)
+        shell: bash
         env:
-          # Nuxeo Maven repo requires no auth for public packages
-          MAVEN_OPTS: -Xmx1024m
+          NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES: 5242880
+        run: |
+          set -euo pipefail
 
-      - name: Upload Marketplace ZIP artifact
-        if: steps.changes.outputs.java == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: nuxeo-ai-operations-${{ github.sha }}
-          path: apps/nuxeo-ai-package/nuxeo-ai-package/target/nuxeo-ai-operations-*.zip
-          retention-days: 30
+          if npx nx show projects --affected --base=$NX_BASE --head=$NX_HEAD --plain | grep -q "^nuxeo-ui$"; then
+            rm -rf dist
+            npx nx build nuxeo-ui --configuration=production
 
-      - name: No Java changes detected — skipping build
-        if: steps.changes.outputs.java != 'true'
-        run: echo "No changes in apps/nuxeo-ai-package/ — Java build skipped."
+            bundle_size_bytes=$(
+              find dist -type f \( -name '*.js' -o -name '*.css' \) -path '*/nuxeo-ui/*' -printf '%s\n' \
+                | awk '{ total += $1 } END { print total + 0 }'
+            )
+
+            if [ "$bundle_size_bytes" -eq 0 ]; then
+              echo "Failed to measure bundle size for nuxeo-ui: no built JS/CSS assets were found under dist."
+              exit 1
+            fi
+
+            echo "nuxeo-ui bundle size: ${bundle_size_bytes} bytes"
+            echo "nuxeo-ui bundle size limit: ${NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES} bytes"
+
+            if [ "$bundle_size_bytes" -gt "$NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES" ]; then
+              echo "nuxeo-ui bundle size exceeds limit."
+              exit 1
+            fi
+          else
+            echo "nuxeo-ui is not affected; skipping bundle size check."
+          fi

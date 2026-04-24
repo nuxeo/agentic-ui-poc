@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,6 +7,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AssetAggregationService,
@@ -72,6 +73,7 @@ function toMimeType(value: string): string {
     MatCheckboxModule,
     MatDividerModule,
     MatSlideToggleModule,
+    MatSnackBarModule,
     MatTooltipModule,
     AssetsQueueComponent,
   ],
@@ -82,6 +84,7 @@ export class AssetsDrawerComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly aggregationService = inject(AssetAggregationService);
   private readonly searchService = inject(SearchService);
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
@@ -224,6 +227,31 @@ export class AssetsDrawerComponent {
 
   constructor() {
     this.expandedFilters.set(new Set(['asset-type']));
+
+    effect(() => {
+      const version = this.aggregationService.savedSearchVersion();
+      if (version === 0) return;
+      untracked(() => {
+        this.savedSearchesLoaded.set(false);
+        this.loadSavedSearchesFromApi();
+      });
+    });
+
+    effect(() => {
+      const savedSearchId = this.aggregationService.selectedSavedSearchId().trim();
+      const savedSearchTitle = this.aggregationService.selectedSavedSearchTitle().trim();
+
+      if (savedSearchId) {
+        this.selectedSavedSearch.set(savedSearchId);
+        this.filterSearchInput.set(savedSearchTitle);
+        return;
+      }
+
+      this.selectedSavedSearch.set('');
+      this.filterSearchInput.set('');
+      this.savedSearchFilter.set('');
+      this.filterSearchOpen.set(false);
+    });
 
     this.syncSelectedDocumentFromUrl(this.router.url);
 
@@ -371,6 +399,10 @@ export class AssetsDrawerComponent {
             next: () => {
               this.savedSearchesLoaded.set(false);
               this.loadSavedSearchesFromApi();
+              this.snackBar.open(`Search "${trimmedTitle}" saved.`, 'OK', { duration: 3000 });
+            },
+            error: () => {
+              this.snackBar.open('Failed to save search.', 'Dismiss', { duration: 5000 });
             },
           });
       });
@@ -399,9 +431,14 @@ export class AssetsDrawerComponent {
     this.selectedSavedSearch.set('');
     this.aggregationService.selectedSavedSearchId.set('');
     this.aggregationService.selectedSavedSearchTitle.set('');
+
+    const clearedParams: Record<string, null> = { ecm_fulltext: null };
+    for (const group of this.filterGroups()) {
+      clearedParams[group.id] = null;
+    }
+
     void this.router.navigate(['/documents'], {
-      queryParams: { ecm_fulltext: null },
-      queryParamsHandling: 'merge',
+      queryParams: clearedParams,
     });
   }
 
@@ -488,7 +525,10 @@ export class AssetsDrawerComponent {
 
     const queryParams: Record<string, string | null> = {};
     for (const group of this.filterGroups()) {
-      const values = getValues(group.id, this.GROUP_AGG_KEY[group.id] ?? '');
+      const keys = DYNAMIC_GROUPS.has(group.id)
+        ? [group.id]
+        : [group.id, this.GROUP_AGG_KEY[group.id] ?? ''];
+      const values = getValues(...keys);
       queryParams[group.id] = values.length > 0 ? values.join(',') : null;
     }
 

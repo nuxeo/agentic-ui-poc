@@ -21,7 +21,7 @@ import {
   UserService,
 } from '@agentic-ui/shared/nuxeo-client';
 
-import { ConfirmDialogComponent, ConfirmDialogData } from '../confirm-dialog/confirm-dialog.component';
+import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
 import {
   UserFormDialogComponent,
   UserFormDialogData,
@@ -273,7 +273,9 @@ export class AdminUserDetailsPageComponent implements OnInit {
               this.load();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', { duration: 5000 }),
+              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
+                duration: 5000,
+              }),
           });
       });
   }
@@ -282,14 +284,17 @@ export class AdminUserDetailsPageComponent implements OnInit {
     const user = this.user();
     if (!user) return;
     this.dialog
-      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(ConfirmDialogComponent, {
-        width: '400px',
-        data: {
-          title: 'Delete user',
-          message: `Delete user "${user.id}"? This cannot be undone.`,
-          confirmLabel: 'Delete',
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(
+        ConfirmDialogComponent,
+        {
+          width: '400px',
+          data: {
+            title: 'Delete user',
+            message: `Delete user "${user.id}"? This cannot be undone.`,
+            confirmLabel: 'Delete',
+          },
         },
-      })
+      )
       .afterClosed()
       .subscribe((ok) => {
         if (!ok) return;

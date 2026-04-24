@@ -1,5 +1,5 @@
 <div class="drawer-header">
-  <div class="saved-filters-dropdown" (blur)="closeSavedFilterDropdown()">
+  <div class="saved-filters-dropdown" tabindex="-1" (focusout)="onSavedFilterFocusOut($event)">
     <button class="saved-filters-trigger" type="button" (click)="toggleSavedFilterDropdown()">
       <span class="saved-filters-label">{{
         trashFilterService.activeSavedFilterTitle() ?? 'Search Filters'
@@ -18,14 +18,6 @@
             (input)="savedFilterSearch.set($any($event.target).value)"
           />
         </div>
-        <button
-          class="saved-filters-option saved-filters-default"
-          type="button"
-          (mousedown)="resetFilters()"
-        >
-          <mat-icon class="saved-filter-icon">search</mat-icon>
-          Default Search
-        </button>
         @for (filter of filteredSavedFilters(); track filter.uid) {
           <button
             class="saved-filters-option"
