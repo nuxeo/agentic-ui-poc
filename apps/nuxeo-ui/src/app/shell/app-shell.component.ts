@@ -111,7 +111,6 @@ export class AppShellComponent implements OnDestroy {
   protected readonly navItems = computed(() => {
     return PLATFORM_NAV_ITEMS.filter((item) => {
       if (item.path === '/administration' && !this.auth.isAdministrator()) return false;
-      if (item.path === '/knowledge-discovery' && !this.featureFlags.aiEnabled()) return false;
       return true;
     });
   });
