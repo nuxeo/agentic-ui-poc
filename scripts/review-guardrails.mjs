@@ -114,12 +114,6 @@ function checkThemeTokens() {
   }
 }
 
-function checkAiFeatureGating() {
-  // Knowledge Discovery is intentionally a first-class top-level workspace.
-  // Guard AI-backed widgets inside feature pages instead of hiding the route
-  // or platform nav entry.
-}
-
 function checkDocsNumbering() {
   const docFiles = changedFiles.filter((file) => file.endsWith('.md') && file.startsWith('docs/'));
   for (const file of docFiles) {
@@ -201,7 +195,6 @@ function checkTypeSafetyEscapes() {
 }
 
 checkThemeTokens();
-checkAiFeatureGating();
 checkDocsNumbering();
 checkVitestProjects();
 checkBlobUrlLifecycle();
