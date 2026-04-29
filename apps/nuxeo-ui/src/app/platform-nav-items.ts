@@ -15,6 +15,7 @@ export interface DrawerLinkItem {
  * Items with `hasDrawer: true` open a secondary panel showing contextual content.
  */
 export const PLATFORM_NAV_ITEMS: AppNavItem[] = [
+  { label: 'Knowledge Discovery', path: '/knowledge-discovery', icon: 'star' },
   { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
   { label: 'Browse', path: '/browse', icon: 'folder', hasDrawer: true },
   { label: 'Recently viewed', path: '/recently-viewed', icon: 'clock', hasDrawer: true },

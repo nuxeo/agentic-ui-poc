@@ -1,15 +1,20 @@
 # AI Features
 
-This document describes the AI capabilities integrated into the Nuxeo Angular UI. All AI features are powered by OpenAI's GPT-4o / GPT-4o-mini models through a dedicated Express backend that acts as a secure proxy.
+This document describes the AI capabilities integrated into the Nuxeo Angular UI.
+Most AI features are powered by OpenAI's GPT-4o / GPT-4o-mini models through a
+dedicated Express backend that acts as a secure proxy.
+
+Knowledge Enrichment is the exception: it runs through the Nuxeo server and the
+Hyland Content Intelligence Connector (CIC), not through `apps/ai-backend`.
 
 ## Architecture
 
 ```
+OpenAI-backed features
 Browser (Angular)          AI Backend (Express)         External
 ┌──────────────┐          ┌──────────────────┐        ┌──────────┐
 │  nuxeo-ui    │──/ai/*──▶│  apps/ai-backend  │──────▶│  OpenAI  │
 │  :4200       │          │  :3000            │        │  API     │
-│              │          │                   │──────▶│          │
 │  libs/shared │          │  services/        │       └──────────┘
 │  /ai-client  │          │  nuxeo.service.ts │
 └──────────────┘          └────────┬──────────┘
@@ -18,6 +23,13 @@ Browser (Angular)          AI Backend (Express)         External
                           │  Nuxeo Server     │
                           │  :8080            │
                           └───────────────────┘
+
+Knowledge Enrichment
+┌──────────────┐          ┌──────────────────┐        ┌───────────────┐
+│  nuxeo-ui    │─────────▶│  Nuxeo Server     │──────▶│  CIC / Context │
+│  libs/shared │ multipart│  automation ops   │       │  API           │
+│  /ke-client  │ blob     │  HylandKE.*       │       └───────────────┘
+└──────────────┘          └──────────────────┘
 ```
 
 **Key design decisions:**
@@ -25,6 +37,8 @@ Browser (Angular)          AI Backend (Express)         External
 - The OpenAI API key never reaches the browser. All LLM calls go through `apps/ai-backend`.
 - The Angular dev server proxies `/ai/*` to `localhost:3000` via `proxy.conf.json`.
 - The backend also makes server-side Nuxeo REST API calls (document content, metadata, audit logs) to build context for the LLM.
+- Knowledge Enrichment uses a separate path: browser -> Nuxeo automation ->
+  CIC -> Hyland Context API.
 
 ## Quick Start
 
@@ -290,6 +304,65 @@ Answers natural language questions about document permissions by querying Nuxeo 
 
 ---
 
+### 11. Knowledge Enrichment
+
+**Location:** Document Detail > document preview header (top-right KE action buttons)
+
+Knowledge Enrichment runs through the Hyland Content Intelligence Connector
+installed on Nuxeo. It does not use the OpenAI backend in this repo.
+
+- PDF actions:
+  - classify document
+  - extract named entities
+  - summarize document
+- Image action:
+  - describe image and extract image entities
+- Results are persisted back into Nuxeo metadata and refreshed in the properties panel
+
+| Component / Service   | File                                                                       |
+| --------------------- | -------------------------------------------------------------------------- |
+| Document Detail UI    | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
+| KE shared client      | `libs/shared/ke-client/src/lib/ke-client.service.ts`                       |
+| KE config + models    | `libs/shared/ke-client/src/lib/`                                           |
+| Nuxeo/CIC setup guide | `docs/knowledge-enrichment.md`                                             |
+
+**API:** `POST /nuxeo/site/automation/HylandKnowledgeEnrichment.Enrich`
+
+The client first downloads the current blob from Nuxeo, then posts a multipart
+automation request:
+
+```json
+{
+  "params": {
+    "actions": "text-classification",
+    "sourceId": "document-uuid",
+    "classes": "[\"Contract\",\"Invoice\",\"Legal\",\"Technical\"]"
+  }
+}
+```
+
+The normalized result contains Context API outputs such as:
+
+```json
+{
+  "textClassification": { "isSuccess": true, "result": "Contract" },
+  "textSummary": { "isSuccess": true, "result": "Short summary..." },
+  "namedEntityText": {
+    "isSuccess": true,
+    "result": { "ORGANIZATION": ["Hyland"] }
+  }
+}
+```
+
+**Metadata mapping:**
+
+- `text-classification` -> `dc:nature`
+- `named-entity-recognition-text` -> `nxtag:tags`
+- `text-summarization` -> `dc:description`
+- `image-description` + `named-entity-recognition-image` -> `dc:description`, `nxtag:tags`
+
+---
+
 ## Project Structure
 
 ```
@@ -330,6 +403,13 @@ libs/shared/ai-client/              # Angular library for AI integration
       ai-gateway.service.ts         # HTTP service with methods for all AI endpoints
       ai-chat.service.ts            # Signal-based chat conversation state
       ai.models.ts                  # TypeScript interfaces for all request/response types
+libs/shared/ke-client/              # Angular library for KE via Nuxeo CIC
+  src/
+    index.ts                        # Public API barrel
+    lib/
+      ke.config.ts                  # KE_CIC_OPERATIONS InjectionToken
+      ke-client.service.ts          # Multipart browser -> Nuxeo -> CIC client
+      ke.models.ts                  # Context API request/response models
 ```
 
 ## Models Used

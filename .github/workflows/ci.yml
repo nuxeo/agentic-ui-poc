@@ -44,6 +44,9 @@ jobs:
             git fetch --no-tags origin "$NX_HEAD"
           fi
 
+      - name: Run review guardrails
+        run: npm run review:guardrails -- --base=$NX_BASE --head=$NX_HEAD
+
       - name: Lint affected projects
         run: npx nx affected -t lint --base=$NX_BASE --head=$NX_HEAD
 
@@ -51,7 +54,12 @@ jobs:
         run: npx nx affected -t build --base=$NX_BASE --head=$NX_HEAD
 
       - name: Test affected projects
-        run: npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD --output-style=stream
+        run: |
+          npx nx run document-detail:test --output-style=stream
+          npx nx run knowledge-discovery:test --output-style=stream
+          npx nx run search:test --output-style=stream
+          npx nx run browse:test --output-style=stream
+          npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD --output-style=stream --parallel=1 --exclude=browse,document-detail,knowledge-discovery,search
 
       - name: Check bundle size (nuxeo-ui)
         shell: bash

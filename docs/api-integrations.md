@@ -10,19 +10,19 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 ## 1. Login (Validate Credentials)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `AuthService` (`apps/nuxeo-ui/src/app/auth/auth.service.ts`) |
-| **Method** | `login(username, password, remember)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/me` |
+| Field           | Value                                                        |
+| --------------- | ------------------------------------------------------------ |
+| **Service**     | `AuthService` (`apps/nuxeo-ui/src/app/auth/auth.service.ts`) |
+| **Method**      | `login(username, password, remember)`                        |
+| **HTTP Method** | `GET`                                                        |
+| **Endpoint**    | `/nuxeo/api/v1/me`                                           |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                               |
+| --------------- | ----------------------------------- |
 | `Authorization` | `Basic <base64(username:password)>` |
-| `Accept` | `application/json` |
+| `Accept`        | `application/json`                  |
 
 **Request Payload:** None (GET request).
 
@@ -46,35 +46,35 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Error Handling:**
 
-| Status | Message shown to user |
-| ------ | --------------------- |
-| 401 / 403 | "Invalid username or password." |
+| Status                | Message shown to user                                      |
+| --------------------- | ---------------------------------------------------------- |
+| 401 / 403             | "Invalid username or password."                            |
 | Other / Network error | "Could not reach Nuxeo. Check the server, proxy, and URL." |
 
 ---
 
 ## 2. Recently Edited Documents (Dashboard Widget)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentService` (`libs/shared/nuxeo-client/src/lib/services/document.service.ts`) |
-| **Method** | `getRecentlyEdited(pageSize)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/search/lang/NXQL/execute` |
+| Field           | Value                                                                               |
+| --------------- | ----------------------------------------------------------------------------------- |
+| **Service**     | `DocumentService` (`libs/shared/nuxeo-client/src/lib/services/document.service.ts`) |
+| **Method**      | `getRecentlyEdited(pageSize)`                                                       |
+| **HTTP Method** | `GET`                                                                               |
+| **Endpoint**    | `/nuxeo/api/v1/search/lang/NXQL/execute`                                            |
 
 **Query Parameters:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `query` | `SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ORDER BY dc:modified DESC` |
-| `pageSize` | `10` (default) |
+| Parameter  | Value                                                                                                                                                          |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `query`    | `SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ORDER BY dc:modified DESC` |
+| `pageSize` | `10` (default)                                                                                                                                                 |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `dublincore` |
+| `properties`    | `dublincore`                                 |
 
 **Request Payload:** None (GET request).
 
@@ -108,35 +108,35 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].title` | Document name displayed in the widget |
-| `entries[].type` | Mapped to a Material icon (File, Note, Picture, Video, etc.) |
-| `entries[].lastModified` | Formatted as medium date in the "Modified" column |
-| `entries[].properties['dc:lastContributor']` | Shown in the "Last Contributor" column |
+| Field                                        | Usage                                                        |
+| -------------------------------------------- | ------------------------------------------------------------ |
+| `entries[].title`                            | Document name displayed in the widget                        |
+| `entries[].type`                             | Mapped to a Material icon (File, Note, Picture, Video, etc.) |
+| `entries[].lastModified`                     | Formatted as medium date in the "Modified" column            |
+| `entries[].properties['dc:lastContributor']` | Shown in the "Last Contributor" column                       |
 
 ---
 
 ## 3. User Tasks (Dashboard Widget)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `TaskService` (`libs/shared/nuxeo-client/src/lib/services/task.service.ts`) |
-| **Method** | `getUserTasks(userId, pageSize)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/task` |
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| **Service**     | `TaskService` (`libs/shared/nuxeo-client/src/lib/services/task.service.ts`) |
+| **Method**      | `getUserTasks(userId, pageSize)`                                            |
+| **HTTP Method** | `GET`                                                                       |
+| **Endpoint**    | `/nuxeo/api/v1/task`                                                        |
 
 **Query Parameters:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `userId` | Current authenticated username (e.g., `Administrator`) |
-| `pageSize` | `10` (default) |
+| Parameter  | Value                                                  |
+| ---------- | ------------------------------------------------------ |
+| `userId`   | Current authenticated username (e.g., `Administrator`) |
+| `pageSize` | `10` (default)                                         |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
 
 **Request Payload:** None (GET request).
@@ -173,90 +173,90 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].name` | Task label (stripped of `wf.<workflow>.` prefix) |
-| `entries[].dueDate` | Due date column; shown in red if overdue |
-| `entries[].workflowModelName` | Workflow name (PascalCase split into words) |
-| `entries[].targetDocumentIds[0].id` | Used to fetch the target document title |
-| `targetDocTitle` (enriched) | Shown below the task name |
+| Field                               | Usage                                            |
+| ----------------------------------- | ------------------------------------------------ |
+| `entries[].name`                    | Task label (stripped of `wf.<workflow>.` prefix) |
+| `entries[].dueDate`                 | Due date column; shown in red if overdue         |
+| `entries[].workflowModelName`       | Workflow name (PascalCase split into words)      |
+| `entries[].targetDocumentIds[0].id` | Used to fetch the target document title          |
+| `targetDocTitle` (enriched)         | Shown below the task name                        |
 
 ---
 
 ## 4. Recently Viewed Documents (Dashboard Widget)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentService` (`libs/shared/nuxeo-client/src/lib/services/document.service.ts`) |
-| **Method** | `getRecentlyViewed(userId, pageSize)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/search/lang/NXQL/execute` |
+| Field           | Value                                                                               |
+| --------------- | ----------------------------------------------------------------------------------- |
+| **Service**     | `DocumentService` (`libs/shared/nuxeo-client/src/lib/services/document.service.ts`) |
+| **Method**      | `getRecentlyViewed(userId, pageSize)`                                               |
+| **HTTP Method** | `GET`                                                                               |
+| **Endpoint**    | `/nuxeo/api/v1/search/lang/NXQL/execute`                                            |
 
 **Query Parameters:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `query` | `SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 AND ecm:primaryType NOT IN ('Root', 'Favorites', 'Collections') AND (dc:creator = '{user}' OR dc:lastContributor = '{user}') ORDER BY dc:modified DESC` |
-| `pageSize` | `10` (default) |
+| Parameter  | Value                                                                                                                                                                                                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `query`    | `SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 AND ecm:primaryType NOT IN ('Root', 'Favorites', 'Collections') AND (dc:creator = '{user}' OR dc:lastContributor = '{user}') ORDER BY dc:modified DESC` |
+| `pageSize` | `10` (default)                                                                                                                                                                                                                                                                              |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `dublincore` |
+| `properties`    | `dublincore`                                 |
 
 **Response (200 OK):** Same document list shape as §2.
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].title` | Document name with type icon |
-| `entries[].type` | Shown as a coloured badge (e.g., "Picture", "Video", "File") |
-| `entries[].lastModified` | Shown as relative time in the "Last Viewed" column |
+| Field                    | Usage                                                        |
+| ------------------------ | ------------------------------------------------------------ |
+| `entries[].title`        | Document name with type icon                                 |
+| `entries[].type`         | Shown as a coloured badge (e.g., "Picture", "Video", "File") |
+| `entries[].lastModified` | Shown as relative time in the "Last Viewed" column           |
 
 ---
 
 ## 5. Favorite Items (Dashboard Widget)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `CollectionService` (`libs/shared/nuxeo-client/src/lib/services/collection.service.ts`) |
-| **Method** | `getFavorites(userId, pageSize)` |
-| **HTTP Method** | `GET` (two-step) |
-| **Endpoint** | Step 1: `/nuxeo/api/v1/search/lang/NXQL/execute` — Step 2: `/nuxeo/api/v1/search/pp/default_content_collection/execute` |
+| Field           | Value                                                                                                                   |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Service**     | `CollectionService` (`libs/shared/nuxeo-client/src/lib/services/collection.service.ts`)                                 |
+| **Method**      | `getFavorites(userId, pageSize)`                                                                                        |
+| **HTTP Method** | `GET` (two-step)                                                                                                        |
+| **Endpoint**    | Step 1: `/nuxeo/api/v1/search/lang/NXQL/execute` — Step 2: `/nuxeo/api/v1/search/pp/default_content_collection/execute` |
 
 **Step 1 — Locate Favorites collection:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `query` | `SELECT * FROM Document WHERE ecm:primaryType = 'Favorites' AND ecm:path STARTSWITH '/default-domain/UserWorkspaces/{user}'` |
-| `pageSize` | `1` |
+| Parameter  | Value                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `query`    | `SELECT * FROM Document WHERE ecm:primaryType = 'Favorites' AND ecm:path STARTSWITH '/default-domain/UserWorkspaces/{user}'` |
+| `pageSize` | `1`                                                                                                                          |
 
 **Step 2 — Fetch collection members:**
 
-| Parameter | Value |
-| --------- | ----- |
+| Parameter     | Value                                           |
+| ------------- | ----------------------------------------------- |
 | `queryParams` | UID of the Favorites collection found in step 1 |
-| `pageSize` | `10` (default) |
+| `pageSize`    | `10` (default)                                  |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `dublincore` |
+| `properties`    | `dublincore`                                 |
 
 **Response (200 OK):** Same document list shape as §2.
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].title` | Document name with type icon |
-| `entries[].lastModified` | Formatted as medium date in the "Modified" column |
-| `entries[].properties['dc:lastContributor']` | Shown in the "Last Contributor" column |
+| Field                                        | Usage                                             |
+| -------------------------------------------- | ------------------------------------------------- |
+| `entries[].title`                            | Document name with type icon                      |
+| `entries[].lastModified`                     | Formatted as medium date in the "Modified" column |
+| `entries[].properties['dc:lastContributor']` | Shown in the "Last Contributor" column            |
 
 **Empty state:** "You haven't starred documents yet."
 
@@ -264,19 +264,19 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 ## 6. Browse — Get Document by Path
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `BrowseService` (`libs/shared/nuxeo-client/src/lib/services/browse.service.ts`) |
-| **Method** | `getByPath(nuxeoPath)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/path{nuxeoPath}` |
+| Field           | Value                                                                           |
+| --------------- | ------------------------------------------------------------------------------- |
+| **Service**     | `BrowseService` (`libs/shared/nuxeo-client/src/lib/services/browse.service.ts`) |
+| **Method**      | `getByPath(nuxeoPath)`                                                          |
+| **HTTP Method** | `GET`                                                                           |
+| **Endpoint**    | `/nuxeo/api/v1/path{nuxeoPath}`                                                 |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `dublincore` |
+| `properties`    | `dublincore`                                 |
 
 **Request Payload:** None (GET request).
 
@@ -299,36 +299,36 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
+| Field   | Usage                                           |
+| ------- | ----------------------------------------------- |
 | `title` | Shown in breadcrumbs and nav drawer folder tree |
-| `type` | Used to determine folderish status and icon |
-| `path` | Used for breadcrumb construction and navigation |
+| `type`  | Used to determine folderish status and icon     |
+| `path`  | Used for breadcrumb construction and navigation |
 
 ---
 
 ## 7. Browse — Get Children of a Document
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `BrowseService` (`libs/shared/nuxeo-client/src/lib/services/browse.service.ts`) |
-| **Method** | `getChildren(nuxeoPath, pageSize, currentPageIndex)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/path{nuxeoPath}/@children` |
+| Field           | Value                                                                           |
+| --------------- | ------------------------------------------------------------------------------- |
+| **Service**     | `BrowseService` (`libs/shared/nuxeo-client/src/lib/services/browse.service.ts`) |
+| **Method**      | `getChildren(nuxeoPath, pageSize, currentPageIndex)`                            |
+| **HTTP Method** | `GET`                                                                           |
+| **Endpoint**    | `/nuxeo/api/v1/path{nuxeoPath}/@children`                                       |
 
 **Query Parameters:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `pageSize` | `50` (default) |
-| `currentPageIndex` | `0` (default) |
+| Parameter          | Value          |
+| ------------------ | -------------- |
+| `pageSize`         | `50` (default) |
+| `currentPageIndex` | `0` (default)  |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `dublincore` |
+| `properties`    | `dublincore`                                 |
 
 **Request Payload:** None (GET request).
 
@@ -360,16 +360,17 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].title` | Document/folder name in browse table and nav drawer tree |
-| `entries[].type` | Mapped to icon; determines if row is clickable (folderish types) |
-| `entries[].path` | Used for navigation URL construction |
-| `entries[].lastModified` | Shown in "Modified" column |
-| `entries[].properties['dc:lastContributor']` | Shown in "Last Contributor" column |
-| `totalSize` | Displayed as item count summary |
+| Field                                        | Usage                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------- |
+| `entries[].title`                            | Document/folder name in browse table and nav drawer tree         |
+| `entries[].type`                             | Mapped to icon; determines if row is clickable (folderish types) |
+| `entries[].path`                             | Used for navigation URL construction                             |
+| `entries[].lastModified`                     | Shown in "Modified" column                                       |
+| `entries[].properties['dc:lastContributor']` | Shown in "Last Contributor" column                               |
+| `totalSize`                                  | Displayed as item count summary                                  |
 
 **Used by:**
+
 - **Browse page** (`libs/features/browse/src/lib/browse/browse.ts`) — displays folder contents
 - **Nav drawer** (`apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts`) — builds folder tree
 
@@ -377,19 +378,19 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 ## 8. Document Detail — Full Document Metadata
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `getFullDocument(uid)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/id/{uid}` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `getFullDocument(uid)`                                                                           |
+| **HTTP Method** | `GET`                                                                                            |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}`                                                                         |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
-| `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `*` (all schemas) |
+| Header               | Value                                               |
+| -------------------- | --------------------------------------------------- |
+| `Authorization`      | `Basic <credentials>` (added by interceptor)        |
+| `properties`         | `*` (all schemas)                                   |
 | `enrichers.document` | `acls,renditions,favorites,subscribedNotifications` |
 
 **Request Payload:** None (GET request).
@@ -459,39 +460,39 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `properties['file:content']['mime-type']` | Determines viewer type (image vs PDF vs fallback) |
-| `properties['file:content']['name']` | File name shown in viewer footer |
-| `properties['file:content']['length']` | File size shown in viewer footer |
-| `properties['dc:created']` / `dc:modified` | Shown in properties panel |
-| `properties['dc:creator']` / `dc:contributors` | Shown in properties panel |
-| `properties['dc:expired']` | Expiry date in properties panel |
-| `properties['uid:major_version']` / `uid:minor_version` | Version badge |
-| `properties['nxtag:tags']` | Tag chips |
-| `contextParameters.acls[].name` | ACL name: `"local"` or `"inherited"` — determines section placement |
-| `contextParameters.acls[].aces[].username` | User/group name shown in permissions table |
-| `contextParameters.acls[].aces[].permission` | Permission level mapped to label (e.g., "Everything" → "Manage everything") |
-| `contextParameters.acls[].aces[].granted` | Whether permission is granted (only granted entries shown) |
-| `contextParameters.acls[].aces[].externalUser` | Separates external user permissions into their own section |
-| `contextParameters.acls[].aces[].creator` | Who granted the permission ("Granted by" column) |
-| `contextParameters.acls[].aces[].begin` / `end` | Date range for time-limited permissions; null = "Permanent" |
+| Field                                                   | Usage                                                                       |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `properties['file:content']['mime-type']`               | Determines viewer type (image vs PDF vs fallback)                           |
+| `properties['file:content']['name']`                    | File name shown in viewer footer                                            |
+| `properties['file:content']['length']`                  | File size shown in viewer footer                                            |
+| `properties['dc:created']` / `dc:modified`              | Shown in properties panel                                                   |
+| `properties['dc:creator']` / `dc:contributors`          | Shown in properties panel                                                   |
+| `properties['dc:expired']`                              | Expiry date in properties panel                                             |
+| `properties['uid:major_version']` / `uid:minor_version` | Version badge                                                               |
+| `properties['nxtag:tags']`                              | Tag chips                                                                   |
+| `contextParameters.acls[].name`                         | ACL name: `"local"` or `"inherited"` — determines section placement         |
+| `contextParameters.acls[].aces[].username`              | User/group name shown in permissions table                                  |
+| `contextParameters.acls[].aces[].permission`            | Permission level mapped to label (e.g., "Everything" → "Manage everything") |
+| `contextParameters.acls[].aces[].granted`               | Whether permission is granted (only granted entries shown)                  |
+| `contextParameters.acls[].aces[].externalUser`          | Separates external user permissions into their own section                  |
+| `contextParameters.acls[].aces[].creator`               | Who granted the permission ("Granted by" column)                            |
+| `contextParameters.acls[].aces[].begin` / `end`         | Date range for time-limited permissions; null = "Permanent"                 |
 
 ---
 
 ## 9. Document Detail — Blob Download
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `fetchBlob(uid)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/id/{uid}/@blob/blobholder:0` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `fetchBlob(uid)`                                                                                 |
+| **HTTP Method** | `GET`                                                                                            |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@blob/blobholder:0`                                                      |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
 
 **Response:** Raw binary blob (`image/png`, `application/pdf`, etc.)
@@ -502,17 +503,17 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 ## 10. Document Detail — PDF Rendition
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `fetchPdfRendition(uid)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/id/{uid}/@rendition/pdf` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `fetchPdfRendition(uid)`                                                                         |
+| **HTTP Method** | `GET`                                                                                            |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@rendition/pdf`                                                          |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
 
 **Response:** Raw PDF blob. Used as fallback preview for non-image, non-PDF document types (e.g., Word docs).
@@ -521,24 +522,24 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 ## 11. Document Detail — Audit Log (History)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `getAuditLog(uid, pageSize, currentPageIndex)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/id/{uid}/@audit` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `getAuditLog(uid, pageSize, currentPageIndex)`                                                   |
+| **HTTP Method** | `GET`                                                                                            |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@audit`                                                                  |
 
 **Query Parameters:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `pageSize` | `50` (default) |
-| `currentPageIndex` | `0` (default) |
+| Parameter          | Value          |
+| ------------------ | -------------- |
+| `pageSize`         | `50` (default) |
+| `currentPageIndex` | `0` (default)  |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
 
 **Response (200 OK):**
@@ -578,29 +579,30 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].eventId` | Mapped to human-readable action label (e.g., "download" → "Download") |
-| `entries[].eventDate` | Shown in "Date" column |
-| `entries[].principalName` | Shown in "Username" column with avatar initial |
-| `entries[].category` | Shown in "Category" column |
-| `entries[].comment` | Shown in "Comment" column |
-| `entries[].docLifeCycle` | Shown in "State" column as badge |
-| `totalSize`, `numberOfPages` | Used for server-side pagination |
+| Field                        | Usage                                                                 |
+| ---------------------------- | --------------------------------------------------------------------- |
+| `entries[].eventId`          | Mapped to human-readable action label (e.g., "download" → "Download") |
+| `entries[].eventDate`        | Shown in "Date" column                                                |
+| `entries[].principalName`    | Shown in "Username" column with avatar initial                        |
+| `entries[].category`         | Shown in "Category" column                                            |
+| `entries[].comment`          | Shown in "Comment" column                                             |
+| `entries[].docLifeCycle`     | Shown in "State" column as badge                                      |
+| `totalSize`, `numberOfPages` | Used for server-side pagination                                       |
 
 **Used by:**
+
 - **Document detail page — History tab** (`libs/features/document-detail/src/lib/document-detail/document-detail.ts`)
 
 ---
 
 ## 12. Directory — Suggest Entries (Event Types & Categories)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DirectoryService` (`libs/shared/nuxeo-client/src/lib/services/directory.service.ts`) |
-| **Method** | `getEntries(directoryName)` / `getEventTypes()` / `getEventCategories()` |
-| **HTTP Method** | `POST` |
-| **Endpoint** | `/nuxeo/api/v1/automation/Directory.SuggestEntries` |
+| Field           | Value                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------- |
+| **Service**     | `DirectoryService` (`libs/shared/nuxeo-client/src/lib/services/directory.service.ts`) |
+| **Method**      | `getEntries(directoryName)` / `getEventTypes()` / `getEventCategories()`              |
+| **HTTP Method** | `POST`                                                                                |
+| **Endpoint**    | `/nuxeo/api/v1/automation/Directory.SuggestEntries`                                   |
 
 **Request Payload:**
 
@@ -618,16 +620,17 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 ```
 
 The `directoryName` parameter varies:
+
 - `eventTypes` — returns all known audit event types (e.g., "documentCreated", "download")
 - `eventCategories` — returns all known audit event categories (e.g., "eventDocumentCategory", "eventWorkflowCategory")
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `Content-Type` | `application/json` |
-| `properties` | `*` |
+| `Content-Type`  | `application/json`                           |
+| `properties`    | `*`                                          |
 
 **Response (200 OK):**
 
@@ -649,106 +652,109 @@ The `directoryName` parameter varies:
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `id` | Value used for filtering audit entries (matches `eventId` / `category` in audit log) |
-| `displayLabel` | Human-readable label shown in filter dropdowns |
-| `ordering` | Sort order for dropdown options |
-| `obsolete` | Entries with `obsolete: 1` are filtered out |
+| Field          | Usage                                                                                |
+| -------------- | ------------------------------------------------------------------------------------ |
+| `id`           | Value used for filtering audit entries (matches `eventId` / `category` in audit log) |
+| `displayLabel` | Human-readable label shown in filter dropdowns                                       |
+| `ordering`     | Sort order for dropdown options                                                      |
+| `obsolete`     | Entries with `obsolete: 1` are filtered out                                          |
 
 **Caching:** Results are cached per `directoryName` using `shareReplay` so subsequent calls reuse the same HTTP response.
 
 **Used by:**
+
 - **Document detail page — History tab** (`libs/features/document-detail/src/lib/document-detail/document-detail.ts`) — populates "Performed Actions" and "Event Category" filter dropdowns
 
 ---
 
 ## 13. Publishing — Get Published Versions (Proxies)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `getPublishedVersions(uid)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/search/lang/NXQL/execute` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `getPublishedVersions(uid)`                                                                      |
+| **HTTP Method** | `GET`                                                                                            |
+| **Endpoint**    | `/nuxeo/api/v1/search/lang/NXQL/execute`                                                         |
 
 **Query Parameters:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `query` | `SELECT * FROM Document WHERE ecm:isProxy = 1 AND ecm:proxyTargetId = '{uid}' AND ecm:isTrashed = 0` |
-| `pageSize` | `50` |
+| Parameter  | Value                                                                                                |
+| ---------- | ---------------------------------------------------------------------------------------------------- |
+| `query`    | `SELECT * FROM Document WHERE ecm:isProxy = 1 AND ecm:proxyTargetId = '{uid}' AND ecm:isTrashed = 0` |
+| `pageSize` | `50`                                                                                                 |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `dublincore,uid` |
+| `properties`    | `dublincore,uid`                             |
 
 **Response (200 OK):** Standard `NuxeoDocumentList` — each entry is a proxy (published copy) of the source document.
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].title` | Published document title |
-| `entries[].path` | Location in the section tree (displayed as breadcrumb) |
-| `entries[].lastModified` | When the publication was last updated |
-| `entries[].properties['uid:major_version']` / `uid:minor_version` | Published version number |
+| Field                                                             | Usage                                                  |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| `entries[].title`                                                 | Published document title                               |
+| `entries[].path`                                                  | Location in the section tree (displayed as breadcrumb) |
+| `entries[].lastModified`                                          | When the publication was last updated                  |
+| `entries[].properties['uid:major_version']` / `uid:minor_version` | Published version number                               |
 
 **Used by:**
+
 - **Document detail page — Publishing tab** — displays list of existing publications
 
 ---
 
 ## 14. Publishing — Get Section Tree
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `getSectionTree()` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/search/lang/NXQL/execute` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `getSectionTree()`                                                                               |
+| **HTTP Method** | `GET`                                                                                            |
+| **Endpoint**    | `/nuxeo/api/v1/search/lang/NXQL/execute`                                                         |
 
 **Query Parameters:**
 
-| Parameter | Value |
-| --------- | ----- |
-| `query` | `SELECT * FROM Document WHERE ecm:primaryType IN ('SectionRoot', 'Section') AND ecm:isTrashed = 0 ORDER BY ecm:path` |
-| `pageSize` | `200` |
+| Parameter  | Value                                                                                                                |
+| ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| `query`    | `SELECT * FROM Document WHERE ecm:primaryType IN ('SectionRoot', 'Section') AND ecm:isTrashed = 0 ORDER BY ecm:path` |
+| `pageSize` | `200`                                                                                                                |
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `properties` | `dublincore` |
+| `properties`    | `dublincore`                                 |
 
 **Response (200 OK):** Standard `NuxeoDocumentList` — flat list of all SectionRoot and Section documents, ordered by path. Reconstructed into a tree client-side using path relationships.
 
 **Key response fields used:**
 
-| Field | Usage |
-| ----- | ----- |
-| `entries[].uid` | Target section ID for publish operation |
-| `entries[].title` | Section name shown in tree picker |
-| `entries[].path` | Used to build parent-child hierarchy client-side |
-| `entries[].type` | `SectionRoot` vs `Section` — determines icon |
+| Field             | Usage                                            |
+| ----------------- | ------------------------------------------------ |
+| `entries[].uid`   | Target section ID for publish operation          |
+| `entries[].title` | Section name shown in tree picker                |
+| `entries[].path`  | Used to build parent-child hierarchy client-side |
+| `entries[].type`  | `SectionRoot` vs `Section` — determines icon     |
 
 **Used by:**
+
 - **Document detail page — Publishing tab** — section tree picker for publish target
 
 ---
 
 ## 15. Publishing — Publish Document to Section
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `publishDocument(uid, targetSectionId)` |
-| **HTTP Method** | `POST` |
-| **Endpoint** | `/nuxeo/api/v1/id/{uid}/@op/Document.PublishToSection` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `publishDocument(uid, targetSectionId)`                                                          |
+| **HTTP Method** | `POST`                                                                                           |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@op/Document.PublishToSection`                                           |
 
 **Request Payload:**
 
@@ -764,28 +770,29 @@ The `directoryName` parameter varies:
 
 **Request Headers:**
 
-| Header | Value |
-| ------ | ----- |
+| Header          | Value                                        |
+| --------------- | -------------------------------------------- |
 | `Authorization` | `Basic <credentials>` (added by interceptor) |
-| `Content-Type` | `application/json` |
+| `Content-Type`  | `application/json`                           |
 
 **Response (200 OK):** The published proxy `NuxeoDocument`.
 
 **Usage:** Creates a proxy of the current document version in the target section. If `override` is `"true"`, an existing publication to the same section is replaced. After publishing, the published versions list is refreshed.
 
 **Used by:**
+
 - **Document detail page — Publishing tab** — "Publish" button action
 
 ---
 
 ## 16. Document Actions — Lock / Unlock
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Methods** | `lockDocument(uid)` / `unlockDocument(uid)` |
-| **HTTP Method** | `POST` |
-| **Endpoints** | `/nuxeo/api/v1/id/{uid}/@op/Document.Lock` / `Document.Unlock` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Methods**     | `lockDocument(uid)` / `unlockDocument(uid)`                                                      |
+| **HTTP Method** | `POST`                                                                                           |
+| **Endpoints**   | `/nuxeo/api/v1/id/{uid}/@op/Document.Lock` / `Document.Unlock`                                   |
 
 **Request Payload:**
 
@@ -798,18 +805,19 @@ The `directoryName` parameter varies:
 **State Detection:** The document's `lockOwner` and `lockCreated` fields are populated when locked (`null` when unlocked). Enricher request includes `favorites,subscribedNotifications` to get all action states in one call.
 
 **Used by:**
+
 - **Document detail page** — Lock/Unlock toggle in "More actions" menu
 
 ---
 
 ## 17. Document Actions — Add to / Remove from Favorites
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Methods** | `addToFavorites(uid)` / `removeFromFavorites(uid)` |
-| **HTTP Method** | `POST` |
-| **Endpoints** | `/nuxeo/api/v1/id/{uid}/@op/Document.AddToFavorites` / `Document.RemoveFromFavorites` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Methods**     | `addToFavorites(uid)` / `removeFromFavorites(uid)`                                               |
+| **HTTP Method** | `POST`                                                                                           |
+| **Endpoints**   | `/nuxeo/api/v1/id/{uid}/@op/Document.AddToFavorites` / `Document.RemoveFromFavorites`            |
 
 **Request Payload:**
 
@@ -822,18 +830,19 @@ The `directoryName` parameter varies:
 **State Detection:** Via the `favorites` enricher: `contextParameters.favorites.isFavorite` (`true`/`false`).
 
 **Used by:**
+
 - **Document detail page** — Star/Favorite toggle button in header toolbar
 
 ---
 
 ## 18. Document Actions — Trash (Delete)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `trashDocument(uid)` |
-| **HTTP Method** | `POST` |
-| **Endpoint** | `/nuxeo/api/v1/id/{uid}/@op/Document.Trash` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `trashDocument(uid)`                                                                             |
+| **HTTP Method** | `POST`                                                                                           |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@op/Document.Trash`                                                      |
 
 **Request Payload:**
 
@@ -844,18 +853,19 @@ The `directoryName` parameter varies:
 **Response (200 OK):** Updated `NuxeoDocument` with `isTrashed: true` and modified path (`.trashed` suffix).
 
 **Used by:**
+
 - **Document detail page** — Delete button in header toolbar. Navigates back after successful trash.
 
 ---
 
 ## 19. Document Actions — Subscribe / Unsubscribe (Notify Me)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Methods** | `subscribe(uid, notifications)` / `unsubscribe(uid, notifications)` |
-| **HTTP Method** | `POST` |
-| **Endpoints** | `/nuxeo/api/v1/id/{uid}/@op/Document.Subscribe` / `Document.Unsubscribe` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Methods**     | `subscribe(uid, notifications)` / `unsubscribe(uid, notifications)`                              |
+| **HTTP Method** | `POST`                                                                                           |
+| **Endpoints**   | `/nuxeo/api/v1/id/{uid}/@op/Document.Subscribe` / `Document.Unsubscribe`                         |
 
 **Request Payload:**
 
@@ -868,18 +878,19 @@ The `directoryName` parameter varies:
 **State Detection:** Via the `subscribedNotifications` enricher: `contextParameters.subscribedNotifications` (empty array = not subscribed).
 
 **Used by:**
+
 - **Document detail page** — "Notify Me" / "Unsubscribe" toggle in "More actions" menu
 
 ---
 
 ## 20. Document Actions — Add to Collection
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Methods** | `addToCollection(uid, collectionId)` / `getCollections()` |
-| **HTTP Method** | `POST` (add) / `GET` (list) |
-| **Endpoints** | `/nuxeo/api/v1/id/{uid}/@op/Document.AddToCollection` / `/nuxeo/api/v1/search/lang/NXQL/execute` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Methods**     | `addToCollection(uid, collectionId)` / `getCollections()`                                        |
+| **HTTP Method** | `POST` (add) / `GET` (list)                                                                      |
+| **Endpoints**   | `/nuxeo/api/v1/id/{uid}/@op/Document.AddToCollection` / `/nuxeo/api/v1/search/lang/NXQL/execute` |
 
 **Add to Collection Payload:**
 
@@ -892,36 +903,39 @@ The `directoryName` parameter varies:
 **Response (200 OK):** Updated `NuxeoDocument` (add) / `NuxeoDocumentList` of available collections (list).
 
 **Used by:**
+
 - **Document detail page** — "Add to collection" button with collection picker dropdown
 
 ---
 
 ## 21. Document Actions — Export (Download)
 
-| Field | Value |
-| ----- | ----- |
-| **Service** | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method** | `exportBlob(uid)` |
-| **HTTP Method** | `GET` |
-| **Endpoint** | `/nuxeo/api/v1/id/{uid}/@blob/blobholder:0` |
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
+| **Method**      | `exportBlob(uid)`                                                                                |
+| **HTTP Method** | `GET`                                                                                            |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@blob/blobholder:0`                                                      |
 
 **Response:** Raw binary blob. Downloaded via a dynamically created `<a>` element with `URL.createObjectURL`.
 
 **Used by:**
+
 - **Document detail page** — "Export" action in "More actions" menu
 
 ---
 
 ## 22. Document Actions — Clipboard (Client-Side)
 
-| Field | Value |
-| ----- | ----- |
-| **Storage** | `localStorage` key: `nuxeo_clipboard` |
-| **Format** | JSON array: `[{ "uid": "...", "title": "..." }]` |
+| Field       | Value                                            |
+| ----------- | ------------------------------------------------ |
+| **Storage** | `localStorage` key: `nuxeo_clipboard`            |
+| **Format**  | JSON array: `[{ "uid": "...", "title": "..." }]` |
 
 No API call — clipboard is a client-side feature that stores document references in `localStorage`. Documents can be added/removed from the clipboard via the header toolbar bookmark icon or the "More actions" menu.
 
 **Used by:**
+
 - **Document detail page** — Bookmark toggle button and "Add to / Remove from Clipboard" menu item
 
 ---
@@ -931,11 +945,219 @@ No API call — clipboard is a client-side feature that stores document referenc
 No API call — copies the current page URL to the system clipboard using `navigator.clipboard.writeText()`.
 
 **Used by:**
+
 - **Document detail page** — "Share" action in "More actions" menu
 
 ---
 
 <!-- TEMPLATE: Copy the block below when adding a new API integration -->
+
+## 24. Knowledge Discovery (via Nuxeo CIC connector)
+
+| Field           | Value                                                                             |
+| --------------- | --------------------------------------------------------------------------------- |
+| **Service**     | `KdClientService` (`libs/shared/kd-client/src/lib/kd-client.service.ts`)          |
+| **Methods**     | `listAgents`, `getAgent`, `submitQuestion`, `getAnswer`, `submitFeedback`, others |
+| **HTTP Method** | `POST`                                                                            |
+| **Endpoint**    | `/nuxeo/site/automation/<OpName>` (Hyland CIC automation operations)              |
+
+The Angular app calls Knowledge Discovery through Nuxeo automation operations exposed
+by the **Hyland Content Intelligence Connector (CIC)** installed on the Nuxeo server.
+There is no separate backend in this repo — only the Angular app is deployed to the
+marketplace.
+
+**Operation mapping (overridable via `KD_CIC_OPERATIONS` / `KD_UPSTREAM_PATHS`):**
+
+The connector only exposes a handful of first-class ops. Everything else
+goes through `HylandKnowledgeDiscovery.Invoke` (a generic passthrough
+that takes `httpMethod`, `endpoint`, `jsonPayloadStr`).
+
+| Client method        | Automation op (first-class)                        | Or: Invoke upstream path                                            |
+| -------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
+| `listAgents`         | `HylandKnowledgeDiscovery.getAllAgents`            | —                                                                   |
+| `submitQuestion`     | `HylandKnowledgeDiscovery.askQuestionAndGetAnswer` | —                                                                   |
+| `getAgent`           | — (via Invoke)                                     | `GET /agent/agents/{id}`                                            |
+| `listModels`         | — (via Invoke)                                     | `GET /agent/models`                                                 |
+| `listGuardrails`     | — (via Invoke)                                     | `GET /agent/guardrails`                                             |
+| `getQuestionHistory` | — (via Invoke)                                     | `GET /qna/agents/{agentId}/questions/history?pageNumber=&pageSize=` |
+| `getAnswer`          | — (served from client-side cache after submit)     | —                                                                   |
+| `submitFeedback`     | — (client-side only for one-shot answers)          | —                                                                   |
+
+> Agent create/update/delete are intentionally NOT exposed. The CIC
+> connector has no write-side agent ops, its `Invoke` passthrough rejects
+> `DELETE` at the connector layer, and `POST /agent/agents` returns
+> `400 Bad Request` from the upstream Discovery API through this auth.
+> Agent management is handled in the Hyland Insight admin UI.
+
+**Request body for a first-class op (e.g. `askQuestionAndGetAnswer`):**
+
+```json
+{
+  "params": {
+    "agentId": "agent-123",
+    "question": "What contracts mention renewal clauses?",
+    "extraPayloadJsonStr": "{\"dynamicFilter\":{\"property\":\"region\",\"operator\":\"equals\",\"value\":\"EMEA\"}}"
+  }
+}
+```
+
+**Request body for an Invoke call (e.g. `getAgent`):**
+
+```json
+{
+  "params": {
+    "httpMethod": "GET",
+    "endpoint": "/agent/agents/agent-123"
+  }
+}
+```
+
+**Response envelope (all ops):**
+
+```json
+{
+  "response": {
+    /* upstream JSON */
+  },
+  "responseCode": 200,
+  "responseMessage": "OK"
+}
+```
+
+`KdClientService` unwraps this and surfaces non-2xx `responseCode` as a thrown error.
+
+**Normalized answer payload (returned by the CIC operation):**
+
+```json
+{
+  "questionId": "question-123",
+  "agentId": "agent-123",
+  "question": "What contracts mention renewal clauses?",
+  "status": "Complete",
+  "answer": "The renewal clause appears in the master services agreement.",
+  "citations": [
+    {
+      "objectId": "doc-123",
+      "referenceId": "section-4",
+      "title": "MSA",
+      "excerpt": "The agreement includes renewal terms for successive one-year periods.",
+      "score": 0.98
+    }
+  ],
+  "error": null
+}
+```
+
+**Auth & secrets:**
+
+- The browser authenticates to Nuxeo through the existing `nuxeoAuthInterceptor` (SAML cookie or Basic).
+- KD client credentials and OAuth token caching live on the **Nuxeo server** (inside the CIC connector), never in the Angular app.
+
+**Error Handling:**
+
+| Status        | Behavior                                                                   |
+| ------------- | -------------------------------------------------------------------------- |
+| `400`         | Invalid agent payload, malformed filter JSON, or other request-shape issue |
+| `401` / `403` | Surface authorization failure from Nuxeo / CIC                             |
+| `404`         | Show missing agent/question state in the dedicated KD page                 |
+| `5xx`         | Treat as transient Nuxeo/CIC/KD upstream failure                           |
+
+---
+
+## 25. Knowledge Enrichment (via Nuxeo CIC connector)
+
+| Field           | Value                                                                    |
+| --------------- | ------------------------------------------------------------------------ |
+| **Service**     | `KeClientService` (`libs/shared/ke-client/src/lib/ke-client.service.ts`) |
+| **Methods**     | `enrich`                                                                 |
+| **HTTP Method** | `POST`                                                                   |
+| **Endpoint**    | `/nuxeo/site/automation/HylandKnowledgeEnrichment.Enrich`                |
+
+The Angular app calls Knowledge Enrichment through the **Hyland Content
+Intelligence Connector (CIC)** installed on the Nuxeo server. There is no
+separate KE backend in this repo.
+
+Unlike Knowledge Discovery, the KE `Enrich` op accepts a **multipart**
+request:
+
+- part `request`: JSON automation payload
+- part `input`: the document blob fetched from Nuxeo
+
+The current UI flow is:
+
+1. `DocumentDetailService.fetchBlob(uid)`
+2. `KeClientService.enrich(blob, request)`
+3. persist results back into Nuxeo metadata with `BrowseService.updateDocument`
+   and `TagService.addTag`
+4. refresh the full document record in the properties panel
+
+**Supported action mapping:**
+
+| UI action              | KE action(s)                                           | Nuxeo field(s) updated         |
+| ---------------------- | ------------------------------------------------------ | ------------------------------ |
+| PDF classify           | `text-classification`                                  | `dc:nature`                    |
+| PDF extract entities   | `named-entity-recognition-text`                        | `nxtag:tags`                   |
+| PDF summarize          | `text-summarization`                                   | `dc:description`               |
+| Image describe and tag | `image-description` + `named-entity-recognition-image` | `dc:description`, `nxtag:tags` |
+
+**Request payload inside the `request` multipart part:**
+
+```json
+{
+  "params": {
+    "actions": "text-classification",
+    "sourceId": "document-uuid",
+    "classes": "[\"Contract\",\"Invoice\",\"Legal\",\"Technical\"]"
+  }
+}
+```
+
+**Response (normalized by the client):**
+
+```json
+{
+  "requestId": "processing-id",
+  "status": "Complete",
+  "inProgress": false,
+  "textClassification": {
+    "isSuccess": true,
+    "result": "Contract"
+  },
+  "textSummary": {
+    "isSuccess": true,
+    "result": "Short summary..."
+  },
+  "namedEntityText": {
+    "isSuccess": true,
+    "result": {
+      "ORGANIZATION": ["Hyland"],
+      "PERSON": ["Jane Doe"]
+    }
+  }
+}
+```
+
+The public Context API OpenAPI describes the canonical raw response keys as:
+
+- `textClassification`
+- `textSummary`
+- `namedEntityText`
+- `imageDescription`
+- `namedEntityImage`
+
+Some connector builds may wrap that payload in a generic
+`{ response, responseCode, responseMessage }` envelope; `KeClientService`
+supports both forms.
+
+**Error Handling:**
+
+| Status / Failure     | Behavior                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| Missing KE config    | Surface connector error, e.g. `No authentication info for calling the Enrichment service.` |
+| Empty result payload | Show a targeted UI error per action (`did not return a summary`, etc.)                     |
+| `401` / `403`        | Treat as connector / KE auth issue                                                         |
+| `5xx`                | Treat as transient Nuxeo/CIC/KE upstream failure                                           |
+
 <!--
 ## N. Title
 

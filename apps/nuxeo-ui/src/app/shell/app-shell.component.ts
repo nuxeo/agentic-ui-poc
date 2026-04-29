@@ -45,7 +45,11 @@ import {
   type GlobalSearchSuggestion,
   docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
-import { SelectionTopbarComponent, ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+import {
+  SelectionTopbarComponent,
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 import { AuthService } from '../auth/auth.service';
@@ -105,10 +109,11 @@ export class AppShellComponent implements OnDestroy {
 
   /** Hides Administration for non-administrators. */
   protected readonly navItems = computed(() => {
-    if (!this.auth.isAdministrator()) {
-      return PLATFORM_NAV_ITEMS.filter((i) => i.path !== '/administration');
-    }
-    return PLATFORM_NAV_ITEMS;
+    return PLATFORM_NAV_ITEMS.filter((item) => {
+      if (item.path === '/administration' && !this.auth.isAdministrator()) return false;
+      if (item.path === '/knowledge-discovery' && !this.featureFlags.aiEnabled()) return false;
+      return true;
+    });
   });
 
   readonly displayName = computed(() => this.auth.username() ?? 'User');
@@ -331,7 +336,7 @@ export class AppShellComponent implements OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) {
         this.selectionService.clear();
         return;

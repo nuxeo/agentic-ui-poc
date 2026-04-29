@@ -12,6 +12,8 @@
       "@agentic-ui/shared/ui": ["libs/shared/ui/src/index.ts"],
       "@agentic-ui/shared/util": ["libs/shared/util/src/index.ts"],
       "@agentic-ui/shared/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
+      "@agentic-ui/shared/kd-client": ["libs/shared/kd-client/src/index.ts"],
+      "@agentic-ui/shared/ke-client": ["libs/shared/ke-client/src/index.ts"],
       "@agentic-ui/shared/drawers": ["libs/shared/drawers/src/index.ts"],
       "@agentic-ui/feature-browse": ["libs/features/browse/src/index.ts"],
       "@agentic-ui/feature-search": ["libs/features/search/src/index.ts"],
@@ -30,6 +32,7 @@
       "@agentic-ui/feature-tasks": ["libs/features/tasks/src/index.ts"],
       "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
       "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"],
+      "@agentic-ui/feature-knowledge-discovery": ["libs/features/knowledge-discovery/src/index.ts"],
       "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"]
     }
   }

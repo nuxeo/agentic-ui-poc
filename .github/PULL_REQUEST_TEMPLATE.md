@@ -1,3 +1,5 @@
+# Pull Request
+
 ## What changed and why
 
 <!-- Describe the change in 2-3 sentences. Focus on WHY, not just what. -->
@@ -32,3 +34,7 @@
 - [ ] No direct `<img [src]>` binding to Nuxeo authenticated content
 - [ ] All new subscriptions use `takeUntilDestroyed()`
 - [ ] All new `URL.createObjectURL()` calls have cleanup in `ngOnDestroy`
+- [ ] `npm run review:guardrails` passes
+- [ ] New SCSS uses `--mat-sys-*` theme tokens instead of hardcoded colors
+- [ ] New AI routes/nav items are gated by `AiFeatureFlagService`
+- [ ] Updated docs have unique numbered sections and match current endpoint constants

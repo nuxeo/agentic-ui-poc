@@ -10,7 +10,9 @@
     "test": "nx test",
     "prepare": "husky",
     "lint": "nx run-many -t lint",
-    "lint:affected": "nx affected -t lint"
+    "lint:affected": "nx affected -t lint",
+    "review:guardrails": "node scripts/review-guardrails.mjs",
+    "review:preflight": "npm run review:guardrails && npx nx affected -t lint && npx nx affected -t test"
   },
   "lint-staged": {
     "*.ts": [

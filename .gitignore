@@ -54,3 +54,7 @@ vitest.config.*.timestamp*
 # Environment files
 .env
 apps/ai-backend/.env
+
+# Nuxeo server configuration (secrets, bind-mounted into the container)
+/nuxeo-conf/*.conf
+!/nuxeo-conf/*.sample.conf

@@ -33,6 +33,7 @@ npx nx test <project>         # e.g. core, nuxeo-ui, browse
 ## Docs
 
 - [docs/ai-features.md](docs/ai-features.md) — **AI features guide** (NL search, summarization, chat, tagging, anomaly detection, etc.)
+- [docs/knowledge-discovery.md](docs/knowledge-discovery.md) — Knowledge Discovery page setup and flow (via Nuxeo CIC connector)
 - [docs/developer-guide.md](docs/developer-guide.md) — Coding conventions, project patterns, how-to guides
 - [docs/api-integrations.md](docs/api-integrations.md) — **Nuxeo API integration registry** (update when adding new APIs)
 - [docs/architecture.md](docs/architecture.md) — Layer boundaries, routing, import aliases

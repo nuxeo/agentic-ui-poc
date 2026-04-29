@@ -1,7 +1,16 @@
 # Services — All Public Methods
 
-All services live in `libs/shared/nuxeo-client/src/lib/services/`.
-Import path: `@agentic-ui/shared/nuxeo-client`.
+Most frontend data services live in `libs/shared/nuxeo-client/src/lib/services/` and are
+imported from `@agentic-ui/shared/nuxeo-client`.
+
+Knowledge Discovery uses the dedicated shared client in `libs/shared/kd-client/src/lib/`
+and is imported from `@agentic-ui/shared/kd-client`. It calls Knowledge Discovery through
+Nuxeo automation operations exposed by the Hyland Content Intelligence Connector (CIC) —
+there is no separate backend in this repo.
+
+Knowledge Enrichment uses the dedicated shared client in `libs/shared/ke-client/src/lib/`
+and is imported from `@agentic-ui/shared/ke-client`. It posts multipart blob requests to
+Nuxeo automation operations exposed by the same CIC bundle.
 
 ---
 
@@ -75,6 +84,55 @@ getUserCollections(): Observable<SearchCollectionOption[]>
 getSavedSearches(pageProvider?: string): Observable<SavedSearchOption[]>
 getSavedSearchById(id: string): Observable<Record<string, string>>
 saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown>
+```
+
+---
+
+## KdClientService (`kd-client.service.ts`)
+
+Frontend client for Knowledge Discovery. Talks to the Hyland Content
+Intelligence Connector (`nuxeo-labs-content-intelligence-connector`) via
+Nuxeo automation endpoints (`/nuxeo/site/automation/<OpName>`). Uses the
+connector's first-class ops (`HylandKnowledgeDiscovery.getAllAgents`,
+`askQuestionAndGetAnswer`) where available and its generic
+`HylandKnowledgeDiscovery.Invoke` passthrough for read-only metadata. Op
+names and upstream paths are overridable via the `KD_CIC_OPERATIONS` and
+`KD_UPSTREAM_PATHS` tokens.
+
+Agent create/update/delete are **not** exposed: the CIC connector has
+no write-side ops for agents, its `Invoke` passthrough rejects `DELETE`
+with `Only GET, POST and PUT are supported.`, and the upstream Discovery
+service returns `400 Bad Request` for `POST /agent/agents` through this
+auth surface. Agent management is done in the Hyland Insight admin UI;
+new agents appear here automatically through `listAgents`.
+
+```typescript
+listAgents(): Observable<KdAgentSummary[]>
+getAgent(agentId: string): Observable<KdAgentDetails>
+listModels(): Observable<KdModelInfo[]>
+listGuardrails(): Observable<{ guardrailGroups: KdGuardrailGroup[] }>
+submitQuestion(request: KdQuestionRequest): Observable<KdQuestionSubmission>
+getAnswer(questionId: string): Observable<KdAnswerResponse>
+submitFeedback(questionId: string, request: KdFeedbackRequest): Observable<void>
+getQuestionHistory(agentId: string, pageNumber?: number, pageSize?: number): Observable<KdQuestionHistoryPage>
+```
+
+---
+
+## KeClientService (`ke-client.service.ts`)
+
+Frontend client for Knowledge Enrichment. Talks to the Hyland Content
+Intelligence Connector (`nuxeo-labs-content-intelligence-connector`) via the
+`HylandKnowledgeEnrichment.Enrich` automation op. Unlike KD, KE uses a
+multipart request with a JSON `request` part and a blob `input` part.
+
+The client normalizes the Context API response fields (`textClassification`,
+`textSummary`, `namedEntityText`, `imageDescription`, `namedEntityImage`) and
+also tolerates the connector's generic `{ response, responseCode,
+responseMessage }` envelope when present.
+
+```typescript
+enrich(blob: Blob, request: KeEnrichRequest): Observable<KeEnrichmentResult>
 ```
 
 ---

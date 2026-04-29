@@ -943,17 +943,9 @@ export class SearchComponent {
   }
 
   toggleAiSearch(): void {
-    this.aiSearchMode.update((v) => !v);
-    if (!this.aiSearchMode()) {
-      this.aiQuery.set('');
-      this.aiGeneratedNxql.set('');
-      this.aiExplanation.set('');
-      this.aiSuggestions.set([]);
-      this.aiError.set(null);
-      this.showNxqlPanel.set(false);
-      this.aiResults.set([]);
-      this.aiSearchExecuted.set(false);
-    }
+    const next = !this.aiSearchMode();
+    this.aiSearchMode.set(next);
+    if (!next) this.resetAiSearchState();
   }
 
   onAiQueryInput(value: string): void {
@@ -1053,5 +1045,17 @@ export class SearchComponent {
           }));
         });
     }
+  }
+
+  private resetAiSearchState(): void {
+    this.aiQuery.set('');
+    this.aiGeneratedNxql.set('');
+    this.aiExplanation.set('');
+    this.aiSuggestions.set([]);
+    this.aiError.set(null);
+    this.showNxqlPanel.set(false);
+    this.aiResults.set([]);
+    this.aiSearchExecuted.set(false);
+    this.aiLoading.set(false);
   }
 }

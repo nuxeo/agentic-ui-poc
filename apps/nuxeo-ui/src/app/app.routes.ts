@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { adminGuard } from './auth/admin.guard';
+import { aiFeatureGuard } from './auth/ai-feature.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
 
 const placeholder = () =>
@@ -34,6 +35,12 @@ export const routes: Routes = [
       {
         path: 'search',
         loadChildren: () => import('@agentic-ui/feature-search').then((m) => m.searchRoutes),
+      },
+      {
+        path: 'knowledge-discovery',
+        canMatch: [aiFeatureGuard],
+        loadChildren: () =>
+          import('@agentic-ui/feature-knowledge-discovery').then((m) => m.knowledgeDiscoveryRoutes),
       },
       {
         path: 'expired-queue',
