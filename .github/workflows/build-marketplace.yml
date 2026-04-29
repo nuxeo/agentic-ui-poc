@@ -3,10 +3,10 @@ name: Build Marketplace Package
 on:
   push:
     branches:
-      - nuxeo-agentic-package
+      - main
   pull_request:
     branches:
-      - nuxeo-agentic-package
+      - main
 
 concurrency:
   group: marketplace-${{ github.ref }}
@@ -43,7 +43,7 @@ jobs:
 
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             VERSION="${BASE_VERSION}-PR-${{ github.event.number }}-BUILD-${{ github.run_number }}"
-          elif [[ "${{ github.ref }}" == "refs/heads/nuxeo-agentic-package" ]]; then
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             VERSION="${BASE_VERSION}-$(date +%Y%m%d%H%M%S)"
             IS_MAIN=true
           else
