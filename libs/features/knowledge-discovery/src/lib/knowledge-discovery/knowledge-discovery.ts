@@ -51,6 +51,8 @@ export class KnowledgeDiscoveryComponent {
   private readonly kdClient = inject(KdClientService);
   private readonly destroyRef = inject(DestroyRef);
   private answerPollSub: Subscription | null = null;
+  private readonly insufficientAnswerText =
+    "I don't have enough information to answer this question";
 
   readonly loadingAgents = signal(false);
   readonly agentsError = signal<string | null>(null);
@@ -79,9 +81,18 @@ export class KnowledgeDiscoveryComponent {
   readonly loadingHistory = signal(false);
 
   readonly hasSelection = computed(() => this.selectedAgentId() !== null);
+  readonly isAwaitingResponse = computed(() => this.submittingQuestion() || this.pollingAnswer());
+  readonly loadingTitle = computed(() =>
+    this.submittingQuestion() ? 'Submitting your question' : 'Generating answer',
+  );
+  readonly loadingMessage = computed(() =>
+    this.submittingQuestion()
+      ? 'Sending the request to Knowledge Discovery.'
+      : 'Searching the selected agent and gathering grounded citations.',
+  );
   readonly canAsk = computed(
     () =>
-      this.hasSelection() && this.questionText().trim().length > 0 && !this.submittingQuestion(),
+      this.hasSelection() && this.questionText().trim().length > 0 && !this.isAwaitingResponse(),
   );
 
   /**
@@ -204,7 +215,6 @@ export class KnowledgeDiscoveryComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
-          this.submittingQuestion.set(false);
           this.activeQuestionId.set(result.questionId);
 
           const terminalStatuses: KdAnswerResponse['status'][] = ['Complete', 'Error', 'Blocked'];
@@ -214,12 +224,14 @@ export class KnowledgeDiscoveryComponent {
               .pipe(takeUntilDestroyed(this.destroyRef))
               .subscribe({
                 next: (answer) => {
+                  this.submittingQuestion.set(false);
                   this.answer.set(answer);
                   if (this.selectedAgentId()) {
                     this.loadHistory(this.selectedAgentId() ?? '');
                   }
                 },
                 error: (err) => {
+                  this.submittingQuestion.set(false);
                   this.questionError.set(
                     this.resolveQuestionError(
                       err,
@@ -231,6 +243,7 @@ export class KnowledgeDiscoveryComponent {
             return;
           }
 
+          this.submittingQuestion.set(false);
           this.answer.set({
             questionId: result.questionId,
             agentId,
@@ -365,6 +378,15 @@ export class KnowledgeDiscoveryComponent {
     this.answerPollSub?.unsubscribe();
     this.answerPollSub = null;
     this.pollingAnswer.set(false);
+  }
+
+  formatAnswerText(answer: string): string {
+    const cleaned = answer.replace(/^#{1,6}\s*/gm, '').trim();
+    if (!cleaned) return '';
+    if (cleaned.toLowerCase() === this.insufficientAnswerText.toLowerCase()) {
+      return "I couldn't find enough relevant information in this agent's knowledge base to answer that yet.";
+    }
+    return cleaned;
   }
 
   private parseJsonText(value: string, label: string): Record<string, unknown> | null {

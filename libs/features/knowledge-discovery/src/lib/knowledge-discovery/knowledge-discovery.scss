@@ -178,6 +178,7 @@
 
 .kd-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 4px;
@@ -207,6 +208,47 @@
   color: #4b5563;
 }
 
+.kd-progress-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #dbe4ff;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f8faff 0%, #eef3ff 100%);
+}
+
+.kd-progress-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+}
+
+.kd-progress-card__content {
+  min-width: 0;
+}
+
+.kd-progress-card__title,
+.kd-progress-card__message {
+  margin: 0;
+}
+
+.kd-progress-card__title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1f3f8f;
+}
+
+.kd-progress-card__message {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #52607a;
+}
+
 // ---------- answer / citations ----------
 
 .kd-answer__layout {
@@ -228,6 +270,70 @@
   line-height: 1.55;
   font-size: 13.5px;
   color: #1a1c1e;
+}
+
+.kd-answer__loading {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e8eaef;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #4b5563;
+}
+
+.kd-answer__loading-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.kd-answer__loading-title,
+.kd-answer__loading-copy {
+  margin: 0;
+}
+
+.kd-answer__loading-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1a1c1e;
+}
+
+.kd-answer__loading-copy {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #5c5f6b;
+}
+
+.kd-answer__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kd-answer__skeleton-line {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #e8edf5 25%, #f5f7fb 50%, #e8edf5 75%);
+  background-size: 200% 100%;
+  animation: kd-shimmer 1.4s ease-in-out infinite;
+}
+
+.kd-answer__skeleton-line--wide {
+  width: 92%;
+}
+
+.kd-answer__skeleton-line:not(.kd-answer__skeleton-line--wide):not(
+    .kd-answer__skeleton-line--short
+  ) {
+  width: 100%;
+}
+
+.kd-answer__skeleton-line--short {
+  width: 68%;
 }
 
 .kd-feedback {
@@ -301,6 +407,22 @@
   margin: 4px 0 0;
   font-size: 11.5px;
   color: #7a7d87;
+}
+
+.kd-citation-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.kd-citation-skeleton__item {
+  display: block;
+  height: 56px;
+  border-radius: 8px;
+  border: 1px solid #e8eaef;
+  background: linear-gradient(90deg, #edf2f8 25%, #f8fafc 50%, #edf2f8 75%);
+  background-size: 200% 100%;
+  animation: kd-shimmer 1.4s ease-in-out infinite;
 }
 
 .kd-status-chip {
@@ -518,6 +640,16 @@
   color: #5c5f6b;
 }
 
+@keyframes kd-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 // ---------- density overrides (shrink Material defaults to match app) ----------
 
 :host ::ng-deep {
@@ -544,6 +676,10 @@
       height: 16px;
       line-height: 16px;
       margin-right: 4px;
+    }
+
+    .mat-mdc-progress-spinner {
+      margin-right: 6px;
     }
   }
 
