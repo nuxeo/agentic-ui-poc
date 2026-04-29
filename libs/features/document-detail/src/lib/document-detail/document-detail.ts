@@ -141,6 +141,33 @@ type KeUiAction =
   | 'text-summarization'
   | 'image-enrichment';
 
+type ClipboardDoc = { uid: string; title: string };
+
+function readClipboardDocs(): ClipboardDoc[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
+    return Array.isArray(parsed)
+      ? parsed.filter(
+          (item): item is ClipboardDoc =>
+            typeof item === 'object' &&
+            item !== null &&
+            typeof (item as ClipboardDoc).uid === 'string' &&
+            typeof (item as ClipboardDoc).title === 'string',
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeClipboardDocs(docs: ClipboardDoc[]): void {
+  try {
+    localStorage.setItem('nuxeo_clipboard', JSON.stringify(docs));
+  } catch {
+    // Storage can be unavailable in restricted browser contexts and test runners.
+  }
+}
+
 @Component({
   selector: 'lib-document-detail',
   standalone: true,
@@ -296,9 +323,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly isFavorite = signal(false);
   readonly isSubscribed = signal(false);
   readonly actionInProgress = signal<string | null>(null);
-  readonly clipboardDocs = signal<Array<{ uid: string; title: string }>>(
-    JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]'),
-  );
+  readonly clipboardDocs = signal<ClipboardDoc[]>(readClipboardDocs());
   readonly isInClipboard = computed(() => this.clipboardDocs().some((d) => d.uid === this.docUid));
 
   // History tab state
@@ -1854,12 +1879,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (this.isInClipboard()) {
       const updated = current.filter((c) => c.uid !== this.docUid);
       this.clipboardDocs.set(updated);
-      localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+      writeClipboardDocs(updated);
       this.toast('Removed from clipboard');
     } else {
       const updated = [...current, { uid: d.uid, title: d.title }];
       this.clipboardDocs.set(updated);
-      localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+      writeClipboardDocs(updated);
       this.toast('Added to clipboard');
     }
     window.dispatchEvent(new Event('clipboard-changed'));
