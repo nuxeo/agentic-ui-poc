@@ -13,6 +13,7 @@
       "@agentic-ui/shared/util": ["libs/shared/util/src/index.ts"],
       "@agentic-ui/shared/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
       "@agentic-ui/shared/kd-client": ["libs/shared/kd-client/src/index.ts"],
+      "@agentic-ui/shared/ke-client": ["libs/shared/ke-client/src/index.ts"],
       "@agentic-ui/shared/drawers": ["libs/shared/drawers/src/index.ts"],
       "@agentic-ui/feature-browse": ["libs/features/browse/src/index.ts"],
       "@agentic-ui/feature-search": ["libs/features/search/src/index.ts"],

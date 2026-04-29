@@ -8,6 +8,10 @@ and is imported from `@agentic-ui/shared/kd-client`. It calls Knowledge Discover
 Nuxeo automation operations exposed by the Hyland Content Intelligence Connector (CIC) —
 there is no separate backend in this repo.
 
+Knowledge Enrichment uses the dedicated shared client in `libs/shared/ke-client/src/lib/`
+and is imported from `@agentic-ui/shared/ke-client`. It posts multipart blob requests to
+Nuxeo automation operations exposed by the same CIC bundle.
+
 ---
 
 ## DocumentDetailService (`document-detail.service.ts`)
@@ -111,6 +115,24 @@ submitQuestion(request: KdQuestionRequest): Observable<KdQuestionSubmission>
 getAnswer(questionId: string): Observable<KdAnswerResponse>
 submitFeedback(questionId: string, request: KdFeedbackRequest): Observable<void>
 getQuestionHistory(agentId: string, pageNumber?: number, pageSize?: number): Observable<KdQuestionHistoryPage>
+```
+
+---
+
+## KeClientService (`ke-client.service.ts`)
+
+Frontend client for Knowledge Enrichment. Talks to the Hyland Content
+Intelligence Connector (`nuxeo-labs-content-intelligence-connector`) via the
+`HylandKnowledgeEnrichment.Enrich` automation op. Unlike KD, KE uses a
+multipart request with a JSON `request` part and a blob `input` part.
+
+The client normalizes the Context API response fields (`textClassification`,
+`textSummary`, `namedEntityText`, `imageDescription`, `namedEntityImage`) and
+also tolerates the connector's generic `{ response, responseCode,
+responseMessage }` envelope when present.
+
+```typescript
+enrich(blob: Blob, request: KeEnrichRequest): Observable<KeEnrichmentResult>
 ```
 
 ---

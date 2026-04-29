@@ -117,18 +117,8 @@ export class KnowledgeDiscoveryComponent {
     this.referenceDataError.set(null);
 
     forkJoin({
-      models: this.kdClient.listModels().pipe(catchError(() => of([] as KdModelInfo[]))),
-      guardrails: this.kdClient.listGuardrails().pipe(
-        catchError(() =>
-          of({
-            guardrailGroups: [] as {
-              displayName: string;
-              description: string;
-              guardrails: KdGuardrail[];
-            }[],
-          }),
-        ),
-      ),
+      models: this.kdClient.listModels(),
+      guardrails: this.kdClient.listGuardrails(),
     })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
@@ -393,15 +383,17 @@ export class KnowledgeDiscoveryComponent {
     const trimmed = value.trim();
     if (!trimmed) return null;
 
+    let parsed: unknown;
     try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed === null) return null;
-      if (typeof parsed !== 'object') {
-        throw new Error(`The ${label} must be a JSON object or array.`);
-      }
-      return parsed as Record<string, unknown>;
+      parsed = JSON.parse(trimmed);
     } catch {
       throw new Error(`The ${label} must be valid JSON.`);
     }
+
+    if (parsed === null) return null;
+    if (typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(`The ${label} must be a JSON object.`);
+    }
+    return parsed as Record<string, unknown>;
   }
 }

@@ -37,6 +37,7 @@ import {
   NuxeoAce,
   NuxeoAcl,
   AuditEntry,
+  BrowseService,
   DirectoryEntry,
   DocumentDetailService,
   DirectoryService,
@@ -66,8 +67,13 @@ import {
   type SentimentItem,
   type SentimentResponse,
 } from '@agentic-ui/shared/ai-client';
+import {
+  KeClientService,
+  type KeEnrichRequest,
+  type KeEnrichmentResult,
+} from '@agentic-ui/shared/ke-client';
 import DOMPurify from 'dompurify';
-import { forkJoin, Observable, of, switchMap } from 'rxjs';
+import { finalize, forkJoin, Observable, of, switchMap } from 'rxjs';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -118,6 +124,23 @@ const TAG_CATEGORIES: SatTagCategory[] = [
   'orange',
 ];
 
+const KE_TEXT_CLASSIFICATION_CLASSES = [
+  'Contract',
+  'Invoice',
+  'Legal',
+  'Technical',
+  'Financial',
+  'Report',
+  'Policy',
+  'Resume',
+];
+
+type KeUiAction =
+  | 'text-classification'
+  | 'named-entity-recognition-text'
+  | 'text-summarization'
+  | 'image-enrichment';
+
 @Component({
   selector: 'lib-document-detail',
   standalone: true,
@@ -154,6 +177,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly browseService = inject(BrowseService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly directoryService = inject(DirectoryService);
   private readonly http = inject(HttpClient);
@@ -167,6 +191,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly arenderService = inject(ARenderService);
   private readonly tagService = inject(TagService);
   private readonly aiGateway = inject(AiGatewayService);
+  private readonly keClient = inject(KeClientService);
   private readonly aiChatService = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
@@ -213,6 +238,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly aiSentimentMap = signal<Record<string, SentimentItem>>({});
   readonly aiThreadSummary = signal<string | null>(null);
   readonly aiSentimentLoading = signal(false);
+  readonly keActionInFlight = signal<KeUiAction | null>(null);
+  readonly keStatus = signal<string | null>(null);
+  readonly keError = signal<string | null>(null);
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -412,6 +440,33 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return (d?.properties['dc:description'] as string) ?? '';
   });
 
+  readonly documentCategory = computed(() => {
+    const d = this.doc();
+    return (d?.properties['dc:nature'] as string) ?? '';
+  });
+
+  readonly fileMimeType = computed(() => {
+    const d = this.doc();
+    if (!d) return '';
+    const fileContent = d.properties['file:content'] as Record<string, unknown> | null;
+    const directMime = (fileContent?.['mime-type'] as string) ?? '';
+    if (directMime) return directMime;
+
+    const pictureViews = d.properties['picture:views'] as
+      | Array<Record<string, unknown>>
+      | undefined;
+    const pictureContent = pictureViews?.[0]?.['content'] as Record<string, unknown> | undefined;
+    return (pictureContent?.['mime-type'] as string) ?? '';
+  });
+
+  readonly supportsTextKnowledgeEnrichment = computed(
+    () => this.fileMimeType() === 'application/pdf',
+  );
+  readonly supportsImageKnowledgeEnrichment = computed(() => {
+    const mime = this.fileMimeType();
+    return mime.startsWith('image/') || this.doc()?.type === 'Picture';
+  });
+
   readonly attachments = computed(() => {
     const d = this.doc();
     if (!d) return [];
@@ -587,6 +642,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.versionDropdownOpen.set(false);
     this.documentTasks.set([]);
     this.documentWorkflows.set([]);
+    this.keActionInFlight.set(null);
+    this.keStatus.set(null);
+    this.keError.set(null);
     this.panelSubTab.set('properties');
   }
 
@@ -665,6 +723,37 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  runTextClassification(): void {
+    this.runKnowledgeEnrichment('text-classification', {
+      actions: ['text-classification'],
+      classes: KE_TEXT_CLASSIFICATION_CLASSES,
+    });
+  }
+
+  runTextEntityExtraction(): void {
+    this.runKnowledgeEnrichment('named-entity-recognition-text', {
+      actions: ['named-entity-recognition-text'],
+    });
+  }
+
+  runTextSummarization(): void {
+    this.runKnowledgeEnrichment('text-summarization', {
+      actions: ['text-summarization'],
+      maxWordCount: 150,
+    });
+  }
+
+  runImageEnrichment(): void {
+    this.runKnowledgeEnrichment('image-enrichment', {
+      actions: ['image-description', 'named-entity-recognition-image'],
+      maxWordCount: 100,
+    });
+  }
+
+  isKeActionRunning(action: KeUiAction): boolean {
+    return this.keActionInFlight() === action;
+  }
+
   navigateToDoc(uid: string): void {
     void this.router.navigateByUrl(`/doc/${uid}`);
   }
@@ -694,6 +783,187 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       error: () => {
         this.aiSentimentLoading.set(false);
       },
+    });
+  }
+
+  private runKnowledgeEnrichment(uiAction: KeUiAction, request: KeEnrichRequest): void {
+    if (!this.docUid || this.keActionInFlight()) return;
+
+    this.keActionInFlight.set(uiAction);
+    this.keError.set(null);
+    this.keStatus.set(this.keStartMessage(uiAction));
+
+    this.detailService
+      .fetchBlob(this.docUid)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        switchMap((blob) =>
+          this.keClient.enrich(blob, {
+            ...request,
+            sourceId: this.docUid,
+          }),
+        ),
+        switchMap((result) => this.persistKnowledgeEnrichment(uiAction, result)),
+        finalize(() => this.keActionInFlight.set(null)),
+      )
+      .subscribe({
+        next: (updatedDoc) => {
+          this.doc.set(updatedDoc);
+          this.syncActionStates(updatedDoc);
+          this.keStatus.set(this.keSuccessMessage(uiAction));
+          this.toast(this.keSuccessMessage(uiAction));
+        },
+        error: (err) => {
+          const message = this.resolveKnowledgeEnrichmentError(err, uiAction);
+          this.keError.set(message);
+          this.keStatus.set(null);
+          this.toast(message);
+        },
+      });
+  }
+
+  private persistKnowledgeEnrichment(
+    uiAction: KeUiAction,
+    result: KeEnrichmentResult,
+  ): Observable<NuxeoDocument> {
+    const docId = this.docUid;
+    const propertyUpdates: Record<string, unknown> = {};
+    let tagsToApply: string[] = [];
+
+    switch (uiAction) {
+      case 'text-classification': {
+        const category = result.textClassification?.result?.trim();
+        if (!category) {
+          return this.throwKeResultError(
+            'Knowledge Enrichment did not return a document category.',
+          );
+        }
+        propertyUpdates['dc:nature'] = category;
+        break;
+      }
+
+      case 'text-summarization': {
+        const summary = result.textSummary?.result?.trim();
+        if (!summary) {
+          return this.throwKeResultError('Knowledge Enrichment did not return a summary.');
+        }
+        propertyUpdates['dc:description'] = summary;
+        break;
+      }
+
+      case 'named-entity-recognition-text': {
+        tagsToApply = this.collectNamedEntityTags(result.namedEntityText?.result);
+        if (tagsToApply.length === 0) {
+          return this.throwKeResultError('Knowledge Enrichment did not return any text entities.');
+        }
+        break;
+      }
+
+      case 'image-enrichment': {
+        const description = result.imageDescription?.result?.trim();
+        tagsToApply = this.collectNamedEntityTags(result.namedEntityImage?.result);
+
+        if (description) {
+          propertyUpdates['dc:description'] = description;
+        }
+        if (Object.keys(propertyUpdates).length === 0 && tagsToApply.length === 0) {
+          return this.throwKeResultError(
+            'Knowledge Enrichment did not return an image description or image entities.',
+          );
+        }
+        break;
+      }
+    }
+
+    const existingTags = new Set(this.tags().map((tag) => tag.toLowerCase()));
+    const uniqueTags = tagsToApply.filter((tag) => !existingTags.has(tag.toLowerCase()));
+
+    const update$ =
+      Object.keys(propertyUpdates).length > 0
+        ? this.browseService.updateDocument(docId, propertyUpdates)
+        : of(null);
+    const tags$ =
+      uniqueTags.length > 0
+        ? forkJoin(uniqueTags.map((tag) => this.tagService.addTag(docId, tag)))
+        : of([]);
+
+    return forkJoin({ updated: update$, tags: tags$ }).pipe(
+      switchMap(() => this.detailService.getFullDocument(docId)),
+    );
+  }
+
+  private collectNamedEntityTags(entityMap: Record<string, string[]> | null | undefined): string[] {
+    if (!entityMap) return [];
+    const values = Object.values(entityMap).flatMap((entries) => entries ?? []);
+    return Array.from(
+      new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)),
+    );
+  }
+
+  private keStartMessage(action: KeUiAction): string {
+    switch (action) {
+      case 'text-classification':
+        return 'Running document classification...';
+      case 'named-entity-recognition-text':
+        return 'Extracting named entities from the PDF...';
+      case 'text-summarization':
+        return 'Generating document summary...';
+      case 'image-enrichment':
+        return 'Generating image description and tags...';
+    }
+  }
+
+  private keSuccessMessage(action: KeUiAction): string {
+    switch (action) {
+      case 'text-classification':
+        return 'Document category updated from Knowledge Enrichment.';
+      case 'named-entity-recognition-text':
+        return 'Document tags updated from Knowledge Enrichment.';
+      case 'text-summarization':
+        return 'Document description updated from Knowledge Enrichment.';
+      case 'image-enrichment':
+        return 'Image description and tags updated from Knowledge Enrichment.';
+    }
+  }
+
+  private resolveKnowledgeEnrichmentError(error: unknown, action: KeUiAction): string {
+    const fallback = `Failed to run ${this.keActionLabel(action)}.`;
+    if (error instanceof Error && error.message) {
+      if (error.message.includes('No authentication info for calling the Enrichment service')) {
+        return (
+          'Knowledge Enrichment is not configured on this Nuxeo server yet. ' +
+          'Add the CIC contextEnrichment/enrichment credentials to Nuxeo, then retry.'
+        );
+      }
+      return error.message;
+    }
+    const maybeMessage = (error as { error?: { message?: string }; message?: string } | null)?.error
+      ?.message;
+    if (maybeMessage?.includes('No authentication info for calling the Enrichment service')) {
+      return (
+        'Knowledge Enrichment is not configured on this Nuxeo server yet. ' +
+        'Add the CIC contextEnrichment/enrichment credentials to Nuxeo, then retry.'
+      );
+    }
+    return maybeMessage ?? (error as { message?: string } | null)?.message ?? fallback;
+  }
+
+  private keActionLabel(action: KeUiAction): string {
+    switch (action) {
+      case 'text-classification':
+        return 'document classification';
+      case 'named-entity-recognition-text':
+        return 'entity extraction';
+      case 'text-summarization':
+        return 'document summarization';
+      case 'image-enrichment':
+        return 'image enrichment';
+    }
+  }
+
+  private throwKeResultError(message: string): Observable<never> {
+    return new Observable((subscriber) => {
+      subscriber.error(new Error(message));
     });
   }
 
@@ -1515,7 +1785,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.actionInProgress.set('trash');
 
@@ -1559,7 +1829,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.actionInProgress.set('permanentDelete');
       this.detailService.permanentlyDelete(this.docUid).subscribe({
@@ -1867,7 +2137,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.detailService.deleteComment(this.docUid, comment.id).subscribe({
         next: () => {

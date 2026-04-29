@@ -952,7 +952,7 @@ No API call — copies the current page URL to the system clipboard using `navig
 
 <!-- TEMPLATE: Copy the block below when adding a new API integration -->
 
-## 22. Knowledge Discovery (via Nuxeo CIC connector)
+## 24. Knowledge Discovery (via Nuxeo CIC connector)
 
 | Field           | Value                                                                             |
 | --------------- | --------------------------------------------------------------------------------- |
@@ -972,16 +972,16 @@ The connector only exposes a handful of first-class ops. Everything else
 goes through `HylandKnowledgeDiscovery.Invoke` (a generic passthrough
 that takes `httpMethod`, `endpoint`, `jsonPayloadStr`).
 
-| Client method        | Automation op (first-class)                        | Or: Invoke upstream path           |
-| -------------------- | -------------------------------------------------- | ---------------------------------- |
-| `listAgents`         | `HylandKnowledgeDiscovery.getAllAgents`            | —                                  |
-| `submitQuestion`     | `HylandKnowledgeDiscovery.askQuestionAndGetAnswer` | —                                  |
-| `getAgent`           | — (via Invoke)                                     | `GET /agent/agents/{id}`           |
-| `listModels`         | — (via Invoke)                                     | `GET /agent/models`                |
-| `listGuardrails`     | — (via Invoke)                                     | `GET /agent/guardrails`            |
-| `getQuestionHistory` | — (via Invoke)                                     | `GET /agent/questions?agentId=...` |
-| `getAnswer`          | — (served from client-side cache after submit)     | —                                  |
-| `submitFeedback`     | — (client-side only for one-shot answers)          | —                                  |
+| Client method        | Automation op (first-class)                        | Or: Invoke upstream path                                            |
+| -------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
+| `listAgents`         | `HylandKnowledgeDiscovery.getAllAgents`            | —                                                                   |
+| `submitQuestion`     | `HylandKnowledgeDiscovery.askQuestionAndGetAnswer` | —                                                                   |
+| `getAgent`           | — (via Invoke)                                     | `GET /agent/agents/{id}`                                            |
+| `listModels`         | — (via Invoke)                                     | `GET /agent/models`                                                 |
+| `listGuardrails`     | — (via Invoke)                                     | `GET /agent/guardrails`                                             |
+| `getQuestionHistory` | — (via Invoke)                                     | `GET /qna/agents/{agentId}/questions/history?pageNumber=&pageSize=` |
+| `getAnswer`          | — (served from client-side cache after submit)     | —                                                                   |
+| `submitFeedback`     | — (client-side only for one-shot answers)          | —                                                                   |
 
 > Agent create/update/delete are intentionally NOT exposed. The CIC
 > connector has no write-side agent ops, its `Invoke` passthrough rejects
@@ -1061,6 +1061,102 @@ that takes `httpMethod`, `endpoint`, `jsonPayloadStr`).
 | `401` / `403` | Surface authorization failure from Nuxeo / CIC                             |
 | `404`         | Show missing agent/question state in the dedicated KD page                 |
 | `5xx`         | Treat as transient Nuxeo/CIC/KD upstream failure                           |
+
+---
+
+## 25. Knowledge Enrichment (via Nuxeo CIC connector)
+
+| Field           | Value                                                                    |
+| --------------- | ------------------------------------------------------------------------ |
+| **Service**     | `KeClientService` (`libs/shared/ke-client/src/lib/ke-client.service.ts`) |
+| **Methods**     | `enrich`                                                                 |
+| **HTTP Method** | `POST`                                                                   |
+| **Endpoint**    | `/nuxeo/site/automation/HylandKnowledgeEnrichment.Enrich`                |
+
+The Angular app calls Knowledge Enrichment through the **Hyland Content
+Intelligence Connector (CIC)** installed on the Nuxeo server. There is no
+separate KE backend in this repo.
+
+Unlike Knowledge Discovery, the KE `Enrich` op accepts a **multipart**
+request:
+
+- part `request`: JSON automation payload
+- part `input`: the document blob fetched from Nuxeo
+
+The current UI flow is:
+
+1. `DocumentDetailService.fetchBlob(uid)`
+2. `KeClientService.enrich(blob, request)`
+3. persist results back into Nuxeo metadata with `BrowseService.updateDocument`
+   and `TagService.addTag`
+4. refresh the full document record in the properties panel
+
+**Supported action mapping:**
+
+| UI action              | KE action(s)                                           | Nuxeo field(s) updated         |
+| ---------------------- | ------------------------------------------------------ | ------------------------------ |
+| PDF classify           | `text-classification`                                  | `dc:nature`                    |
+| PDF extract entities   | `named-entity-recognition-text`                        | `nxtag:tags`                   |
+| PDF summarize          | `text-summarization`                                   | `dc:description`               |
+| Image describe and tag | `image-description` + `named-entity-recognition-image` | `dc:description`, `nxtag:tags` |
+
+**Request payload inside the `request` multipart part:**
+
+```json
+{
+  "params": {
+    "actions": "text-classification",
+    "sourceId": "document-uuid",
+    "classes": "[\"Contract\",\"Invoice\",\"Legal\",\"Technical\"]"
+  }
+}
+```
+
+**Response (normalized by the client):**
+
+```json
+{
+  "requestId": "processing-id",
+  "status": "Complete",
+  "inProgress": false,
+  "textClassification": {
+    "isSuccess": true,
+    "result": "Contract"
+  },
+  "textSummary": {
+    "isSuccess": true,
+    "result": "Short summary..."
+  },
+  "namedEntityText": {
+    "isSuccess": true,
+    "result": {
+      "ORGANIZATION": ["Hyland"],
+      "PERSON": ["Jane Doe"]
+    }
+  }
+}
+```
+
+The public Context API OpenAPI describes the canonical raw response keys as:
+
+- `textClassification`
+- `textSummary`
+- `namedEntityText`
+- `imageDescription`
+- `namedEntityImage`
+
+Some connector builds may wrap that payload in a generic
+`{ response, responseCode, responseMessage }` envelope; `KeClientService`
+supports both forms.
+
+**Error Handling:**
+
+| Status / Failure     | Behavior                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| Missing KE config    | Surface connector error, e.g. `No authentication info for calling the Enrichment service.` |
+| Empty result payload | Show a targeted UI error per action (`did not return a summary`, etc.)                     |
+| `401` / `403`        | Treat as connector / KE auth issue                                                         |
+| `5xx`                | Treat as transient Nuxeo/CIC/KE upstream failure                                           |
 
 <!--
 ## N. Title

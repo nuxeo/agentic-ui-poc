@@ -22,6 +22,72 @@
       ></sat-breadcrumbs>
     </div>
     <div class="header-actions">
+      @if (!isTrashed() && supportsTextKnowledgeEnrichment()) {
+        <div class="ke-action-group">
+          <button
+            type="button"
+            mat-stroked-button
+            class="ke-action-btn"
+            [disabled]="keActionInFlight() !== null"
+            (click)="runTextEntityExtraction()"
+          >
+            @if (isKeActionRunning('named-entity-recognition-text')) {
+              <mat-spinner diameter="16" />
+            } @else {
+              <mat-icon>sell</mat-icon>
+            }
+            Extract Entities
+          </button>
+          <button
+            type="button"
+            mat-stroked-button
+            class="ke-action-btn"
+            [disabled]="keActionInFlight() !== null"
+            (click)="runTextClassification()"
+          >
+            @if (isKeActionRunning('text-classification')) {
+              <mat-spinner diameter="16" />
+            } @else {
+              <mat-icon>category</mat-icon>
+            }
+            Classify
+          </button>
+          <button
+            type="button"
+            mat-stroked-button
+            class="ke-action-btn"
+            [disabled]="keActionInFlight() !== null"
+            (click)="runTextSummarization()"
+          >
+            @if (isKeActionRunning('text-summarization')) {
+              <mat-spinner diameter="16" />
+            } @else {
+              <mat-icon>short_text</mat-icon>
+            }
+            Summarize
+          </button>
+        </div>
+      }
+
+      @if (!isTrashed() && supportsImageKnowledgeEnrichment()) {
+        <div class="ke-action-group">
+          <button
+            type="button"
+            mat-stroked-button
+            class="ke-action-btn"
+            [disabled]="keActionInFlight() !== null"
+            (click)="runImageEnrichment()"
+          >
+            @if (isKeActionRunning('image-enrichment')) {
+              <mat-spinner diameter="16" />
+            } @else {
+              <mat-icon>image_search</mat-icon>
+            }
+            Describe &amp; Tag
+          </button>
+        </div>
+      }
+
       @if (!isTrashed()) {
         <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
           <mat-icon>edit</mat-icon>
@@ -109,6 +175,13 @@
       </button>
     </mat-menu>
   </div>
+
+  @if (keStatus() || keError()) {
+    <div class="ke-status-banner" [class.ke-status-banner--error]="keError()">
+      <mat-icon>{{ keError() ? 'error_outline' : 'auto_awesome' }}</mat-icon>
+      <span>{{ keError() || keStatus() }}</span>
+    </div>
+  }
 
   @if (isTrashed()) {
     <div class="trashed-banner">
@@ -1299,6 +1372,13 @@
               <div class="prop-field">
                 <span class="prop-label">Description</span>
                 <p class="prop-description">{{ description() }}</p>
+              </div>
+            }
+
+            @if (documentCategory()) {
+              <div class="prop-field">
+                <span class="prop-label">Document Category</span>
+                <span class="prop-value">{{ documentCategory() }}</span>
               </div>
             }
 

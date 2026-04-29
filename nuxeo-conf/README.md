@@ -47,6 +47,62 @@ docker exec nuxeo curl -s -u Administrator:Administrator \
   -d '{"params": {}}'
 ```
 
+## Knowledge Enrichment config
+
+Knowledge Enrichment uses the same CIC bundle but a different property family
+than Knowledge Discovery:
+
+```conf
+nuxeo.hyland.cic.contextEnrichment.baseUrl=...
+nuxeo.hyland.cic.enrichment.clientId=...
+nuxeo.hyland.cic.enrichment.clientSecret=...
+nuxeo.hyland.cic.enrichment.auth.scope=environment_authorization
+```
+
+These values are read from the bundle's `service-enrichment-contrib.xml`.
+
+If they are missing, the KE automation op fails with:
+
+```text
+No authentication info for calling the Enrichment service.
+```
+
+That error means the Angular request shape reached Nuxeo correctly, but the
+server does not yet have valid KE credentials/base URL configured.
+
+## Verifying KE from the running container
+
+First confirm the CIC bundle has an active KE contribution:
+
+```bash
+docker exec nuxeo curl -s -u Administrator:Administrator \
+  -X POST -H "Content-Type: application/json" \
+  http://localhost:8080/nuxeo/site/automation/HylandContentIntelligence.GetContributionNames \
+  -d '{"params": {"which": "knowledgeEnrichment"}}'
+```
+
+Expected result:
+
+```json
+{ "knowledgeEnrichment": ["default"] }
+```
+
+Then smoke-test the multipart KE op:
+
+```bash
+printf 'KE smoke test' >/tmp/ke-sample.txt
+
+curl -sS -u Administrator:Administrator \
+  -X POST "http://localhost:8080/nuxeo/site/automation/HylandKnowledgeEnrichment.Enrich" \
+  -H "Accept: application/json" \
+  -F "request={\"params\":{\"actions\":\"text-summarization\"}};type=application/json" \
+  -F "input=@/tmp/ke-sample.txt;type=text/plain"
+```
+
+With missing config, the current expected response is the connector error above.
+Once KE credentials are configured, this call should return a JSON result from
+the Context API instead.
+
 ## Ingesting Nuxeo documents
 
 The CIC labs connector configured here only **queries** Knowledge Discovery.
@@ -75,6 +131,15 @@ for the one-shot install command and the `hxai.ingest.*` config block.
   The connector surfaces this as
   `No authentication info for calling the Knowledge Discovery service` —
   because the token request returned 400, so `getToken()` returns `null`.
+
+- **KE credentials are separate from KD credentials.** The same CIC bundle can
+  talk to both services, but Knowledge Enrichment reads
+  `nuxeo.hyland.cic.contextEnrichment.*` and `nuxeo.hyland.cic.enrichment.*`.
+  A working Discovery setup alone does not enable KE.
+
+- **Prefer integrations/staging for KE validation.** The linked engineering
+  notes in `NXENG-42` describe the older dev KE environment as unstable and
+  recommend the integrations/staging path for reliable demos.
 
 - **Agent model compatibility.** If `askQuestionAndGetAnswer` returns
   `Model '...' is not recognized` from the upstream Discovery API, that agent

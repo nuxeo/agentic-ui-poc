@@ -44,6 +44,9 @@ jobs:
             git fetch --no-tags origin "$NX_HEAD"
           fi
 
+      - name: Run review guardrails
+        run: npm run review:guardrails -- --base=$NX_BASE --head=$NX_HEAD
+
       - name: Lint affected projects
         run: npx nx affected -t lint --base=$NX_BASE --head=$NX_HEAD
 
