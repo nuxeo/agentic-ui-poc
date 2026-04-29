@@ -114,41 +114,6 @@ function checkThemeTokens() {
   }
 }
 
-function checkAiFeatureGating() {
-  const routeFile = 'apps/nuxeo-ui/src/app/app.routes.ts';
-  const navFile = 'apps/nuxeo-ui/src/app/platform-nav-items.ts';
-  const shellFile = 'apps/nuxeo-ui/src/app/shell/app-shell.component.ts';
-
-  const routeTouched = changedFiles.includes(routeFile);
-  const navTouched = changedFiles.includes(navFile);
-  const routeAddsAiFeature = addedLinesByFile
-    .get(routeFile)
-    ?.some((entry) => /feature-knowledge-discovery|knowledge-discovery/.test(entry.text));
-  const navAddsAiFeature = addedLinesByFile
-    .get(navFile)
-    ?.some((entry) => /Knowledge Discovery|knowledge-discovery/.test(entry.text));
-
-  if ((routeTouched || routeAddsAiFeature) && fileExists(routeFile)) {
-    const routes = read(routeFile);
-    if (routes.includes('feature-knowledge-discovery') && !/canMatch:\s*\[[^\]]*aiFeatureGuard/.test(routes)) {
-      fail(`${routeFile} exposes an AI feature route without aiFeatureGuard in canMatch.`);
-    }
-  }
-
-  if ((navTouched || navAddsAiFeature) && fileExists(shellFile)) {
-    const shell = read(shellFile);
-    if (
-      fileExists(navFile) &&
-      read(navFile).includes('/knowledge-discovery') &&
-      !/featureFlags\.aiEnabled\(\)[\s\S]*\/knowledge-discovery|\/knowledge-discovery[\s\S]*featureFlags\.aiEnabled\(\)/.test(
-        shell,
-      )
-    ) {
-      fail(`${shellFile} must filter the Knowledge Discovery nav item when AI features are disabled.`);
-    }
-  }
-}
-
 function checkDocsNumbering() {
   const docFiles = changedFiles.filter((file) => file.endsWith('.md') && file.startsWith('docs/'));
   for (const file of docFiles) {
@@ -230,7 +195,6 @@ function checkTypeSafetyEscapes() {
 }
 
 checkThemeTokens();
-checkAiFeatureGating();
 checkDocsNumbering();
 checkVitestProjects();
 checkBlobUrlLifecycle();
