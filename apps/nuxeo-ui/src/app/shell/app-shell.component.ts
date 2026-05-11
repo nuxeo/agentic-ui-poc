@@ -153,6 +153,15 @@ export class AppShellComponent implements OnDestroy {
       };
       return titles[seg] ?? 'Administration';
     }
+    if (parts[0] === 'agent-builder') {
+      const seg = parts[1] ?? 'agents';
+      const titles: Record<string, string> = {
+        agents: 'Agent Builder',
+        create: 'Create agent',
+        status: 'Platform status',
+      };
+      return titles[seg] ?? 'Agent Builder';
+    }
     const match = [...PLATFORM_NAV_ITEMS, ...SETTINGS_DRAWER_ITEMS].find(
       (item) => url === item.path || url.startsWith(item.path + '/'),
     );

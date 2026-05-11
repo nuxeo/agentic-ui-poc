@@ -3,6 +3,13 @@
     <div class="kd-topbar__title">
       <span class="kd-eyebrow">Knowledge Discovery</span>
       <h1>Ask grounded questions with citations</h1>
+      <p class="kd-topbar__related">
+        <a routerLink="/agent-builder/agents" class="kd-topbar__related-link">
+          <mat-icon class="kd-topbar__related-icon">smart_toy</mat-icon>
+          Agent Builder
+        </a>
+        <span class="kd-topbar__related-hint"> — create and list agents for this platform</span>
+      </p>
     </div>
     <div class="kd-topbar__actions">
       <button mat-stroked-button (click)="loadReferenceData()">

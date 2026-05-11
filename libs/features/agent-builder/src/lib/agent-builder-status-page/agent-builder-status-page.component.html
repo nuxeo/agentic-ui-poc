@@ -1,0 +1,36 @@
+<div class="ab-status-page">
+  <header class="ab-status-page__header">
+    <a mat-button routerLink="/agent-builder/agents" class="ab-status-page__back">
+      <mat-icon>arrow_back</mat-icon>
+      Agents
+    </a>
+    <div class="ab-status-page__titles">
+      <span class="ab-status-page__eyebrow">Agent Builder</span>
+      <h1 class="ab-status-page__title">Platform status</h1>
+      <p class="ab-status-page__subtitle">
+        Liveness uses <code>HylandAgents.getAllAgents</code> (no dedicated health op on this CIC
+        build).
+      </p>
+    </div>
+    <button mat-stroked-button type="button" (click)="refresh()" [disabled]="loading()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </header>
+
+  @if (error()) {
+    <div class="ab-status-page__banner" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="ab-status-page__loading">
+      <mat-spinner diameter="36" />
+      <span>Loading…</span>
+    </div>
+  } @else if (payload() !== null) {
+    <pre class="ab-status-page__json">{{ payload() | json }}</pre>
+  }
+</div>

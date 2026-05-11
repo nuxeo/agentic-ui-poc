@@ -41,6 +41,40 @@
   }
 }
 
+.kd-topbar__related {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 4px;
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.kd-topbar__related-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: var(--mat-sys-primary, #1565c0);
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.kd-topbar__related-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.kd-topbar__related-hint {
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+  font-weight: 400;
+}
+
 .kd-topbar__actions {
   display: flex;
   gap: 8px;

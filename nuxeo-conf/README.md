@@ -6,10 +6,11 @@ They are meant to be copied into the `nuxeo` docker container at
 
 ## Layout
 
-| File                        | Tracked? | Purpose                                                     |
-| --------------------------- | -------- | ----------------------------------------------------------- |
-| `50-hyland-cic.sample.conf` | yes      | Template with every property name + safe placeholder values |
-| `50-hyland-cic.conf`        | **no**   | Your local copy with real tenant credentials (gitignored)   |
+| File                                       | Tracked? | Purpose                                                     |
+| ------------------------------------------ | -------- | ----------------------------------------------------------- |
+| `50-hyland-cic.sample.conf`                | yes      | Template with every property name + safe placeholder values |
+| `50-hyland-cic.satori-ui-beta.sample.conf` | yes      | Beta cloud host: dev IDP + Discovery URLs + KD env key      |
+| `50-hyland-cic.conf`                       | **no**   | Your local copy with real tenant credentials (gitignored)   |
 
 The `.gitignore` allows only `*.sample.conf` to be committed — any file
 matching `*.conf` is ignored. Never rename the real file to drop the
@@ -24,6 +25,32 @@ key) are assigned per HX customer account and documented at:
 > https://hyland.atlassian.net/wiki/spaces/HxAI/pages/1329661828
 
 Treat anything from that page as a secret.
+
+## Satori UI Beta (Agentic UI on Nuxeo Cloud)
+
+**Target UI:** [https://satori-ui.beta.nuxeocloud.com/nuxeo/agentic-ui/#/dashboard](https://satori-ui.beta.nuxeocloud.com/nuxeo/agentic-ui/#/dashboard)
+
+**Nuxeo package:** `nuxeo-labs-content-intelligence-connector` (Content Intelligence Connector / CIC).
+
+Use `50-hyland-cic.satori-ui-beta.sample.conf` as the starting point: it pins the **Dev** Hyland IDP and Discovery API hosts plus the tenant **Knowledge Discovery environment** key for this beta stack. Replace every `<...>` placeholder and the Context API host with values issued for your integration. **Do not commit** real client IDs or secrets; obtain them from your designated platform contact.
+
+**Confirm** `nuxeo.hyland.cic.contextEnrichment.baseUrl` with whoever owns the HX Context API endpoint for this tenant before relying on Knowledge Enrichment—the host is not always the same as the Discovery API host.
+
+After the fragment is merged on the server and Nuxeo is restarted, validate from your workstation (substitute admin credentials locally; do not paste them into tickets):
+
+```bash
+# Knowledge Discovery — should return configured agents
+curl -s -u '<admin-user>:<admin-password>' \
+  -X POST -H "Content-Type: application/json" \
+  https://satori-ui.beta.nuxeocloud.com/nuxeo/site/automation/HylandKnowledgeDiscovery.getAllAgents \
+  -d '{"params": {}}'
+
+# Knowledge Enrichment — should list an active contribution, not a missing auth/config error
+curl -s -u '<admin-user>:<admin-password>' \
+  -X POST -H "Content-Type: application/json" \
+  https://satori-ui.beta.nuxeocloud.com/nuxeo/site/automation/HylandContentIntelligence.GetContributionNames \
+  -d '{"params": {"which": "knowledgeEnrichment"}}'
+```
 
 ## Applying the config to the running container
 

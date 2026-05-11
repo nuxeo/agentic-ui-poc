@@ -12,10 +12,13 @@ export interface DrawerLinkItem {
 
 /**
  * Platform nav entries aligned to Figma order.
+ * Agent Builder is listed immediately below Knowledge Discovery.
  * Items with `hasDrawer: true` open a secondary panel showing contextual content.
  */
 export const PLATFORM_NAV_ITEMS: AppNavItem[] = [
   { label: 'Knowledge Discovery', path: '/knowledge-discovery', icon: 'star' },
+  /** Placed directly under Knowledge Discovery in the rail. Satori nav uses svgIcon names from @hylandsoftware/satori-icons (not Material ligature names). */
+  { label: 'Agent Builder', path: '/agent-builder', icon: 'agent_orchestrator' },
   { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
   { label: 'Browse', path: '/browse', icon: 'folder', hasDrawer: true },
   { label: 'Recently viewed', path: '/recently-viewed', icon: 'clock', hasDrawer: true },

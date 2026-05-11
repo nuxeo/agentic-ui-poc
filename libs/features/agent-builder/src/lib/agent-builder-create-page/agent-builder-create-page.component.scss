@@ -1,0 +1,250 @@
+$ab-accent: #5b51d8;
+
+.ab-builder {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 20px 32px;
+  box-sizing: border-box;
+}
+
+.ab-builder__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
+  margin-bottom: 20px;
+}
+
+.ab-builder__back {
+  mat-icon {
+    margin-right: 4px;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+  }
+}
+
+.ab-builder__toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+
+  mat-icon {
+    margin-right: 4px;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    vertical-align: middle;
+  }
+}
+
+.ab-builder__deploy.mat-mdc-unelevated-button {
+  background-color: $ab-accent !important;
+  color: #fff !important;
+  min-width: 104px;
+}
+
+.ab-builder__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ab-section {
+  padding: 8px 0 12px;
+}
+
+.ab-section__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ab-section__title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.ab-section__lede {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+  max-width: 40rem;
+}
+
+.ab-section__action mat-icon {
+  margin-right: 4px;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+
+.ab-field {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.ab-field--agent-name {
+  margin-bottom: 12px;
+}
+
+.ab-field--compact {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+.ab-field--type {
+  flex: 0 0 140px;
+  width: 140px;
+}
+
+.ab-field--grow {
+  flex: 2 1 200px;
+}
+
+.ab-field--textarea textarea {
+  min-height: 72px;
+}
+
+.ab-field-hint {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+}
+
+.ab-help-link {
+  margin: 0 0 8px;
+}
+
+.ab-text-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mat-sys-primary, #1565c0);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.ab-muted {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+}
+
+.ab-input-empty {
+  padding: 12px 0;
+}
+
+.ab-table-card {
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
+  border-radius: 10px;
+  background: var(--mat-sys-surface, #fff);
+}
+
+.ab-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th,
+  td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--mat-sys-outline-variant, #eceef2);
+    vertical-align: middle;
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--mat-sys-on-surface-variant, #5c5f6b);
+    background: var(--mat-sys-surface-container-low, #f8fafc);
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+}
+
+.ab-table__actions {
+  width: 64px;
+  text-align: center !important;
+}
+
+.ab-remove {
+  width: 36px;
+  height: 36px;
+}
+
+.ab-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 21, 31, 0.45);
+  z-index: 900;
+}
+
+.ab-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid var(--mat-sys-outline-variant, #dfe3ea);
+  background: var(--mat-sys-surface, #fff);
+  box-shadow: 0 18px 40px rgba(17, 24, 39, 0.2);
+  padding: 18px;
+  z-index: 901;
+}
+
+.ab-modal__title {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.ab-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ab-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ab-required-checkbox {
+  margin-bottom: 4px;
+}
+
+.ab-required-label {
+  display: block;
+}
+
+.ab-checkbox-help {
+  display: block;
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+}

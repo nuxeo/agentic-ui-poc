@@ -1,0 +1,100 @@
+<div class="ab-library">
+  <header class="ab-library__masthead">
+    <div class="ab-library__brand">
+      <span class="ab-library__product">Agent Builder</span>
+      <h1 class="ab-library__title">Agent Library</h1>
+      <p class="ab-library__lede">
+        Browse agents returned from your environment via Nuxeo CIC
+        (<code>HylandAgents.getAllAgents</code>).
+      </p>
+    </div>
+    <div class="ab-library__masthead-actions">
+      <mat-form-field appearance="outline" class="ab-library__search" subscriptSizing="dynamic">
+        <mat-icon matIconPrefix>search</mat-icon>
+        <input
+          matInput
+          type="search"
+          placeholder="Search agents"
+          [value]="searchTerm()"
+          (input)="onSearchInput($any($event.target).value)"
+          autocomplete="off"
+        />
+      </mat-form-field>
+      <div class="ab-library__primary-actions">
+        <button mat-stroked-button type="button" (click)="loadAgents()" [disabled]="loading()">
+          <mat-icon>refresh</mat-icon>
+          Refresh
+        </button>
+        <a
+          mat-flat-button
+          color="primary"
+          class="ab-library__create"
+          routerLink="/agent-builder/create"
+        >
+          <mat-icon>add</mat-icon>
+          Create New Agent
+        </a>
+      </div>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="ab-library__banner ab-library__banner--error" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="ab-library__loading">
+      <mat-spinner diameter="36" />
+      <span>Loading agents…</span>
+    </div>
+  } @else if (agents().length === 0) {
+    <div class="ab-library__empty">
+      <mat-icon aria-hidden="true">inventory_2</mat-icon>
+      <p>No agents in this library yet.</p>
+      <p class="ab-library__empty-hint">
+        You can create your first one with <strong>Create New Agent</strong>.
+      </p>
+      <a mat-stroked-button routerLink="/agent-builder/create">Create New Agent</a>
+    </div>
+  } @else if (filteredAgents().length === 0) {
+    <div class="ab-library__empty">
+      <mat-icon aria-hidden="true">search_off</mat-icon>
+      <p>No agents match your search.</p>
+      <button mat-button type="button" (click)="onSearchInput('')">Clear search</button>
+    </div>
+  } @else {
+    <div class="ab-library__table-card mat-elevation-z1">
+      <table mat-table [dataSource]="pagedAgents()" class="ab-library__table">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Agent Name</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="ab-library__name">{{ row.name }}</span>
+            <code class="ab-library__id" [matTooltip]="row.id">{{ row.id }}</code>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef>Job description</th>
+          <td mat-cell *matCellDef="let row">{{ row.description || '—' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="lastModified">
+          <th mat-header-cell *matHeaderCellDef>Last modified</th>
+          <td mat-cell *matCellDef="let row">{{ formatLastModified(row.lastModified) }}</td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns" class="ab-library__row"></tr>
+      </table>
+      <mat-paginator
+        class="ab-library__paginator"
+        [length]="filteredAgents().length"
+        [pageIndex]="pageIndex()"
+        [pageSize]="pageSize()"
+        [pageSizeOptions]="[5, 10, 25, 50]"
+        showFirstLastButtons
+        (page)="onPage($event)"
+      />
+    </div>
+  }
+</div>

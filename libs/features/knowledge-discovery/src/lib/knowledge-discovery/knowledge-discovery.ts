@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { RouterLink } from '@angular/router';
 import { Subscription, catchError, forkJoin, of, switchMap, timer } from 'rxjs';
 
 import {
@@ -25,11 +26,9 @@ import {
 /**
  * Consumer-facing Knowledge Discovery page.
  *
- * Agent management (create/edit/delete) deliberately lives outside of this
- * app: the Hyland Content Intelligence Connector exposes only read/invoke
- * operations (no CRUD) and the upstream Discovery API rejects agent create
- * requests over the connector's auth. Users manage agents in the Hyland
- * Insight admin UI; we just pick one, ask questions, and render the answer.
+ * Discovery-side agent pickers use read/invoke via the CIC connector. For
+ * creating and listing platform agents, use **Agent Builder** in this app
+ * (`#/agent-builder/agents`), linked below the page title.
  */
 @Component({
   selector: 'lib-knowledge-discovery',
@@ -37,6 +36,7 @@ import {
   imports: [
     DatePipe,
     FormsModule,
+    RouterLink,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,

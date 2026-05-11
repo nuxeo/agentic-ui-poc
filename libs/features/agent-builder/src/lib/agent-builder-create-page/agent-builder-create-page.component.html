@@ -1,0 +1,295 @@
+<div class="ab-builder">
+  <div class="ab-builder__toolbar">
+    <a mat-button routerLink="/agent-builder/agents" class="ab-builder__back">
+      <mat-icon>arrow_back</mat-icon>
+      Agent Library
+    </a>
+    <div class="ab-builder__toolbar-actions">
+      <button mat-stroked-button type="button" (click)="onTestClick()">
+        <mat-icon>science</mat-icon>
+        Test
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        class="ab-builder__deploy"
+        type="submit"
+        form="ab-create-form"
+        [disabled]="submitting()"
+      >
+        @if (submitting()) {
+          <mat-spinner diameter="20" />
+        } @else {
+          Deploy
+        }
+      </button>
+    </div>
+  </div>
+
+  <form id="ab-create-form" class="ab-builder__form" [formGroup]="form" (ngSubmit)="submit()">
+    <section class="ab-section">
+      <h2 class="ab-section__title">Agent details</h2>
+
+      <mat-form-field appearance="outline" class="ab-field ab-field--agent-name">
+        <mat-label>Agent name</mat-label>
+        <input matInput formControlName="name" autocomplete="off" required />
+        @if (form.controls.name.hasError('required') && form.controls.name.touched) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="ab-field">
+        <mat-label>Agent model</mat-label>
+        @if (modelsLoading()) {
+          <input matInput disabled value="Loading models…" />
+        } @else if (models().length > 0) {
+          <mat-select formControlName="modelId" required>
+            @for (m of models(); track m.id) {
+              <mat-option [value]="m.id">{{ m.label }}</mat-option>
+            }
+          </mat-select>
+        } @else {
+          <input matInput formControlName="modelId" placeholder="Model id" required />
+        }
+        @if (!modelsLoading() && models().length === 0) {
+          <mat-hint>No models from service — enter a model id your API accepts.</mat-hint>
+        }
+      </mat-form-field>
+
+      <p class="ab-field-hint">Short description (example: compares documents with HR policy)</p>
+      <mat-form-field appearance="outline" class="ab-field ab-field--textarea">
+        <mat-label>Agent description</mat-label>
+        <textarea matInput formControlName="description" rows="3" maxlength="200"></textarea>
+        <mat-hint align="end">{{ form.controls.description.value.length }} / 200</mat-hint>
+      </mat-form-field>
+    </section>
+
+    <mat-divider />
+
+    <section class="ab-section">
+      <div class="ab-section__head">
+        <div>
+          <h2 class="ab-section__title">Input</h2>
+          <p class="ab-section__lede">Add the inputs your agent will need to make decisions.</p>
+        </div>
+        <button mat-stroked-button type="button" class="ab-section__action" (click)="addInput()">
+          <mat-icon>add</mat-icon>
+          Add input
+        </button>
+      </div>
+      <p class="ab-help-link">
+        <button type="button" class="ab-text-btn" (click)="onTestClick()">What are inputs?</button>
+      </p>
+
+      @if (inputs.length === 0) {
+        <p class="ab-muted ab-input-empty">
+          No inputs currently configured. Add at least one input if your agent expects structured
+          parameters.
+        </p>
+      } @else {
+        <div class="ab-table-card">
+          <table class="ab-table" aria-label="Inputs table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th class="ab-table__actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of inputs.controls; track $index; let i = $index) {
+                <tr [formGroup]="row">
+                  <td>{{ row.get('name')?.value }}</td>
+                  <td>{{ row.get('type')?.value }}</td>
+                  <td>{{ row.get('description')?.value }}</td>
+                  <td class="ab-table__actions">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="ab-remove"
+                      (click)="removeInput(i)"
+                      aria-label="Remove input"
+                    >
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <mat-divider />
+
+    <section class="ab-section">
+      <div class="ab-section__head">
+        <div>
+          <h2 class="ab-section__title">Instructions</h2>
+          <p class="ab-section__lede">
+            Use natural language (and reference inputs) so the agent knows how to accomplish its
+            goal.
+          </p>
+        </div>
+        <button type="button" class="ab-text-btn" (click)="onTestClick()">
+          How do instructions work?
+        </button>
+      </div>
+
+      <mat-form-field appearance="outline" class="ab-field ab-field--textarea">
+        <mat-label>Instructions</mat-label>
+        <textarea
+          matInput
+          formControlName="systemPrompt"
+          rows="8"
+          placeholder="You are a helpful assistant…"
+        ></textarea>
+        <mat-hint
+          >Use / in supported clients to insert variables; here, name inputs above and describe them
+          in prose.</mat-hint
+        >
+      </mat-form-field>
+    </section>
+
+    <mat-divider />
+
+    <section class="ab-section">
+      <div class="ab-section__head">
+        <div>
+          <h2 class="ab-section__title">Outcomes</h2>
+          <p class="ab-section__lede">Expected outputs from the agent (stored in agent config).</p>
+        </div>
+        <button mat-stroked-button type="button" class="ab-section__action" (click)="addOutcome()">
+          <mat-icon>add</mat-icon>
+          Add outcome
+        </button>
+      </div>
+      <p class="ab-help-link">
+        <button type="button" class="ab-text-btn" (click)="onTestClick()">
+          What are outcomes?
+        </button>
+      </p>
+
+      @if (outcomes.length === 0) {
+        <p class="ab-muted ab-input-empty">No outcomes configured yet.</p>
+      } @else {
+        <div class="ab-table-card">
+          <table class="ab-table" aria-label="Outcomes table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Required</th>
+                <th class="ab-table__actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of outcomes.controls; track $index; let i = $index) {
+                <tr [formGroup]="row">
+                  <td>{{ row.get('name')?.value }}</td>
+                  <td>{{ row.get('type')?.value }}</td>
+                  <td>{{ row.get('description')?.value }}</td>
+                  <td>{{ row.get('required')?.value ? 'Yes' : 'No' }}</td>
+                  <td class="ab-table__actions">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="ab-remove"
+                      (click)="removeOutcome(i)"
+                      aria-label="Remove outcome"
+                    >
+                      <mat-icon>delete_outline</mat-icon>
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </form>
+</div>
+
+@if (inputDialogOpen()) {
+  <div class="ab-modal-backdrop" (click)="closeInputDialog()"></div>
+  <section class="ab-modal" role="dialog" aria-modal="true" aria-label="Add input">
+    <h3 class="ab-modal__title">Add input</h3>
+    <form class="ab-modal__form" [formGroup]="inputDraftForm">
+      <mat-form-field appearance="outline" class="ab-field">
+        <mat-label>Input name</mat-label>
+        <input matInput formControlName="name" required />
+        @if (
+          inputDraftForm.controls['name'].hasError('required') &&
+          inputDraftForm.controls['name'].touched
+        ) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="ab-field">
+        <mat-label>Type</mat-label>
+        <mat-select formControlName="type">
+          @for (t of inputTypes; track t) {
+            <mat-option [value]="t">{{ t }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="ab-field">
+        <mat-label>Description</mat-label>
+        <textarea matInput formControlName="description" rows="3"></textarea>
+      </mat-form-field>
+    </form>
+    <div class="ab-modal__actions">
+      <button mat-stroked-button type="button" (click)="closeInputDialog()">Cancel</button>
+      <button mat-flat-button color="primary" type="button" (click)="saveInput()">
+        Save Input
+      </button>
+    </div>
+  </section>
+}
+
+@if (outcomeDialogOpen()) {
+  <div class="ab-modal-backdrop" (click)="closeOutcomeDialog()"></div>
+  <section class="ab-modal" role="dialog" aria-modal="true" aria-label="Add outcome">
+    <h3 class="ab-modal__title">Add outcome</h3>
+    <form class="ab-modal__form" [formGroup]="outcomeDraftForm">
+      <mat-form-field appearance="outline" class="ab-field">
+        <mat-label>Outcome name</mat-label>
+        <input matInput formControlName="name" required />
+        @if (
+          outcomeDraftForm.controls['name'].hasError('required') &&
+          outcomeDraftForm.controls['name'].touched
+        ) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="ab-field">
+        <mat-label>Type</mat-label>
+        <mat-select formControlName="type">
+          @for (t of outcomeTypes; track t) {
+            <mat-option [value]="t">{{ t }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="ab-field">
+        <mat-label>Description</mat-label>
+        <textarea matInput formControlName="description" rows="3"></textarea>
+      </mat-form-field>
+      <mat-checkbox formControlName="required" class="ab-required-checkbox">
+        <span class="ab-required-label">Required</span>
+        <span class="ab-checkbox-help">
+          If an outcome is required, it must be successful for all other outcomes to be returned.
+        </span>
+      </mat-checkbox>
+    </form>
+    <div class="ab-modal__actions">
+      <button mat-stroked-button type="button" (click)="closeOutcomeDialog()">Cancel</button>
+      <button mat-flat-button color="primary" type="button" (click)="saveOutcome()">
+        Save Outcome
+      </button>
+    </div>
+  </section>
+}
