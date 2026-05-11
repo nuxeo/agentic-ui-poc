@@ -1,6 +1,3 @@
-// Hyland-style accent (reference Agent Builder)
-$ab-accent: #5b51d8;
-
 .ab-library {
   padding: 20px 24px 32px;
   box-sizing: border-box;
@@ -80,8 +77,8 @@ $ab-accent: #5b51d8;
 
 .ab-library__create.mat-mdc-raised-button,
 .ab-library__create.mat-mdc-unelevated-button {
-  background-color: $ab-accent !important;
-  color: #fff !important;
+  background-color: var(--mat-sys-tertiary, #5b51d8) !important;
+  color: var(--mat-sys-on-tertiary, #ffffff) !important;
 }
 
 .ab-library__create:hover {
