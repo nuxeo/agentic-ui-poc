@@ -233,7 +233,7 @@ export class KdClientService {
   }
 
   private runNamed<T>(operation: string, params?: Record<string, unknown>): Observable<T> {
-    const body: AutomationBody = params ? { params } : {};
+    const body: AutomationBody = { params: params ?? {} };
     return this.http
       .post<CicEnvelope<T>>(this.automationUrl(operation), body, {
         headers: {

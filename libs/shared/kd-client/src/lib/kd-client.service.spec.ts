@@ -47,7 +47,7 @@ describe('KdClientService', () => {
   it('lists agents via HylandKnowledgeDiscovery.getAllAgents and unwraps the CIC envelope', async () => {
     const agents$ = firstValueFrom(service.listAgents());
     const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.getAllAgents);
-    expect(req.request.body).toEqual({});
+    expect(req.request.body).toEqual({ params: {} });
     req.flush(envelope([{ id: 'agent-1', name: 'Contracts', description: '', modelName: 'm' }]));
     const agents = await agents$;
     expect(agents).toHaveLength(1);

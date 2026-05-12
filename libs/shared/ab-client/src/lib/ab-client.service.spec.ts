@@ -34,7 +34,7 @@ describe('AbClientService', () => {
   it('lists agents via HylandAgents.getAllAgents', async () => {
     const p = firstValueFrom(service.listAgents());
     const req = httpMock.expectOne('/nuxeo/site/automation/HylandAgents.getAllAgents');
-    expect(req.request.body).toEqual({});
+    expect(req.request.body).toEqual({ params: {} });
     req.flush(
       envelope([{ id: 'a1', name: 'Test', description: '', agentType: 'rag', config: {} }]),
     );
@@ -72,7 +72,7 @@ describe('AbClientService', () => {
   it('health probes via getAllAgents', async () => {
     const p = firstValueFrom(service.health());
     const req = httpMock.expectOne('/nuxeo/site/automation/HylandAgents.getAllAgents');
-    expect(req.request.body).toEqual({});
+    expect(req.request.body).toEqual({ params: {} });
     req.flush(envelope([]));
     const body = await p;
     expect(body).toMatchObject({ ok: true, via: 'HylandAgents.getAllAgents' });
