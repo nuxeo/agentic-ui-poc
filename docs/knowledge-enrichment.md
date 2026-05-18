@@ -134,7 +134,25 @@ nuxeo.hyland.cic.enrichment.auth.grantType=client_credentials
 nuxeo.hyland.cic.enrichment.auth.scope=environment_authorization
 ```
 
-The live local container currently has no `contextEnrichment` or `enrichment.*` values configured, which is why KE requests fail before reaching the remote service.
+The KE upload path also uses the CIC ingest contribution:
+
+```conf
+nuxeo.hyland.cic.ingest.baseUrl=...
+nuxeo.hyland.cic.ingest.clientId=...
+nuxeo.hyland.cic.ingest.clientSecret=...
+nuxeo.hyland.cic.ingest.environment=...
+nuxeo.hyland.cic.ingest.auth.scope=environment_authorization
+```
+
+This is separate from the `hxai.ingest.*` namespace used by the HxAI connector that feeds Knowledge Discovery Content Lake indexes.
+
+With these values configured, a direct Context Enrichment presigned URL check currently reaches the service but returns:
+
+```text
+403 You do not have permissions to access this resource
+```
+
+That means the service account can mint a token but is not entitled for the Context API resource. Add the external client/service account to a group with the Context API User role for the target Dev tenant, or use a KE-specific service account that already has that role.
 
 ## Verification steps
 
@@ -166,6 +184,14 @@ curl -sS -u Administrator:Administrator \
 ```
 
 If config is still missing, the current expected failure is the connector error above. Once KE credentials are configured, this should return a JSON result payload instead.
+
+If it returns a generic connector envelope like this:
+
+```json
+{ "response": {}, "responseMessage": "Forbidden", "responseCode": 403 }
+```
+
+the connector reached the Context API, but the configured KE service account is not authorized for the Context API presigned upload endpoint.
 
 3. In the UI, upload:
 

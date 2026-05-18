@@ -151,12 +151,13 @@ export class KeClientService {
     }
 
     if (maybeEnvelope.responseCode < 200 || maybeEnvelope.responseCode >= 300) {
-      throw new KeEnrichmentError(
-        maybeEnvelope.responseMessage ||
-          `Knowledge Enrichment returned HTTP ${maybeEnvelope.responseCode}.`,
-        maybeEnvelope.responseCode,
-        maybeEnvelope.response,
-      );
+      const message =
+        maybeEnvelope.responseCode === 403
+          ? 'Knowledge Enrichment credentials are not authorized for the Context API.'
+          : maybeEnvelope.responseMessage ||
+            `Knowledge Enrichment returned HTTP ${maybeEnvelope.responseCode}.`;
+
+      throw new KeEnrichmentError(message, maybeEnvelope.responseCode, maybeEnvelope.response);
     }
 
     return maybeEnvelope.response;

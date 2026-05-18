@@ -57,9 +57,15 @@ nuxeo.hyland.cic.contextEnrichment.baseUrl=...
 nuxeo.hyland.cic.enrichment.clientId=...
 nuxeo.hyland.cic.enrichment.clientSecret=...
 nuxeo.hyland.cic.enrichment.auth.scope=environment_authorization
+nuxeo.hyland.cic.ingest.baseUrl=...
+nuxeo.hyland.cic.ingest.clientId=...
+nuxeo.hyland.cic.ingest.clientSecret=...
+nuxeo.hyland.cic.ingest.environment=...
 ```
 
 These values are read from the bundle's `service-enrichment-contrib.xml`.
+The `nuxeo.hyland.cic.ingest.*` values are read from
+`service-ingest-contrib.xml` and support connector upload/presigned URL flows.
 
 If they are missing, the KE automation op fails with:
 
@@ -102,6 +108,11 @@ curl -sS -u Administrator:Administrator \
 With missing config, the current expected response is the connector error above.
 Once KE credentials are configured, this call should return a JSON result from
 the Context API instead.
+
+If the response is `{ "responseMessage": "Forbidden", "responseCode": 403 }`,
+the service account can authenticate but is not authorized for the Context API
+resource. Add the external client/service account to a group with the Context
+API User role for the target tenant, or use a KE-specific service account.
 
 ## Ingesting Nuxeo documents
 
