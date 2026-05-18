@@ -70,7 +70,7 @@
     "@nx/eslint": "22.6.3",
     "@nx/eslint-plugin": "22.6.3",
     "@nx/js": "^22.6.3",
-    "@nx/vite": "22.6.3",
+    "@nx/vite": "22.7.2",
     "@nx/vitest": "22.6.3",
     "@nx/workspace": "22.6.3",
     "@oxc-project/runtime": "^0.115.0",
