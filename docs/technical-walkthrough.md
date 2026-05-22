@@ -404,6 +404,8 @@ This level of domain-specific instruction was key to getting reliable output —
 
 AI features are enabled by default (controlled in `libs/shared/ai-client/src/lib/ai-feature-flag.service.ts`). Users can explicitly disable them via the toggle in the app header, and that opt-out is persisted in local storage.
 
+Default-on assumes the Nuxeo AI operations and HAIP key are configured in the target environment. To prevent AI calls in development, use the app header toggle to disable AI features for that browser profile, or remove the HAIP key from the local Nuxeo configuration.
+
 ---
 
 ## 7. Deployment — Nuxeo Marketplace Package

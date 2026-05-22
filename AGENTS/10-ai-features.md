@@ -35,6 +35,9 @@ All routes: `POST /ai/<endpoint>` (except health check)
 AI features are gated behind a feature flag that is **on by default** for the Agentic UI PoC.
 Users can explicitly disable AI features from the UI; that opt-out is persisted locally.
 
+Default-on relies on valid HAIP configuration in Nuxeo/cloud secrets. Keep the UI gate in place, never
+hardcode HAIP credentials, and route all model calls through the configured AI backend/Nuxeo operations.
+
 ```typescript
 // Service: libs/shared/ai-client/src/lib/ai-feature-flag.service.ts
 readonly aiEnabled = signal(this.readFromStorage()); // DEFAULT: on
