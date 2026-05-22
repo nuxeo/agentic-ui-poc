@@ -32,12 +32,12 @@ All routes: `POST /ai/<endpoint>` (except health check)
 
 ## Feature Flag System
 
-AI features are gated behind a feature flag that is **off by default** to prevent unexpected
-API charges.
+AI features are gated behind a feature flag that is **on by default** for the Agentic UI PoC.
+Users can explicitly disable AI features from the UI; that opt-out is persisted locally.
 
 ```typescript
 // Service: libs/shared/ai-client/src/lib/ai-feature-flag.service.ts
-readonly aiEnabled = signal(false); // DEFAULT: off
+readonly aiEnabled = signal(this.readFromStorage()); // DEFAULT: on
 
 // In templates
 @if (aiFeatureFlag.aiEnabled()) {

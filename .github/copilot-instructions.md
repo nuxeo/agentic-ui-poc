@@ -63,4 +63,4 @@ When reviewing pull requests in this Angular 19 + Nx monorepo, enforce the follo
 
 - All new UI that calls AI must be gated behind `@if (aiFeatureFlagService.aiEnabled())`.
 - No direct calls from Angular components to the HAIP API — all AI calls go through `apps/ai-backend`.
-- The feature flag default is `false` — do not change it to `true` in the default state.
+- The feature flag defaults to `true`; users can still explicitly disable AI features from the UI.

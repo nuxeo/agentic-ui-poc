@@ -402,7 +402,7 @@ This level of domain-specific instruction was key to getting reliable output —
 
 ### AI feature flag
 
-AI features are disabled by default (controlled in `libs/shared/ai-client/src/lib/ai-feature-flag.service.ts`). Users opt-in per session via a toggle in the app header. This prevents accidental OpenAI API token usage in development.
+AI features are enabled by default (controlled in `libs/shared/ai-client/src/lib/ai-feature-flag.service.ts`). Users can explicitly disable them via the toggle in the app header, and that opt-out is persisted in local storage.
 
 ---
 
