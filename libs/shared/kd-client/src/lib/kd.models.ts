@@ -74,6 +74,15 @@ export interface KdCitation {
   score?: number;
 }
 
+export interface KdObjectReference {
+  objectId: string;
+  references: {
+    referenceId?: string;
+    rank?: number;
+    rankScore?: number;
+  }[];
+}
+
 export interface KdAnswerResponse {
   questionId: string;
   agentId: string;
@@ -82,6 +91,7 @@ export interface KdAnswerResponse {
   status: KdResponseStatus;
   answer: string;
   citations: KdCitation[];
+  objectReferences?: KdObjectReference[];
   feedback?: string | null;
   staticFilter?: KdFilterExpression;
   dynamicFilter?: KdFilterExpression;
