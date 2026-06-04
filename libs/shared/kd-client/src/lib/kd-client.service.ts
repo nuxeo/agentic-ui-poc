@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, of, throwError } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of, switchMap, throwError } from 'rxjs';
 
 import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
@@ -14,9 +14,11 @@ import type {
   KdAgentDetails,
   KdAgentSummary,
   KdAnswerResponse,
+  KdCitation,
   KdFeedbackRequest,
   KdGuardrailGroup,
   KdModelInfo,
+  KdObjectReference,
   KdQuestionHistoryItem,
   KdQuestionHistoryPage,
   KdQuestionRequest,
@@ -25,6 +27,17 @@ import type {
 } from './kd.models';
 
 type AutomationBody = { params?: Record<string, unknown>; input?: unknown };
+type NuxeoDocumentSummary = {
+  uid?: string;
+  title?: string;
+  path?: string;
+  properties?: Record<string, unknown>;
+};
+
+const MAX_VISIBLE_CITATIONS = 5;
+const MIN_RELATIVE_CITATION_SCORE = 0.1;
+const STRONG_CITATION_SCORE = 0.1;
+const INSUFFICIENT_ANSWER_TEXT = "I don't have enough information to answer this question.";
 
 /**
  * Standard response envelope returned by every CIC automation op.
@@ -137,6 +150,20 @@ export class KdClientService {
   }
 
   submitQuestion(request: KdQuestionRequest): Observable<KdQuestionSubmission> {
+    return this.askQuestion(request).pipe(
+      switchMap((answer) => this.retryWithNormalizedQuestionWhenUseful(answer, request)),
+      switchMap((answer) => this.enrichCitationTitles(answer)),
+      map((answer) => {
+        this.answerCache.set(answer.questionId, answer);
+        return {
+          questionId: answer.questionId,
+          status: answer.status,
+        } satisfies KdQuestionSubmission;
+      }),
+    );
+  }
+
+  private askQuestion(request: KdQuestionRequest): Observable<KdAnswerResponse> {
     const params: Record<string, unknown> = {
       agentId: request.agentId,
       question: request.question,
@@ -146,14 +173,29 @@ export class KdClientService {
     }
 
     return this.runNamed<KdAnswerResponse>(this.ops.askQuestionAndGetAnswer, params).pipe(
-      map((response) => {
-        const answer = this.normalizeAnswer(response, request);
-        this.answerCache.set(answer.questionId, answer);
-        return {
-          questionId: answer.questionId,
-          status: answer.status,
-        } satisfies KdQuestionSubmission;
-      }),
+      map((response) => this.normalizeAnswer(response, request)),
+    );
+  }
+
+  private retryWithNormalizedQuestionWhenUseful(
+    answer: KdAnswerResponse,
+    originalRequest: KdQuestionRequest,
+  ): Observable<KdAnswerResponse> {
+    const normalizedQuestion = originalRequest.question.trim().toLowerCase();
+    if (
+      !this.isInsufficientAnswer(answer.answer) ||
+      normalizedQuestion === originalRequest.question.trim() ||
+      this.citationScore(answer.citations[0]) < STRONG_CITATION_SCORE
+    ) {
+      return of(answer);
+    }
+
+    return this.askQuestion({ ...originalRequest, question: normalizedQuestion }).pipe(
+      map((retryAnswer) =>
+        this.isInsufficientAnswer(retryAnswer.answer)
+          ? answer
+          : { ...retryAnswer, question: originalRequest.question },
+      ),
     );
   }
 
@@ -290,7 +332,8 @@ export class KdClientService {
       question: (answer as Partial<KdAnswerResponse>).question ?? request.question,
       status: (answer as Partial<KdAnswerResponse>).status ?? 'Complete',
       answer: (answer as Partial<KdAnswerResponse>).answer ?? '',
-      citations: (answer as Partial<KdAnswerResponse>).citations ?? [],
+      citations: this.normalizeCitations(answer as Partial<KdAnswerResponse>),
+      objectReferences: (answer as Partial<KdAnswerResponse>).objectReferences,
       feedback: (answer as Partial<KdAnswerResponse>).feedback ?? null,
       staticFilter: (answer as Partial<KdAnswerResponse>).staticFilter,
       dynamicFilter:
@@ -299,8 +342,141 @@ export class KdClientService {
     };
   }
 
+  private normalizeCitations(answer: Partial<KdAnswerResponse>): KdCitation[] {
+    if (answer.citations?.length) {
+      return answer.citations;
+    }
+
+    const citationsByObjectId = new Map<string, KdCitation>();
+    for (const objectReference of answer.objectReferences ?? []) {
+      const citation = this.mapObjectReferenceToCitation(objectReference);
+      const existing = citationsByObjectId.get(citation.objectId);
+      if (!existing || this.citationScore(citation) > this.citationScore(existing)) {
+        citationsByObjectId.set(citation.objectId, citation);
+      }
+    }
+
+    return this.selectVisibleCitations([...citationsByObjectId.values()]);
+  }
+
+  private mapObjectReferenceToCitation(objectReference: KdObjectReference): KdCitation {
+    const bestReference = [...(objectReference.references ?? [])].sort((left, right) => {
+      const leftScore = left.rankScore ?? Number.NEGATIVE_INFINITY;
+      const rightScore = right.rankScore ?? Number.NEGATIVE_INFINITY;
+      return rightScore - leftScore;
+    })[0];
+
+    return {
+      objectId: objectReference.objectId,
+      referenceId: bestReference?.referenceId,
+      title: this.extractNuxeoDocumentId(objectReference.objectId) ?? objectReference.objectId,
+      score: bestReference?.rankScore,
+    };
+  }
+
+  private selectVisibleCitations(citations: KdCitation[]): KdCitation[] {
+    const sorted = [...citations].sort(
+      (left, right) => this.citationScore(right) - this.citationScore(left),
+    );
+    const bestScore = this.citationScore(sorted[0]);
+    const significantCitations =
+      bestScore > 0
+        ? sorted.filter(
+            (citation) => this.citationScore(citation) >= bestScore * MIN_RELATIVE_CITATION_SCORE,
+          )
+        : sorted;
+    return significantCitations.slice(0, MAX_VISIBLE_CITATIONS);
+  }
+
+  private citationScore(citation: KdCitation | undefined): number {
+    return citation?.score ?? Number.NEGATIVE_INFINITY;
+  }
+
+  private isInsufficientAnswer(answer: string): boolean {
+    const cleaned = answer.replace(/^#{1,6}\s*/gm, '').trim();
+    return cleaned.toLowerCase() === INSUFFICIENT_ANSWER_TEXT.toLowerCase();
+  }
+
+  private enrichCitationTitles(answer: KdAnswerResponse): Observable<KdAnswerResponse> {
+    const documentIds = [
+      ...new Set(
+        answer.citations
+          .map((citation) => this.extractNuxeoDocumentId(citation.objectId))
+          .filter((documentId): documentId is string => Boolean(documentId)),
+      ),
+    ];
+
+    if (documentIds.length === 0) {
+      return of(answer);
+    }
+
+    return forkJoin(
+      documentIds.map((documentId) =>
+        this.getNuxeoDocumentSummary(documentId).pipe(
+          map((document) => [documentId, document] as const),
+          catchError(() => of([documentId, null] as const)),
+        ),
+      ),
+    ).pipe(
+      map((entries) => {
+        const documentsById = new Map(entries);
+        return {
+          ...answer,
+          citations: answer.citations.map((citation) => {
+            const documentId = this.extractNuxeoDocumentId(citation.objectId);
+            const document = documentId ? documentsById.get(documentId) : null;
+            if (!document) {
+              return citation;
+            }
+
+            return {
+              ...citation,
+              title: this.getDocumentDisplayTitle(document),
+              excerpt: document.path ?? citation.excerpt,
+            };
+          }),
+        };
+      }),
+    );
+  }
+
+  private getNuxeoDocumentSummary(documentId: string): Observable<NuxeoDocumentSummary> {
+    return this.http.get<NuxeoDocumentSummary>(
+      this.nuxeoUrl(`/nuxeo/api/v1/id/${encodeURIComponent(documentId)}`),
+      {
+        headers: {
+          Accept: 'application/json',
+          properties: 'dublincore,file',
+        },
+      },
+    );
+  }
+
+  private getDocumentDisplayTitle(document: NuxeoDocumentSummary): string {
+    const properties = document.properties ?? {};
+    const fileContent = properties['file:content'] as { name?: unknown } | undefined;
+    const fileName = typeof fileContent?.name === 'string' ? fileContent.name : undefined;
+    const dcTitle = properties['dc:title'];
+    return (
+      fileName ??
+      document.title ??
+      (typeof dcTitle === 'string' ? dcTitle : undefined) ??
+      document.uid ??
+      ''
+    );
+  }
+
+  private extractNuxeoDocumentId(objectId: string): string | null {
+    const documentId = objectId.split('__').pop();
+    return documentId && documentId !== objectId ? documentId : null;
+  }
+
   private automationUrl(operation: string): string {
+    return this.nuxeoUrl(`/nuxeo/site/automation/${encodeURIComponent(operation)}`);
+  }
+
+  private nuxeoUrl(path: string): string {
     const origin = this.apiOrigin.replace(/\/$/, '');
-    return `${origin}/nuxeo/site/automation/${encodeURIComponent(operation)}`;
+    return `${origin}${path}`;
   }
 }

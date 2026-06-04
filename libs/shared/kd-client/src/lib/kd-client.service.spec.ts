@@ -124,6 +124,140 @@ describe('KdClientService', () => {
     await submission$;
   });
 
+  it('maps objectReferences from the connector response into citations', async () => {
+    const submission$ = firstValueFrom(
+      service.submitQuestion({ agentId: 'agent-1', question: 'Who is Holmes?' }),
+    );
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer);
+    req.flush(
+      envelope({
+        questionId: 'qid-citations',
+        agentId: 'agent-1',
+        question: 'Who is Holmes?',
+        answer: 'Holmes is a detective.',
+        objectReferences: [
+          {
+            objectId: 'source-id__document-id',
+            references: [
+              {
+                referenceId: 'chunk-1',
+                rank: 1,
+                rankScore: 0.42,
+              },
+              {
+                referenceId: 'chunk-2',
+                rank: 2,
+                rankScore: 0.21,
+              },
+            ],
+          },
+          {
+            objectId: 'source-id__weak-document-id',
+            references: [
+              {
+                referenceId: 'weak-chunk-1',
+                rank: 1,
+                rankScore: 0.01,
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const documentReq = httpMock.expectOne('/nuxeo/api/v1/id/document-id');
+    expect(documentReq.request.method).toBe('GET');
+    documentReq.flush({
+      uid: 'document-id',
+      title: 'KD Sherlock Context Test',
+      path: '/default-domain/workspaces/Narasimha/kd-sherlock-context.png',
+      properties: {
+        'dc:title': 'KD Sherlock Context Test',
+        'file:content': { name: 'kd-sherlock-context.png' },
+      },
+    });
+
+    await submission$;
+    const answer = await firstValueFrom(service.getAnswer('qid-citations'));
+    expect(answer.citations).toEqual([
+      {
+        objectId: 'source-id__document-id',
+        referenceId: 'chunk-1',
+        title: 'kd-sherlock-context.png',
+        excerpt: '/default-domain/workspaces/Narasimha/kd-sherlock-context.png',
+        score: 0.42,
+      },
+    ]);
+  });
+
+  it('retries a normalized question when KD returns insufficient answer with a strong citation', async () => {
+    const submission$ = firstValueFrom(
+      service.submitQuestion({ agentId: 'agent-1', question: 'What is agentic UI?' }),
+    );
+
+    const firstReq = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer);
+    expect(firstReq.request.body).toEqual({
+      params: { agentId: 'agent-1', question: 'What is agentic UI?' },
+    });
+    firstReq.flush(
+      envelope({
+        questionId: 'qid-first',
+        agentId: 'agent-1',
+        question: 'What is agentic UI?',
+        answer: "#### I don't have enough information to answer this question.",
+        objectReferences: [
+          {
+            objectId: 'source-id__pdf-document-id',
+            references: [{ referenceId: 'chunk-1', rankScore: 0.31 }],
+          },
+        ],
+      }),
+    );
+
+    const retryReq = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer);
+    expect(retryReq.request.body).toEqual({
+      params: { agentId: 'agent-1', question: 'what is agentic ui?' },
+    });
+    retryReq.flush(
+      envelope({
+        questionId: 'qid-retry',
+        agentId: 'agent-1',
+        question: 'what is agentic ui?',
+        answer: 'Agentic UI uses agentic AI tooling to build a Nuxeo Angular UI.',
+        objectReferences: [
+          {
+            objectId: 'source-id__pdf-document-id',
+            references: [{ referenceId: 'chunk-2', rankScore: 0.44 }],
+          },
+        ],
+      }),
+    );
+
+    const documentReq = httpMock.expectOne('/nuxeo/api/v1/id/pdf-document-id');
+    documentReq.flush({
+      uid: 'pdf-document-id',
+      title: 'Test nature',
+      path: '/default-domain/workspaces/Narasimha/Test nature',
+      properties: {
+        'dc:title': 'Test nature',
+        'file:content': { name: '_221104827-Agentic UI PoC-300326-060908.pdf' },
+      },
+    });
+
+    const submission = await submission$;
+    expect(submission.questionId).toBe('qid-retry');
+
+    const answer = await firstValueFrom(service.getAnswer('qid-retry'));
+    expect(answer.question).toBe('What is agentic UI?');
+    expect(answer.answer).toContain('Agentic UI uses agentic AI tooling');
+    expect(answer.citations[0]).toEqual(
+      expect.objectContaining({
+        title: '_221104827-Agentic UI PoC-300326-060908.pdf',
+        score: 0.44,
+      }),
+    );
+  });
+
   it('throws when the CIC envelope carries an error code', async () => {
     const agents$ = firstValueFrom(service.listAgents());
     const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.getAllAgents);

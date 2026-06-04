@@ -85,7 +85,7 @@ All in `libs/shared/nuxeo-client/src/lib/services/` · Import: `@agentic-ui/shar
 ## 5. AI Backend Routes
 
 Backend: `apps/ai-backend/` (Express on port 3000 in dev)
-Feature flag: **off by default** — gated by `AiFeatureFlagService`
+Feature flag: **on by default** — gated by `AiFeatureFlagService`, with an explicit user opt-out
 
 | Route                   | Purpose                 |
 | ----------------------- | ----------------------- |
