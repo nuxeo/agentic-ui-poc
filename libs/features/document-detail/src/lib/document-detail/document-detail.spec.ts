@@ -9,9 +9,11 @@ import {
   withDisabledInitialNavigation,
 } from '@angular/router';
 import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { DocumentDetailComponent } from './document-detail';
 import {
   ARenderService,
+  BrowseService,
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
@@ -25,14 +27,36 @@ import {
   AiFeatureFlagService,
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
+import { KeClientService } from '@agentic-ui/shared/ke-client';
 
 const mockDocumentDetailService = {
   getFullDocument: () => of(),
+  fetchBlob: () => of(new Blob(['stub'], { type: 'application/pdf' })),
 };
+
+const NATURE_ENTRIES = [
+  {
+    id: 'article',
+    label: 'label.directories.nature.article',
+    displayLabel: 'Article',
+    ordering: 0,
+    obsolete: 0,
+    directoryName: 'nature',
+  },
+  {
+    id: 'contract',
+    label: 'label.directories.nature.contract',
+    displayLabel: 'Contract',
+    ordering: 0,
+    obsolete: 0,
+    directoryName: 'nature',
+  },
+];
 
 const mockDirectoryService = {
   getEventTypes: () => of([]),
   getEventCategories: () => of([]),
+  getEntries: (name: string) => (name === 'nature' ? of(NATURE_ENTRIES) : of([])),
 };
 
 const mockTaskService = {
@@ -91,7 +115,12 @@ describe('DocumentDetailComponent', () => {
           },
         },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
+        { provide: BrowseService, useValue: { updateDocument: () => of(null) } },
         { provide: DirectoryService, useValue: mockDirectoryService },
+        {
+          provide: KeClientService,
+          useValue: { enrich: () => of({ textClassification: { result: '' } }) },
+        },
         { provide: TaskService, useValue: mockTaskService },
         { provide: WorkflowService, useValue: mockWorkflowService },
         { provide: ARenderService, useValue: mockARenderService },
@@ -115,5 +144,73 @@ describe('DocumentDetailComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('text classification', () => {
+    beforeEach(() => {
+      // Anchor a doc id so runKnowledgeEnrichment does not early-return.
+      (component as unknown as { docUid: string }).docUid = 'doc-uid-1';
+    });
+
+    it('refuses to write the "not_from_provided_classes" sentinel to dc:nature', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      const browse = TestBed.inject(BrowseService);
+      vi.spyOn(keClient, 'enrich').mockReturnValue(
+        of({ textClassification: { result: 'not_from_provided_classes' } }) as never,
+      );
+      const updateSpy = vi.spyOn(browse, 'updateDocument');
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(component.keError()).toMatch(/could not match this document/i);
+    });
+
+    it('refuses to write a category that is not in the nature vocabulary', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      const browse = TestBed.inject(BrowseService);
+      vi.spyOn(keClient, 'enrich').mockReturnValue(
+        of({ textClassification: { result: 'Hallucinated' } }) as never,
+      );
+      const updateSpy = vi.spyOn(browse, 'updateDocument');
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(component.keError()).toMatch(/"Hallucinated".*not in the document nature vocabulary/);
+    });
+
+    it('writes the vocabulary id when KE returns a valid display label', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      const browse = TestBed.inject(BrowseService);
+      const detail = TestBed.inject(DocumentDetailService);
+      vi.spyOn(keClient, 'enrich').mockReturnValue(
+        of({ textClassification: { result: 'Contract' } }) as never,
+      );
+      const updateSpy = vi.spyOn(browse, 'updateDocument').mockReturnValue(of(null) as never);
+      vi.spyOn(detail, 'getFullDocument').mockReturnValue(
+        of({ uid: 'doc-uid-1', properties: {} }) as never,
+      );
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(updateSpy).toHaveBeenCalledWith('doc-uid-1', { 'dc:nature': 'contract' });
+      expect(component.keError()).toBeNull();
+    });
+
+    it('aborts classification (no enrich call) when the nature vocabulary is empty', async () => {
+      const keClient = TestBed.inject(KeClientService);
+      const enrichSpy = vi.spyOn(keClient, 'enrich');
+      component.natureVocabulary.set([]);
+
+      component.runTextClassification();
+      await fixture.whenStable();
+
+      expect(enrichSpy).not.toHaveBeenCalled();
+      expect(component.keError()).toMatch(/nature.*vocabulary failed to load/i);
+    });
   });
 });
