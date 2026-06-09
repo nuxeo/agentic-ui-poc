@@ -893,23 +893,37 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     switch (uiAction) {
       case 'text-classification': {
         const category = result.textClassification?.result?.trim();
+        const vocabularySize = this.natureVocabulary().length;
+        const manualHint =
+          'To set it manually, click the Edit button and pick a value for Document Category.';
+
         if (!category) {
+          console.warn('[KE] text-classification returned no category', result);
           return this.throwKeResultError(
-            'Knowledge Enrichment did not return a document category.',
+            `Knowledge Enrichment did not return a document category. ${manualHint}`,
           );
         }
         if (category === KE_NO_MATCH_SENTINEL) {
+          console.warn(
+            `[KE] text-classification: no match against ${vocabularySize} candidate(s)`,
+            { candidates: this.natureVocabulary().map((entry) => entry.id), result },
+          );
           return this.throwKeResultError(
-            'Knowledge Enrichment could not match this document to any of the available categories.',
+            `Knowledge Enrichment could not match this document to any of the ${vocabularySize} ` +
+              `available document categories. ${manualHint}`,
           );
         }
         // Map back to a vocabulary id. Accept either the id or the display label
         // (the LLM occasionally returns the human-readable label rather than the id).
         const resolvedId = this.resolveNatureVocabularyId(category);
         if (!resolvedId) {
+          console.warn(`[KE] text-classification: "${category}" is not in the nature vocabulary`, {
+            candidates: this.natureVocabulary().map((entry) => entry.id),
+            result,
+          });
           return this.throwKeResultError(
-            `Knowledge Enrichment returned "${category}", which is not in the document nature vocabulary. ` +
-              'The document was not updated.',
+            `Knowledge Enrichment returned "${category}", which is not one of the ` +
+              `${vocabularySize} document categories. ${manualHint}`,
           );
         }
         propertyUpdates['dc:nature'] = resolvedId;

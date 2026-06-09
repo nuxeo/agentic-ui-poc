@@ -192,7 +192,7 @@ describe('DocumentDetailComponent', () => {
       await fixture.whenStable();
 
       expect(updateSpy).not.toHaveBeenCalled();
-      expect(component.keError()).toMatch(/"Hallucinated".*not in the document nature vocabulary/);
+      expect(component.keError()).toMatch(/"Hallucinated".*not one of the \d+ document categories/);
     });
 
     it('writes the vocabulary id when KE returns a valid display label', async () => {
