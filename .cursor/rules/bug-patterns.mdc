@@ -1,6 +1,6 @@
 ---
 description: Known bug patterns — scan every file you touch
-globs: "**/*.ts"
+globs: "**/*"
 alwaysApply: false
 ---
 
@@ -30,6 +30,20 @@ GOOD: `effect(() => { this.doc.set(null); this.loading.set(true); ... })`
 
 BAD:  `error: () => { this.error.set('Failed'); }` (loading stays true)
 GOOD: `error: () => { this.error.set('Failed'); this.loading.set(false); }`
+
+## Reactive route state
+BAD:  `signal(this.route.snapshot.queryParamMap.get('x') === '1')` for UI that should react to URL changes
+GOOD: `toSignal(this.route.queryParamMap.pipe(map(qm => qm.get('x') === '1')), { requireSync: true })`
+Why:  default router reuse keeps the same component instance when only query params change
+
+## Opt-in feature capture
+BAD:  Always populate `*ErrorDetail`/diagnostics signals on every failure
+GOOD: Gate the capture behind the same flag that gates the rendering — `if (this.debugMode()) { ... }`
+Why:  avoids retaining multi-MB JSON / HTML login bodies for users who never opted in
+
+## Markdown
+BAD:  `` `Application = Content Intelligence `` newline `` Connector` `` (code span split across newlines breaks rendering)
+GOOD: Keep the whole backticked phrase on one line; wrap surrounding prose around it
 
 ## Security
 BAD:  `nuxeoAuth: 'Administrator:Administrator'`

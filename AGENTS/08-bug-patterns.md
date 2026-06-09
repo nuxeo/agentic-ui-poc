@@ -191,6 +191,81 @@ private readonly service = inject(DocumentDetailService);
 
 ---
 
+## 11. `route.snapshot` for reactive UI state (stale value on reuse)
+
+```typescript
+// BAD ❌ — snapshot is read once at construction; if the router reuses this
+// component instance and only the query params change (the default reuse
+// strategy does exactly that for same-route navigation), the signal never
+// updates and the UI is stuck on the initial value.
+readonly debugMode = signal(
+  this.route.snapshot.queryParamMap.get('debug') === '1',
+);
+
+// GOOD ✅ — derive the signal from the observable so query-param changes
+// propagate without a full component re-instantiation.
+readonly debugMode = toSignal(
+  this.route.queryParamMap.pipe(map((qm) => qm.get('debug') === '1')),
+  { requireSync: true },
+);
+```
+
+Use `snapshot` only for values you genuinely want frozen at construction time
+(e.g. a one-shot resolver-loaded id you'll never refresh in place).
+
+---
+
+## 12. Always-on data capture behind an opt-in UI gate
+
+```typescript
+// BAD ❌ — captures and retains the full HTTP error body on every failure,
+// even for users who never opted in via `?debug=1`. The body can be a multi-MB
+// JSON payload or an entire HTML login page; keeping it in a signal means
+// it lives for the component's lifetime for no benefit to the user.
+error: (err) => {
+  this.agentsError.set('Failed to load agents.');
+  this.agentsErrorDetail.set(this.captureError('listAgents', err));
+  this.loading.set(false);
+},
+
+// GOOD ✅ — capture only when the rendering branch will actually consume it.
+error: (err) => {
+  this.agentsError.set('Failed to load agents.');
+  if (this.debugMode()) {
+    this.agentsErrorDetail.set(this.captureError('listAgents', err));
+  }
+  this.loading.set(false);
+},
+```
+
+Rule of thumb: if a piece of data is only rendered behind a feature flag, the
+_capture_ should be behind the same flag — not just the render.
+
+---
+
+## 13. Markdown inline code spans split across newlines
+
+```markdown
+<!-- BAD ❌ — the backtick span wraps to the next line, the renderer breaks
+     the code formatting, and continuation text is under-indented inside a
+     list item, so the bullet collapses. -->
+
+- **KE needs its own External App.** The Discovery SA's External App is bound to `Application = Content Intelligence
+Connector` and mints tokens with `appkey: "insight"`.
+
+<!-- GOOD ✅ — keep the whole backticked phrase on one line; indent
+     continuation lines two spaces under the list bullet. -->
+
+- **KE needs its own External App.** The Discovery SA's External App is bound to
+  `Application = Content Intelligence Connector` and mints tokens with
+  `appkey: "insight"`.
+```
+
+Markdown code spans (single-backtick) cannot contain a newline. Long
+backticked phrases must stay on one line even if the surrounding prose wraps.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -200,3 +275,6 @@ Fix proactively to avoid a review cycle:
 - "Potential XSS" → use Angular template binding
 - "Hardcoded credential" → move to environment variable
 - "Race condition" → add stale-check before setting signal after async operation
+- "Snapshot won't reflect changes" → `toSignal(route.queryParamMap.pipe(map(...)))`
+- "Captured even when feature is off" → wrap the capture in the feature flag
+- "Code span split across newlines" → keep the whole backticked phrase on one line
