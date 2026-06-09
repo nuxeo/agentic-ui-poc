@@ -96,14 +96,23 @@ sat-breadcrumbs {
   gap: 8px;
 }
 
-// Constrain the in-flight spinner to the same 16px box as the leading icon so
-// it does not overflow the button border while a KE action is running.
-.ke-action-btn mat-spinner {
-  width: 16px !important;
-  height: 16px !important;
-  svg {
-    width: 16px !important;
-    height: 16px !important;
+// Spin the leading <mat-icon> on KE buttons while an action is in flight.
+// We deliberately use a spinning mat-icon instead of <mat-spinner>, because
+// <mat-spinner> renders as a block-level element that breaks Material's
+// stroked-button content alignment (the text gets pushed onto the next line).
+// A mat-icon is laid out identically to the static leading icon, so swapping
+// in and out causes zero layout shift.
+//
+// IMPORTANT: the glyph MUST exist in the legacy "Material Icons" font that
+// apps/nuxeo-ui/src/index.html loads. `progress_activity` is in Material
+// Symbols only and renders as an empty box here, so use `autorenew`.
+.ke-action-btn mat-icon.ke-spinning {
+  animation: ke-spin 1s linear infinite;
+}
+
+@keyframes ke-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

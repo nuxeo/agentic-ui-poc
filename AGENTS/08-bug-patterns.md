@@ -332,6 +332,71 @@ hallucinated label.
 
 ---
 
+## 15. `<mat-spinner>` inside a `mat-button` (broken layout)
+
+`<mat-spinner>` (alias for `<mat-progress-spinner>`) renders as a block-level
+element with its own intrinsic dimensions. Dropping it into a Material button
+that already contains a leading `<mat-icon>` makes the button's flex content
+wrap: the spinner gets one line, the label gets another, and the button
+visibly grows/reflows whenever an async action toggles state.
+
+```html
+<!-- BAD ❌ — spinner is a block-level element, button content stacks vertically -->
+<button mat-stroked-button class="ke-action-btn" [disabled]="loading()">
+  @if (loading()) {
+  <mat-spinner diameter="16" />
+  } @else {
+  <mat-icon>category</mat-icon>
+  } Classify Document
+</button>
+
+<!-- GOOD ✅ — swap to a spinning <mat-icon>: same element, same layout,
+     just a CSS rotate animation. Idle and loading states share one box.
+     Use `autorenew` (or `sync`/`refresh`/`cached`/`loop`) — these all
+     exist in the LEGACY "Material Icons" font that apps/nuxeo-ui loads
+     (apps/nuxeo-ui/src/index.html). Do NOT use `progress_activity`: it
+     only ships in the newer Material Symbols set and will render as an
+     EMPTY BOX in this app. -->
+<button mat-stroked-button class="ke-action-btn" [disabled]="loading()">
+  @if (loading()) {
+  <mat-icon class="ke-spinning">autorenew</mat-icon>
+  } @else {
+  <mat-icon>category</mat-icon>
+  } Classify Document
+</button>
+```
+
+```scss
+.ke-action-btn mat-icon.ke-spinning {
+  animation: ke-spin 1s linear infinite;
+}
+@keyframes ke-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+```
+
+Why this works: a CSS `transform` animation is a paint-time-only operation
+that cannot change the box model, so the loading-state button is byte-for-byte
+identical to the idle-state button in layout. Trying to "tame" `mat-spinner`
+with `!important` width/height overrides is whack-a-mole; the underlying
+display mode is wrong for an inline icon slot. Reach for a spinning
+`<mat-icon>` whenever the spinner needs to sit inline with text inside a
+button, chip, list item, or table cell.
+
+Rule of thumb: if you find yourself writing `display: inline-block !important`
+on a `<mat-spinner>` to stop it from breaking a parent's layout, you are
+fighting the wrong primitive — use a spinning `<mat-icon>` instead.
+
+Regression test pattern: render the idle and loading buttons side by side in
+a vitest TestBed test and assert (a) the loading-state element's tag is
+`mat-icon`, not `mat-progress-spinner`, and (b) the loading icon's parent
+element matches the idle icon's parent element. Same parent = same layout
+guarantee. See `libs/features/document-detail/src/lib/document-detail/ke-action-button-layout.spec.ts`.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -345,3 +410,4 @@ Fix proactively to avoid a review cycle:
 - "Captured even when feature is off" → wrap the capture in the feature flag
 - "Code span split across newlines" → keep the whole backticked phrase on one line
 - "Writing AI output to a vocabulary field without validation" → source candidates from the vocabulary and validate the response
+- "`<mat-spinner>` inside a button" → use a spinning `<mat-icon class="ke-spinning">progress_activity</mat-icon>` to preserve inline layout
