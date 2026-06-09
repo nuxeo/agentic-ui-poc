@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, JsonPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { ActivatedRoute } from '@angular/router';
 import { Subscription, catchError, forkJoin, of, switchMap, timer } from 'rxjs';
 
 import {
@@ -21,6 +22,22 @@ import {
   type KdModelInfo,
   type KdQuestionHistoryItem,
 } from '@agentic-ui/shared/kd-client';
+
+/**
+ * Structured snapshot of a failed KD HTTP call, surfaced inline on the page
+ * when `?debug=1` is in the URL. Lets a Nuxeo Cloud admin triage banner
+ * errors without opening DevTools — useful on hosted envs where the
+ * Console "Logs" panel is empty after a RESET NODES task.
+ */
+export interface KdDebugError {
+  operation: string;
+  url?: string;
+  status?: number;
+  statusText?: string;
+  body: unknown;
+  message: string;
+  timestamp: string;
+}
 
 /**
  * Consumer-facing Knowledge Discovery page.
@@ -37,6 +54,7 @@ import {
   imports: [
     DatePipe,
     FormsModule,
+    JsonPipe,
     MatButtonModule,
     MatFormFieldModule,
     MatIconModule,
@@ -50,23 +68,36 @@ import {
 export class KnowledgeDiscoveryComponent {
   private readonly kdClient = inject(KdClientService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly route = inject(ActivatedRoute);
   private answerPollSub: Subscription | null = null;
   private readonly insufficientAnswerText =
     "I don't have enough information to answer this question";
 
+  /**
+   * Inline-debug toggle. Enabled by `?debug=1` in the URL (`#/knowledge-
+   * discovery?debug=1`). When on, the error banners reveal the captured
+   * HTTP failure details (status, body) so a Cloud admin can triage
+   * without DevTools — handy on hosted envs where the Console Logs panel
+   * is empty (e.g. after a RESET NODES task).
+   */
+  readonly debugMode = signal(this.route.snapshot.queryParamMap.get('debug') === '1');
+
   readonly loadingAgents = signal(false);
   readonly agentsError = signal<string | null>(null);
+  readonly agentsErrorDetail = signal<KdDebugError | null>(null);
   readonly agents = signal<KdAgentSummary[]>([]);
   readonly selectedAgentId = signal<string | null>(null);
   readonly selectedAgent = signal<KdAgentDetails | null>(null);
   readonly loadingAgentDetails = signal(false);
   readonly agentDetailsError = signal<string | null>(null);
+  readonly agentDetailsErrorDetail = signal<KdDebugError | null>(null);
   readonly models = signal<KdModelInfo[]>([]);
   readonly guardrailGroups = signal<
     { displayName: string; description: string; guardrails: KdGuardrail[] }[]
   >([]);
   readonly loadingReferenceData = signal(false);
   readonly referenceDataError = signal<string | null>(null);
+  readonly referenceDataErrorDetail = signal<KdDebugError | null>(null);
 
   readonly questionText = signal('');
   readonly dynamicFilterText = signal('');
@@ -115,6 +146,7 @@ export class KnowledgeDiscoveryComponent {
   loadReferenceData(): void {
     this.loadingReferenceData.set(true);
     this.referenceDataError.set(null);
+    this.referenceDataErrorDetail.set(null);
 
     forkJoin({
       models: this.kdClient.listModels(),
@@ -127,8 +159,11 @@ export class KnowledgeDiscoveryComponent {
           this.guardrailGroups.set(guardrails.guardrailGroups);
           this.loadingReferenceData.set(false);
         },
-        error: () => {
+        error: (err) => {
           this.referenceDataError.set('Failed to load Knowledge Discovery models and guardrails.');
+          this.referenceDataErrorDetail.set(
+            this.captureError('listModels + listGuardrails (forkJoin)', err),
+          );
           this.loadingReferenceData.set(false);
         },
       });
@@ -137,6 +172,7 @@ export class KnowledgeDiscoveryComponent {
   loadAgents(selectAgentId?: string): void {
     this.loadingAgents.set(true);
     this.agentsError.set(null);
+    this.agentsErrorDetail.set(null);
 
     this.kdClient
       .listAgents()
@@ -153,6 +189,9 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.agentsError.set(err?.error?.detail ?? 'Failed to load Knowledge Discovery agents.');
+          this.agentsErrorDetail.set(
+            this.captureError('HylandKnowledgeDiscovery.getAllAgents', err),
+          );
           this.loadingAgents.set(false);
         },
       });
@@ -163,6 +202,7 @@ export class KnowledgeDiscoveryComponent {
     this.selectedAgentId.set(agentId);
     this.loadingAgentDetails.set(true);
     this.agentDetailsError.set(null);
+    this.agentDetailsErrorDetail.set(null);
 
     this.kdClient
       .getAgent(agentId)
@@ -175,6 +215,9 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.agentDetailsError.set(err?.error?.detail ?? 'Failed to load agent details.');
+          this.agentDetailsErrorDetail.set(
+            this.captureError(`HylandKnowledgeDiscovery.Invoke /agent/agents/${agentId}`, err),
+          );
           this.loadingAgentDetails.set(false);
         },
       });
@@ -377,6 +420,69 @@ export class KnowledgeDiscoveryComponent {
       return "I couldn't find enough relevant information in this agent's knowledge base to answer that yet.";
     }
     return cleaned;
+  }
+
+  /**
+   * Normalise the disparate error shapes that flow through `KdClientService`
+   * into a single inspectable record for the debug panel.
+   *
+   * Two shapes are common:
+   *   1. `KdDiscoveryError` — thrown by the CIC envelope unwrap when the
+   *      upstream Discovery API returned a non-2xx `responseCode` (the
+   *      Nuxeo automation call itself succeeded). `responseCode` is the
+   *      upstream HTTP status; `upstreamBody` is the upstream JSON.
+   *   2. `HttpErrorResponse`-like — emitted by `HttpClient` when Nuxeo
+   *      itself failed (401 session, 404 op-not-found, 502 egress). The
+   *      shape varies but typically carries `status`, `statusText`, `url`,
+   *      and `error` (parsed JSON if Content-Type allowed, otherwise the
+   *      raw response text — often the Nuxeo login HTML for a 401).
+   */
+  captureError(operation: string, err: unknown): KdDebugError {
+    const timestamp = new Date().toISOString();
+
+    if (err instanceof KdDiscoveryError) {
+      return {
+        operation,
+        status: err.responseCode,
+        statusText: err.responseMessage,
+        body: err.upstreamBody,
+        message: err.message,
+        timestamp,
+      };
+    }
+
+    const httpLike = err as {
+      status?: number;
+      statusText?: string;
+      url?: string;
+      error?: unknown;
+      message?: string;
+    } | null;
+    return {
+      operation,
+      url: httpLike?.url ?? undefined,
+      status: httpLike?.status,
+      statusText: httpLike?.statusText,
+      body: httpLike?.error,
+      message: httpLike?.message ?? String(err ?? 'Unknown error'),
+      timestamp,
+    };
+  }
+
+  /**
+   * Copy a debug capture as pretty JSON to the clipboard. Intended for
+   * pasting into a SUPNXP ticket or sharing with the satori-ui team. A
+   * `console.error` fallback covers permissionless contexts (e.g. when the
+   * Clipboard API is blocked by the iframe sandbox in some Nuxeo embeds).
+   */
+  copyDebugInfo(detail: KdDebugError): void {
+    const payload = JSON.stringify(detail, null, 2);
+    const clipboard = (typeof navigator !== 'undefined' ? navigator : undefined)?.clipboard;
+    if (clipboard?.writeText) {
+      clipboard.writeText(payload).catch(() => console.error('KD debug payload', payload));
+      return;
+    }
+    console.error('KD debug payload', payload);
   }
 
   private parseJsonText(value: string, label: string): Record<string, unknown> | null {

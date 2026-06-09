@@ -21,18 +21,81 @@
       <mat-icon>error_outline</mat-icon>
       <span>{{ agentsError() }}</span>
     </div>
+    @if (debugMode() && agentsErrorDetail(); as detail) {
+      <details class="kd-debug" open>
+        <summary>
+          <mat-icon>bug_report</mat-icon>
+          Debug: {{ detail.operation }}
+          @if (detail.status !== undefined) {
+            <span class="kd-debug__chip">HTTP {{ detail.status }}</span>
+          }
+          <button
+            type="button"
+            mat-stroked-button
+            class="kd-debug__copy"
+            (click)="copyDebugInfo(detail); $event.preventDefault()"
+          >
+            <mat-icon>content_copy</mat-icon>
+            Copy
+          </button>
+        </summary>
+        <pre class="kd-debug__body">{{ detail | json }}</pre>
+      </details>
+    }
   }
   @if (referenceDataError()) {
     <div class="kd-banner kd-banner--muted">
       <mat-icon>info_outline</mat-icon>
       <span>{{ referenceDataError() }}</span>
     </div>
+    @if (debugMode() && referenceDataErrorDetail(); as detail) {
+      <details class="kd-debug" open>
+        <summary>
+          <mat-icon>bug_report</mat-icon>
+          Debug: {{ detail.operation }}
+          @if (detail.status !== undefined) {
+            <span class="kd-debug__chip">HTTP {{ detail.status }}</span>
+          }
+          <button
+            type="button"
+            mat-stroked-button
+            class="kd-debug__copy"
+            (click)="copyDebugInfo(detail); $event.preventDefault()"
+          >
+            <mat-icon>content_copy</mat-icon>
+            Copy
+          </button>
+        </summary>
+        <pre class="kd-debug__body">{{ detail | json }}</pre>
+      </details>
+    }
   }
   @if (agentDetailsError()) {
     <div class="kd-banner kd-banner--error">
       <mat-icon>error_outline</mat-icon>
       <span>{{ agentDetailsError() }}</span>
     </div>
+    @if (debugMode() && agentDetailsErrorDetail(); as detail) {
+      <details class="kd-debug" open>
+        <summary>
+          <mat-icon>bug_report</mat-icon>
+          Debug: {{ detail.operation }}
+          @if (detail.status !== undefined) {
+            <span class="kd-debug__chip">HTTP {{ detail.status }}</span>
+          }
+          <button
+            type="button"
+            mat-stroked-button
+            class="kd-debug__copy"
+            (click)="copyDebugInfo(detail); $event.preventDefault()"
+          >
+            <mat-icon>content_copy</mat-icon>
+            Copy
+          </button>
+        </summary>
+        <pre class="kd-debug__body">{{ detail | json }}</pre>
+      </details>
+    }
   }
 
   <div class="kd-layout">
