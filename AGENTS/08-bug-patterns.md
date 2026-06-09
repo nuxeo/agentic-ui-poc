@@ -351,10 +351,15 @@ visibly grows/reflows whenever an async action toggles state.
 </button>
 
 <!-- GOOD ✅ — swap to a spinning <mat-icon>: same element, same layout,
-     just a CSS rotate animation. Idle and loading states share one box. -->
+     just a CSS rotate animation. Idle and loading states share one box.
+     Use `autorenew` (or `sync`/`refresh`/`cached`/`loop`) — these all
+     exist in the LEGACY "Material Icons" font that apps/nuxeo-ui loads
+     (apps/nuxeo-ui/src/index.html). Do NOT use `progress_activity`: it
+     only ships in the newer Material Symbols set and will render as an
+     EMPTY BOX in this app. -->
 <button mat-stroked-button class="ke-action-btn" [disabled]="loading()">
   @if (loading()) {
-  <mat-icon class="ke-spinning">progress_activity</mat-icon>
+  <mat-icon class="ke-spinning">autorenew</mat-icon>
   } @else {
   <mat-icon>category</mat-icon>
   } Classify Document

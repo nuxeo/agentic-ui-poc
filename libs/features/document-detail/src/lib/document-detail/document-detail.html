@@ -32,7 +32,7 @@
             (click)="runTextEntityExtraction()"
           >
             @if (isKeActionRunning('named-entity-recognition-text')) {
-              <mat-icon class="ke-spinning">progress_activity</mat-icon>
+              <mat-icon class="ke-spinning">autorenew</mat-icon>
             } @else {
               <mat-icon>sell</mat-icon>
             }
@@ -46,7 +46,7 @@
             (click)="runTextClassification()"
           >
             @if (isKeActionRunning('text-classification')) {
-              <mat-icon class="ke-spinning">progress_activity</mat-icon>
+              <mat-icon class="ke-spinning">autorenew</mat-icon>
             } @else {
               <mat-icon>category</mat-icon>
             }
@@ -60,7 +60,7 @@
             (click)="runTextSummarization()"
           >
             @if (isKeActionRunning('text-summarization')) {
-              <mat-icon class="ke-spinning">progress_activity</mat-icon>
+              <mat-icon class="ke-spinning">autorenew</mat-icon>
             } @else {
               <mat-icon>short_text</mat-icon>
             }
@@ -79,7 +79,7 @@
             (click)="runImageEnrichment()"
           >
             @if (isKeActionRunning('image-enrichment')) {
-              <mat-icon class="ke-spinning">progress_activity</mat-icon>
+              <mat-icon class="ke-spinning">autorenew</mat-icon>
             } @else {
               <mat-icon>image_search</mat-icon>
             }
