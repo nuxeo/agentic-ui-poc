@@ -8,7 +8,7 @@ import {
   provideRouter,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { vi } from 'vitest';
 import { DocumentDetailComponent } from './document-detail';
 import {
@@ -18,6 +18,7 @@ import {
   DirectoryService,
   DocumentDetailService,
   NuxeoApiBase,
+  type NuxeoDocument,
   TagService,
   TaskService,
   WorkflowService,
@@ -27,10 +28,25 @@ import {
   AiFeatureFlagService,
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
-import { KeClientService } from '@agentic-ui/shared/ke-client';
+import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+
+const STUB_DOC: NuxeoDocument = {
+  uid: 'doc-uid-1',
+  title: 'stub',
+  type: 'File',
+  path: '/stub',
+  lastModified: '2026-01-01T00:00:00Z',
+  properties: {},
+};
+
+const keResult = (result: string): KeEnrichmentResult =>
+  ({ textClassification: { result } }) as KeEnrichmentResult;
 
 const mockDocumentDetailService = {
-  getFullDocument: () => of(),
+  // Never-emitting Observable: keeps loadDocument's subscription "in-flight" so
+  // the chain of follow-up calls (loadPublicationCount, etc.) never fires and we
+  // do not have to stub every downstream service for these focused tests.
+  getFullDocument: (): Observable<NuxeoDocument> => new Observable<NuxeoDocument>(),
   fetchBlob: () => of(new Blob(['stub'], { type: 'application/pdf' })),
 };
 
@@ -111,15 +127,19 @@ describe('DocumentDetailComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({})),
+            paramMap: of(convertToParamMap({ uid: 'doc-uid-1' })),
+            queryParamMap: of(convertToParamMap({})),
           },
         },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
-        { provide: BrowseService, useValue: { updateDocument: () => of(null) } },
+        {
+          provide: BrowseService,
+          useValue: { updateDocument: (): Observable<NuxeoDocument> => of(STUB_DOC) },
+        },
         { provide: DirectoryService, useValue: mockDirectoryService },
         {
           provide: KeClientService,
-          useValue: { enrich: () => of({ textClassification: { result: '' } }) },
+          useValue: { enrich: (): Observable<KeEnrichmentResult> => of(keResult('')) },
         },
         { provide: TaskService, useValue: mockTaskService },
         { provide: WorkflowService, useValue: mockWorkflowService },
@@ -147,17 +167,12 @@ describe('DocumentDetailComponent', () => {
   });
 
   describe('text classification', () => {
-    beforeEach(() => {
-      // Anchor a doc id so runKnowledgeEnrichment does not early-return.
-      (component as unknown as { docUid: string }).docUid = 'doc-uid-1';
-    });
+    // docUid is set by the route paramMap mock; no private-field access needed.
 
     it('refuses to write the "not_from_provided_classes" sentinel to dc:nature', async () => {
       const keClient = TestBed.inject(KeClientService);
       const browse = TestBed.inject(BrowseService);
-      vi.spyOn(keClient, 'enrich').mockReturnValue(
-        of({ textClassification: { result: 'not_from_provided_classes' } }) as never,
-      );
+      vi.spyOn(keClient, 'enrich').mockReturnValue(of(keResult('not_from_provided_classes')));
       const updateSpy = vi.spyOn(browse, 'updateDocument');
 
       component.runTextClassification();
@@ -170,9 +185,7 @@ describe('DocumentDetailComponent', () => {
     it('refuses to write a category that is not in the nature vocabulary', async () => {
       const keClient = TestBed.inject(KeClientService);
       const browse = TestBed.inject(BrowseService);
-      vi.spyOn(keClient, 'enrich').mockReturnValue(
-        of({ textClassification: { result: 'Hallucinated' } }) as never,
-      );
+      vi.spyOn(keClient, 'enrich').mockReturnValue(of(keResult('Hallucinated')));
       const updateSpy = vi.spyOn(browse, 'updateDocument');
 
       component.runTextClassification();
@@ -185,14 +198,8 @@ describe('DocumentDetailComponent', () => {
     it('writes the vocabulary id when KE returns a valid display label', async () => {
       const keClient = TestBed.inject(KeClientService);
       const browse = TestBed.inject(BrowseService);
-      const detail = TestBed.inject(DocumentDetailService);
-      vi.spyOn(keClient, 'enrich').mockReturnValue(
-        of({ textClassification: { result: 'Contract' } }) as never,
-      );
-      const updateSpy = vi.spyOn(browse, 'updateDocument').mockReturnValue(of(null) as never);
-      vi.spyOn(detail, 'getFullDocument').mockReturnValue(
-        of({ uid: 'doc-uid-1', properties: {} }) as never,
-      );
+      vi.spyOn(keClient, 'enrich').mockReturnValue(of(keResult('Contract')));
+      const updateSpy = vi.spyOn(browse, 'updateDocument').mockReturnValue(of(STUB_DOC));
 
       component.runTextClassification();
       await fixture.whenStable();
