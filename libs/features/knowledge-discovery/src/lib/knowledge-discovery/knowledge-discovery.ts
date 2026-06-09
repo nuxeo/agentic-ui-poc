@@ -1,6 +1,6 @@
 import { DatePipe, JsonPipe } from '@angular/common';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,7 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute } from '@angular/router';
-import { Subscription, catchError, forkJoin, of, switchMap, timer } from 'rxjs';
+import { Subscription, catchError, forkJoin, map, of, switchMap, timer } from 'rxjs';
 
 import {
   KdClientService,
@@ -79,8 +79,16 @@ export class KnowledgeDiscoveryComponent {
    * HTTP failure details (status, body) so a Cloud admin can triage
    * without DevTools — handy on hosted envs where the Console Logs panel
    * is empty (e.g. after a RESET NODES task).
+   *
+   * Sourced from `queryParamMap` (an observable) rather than `snapshot`
+   * so toggling `?debug=1` in the address bar is honoured even when the
+   * router reuses this component instance — which the default route reuse
+   * strategy does whenever only query params change.
    */
-  readonly debugMode = signal(this.route.snapshot.queryParamMap.get('debug') === '1');
+  readonly debugMode = toSignal(
+    this.route.queryParamMap.pipe(map((qm) => qm.get('debug') === '1')),
+    { requireSync: true },
+  );
 
   readonly loadingAgents = signal(false);
   readonly agentsError = signal<string | null>(null);
@@ -161,9 +169,11 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.referenceDataError.set('Failed to load Knowledge Discovery models and guardrails.');
-          this.referenceDataErrorDetail.set(
-            this.captureError('listModels + listGuardrails (forkJoin)', err),
-          );
+          if (this.debugMode()) {
+            this.referenceDataErrorDetail.set(
+              this.captureError('listModels + listGuardrails (forkJoin)', err),
+            );
+          }
           this.loadingReferenceData.set(false);
         },
       });
@@ -189,9 +199,11 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.agentsError.set(err?.error?.detail ?? 'Failed to load Knowledge Discovery agents.');
-          this.agentsErrorDetail.set(
-            this.captureError('HylandKnowledgeDiscovery.getAllAgents', err),
-          );
+          if (this.debugMode()) {
+            this.agentsErrorDetail.set(
+              this.captureError('HylandKnowledgeDiscovery.getAllAgents', err),
+            );
+          }
           this.loadingAgents.set(false);
         },
       });
@@ -215,9 +227,11 @@ export class KnowledgeDiscoveryComponent {
         },
         error: (err) => {
           this.agentDetailsError.set(err?.error?.detail ?? 'Failed to load agent details.');
-          this.agentDetailsErrorDetail.set(
-            this.captureError(`HylandKnowledgeDiscovery.Invoke /agent/agents/${agentId}`, err),
-          );
+          if (this.debugMode()) {
+            this.agentDetailsErrorDetail.set(
+              this.captureError(`HylandKnowledgeDiscovery.Invoke /agent/agents/${agentId}`, err),
+            );
+          }
           this.loadingAgentDetails.set(false);
         },
       });

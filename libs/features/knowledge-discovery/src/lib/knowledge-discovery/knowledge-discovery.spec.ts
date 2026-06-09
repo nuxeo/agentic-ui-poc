@@ -46,8 +46,10 @@ const mockKdClient = {
 };
 
 function activatedRouteWith(query: Record<string, string> = {}): Partial<ActivatedRoute> {
+  const paramMap = convertToParamMap(query);
   return {
-    snapshot: { queryParamMap: convertToParamMap(query) } as ActivatedRoute['snapshot'],
+    snapshot: { queryParamMap: paramMap } as ActivatedRoute['snapshot'],
+    queryParamMap: of(paramMap),
   };
 }
 
@@ -120,6 +122,34 @@ describe('KnowledgeDiscoveryComponent', () => {
     it('turns on when ?debug=1 is in the route', async () => {
       const { component } = await createComponent({ debug: '1' });
       expect(component.debugMode()).toBe(true);
+    });
+
+    it('does NOT capture error detail on failure when debug mode is off', async () => {
+      mockKdClient.listAgents.mockReturnValueOnce(
+        throwError(() => ({
+          status: 401,
+          statusText: 'Unauthorized',
+          url: '/nuxeo/site/automation/HylandKnowledgeDiscovery.getAllAgents',
+          error: '<html>login</html>',
+          message: 'Http failure response',
+        })),
+      );
+      mockKdClient.listGuardrails.mockReturnValueOnce(
+        throwError(
+          () => new KdDiscoveryError(403, 'forbidden', { error: 'tenant-not-provisioned' }),
+        ),
+      );
+
+      const { component } = await createComponent();
+      await Promise.resolve();
+
+      expect(component.debugMode()).toBe(false);
+      expect(component.agentsError()).toBe('Failed to load Knowledge Discovery agents.');
+      expect(component.agentsErrorDetail()).toBeNull();
+      expect(component.referenceDataError()).toBe(
+        'Failed to load Knowledge Discovery models and guardrails.',
+      );
+      expect(component.referenceDataErrorDetail()).toBeNull();
     });
 
     it('captures an HttpErrorResponse-like failure with status, body, and url', async () => {

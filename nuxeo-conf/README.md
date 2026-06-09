@@ -162,17 +162,17 @@ for the one-shot install command and the `hxai.ingest.*` config block.
   A working Discovery setup alone does not enable KE.
 
 - **KE needs its own External Application, not just its own role grant.** The
-  Discovery SA's External App is bound to `Application = Content Intelligence
-Connector` and mints tokens with `appkey: "insight"` — those tokens never
-  carry `cin-context-api.*` or `content-lake-api.*` permissions, regardless of
-  what user-group roles you grant on the Content Lake application card. The
-  Context API's `/files/upload/presigned-url` endpoint will return HTTP 403
-  with `{"title":"Authorization Error",...}` until you point
-  `nuxeo.hyland.cic.enrichment.clientId/clientSecret` at a separate External
-  App bound to a Content-Lake-issuing Application (which mints
-  `appkey: "content-lake"` tokens). Same Mapped Service User works for both —
-  the binding is per External App, not per user. Full walkthrough plus a JWT
-  decode that proves the fix in
+  Discovery SA's External App is bound to `Application = Content Intelligence Connector`
+  and mints tokens with `appkey: "insight"` — those tokens never carry
+  `cin-context-api.*` or `content-lake-api.*` permissions, regardless of what
+  user-group roles you grant on the Content Lake application card. The Context
+  API's `/files/upload/presigned-url` endpoint will return HTTP 403 with
+  `{"title":"Authorization Error",...}` until you point
+  `nuxeo.hyland.cic.enrichment.clientId` / `nuxeo.hyland.cic.enrichment.clientSecret`
+  at a separate External App bound to a Content-Lake-issuing Application
+  (which mints `appkey: "content-lake"` tokens). Same Mapped Service User works
+  for both — the binding is per External App, not per user. Full walkthrough
+  plus a JWT decode that proves the fix in
   [`../docs/knowledge-enrichment.md`](../docs/knowledge-enrichment.md).
 
 - **Prefer integrations/staging for KE validation.** The linked engineering
