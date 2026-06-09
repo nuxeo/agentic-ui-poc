@@ -24,8 +24,7 @@ The document detail page exposes KE actions in the top-right header area of the 
     - any value that is not present in the loaded vocabulary (id or display
       label, case-insensitive) — surfaced as "X is not in the document nature
       vocabulary"
-  - Without these guards Nuxeo rejects the PUT with `HTTP 422 Unprocessable
-Entity` and the document silently stays out of sync with the displayed UI.
+  - Without these guards Nuxeo rejects the PUT with `HTTP 422 Unprocessable Entity` and the document silently stays out of sync with the displayed UI.
 - `named-entity-recognition-text` -> persisted to `nxtag:tags`
 - `text-summarization` -> persisted to `dc:description`
 
