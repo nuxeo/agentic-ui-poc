@@ -142,8 +142,11 @@ this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`);
 
 ```typescript
 // BAD ❌ — will trigger GitHub Secret Scanning alert
-const auth = btoa('Administrator:Administrator');
-export const config = { nuxeoAuth: 'admin:password123' };
+//   Placeholders shown below (<user>, <password>) so this doc file itself
+//   does not trip the scanner. In real BAD code these would be literal
+//   credential strings inlined into source.
+const auth = btoa('<user>:<password>');
+export const config = { nuxeoAuth: '<user>:<password>' };
 
 // GOOD ✅
 const auth = process.env['NUXEO_AUTH'] ?? '';
@@ -266,6 +269,69 @@ backticked phrases must stay on one line even if the surrounding prose wraps.
 
 ---
 
+## 14. AI free-form output written to a vocabulary-bound field (HTTP 422)
+
+```typescript
+// BAD ❌ — the candidate list is hardcoded and TitleCase, and the LLM's
+// reply is written straight to `dc:nature`. Two failure modes:
+//   1. The LLM returns the sentinel "not_from_provided_classes" when no
+//      candidate matches — Nuxeo rejects it with 422 because it isn't in
+//      the `nature` vocabulary.
+//   2. Even when the LLM picks a candidate ("Contract"), the actual
+//      vocabulary id is camelCase ("contract"), so the PUT still 422s.
+const KE_TEXT_CLASSIFICATION_CLASSES = ['Contract', 'Invoice', /* ... */];
+
+runTextClassification(): void {
+  this.keClient
+    .enrich(blob, { actions: ['text-classification'], classes: KE_TEXT_CLASSIFICATION_CLASSES })
+    .subscribe((res) => {
+      // Writes "not_from_provided_classes" or "Contract" — both invalid.
+      this.browseService.updateDocument(uid, { 'dc:nature': res.textClassification?.result });
+    });
+}
+
+// GOOD ✅ — source candidates from the live vocabulary, then validate the
+// model's response before writing. The vocabulary call is cached by
+// DirectoryService, so the cost is paid once per session.
+private readonly natureVocabulary = signal<DirectoryEntry[]>([]);
+
+ngOnInit(): void {
+  this.directoryService
+    .getEntries('nature')
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe((entries) => this.natureVocabulary.set(entries));
+}
+
+runTextClassification(): void {
+  const candidates = this.natureVocabulary().map((e) => e.id);
+  if (!candidates.length) { /* surface a UX error, do not call KE */ return; }
+  this.keClient
+    .enrich(blob, { actions: ['text-classification'], classes: candidates })
+    .subscribe((res) => {
+      const raw = res.textClassification?.result?.trim();
+      if (!raw || raw === 'not_from_provided_classes') {
+        this.toast('Knowledge Enrichment could not match this document.');
+        return;
+      }
+      const id = this.natureVocabulary().find(
+        (e) => e.id.toLowerCase() === raw.toLowerCase()
+            || e.displayLabel.toLowerCase() === raw.toLowerCase(),
+      )?.id;
+      if (!id) { this.toast(`"${raw}" is not in the nature vocabulary.`); return; }
+      this.browseService.updateDocument(uid, { 'dc:nature': id });
+    });
+}
+```
+
+Rule of thumb: any Nuxeo property that is backed by a directory/vocabulary
+(`dc:nature`, `dc:coverage`, `dc:language`, ...) MUST be written using a value
+sourced from `DirectoryService.getEntries(<vocab>)`. Never trust a string that
+came from an LLM, a free-text input, or a hardcoded constant list. Always
+guard against the two LLM failure modes: the sentinel ("no match") and the
+hallucinated label.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -278,3 +344,4 @@ Fix proactively to avoid a review cycle:
 - "Snapshot won't reflect changes" → `toSignal(route.queryParamMap.pipe(map(...)))`
 - "Captured even when feature is off" → wrap the capture in the feature flag
 - "Code span split across newlines" → keep the whole backticked phrase on one line
+- "Writing AI output to a vocabulary field without validation" → source candidates from the vocabulary and validate the response

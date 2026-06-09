@@ -96,6 +96,17 @@ sat-breadcrumbs {
   gap: 8px;
 }
 
+// Constrain the in-flight spinner to the same 16px box as the leading icon so
+// it does not overflow the button border while a KE action is running.
+.ke-action-btn mat-spinner {
+  width: 16px !important;
+  height: 16px !important;
+  svg {
+    width: 16px !important;
+    height: 16px !important;
+  }
+}
+
 .ke-status-banner {
   display: flex;
   align-items: center;

@@ -124,16 +124,15 @@ const TAG_CATEGORIES: SatTagCategory[] = [
   'orange',
 ];
 
-const KE_TEXT_CLASSIFICATION_CLASSES = [
-  'Contract',
-  'Invoice',
-  'Legal',
-  'Technical',
-  'Financial',
-  'Report',
-  'Policy',
-  'Resume',
-];
+/**
+ * Sentinel value the Hyland Knowledge Enrichment `text-classification` action returns
+ * when the model cannot match the document to any of the supplied candidate classes.
+ * We must never write this to `dc:nature` — it is not a valid vocabulary id and Nuxeo
+ * will reject the PUT with HTTP 422 ("Cannot find vocabulary value").
+ *
+ * See AGENTS/08-bug-patterns.md ("AI free-form output written to a vocabulary field").
+ */
+const KE_NO_MATCH_SENTINEL = 'not_from_provided_classes';
 
 type KeUiAction =
   | 'text-classification'
@@ -268,6 +267,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly keActionInFlight = signal<KeUiAction | null>(null);
   readonly keStatus = signal<string | null>(null);
   readonly keError = signal<string | null>(null);
+
+  // Loaded from the Nuxeo `nature` directory and supplied as candidate classes to the
+  // KE text-classification model. Sourcing live ids guarantees the value we write back
+  // to `dc:nature` is in the vocabulary (Nuxeo enforces this and returns 422 otherwise).
+  readonly natureVocabulary = signal<DirectoryEntry[]>([]);
+  private natureVocabularyLoaded = false;
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -635,6 +640,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.loadNatureVocabulary();
     this.route.paramMap.subscribe((params) => {
       const uid = params.get('uid');
       if (!uid) {
@@ -646,6 +652,26 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.docUid = uid;
       this.loadDocument(uid);
     });
+  }
+
+  /**
+   * Pre-loads the `nature` vocabulary so the Classify action can supply real ids
+   * to the KE model. DirectoryService caches the response so navigating between
+   * documents is cheap.
+   */
+  private loadNatureVocabulary(): void {
+    if (this.natureVocabularyLoaded) return;
+    this.natureVocabularyLoaded = true;
+    this.directoryService
+      .getEntries('nature')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.natureVocabulary.set(entries),
+        error: () => {
+          // Allow another attempt on the next document if the directory call fails.
+          this.natureVocabularyLoaded = false;
+        },
+      });
   }
 
   private resetState(): void {
@@ -749,9 +775,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   runTextClassification(): void {
+    const candidates = this.natureVocabulary().map((entry) => entry.id);
+    if (candidates.length === 0) {
+      const message =
+        'Document classification is unavailable: the "nature" vocabulary failed to load. ' +
+        'Refresh the page and try again.';
+      this.keError.set(message);
+      this.toast(message);
+      return;
+    }
     this.runKnowledgeEnrichment('text-classification', {
       actions: ['text-classification'],
-      classes: KE_TEXT_CLASSIFICATION_CLASSES,
+      classes: candidates,
     });
   }
 
@@ -858,12 +893,40 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     switch (uiAction) {
       case 'text-classification': {
         const category = result.textClassification?.result?.trim();
+        const vocabularySize = this.natureVocabulary().length;
+        const manualHint =
+          'To set it manually, click the Edit button and pick a value for Document Category.';
+
         if (!category) {
+          console.warn('[KE] text-classification returned no category', result);
           return this.throwKeResultError(
-            'Knowledge Enrichment did not return a document category.',
+            `Knowledge Enrichment did not return a document category. ${manualHint}`,
           );
         }
-        propertyUpdates['dc:nature'] = category;
+        if (category === KE_NO_MATCH_SENTINEL) {
+          console.warn(
+            `[KE] text-classification: no match against ${vocabularySize} candidate(s)`,
+            { candidates: this.natureVocabulary().map((entry) => entry.id), result },
+          );
+          return this.throwKeResultError(
+            `Knowledge Enrichment could not match this document to any of the ${vocabularySize} ` +
+              `available document categories. ${manualHint}`,
+          );
+        }
+        // Map back to a vocabulary id. Accept either the id or the display label
+        // (the LLM occasionally returns the human-readable label rather than the id).
+        const resolvedId = this.resolveNatureVocabularyId(category);
+        if (!resolvedId) {
+          console.warn(`[KE] text-classification: "${category}" is not in the nature vocabulary`, {
+            candidates: this.natureVocabulary().map((entry) => entry.id),
+            result,
+          });
+          return this.throwKeResultError(
+            `Knowledge Enrichment returned "${category}", which is not one of the ` +
+              `${vocabularySize} document categories. ${manualHint}`,
+          );
+        }
+        propertyUpdates['dc:nature'] = resolvedId;
         break;
       }
 
@@ -915,6 +978,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return forkJoin({ updated: update$, tags: tags$ }).pipe(
       switchMap(() => this.detailService.getFullDocument(docId)),
     );
+  }
+
+  /**
+   * Maps a KE classification result back to a Nuxeo `nature` vocabulary id.
+   * Accepts a match against either `id` or `displayLabel` (case-insensitive) since
+   * the LLM sometimes returns the human-readable label.
+   */
+  private resolveNatureVocabularyId(value: string): string | null {
+    const needle = value.trim().toLowerCase();
+    if (!needle) return null;
+    const match = this.natureVocabulary().find(
+      (entry) => entry.id.toLowerCase() === needle || entry.displayLabel.toLowerCase() === needle,
+    );
+    return match?.id ?? null;
   }
 
   private collectNamedEntityTags(entityMap: Record<string, string[]> | null | undefined): string[] {

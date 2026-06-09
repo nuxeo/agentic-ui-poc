@@ -14,6 +14,17 @@ The document detail page exposes KE actions in the top-right header area of the 
 ### PDF
 
 - `text-classification` -> persisted to `dc:nature` and shown as `Document Category`
+  - Candidate classes are loaded live from the Nuxeo `nature` vocabulary
+    (`DirectoryService.getEntries('nature')`) — never hardcoded. This guarantees
+    the value the LLM picks is a real vocabulary id, so writing it back does not
+    fail validation.
+  - Two LLM outputs are explicitly rejected before any write to `dc:nature`:
+    - the sentinel string `not_from_provided_classes` (returned when no class
+      matched) — surfaced to the user as "could not match this document"
+    - any value that is not present in the loaded vocabulary (id or display
+      label, case-insensitive) — surfaced as "X is not in the document nature
+      vocabulary"
+  - Without these guards Nuxeo rejects the PUT with `HTTP 422 Unprocessable Entity` and the document silently stays out of sync with the displayed UI.
 - `named-entity-recognition-text` -> persisted to `nxtag:tags`
 - `text-summarization` -> persisted to `dc:description`
 
