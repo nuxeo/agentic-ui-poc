@@ -142,8 +142,11 @@ this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`);
 
 ```typescript
 // BAD ❌ — will trigger GitHub Secret Scanning alert
-const auth = btoa('Administrator:Administrator');
-export const config = { nuxeoAuth: 'admin:password123' };
+//   Placeholders shown below (<user>, <password>) so this doc file itself
+//   does not trip the scanner. In real BAD code these would be literal
+//   credential strings inlined into source.
+const auth = btoa('<user>:<password>');
+export const config = { nuxeoAuth: '<user>:<password>' };
 
 // GOOD ✅
 const auth = process.env['NUXEO_AUTH'] ?? '';
