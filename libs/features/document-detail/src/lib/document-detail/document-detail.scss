@@ -96,25 +96,14 @@ sat-breadcrumbs {
   gap: 8px;
 }
 
-// Render the in-flight spinner as a 16px inline glyph that occupies the same
-// box as the leading <mat-icon>, so the button neither reflows nor lets the
-// spinner SVG bleed outside its border while a KE action is running.
-.ke-action-btn {
-  mat-icon,
-  mat-spinner {
-    margin-right: 4px;
-    flex-shrink: 0;
-  }
-
-  mat-spinner {
-    display: inline-block;
+// Constrain the in-flight spinner to the same 16px box as the leading icon so
+// it does not overflow the button border while a KE action is running.
+.ke-action-btn mat-spinner {
+  width: 16px !important;
+  height: 16px !important;
+  svg {
     width: 16px !important;
     height: 16px !important;
-
-    svg {
-      width: 16px !important;
-      height: 16px !important;
-    }
   }
 }
 
