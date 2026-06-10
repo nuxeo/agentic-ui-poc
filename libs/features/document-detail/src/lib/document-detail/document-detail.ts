@@ -69,6 +69,7 @@ import {
 } from '@agentic-ui/shared/ai-client';
 import {
   KeClientService,
+  mapKeClassificationToNatureId as resolveKeNatureDirectoryId,
   type KeEnrichRequest,
   type KeEnrichmentResult,
 } from '@agentic-ui/shared/ke-client';
@@ -123,6 +124,9 @@ const TAG_CATEGORIES: SatTagCategory[] = [
   'pink',
   'orange',
 ];
+
+/** Sentinel returned by Context API when the document does not match `classes`. */
+const KE_UNMATCHED_CLASSIFICATION = 'not_from_provided_classes';
 
 const KE_TEXT_CLASSIFICATION_CLASSES = [
   'Contract',
@@ -268,6 +272,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly keActionInFlight = signal<KeUiAction | null>(null);
   readonly keStatus = signal<string | null>(null);
   readonly keError = signal<string | null>(null);
+  readonly natureDirectoryEntries = signal<DirectoryEntry[]>([]);
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -467,7 +472,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   readonly documentCategory = computed(() => {
     const d = this.doc();
-    return (d?.properties['dc:nature'] as string) ?? '';
+    const natureId = (d?.properties['dc:nature'] as string) ?? '';
+    if (!natureId) return '';
+    const entry = this.natureDirectoryEntries().find((item) => item.id === natureId);
+    return entry?.displayLabel ?? natureId;
   });
 
   readonly fileMimeType = computed(() => {
@@ -635,6 +643,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
+    this.directoryService
+      .getEntries('nature')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.natureDirectoryEntries.set(entries),
+      });
+
     this.route.paramMap.subscribe((params) => {
       const uid = params.get('uid');
       if (!uid) {
@@ -858,13 +873,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     switch (uiAction) {
       case 'text-classification': {
         const category = result.textClassification?.result?.trim();
-        if (!category) {
+        if (!category || category === KE_UNMATCHED_CLASSIFICATION) {
           return this.throwKeResultError(
-            'Knowledge Enrichment did not return a document category.',
+            'Knowledge Enrichment could not match this document to the provided categories.',
           );
         }
-        propertyUpdates['dc:nature'] = category;
-        break;
+        return this.resolveKeNatureDirectoryId(category).pipe(
+          switchMap((natureId) =>
+            this.applyKnowledgeEnrichmentUpdates(docId, { 'dc:nature': natureId }, []),
+          ),
+        );
       }
 
       case 'text-summarization': {
@@ -900,6 +918,37 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       }
     }
 
+    return this.applyKnowledgeEnrichmentUpdates(docId, propertyUpdates, tagsToApply);
+  }
+
+  private resolveKeNatureDirectoryId(category: string): Observable<string> {
+    const resolve = (entries: DirectoryEntry[]) => {
+      const natureId = resolveKeNatureDirectoryId(category, entries);
+      return natureId
+        ? of(natureId)
+        : this.throwKeResultError(
+            `Knowledge Enrichment returned "${category}", which does not map to a Nuxeo Document Category.`,
+          );
+    };
+
+    const cached = this.natureDirectoryEntries();
+    if (cached.length > 0) {
+      return resolve(cached);
+    }
+
+    return this.directoryService.getEntries('nature').pipe(
+      switchMap((entries) => {
+        this.natureDirectoryEntries.set(entries);
+        return resolve(entries);
+      }),
+    );
+  }
+
+  private applyKnowledgeEnrichmentUpdates(
+    docId: string,
+    propertyUpdates: Record<string, unknown>,
+    tagsToApply: string[],
+  ): Observable<NuxeoDocument> {
     const existingTags = new Set(this.tags().map((tag) => tag.toLowerCase()));
     const uniqueTags = tagsToApply.filter((tag) => !existingTags.has(tag.toLowerCase()));
 

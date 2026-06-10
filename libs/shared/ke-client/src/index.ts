@@ -4,6 +4,7 @@ export {
   type KeCicOperations,
 } from './lib/ke.config';
 export { KeClientService, KeEnrichmentError } from './lib/ke-client.service';
+export { mapKeClassificationToNatureId } from './lib/ke-nature-mapper';
 export type {
   KeAction,
   KeActionConfig,

@@ -33,6 +33,7 @@ const mockDocumentDetailService = {
 const mockDirectoryService = {
   getEventTypes: () => of([]),
   getEventCategories: () => of([]),
+  getEntries: () => of([]),
 };
 
 const mockTaskService = {

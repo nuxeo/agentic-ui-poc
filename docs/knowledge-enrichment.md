@@ -13,7 +13,7 @@ The document detail page exposes KE actions in the top-right header area of the 
 
 ### PDF
 
-- `text-classification` -> persisted to `dc:nature` and shown as `Document Category`
+- `text-classification` -> persisted to `dc:nature` (Nuxeo `nature` directory id) and shown as `Document Category`
 - `named-entity-recognition-text` -> persisted to `nxtag:tags`
 - `text-summarization` -> persisted to `dc:description`
 
@@ -24,6 +24,8 @@ The document detail page exposes KE actions in the top-right header area of the 
 - image entities are persisted to `nxtag:tags`
 
 This mapping follows the KE end-user guide linked from `NXSAT-143` and keeps the results visible in the existing properties panel without introducing CSX components.
+
+`dc:nature` is a Nuxeo vocabulary field (`nature` directory). KE returns human-readable labels such as `Invoice`, but Nuxeo expects directory ids such as `invoice`. The UI maps KE results to valid ids via `mapKeClassificationToNatureId()` before calling `BrowseService.updateDocument`.
 
 ## Integration boundary
 
@@ -70,7 +72,7 @@ The `request` part contains:
   "params": {
     "actions": "text-classification,text-summarization",
     "sourceId": "document-uuid",
-    "classes": "[\"Contract\",\"Invoice\",\"Legal\"]",
+    "classes": "Contract, Invoice, Legal",
     "extraJsonPayloadStr": "{\"maxWordCount\":150}"
   }
 }

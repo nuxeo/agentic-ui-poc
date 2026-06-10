@@ -218,6 +218,29 @@ sat-status-tag {
   line-height: 1 !important;
 }
 
+lib-document-detail {
+  .ke-action-btn .mdc-button__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tags-row .sat-tag {
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    height: auto !important;
+    align-items: flex-start !important;
+
+    .sat-tag-label {
+      white-space: normal !important;
+      word-break: break-word;
+      line-height: 1.3 !important;
+    }
+  }
+}
+
 /*
  * Dialog title: Material's default maps mat-dialog-title to display-medium (~2rem).
  * Reduce to title-large (1.375rem / 1.75rem line-height) for a more compact feel across
@@ -241,4 +264,3 @@ sat-status-tag {
   width: auto;
   max-width: 95vw;
 }
-

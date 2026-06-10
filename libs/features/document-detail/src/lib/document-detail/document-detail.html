@@ -31,12 +31,11 @@
             [disabled]="keActionInFlight() !== null"
             (click)="runTextEntityExtraction()"
           >
+            <mat-icon>sell</mat-icon>
+            Extract Entities
             @if (isKeActionRunning('named-entity-recognition-text')) {
               <mat-spinner diameter="16" />
-            } @else {
-              <mat-icon>sell</mat-icon>
             }
-            Extract Entities
           </button>
           <button
             type="button"
@@ -45,12 +44,11 @@
             [disabled]="keActionInFlight() !== null"
             (click)="runTextClassification()"
           >
+            <mat-icon>category</mat-icon>
+            Classify
             @if (isKeActionRunning('text-classification')) {
               <mat-spinner diameter="16" />
-            } @else {
-              <mat-icon>category</mat-icon>
             }
-            Classify
           </button>
           <button
             type="button"
@@ -59,12 +57,11 @@
             [disabled]="keActionInFlight() !== null"
             (click)="runTextSummarization()"
           >
+            <mat-icon>short_text</mat-icon>
+            Summarize
             @if (isKeActionRunning('text-summarization')) {
               <mat-spinner diameter="16" />
-            } @else {
-              <mat-icon>short_text</mat-icon>
             }
-            Summarize
           </button>
         </div>
       }
@@ -78,12 +75,11 @@
             [disabled]="keActionInFlight() !== null"
             (click)="runImageEnrichment()"
           >
+            <mat-icon>image_search</mat-icon>
+            Describe &amp; Tag
             @if (isKeActionRunning('image-enrichment')) {
               <mat-spinner diameter="16" />
-            } @else {
-              <mat-icon>image_search</mat-icon>
             }
-            Describe &amp; Tag
           </button>
         </div>
       }

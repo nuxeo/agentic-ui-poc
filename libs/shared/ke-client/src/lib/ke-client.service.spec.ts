@@ -107,6 +107,39 @@ describe('KeClientService', () => {
     });
   });
 
+  it('serializes classification classes as a comma-separated list', async () => {
+    const result$ = firstValueFrom(
+      service.enrich(new Blob(['test'], { type: 'application/pdf' }), {
+        actions: ['text-classification'],
+        classes: ['Contract', 'Invoice', 'Legal'],
+      }),
+    );
+
+    const req = expectEnrichRequest();
+    const requestBody = req.request.body as FormData;
+    const requestBlob = requestBody.get('request');
+    expect(requestBlob).toBeInstanceOf(Blob);
+
+    const requestJson = JSON.parse(await (requestBlob as Blob).text()) as {
+      params: { classes?: string };
+    };
+    expect(requestJson.params.classes).toBe('Contract, Invoice, Legal');
+
+    const inputBlob = requestBody.get('input');
+    expect(inputBlob).toBeInstanceOf(File);
+    expect((inputBlob as File).name).toBe('knowledge-enrichment-input.pdf');
+
+    req.flush(
+      JSON.stringify({
+        inProgress: false,
+        results: [{ textClassification: { isSuccess: true, result: 'Invoice' } }],
+      }),
+    );
+
+    const result = await result$;
+    expect(result.textClassification?.result).toBe('Invoice');
+  });
+
   it('unwraps the generic connector response envelope when present', async () => {
     const result$ = firstValueFrom(
       service.enrich(new Blob(['test'], { type: 'text/plain' }), {

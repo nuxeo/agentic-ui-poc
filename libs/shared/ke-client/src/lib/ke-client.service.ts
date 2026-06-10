@@ -51,7 +51,7 @@ export class KeClientService {
         type: 'application/json',
       }),
     );
-    formData.append('input', blob, 'knowledge-enrichment-input');
+    formData.append('input', blob, this.enrichmentInputFilename(blob));
 
     return this.http
       .post(this.automationUrl(this.ops.enrich), formData, {
@@ -75,7 +75,7 @@ export class KeClientService {
       params['sourceId'] = request.sourceId;
     }
     if (request.classes?.length) {
-      params['classes'] = JSON.stringify(request.classes);
+      params['classes'] = request.classes.join(', ');
     }
     if (request.configName) {
       params['configName'] = request.configName;
@@ -313,6 +313,17 @@ export class KeClientService {
 
     const errorBody = raw as { message?: string; detail?: string };
     return errorBody.detail ?? errorBody.message ?? null;
+  }
+
+  private enrichmentInputFilename(blob: Blob): string {
+    if (blob.type === 'application/pdf') {
+      return 'knowledge-enrichment-input.pdf';
+    }
+    if (blob.type.startsWith('image/')) {
+      const extension = blob.type.split('/')[1] || 'bin';
+      return `knowledge-enrichment-input.${extension}`;
+    }
+    return 'knowledge-enrichment-input';
   }
 
   private automationUrl(operation: string): string {

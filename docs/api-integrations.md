@@ -1093,12 +1093,12 @@ The current UI flow is:
 
 **Supported action mapping:**
 
-| UI action              | KE action(s)                                           | Nuxeo field(s) updated         |
-| ---------------------- | ------------------------------------------------------ | ------------------------------ |
-| PDF classify           | `text-classification`                                  | `dc:nature`                    |
-| PDF extract entities   | `named-entity-recognition-text`                        | `nxtag:tags`                   |
-| PDF summarize          | `text-summarization`                                   | `dc:description`               |
-| Image describe and tag | `image-description` + `named-entity-recognition-image` | `dc:description`, `nxtag:tags` |
+| UI action              | KE action(s)                                           | Nuxeo field(s) updated                                    |
+| ---------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| PDF classify           | `text-classification`                                  | `dc:nature` (Nuxeo `nature` directory id, e.g. `invoice`) |
+| PDF extract entities   | `named-entity-recognition-text`                        | `nxtag:tags`                                              |
+| PDF summarize          | `text-summarization`                                   | `dc:description`                                          |
+| Image describe and tag | `image-description` + `named-entity-recognition-image` | `dc:description`, `nxtag:tags`                            |
 
 **Request payload inside the `request` multipart part:**
 
@@ -1107,7 +1107,7 @@ The current UI flow is:
   "params": {
     "actions": "text-classification",
     "sourceId": "document-uuid",
-    "classes": "[\"Contract\",\"Invoice\",\"Legal\",\"Technical\"]"
+    "classes": "Contract, Invoice, Legal, Technical"
   }
 }
 ```
