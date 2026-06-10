@@ -37,11 +37,24 @@ environmentId=bbdab5ca-fc5e-4c67-8b1a-7ea8da874f22
 contentSourceId=efffbf29-7d45-47ec-a7f0-7a9c5df8413b
 kdDiscoveryClientId=sc-4f1612f4-d336-40a2-89c3-542e2e6660b8
 ingestNucleusClientId=sc-47f4831d-aff1-42ad-bd77-16e32928305b
+keEnrichmentClientId=sc-a6f50725-bacb-4b4b-8f6a-8cb356eb62e3
 discoveryBaseUrl=https://discovery.dev.experience.hyland.com
 ingestBaseUrl=https://ingestion.insight.dev.experience.hyland.com
 nucleusAuthBaseUrl=https://auth.iam.dev.experience.hyland.com
 nucleusSystemIntegrationBaseUrl=https://api.nucleus.dev.experience.hyland.com
+contextEnrichmentBaseUrl=https://knowledge-enrichment.ai.dev.experience.hyland.com/latest/api/context-enrichment
 ```
+
+Knowledge Enrichment requires a **different External Application** than
+Discovery on the same tenant, because the Discovery SA is bound to
+`Application = Content Intelligence Connector` (mints tokens with
+`appkey: "insight"`) and the Context API endpoint
+`/files/upload/presigned-url` rejects those tokens with HTTP 403.
+`keEnrichmentClientId` above is the Content-Lake-bound External App
+(mints tokens with `appkey: "content-lake"`); use it only for
+`nuxeo.hyland.cic.enrichment.*`. Keep Discovery, ingest, and `hxai.*`
+on `kdDiscoveryClientId`. Full background and a JWT decode that proves
+this distinction in `docs/knowledge-enrichment.md`.
 
 Do not hardcode or invent client secrets. Ask for the current secrets when they are missing from the running container config, and write them only into the local Docker container config.
 
@@ -57,6 +70,8 @@ Before configuring local KD, collect or confirm:
 - KD / Discovery client secret, ask if not already configured
 - Ingest / Nucleus client id, default from Shared Dev Defaults
 - Ingest / Nucleus client secret, ask if not already configured
+- KE / Context API client id, default from Shared Dev Defaults (only when configuring KE; required for `nuxeo.hyland.cic.enrichment.*`, do NOT reuse the Discovery client id here)
+- KE / Context API client secret, ask if not already configured
 - Target environment, default: Dev
 
 Use approved secret handling. If a secret is needed for a command, keep it in shell variables or write it only to local container config. Do not echo it back to the user.
@@ -65,7 +80,27 @@ Use approved secret handling. If a secret is needed for a command, keep it in sh
 
 1. Confirm the `nuxeo` container is running.
 
-2. Read the current config first. If the required secret values already exist, reuse them without printing them:
+2. Install the required Nuxeo packages if they are not already installed:
+
+   ```bash
+   docker exec nuxeo /opt/nuxeo/server/bin/nuxeoctl mp-add nuxeo-labs-content-intelligence-connector
+   docker exec nuxeo /opt/nuxeo/server/bin/nuxeoctl mp-add nuxeo-hxai-connector-2025.1.0
+   ```
+
+   Persist the HxAI connector install across restarts when using the local Docker container:
+
+   ```bash
+   echo "install nuxeo-hxai-connector-2025.1.0" \
+     | docker exec -i nuxeo tee /var/lib/nuxeo/installAfterRestart.log
+   ```
+
+   Verify the installed bundles:
+
+   ```bash
+   docker exec nuxeo sh -lc 'ls /opt/nuxeo/server/nxserver/bundles | grep -E "content-intelligence|hxai"'
+   ```
+
+3. Read the current config first. If the required secret values already exist, reuse them without printing them:
 
    ```bash
    docker exec nuxeo /opt/nuxeo/server/bin/nuxeoctl config --get nuxeo.hyland.cic.discovery.clientId
@@ -73,7 +108,7 @@ Use approved secret handling. If a secret is needed for a command, keep it in sh
    docker exec nuxeo /opt/nuxeo/server/bin/nuxeoctl config --get hxai.ingest.source.id
    ```
 
-3. Update or create `/etc/nuxeo/conf.d/50-hyland-cic.conf` inside the container with:
+4. Update or create `/etc/nuxeo/conf.d/50-hyland-cic.conf` inside the container with:
 
    ```properties
    nuxeo.hyland.cic.discovery.baseUrl=https://discovery.dev.experience.hyland.com
@@ -95,7 +130,7 @@ Use approved secret handling. If a secret is needed for a command, keep it in sh
    hxai.nucleus.system.id=efffbf29-7d45-47ec-a7f0-7a9c5df8413b
    ```
 
-4. Update or create `/opt/nuxeo/server/nxserver/config/hxai-dev-config.xml` for non-production endpoint overrides:
+5. Update or create `/opt/nuxeo/server/nxserver/config/hxai-dev-config.xml` for non-production endpoint overrides:
 
    ```xml
    <?xml version="1.0" encoding="UTF-8"?>
@@ -113,13 +148,13 @@ Use approved secret handling. If a secret is needed for a command, keep it in sh
    </component>
    ```
 
-5. Restart the container:
+6. Restart the container:
 
    ```bash
    docker restart nuxeo
    ```
 
-6. Verify selected config values without printing secrets:
+7. Verify selected config values without printing secrets:
 
    ```bash
    docker exec nuxeo /opt/nuxeo/server/bin/nuxeoctl config --get nuxeo.hyland.cic.discovery.clientId
@@ -127,7 +162,7 @@ Use approved secret handling. If a secret is needed for a command, keep it in sh
    docker exec nuxeo /opt/nuxeo/server/bin/nuxeoctl config --get hxai.ingest.env.key
    ```
 
-7. Verify KD operations:
+8. Verify KD operations:
 
    ```bash
    curl -sS -u Administrator:Administrator \
@@ -297,3 +332,4 @@ Poll the returned `commandId` with `/nuxeo/api/v1/bulk/<command-id>`.
 - Ingest fails with `400`: retry a single document and inspect Nuxeo logs for the rejected payload.
 - KD returns no local content: confirm the document was ingested, has embeddings, and the Insight agent is bound to the right content source.
 - Content Lake lookup returns `403` for one client but KD works: validate using the KD/Discovery client identity, not only the ingest/Nucleus identity.
+- KE `Enrich` returns `403 {"title":"Authorization Error",...}` on `/files/upload/presigned-url`: do NOT chase user-group role grants alone — the Discovery External App's `Application = Content Intelligence Connector` binding produces `appkey: "insight"` tokens that the Context API rejects no matter the roles. Confirm `nuxeo.hyland.cic.enrichment.clientId/clientSecret` point at a separate, Content-Lake-bound External App (`appkey: "content-lake"` token). Decode the JWT and verify `hxp_authorization.appkey == "content-lake"` and `hxp_authorization.permission` contains `cin-context-api.contentprocessing.write` and `content-lake-api.documents.*`. See `docs/knowledge-enrichment.md` section _"KE requires a SEPARATE External Application from Discovery"_.

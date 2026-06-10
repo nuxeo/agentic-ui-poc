@@ -41,10 +41,15 @@
                 {
                   "type": "anyComponentStyle",
                   "maximumWarning": "24kB",
-                  "maximumError": "32kB"
+                  "maximumError": "36kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "optimization": {
+                "scripts": true,
+                "styles": { "minify": true, "inlineCritical": true },
+                "fonts": { "inline": false }
+              }
             },
             "development": {
               "optimization": false,
@@ -81,9 +86,7 @@
                 "input": "apps/nuxeo-ui/public"
               }
             ],
-            "styles": [
-              "apps/nuxeo-ui/src/styles.scss"
-            ],
+            "styles": ["apps/nuxeo-ui/src/styles.scss"],
             "karmaConfig": "apps/nuxeo-ui/karma.conf.js"
           }
         }

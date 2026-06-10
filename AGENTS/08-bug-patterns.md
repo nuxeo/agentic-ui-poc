@@ -142,8 +142,11 @@ this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`);
 
 ```typescript
 // BAD ❌ — will trigger GitHub Secret Scanning alert
-const auth = btoa('Administrator:Administrator');
-export const config = { nuxeoAuth: 'admin:password123' };
+//   Placeholders shown below (<user>, <password>) so this doc file itself
+//   does not trip the scanner. In real BAD code these would be literal
+//   credential strings inlined into source.
+const auth = btoa('<user>:<password>');
+export const config = { nuxeoAuth: '<user>:<password>' };
 
 // GOOD ✅
 const auth = process.env['NUXEO_AUTH'] ?? '';
@@ -191,6 +194,209 @@ private readonly service = inject(DocumentDetailService);
 
 ---
 
+## 11. `route.snapshot` for reactive UI state (stale value on reuse)
+
+```typescript
+// BAD ❌ — snapshot is read once at construction; if the router reuses this
+// component instance and only the query params change (the default reuse
+// strategy does exactly that for same-route navigation), the signal never
+// updates and the UI is stuck on the initial value.
+readonly debugMode = signal(
+  this.route.snapshot.queryParamMap.get('debug') === '1',
+);
+
+// GOOD ✅ — derive the signal from the observable so query-param changes
+// propagate without a full component re-instantiation.
+readonly debugMode = toSignal(
+  this.route.queryParamMap.pipe(map((qm) => qm.get('debug') === '1')),
+  { requireSync: true },
+);
+```
+
+Use `snapshot` only for values you genuinely want frozen at construction time
+(e.g. a one-shot resolver-loaded id you'll never refresh in place).
+
+---
+
+## 12. Always-on data capture behind an opt-in UI gate
+
+```typescript
+// BAD ❌ — captures and retains the full HTTP error body on every failure,
+// even for users who never opted in via `?debug=1`. The body can be a multi-MB
+// JSON payload or an entire HTML login page; keeping it in a signal means
+// it lives for the component's lifetime for no benefit to the user.
+error: (err) => {
+  this.agentsError.set('Failed to load agents.');
+  this.agentsErrorDetail.set(this.captureError('listAgents', err));
+  this.loading.set(false);
+},
+
+// GOOD ✅ — capture only when the rendering branch will actually consume it.
+error: (err) => {
+  this.agentsError.set('Failed to load agents.');
+  if (this.debugMode()) {
+    this.agentsErrorDetail.set(this.captureError('listAgents', err));
+  }
+  this.loading.set(false);
+},
+```
+
+Rule of thumb: if a piece of data is only rendered behind a feature flag, the
+_capture_ should be behind the same flag — not just the render.
+
+---
+
+## 13. Markdown inline code spans split across newlines
+
+```markdown
+<!-- BAD ❌ — the backtick span wraps to the next line, the renderer breaks
+     the code formatting, and continuation text is under-indented inside a
+     list item, so the bullet collapses. -->
+
+- **KE needs its own External App.** The Discovery SA's External App is bound to `Application = Content Intelligence
+Connector` and mints tokens with `appkey: "insight"`.
+
+<!-- GOOD ✅ — keep the whole backticked phrase on one line; indent
+     continuation lines two spaces under the list bullet. -->
+
+- **KE needs its own External App.** The Discovery SA's External App is bound to
+  `Application = Content Intelligence Connector` and mints tokens with
+  `appkey: "insight"`.
+```
+
+Markdown code spans (single-backtick) cannot contain a newline. Long
+backticked phrases must stay on one line even if the surrounding prose wraps.
+
+---
+
+## 14. AI free-form output written to a vocabulary-bound field (HTTP 422)
+
+```typescript
+// BAD ❌ — the candidate list is hardcoded and TitleCase, and the LLM's
+// reply is written straight to `dc:nature`. Two failure modes:
+//   1. The LLM returns the sentinel "not_from_provided_classes" when no
+//      candidate matches — Nuxeo rejects it with 422 because it isn't in
+//      the `nature` vocabulary.
+//   2. Even when the LLM picks a candidate ("Contract"), the actual
+//      vocabulary id is camelCase ("contract"), so the PUT still 422s.
+const KE_TEXT_CLASSIFICATION_CLASSES = ['Contract', 'Invoice', /* ... */];
+
+runTextClassification(): void {
+  this.keClient
+    .enrich(blob, { actions: ['text-classification'], classes: KE_TEXT_CLASSIFICATION_CLASSES })
+    .subscribe((res) => {
+      // Writes "not_from_provided_classes" or "Contract" — both invalid.
+      this.browseService.updateDocument(uid, { 'dc:nature': res.textClassification?.result });
+    });
+}
+
+// GOOD ✅ — source candidates from the live vocabulary, then validate the
+// model's response before writing. The vocabulary call is cached by
+// DirectoryService, so the cost is paid once per session.
+private readonly natureVocabulary = signal<DirectoryEntry[]>([]);
+
+ngOnInit(): void {
+  this.directoryService
+    .getEntries('nature')
+    .pipe(takeUntilDestroyed(this.destroyRef))
+    .subscribe((entries) => this.natureVocabulary.set(entries));
+}
+
+runTextClassification(): void {
+  const candidates = this.natureVocabulary().map((e) => e.id);
+  if (!candidates.length) { /* surface a UX error, do not call KE */ return; }
+  this.keClient
+    .enrich(blob, { actions: ['text-classification'], classes: candidates })
+    .subscribe((res) => {
+      const raw = res.textClassification?.result?.trim();
+      if (!raw || raw === 'not_from_provided_classes') {
+        this.toast('Knowledge Enrichment could not match this document.');
+        return;
+      }
+      const id = this.natureVocabulary().find(
+        (e) => e.id.toLowerCase() === raw.toLowerCase()
+            || e.displayLabel.toLowerCase() === raw.toLowerCase(),
+      )?.id;
+      if (!id) { this.toast(`"${raw}" is not in the nature vocabulary.`); return; }
+      this.browseService.updateDocument(uid, { 'dc:nature': id });
+    });
+}
+```
+
+Rule of thumb: any Nuxeo property that is backed by a directory/vocabulary
+(`dc:nature`, `dc:coverage`, `dc:language`, ...) MUST be written using a value
+sourced from `DirectoryService.getEntries(<vocab>)`. Never trust a string that
+came from an LLM, a free-text input, or a hardcoded constant list. Always
+guard against the two LLM failure modes: the sentinel ("no match") and the
+hallucinated label.
+
+---
+
+## 15. `<mat-spinner>` inside a `mat-button` (broken layout)
+
+`<mat-spinner>` (alias for `<mat-progress-spinner>`) renders as a block-level
+element with its own intrinsic dimensions. Dropping it into a Material button
+that already contains a leading `<mat-icon>` makes the button's flex content
+wrap: the spinner gets one line, the label gets another, and the button
+visibly grows/reflows whenever an async action toggles state.
+
+```html
+<!-- BAD ❌ — spinner is a block-level element, button content stacks vertically -->
+<button mat-stroked-button class="ke-action-btn" [disabled]="loading()">
+  @if (loading()) {
+  <mat-spinner diameter="16" />
+  } @else {
+  <mat-icon>category</mat-icon>
+  } Classify Document
+</button>
+
+<!-- GOOD ✅ — swap to a spinning <mat-icon>: same element, same layout,
+     just a CSS rotate animation. Idle and loading states share one box.
+     Use `autorenew` (or `sync`/`refresh`/`cached`/`loop`) — these all
+     exist in the LEGACY "Material Icons" font that apps/nuxeo-ui loads
+     (apps/nuxeo-ui/src/index.html). Do NOT use `progress_activity`: it
+     only ships in the newer Material Symbols set and will render as an
+     EMPTY BOX in this app. -->
+<button mat-stroked-button class="ke-action-btn" [disabled]="loading()">
+  @if (loading()) {
+  <mat-icon class="ke-spinning">autorenew</mat-icon>
+  } @else {
+  <mat-icon>category</mat-icon>
+  } Classify Document
+</button>
+```
+
+```scss
+.ke-action-btn mat-icon.ke-spinning {
+  animation: ke-spin 1s linear infinite;
+}
+@keyframes ke-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+```
+
+Why this works: a CSS `transform` animation is a paint-time-only operation
+that cannot change the box model, so the loading-state button is byte-for-byte
+identical to the idle-state button in layout. Trying to "tame" `mat-spinner`
+with `!important` width/height overrides is whack-a-mole; the underlying
+display mode is wrong for an inline icon slot. Reach for a spinning
+`<mat-icon>` whenever the spinner needs to sit inline with text inside a
+button, chip, list item, or table cell.
+
+Rule of thumb: if you find yourself writing `display: inline-block !important`
+on a `<mat-spinner>` to stop it from breaking a parent's layout, you are
+fighting the wrong primitive — use a spinning `<mat-icon>` instead.
+
+Regression test pattern: render the idle and loading buttons side by side in
+a vitest TestBed test and assert (a) the loading-state element's tag is
+`mat-icon`, not `mat-progress-spinner`, and (b) the loading icon's parent
+element matches the idle icon's parent element. Same parent = same layout
+guarantee. See `libs/features/document-detail/src/lib/document-detail/ke-action-button-layout.spec.ts`.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -200,3 +406,8 @@ Fix proactively to avoid a review cycle:
 - "Potential XSS" → use Angular template binding
 - "Hardcoded credential" → move to environment variable
 - "Race condition" → add stale-check before setting signal after async operation
+- "Snapshot won't reflect changes" → `toSignal(route.queryParamMap.pipe(map(...)))`
+- "Captured even when feature is off" → wrap the capture in the feature flag
+- "Code span split across newlines" → keep the whole backticked phrase on one line
+- "Writing AI output to a vocabulary field without validation" → source candidates from the vocabulary and validate the response
+- "`<mat-spinner>` inside a button" → use a spinning `<mat-icon class="ke-spinning">progress_activity</mat-icon>` to preserve inline layout
