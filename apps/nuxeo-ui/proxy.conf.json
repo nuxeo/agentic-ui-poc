@@ -1,12 +1,12 @@
 {
   "/nuxeo": {
-    "target": "http://localhost:8080",
+    "target": "http://localhost:8000",
     "secure": false,
     "changeOrigin": true,
     "autoRewrite": true,
     "headers": {
       "X-NXproperties": "*",
-      "Origin": "http://localhost:8080"
+      "Origin": "http://localhost:8000"
     }
   }
 }

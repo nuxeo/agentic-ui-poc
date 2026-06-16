@@ -62,12 +62,12 @@ export const appConfig: ApplicationConfig = {
     { provide: AI_BACKEND_URL, useValue: '/nuxeo' },
     {
       // Nuxeo Drive connects directly to the Nuxeo server (bypassing the Angular dev proxy).
-      // When served via the Angular dev server (:4200), use the real Nuxeo URL (:8080).
+      // When served via the Angular dev server (:4200), use the real Nuxeo URL (:8000).
       // In production (same-origin deployment), window.location.origin is the Nuxeo server.
       provide: NUXEO_SERVER_URL,
       useFactory: () => {
         const isDevProxy = window.location.port === '4200';
-        return isDevProxy ? 'http://localhost:8080/nuxeo' : `${window.location.origin}/nuxeo`;
+        return isDevProxy ? 'http://localhost:8000/nuxeo' : `${window.location.origin}/nuxeo`;
       },
     },
   ],
