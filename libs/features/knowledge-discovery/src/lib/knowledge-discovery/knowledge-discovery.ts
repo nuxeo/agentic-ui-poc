@@ -7,10 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription, catchError, forkJoin, map, of, switchMap, timer } from 'rxjs';
 
+import { ContentLakeUploadComponent } from '../content-lake-upload/content-lake-upload';
 import {
   KdClientService,
   KdDiscoveryError,
@@ -69,6 +71,7 @@ export class KnowledgeDiscoveryComponent {
   private readonly kdClient = inject(KdClientService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
+  private readonly dialog = inject(MatDialog);
   private answerPollSub: Subscription | null = null;
   private readonly insufficientAnswerText =
     "I don't have enough information to answer this question";
@@ -129,10 +132,14 @@ export class KnowledgeDiscoveryComponent {
       ? 'Sending the request to Knowledge Discovery.'
       : 'Searching the selected agent and gathering grounded citations.',
   );
-  readonly canAsk = computed(
-    () =>
-      this.hasSelection() && this.questionText().trim().length > 0 && !this.isAwaitingResponse(),
+  readonly canClear = computed(
+    () => this.questionText().trim().length > 0 && !this.isAwaitingResponse(),
   );
+  readonly canAsk = computed(() => this.hasSelection() && this.canClear());
+
+  clearQuestion(): void {
+    this.questionText.set('');
+  }
 
   /**
    * The Discovery API only accepts a `dynamicFilter` on agents that were
@@ -425,6 +432,14 @@ export class KnowledgeDiscoveryComponent {
     this.answerPollSub?.unsubscribe();
     this.answerPollSub = null;
     this.pollingAnswer.set(false);
+  }
+
+  openContentLakeUploadDialog(): void {
+    this.dialog.open(ContentLakeUploadComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      autoFocus: 'dialog',
+    });
   }
 
   formatAnswerText(answer: string): string {

@@ -52,6 +52,8 @@ import {
   avatarColor,
   ARenderService,
   TagService,
+  ContentLakeIngestService,
+  supportsContentLakeIngest,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -218,6 +220,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly tagService = inject(TagService);
   private readonly aiGateway = inject(AiGatewayService);
   private readonly keClient = inject(KeClientService);
+  private readonly contentLakeIngestService = inject(ContentLakeIngestService);
   private readonly aiChatService = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
@@ -267,6 +270,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly keActionInFlight = signal<KeUiAction | null>(null);
   readonly keStatus = signal<string | null>(null);
   readonly keError = signal<string | null>(null);
+  readonly contentLakeIngestInFlight = signal(false);
+  readonly contentLakeIngestStatus = signal<string | null>(null);
+  readonly contentLakeIngestError = signal<string | null>(null);
 
   // Loaded from the Nuxeo `nature` directory and supplied as candidate classes to the
   // KE text-classification model. Sourcing live ids guarantees the value we write back
@@ -496,6 +502,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const mime = this.fileMimeType();
     return mime.startsWith('image/') || this.doc()?.type === 'Picture';
   });
+  readonly canIngestToContentLake = computed(() => supportsContentLakeIngest(this.doc()));
 
   readonly attachments = computed(() => {
     const d = this.doc();
@@ -696,6 +703,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.keActionInFlight.set(null);
     this.keStatus.set(null);
     this.keError.set(null);
+    this.contentLakeIngestInFlight.set(false);
+    this.contentLakeIngestStatus.set(null);
+    this.contentLakeIngestError.set(null);
     this.panelSubTab.set('properties');
   }
 
@@ -808,6 +818,49 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       actions: ['image-description', 'named-entity-recognition-image'],
       maxWordCount: 100,
     });
+  }
+
+  ingestToContentLake(): void {
+    const uid = this.docUid;
+    if (!uid || !this.canIngestToContentLake() || this.contentLakeIngestInFlight()) {
+      return;
+    }
+
+    this.contentLakeIngestInFlight.set(true);
+    this.contentLakeIngestError.set(null);
+    this.contentLakeIngestStatus.set(null);
+
+    this.contentLakeIngestService
+      .startIngest([uid])
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        switchMap((command) => this.contentLakeIngestService.waitUntilComplete(command.commandId)),
+        finalize(() => this.contentLakeIngestInFlight.set(false)),
+      )
+      .subscribe({
+        next: (status) => {
+          if (status.error || status.errorCount > 0) {
+            const message =
+              `Content Lake ingest finished with errors (${status.errorCount} failed). ` +
+              'Check that the HxAI connector and ingest credentials are configured on Nuxeo.';
+            this.contentLakeIngestError.set(message);
+            this.contentLakeIngestStatus.set(null);
+            this.toast(message);
+            return;
+          }
+
+          const message =
+            'Ingested to Content Lake. Knowledge Discovery agents can search this document once indexing completes.';
+          this.contentLakeIngestStatus.set(message);
+          this.toast(message);
+        },
+        error: (err: Error) => {
+          const message = err.message || 'Content Lake ingest failed.';
+          this.contentLakeIngestError.set(message);
+          this.contentLakeIngestStatus.set(null);
+          this.toast(message);
+        },
+      });
   }
 
   isKeActionRunning(action: KeUiAction): boolean {

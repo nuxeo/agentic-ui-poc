@@ -88,6 +88,29 @@
         </div>
       }
 
+      @if (!isTrashed() && canIngestToContentLake()) {
+        @if (contentLakeIngestInFlight()) {
+          <span
+            class="content-lake-ingest-loader"
+            matTooltip="Ingesting into Content Lake..."
+            aria-label="Ingesting into Content Lake"
+            aria-busy="true"
+          >
+            <mat-spinner diameter="24" />
+          </span>
+        } @else {
+          <button
+            mat-icon-button
+            matTooltip="Ingest to Content Lake"
+            aria-label="Ingest to Content Lake"
+            [disabled]="keActionInFlight() !== null"
+            (click)="ingestToContentLake()"
+          >
+            <mat-icon>cloud_upload</mat-icon>
+          </button>
+        }
+      }
+
       @if (!isTrashed()) {
         <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
           <mat-icon>edit</mat-icon>
@@ -180,6 +203,13 @@
     <div class="ke-status-banner" [class.ke-status-banner--error]="keError()">
       <mat-icon>{{ keError() ? 'error_outline' : 'auto_awesome' }}</mat-icon>
       <span>{{ keError() || keStatus() }}</span>
+    </div>
+  }
+
+  @if ((contentLakeIngestStatus() || contentLakeIngestError()) && !contentLakeIngestInFlight()) {
+    <div class="ke-status-banner" [class.ke-status-banner--error]="contentLakeIngestError()">
+      <mat-icon>{{ contentLakeIngestError() ? 'error_outline' : 'cloud_upload' }}</mat-icon>
+      <span>{{ contentLakeIngestError() || contentLakeIngestStatus() }}</span>
     </div>
   }
 

@@ -1158,6 +1158,67 @@ supports both forms.
 | `401` / `403`        | Treat as connector / KE auth issue                                                         |
 | `5xx`                | Treat as transient Nuxeo/CIC/KE upstream failure                                           |
 
+---
+
+## 26. Content Lake ingest (via Nuxeo HxAI connector)
+
+| Field           | Value                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| **Service**     | `ContentLakeIngestService` (`libs/shared/nuxeo-client/src/lib/services/content-lake-ingest.service.ts`) |
+| **Methods**     | `startIngest`, `getStatus`, `waitUntilComplete`                                                         |
+| **HTTP Method** | `POST` + `GET`                                                                                          |
+| **Endpoint**    | `/nuxeo/api/v1/automation/Bulk.RunAction` then `/nuxeo/api/v1/bulk/{commandId}`                         |
+
+The Knowledge Discovery **Upload to Content Lake** dialog uploads files to Nuxeo
+with `DocumentImportService`, then triggers the HxAI connector bulk `ingest`
+action. The browser never calls Content Lake or Ingest APIs directly.
+
+**Start ingest request:**
+
+```json
+{
+  "params": {
+    "action": "ingest",
+    "query": "SELECT * FROM Document WHERE ecm:uuid = 'document-uuid'"
+  },
+  "context": {}
+}
+```
+
+**Bulk.RunAction response (automation):** Nuxeo wraps the initial status in `value`:
+
+```json
+{
+  "entity-type": "bulkStatus",
+  "value": {
+    "entity-type": "bulkStatus",
+    "commandId": "command-uuid",
+    "state": "SCHEDULED"
+  }
+}
+```
+
+**Bulk status response (`GET /nuxeo/api/v1/bulk/{commandId}`):**
+
+```json
+{
+  "entity-type": "bulkStatus",
+  "commandId": "command-uuid",
+  "state": "COMPLETED",
+  "processed": 1,
+  "error": false,
+  "errorCount": 0
+}
+```
+
+**Error Handling:**
+
+| Status / Failure                 | Behavior                                                             |
+| -------------------------------- | -------------------------------------------------------------------- |
+| Missing `commandId`              | Surface as upload/ingest failure in the UI panel                     |
+| `error: true` / `errorCount > 0` | Show ingest completed with errors; verify `hxai.ingest.*` on Nuxeo   |
+| Bulk state not terminal          | Poll `/nuxeo/api/v1/bulk/{commandId}` until `COMPLETED` or `ABORTED` |
+
 <!--
 ## N. Title
 

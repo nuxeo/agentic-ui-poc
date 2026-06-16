@@ -8,6 +8,10 @@ export type {
   AssetSearchResult,
 } from './lib/models/asset.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
+export type {
+  ContentLakeIngestCommand,
+  ContentLakeIngestStatus,
+} from './lib/models/content-lake-ingest.model';
 export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
 export type { DirectoryEntry, L10nDirectoryEntry } from './lib/models/directory.model';
@@ -71,6 +75,7 @@ export {
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';
+export { ContentLakeIngestService } from './lib/services/content-lake-ingest.service';
 export {
   DocumentDetailService,
   type UserGroupSuggestion,
@@ -114,6 +119,10 @@ export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { avatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
 export { NON_CONTENT_DOCUMENT_TYPES } from './lib/constants/non-content-document-types';
+export {
+  CONTENT_LAKE_INGEST_DOCUMENT_TYPES,
+  supportsContentLakeIngest,
+} from './lib/utils/content-lake-ingest';
 
 // Queries (for advanced / custom use)
 export {

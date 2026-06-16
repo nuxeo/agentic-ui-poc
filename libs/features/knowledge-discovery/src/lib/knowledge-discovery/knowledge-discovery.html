@@ -5,11 +5,15 @@
       <h1>Ask grounded questions with citations</h1>
     </div>
     <div class="kd-topbar__actions">
-      <button mat-stroked-button (click)="loadReferenceData()">
+      <button mat-stroked-button type="button" (click)="openContentLakeUploadDialog()">
+        <mat-icon>cloud_upload</mat-icon>
+        Upload to Content Lake
+      </button>
+      <button mat-stroked-button type="button" (click)="loadReferenceData()">
         <mat-icon>sync</mat-icon>
         Refresh metadata
       </button>
-      <button mat-stroked-button (click)="loadAgents()">
+      <button mat-stroked-button type="button" (click)="loadAgents()">
         <mat-icon>refresh</mat-icon>
         Refresh agents
       </button>
@@ -126,7 +130,7 @@
           <p class="kd-helper">Select an agent on the right to start asking questions.</p>
         }
 
-        <mat-form-field appearance="outline" class="kd-block-field">
+        <mat-form-field appearance="outline" class="kd-block-field" subscriptSizing="dynamic">
           <mat-label>Your question</mat-label>
           <textarea
             matInput
@@ -172,6 +176,15 @@
         }
 
         <div class="kd-actions">
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!canClear()"
+            (click)="clearQuestion()"
+          >
+            <mat-icon>close</mat-icon>
+            Clear
+          </button>
           <button
             mat-flat-button
             color="primary"

@@ -1,0 +1,140 @@
+<h2 mat-dialog-title>Upload to Content Lake</h2>
+
+<mat-dialog-content class="kd-content-lake-upload">
+  <p class="kd-muted kd-content-lake-upload__intro">
+    Files are uploaded to Nuxeo first, then ingested into Content Lake so Knowledge Discovery agents
+    can cite them.
+  </p>
+
+  <div class="kd-content-lake-upload__path-row">
+    <mat-form-field
+      class="kd-content-lake-upload__field"
+      appearance="outline"
+      subscriptSizing="dynamic"
+    >
+      <mat-label>Nuxeo folder path</mat-label>
+      <input
+        matInput
+        [ngModel]="parentPath()"
+        (input)="onParentPathUserInput($event)"
+        [matAutocomplete]="folderAuto"
+        [disabled]="isBusy()"
+        placeholder="/default-domain/workspaces/MyWorkspace"
+      />
+      @if (loadingSubfolders()) {
+        <mat-spinner matSuffix diameter="18" />
+      }
+      <mat-autocomplete
+        #folderAuto="matAutocomplete"
+        autoActiveFirstOption
+        (optionSelected)="onFolderOptionSelected($event)"
+      >
+        @for (option of filteredFolderOptions(); track option.path) {
+          <mat-option [value]="option.path">{{ option.title }}</mat-option>
+        }
+      </mat-autocomplete>
+      <mat-hint>Type / to browse subfolders</mat-hint>
+    </mat-form-field>
+    <button
+      type="button"
+      mat-icon-button
+      class="kd-content-lake-upload__up-btn"
+      matTooltip="Up one folder level"
+      [disabled]="isBusy() || !canGoUpOneFolderLevel()"
+      (click)="goUpOneFolderLevel()"
+      aria-label="Up one folder level"
+    >
+      <mat-icon>arrow_upward</mat-icon>
+    </button>
+  </div>
+
+  <p class="kd-content-lake-upload__breadcrumb">{{ folderBreadcrumb() }}</p>
+
+  @if (folderBrowseError()) {
+    <p class="kd-content-lake-upload__folder-hint">{{ folderBrowseError() }}</p>
+  }
+
+  <label class="kd-content-lake-upload__picker">
+    <input
+      #fileInput
+      type="file"
+      hidden
+      multiple
+      [disabled]="isBusy()"
+      (change)="onFilesSelected($event)"
+    />
+    <span class="kd-content-lake-upload__picker-label">
+      <mat-icon>upload_file</mat-icon>
+      Choose file(s)
+    </span>
+  </label>
+
+  @if (selectedFiles().length > 0) {
+    <ul class="kd-content-lake-upload__files">
+      @for (file of selectedFiles(); track file.name + file.size) {
+        <li>{{ file.name }}</li>
+      }
+    </ul>
+  }
+
+  @if (selectedFiles().length > 0 && !isBusy()) {
+    <button
+      type="button"
+      mat-stroked-button
+      class="kd-content-lake-upload__clear"
+      (click)="clearSelection()"
+    >
+      Clear
+    </button>
+  }
+
+  @if (statusMessage()) {
+    <p class="kd-content-lake-upload__status">{{ statusMessage() }}</p>
+  }
+
+  @if (errorMessage()) {
+    <p class="kd-content-lake-upload__error">{{ errorMessage() }}</p>
+  }
+
+  @if (uploadedDocuments().length > 0) {
+    <ul class="kd-content-lake-upload__results">
+      @for (doc of uploadedDocuments(); track doc.uid) {
+        <li>
+          <button
+            type="button"
+            class="kd-content-lake-upload__doc-link"
+            (click)="openDocument(doc.uid)"
+          >
+            {{ doc.title }}
+          </button>
+          <span class="kd-content-lake-upload__doc-meta">{{ doc.path }}</span>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (phase() === 'ingesting') {
+    <div class="kd-content-lake-upload__progress">
+      <mat-spinner diameter="18" />
+      <span>Ingesting into Content Lake...</span>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button type="button" mat-button [disabled]="isBusy()" (click)="close()">Close</button>
+  <button
+    type="button"
+    mat-flat-button
+    color="primary"
+    [disabled]="selectedFiles().length === 0 || isBusy() || !parentPath().trim()"
+    (click)="uploadToContentLake()"
+  >
+    @if (isBusy()) {
+      <mat-icon class="kd-spinning">autorenew</mat-icon>
+    } @else {
+      <mat-icon>cloud_upload</mat-icon>
+    }
+    Upload
+  </button>
+</mat-dialog-actions>
