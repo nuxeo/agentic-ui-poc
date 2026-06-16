@@ -58,3 +58,6 @@ apps/ai-backend/.env
 # Nuxeo server configuration (secrets, bind-mounted into the container)
 /nuxeo-conf/*.conf
 !/nuxeo-conf/*.sample.conf
+.nx/polygraph
+.claude/worktrees
+.claude/settings.local.json
