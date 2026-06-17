@@ -9,6 +9,8 @@ export type {
 } from './lib/models/asset.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
 export type {
+  ContentLakeDuplicate,
+  ContentLakeBackfillResult,
   ContentLakeIngestCommand,
   ContentLakeIngestStatus,
 } from './lib/models/content-lake-ingest.model';
@@ -121,6 +123,17 @@ export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
 export { NON_CONTENT_DOCUMENT_TYPES } from './lib/constants/non-content-document-types';
 export {
   CONTENT_LAKE_INGEST_DOCUMENT_TYPES,
+  CONTENT_LAKE_INGEST_MARKER_LEGACY_PROPERTY,
+  CONTENT_LAKE_INGEST_MARKER_PREFIX,
+  CONTENT_LAKE_INGEST_MARKER_PROPERTY,
+  CONTENT_LAKE_INGEST_MARKER_PROPERTIES,
+  buildContentLakeIngestMarker,
+  isContentLakeIngestCurrent,
+  needsContentLakeIngest,
+  readBlobDigest,
+  readContentLakeIngestMarker,
+  resolveIngestMarkerWriteProperty,
+  shouldProbeContentLakeIngestStatus,
   supportsContentLakeIngest,
 } from './lib/utils/content-lake-ingest';
 

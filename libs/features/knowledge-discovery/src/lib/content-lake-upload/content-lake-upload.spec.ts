@@ -11,6 +11,7 @@ import {
   ContentLakeIngestService,
   DocumentImportService,
 } from '@agentic-ui/shared/nuxeo-client';
+import { KdClientService } from '@agentic-ui/shared/kd-client';
 
 import { ContentLakeUploadComponent } from './content-lake-upload';
 
@@ -63,6 +64,12 @@ const mockIngestService = {
   waitUntilComplete: vi.fn(() =>
     of({ commandId: 'bulk-1', state: 'COMPLETED', processed: 1, error: false, errorCount: 0 }),
   ),
+  findDuplicates: vi.fn(() => of([])),
+  markIngested: vi.fn(() => of([])),
+};
+
+const mockKdClient = {
+  listIngestSourceIds: vi.fn(() => of(['source-1'])),
 };
 
 const mockRouter = {
@@ -88,6 +95,7 @@ async function createComponent(): Promise<{
       { provide: DocumentImportService, useValue: mockImportService },
       { provide: BrowseService, useValue: mockBrowseService },
       { provide: ContentLakeIngestService, useValue: mockIngestService },
+      { provide: KdClientService, useValue: mockKdClient },
       { provide: Router, useValue: mockRouter },
       { provide: MatDialogRef, useValue: mockDialogRef },
       { provide: MatSnackBar, useValue: mockSnackBar },
@@ -202,6 +210,7 @@ describe('ContentLakeUploadComponent', () => {
     expect(mockImportService.importFiles).toHaveBeenCalledWith('/default-domain', [file]);
     expect(mockIngestService.startIngest).toHaveBeenCalledWith(['doc-1']);
     expect(mockIngestService.waitUntilComplete).toHaveBeenCalledWith('bulk-1');
+    expect(mockIngestService.markIngested).toHaveBeenCalledWith(['doc-1']);
     expect(component.phase()).toBe('complete');
     expect(component.uploadedDocuments()).toHaveLength(1);
     expect(mockSnackBar.open).toHaveBeenCalledWith(
@@ -212,6 +221,38 @@ describe('ContentLakeUploadComponent', () => {
     expect(mockDialogRef.close).toHaveBeenCalledWith({
       uploadedDocuments: [expect.objectContaining({ uid: 'doc-1', title: 'Contract.pdf' })],
     });
+  });
+
+  it('blocks upload when duplicate Content Lake files are detected', async () => {
+    const { component } = await createComponent();
+    component.selectedFiles.set([new File(['sample'], 'sample.pdf', { type: 'application/pdf' })]);
+    component.duplicateMatches.set([
+      {
+        fileName: 'sample.pdf',
+        existingUid: 'existing-1',
+        existingTitle: 'sample.pdf',
+        existingPath: '/default-domain/sample.pdf',
+      },
+    ]);
+
+    component.uploadToContentLake();
+    await Promise.resolve();
+
+    expect(component.duplicateMatches()).toHaveLength(1);
+    expect(mockImportService.importFiles).not.toHaveBeenCalled();
+  });
+
+  it('checks Content Lake using KD source ids when files are selected', async () => {
+    const { component } = await createComponent();
+    await Promise.resolve();
+
+    component.onFilesSelected({
+      target: { files: [new File(['sample'], 'sample.pdf', { type: 'application/pdf' })] },
+    } as Event);
+    await Promise.resolve();
+
+    expect(mockKdClient.listIngestSourceIds).toHaveBeenCalled();
+    expect(mockIngestService.findDuplicates).toHaveBeenCalledWith([expect.any(File)], ['source-1']);
   });
 
   it('surfaces ingest failures', async () => {

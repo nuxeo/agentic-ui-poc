@@ -80,6 +80,25 @@
   margin-bottom: 8px;
 }
 
+.kd-content-lake-upload__duplicates {
+  margin: 8px 0;
+  font-size: 12px;
+
+  ul {
+    margin: 8px 0 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
 .kd-content-lake-upload__status {
   margin: 0;
   font-size: 12.5px;

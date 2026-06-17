@@ -147,6 +147,10 @@ upload panel after `DocumentImportService` creates File documents in Nuxeo.
 startIngest(documentUids: string[]): Observable<ContentLakeIngestCommand>
 getStatus(commandId: string): Observable<ContentLakeIngestStatus>
 waitUntilComplete(commandId: string, pollIntervalMs?: number): Observable<ContentLakeIngestStatus>
+findDuplicates(files: File[], sourceIds?: string[]): Observable<ContentLakeDuplicate[]>
+checkIngested(documentUid: string, sourceIds?: string[]): Observable<boolean>
+backfillIngestMarkerIfNeeded(doc: NuxeoDocument, sourceIds?: string[]): Observable<NuxeoDocument | null>
+markIngested(documentUids: string[]): Observable<void>
 ```
 
 ---

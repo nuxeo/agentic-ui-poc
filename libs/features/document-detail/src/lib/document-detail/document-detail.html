@@ -88,15 +88,35 @@
         </div>
       }
 
-      @if (!isTrashed() && canIngestToContentLake()) {
-        @if (contentLakeIngestInFlight()) {
+      @if (!isTrashed() && showsContentLakeIngestAction()) {
+        @if (contentLakeIngestInFlight() || contentLakePresenceChecking()) {
           <span
             class="content-lake-ingest-loader"
-            matTooltip="Ingesting into Content Lake..."
-            aria-label="Ingesting into Content Lake"
+            [matTooltip]="
+              contentLakeIngestInFlight()
+                ? 'Ingesting into Content Lake...'
+                : 'Checking Content Lake status...'
+            "
+            [attr.aria-label]="
+              contentLakeIngestInFlight()
+                ? 'Ingesting into Content Lake'
+                : 'Checking Content Lake status'
+            "
             aria-busy="true"
           >
             <mat-spinner diameter="24" />
+          </span>
+        } @else if (showsContentLakeIngested()) {
+          <span
+            class="content-lake-ingest-marker"
+            [matTooltip]="contentLakeIngestedTooltip"
+            matTooltipClass="mat-tooltip-multiline"
+            matTooltipPosition="below"
+            aria-label="Already in Content Lake"
+          >
+            <button mat-icon-button type="button" disabled tabindex="-1">
+              <mat-icon>cloud_done</mat-icon>
+            </button>
           </span>
         } @else {
           <button

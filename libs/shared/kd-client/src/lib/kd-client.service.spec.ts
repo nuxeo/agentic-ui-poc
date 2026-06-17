@@ -66,6 +66,26 @@ describe('KdClientService', () => {
     expect(agents[0]?.id).toBe('agent-2');
   });
 
+  it('listIngestSourceIds reads __sourceId__ from agent static filters', async () => {
+    const sourceIds$ = firstValueFrom(service.listIngestSourceIds());
+    const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.getAllAgents);
+    req.flush(
+      envelope([
+        { id: 'agent-1', name: 'No source', sourceIds: [] },
+        {
+          id: 'agent-2',
+          name: 'Bound agent',
+          sourceIds: [],
+          staticFilterExpression: {
+            field: '__sourceId__',
+            value: 'efffbf29-7d45-47ec-a7f0-7a9c5df8413b',
+          },
+        },
+      ]),
+    );
+    await expect(sourceIds$).resolves.toEqual(['efffbf29-7d45-47ec-a7f0-7a9c5df8413b']);
+  });
+
   it('getAgent routes through the Invoke passthrough with the upstream path', async () => {
     const agent$ = firstValueFrom(service.getAgent('agent-1'));
     const req = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);

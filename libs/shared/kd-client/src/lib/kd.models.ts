@@ -7,6 +7,9 @@ export interface KdAgentSummary {
   description: string;
   modelName: string;
   version?: number;
+  /** Present on getAllAgents payloads; used for Content Lake CheckDigest source resolution. */
+  sourceIds?: string[];
+  staticFilterExpression?: KdFilterExpression;
 }
 
 export interface KdAgentAccessRight {

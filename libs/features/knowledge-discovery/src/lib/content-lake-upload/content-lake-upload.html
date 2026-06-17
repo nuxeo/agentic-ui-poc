@@ -3,7 +3,7 @@
 <mat-dialog-content class="kd-content-lake-upload">
   <p class="kd-muted kd-content-lake-upload__intro">
     Files are uploaded to Nuxeo first, then ingested into Content Lake so Knowledge Discovery agents
-    can cite them.
+    can cite them. Before upload, we search the repository and Content Lake for matching files.
   </p>
 
   <div class="kd-content-lake-upload__path-row">
@@ -88,6 +88,33 @@
     </button>
   }
 
+  @if (checkingDuplicates()) {
+    <p class="kd-content-lake-upload__status">Checking for existing Content Lake copies...</p>
+  }
+
+  @if (duplicateMatches().length > 0) {
+    <div class="kd-content-lake-upload__duplicates">
+      <p class="kd-content-lake-upload__error">
+        These files match documents already indexed in Content Lake elsewhere in Nuxeo:
+      </p>
+      <ul>
+        @for (match of duplicateMatches(); track match.fileName) {
+          <li>
+            <strong>{{ match.fileName }}</strong>
+            <button
+              type="button"
+              class="kd-content-lake-upload__doc-link"
+              (click)="openDocument(match.existingUid)"
+            >
+              Open existing document
+            </button>
+            <span class="kd-content-lake-upload__doc-meta">{{ match.existingPath }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
   @if (statusMessage()) {
     <p class="kd-content-lake-upload__status">{{ statusMessage() }}</p>
   }
@@ -127,7 +154,13 @@
     type="button"
     mat-flat-button
     color="primary"
-    [disabled]="selectedFiles().length === 0 || isBusy() || !parentPath().trim()"
+    [disabled]="
+      selectedFiles().length === 0 ||
+      isBusy() ||
+      !parentPath().trim() ||
+      checkingDuplicates() ||
+      duplicateMatches().length > 0
+    "
     (click)="uploadToContentLake()"
   >
     @if (isBusy()) {

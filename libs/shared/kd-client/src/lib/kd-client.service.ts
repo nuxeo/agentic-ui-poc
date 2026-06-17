@@ -10,6 +10,7 @@ import {
   type KdCicOperations,
   type KdUpstreamPaths,
 } from './kd.config';
+import { collectIngestSourceIds } from './kd-ingest-source-ids';
 import type {
   KdAgentDetails,
   KdAgentSummary,
@@ -115,6 +116,19 @@ export class KdClientService {
 
   getAgent(agentId: string): Observable<KdAgentDetails> {
     return this.runInvoke<KdAgentDetails>('GET', this.paths.getAgent(agentId));
+  }
+
+  /** Content-source ids from KD agents (for HylandIngest.CheckDigest). */
+  listIngestSourceIds(): Observable<string[]> {
+    return this.runNamed<KdAgentSummary[] | { agents: KdAgentSummary[] }>(
+      this.ops.getAllAgents,
+    ).pipe(
+      map((response) => {
+        const agents = Array.isArray(response) ? response : (response?.agents ?? []);
+        return collectIngestSourceIds(agents);
+      }),
+      catchError(() => of<string[]>([])),
+    );
   }
 
   listModels(): Observable<KdModelInfo[]> {

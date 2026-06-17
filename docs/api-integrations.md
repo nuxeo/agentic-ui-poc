@@ -1219,6 +1219,25 @@ action. The browser never calls Content Lake or Ingest APIs directly.
 | `error: true` / `errorCount > 0` | Show ingest completed with errors; verify `hxai.ingest.*` on Nuxeo   |
 | Bulk state not terminal          | Poll `/nuxeo/api/v1/bulk/{commandId}` until `COMPLETED` or `ABORTED` |
 
+**Check ingest status (document open backfill):**
+
+| Field           | Value                                               |
+| --------------- | --------------------------------------------------- |
+| **Method**      | `checkIngested`, `backfillIngestMarkerIfNeeded`     |
+| **HTTP Method** | `POST`                                              |
+| **Endpoint**    | `/nuxeo/api/v1/automation/HylandIngest.CheckDigest` |
+
+On document open, when the local ingest marker is missing, the document detail
+page calls `HylandIngest.CheckDigest` (CIC ingest connector). **`sourceId` is
+required** — if it is omitted and `nuxeo.hyland.cic.ingest.default.sourceId`
+is not set on Nuxeo, the operation returns HTTP 500. The UI resolves
+`sourceId` from KD agents (`sourceIds`, or `staticFilterExpression.field =
+'__sourceId__'`). Set `nuxeo.hyland.cic.ingest.default.sourceId` to the same
+value as `hxai.ingest.source.id` as a server-side fallback. A successful
+response looks like `{ "responseCode": 200, "response": { "exists": true } }`.
+When `exists` is true, `backfillIngestMarkerIfNeeded` writes the `dc:rights`
+marker so the UI shows **Already in Content Lake** without re-ingesting.
+
 <!--
 ## N. Title
 
