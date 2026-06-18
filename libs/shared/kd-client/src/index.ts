@@ -7,6 +7,28 @@ export {
   type KdUpstreamPaths,
 } from './lib/kd.config';
 export { KdClientService, KdDiscoveryError } from './lib/kd-client.service';
+export {
+  buildIndexedReferences,
+  enrichCitationsFromObjectReferences,
+  extractNuxeoDocumentId,
+  extractReferenceContent,
+  findReferenceByIndex,
+  findReferenceByKey,
+  findReferenceForCitation,
+  flattenObjectReferencesToCitations,
+  formatReferenceExcerpt,
+  formatReferenceLabel,
+  getMaxCitationIndex,
+  mergeCitationExcerpts,
+  referenceKey,
+  mergeObjectReferenceContent,
+  normalizeObjectReferenceEntry,
+  normalizeObjectReferences,
+  parseAnswerSegments,
+  referencesForObject,
+  type KdAnswerSegment,
+  type KdIndexedReference,
+} from './lib/kd-references.util';
 export type {
   KdAgentAccessRight,
   KdAgentDetails,
@@ -19,6 +41,8 @@ export type {
   KdGuardrail,
   KdGuardrailGroup,
   KdModelInfo,
+  KdObjectReference,
+  KdObjectReferenceEntry,
   KdQuestionHistoryItem,
   KdQuestionHistoryPage,
   KdQuestionRequest,

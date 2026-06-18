@@ -13,12 +13,16 @@ import { ActivatedRoute } from '@angular/router';
 import { Subscription, catchError, forkJoin, map, of, switchMap, timer } from 'rxjs';
 
 import { ContentLakeUploadComponent } from '../content-lake-upload/content-lake-upload';
+import { KdCitationDialogComponent } from '../kd-citation-dialog/kd-citation-dialog';
 import {
   KdClientService,
   KdDiscoveryError,
+  buildIndexedReferences,
+  parseAnswerSegments,
   type KdAgentDetails,
   type KdAgentSummary,
   type KdAnswerResponse,
+  type KdAnswerSegment,
   type KdFeedbackValue,
   type KdGuardrail,
   type KdModelInfo,
@@ -439,6 +443,46 @@ export class KnowledgeDiscoveryComponent {
       width: '520px',
       maxWidth: '95vw',
       autoFocus: 'dialog',
+    });
+  }
+
+  getAnswerSegments(answer: KdAnswerResponse): KdAnswerSegment[] {
+    const formatted = this.formatAnswerText(answer.answer);
+    const segments = parseAnswerSegments(formatted);
+    if (segments.some((segment) => segment.type === 'citation')) {
+      return segments;
+    }
+
+    const references = buildIndexedReferences(answer);
+    if (references.length === 0) {
+      return segments;
+    }
+
+    return [
+      ...segments,
+      { type: 'text', text: ' ' },
+      ...references.flatMap((reference, position) =>
+        position === 0
+          ? [{ type: 'citation' as const, index: reference.index }]
+          : [
+              { type: 'text' as const, text: ' ' },
+              { type: 'citation' as const, index: reference.index },
+            ],
+      ),
+    ];
+  }
+
+  openCitationDialog(answer: KdAnswerResponse, citationIndex: number): void {
+    this.dialog.open(KdCitationDialogComponent, {
+      width: 'min(96vw, 1180px)',
+      maxWidth: '96vw',
+      maxHeight: '92vh',
+      autoFocus: 'dialog',
+      panelClass: 'kd-citation-dialog-panel',
+      data: {
+        answer,
+        initialIndex: citationIndex,
+      },
     });
   }
 

@@ -11,6 +11,14 @@ import {
   type KdUpstreamPaths,
 } from './kd.config';
 import { collectIngestSourceIds } from './kd-ingest-source-ids';
+import {
+  extractReferenceContent,
+  enrichCitationsFromObjectReferences,
+  flattenObjectReferencesToCitations,
+  mergeCitationExcerpts,
+  mergeObjectReferenceContent,
+  normalizeObjectReferences,
+} from './kd-references.util';
 import type {
   KdAgentDetails,
   KdAgentSummary,
@@ -35,8 +43,6 @@ type NuxeoDocumentSummary = {
   properties?: Record<string, unknown>;
 };
 
-const MAX_VISIBLE_CITATIONS = 5;
-const MIN_RELATIVE_CITATION_SCORE = 0.1;
 const STRONG_CITATION_SCORE = 0.1;
 const INSUFFICIENT_ANSWER_TEXT = "I don't have enough information to answer this question.";
 
@@ -165,6 +171,7 @@ export class KdClientService {
 
   submitQuestion(request: KdQuestionRequest): Observable<KdQuestionSubmission> {
     return this.askQuestion(request).pipe(
+      switchMap((answer) => this.enrichAnswerFromQuestionEndpoint(answer)),
       switchMap((answer) => this.retryWithNormalizedQuestionWhenUseful(answer, request)),
       switchMap((answer) => this.enrichCitationTitles(answer)),
       map((answer) => {
@@ -339,6 +346,14 @@ export class KdClientService {
     const questionId =
       (answer as Partial<KdAnswerResponse>).questionId ??
       `kd-${request.agentId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const objectReferences = normalizeObjectReferences(
+      (answer as Partial<KdAnswerResponse>).objectReferences,
+    );
+    const citations = enrichCitationsFromObjectReferences(
+      this.normalizeCitations({ ...(answer as Partial<KdAnswerResponse>), objectReferences }),
+      objectReferences,
+    );
+
     return {
       questionId,
       agentId: (answer as Partial<KdAnswerResponse>).agentId ?? request.agentId,
@@ -346,8 +361,8 @@ export class KdClientService {
       question: (answer as Partial<KdAnswerResponse>).question ?? request.question,
       status: (answer as Partial<KdAnswerResponse>).status ?? 'Complete',
       answer: (answer as Partial<KdAnswerResponse>).answer ?? '',
-      citations: this.normalizeCitations(answer as Partial<KdAnswerResponse>),
-      objectReferences: (answer as Partial<KdAnswerResponse>).objectReferences,
+      citations,
+      objectReferences,
       feedback: (answer as Partial<KdAnswerResponse>).feedback ?? null,
       staticFilter: (answer as Partial<KdAnswerResponse>).staticFilter,
       dynamicFilter:
@@ -361,45 +376,10 @@ export class KdClientService {
       return answer.citations;
     }
 
-    const citationsByObjectId = new Map<string, KdCitation>();
-    for (const objectReference of answer.objectReferences ?? []) {
-      const citation = this.mapObjectReferenceToCitation(objectReference);
-      const existing = citationsByObjectId.get(citation.objectId);
-      if (!existing || this.citationScore(citation) > this.citationScore(existing)) {
-        citationsByObjectId.set(citation.objectId, citation);
-      }
-    }
-
-    return this.selectVisibleCitations([...citationsByObjectId.values()]);
-  }
-
-  private mapObjectReferenceToCitation(objectReference: KdObjectReference): KdCitation {
-    const bestReference = [...(objectReference.references ?? [])].sort((left, right) => {
-      const leftScore = left.rankScore ?? Number.NEGATIVE_INFINITY;
-      const rightScore = right.rankScore ?? Number.NEGATIVE_INFINITY;
-      return rightScore - leftScore;
-    })[0];
-
-    return {
-      objectId: objectReference.objectId,
-      referenceId: bestReference?.referenceId,
-      title: this.extractNuxeoDocumentId(objectReference.objectId) ?? objectReference.objectId,
-      score: bestReference?.rankScore,
-    };
-  }
-
-  private selectVisibleCitations(citations: KdCitation[]): KdCitation[] {
-    const sorted = [...citations].sort(
-      (left, right) => this.citationScore(right) - this.citationScore(left),
+    return flattenObjectReferencesToCitations(
+      answer.objectReferences,
+      (objectId) => this.extractNuxeoDocumentId(objectId) ?? objectId,
     );
-    const bestScore = this.citationScore(sorted[0]);
-    const significantCitations =
-      bestScore > 0
-        ? sorted.filter(
-            (citation) => this.citationScore(citation) >= bestScore * MIN_RELATIVE_CITATION_SCORE,
-          )
-        : sorted;
-    return significantCitations.slice(0, MAX_VISIBLE_CITATIONS);
   }
 
   private citationScore(citation: KdCitation | undefined): number {
@@ -446,12 +426,54 @@ export class KdClientService {
             return {
               ...citation,
               title: this.getDocumentDisplayTitle(document),
-              excerpt: document.path ?? citation.excerpt,
             };
           }),
         };
       }),
     );
+  }
+
+  /**
+   * Re-fetch the persisted answer from the QnA service when the connector
+   * returns a real question id. Some deployments include reference `content`
+   * on the GET answer payload even when the one-shot op omits it.
+   */
+  private enrichAnswerFromQuestionEndpoint(answer: KdAnswerResponse): Observable<KdAnswerResponse> {
+    if (!this.isPersistedQuestionId(answer.questionId)) {
+      return of(answer);
+    }
+
+    return this.runInvoke<Partial<KdAnswerResponse>>(
+      'GET',
+      this.paths.getQuestionAnswer(answer.questionId),
+    ).pipe(
+      map((full) => {
+        const objectReferences = mergeObjectReferenceContent(
+          answer.objectReferences,
+          normalizeObjectReferences(full?.objectReferences),
+        );
+        let citations = full?.citations?.length ? full.citations : answer.citations;
+        citations = mergeCitationExcerpts(answer.citations, citations);
+        if (!citations.length) {
+          citations = flattenObjectReferencesToCitations(
+            objectReferences,
+            (objectId) => this.extractNuxeoDocumentId(objectId) ?? objectId,
+          );
+        }
+        citations = enrichCitationsFromObjectReferences(citations, objectReferences);
+
+        return {
+          ...answer,
+          citations,
+          objectReferences,
+        };
+      }),
+      catchError(() => of(answer)),
+    );
+  }
+
+  private isPersistedQuestionId(questionId: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(questionId);
   }
 
   private getNuxeoDocumentSummary(documentId: string): Observable<NuxeoDocumentSummary> {

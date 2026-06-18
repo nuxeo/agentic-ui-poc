@@ -1,0 +1,113 @@
+<div class="kd-citation-dialog">
+  <header class="kd-citation-dialog__header">
+    <div class="kd-citation-dialog__header-copy">
+      <mat-icon class="kd-citation-dialog__brand" aria-hidden="true">auto_awesome</mat-icon>
+      <div class="kd-citation-dialog__header-text">
+        <p class="kd-citation-dialog__title">{{ headerLabel() }}</p>
+        @if (documentPath()) {
+          <p class="kd-citation-dialog__path">{{ documentPath() }}</p>
+        }
+      </div>
+    </div>
+    <button type="button" mat-icon-button (click)="close()" aria-label="Close citation viewer">
+      <mat-icon>close</mat-icon>
+    </button>
+  </header>
+
+  <div class="kd-citation-dialog__body">
+    <section class="kd-citation-dialog__viewer" aria-label="Source document preview">
+      @if (loadingDocument()) {
+        <div class="kd-citation-dialog__state">
+          <mat-spinner diameter="32" />
+          <p>Loading source document…</p>
+        </div>
+      } @else if (documentError()) {
+        <div class="kd-citation-dialog__state kd-citation-dialog__state--error">
+          <mat-icon>error_outline</mat-icon>
+          <p>{{ documentError() }}</p>
+        </div>
+      } @else {
+        @switch (previewMode()) {
+          @case ('pdf') {
+            @if (previewUrl(); as url) {
+              <iframe
+                [src]="url"
+                class="kd-citation-dialog__frame"
+                title="Document preview"
+              ></iframe>
+            }
+          }
+          @case ('image') {
+            @if (previewUrl(); as url) {
+              <img [src]="url" [alt]="headerLabel()" class="kd-citation-dialog__image" />
+            }
+          }
+          @case ('text') {
+            @if (textPreview(); as html) {
+              <div class="kd-citation-dialog__text" [innerHTML]="html"></div>
+            }
+          }
+          @default {
+            <div class="kd-citation-dialog__state">
+              <mat-icon>description</mat-icon>
+              <p>Preview is not available for this file type.</p>
+              @if (mimeType()) {
+                <span class="kd-citation-dialog__mime">{{ mimeType() }}</span>
+              }
+            </div>
+          }
+        }
+      }
+    </section>
+
+    <aside class="kd-citation-dialog__references" aria-label="Citation references">
+      @if (activeReference(); as reference) {
+        <article class="kd-citation-dialog__reference kd-citation-dialog__reference--active">
+          <header class="kd-citation-dialog__reference-header">
+            <span class="kd-citation-dialog__reference-id">{{ referenceLabel(reference) }}</span>
+            <span class="kd-citation-dialog__reference-meta">
+              @if (reference.index) {
+                <span>[{{ reference.index }}]</span>
+              }
+              @if (reference.pageNumber !== undefined) {
+                <span>Page {{ reference.pageNumber }}</span>
+              }
+            </span>
+          </header>
+          <p class="kd-citation-dialog__reference-content">
+            {{ formatExcerpt(reference.content) }}
+          </p>
+        </article>
+
+        @if (documentReferences().length > 1) {
+          <div class="kd-citation-dialog__reference-list">
+            @for (item of documentReferences(); track referenceTrackKey(item)) {
+              @if (referenceTrackKey(item) !== referenceTrackKey(reference)) {
+                <button
+                  type="button"
+                  class="kd-citation-dialog__reference kd-citation-dialog__reference--link"
+                  (click)="selectReference(referenceTrackKey(item))"
+                >
+                  <header class="kd-citation-dialog__reference-header">
+                    <span class="kd-citation-dialog__reference-id">{{ referenceLabel(item) }}</span>
+                    <span class="kd-citation-dialog__reference-meta">
+                      @if (item.index) {
+                        <span>[{{ item.index }}]</span>
+                      }
+                      @if (item.pageNumber !== undefined) {
+                        <span>Page {{ item.pageNumber }}</span>
+                      }
+                    </span>
+                  </header>
+                  <p class="kd-citation-dialog__reference-content">
+                    {{ formatExcerpt(item.content) }}
+                  </p>
+                </button>
+              }
+            }
+          </div>
+        }
+      }
+    </aside>
+  </div>
+</div>

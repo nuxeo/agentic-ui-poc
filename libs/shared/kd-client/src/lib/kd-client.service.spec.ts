@@ -12,6 +12,7 @@ import {
   KD_UPSTREAM_PATHS,
 } from './kd.config';
 import { KdClientService } from './kd-client.service';
+import { buildIndexedReferences } from './kd-references.util';
 
 function envelope<T>(response: T, responseCode = 200, responseMessage = 'OK'): unknown {
   return { response, responseCode, responseMessage };
@@ -204,10 +205,82 @@ describe('KdClientService', () => {
         objectId: 'source-id__document-id',
         referenceId: 'chunk-1',
         title: 'kd-sherlock-context.png',
-        excerpt: '/default-domain/workspaces/Narasimha/kd-sherlock-context.png',
+        excerpt: undefined,
         score: 0.42,
       },
+      {
+        objectId: 'source-id__document-id',
+        referenceId: 'chunk-2',
+        title: 'kd-sherlock-context.png',
+        excerpt: undefined,
+        score: 0.21,
+      },
+      {
+        objectId: 'source-id__weak-document-id',
+        referenceId: 'weak-chunk-1',
+        title: 'weak-document-id',
+        excerpt: undefined,
+        score: 0.01,
+      },
     ]);
+  });
+
+  it('merges reference content from GET answer when the connector returns a persisted question id', async () => {
+    const questionId = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
+    const submission$ = firstValueFrom(
+      service.submitQuestion({ agentId: 'agent-1', question: 'Who is Holmes?' }),
+    );
+    const askReq = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer);
+    askReq.flush(
+      envelope({
+        questionId,
+        agentId: 'agent-1',
+        question: 'Who is Holmes?',
+        answer: 'Holmes is a detective.',
+        objectReferences: [
+          {
+            objectId: 'source-id__document-id',
+            references: [{ referenceId: 'chunk-1', rankScore: 0.42 }],
+          },
+        ],
+      }),
+    );
+
+    const answerReq = expectAutomation(DEFAULT_KD_CIC_OPERATIONS.invoke);
+    expect(answerReq.request.body).toEqual({
+      params: {
+        httpMethod: 'GET',
+        endpoint: `/qna/questions/${questionId}/answer`,
+      },
+    });
+    answerReq.flush(
+      envelope({
+        objectReferences: [
+          {
+            objectId: 'source-id__document-id',
+            references: [
+              {
+                referenceId: 'chunk-1',
+                rankScore: 0.42,
+                content: 'He was a consulting detective.',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const documentReq = httpMock.expectOne('/nuxeo/api/v1/id/document-id');
+    documentReq.flush({
+      uid: 'document-id',
+      title: 'Sherlock',
+      path: '/default-domain/workspaces/demo/sherlock.png',
+      properties: { 'file:content': { name: 'sherlock.png' } },
+    });
+
+    await submission$;
+    const answer = await firstValueFrom(service.getAnswer(questionId));
+    expect(buildIndexedReferences(answer)[0]?.content).toBe('He was a consulting detective.');
   });
 
   it('retries a normalized question when KD returns insufficient answer with a strong citation', async () => {

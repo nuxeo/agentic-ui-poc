@@ -77,13 +77,18 @@ export interface KdCitation {
   score?: number;
 }
 
+export interface KdObjectReferenceEntry {
+  referenceId?: string;
+  rank?: number;
+  rankScore?: number;
+  /** Quoted passage returned by the Discovery API for this reference. */
+  content?: string;
+  pageNumber?: number;
+}
+
 export interface KdObjectReference {
   objectId: string;
-  references: {
-    referenceId?: string;
-    rank?: number;
-    rankScore?: number;
-  }[];
+  references: KdObjectReferenceEntry[];
 }
 
 export interface KdAnswerResponse {
