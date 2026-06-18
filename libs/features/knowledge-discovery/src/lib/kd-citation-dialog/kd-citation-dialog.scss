@@ -79,7 +79,7 @@
   min-height: 520px;
   border: 0;
   object-fit: contain;
-  background: #fff;
+  background: var(--mat-sys-surface, #fff);
 }
 
 .kd-citation-dialog__text {
@@ -89,11 +89,11 @@
   line-height: 1.55;
   font-size: 13px;
   color: var(--mat-sys-on-surface, #1a1c1e);
-  background: #fff;
+  background: var(--mat-sys-surface, #fff);
 }
 
 .kd-citation-dialog__highlight {
-  background: #fff59d;
+  background: var(--mat-sys-tertiary-fixed-dim, #fff59d);
   padding: 0 2px;
 }
 
@@ -140,10 +140,10 @@
 }
 
 .kd-citation-dialog__reference {
-  border: 1px solid #f0d27a;
+  border: 1px solid var(--mat-sys-tertiary, #f0d27a);
   border-radius: 8px;
   padding: 12px;
-  background: #fff9e6;
+  background: var(--mat-sys-tertiary-container, #fff9e6);
 }
 
 .kd-citation-dialog__reference--link {
@@ -155,7 +155,7 @@
   transition: background-color 0.15s ease;
 
   &:hover {
-    background: #fff4cc;
+    background: var(--mat-sys-tertiary-fixed-dim, #fff4cc);
   }
 }
 
