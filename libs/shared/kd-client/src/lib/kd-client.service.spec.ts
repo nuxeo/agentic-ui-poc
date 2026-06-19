@@ -198,6 +198,9 @@ describe('KdClientService', () => {
       },
     });
 
+    const weakDocumentReq = httpMock.expectOne('/nuxeo/api/v1/id/weak-document-id');
+    weakDocumentReq.flush('', { status: 404, statusText: 'Not Found' });
+
     await submission$;
     const answer = await firstValueFrom(service.getAnswer('qid-citations'));
     expect(answer.citations).toEqual([

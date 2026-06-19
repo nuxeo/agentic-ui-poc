@@ -1,4 +1,3 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap, throwError, timer } from 'rxjs';
 
@@ -32,7 +31,6 @@ const TERMINAL_BULK_STATES = new Set(['COMPLETED', 'ABORTED', 'COMPLETED_WITH_ER
 @Injectable({ providedIn: 'root' })
 export class ContentLakeIngestService {
   private readonly api = inject(NuxeoApiBase);
-  private readonly http = inject(HttpClient);
   private readonly browseService = inject(BrowseService);
 
   startIngest(documentUids: string[]): Observable<ContentLakeIngestCommand> {
@@ -59,10 +57,8 @@ export class ContentLakeIngestService {
   }
 
   getStatus(commandId: string): Observable<ContentLakeIngestStatus> {
-    return this.http
-      .get<
-        Record<string, unknown>
-      >(this.api.apiUrl(`/nuxeo/api/v1/bulk/${encodeURIComponent(commandId)}`))
+    return this.api
+      .get<Record<string, unknown>>(`/nuxeo/api/v1/bulk/${encodeURIComponent(commandId)}`)
       .pipe(map((body) => this.normalizeStatus(commandId, body)));
   }
 

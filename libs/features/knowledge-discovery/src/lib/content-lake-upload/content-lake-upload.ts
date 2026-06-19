@@ -106,6 +106,7 @@ export class ContentLakeUploadComponent {
   private readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
   private readonly folderAutocompleteTrigger = viewChild(MatAutocompleteTrigger);
   private folderSuggestionsRequestId = 0;
+  private duplicateCheckRequestId = 0;
   /** Ignore one input event matching this value (autocomplete sync after selection). */
   private ignorePathInputValue: string | null = null;
 
@@ -421,11 +422,14 @@ export class ContentLakeUploadComponent {
   private refreshDuplicateCheck(): void {
     const files = this.selectedFiles();
     if (files.length === 0) {
+      this.duplicateCheckRequestId += 1;
       this.duplicateMatches.set([]);
       this.checkingDuplicates.set(false);
       return;
     }
 
+    const requestId = this.duplicateCheckRequestId + 1;
+    this.duplicateCheckRequestId = requestId;
     this.checkingDuplicates.set(true);
     this.kdClient
       .listIngestSourceIds()
@@ -435,10 +439,16 @@ export class ContentLakeUploadComponent {
       )
       .subscribe({
         next: (matches) => {
+          if (requestId !== this.duplicateCheckRequestId) {
+            return;
+          }
           this.duplicateMatches.set(matches);
           this.checkingDuplicates.set(false);
         },
         error: () => {
+          if (requestId !== this.duplicateCheckRequestId) {
+            return;
+          }
           this.duplicateMatches.set([]);
           this.checkingDuplicates.set(false);
         },

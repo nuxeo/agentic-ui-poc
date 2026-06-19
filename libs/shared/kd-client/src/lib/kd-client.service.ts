@@ -12,7 +12,6 @@ import {
 } from './kd.config';
 import { collectIngestSourceIds } from './kd-ingest-source-ids';
 import {
-  extractReferenceContent,
   enrichCitationsFromObjectReferences,
   flattenObjectReferencesToCitations,
   mergeCitationExcerpts,

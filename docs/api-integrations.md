@@ -1235,8 +1235,10 @@ is not set on Nuxeo, the operation returns HTTP 500. The UI resolves
 '__sourceId__'`). Set `nuxeo.hyland.cic.ingest.default.sourceId` to the same
 value as `hxai.ingest.source.id` as a server-side fallback. A successful
 response looks like `{ "responseCode": 200, "response": { "exists": true } }`.
-When `exists` is true, `backfillIngestMarkerIfNeeded` writes the `dc:rights`
-marker so the UI shows **Already in Content Lake** without re-ingesting.
+When `exists` is true, `backfillIngestMarkerIfNeeded` writes the ingest marker
+so the UI shows **Already in Content Lake** without re-ingesting. The marker
+prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
+`dc:source` is already occupied — PDF metadata often populates `dc:rights`.
 
 <!--
 ## N. Title
