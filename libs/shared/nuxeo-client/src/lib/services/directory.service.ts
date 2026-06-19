@@ -3,7 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, map, shareReplay, expand, reduce, EMPTY } from 'rxjs';
 
 import { NuxeoApiBase } from './nuxeo-api-base';
-import { DirectoryEntry, L10nDirectoryResponse, L10nDirectoryEntry } from '../models/directory.model';
+import {
+  DirectoryEntry,
+  L10nDirectoryResponse,
+  L10nDirectoryEntry,
+} from '../models/directory.model';
 
 @Injectable({ providedIn: 'root' })
 export class DirectoryService {
@@ -32,9 +36,7 @@ export class DirectoryService {
       )
       .pipe(
         map((entries) =>
-          entries
-            .filter((e) => !e.obsolete)
-            .sort((a, b) => a.ordering - b.ordering),
+          entries.filter((e) => !e.obsolete).sort((a, b) => a.ordering - b.ordering),
         ),
         shareReplay({ bufferSize: 1, refCount: false }),
       );
@@ -49,13 +51,27 @@ export class DirectoryService {
    * entries (parent === '').
    */
   getL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]> {
-    const cached = this.l10nCache.get(directoryName);
+    return this.fetchL10nEntries(directoryName, 'top-level');
+  }
+
+  /**
+   * Fetches every entry from an l10n directory, including children, for
+   * hierarchical pickers (e.g. grouped coverage / subjects dropdowns).
+   */
+  getAllL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]> {
+    return this.fetchL10nEntries(directoryName, 'all');
+  }
+
+  private fetchL10nEntries(
+    directoryName: string,
+    scope: 'top-level' | 'all',
+  ): Observable<L10nDirectoryEntry[]> {
+    const cacheKey = `${directoryName}:${scope}`;
+    const cached = this.l10nCache.get(cacheKey);
     if (cached) return cached;
 
     const fetchPage = (pageIndex: number) => {
-      const params = new HttpParams()
-        .set('pageSize', 50)
-        .set('currentPageIndex', pageIndex);
+      const params = new HttpParams().set('pageSize', 50).set('currentPageIndex', pageIndex);
       return this.api.get<L10nDirectoryResponse>(
         `/nuxeo/api/v1/directory/${directoryName}`,
         params,
@@ -63,16 +79,17 @@ export class DirectoryService {
     };
 
     const result$ = fetchPage(0).pipe(
-      expand((res) =>
-        res.isNextPageAvailable ? fetchPage(res.currentPageIndex + 1) : EMPTY,
-      ),
+      expand((res) => (res.isNextPageAvailable ? fetchPage(res.currentPageIndex + 1) : EMPTY)),
       reduce<L10nDirectoryResponse, L10nDirectoryEntry[]>(
         (acc, res) => acc.concat(res.entries),
         [],
       ),
       map((entries) =>
         entries
-          .filter((e) => !e.properties.obsolete && !e.properties.parent)
+          .filter((e) => {
+            if (e.properties.obsolete) return false;
+            return scope === 'all' || !e.properties.parent;
+          })
           .sort((a, b) =>
             (a.properties.label_en ?? a.id).localeCompare(b.properties.label_en ?? b.id),
           ),
@@ -80,7 +97,7 @@ export class DirectoryService {
       shareReplay({ bufferSize: 1, refCount: false }),
     );
 
-    this.l10nCache.set(directoryName, result$);
+    this.l10nCache.set(cacheKey, result$);
     return result$;
   }
 

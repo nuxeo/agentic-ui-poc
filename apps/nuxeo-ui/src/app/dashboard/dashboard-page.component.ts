@@ -158,8 +158,10 @@ export class DashboardPageComponent {
     void import('@agentic-ui/feature-browse').then((m) => {
       this.dialog
         .open(m.CreateImportDialogComponent, {
-          width: '900px',
+          width: '960px',
+          height: '680px',
           maxWidth: '95vw',
+          maxHeight: '95vh',
           data: {},
         })
         .afterClosed()

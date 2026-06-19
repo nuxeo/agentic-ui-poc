@@ -1,35 +1,39 @@
 <div
   class="create-import-root"
-  [class.wide]="view() === 'templateBrowse'"
-  [class.landing]="view() === 'landing'"
-  [class.upload-view]="view() === 'uploadScreen'"
+  [class.form-view]="view() === 'templateForm'"
+  [class.success-view]="view() === 'success'"
 >
-  @if (view() === 'landing') {
-    <div mat-dialog-title class="dialog-title-stack">
-      <h2 class="dialog-heading">Create or upload</h2>
-      <p class="dialog-subtitle">Which would you like to do?</p>
+  @if (view() !== 'success') {
+    <div class="tab-header" role="tablist" aria-label="Create or import">
+      <button
+        type="button"
+        role="tab"
+        class="tab-btn"
+        [class.tab-btn--active]="activeTab() === 'create'"
+        [attr.aria-selected]="activeTab() === 'create'"
+        (click)="setActiveTab('create')"
+      >
+        Create
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="tab-btn"
+        [class.tab-btn--active]="activeTab() === 'import'"
+        [attr.aria-selected]="activeTab() === 'import'"
+        (click)="setActiveTab('import')"
+      >
+        Import
+      </button>
     </div>
-  } @else if (view() === 'templateBrowse') {
-    <h2 mat-dialog-title class="dialog-heading">Create file from template</h2>
-  } @else if (view() === 'uploadScreen') {
-    <div mat-dialog-title class="dialog-title-stack upload-header">
-      <h2 class="dialog-heading">Upload file(s)</h2>
-      <p class="upload-lead">
-        Upload files from your computer to a target destination folder inside Nuxeo.
-      </p>
-    </div>
-  } @else if (view() === 'csv') {
-    <h2 mat-dialog-title class="dialog-heading">Import from CSV</h2>
-  } @else if (view() === 'templateForm') {
-    <h2 mat-dialog-title class="dialog-heading">New document</h2>
-  } @else if (view() === 'success') {
+  } @else {
     <h2 mat-dialog-title class="dialog-heading">Done</h2>
   }
 
   <mat-dialog-content
     class="dialog-body"
-    [class.dialog-body--landing]="view() === 'landing'"
-    [class.dialog-body--upload]="view() === 'uploadScreen'"
+    [class.dialog-body--main]="view() === 'main'"
+    [class.dialog-body--form]="view() === 'templateForm'"
   >
     @if (resolvingPath()) {
       <div class="state-row">
@@ -51,224 +55,92 @@
       }
 
       @switch (view()) {
-        @case ('landing') {
-          <div class="landing-panel">
-            <div
-              class="choice-grid"
-              role="radiogroup"
-              aria-label="Create or upload option"
-              tabindex="-1"
-              (keydown)="onChoiceGridKeydown($event)"
-            >
-              <button
-                #choiceRadio
-                type="button"
-                class="choice-card"
-                role="radio"
-                [attr.aria-checked]="isModeSelected('template')"
-                [attr.tabindex]="getChoiceTabindex('template')"
-                [class.choice-card--selected]="isModeSelected('template')"
-                (click)="selectLandingMode('template')"
-              >
-                <span class="choice-icon-stack" aria-hidden="true">
-                  <span class="choice-icon-doc">
-                    <mat-icon>description</mat-icon>
-                  </span>
-                  <span class="choice-icon-badge choice-icon-badge--search">
-                    <mat-icon>search</mat-icon>
-                  </span>
-                </span>
-                <span class="choice-title">Create file from template</span>
-                <span class="choice-desc">Create a new file using a template</span>
-              </button>
-              <button
-                #choiceRadio
-                type="button"
-                class="choice-card"
-                role="radio"
-                [attr.aria-checked]="isModeSelected('upload')"
-                [attr.tabindex]="getChoiceTabindex('upload')"
-                [class.choice-card--selected]="isModeSelected('upload')"
-                (click)="selectLandingMode('upload')"
-              >
-                <span class="choice-icon-stack" aria-hidden="true">
-                  <span class="choice-icon-doc">
-                    <mat-icon>description</mat-icon>
-                  </span>
-                  <span class="choice-icon-badge choice-icon-badge--upload">
-                    <mat-icon>arrow_upward</mat-icon>
-                  </span>
-                </span>
-                <span class="choice-title">Upload from computer</span>
-                <span class="choice-desc">Drop a file from your computer here</span>
-              </button>
-              <button
-                #choiceRadio
-                type="button"
-                class="choice-card"
-                role="radio"
-                [attr.aria-checked]="isModeSelected('csv')"
-                [attr.tabindex]="getChoiceTabindex('csv')"
-                [class.choice-card--selected]="isModeSelected('csv')"
-                (click)="selectLandingMode('csv')"
-              >
-                <span class="choice-icon-stack" aria-hidden="true">
-                  <span class="choice-icon-doc">
-                    <mat-icon>description</mat-icon>
-                  </span>
-                  <span class="choice-icon-badge choice-icon-badge--csv">
-                    <mat-icon>table_chart</mat-icon>
-                  </span>
-                </span>
-                <span class="choice-title">Import from CSV</span>
-                <span class="choice-desc"
-                  >Import rows from a CSV file (metadata and structure)</span
-                >
-              </button>
-            </div>
-          </div>
-        }
-        @case ('templateBrowse') {
-          <div class="template-toolbar">
-            <div class="template-filters">
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                <mat-label>Filter</mat-label>
-                <mat-select [ngModel]="filterA()" (ngModelChange)="filterA.set($event)">
-                  <mat-option value="">All</mat-option>
-                  <mat-option value="claims">Claims</mat-option>
-                  <mat-option value="risk">Risk</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                <mat-label>Filter</mat-label>
-                <mat-select [ngModel]="filterB()" (ngModelChange)="filterB.set($event)">
-                  <mat-option value="">All</mat-option>
-                  <mat-option value="pnc">P&amp;C</mat-option>
-                  <mat-option value="life">Life</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-                <mat-label>Filter</mat-label>
-                <mat-select [ngModel]="filterC()" (ngModelChange)="filterC.set($event)">
-                  <mat-option value="">All</mat-option>
-                  <mat-option value="auto">Auto</mat-option>
-                  <mat-option value="property">Property</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="template-search">
-              <mat-label>Search Templates</mat-label>
+        @case ('main') {
+          <div class="location-bar" [class.location-bar--restricted]="locationRestricted()">
+            <span class="location-label">Location</span>
+            <div class="location-input-wrap">
               <input
-                matInput
-                [ngModel]="templateSearch()"
-                (ngModelChange)="templateSearch.set($event)"
-                placeholder="Search"
+                type="text"
+                class="location-input"
+                [(ngModel)]="locationInput"
+                aria-label="Location"
+                [disabled]="busy()"
+                (focus)="onLocationFocus()"
+                (input)="onLocationInput()"
+                (blur)="onLocationBlur()"
+                (keydown)="onLocationKeydown($event)"
               />
-              <mat-icon matSuffix>search</mat-icon>
-            </mat-form-field>
-          </div>
-
-          <div class="template-card-grid">
-            @for (t of pagedTemplates(); track t.id) {
-              <div class="biz-template-card">
-                <mat-icon class="biz-template-icon">{{ t.icon }}</mat-icon>
-                <span class="biz-template-title">{{ t.label }}</span>
-                <p class="biz-template-desc">{{ t.description }}</p>
-                <button type="button" class="biz-template-cta" (click)="startTemplateFromCard(t)">
-                  Get Started
-                </button>
-              </div>
+              @if (locationDropdownOpen()) {
+                @if (loadingLocationSuggestions()) {
+                  <div class="location-dropdown location-dropdown--loading">
+                    <mat-spinner diameter="20" />
+                    <span>Loading folders…</span>
+                  </div>
+                } @else if (locationSuggestions().length > 0) {
+                  <ul class="location-dropdown" role="listbox" aria-label="Available folders">
+                    @for (s of locationSuggestions(); track s.path; let i = $index) {
+                      <li role="presentation">
+                        <button
+                          type="button"
+                          class="location-option"
+                          role="option"
+                          [attr.aria-selected]="locationHighlightIndex() === i"
+                          [class.location-option--active]="locationHighlightIndex() === i"
+                          (mousedown)="$event.preventDefault()"
+                          (click)="selectLocationSuggestion(s.path)"
+                        >
+                          {{ s.title || s.path }}
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+              }
+            </div>
+            @if (locationRestricted()) {
+              <p class="location-hint" role="alert">
+                <span class="location-hint-bar" aria-hidden="true"></span>
+                {{ restrictedLocationMessage }}
+              </p>
             }
           </div>
 
-          <div class="template-pager">
-            <button
-              type="button"
-              mat-icon-button
-              [disabled]="templatePageIndex() <= 0"
-              (click)="prevTemplatePage()"
-              aria-label="Previous page"
-            >
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-            <span class="template-pager-label"
-              >{{ templatePageIndex() + 1 }} / {{ templatePageCount() }}</span
-            >
-            <button
-              type="button"
-              mat-icon-button
-              [disabled]="templatePageIndex() >= templatePageCount() - 1"
-              (click)="nextTemplatePage()"
-              aria-label="Next page"
-            >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </div>
-        }
-        @case ('templateForm') {
-          @if (selectedTemplate(); as t) {
-            <p class="template-form-lead">
-              Template: <strong>{{ t.label }}</strong> ({{ t.type }})
-            </p>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Title</mat-label>
-              <input matInput [(ngModel)]="docTitle" />
-            </mat-form-field>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Document name (optional)</mat-label>
-              <input matInput [(ngModel)]="docName" placeholder="Uses title if empty" />
-            </mat-form-field>
-          }
-        }
-        @case ('uploadScreen') {
-          <div class="upload-step">
-            <div class="destination-block">
-              <div class="destination-row">
-                <mat-form-field
-                  appearance="outline"
-                  class="upload-destination destination-field-grow"
-                >
-                  <mat-label>Choose a destination *</mat-label>
-                  <input
-                    matInput
-                    readonly
-                    [value]="destinationBreadcrumb()"
-                    (click)="openFolderPicker()"
-                    class="destination-input"
-                  />
-                </mat-form-field>
-                <button
-                  mat-stroked-button
-                  type="button"
-                  class="destination-change-btn"
-                  (click)="openFolderPicker()"
-                >
-                  <mat-icon>folder_open</mat-icon>
-                  Change
-                </button>
-              </div>
-              <p class="destination-hint">
-                Path is loaded from Nuxeo. Click the field or Change to pick another folder.
-              </p>
-            </div>
-
-            <div class="upload-section-head">
-              <h3 class="upload-section-title">File upload</h3>
-              <div class="classify-pill">
-                <mat-slide-toggle
-                  class="classify-toggle"
-                  [(ngModel)]="autoClassifyOnUpload"
-                  color="primary"
-                >
-                  Automatically classify on upload
-                </mat-slide-toggle>
-                <mat-icon class="sparkle-icon" aria-hidden="true">auto_awesome</mat-icon>
-              </div>
-            </div>
-
+          @if (activeTab() === 'create') {
+            @if (!locationRestricted()) {
+              @if (loadingContext()) {
+                <div class="state-row state-row--compact">
+                  <mat-spinner diameter="24" />
+                  <span>Loading document types…</span>
+                </div>
+              } @else if (typesLoadError()) {
+                <p class="error-text types-error">{{ typesLoadError() }}</p>
+              } @else if (creatableTypes().length === 0) {
+                <p class="empty-hint">
+                  No document types can be created at this location. Navigate to a workspace folder
+                  to create content.
+                </p>
+              } @else {
+                <div class="doctype-grid" role="list">
+                  @for (dt of creatableTypes(); track dt.type) {
+                    <button
+                      type="button"
+                      class="doctype-tile"
+                      role="listitem"
+                      [disabled]="busy() || locationRestricted()"
+                      (click)="startCreateFromType(dt)"
+                    >
+                      <mat-icon class="doctype-icon" aria-hidden="true">{{ dt.icon }}</mat-icon>
+                      <span class="doctype-label">{{ dt.label }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            }
+          } @else {
             <div
               class="dropzone"
               [class.dropzone--active]="dragOverUpload()"
+              [class.dropzone--disabled]="locationRestricted()"
               (dragover)="onUploadDragOver($event)"
               (dragleave)="onUploadDragLeave($event)"
               (drop)="onUploadDrop($event)"
@@ -278,19 +150,19 @@
                 type="file"
                 multiple
                 (change)="onUploadInputChange($event)"
-                [disabled]="busy()"
+                [disabled]="busy() || locationRestricted()"
               />
-              <button type="button" class="dropzone-inner" (click)="fileInput.click()">
-                <mat-icon class="dropzone-upload-icon">cloud_upload</mat-icon>
-                <span class="dropzone-primary">Drag &amp; drop files here</span>
-                <span class="dropzone-browse">or <span class="browse-link">Browse</span></span>
+              <button
+                type="button"
+                class="dropzone-inner"
+                [disabled]="locationRestricted()"
+                (click)="fileInput.click()"
+              >
+                <span class="dropzone-text"
+                  >Drag and drop, or click to select files to upload.</span
+                >
               </button>
             </div>
-            <p class="file-types-hint">
-              <mat-icon class="file-types-icon" aria-hidden="true">info</mat-icon>
-              Nuxeo accepts common types (PDF, Office, images, etc.) per server configuration.
-              Restrictions are enforced by the repository, not this dialog.
-            </p>
 
             @if (uploadFiles().length > 0) {
               <ul class="file-list">
@@ -310,60 +182,274 @@
                 }
               </ul>
             }
-          </div>
+          }
         }
-        @case ('csv') {
-          <p class="hint">
-            Headers must include <code>name</code> and <code>type</code>. Use
-            <code>parent/child</code> in <code>name</code> for a tree. Rows with
-            <code>file:content</code> are skipped (use Upload for binaries).
-          </p>
-          <label class="csv-pick">
-            <input type="file" accept=".csv,text/csv" (change)="onCsvInputChange($event)" />
-            <span>{{ csvFile()?.name ?? 'Choose CSV file…' }}</span>
-          </label>
+        @case ('templateForm') {
+          @if (selectedDocType(); as dt) {
+            <div class="type-form-header">
+              <mat-icon class="type-form-icon" aria-hidden="true">{{ dt.icon }}</mat-icon>
+              <span class="type-form-title">New {{ dt.label }}</span>
+            </div>
+
+            <div class="create-form">
+              <div
+                class="location-bar location-bar--form"
+                [class.location-bar--restricted]="locationRestricted()"
+              >
+                <span class="location-label">Location</span>
+                <div class="location-input-wrap">
+                  <input
+                    type="text"
+                    class="location-input"
+                    [(ngModel)]="locationInput"
+                    aria-label="Location"
+                    [disabled]="busy()"
+                    (focus)="onLocationFocus()"
+                    (input)="onLocationInput()"
+                    (blur)="onLocationBlur()"
+                    (keydown)="onLocationKeydown($event)"
+                  />
+                  @if (locationDropdownOpen()) {
+                    @if (loadingLocationSuggestions()) {
+                      <div class="location-dropdown location-dropdown--loading">
+                        <mat-spinner diameter="20" />
+                        <span>Loading folders…</span>
+                      </div>
+                    } @else if (locationSuggestions().length > 0) {
+                      <ul class="location-dropdown" role="listbox" aria-label="Available folders">
+                        @for (s of locationSuggestions(); track s.path; let i = $index) {
+                          <li role="presentation">
+                            <button
+                              type="button"
+                              class="location-option"
+                              role="option"
+                              [attr.aria-selected]="locationHighlightIndex() === i"
+                              [class.location-option--active]="locationHighlightIndex() === i"
+                              (mousedown)="$event.preventDefault()"
+                              (click)="selectLocationSuggestion(s.path)"
+                            >
+                              {{ s.title || s.path }}
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                    }
+                  }
+                </div>
+                @if (locationRestricted()) {
+                  <p class="location-hint" role="alert">
+                    <span class="location-hint-bar" aria-hidden="true"></span>
+                    {{ restrictedLocationMessage }}
+                  </p>
+                }
+              </div>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                <mat-label>Title</mat-label>
+                <input matInput [(ngModel)]="docTitle" required />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                <mat-label>Description</mat-label>
+                <input matInput [(ngModel)]="description" />
+              </mat-form-field>
+
+              @if (hasContentField()) {
+                <div class="field-label">Content</div>
+                <div
+                  class="content-dropzone"
+                  [class.content-dropzone--active]="dragOverContent()"
+                  [class.content-dropzone--filled]="mainFile()"
+                  (dragover)="onContentDragOver($event)"
+                  (dragleave)="onContentDragLeave($event)"
+                  (drop)="onContentDrop($event)"
+                >
+                  <input
+                    #mainFileInput
+                    type="file"
+                    (change)="onMainFileInputChange($event)"
+                    [disabled]="busy()"
+                  />
+                  @if (mainFile(); as file) {
+                    <div class="content-file-row">
+                      <span class="content-file-name">{{ file.name }}</span>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        aria-label="Remove file"
+                        [disabled]="busy()"
+                        (click)="clearMainFile()"
+                      >
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <button
+                      type="button"
+                      class="content-upload-btn"
+                      (click)="mainFileInput.click()"
+                    >
+                      Upload main file
+                    </button>
+                  }
+                </div>
+              }
+
+              @if (isNoteType()) {
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                  <mat-label>Format</mat-label>
+                  <mat-select [(ngModel)]="noteFormat">
+                    @for (opt of noteFormatOptions; track opt.value) {
+                      <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              }
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                <mat-label>Nature</mat-label>
+                <mat-select
+                  [(ngModel)]="nature"
+                  panelClass="vocab-select-panel"
+                  (openedChange)="onNaturePanelOpen($event)"
+                >
+                  <div class="vocab-panel__search">
+                    <input
+                      type="text"
+                      placeholder="Search…"
+                      [(ngModel)]="naturePanelSearch"
+                      [ngModelOptions]="{ standalone: true }"
+                      (click)="$event.stopPropagation()"
+                      (keydown)="$event.stopPropagation()"
+                    />
+                  </div>
+                  <div class="vocab-panel__list">
+                    @for (entry of filteredNatureOptions(); track entry.id) {
+                      <mat-option [value]="entry.id">{{ entry.displayLabel }}</mat-option>
+                    }
+                  </div>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field
+                appearance="outline"
+                subscriptSizing="dynamic"
+                class="full-width vocab-field subjects-field"
+              >
+                <mat-label>Subjects</mat-label>
+                <mat-select
+                  multiple
+                  [(ngModel)]="subjects"
+                  panelClass="vocab-select-panel vocab-grouped-select-panel subjects-select-panel"
+                  (openedChange)="onSubjectsPanelOpen($event)"
+                >
+                  <mat-select-trigger>
+                    <mat-chip-set class="subjects-trigger-chips">
+                      @for (id of subjects; track id) {
+                        <mat-chip (removed)="removeSubject(id)">
+                          {{ subjectPillLabel(id) }}
+                          <button
+                            type="button"
+                            matChipRemove
+                            [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                            (click)="$event.stopPropagation()"
+                          >
+                            <mat-icon>cancel</mat-icon>
+                          </button>
+                        </mat-chip>
+                      }
+                    </mat-chip-set>
+                  </mat-select-trigger>
+                  <div class="vocab-panel__search">
+                    <input
+                      type="text"
+                      placeholder="Search…"
+                      [(ngModel)]="subjectsPanelSearch"
+                      [ngModelOptions]="{ standalone: true }"
+                      (click)="$event.stopPropagation()"
+                      (keydown)="$event.stopPropagation()"
+                    />
+                  </div>
+                  <div class="vocab-panel__list">
+                    @for (group of groupedSubjectOptions(); track group.parentLabel) {
+                      <mat-optgroup [label]="group.parentLabel">
+                        @for (entry of group.entries; track entry.id) {
+                          <mat-option [value]="entry.id">{{
+                            entry.properties.label_en ?? entry.id
+                          }}</mat-option>
+                        }
+                      </mat-optgroup>
+                    }
+                  </div>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                <mat-label>Coverage</mat-label>
+                <mat-select
+                  [(ngModel)]="coverage"
+                  panelClass="vocab-select-panel vocab-grouped-select-panel"
+                  (openedChange)="onCoveragePanelOpen($event)"
+                >
+                  <div class="vocab-panel__search">
+                    <input
+                      type="text"
+                      placeholder="Search…"
+                      [(ngModel)]="coveragePanelSearch"
+                      [ngModelOptions]="{ standalone: true }"
+                      (click)="$event.stopPropagation()"
+                      (keydown)="$event.stopPropagation()"
+                    />
+                  </div>
+                  <div class="vocab-panel__list">
+                    @for (group of groupedCoverageOptions(); track group.parentLabel) {
+                      <mat-optgroup [label]="group.parentLabel">
+                        @for (entry of group.entries; track entry.id) {
+                          <mat-option [value]="entry.id">{{
+                            entry.properties.label_en ?? entry.id
+                          }}</mat-option>
+                        }
+                      </mat-optgroup>
+                    }
+                  </div>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                <mat-label>Expires</mat-label>
+                <input
+                  matInput
+                  [matDatepicker]="expiresPicker"
+                  [(ngModel)]="expires"
+                  placeholder="mm/dd/yyyy"
+                />
+                <mat-datepicker-toggle matIconSuffix [for]="expiresPicker" />
+                <mat-datepicker #expiresPicker />
+              </mat-form-field>
+            </div>
+          }
         }
         @case ('success') {
           <p class="success-text">{{ successMessage() }}</p>
-          @if (csvResult(); as cr) {
-            @if (cr.errors.length > 0) {
-              <ul class="detail-list error-list">
-                @for (e of cr.errors; track $index) {
-                  <li>{{ e }}</li>
-                }
-              </ul>
-            }
-            @if (cr.skipped.length > 0) {
-              <p class="subtle">Skipped: {{ cr.skipped.length }}</p>
-            }
-          }
         }
       }
     }
   </mat-dialog-content>
 
   @if (!resolvingPath() && !pathError()) {
-    <mat-dialog-actions class="dialog-footer" [class.dialog-footer--with-hint]="uploadFooterHint()">
-      @if (showFooterBack()) {
-        <button
-          mat-button
-          type="button"
-          class="btn-back"
-          [disabled]="busy()"
-          (click)="onFooterBack()"
-        >
-          Back
-        </button>
-      }
-      <span class="footer-spacer"></span>
-      @if (uploadFooterHint(); as nextHint) {
-        <span class="footer-next-hint">{{ nextHint }}</span>
-      }
+    <mat-dialog-actions class="dialog-footer">
       @if (view() !== 'success') {
-        <button mat-button type="button" class="btn-cancel" [disabled]="busy()" (click)="close()">
+        <button
+          mat-stroked-button
+          type="button"
+          class="btn-cancel"
+          [disabled]="busy()"
+          (click)="close()"
+        >
           Cancel
         </button>
       }
+      <span class="footer-spacer"></span>
       @if (view() === 'success') {
         <button mat-button type="button" (click)="close()">Close</button>
         <button mat-flat-button color="primary" type="button" (click)="doneNavigateBrowse()">
@@ -371,36 +457,32 @@
         </button>
       } @else if (view() === 'templateForm') {
         <button
+          mat-stroked-button
+          type="button"
+          class="btn-back"
+          [disabled]="busy()"
+          (click)="goMain()"
+        >
+          Back
+        </button>
+        <button
           mat-flat-button
           color="primary"
-          class="btn-primary-pill"
           type="button"
-          [disabled]="busy()"
-          (click)="createFromTemplate()"
+          [disabled]="busy() || !docTitle.trim() || locationRestricted()"
+          (click)="createDocument()"
         >
           Create
         </button>
-      } @else if (view() === 'csv') {
+      } @else if (view() === 'main' && activeTab() === 'import') {
         <button
           mat-flat-button
           color="primary"
-          class="btn-primary-pill"
           type="button"
-          [disabled]="busy() || !csvFile()"
-          (click)="runCsv()"
+          [disabled]="busy() || uploadFiles().length === 0 || locationRestricted()"
+          (click)="runUpload()"
         >
-          Import
-        </button>
-      } @else if (showFooterNext()) {
-        <button
-          mat-flat-button
-          color="primary"
-          class="btn-primary-pill"
-          type="button"
-          [disabled]="footerNextDisabled()"
-          (click)="onFooterNext()"
-        >
-          {{ footerNextLabel() }}
+          Create
         </button>
       }
     </mat-dialog-actions>

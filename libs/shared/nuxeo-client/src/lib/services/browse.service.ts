@@ -5,6 +5,7 @@ import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
+import { parseDocumentSubtypes, sortDocumentSubtypes } from '../utils/parse-document-subtypes';
 
 @Injectable({ providedIn: 'root' })
 export class BrowseService {
@@ -17,6 +18,25 @@ export class BrowseService {
       properties: '*',
       'enrichers.document': 'acls,favorites,subscribedNotifications',
     });
+  }
+
+  /** Folder metadata plus allowed child document types (`@subtypes` enricher). */
+  getFolderContext(nuxeoPath: string): Observable<NuxeoDocument> {
+    const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
+    return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/path${safePath}`, undefined, {
+      properties: '*',
+      'enrichers.document': 'subtypes',
+    });
+  }
+
+  /**
+   * Allowed child document types for `nuxeoPath`, from the Nuxeo `subtypes` enricher.
+   * @see https://doc.nuxeo.com/rest-api/1/document-enrichers/#subtypes
+   */
+  getCreatableSubtypes(nuxeoPath: string): Observable<string[]> {
+    return this.getFolderContext(nuxeoPath).pipe(
+      map((doc) => sortDocumentSubtypes(parseDocumentSubtypes(doc))),
+    );
   }
 
   getChildren(

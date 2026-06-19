@@ -773,8 +773,10 @@ export class BrowseComponent {
     }
     this.dialog
       .open(CreateImportDialogComponent, {
-        width: '900px',
+        width: '960px',
+        height: '680px',
         maxWidth: '95vw',
+        maxHeight: '95vh',
         data: { parentPath: doc.path, parentTitle: doc.title },
       })
       .afterClosed()
@@ -813,7 +815,7 @@ export class BrowseComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.detailService.trashDocument(doc.uid).subscribe({
         next: () => {
