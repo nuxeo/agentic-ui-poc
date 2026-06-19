@@ -10,7 +10,7 @@
 | State management     | Angular Signals — no NgRx, no BehaviorSubject for UI state    |
 | HTTP                 | Angular HttpClient via `NuxeoApiBase` wrapper                 |
 | Auth                 | SAML SSO in production; Basic Auth interceptor in development |
-| Backend (AI)         | Node.js / Express — `apps/ai-backend`                         |
+| AI backend           | Nuxeo Automation Operations (Java, Hyland HAIP package)       |
 | AI provider          | Hyland HAIP Model Gateway (OpenAI-compatible API)             |
 | Document platform    | Nuxeo Content Services Platform                               |
 
@@ -51,11 +51,6 @@ apps/
       settings/                  ← Profile, Nuxeo Drive, Cloud Services pages
       app.config.ts              ← Providers, router config
       app.routes.ts              ← Top-level lazy routes
-  ai-backend/                    ← Node.js Express AI server
-    src/
-      routes/                    ← One file per AI endpoint
-      services/                  ← openai.service.ts (HAIP client)
-      config.ts                  ← Environment config + validation
 
 libs/
   features/
@@ -67,15 +62,18 @@ libs/
     administration/              ← /administration — admin console
     assets/                      ← /documents — DAM asset search
     trash/                       ← /trash — trash management
+    knowledge-discovery/         ← /knowledge-discovery — KD agent chat
   shared/
     nuxeo-client/                ← All Nuxeo API services + models + config
       src/lib/
-        services/                ← 23 services (see AGENTS/01-services.md)
+        services/                ← 22 services (see AGENTS/01-services.md)
         models/                  ← TypeScript interfaces for Nuxeo objects
     ui/                          ← Reusable UI components (widgets, dialogs, viewer)
-    ai-client/                   ← AI feature flag service + AI backend HTTP client
+    ai-client/                   ← AI feature flag + Automation gateway (calls /nuxeo/api/v1/automation/AI.*)
     kd-client/                   ← Knowledge Discovery client via Nuxeo CIC automation
     ke-client/                   ← Knowledge Enrichment client via Nuxeo CIC automation
+    drawers/                     ← Shared drawer components (filters, details)
+    util/                        ← Pure TypeScript utilities
 ```
 
 ---
@@ -84,18 +82,19 @@ libs/
 
 All routes use `HashLocationStrategy` (`/#/path`). This ensures Nuxeo/Tomcat serves `index.html` for all deep links without 404s.
 
-| Path                | Component                    | Auth       |
-| ------------------- | ---------------------------- | ---------- |
-| `/#/login`          | LoginPageComponent           | Public     |
-| `/#/dashboard`      | DashboardPageComponent       | Required   |
-| `/#/browse`         | BrowseComponent              | Required   |
-| `/#/search`         | SearchComponent              | Required   |
-| `/#/doc/:uid`       | DocumentDetailComponent      | Required   |
-| `/#/documents`      | AssetSearchResultsComponent  | Required   |
-| `/#/tasks`          | TasksPageComponent           | Required   |
-| `/#/collections`    | CollectionDetailComponent    | Required   |
-| `/#/trash`          | TrashComponent               | Required   |
-| `/#/administration` | AdministrationShellComponent | Admin only |
+| Path                     | Component                    | Auth       |
+| ------------------------ | ---------------------------- | ---------- |
+| `/#/login`               | LoginPageComponent           | Public     |
+| `/#/dashboard`           | DashboardPageComponent       | Required   |
+| `/#/browse`              | BrowseComponent              | Required   |
+| `/#/search`              | SearchComponent              | Required   |
+| `/#/doc/:uid`            | DocumentDetailComponent      | Required   |
+| `/#/documents`           | AssetSearchResultsComponent  | Required   |
+| `/#/tasks`               | TasksPageComponent           | Required   |
+| `/#/collections`         | CollectionDetailComponent    | Required   |
+| `/#/trash`               | TrashComponent               | Required   |
+| `/#/knowledge-discovery` | KnowledgeDiscoveryComponent  | Required   |
+| `/#/administration`      | AdministrationShellComponent | Admin only |
 
 ---
 
