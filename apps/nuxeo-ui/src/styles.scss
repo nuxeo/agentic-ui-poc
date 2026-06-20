@@ -242,3 +242,11 @@ sat-status-tag {
   max-width: 95vw;
 }
 
+/* Long tooltips: allow wrapping instead of clipping on a single line. */
+.mat-mdc-tooltip.mat-tooltip-multiline .mdc-tooltip__surface {
+  max-width: min(20rem, calc(100vw - 1.5rem));
+  white-space: pre-line;
+  text-align: center;
+  line-height: 1.4;
+  padding-block: 6px;
+}

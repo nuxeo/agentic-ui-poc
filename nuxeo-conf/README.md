@@ -34,7 +34,23 @@ docker cp nuxeo-conf/50-hyland-cic.conf nuxeo:/etc/nuxeo/conf.d/50-hyland-cic.co
 # 2. Restart Nuxeo so it re-reads conf.d/*.conf.
 docker restart nuxeo
 
-# 3. Confirm the config was applied (should print "default").
+# 3. On this local Docker image, CIC properties must also be present in
+#    /etc/nuxeo/nuxeo.conf (conf.d alone is not always picked up by the JVM).
+#    After adding nuxeo.hyland.cic.ingest.default.sourceId to 50-hyland-cic.conf,
+#    inline it next to the other nuxeo.hyland.cic.ingest.* entries in nuxeo.conf:
+#
+#    nuxeo.hyland.cic.ingest.default.sourceId=<same-as-hxai.ingest.source.id>
+#
+#    Then restart again. Verify CheckDigest accepts an empty sourceId param:
+#
+#    curl -sS -u Administrator:Administrator -X POST \
+#      -H "Content-Type: application/json" \
+#      http://localhost:8080/nuxeo/api/v1/automation/HylandIngest.CheckDigest \
+#      -d '{"params":{"xpath":"file:content","sourceId":""},"context":{},"input":"<doc-uuid>"}'
+#
+#    Expected: {"responseCode":200,"response":{"exists":true}}
+
+# 4. Confirm the config was applied (should print "default").
 docker exec nuxeo curl -s -u Administrator:Administrator \
   -X POST -H "Content-Type: application/json" \
   http://localhost:8080/nuxeo/site/automation/HylandContentIntelligence.GetContributionNames \

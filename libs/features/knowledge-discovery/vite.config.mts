@@ -16,6 +16,12 @@ export default defineConfig(() => ({
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     setupFiles: ['src/test-setup.ts'],
     reporters: ['default'],
+    // Pin the worker pool explicitly: the Vitest default pool crashes under
+    // Node 20 in Nx/CI for this project before any test output is emitted.
+    pool: 'threads',
+    // zone.js keeps the Node.js event loop alive after Angular TestBed teardown;
+    // forceExit ensures Vitest can always exit cleanly in CI.
+    forceExit: true,
     coverage: {
       reportsDirectory: '../../../coverage/libs/features/knowledge-discovery',
       provider: 'v8' as const,

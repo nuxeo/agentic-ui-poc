@@ -137,6 +137,24 @@ enrich(blob: Blob, request: KeEnrichRequest): Observable<KeEnrichmentResult>
 
 ---
 
+## ContentLakeIngestService (`content-lake-ingest.service.ts`)
+
+Triggers HxAI Content Lake ingestion for existing Nuxeo documents via the
+`nuxeo-hxai-connector` bulk `ingest` action. Used by the Knowledge Discovery
+upload panel after `DocumentImportService` creates File documents in Nuxeo.
+
+```typescript
+startIngest(documentUids: string[]): Observable<ContentLakeIngestCommand>
+getStatus(commandId: string): Observable<ContentLakeIngestStatus>
+waitUntilComplete(commandId: string, pollIntervalMs?: number): Observable<ContentLakeIngestStatus>
+findDuplicates(files: File[], sourceIds?: string[]): Observable<ContentLakeDuplicate[]>
+checkIngested(documentUid: string, sourceIds?: string[]): Observable<boolean>
+backfillIngestMarkerIfNeeded(doc: NuxeoDocument, sourceIds?: string[]): Observable<ContentLakeBackfillResult>
+markIngested(documentUids: string[]): Observable<NuxeoDocument[]>
+```
+
+---
+
 ## CollectionService (`collection.service.ts`)
 
 ```typescript

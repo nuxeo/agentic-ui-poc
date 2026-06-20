@@ -63,6 +63,7 @@ export interface KdUpstreamPaths {
   listModels: string;
   listGuardrails: string;
   getQuestionHistory: (agentId: string, pageNumber: number, pageSize: number) => string;
+  getQuestionAnswer: (questionId: string) => string;
 }
 
 export const DEFAULT_KD_UPSTREAM_PATHS: KdUpstreamPaths = {
@@ -80,6 +81,7 @@ export const DEFAULT_KD_UPSTREAM_PATHS: KdUpstreamPaths = {
   getQuestionHistory: (agentId, pageNumber, pageSize) =>
     `/qna/agents/${encodeURIComponent(agentId)}/questions/history` +
     `?pageNumber=${pageNumber}&pageSize=${pageSize}`,
+  getQuestionAnswer: (questionId) => `/qna/questions/${encodeURIComponent(questionId)}/answer`,
 };
 
 export const KD_UPSTREAM_PATHS = new InjectionToken<KdUpstreamPaths>('KD_UPSTREAM_PATHS', {
