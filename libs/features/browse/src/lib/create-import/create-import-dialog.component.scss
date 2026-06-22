@@ -5,14 +5,20 @@ $tile-bg: var(--mat-sys-surface-container-low, #f5f6f8);
 $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-width: min(95vw, 560px);
   max-width: 95vw;
+  box-sizing: border-box;
 }
 
 .create-import-root {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
 }
 
 .dialog-heading {
@@ -25,7 +31,9 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 }
 
 .dialog-body {
+  flex: 1 1 auto;
   min-width: 280px;
+  min-height: 0;
   max-width: 100%;
   padding: 0;
   box-sizing: border-box;
@@ -36,13 +44,14 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 .dialog-body--form {
   padding: 0;
   min-height: 480px;
-  max-height: calc(680px - 120px);
+  max-height: none;
   overflow-y: auto;
 }
 
 /* ─── Tabs ─── */
 .tab-header {
   display: flex;
+  flex-shrink: 0;
   border-bottom: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
 }
 
@@ -305,8 +314,13 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 /* ─── Footer ─── */
 .dialog-footer {
   display: flex;
+  flex-shrink: 0;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
+  align-self: stretch;
+  width: 100%;
+  box-sizing: border-box;
   gap: 8px 12px;
   padding: 16px 24px 20px;
   margin: 0;

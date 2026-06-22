@@ -54,8 +54,14 @@ const BLOB_CONTENT_TYPES = new Set(['File', 'Audio', 'Picture', 'Video']);
 
 const NOTE_FORMAT_OPTIONS = [
   { value: 'text/html', label: 'HTML' },
-  { value: 'text/plain', label: 'Plain text' },
+  { value: 'text/plain', label: 'Text' },
+  { value: 'text/xml', label: 'XML' },
+  { value: 'text/markdown', label: 'Markdown' },
 ] as const;
+
+function defaultNoteContent(mimeType: string): string {
+  return mimeType === 'text/html' ? '<p></p>' : '';
+}
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   Audio: 'Audio',
@@ -565,7 +571,7 @@ export class CreateImportDialogComponent implements OnInit {
     };
 
     if (docType?.type === 'Note') {
-      props['note:note'] = '<p></p>';
+      props['note:note'] = defaultNoteContent(this.noteFormat);
       props['note:mime_type'] = this.noteFormat;
     }
 
