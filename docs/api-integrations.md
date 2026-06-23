@@ -1158,6 +1158,88 @@ supports both forms.
 | `401` / `403`        | Treat as connector / KE auth issue                                                         |
 | `5xx`                | Treat as transient Nuxeo/CIC/KE upstream failure                                           |
 
+---
+
+## 26. Content Lake ingest (via Nuxeo HxAI connector)
+
+| Field           | Value                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| **Service**     | `ContentLakeIngestService` (`libs/shared/nuxeo-client/src/lib/services/content-lake-ingest.service.ts`) |
+| **Methods**     | `startIngest`, `getStatus`, `waitUntilComplete`                                                         |
+| **HTTP Method** | `POST` + `GET`                                                                                          |
+| **Endpoint**    | `/nuxeo/api/v1/automation/Bulk.RunAction` then `/nuxeo/api/v1/bulk/{commandId}`                         |
+
+The Knowledge Discovery **Upload to Content Lake** dialog uploads files to Nuxeo
+with `DocumentImportService`, then triggers the HxAI connector bulk `ingest`
+action. The browser never calls Content Lake or Ingest APIs directly.
+
+**Start ingest request:**
+
+```json
+{
+  "params": {
+    "action": "ingest",
+    "query": "SELECT * FROM Document WHERE ecm:uuid = 'document-uuid'"
+  },
+  "context": {}
+}
+```
+
+**Bulk.RunAction response (automation):** Nuxeo wraps the initial status in `value`:
+
+```json
+{
+  "entity-type": "bulkStatus",
+  "value": {
+    "entity-type": "bulkStatus",
+    "commandId": "command-uuid",
+    "state": "SCHEDULED"
+  }
+}
+```
+
+**Bulk status response (`GET /nuxeo/api/v1/bulk/{commandId}`):**
+
+```json
+{
+  "entity-type": "bulkStatus",
+  "commandId": "command-uuid",
+  "state": "COMPLETED",
+  "processed": 1,
+  "error": false,
+  "errorCount": 0
+}
+```
+
+**Error Handling:**
+
+| Status / Failure                 | Behavior                                                             |
+| -------------------------------- | -------------------------------------------------------------------- |
+| Missing `commandId`              | Surface as upload/ingest failure in the UI panel                     |
+| `error: true` / `errorCount > 0` | Show ingest completed with errors; verify `hxai.ingest.*` on Nuxeo   |
+| Bulk state not terminal          | Poll `/nuxeo/api/v1/bulk/{commandId}` until `COMPLETED` or `ABORTED` |
+
+**Check ingest status (document open backfill):**
+
+| Field           | Value                                               |
+| --------------- | --------------------------------------------------- |
+| **Method**      | `checkIngested`, `backfillIngestMarkerIfNeeded`     |
+| **HTTP Method** | `POST`                                              |
+| **Endpoint**    | `/nuxeo/api/v1/automation/HylandIngest.CheckDigest` |
+
+On document open, when the local ingest marker is missing, the document detail
+page calls `HylandIngest.CheckDigest` (CIC ingest connector). **`sourceId` is
+required** — if it is omitted and `nuxeo.hyland.cic.ingest.default.sourceId`
+is not set on Nuxeo, the operation returns HTTP 500. The UI resolves
+`sourceId` from KD agents (`sourceIds`, or `staticFilterExpression.field =
+'__sourceId__'`). Set `nuxeo.hyland.cic.ingest.default.sourceId` to the same
+value as `hxai.ingest.source.id` as a server-side fallback. A successful
+response looks like `{ "responseCode": 200, "response": { "exists": true } }`.
+When `exists` is true, `backfillIngestMarkerIfNeeded` writes the ingest marker
+so the UI shows **Already in Content Lake** without re-ingesting. The marker
+prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
+`dc:source` is already occupied — PDF metadata often populates `dc:rights`.
+
 <!--
 ## N. Title
 

@@ -352,6 +352,20 @@ entry to the Nuxeo dev server. No additional dev service is required.
 
 ## UI flow
 
+### Upload to Content Lake
+
+The **Upload to Content Lake** button on `#/knowledge-discovery` opens a dialog
+where users pick local file(s), upload them as Nuxeo `File` documents, and
+trigger the HxAI bulk `ingest` action so the content becomes searchable by KD
+agents. Flow:
+
+1. Choose file(s) and optional Nuxeo folder path (defaults to `/default-domain`).
+2. `DocumentImportService.importFiles` creates the Nuxeo documents.
+3. `ContentLakeIngestService.startIngest` + `waitUntilComplete` polls bulk status.
+4. Uploaded document links open in document detail (`/#/doc/:uid`).
+
+### Ask questions
+
 1. Load models, guardrails, and agents (`listModels`, `listGuardrails`, `listAgents`).
 2. Pick an existing agent (agents are created and edited in the Hyland Insight admin UI — this page is read-only for agent management).
 3. Submit a question for the selected agent (`submitQuestion` — one-shot via `askQuestionAndGetAnswer`).

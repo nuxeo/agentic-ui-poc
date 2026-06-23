@@ -125,6 +125,9 @@ export class CreateImportDialogComponent implements OnInit {
   private readonly browse = inject(BrowseService);
   private readonly directoryService = inject(DirectoryService);
 
+  private folderContextRequestId = 0;
+  private locationSuggestionsRequestId = 0;
+
   readonly noteFormatOptions = NOTE_FORMAT_OPTIONS;
   readonly restrictedLocationMessage = RESTRICTED_IMPORT_LOCATION_MESSAGE;
 
@@ -253,6 +256,8 @@ export class CreateImportDialogComponent implements OnInit {
   }
 
   private loadFolderContext(path: string): void {
+    const requestId = this.folderContextRequestId + 1;
+    this.folderContextRequestId = requestId;
     this.loadingContext.set(true);
     this.typesLoadError.set(null);
     this.browse
@@ -260,10 +265,16 @@ export class CreateImportDialogComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (types) => {
+          if (requestId !== this.folderContextRequestId) {
+            return;
+          }
           this.creatableTypes.set(toDocTypeDefs(types));
           this.loadingContext.set(false);
         },
         error: () => {
+          if (requestId !== this.folderContextRequestId) {
+            return;
+          }
           this.creatableTypes.set([]);
           this.typesLoadError.set('Could not load creatable document types for this folder.');
           this.loadingContext.set(false);
@@ -272,12 +283,17 @@ export class CreateImportDialogComponent implements OnInit {
   }
 
   private loadLocationSuggestions(path: string): void {
+    const requestId = this.locationSuggestionsRequestId + 1;
+    this.locationSuggestionsRequestId = requestId;
     this.loadingLocationSuggestions.set(true);
     this.browse
       .getChildren(path, 50, 0)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (list) => {
+          if (requestId !== this.locationSuggestionsRequestId) {
+            return;
+          }
           const folders = (list.entries ?? []).filter((d) => isFolderishDocument(d));
           this.locationSuggestions.set(
             folders.map((f) => ({
@@ -289,6 +305,9 @@ export class CreateImportDialogComponent implements OnInit {
           this.loadingLocationSuggestions.set(false);
         },
         error: () => {
+          if (requestId !== this.locationSuggestionsRequestId) {
+            return;
+          }
           this.locationSuggestions.set([]);
           this.locationHighlightIndex.set(-1);
           this.loadingLocationSuggestions.set(false);

@@ -5,11 +5,15 @@
       <h1>Ask grounded questions with citations</h1>
     </div>
     <div class="kd-topbar__actions">
-      <button mat-stroked-button (click)="loadReferenceData()">
+      <button mat-stroked-button type="button" (click)="openContentLakeUploadDialog()">
+        <mat-icon>cloud_upload</mat-icon>
+        Upload to Content Lake
+      </button>
+      <button mat-stroked-button type="button" (click)="loadReferenceData()">
         <mat-icon>sync</mat-icon>
         Refresh metadata
       </button>
-      <button mat-stroked-button (click)="loadAgents()">
+      <button mat-stroked-button type="button" (click)="loadAgents()">
         <mat-icon>refresh</mat-icon>
         Refresh agents
       </button>
@@ -126,7 +130,7 @@
           <p class="kd-helper">Select an agent on the right to start asking questions.</p>
         }
 
-        <mat-form-field appearance="outline" class="kd-block-field">
+        <mat-form-field appearance="outline" class="kd-block-field" subscriptSizing="dynamic">
           <mat-label>Your question</mat-label>
           <textarea
             matInput
@@ -173,6 +177,15 @@
 
         <div class="kd-actions">
           <button
+            mat-stroked-button
+            type="button"
+            [disabled]="!canClear()"
+            (click)="clearQuestion()"
+          >
+            <mat-icon>close</mat-icon>
+            Clear
+          </button>
+          <button
             mat-flat-button
             color="primary"
             [disabled]="!canAsk()"
@@ -189,7 +202,7 @@
         <div class="kd-card__header">
           <div>
             <span class="kd-section-label">Response</span>
-            <h2>Answer &amp; citations</h2>
+            <h2>Answer</h2>
           </div>
 
           @if (answer(); as currentAnswer) {
@@ -206,96 +219,78 @@
         </div>
 
         @if (answer(); as currentAnswer) {
-          <div class="kd-answer__layout">
-            <div class="kd-answer__body">
-              @if (isAwaitingResponse() && !currentAnswer.answer) {
-                <div class="kd-answer__loading">
-                  <div class="kd-answer__loading-header">
-                    <mat-spinner diameter="20" />
-                    <div>
-                      <p class="kd-answer__loading-title">{{ loadingTitle() }}</p>
-                      <p class="kd-answer__loading-copy">{{ loadingMessage() }}</p>
-                    </div>
-                  </div>
-                  <div class="kd-answer__skeleton" aria-hidden="true">
-                    <span class="kd-answer__skeleton-line kd-answer__skeleton-line--wide"></span>
-                    <span class="kd-answer__skeleton-line"></span>
-                    <span class="kd-answer__skeleton-line kd-answer__skeleton-line--short"></span>
+          <div class="kd-answer__body">
+            @if (isAwaitingResponse() && !currentAnswer.answer) {
+              <div class="kd-answer__loading">
+                <div class="kd-answer__loading-header">
+                  <mat-spinner diameter="20" />
+                  <div>
+                    <p class="kd-answer__loading-title">{{ loadingTitle() }}</p>
+                    <p class="kd-answer__loading-copy">{{ loadingMessage() }}</p>
                   </div>
                 </div>
-              } @else if (currentAnswer.answer) {
-                <p class="kd-answer__text">{{ formatAnswerText(currentAnswer.answer) }}</p>
-              } @else {
-                <p class="kd-empty">No answer text yet.</p>
-              }
-
-              @if (currentAnswer.error) {
-                <p class="kd-error">{{ currentAnswer.error }}</p>
-              }
-
-              <div class="kd-feedback">
-                <button
-                  mat-stroked-button
-                  [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
-                  (click)="submitFeedback('Good')"
-                >
-                  <mat-icon>thumb_up</mat-icon>
-                  Helpful
-                </button>
-                <button
-                  mat-stroked-button
-                  [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
-                  (click)="submitFeedback('Bad')"
-                >
-                  <mat-icon>thumb_down</mat-icon>
-                  Not helpful
-                </button>
-                <button
-                  mat-stroked-button
-                  [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
-                  (click)="submitFeedback('Retry')"
-                >
-                  <mat-icon>refresh</mat-icon>
-                  Retry
-                </button>
-              </div>
-            </div>
-
-            <aside class="kd-citations">
-              <div class="kd-citations__header">
-                <span class="kd-section-label">Citations</span>
-                <span class="kd-pill">{{ currentAnswer.citations.length }}</span>
-              </div>
-
-              @if (isAwaitingResponse() && currentAnswer.citations.length === 0) {
-                <div class="kd-citation-skeleton" aria-hidden="true">
-                  <span class="kd-citation-skeleton__item"></span>
-                  <span class="kd-citation-skeleton__item"></span>
+                <div class="kd-answer__skeleton" aria-hidden="true">
+                  <span class="kd-answer__skeleton-line kd-answer__skeleton-line--wide"></span>
+                  <span class="kd-answer__skeleton-line"></span>
+                  <span class="kd-answer__skeleton-line kd-answer__skeleton-line--short"></span>
                 </div>
-              } @else if (currentAnswer.citations.length === 0) {
-                <p class="kd-empty">No citations returned.</p>
-              } @else {
-                @for (
-                  citation of currentAnswer.citations;
-                  track citation.objectId + '-' + (citation.referenceId ?? 'citation')
-                ) {
-                  <article class="kd-citation">
-                    <p class="kd-citation__title">{{ citation.title || citation.objectId }}</p>
-                    @if (citation.excerpt) {
-                      <p class="kd-citation__excerpt">{{ citation.excerpt }}</p>
-                    }
-                    @if (citation.score !== undefined) {
-                      <p class="kd-citation__meta">Score: {{ citation.score }}</p>
-                    }
-                  </article>
+              </div>
+            } @else if (currentAnswer.answer) {
+              <div class="kd-answer__text">
+                @for (segment of getAnswerSegments(currentAnswer); track $index) {
+                  @if (segment.type === 'text') {
+                    <span>{{ segment.text }}</span>
+                  } @else {
+                    <button
+                      type="button"
+                      class="kd-citation-marker"
+                      [attr.aria-label]="'View citation ' + segment.index"
+                      (click)="openCitationDialog(currentAnswer, segment.index)"
+                    >
+                      {{ segment.index }}
+                    </button>
+                  }
                 }
-              }
-            </aside>
+              </div>
+            } @else {
+              <p class="kd-empty">No answer text yet.</p>
+            }
+
+            @if (currentAnswer.error) {
+              <p class="kd-error">{{ currentAnswer.error }}</p>
+            }
+
+            <div class="kd-feedback">
+              <button
+                mat-stroked-button
+                [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                (click)="submitFeedback('Good')"
+              >
+                <mat-icon>thumb_up</mat-icon>
+                Helpful
+              </button>
+              <button
+                mat-stroked-button
+                [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                (click)="submitFeedback('Bad')"
+              >
+                <mat-icon>thumb_down</mat-icon>
+                Not helpful
+              </button>
+              <button
+                mat-stroked-button
+                [disabled]="feedbackInFlight() !== null || currentAnswer.status !== 'Complete'"
+                (click)="submitFeedback('Retry')"
+              >
+                <mat-icon>refresh</mat-icon>
+                Retry
+              </button>
+            </div>
           </div>
         } @else {
           <div class="kd-empty-state">
             <mat-icon>psychology</mat-icon>
-            <p>Ask a question to see the grounded answer and citations here.</p>
+            <p>Ask a question to see the grounded answer here.</p>
           </div>
         }
       </section>

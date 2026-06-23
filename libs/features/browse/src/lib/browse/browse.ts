@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   HostListener,
   ViewChild,
@@ -126,6 +127,7 @@ import { CreateImportDialogComponent } from '../create-import/create-import-dial
   styleUrl: './browse.scss',
 })
 export class BrowseComponent {
+  private readonly destroyRef = inject(DestroyRef);
   @ViewChild('columnPanel')
   private columnPanel?: ElementRef<HTMLElement>;
 
@@ -780,6 +782,7 @@ export class BrowseComponent {
         data: { parentPath: doc.path, parentTitle: doc.title },
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result: { refreshed?: boolean } | undefined) => {
         if (result?.refreshed) this.loadContent();
       });
