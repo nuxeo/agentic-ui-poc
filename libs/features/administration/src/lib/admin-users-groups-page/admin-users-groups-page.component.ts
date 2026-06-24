@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,7 +14,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { catchError, filter, forkJoin, map, of, switchMap, tap } from 'rxjs';
 
 import { NuxeoGroup, NuxeoUser, UserService } from '@agentic-ui/shared/nuxeo-client';
 
@@ -62,6 +63,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly userColumns = ['username', 'name', 'email', 'groups', 'admin', 'actions'] as const;
   readonly groupColumns = ['groupname', 'label', 'members', 'actions'] as const;
@@ -236,34 +238,42 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         },
       )
       .afterClosed()
-      .subscribe((r) => {
-        if (!r || r.mode !== 'create') return;
-        const invited = !r.password;
-        this.userService
-          .createUser({
-            username: r.username,
-            firstName: r.firstName,
-            lastName: r.lastName,
-            company: r.company,
-            email: r.email,
-            password: r.password,
-            groups: r.groups,
-          })
-          .subscribe({
-            next: () => {
-              this.snackBar.open(invited ? 'Invitation sent' : 'User created', 'Dismiss', {
-                duration: 3000,
-              });
-              this.afterMutation();
-              if (r.createAnother) {
-                this.openCreateUserDialog();
-              }
-            },
-            error: (e) =>
-              this.snackBar.open(this.createUserErrorMessage(e, invited), 'Dismiss', {
-                duration: 7000,
+      .pipe(
+        filter((r): r is UserFormDialogResult => !!r && r.mode === 'create'),
+        switchMap((r) => {
+          const invited = !r.password?.trim();
+          return this.userService
+            .createUser({
+              username: r.username,
+              firstName: r.firstName,
+              lastName: r.lastName,
+              company: r.company,
+              email: r.email,
+              password: r.password,
+              groups: r.groups,
+            })
+            .pipe(
+              tap(() => {
+                this.snackBar.open(invited ? 'Invitation sent' : 'User created', 'Dismiss', {
+                  duration: 3000,
+                });
+                this.afterMutation();
               }),
-          });
+              map(() => r.createAnother === true),
+              catchError((e) => {
+                this.snackBar.open(this.createUserErrorMessage(e, invited), 'Dismiss', {
+                  duration: 7000,
+                });
+                return of(false);
+              }),
+            );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((createAnother) => {
+        if (createAnother) {
+          this.openCreateUserDialog();
+        }
       });
   }
 
