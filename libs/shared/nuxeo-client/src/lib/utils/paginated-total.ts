@@ -11,7 +11,8 @@ export interface PaginatedListMeta {
 
 /**
  * Resolves the total item count for Material paginator `[length]`.
- * Nuxeo may return `resultsCount` instead of `totalSize`; when both are absent,
+ * Nuxeo may return `resultsCount` instead of or alongside `totalSize`; when both are
+ * present, use the larger value so the paginator never under-counts. When both are absent,
  * derive a usable length from `numberOfPages` or `isNextPageAvailable`.
  */
 export function resolvePaginatedListTotal(
@@ -19,11 +20,11 @@ export function resolvePaginatedListTotal(
   pageSize: number,
   pageIndex: number,
 ): number {
-  if (res.totalSize !== undefined && res.totalSize >= 0) {
-    return res.totalSize;
-  }
-  if (res.resultsCount !== undefined && res.resultsCount >= 0) {
-    return res.resultsCount;
+  const knownTotals = [res.totalSize, res.resultsCount].filter(
+    (n): n is number => n !== undefined && n >= 0,
+  );
+  if (knownTotals.length > 0) {
+    return Math.max(...knownTotals);
   }
 
   const entryCount = res.entries?.length ?? 0;

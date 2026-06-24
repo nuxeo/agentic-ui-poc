@@ -17,6 +17,23 @@ describe('resolvePaginatedListTotal', () => {
     ).toBe(14);
   });
 
+  it('uses the larger value when totalSize and resultsCount disagree', () => {
+    expect(
+      resolvePaginatedListTotal(
+        { totalSize: 5, resultsCount: 14, entries: [{}, {}, {}, {}, {}] },
+        pageSize,
+        0,
+      ),
+    ).toBe(14);
+    expect(
+      resolvePaginatedListTotal(
+        { totalSize: 14, resultsCount: 5, entries: [{}, {}, {}, {}, {}] },
+        pageSize,
+        0,
+      ),
+    ).toBe(14);
+  });
+
   it('uses numberOfPages on the last page when metadata is partial', () => {
     expect(
       resolvePaginatedListTotal(
