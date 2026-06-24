@@ -7,7 +7,11 @@ import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 import { Observable, of } from 'rxjs';
 
-import { CURRENT_USERNAME, NUXEO_SERVER_URL } from '@agentic-ui/shared/nuxeo-client';
+import {
+  CURRENT_USERNAME,
+  ADMIN_ACCESS_CHECKS,
+  NUXEO_SERVER_URL,
+} from '@agentic-ui/shared/nuxeo-client';
 import { AI_BACKEND_URL } from '@agentic-ui/shared/ai-client';
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
@@ -56,6 +60,17 @@ export const appConfig: ApplicationConfig = {
       useFactory: () => {
         const auth = inject(AuthService);
         return () => auth.username();
+      },
+    },
+    {
+      provide: ADMIN_ACCESS_CHECKS,
+      useFactory: () => {
+        const auth = inject(AuthService);
+        return {
+          isAdministrator: () => auth.isAdministrator(),
+          isPowerUser: () => auth.isPowerUser(),
+          hasAdministrationAccess: () => auth.hasAdministrationAccess(),
+        };
       },
     },
     // AI operations served by the Java nuxeo-ai-package via Nuxeo Automation API

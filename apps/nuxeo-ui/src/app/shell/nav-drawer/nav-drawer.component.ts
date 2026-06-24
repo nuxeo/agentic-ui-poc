@@ -44,6 +44,7 @@ import {
   AppNavItem,
   SETTINGS_DRAWER_ITEMS,
   ADMINISTRATION_DRAWER_ITEMS,
+  POWERUSER_ADMINISTRATION_DRAWER_ITEMS,
 } from '../../platform-nav-items';
 
 export interface FolderNode {
@@ -90,7 +91,11 @@ export class NavDrawerComponent {
   readonly navigateKeepDrawer = output<string>();
   readonly signOutSelected = output<void>();
   readonly settingsItems = SETTINGS_DRAWER_ITEMS;
-  readonly administrationItems = ADMINISTRATION_DRAWER_ITEMS;
+  readonly administrationItems = computed(() =>
+    this.authService.isAdministrator()
+      ? ADMINISTRATION_DRAWER_ITEMS
+      : POWERUSER_ADMINISTRATION_DRAWER_ITEMS,
+  );
 
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
@@ -305,6 +310,18 @@ export class NavDrawerComponent {
 
   get isAdministration(): boolean {
     return this.activeItem()?.path === '/administration';
+  }
+
+  isAdminDrawerPathActive(path: string): boolean {
+    const url = this.router.url.split('?')[0];
+    if (path === '/administration/users-groups') {
+      return url === path || url.startsWith(`${path}/`);
+    }
+    return url === path;
+  }
+
+  onAdministrationItemClick(path: string): void {
+    this.navigateKeepDrawer.emit(path);
   }
 
   get isFavorites(): boolean {

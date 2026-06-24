@@ -52,6 +52,17 @@ export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 // Config
 export { NUXEO_API_ORIGIN, NUXEO_SERVER_URL } from './lib/nuxeo-api.config';
 export { CURRENT_USERNAME } from './lib/current-user.token';
+export { ADMIN_ACCESS_CHECKS, type AdminAccessChecks } from './lib/auth/admin-access.token';
+export {
+  administrationAccessGuard,
+  administrationLandingGuard,
+  fullAdministratorGuard,
+} from './lib/auth/admin-route.guards';
+export {
+  NUXEO_POWERUSERS_GROUP,
+  isPowerUserFromGroups,
+  readGroupsFromMe,
+} from './lib/auth/user-groups.util';
 export type { NuxeoSamlLoginEndpoint } from './lib/saml-login.config';
 export {
   NUXEO_SAML_LOGIN_ENDPOINTS,

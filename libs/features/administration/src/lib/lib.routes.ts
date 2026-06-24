@@ -1,5 +1,5 @@
 import { Route } from '@angular/router';
-
+import { fullAdministratorGuard } from '@agentic-ui/shared/nuxeo-client';
 import { AdministrationShellComponent } from './administration-shell/administration-shell.component';
 import { AdminAnalyticsPageComponent } from './admin-analytics-page/admin-analytics-page.component';
 import { AdminUsersGroupsPageComponent } from './admin-users-groups-page/admin-users-groups-page.component';
@@ -16,14 +16,26 @@ export const administrationRoutes: Route[] = [
     component: AdministrationShellComponent,
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'analytics' },
-      { path: 'analytics', component: AdminAnalyticsPageComponent },
+      {
+        path: 'analytics',
+        component: AdminAnalyticsPageComponent,
+        canActivate: [fullAdministratorGuard],
+      },
       { path: 'users-groups', component: AdminUsersGroupsPageComponent },
       { path: 'users-groups/user/:userId', component: AdminUserDetailsPageComponent },
       { path: 'users-groups/group/:groupId', component: AdminGroupDetailsPageComponent },
       { path: 'vocabularies', component: AdminVocabulariesPageComponent },
       { path: 'audit', component: AdminAuditPageComponent },
-      { path: 'cloud-services', component: AdminCloudServicesPageComponent },
-      { path: 'nxql-search', component: AdminNxqlSearchPageComponent },
+      {
+        path: 'cloud-services',
+        component: AdminCloudServicesPageComponent,
+        canActivate: [fullAdministratorGuard],
+      },
+      {
+        path: 'nxql-search',
+        component: AdminNxqlSearchPageComponent,
+        canActivate: [fullAdministratorGuard],
+      },
     ],
   },
 ];
