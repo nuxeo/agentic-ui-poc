@@ -57,6 +57,8 @@ searchUsersGroups(searchTerm: string): Observable<UserGroupSuggestion[]>
 
 ```typescript
 getByPath(nuxeoPath: string): Observable<NuxeoDocument>
+getFolderContext(nuxeoPath: string): Observable<NuxeoDocument>  // includes @subtypes enricher
+getCreatableSubtypes(nuxeoPath: string): Observable<string[]>  // parsed allowed child types
 updateDocument(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument>
 getTrashedChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>
 restoreDocument(uid: string): Observable<NuxeoDocument>
@@ -260,6 +262,7 @@ Nuxeo vocabulary / directory lookups.
 ```typescript
 getEntries(directoryName: string): Observable<DirectoryEntry[]>
 getL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
+getAllL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
 getEventTypes(): Observable<DirectoryEntry[]>
 getEventCategories(): Observable<DirectoryEntry[]>
 ```

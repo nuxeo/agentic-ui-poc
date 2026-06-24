@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   HostListener,
   ViewChild,
@@ -126,6 +127,7 @@ import { CreateImportDialogComponent } from '../create-import/create-import-dial
   styleUrl: './browse.scss',
 })
 export class BrowseComponent {
+  private readonly destroyRef = inject(DestroyRef);
   @ViewChild('columnPanel')
   private columnPanel?: ElementRef<HTMLElement>;
 
@@ -773,11 +775,14 @@ export class BrowseComponent {
     }
     this.dialog
       .open(CreateImportDialogComponent, {
-        width: '900px',
+        width: '960px',
+        height: '680px',
         maxWidth: '95vw',
+        maxHeight: '95vh',
         data: { parentPath: doc.path, parentTitle: doc.title },
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result: { refreshed?: boolean } | undefined) => {
         if (result?.refreshed) this.loadContent();
       });
@@ -813,7 +818,7 @@ export class BrowseComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.detailService.trashDocument(doc.uid).subscribe({
         next: () => {

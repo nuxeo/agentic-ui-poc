@@ -69,7 +69,10 @@ export {
 export { DocumentService } from './lib/services/document.service';
 export {
   DocumentImportService,
+  DEFAULT_IMPORT_PARENT_PATH,
+  RESTRICTED_IMPORT_LOCATION_MESSAGE,
   isFolderishDocument,
+  isRestrictedImportParentPath,
   sanitizeDocumentName,
   type CsvImportResult,
   type ImportFilesOptions,
@@ -121,6 +124,12 @@ export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { avatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
 export { NON_CONTENT_DOCUMENT_TYPES } from './lib/constants/non-content-document-types';
+export {
+  WORKSPACE_CONTENT_TYPE_ORDER,
+  parseDocumentSubtypes,
+  sortDocumentSubtypes,
+  type NuxeoSubtypeEntry,
+} from './lib/utils/parse-document-subtypes';
 export {
   CONTENT_LAKE_INGEST_DOCUMENT_TYPES,
   CONTENT_LAKE_INGEST_MARKER_LEGACY_PROPERTY,

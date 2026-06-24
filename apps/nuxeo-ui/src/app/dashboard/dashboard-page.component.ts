@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { WidgetContainerComponent, WidgetGridComponent } from '@agentic-ui/shared/ui';
 
@@ -45,6 +46,7 @@ import { AiGatewayService, AiFeatureFlagService, type Insight } from '@agentic-u
   styleUrl: './dashboard-page.component.scss',
 })
 export class DashboardPageComponent {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly docService = inject(DocumentService);
@@ -158,11 +160,14 @@ export class DashboardPageComponent {
     void import('@agentic-ui/feature-browse').then((m) => {
       this.dialog
         .open(m.CreateImportDialogComponent, {
-          width: '900px',
+          width: '960px',
+          height: '680px',
           maxWidth: '95vw',
+          maxHeight: '95vh',
           data: {},
         })
         .afterClosed()
+        .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe((result: { refreshed?: boolean; path?: string } | undefined) => {
           if (result?.refreshed && result.path) {
             const parts = result.path.replace(/^\/+/, '').split('/').filter(Boolean);
