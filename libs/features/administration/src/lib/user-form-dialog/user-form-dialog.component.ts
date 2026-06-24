@@ -1,5 +1,6 @@
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import {
@@ -98,10 +99,11 @@ export interface UserFormDialogResult {
     `,
   ],
 })
-export class UserFormDialogComponent implements OnInit {
+export class UserFormDialogComponent implements OnInit, OnDestroy {
   private readonly dialogRef = inject(
     MatDialogRef<UserFormDialogComponent, UserFormDialogResult | undefined>,
   );
+  private readonly destroyRef = inject(DestroyRef);
   readonly data = inject<UserFormDialogData>(MAT_DIALOG_DATA);
   private readonly userService = inject(UserService);
 
@@ -131,18 +133,21 @@ export class UserFormDialogComponent implements OnInit {
       this.email = u.properties.email ?? '';
       this.groups = [...(u.properties.groups ?? [])];
     }
-    this.userService.searchGroupsPaged('*', 200, 0).subscribe({
-      next: (res) => {
-        this.groupOptions = (res.entries ?? []).map((g) => ({
-          groupname: g.groupname,
-          grouplabel: g.grouplabel || g.groupname,
-        }));
-        this.loadingGroups = false;
-      },
-      error: () => {
-        this.loadingGroups = false;
-      },
-    });
+    this.userService
+      .searchGroupsPaged('*', 200, 0)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.groupOptions = (res.entries ?? []).map((g) => ({
+            groupname: g.groupname,
+            grouplabel: g.grouplabel || g.groupname,
+          }));
+          this.loadingGroups = false;
+        },
+        error: () => {
+          this.loadingGroups = false;
+        },
+      });
 
     this.groupSearchTerms
       .pipe(
@@ -152,6 +157,7 @@ export class UserFormDialogComponent implements OnInit {
           this.loadingGroupOptions = true;
           return this.userService.searchGroupsPaged(q || '*', 30, 0);
         }),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (res) => {
@@ -169,6 +175,10 @@ export class UserFormDialogComponent implements OnInit {
           this.loadingGroupOptions = false;
         },
       });
+  }
+
+  ngOnDestroy(): void {
+    this.groupSearchTerms.complete();
   }
 
   onGroupSearch(q: string): void {
