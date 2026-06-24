@@ -82,6 +82,17 @@ describe('administrationLandingGuard', () => {
       '/administration/users-groups',
     );
   });
+
+  it('redirects users without administration access to dashboard', () => {
+    const result = runGuard(administrationLandingGuard, {
+      isAdministrator: () => false,
+      isPowerUser: () => false,
+      hasAdministrationAccess: () => false,
+    });
+    expect(TestBed.inject(Router).serializeUrl(result as import('@angular/router').UrlTree)).toBe(
+      '/dashboard',
+    );
+  });
 });
 
 describe('fullAdministratorGuard', () => {

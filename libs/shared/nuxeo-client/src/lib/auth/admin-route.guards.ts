@@ -17,6 +17,9 @@ export const administrationAccessGuard: CanActivateFn = () => {
 export const administrationLandingGuard: CanActivateFn = () => {
   const access = inject(ADMIN_ACCESS_CHECKS);
   const router = inject(Router);
+  if (!access.hasAdministrationAccess()) {
+    return router.createUrlTree(['/dashboard']);
+  }
   const target = access.isAdministrator() ? 'analytics' : 'users-groups';
   return router.createUrlTree(['/administration', target]);
 };
