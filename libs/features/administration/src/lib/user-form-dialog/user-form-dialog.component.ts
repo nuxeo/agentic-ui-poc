@@ -2,13 +2,17 @@ import { COMMA, ENTER } from '@angular/cdk/keycodes';
 import { Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
 
 import { NuxeoUser, UserService } from '@agentic-ui/shared/nuxeo-client';
@@ -23,6 +27,7 @@ export interface UserFormDialogResult {
   username: string;
   firstName: string;
   lastName: string;
+  company: string;
   email: string;
   password?: string;
   groups: string[];
@@ -41,16 +46,37 @@ export interface UserFormDialogResult {
     MatAutocompleteModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
   ],
   templateUrl: './user-form-dialog.component.html',
   styles: [
     `
+      :host {
+        display: block;
+      }
+      .dialog-title {
+        padding: 0 1.5rem 0.75rem;
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 500;
+        line-height: 1.4;
+      }
       .form {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
         min-width: 420px;
-        padding-top: 0.35rem;
+        min-height: 420px;
+        max-height: 70vh;
+        padding-top: 2.75rem;
+        padding-bottom: 0.5rem;
+        overflow-x: hidden;
+      }
+      .first-field {
+        margin-top: 0.25rem;
+      }
+      .password-toggle {
+        margin: 0.5rem 0 0.15rem;
       }
       .full {
         width: 100%;
@@ -73,15 +99,20 @@ export interface UserFormDialogResult {
   ],
 })
 export class UserFormDialogComponent implements OnInit {
-  private readonly dialogRef = inject(MatDialogRef<UserFormDialogComponent, UserFormDialogResult | undefined>);
+  private readonly dialogRef = inject(
+    MatDialogRef<UserFormDialogComponent, UserFormDialogResult | undefined>,
+  );
   readonly data = inject<UserFormDialogData>(MAT_DIALOG_DATA);
   private readonly userService = inject(UserService);
 
   username = '';
   firstName = '';
   lastName = '';
+  company = '';
   email = '';
+  setUserPassword = false;
   password = '';
+  confirmPassword = '';
   readonly separatorKeysCodes: number[] = [ENTER, COMMA];
   groups: string[] = [];
   groupOptions: { groupname: string; grouplabel: string }[] = [];
@@ -96,6 +127,7 @@ export class UserFormDialogComponent implements OnInit {
       this.username = u.id;
       this.firstName = u.properties.firstName ?? '';
       this.lastName = u.properties.lastName ?? '';
+      this.company = u.properties.company ?? '';
       this.email = u.properties.email ?? '';
       this.groups = [...(u.properties.groups ?? [])];
     }
@@ -181,21 +213,44 @@ export class UserFormDialogComponent implements OnInit {
     this.groupSearchTerms.next('');
   }
 
+  get canSave(): boolean {
+    if (this.loadingGroups) {
+      return false;
+    }
+    if (this.data.mode === 'edit' && !this.data.user) {
+      return false;
+    }
+    if (!this.username.trim() || !this.email.trim()) {
+      return false;
+    }
+    if (this.setUserPassword) {
+      return this.password.length > 0 && this.password === this.confirmPassword;
+    }
+    return true;
+  }
+
+  onSetUserPasswordChange(enabled: boolean): void {
+    this.setUserPassword = enabled;
+    if (!enabled) {
+      this.password = '';
+      this.confirmPassword = '';
+    }
+  }
+
   submit(): void {
-    if (this.data.mode === 'create') {
-      if (!this.username.trim() || !this.password) {
-        return;
-      }
+    if (!this.canSave) {
+      return;
     }
     const result: UserFormDialogResult = {
       mode: this.data.mode,
       username: this.username.trim(),
       firstName: this.firstName.trim(),
       lastName: this.lastName.trim(),
+      company: this.company.trim(),
       email: this.email.trim(),
       groups: this.groups,
     };
-    if (this.password.length > 0) {
+    if (this.setUserPassword && this.password.length > 0) {
       result.password = this.password;
     }
     this.dialogRef.close(result);

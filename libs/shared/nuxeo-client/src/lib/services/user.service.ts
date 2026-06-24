@@ -21,11 +21,7 @@ export class UserService {
    * User search with paging (used by Administration). Uses `*` when the query is empty
    * so the server returns a broad list where supported.
    */
-  searchUsersPaged(
-    query: string,
-    pageSize = 50,
-    currentPageIndex = 0,
-  ): Observable<NuxeoUserList> {
+  searchUsersPaged(query: string, pageSize = 50, currentPageIndex = 0): Observable<NuxeoUserList> {
     const q = query.trim() || '*';
     const params = new HttpParams()
       .set('q', q)
@@ -68,6 +64,7 @@ export class UserService {
     username: string;
     firstName: string;
     lastName: string;
+    company?: string;
     email: string;
     password: string;
     groups?: string[];
@@ -79,6 +76,7 @@ export class UserService {
         username: input.username,
         firstName: input.firstName,
         lastName: input.lastName,
+        company: input.company ?? '',
         email: input.email,
         password: input.password,
         groups: input.groups ?? [],
@@ -91,6 +89,7 @@ export class UserService {
     updates: {
       firstName?: string;
       lastName?: string;
+      company?: string;
       email?: string;
       password?: string;
       groups?: string[];
@@ -101,6 +100,7 @@ export class UserService {
         const props = { ...existing.properties };
         if (updates.firstName !== undefined) props.firstName = updates.firstName;
         if (updates.lastName !== undefined) props.lastName = updates.lastName;
+        if (updates.company !== undefined) props.company = updates.company;
         if (updates.email !== undefined) props.email = updates.email;
         if (updates.groups !== undefined) props.groups = updates.groups;
         if (updates.password !== undefined && updates.password.length > 0) {
