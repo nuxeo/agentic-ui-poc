@@ -183,10 +183,18 @@ getDocumentTasks(docId: string, userId?: string): Observable<NuxeoTask[]>
 
 ```typescript
 searchUsers(query: string): Observable<NuxeoUser[]>
+searchUsersPaged(query: string, pageSize?: number, currentPageIndex?: number): Observable<NuxeoUserList>
 searchGroups(query: string): Observable<NuxeoGroup[]>
+searchGroupsPaged(query: string, pageSize?: number, currentPageIndex?: number): Observable<NuxeoGroupList>
 getUser(userId: string): Observable<NuxeoUser>
 getGroup(groupId: string): Observable<NuxeoGroup>
+createUser(input: { username, firstName, lastName, company?, email, password?, groups? }): Observable<NuxeoUser>
+  // With password → POST /nuxeo/api/v1/user
+  // Without password → User.Invite automation (invitation email flow)
+updateUser(userId: string, updates: { firstName?, lastName?, company?, email?, password?, groups? }): Observable<NuxeoUser>
 deleteUser(userId: string): Observable<void>
+createGroup(input: { groupname, grouplabel, memberUsers?, memberGroups? }): Observable<NuxeoGroup>
+updateGroup(groupname: string, updates: { grouplabel?, memberUsers?, memberGroups? }): Observable<NuxeoGroup>
 deleteGroup(groupname: string): Observable<void>
 ```
 

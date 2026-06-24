@@ -222,6 +222,10 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   }
 
   openCreateUser(): void {
+    this.openCreateUserDialog();
+  }
+
+  private openCreateUserDialog(): void {
     this.dialog
       .open<UserFormDialogComponent, UserFormDialogData, UserFormDialogResult | undefined>(
         UserFormDialogComponent,
@@ -234,6 +238,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
       .afterClosed()
       .subscribe((r) => {
         if (!r || r.mode !== 'create') return;
+        const invited = !r.password;
         this.userService
           .createUser({
             username: r.username,
@@ -241,17 +246,22 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             lastName: r.lastName,
             company: r.company,
             email: r.email,
-            password: r.password ?? '',
+            password: r.password,
             groups: r.groups,
           })
           .subscribe({
             next: () => {
-              this.snackBar.open('User created', 'Dismiss', { duration: 3000 });
+              this.snackBar.open(invited ? 'Invitation sent' : 'User created', 'Dismiss', {
+                duration: 3000,
+              });
               this.afterMutation();
+              if (r.createAnother) {
+                this.openCreateUserDialog();
+              }
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Create failed', 'Dismiss', {
-                duration: 5000,
+              this.snackBar.open(this.createUserErrorMessage(e, invited), 'Dismiss', {
+                duration: 7000,
               }),
           });
       });
@@ -423,5 +433,13 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     const m = group.memberUsers ?? [];
     if (m.length <= 3) return m.join(', ');
     return `${m.slice(0, 3).join(', ')} +${m.length - 3}`;
+  }
+
+  private createUserErrorMessage(err: unknown, invited: boolean): string {
+    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
+    if (invited && raw?.toLowerCase().includes('sending a mail')) {
+      return 'Invitation could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.';
+    }
+    return raw || 'Create failed';
   }
 }

@@ -8,6 +8,8 @@ They are meant to be copied into the `nuxeo` docker container at
 
 | File                        | Tracked? | Purpose                                                     |
 | --------------------------- | -------- | ----------------------------------------------------------- |
+| `40-mail.sample.conf`       | yes      | Template for local SMTP via Mailpit (User.Invite / alerts)  |
+| `40-mail.conf`              | **no**   | Your local mail settings (gitignored)                       |
 | `50-hyland-cic.sample.conf` | yes      | Template with every property name + safe placeholder values |
 | `50-hyland-cic.conf`        | **no**   | Your local copy with real tenant credentials (gitignored)   |
 
@@ -24,6 +26,82 @@ key) are assigned per HX customer account and documented at:
 > https://hyland.atlassian.net/wiki/spaces/HxAI/pages/1329661828
 
 Treat anything from that page as a secret.
+
+## Local mail setup (User.Invite / notifications)
+
+Nuxeo's `User.Invite` automation (used when creating a user without a password in
+Agentic UI) **requires outbound SMTP**. The default Docker image ships with
+neutral mail settings that cannot send email, which surfaces as:
+
+```text
+Failed to invoke operation: User.Invite … An error occurred while sending a mail
+```
+
+This repo uses [Mailpit](https://github.com/axllent/mailpit) as a local SMTP
+sink — messages are captured but never delivered to real inboxes. This matches
+the [Nuxeo mail notification docs](https://doc.nuxeo.com/nxdoc/set-up-email-notification/).
+
+### One-time setup
+
+```bash
+# 1. Copy the mail template (gitignored destination).
+cp nuxeo-conf/40-mail.sample.conf nuxeo-conf/40-mail.conf
+
+# 2. Create the shared Docker network if it does not exist yet.
+docker network create nuxeo-net
+
+# 3. Start Mailpit (SMTP :1025, web UI :8025).
+docker compose -f mailpit-docker-compose.yml up -d
+
+# 4. Attach the running Nuxeo container to the same network so it can reach `mailpit`.
+docker network connect nuxeo-net nuxeo
+
+# 5. Install the mail config fragment and restart Nuxeo.
+docker cp nuxeo-conf/40-mail.conf nuxeo:/etc/nuxeo/conf.d/40-mail.conf
+
+# The Docker entrypoint only merges conf.d/*.conf into nuxeo.conf on the *first*
+# container start. If Nuxeo was already running, append the mail block manually:
+docker exec nuxeo bash -c 'grep -q "mail.transport.host=mailpit" /etc/nuxeo/nuxeo.conf || { echo "" >> /etc/nuxeo/nuxeo.conf; echo "## Local mail (Mailpit)" >> /etc/nuxeo/nuxeo.conf; cat /etc/nuxeo/conf.d/40-mail.conf >> /etc/nuxeo/nuxeo.conf; }'
+
+docker restart nuxeo
+```
+
+Open **http://localhost:8025** to read captured invitation emails.
+
+### Verify User.Invite
+
+After Nuxeo is back up, create a user in Agentic UI with **Set user password**
+off, or run:
+
+```bash
+curl -sS -u Administrator:Administrator \
+  -X POST -H "Content-Type: application/json" \
+  http://localhost:8080/nuxeo/api/v1/automation/User.Invite \
+  -d '{
+    "input": {
+      "entity-type": "user",
+      "id": "",
+      "properties": {
+        "username": "invite-test",
+        "firstName": "Invite",
+        "lastName": "Test",
+        "company": "",
+        "email": "you@example.com",
+        "groups": []
+      }
+    },
+    "params": {},
+    "context": {}
+  }'
+```
+
+A `200`/`204` response and a message in Mailpit confirm mail is working.
+
+### Making the mount permanent
+
+Bind-mount the whole `nuxeo-conf/` folder so `40-mail.conf` survives container
+recreation (see **Making the mount permanent** below). Mailpit is started
+separately via `mailpit-docker-compose.yml`.
 
 ## Applying the config to the running container
 
