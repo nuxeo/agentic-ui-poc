@@ -1,4 +1,4 @@
-<div mat-dialog-title role="heading" aria-level="2">
+<div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
   {{ data.mode === 'create' ? 'Create user' : 'Edit user' }}
 </div>
 <mat-dialog-content class="form">
@@ -7,13 +7,14 @@
       <mat-spinner diameter="36" />
     </div>
   }
-  <mat-form-field appearance="outline" class="full">
+  <mat-form-field appearance="outline" class="full first-field">
     <mat-label>Username</mat-label>
     <input
       matInput
       name="username"
       [(ngModel)]="username"
       [disabled]="data.mode === 'edit'"
+      autocomplete="off"
       required
     />
   </mat-form-field>
@@ -26,18 +27,12 @@
     <input matInput name="lastName" [(ngModel)]="lastName" />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
-    <mat-label>Email</mat-label>
-    <input matInput name="email" type="email" [(ngModel)]="email" />
+    <mat-label>Company</mat-label>
+    <input matInput name="company" [(ngModel)]="company" />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
-    <mat-label>{{ data.mode === 'create' ? 'Password' : 'New password (optional)' }}</mat-label>
-    <input
-      matInput
-      name="password"
-      type="password"
-      [(ngModel)]="password"
-      [required]="data.mode === 'create'"
-    />
+    <mat-label>Email</mat-label>
+    <input matInput name="email" type="email" [(ngModel)]="email" autocomplete="off" required />
   </mat-form-field>
   <mat-form-field appearance="outline" class="full">
     <mat-label>Groups</mat-label>
@@ -79,20 +74,45 @@
       <mat-option [value]="g.groupname">{{ g.grouplabel }}</mat-option>
     }
   </mat-autocomplete>
+  <mat-slide-toggle
+    class="password-toggle"
+    [checked]="setUserPassword"
+    (change)="onSetUserPasswordChange($event.checked)"
+    color="primary"
+  >
+    Set user password
+  </mat-slide-toggle>
+  @if (setUserPassword) {
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Password</mat-label>
+      <input
+        matInput
+        name="password"
+        type="password"
+        [(ngModel)]="password"
+        autocomplete="new-password"
+        required
+      />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Verify password</mat-label>
+      <input
+        matInput
+        name="confirmPassword"
+        type="password"
+        [(ngModel)]="confirmPassword"
+        autocomplete="new-password"
+        required
+      />
+      @if (confirmPassword && password !== confirmPassword) {
+        <mat-error>Passwords do not match</mat-error>
+      }
+    </mat-form-field>
+  }
 </mat-dialog-content>
 <mat-dialog-actions align="end" class="dialog-actions">
   <button type="button" mat-button mat-dialog-close>Cancel</button>
-  <button
-    type="button"
-    mat-flat-button
-    color="primary"
-    (click)="submit()"
-    [disabled]="
-      loadingGroups ||
-      (data.mode === 'create' && (!username.trim() || !password)) ||
-      (data.mode === 'edit' && !data.user)
-    "
-  >
+  <button type="button" mat-flat-button color="primary" (click)="submit()" [disabled]="!canSave">
     Save
   </button>
 </mat-dialog-actions>

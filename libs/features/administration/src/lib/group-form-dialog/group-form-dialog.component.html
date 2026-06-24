@@ -1,8 +1,8 @@
-<div mat-dialog-title role="heading" aria-level="2">
+<div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
   {{ data.mode === 'create' ? 'Create group' : 'Edit group' }}
 </div>
 <mat-dialog-content class="form">
-  <mat-form-field appearance="outline" class="full">
+  <mat-form-field appearance="outline" class="full first-field">
     <mat-label>Group name</mat-label>
     <input
       matInput
@@ -55,41 +55,6 @@
           }
         </span>
       </mat-option>
-    }
-  </mat-autocomplete>
-
-  <mat-form-field appearance="outline" class="full">
-    <mat-label>Nested groups</mat-label>
-    <mat-chip-grid #nestedChipGrid>
-      @for (id of memberGroupNames; track id) {
-        <mat-chip-row (removed)="removeNestedGroup(id)">
-          {{ id }}
-          <button type="button" matChipRemove [attr.aria-label]="'Remove nested group ' + id">
-            <mat-icon>cancel</mat-icon>
-          </button>
-        </mat-chip-row>
-      }
-      <input
-        name="nestedGroupSearch"
-        [placeholder]="memberGroupNames.length ? '' : 'Search groups or type a group name…'"
-        [matChipInputFor]="nestedChipGrid"
-        [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
-        [matAutocomplete]="groupAuto"
-        [(ngModel)]="groupSearchQuery"
-        (focus)="onNestedGroupInputFocus()"
-        (ngModelChange)="onGroupSearch($event)"
-        (matChipInputTokenEnd)="addNestedGroupFromInput($event)"
-      />
-    </mat-chip-grid>
-    <mat-hint>Pick from search or enter a group name and press Enter</mat-hint>
-  </mat-form-field>
-  <mat-autocomplete
-    #groupAuto="matAutocomplete"
-    autoActiveFirstOption
-    (optionSelected)="onGroupSelected($event)"
-  >
-    @for (g of filteredGroups; track g.groupname) {
-      <mat-option [value]="g">{{ g.grouplabel || g.groupname }}</mat-option>
     }
   </mat-autocomplete>
 </mat-dialog-content>

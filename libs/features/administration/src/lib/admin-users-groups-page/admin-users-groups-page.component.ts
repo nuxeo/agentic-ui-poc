@@ -15,11 +15,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 
-import {
-  NuxeoGroup,
-  NuxeoUser,
-  UserService,
-} from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoGroup, NuxeoUser, UserService } from '@agentic-ui/shared/nuxeo-client';
 
 import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
 import {
@@ -149,16 +145,16 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     this.userService
       .searchUsersPaged(this.combinedSearchQuery, this.pageSize, this.usersPageIndex())
       .subscribe({
-      next: (res) => {
-        this.users.set(res.entries ?? []);
-        this.usersTotal.set(res.totalSize ?? res.entries?.length ?? 0);
-        this.usersLoading.set(false);
-      },
-      error: (err) => {
-        this.usersError.set(err?.message ?? 'Could not load users.');
-        this.usersLoading.set(false);
-      },
-    });
+        next: (res) => {
+          this.users.set(res.entries ?? []);
+          this.usersTotal.set(res.totalSize ?? res.entries?.length ?? 0);
+          this.usersLoading.set(false);
+        },
+        error: (err) => {
+          this.usersError.set(err?.message ?? 'Could not load users.');
+          this.usersLoading.set(false);
+        },
+      });
   }
 
   loadGroups(): void {
@@ -167,16 +163,16 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     this.userService
       .searchGroupsPaged(this.combinedSearchQuery, this.pageSize, this.groupsPageIndex())
       .subscribe({
-      next: (res) => {
-        this.groups.set(res.entries ?? []);
-        this.groupsTotal.set(res.totalSize ?? res.entries?.length ?? 0);
-        this.groupsLoading.set(false);
-      },
-      error: (err) => {
-        this.groupsError.set(err?.message ?? 'Could not load groups.');
-        this.groupsLoading.set(false);
-      },
-    });
+        next: (res) => {
+          this.groups.set(res.entries ?? []);
+          this.groupsTotal.set(res.totalSize ?? res.entries?.length ?? 0);
+          this.groupsLoading.set(false);
+        },
+        error: (err) => {
+          this.groupsError.set(err?.message ?? 'Could not load groups.');
+          this.groupsLoading.set(false);
+        },
+      });
   }
 
   onUsersPage(event: PageEvent): void {
@@ -231,6 +227,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         UserFormDialogComponent,
         {
           width: '480px',
+          maxHeight: '90vh',
           data: { mode: 'create' },
         },
       )
@@ -242,6 +239,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             username: r.username,
             firstName: r.firstName,
             lastName: r.lastName,
+            company: r.company,
             email: r.email,
             password: r.password ?? '',
             groups: r.groups,
@@ -252,7 +250,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
               this.afterMutation();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Create failed', 'Dismiss', { duration: 5000 }),
+              this.snackBar.open(e?.error?.message ?? 'Create failed', 'Dismiss', {
+                duration: 5000,
+              }),
           });
       });
   }
@@ -263,6 +263,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
         UserFormDialogComponent,
         {
           width: '480px',
+          maxHeight: '90vh',
           data: { mode: 'edit', user },
         },
       )
@@ -273,6 +274,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           .updateUser(user.id, {
             firstName: r.firstName,
             lastName: r.lastName,
+            company: r.company,
             email: r.email,
             password: r.password,
             groups: r.groups,
@@ -283,21 +285,26 @@ export class AdminUsersGroupsPageComponent implements OnInit {
               this.afterMutation();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', { duration: 5000 }),
+              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
+                duration: 5000,
+              }),
           });
       });
   }
 
   confirmDeleteUser(user: NuxeoUser): void {
     this.dialog
-      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(ConfirmDialogComponent, {
-        width: '400px',
-        data: {
-          title: 'Delete user',
-          message: `Delete user "${user.id}"? This cannot be undone.`,
-          confirmLabel: 'Delete',
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(
+        ConfirmDialogComponent,
+        {
+          width: '400px',
+          data: {
+            title: 'Delete user',
+            message: `Delete user "${user.id}"? This cannot be undone.`,
+            confirmLabel: 'Delete',
+          },
         },
-      })
+      )
       .afterClosed()
       .subscribe((ok) => {
         if (!ok) return;
@@ -330,7 +337,6 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             groupname: r.groupname,
             grouplabel: r.grouplabel,
             memberUsers: r.memberUsers,
-            memberGroups: r.memberGroups,
           })
           .subscribe({
             next: () => {
@@ -341,7 +347,9 @@ export class AdminUsersGroupsPageComponent implements OnInit {
               }
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Create failed', 'Dismiss', { duration: 5000 }),
+              this.snackBar.open(e?.error?.message ?? 'Create failed', 'Dismiss', {
+                duration: 5000,
+              }),
           });
       });
   }
@@ -359,7 +367,6 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           .updateGroup(group.groupname, {
             grouplabel: r.grouplabel,
             memberUsers: r.memberUsers,
-            memberGroups: r.memberGroups,
           })
           .subscribe({
             next: () => {
@@ -367,21 +374,26 @@ export class AdminUsersGroupsPageComponent implements OnInit {
               this.afterMutation();
             },
             error: (e) =>
-              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', { duration: 5000 }),
+              this.snackBar.open(e?.error?.message ?? 'Update failed', 'Dismiss', {
+                duration: 5000,
+              }),
           });
       });
   }
 
   confirmDeleteGroup(group: NuxeoGroup): void {
     this.dialog
-      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(ConfirmDialogComponent, {
-        width: '400px',
-        data: {
-          title: 'Delete group',
-          message: `Delete group "${group.groupname}"?`,
-          confirmLabel: 'Delete',
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(
+        ConfirmDialogComponent,
+        {
+          width: '400px',
+          data: {
+            title: 'Delete group',
+            message: `Delete group "${group.groupname}"?`,
+            confirmLabel: 'Delete',
+          },
         },
-      })
+      )
       .afterClosed()
       .subscribe((ok) => {
         if (!ok) return;

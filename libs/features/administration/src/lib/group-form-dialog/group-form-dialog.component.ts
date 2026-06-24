@@ -4,7 +4,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -23,7 +26,6 @@ export interface GroupFormDialogResult {
   groupname: string;
   grouplabel: string;
   memberUsers: string[];
-  memberGroups: string[];
   /** When creating, submit again with a fresh dialog (Nuxeo Web UI parity for bulk entry). */
   createAnother?: boolean;
 }
@@ -44,12 +46,27 @@ export interface GroupFormDialogResult {
   templateUrl: './group-form-dialog.component.html',
   styles: [
     `
+      :host {
+        display: block;
+      }
+      .dialog-title {
+        padding: 0 1.5rem 0.75rem;
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 500;
+        line-height: 1.4;
+      }
       .form {
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
         min-width: 420px;
-        padding-top: 0.35rem;
+        padding-top: 2.75rem;
+        padding-bottom: 0.5rem;
+        overflow-x: hidden;
+      }
+      .first-field {
+        margin-top: 0.25rem;
       }
       .full {
         width: 100%;
@@ -80,7 +97,9 @@ export interface GroupFormDialogResult {
   ],
 })
 export class GroupFormDialogComponent implements OnInit {
-  private readonly dialogRef = inject(MatDialogRef<GroupFormDialogComponent, GroupFormDialogResult | undefined>);
+  private readonly dialogRef = inject(
+    MatDialogRef<GroupFormDialogComponent, GroupFormDialogResult | undefined>,
+  );
   private readonly userService = inject(UserService);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -97,19 +116,12 @@ export class GroupFormDialogComponent implements OnInit {
 
   private readonly searchTerms = new Subject<string>();
 
-  /** Nested group ids (memberGroups). */
-  memberGroupNames: string[] = [];
-  groupSearchQuery = '';
-  filteredGroups: NuxeoGroup[] = [];
-  private readonly groupSearchTerms = new Subject<string>();
-
   ngOnInit(): void {
     const g = this.data.group;
     if (this.data.mode === 'edit' && g) {
       this.groupname = g.groupname;
       this.grouplabel = g.grouplabel ?? '';
       this.memberUsernames = [...(g.memberUsers ?? [])];
-      this.memberGroupNames = [...(g.memberGroups ?? [])];
     }
 
     this.searchTerms
@@ -129,29 +141,6 @@ export class GroupFormDialogComponent implements OnInit {
         },
         error: () => {
           this.filteredUsers = [];
-        },
-      });
-
-    this.groupSearchTerms
-      .pipe(
-        debounceTime(250),
-        distinctUntilChanged(),
-        switchMap((q) => {
-          const query = (q ?? '').trim() || '*';
-          return this.userService.searchGroupsPaged(query, 30, 0);
-        }),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe({
-        next: (res) => {
-          const taken = new Set(this.memberGroupNames);
-          const selfName = this.groupname.trim();
-          this.filteredGroups = (res.entries ?? []).filter(
-            (g) => g.groupname && !taken.has(g.groupname) && g.groupname !== selfName,
-          );
-        },
-        error: () => {
-          this.filteredGroups = [];
         },
       });
   }
@@ -202,52 +191,6 @@ export class GroupFormDialogComponent implements OnInit {
     this.searchTerms.next(this.userSearchQuery);
   }
 
-  onGroupSearch(q: string): void {
-    this.groupSearchQuery = q;
-    this.groupSearchTerms.next(q);
-  }
-
-  onNestedGroupInputFocus(): void {
-    this.groupSearchTerms.next(this.groupSearchQuery);
-  }
-
-  onGroupSelected(event: MatAutocompleteSelectedEvent): void {
-    const g = event.option.value as NuxeoGroup;
-    if (g?.groupname && !this.memberGroupNames.includes(g.groupname)) {
-      this.memberGroupNames = [...this.memberGroupNames, g.groupname];
-    }
-    this.resetGroupSearchState();
-    event.option.deselect();
-  }
-
-  addNestedGroupFromInput(event: MatChipInputEvent): void {
-    const raw = (event.value ?? '').trim();
-    if (!raw) {
-      event.chipInput.clear();
-      return;
-    }
-    if (raw === this.groupname.trim()) {
-      event.chipInput.clear();
-      return;
-    }
-    if (!this.memberGroupNames.includes(raw)) {
-      this.memberGroupNames = [...this.memberGroupNames, raw];
-    }
-    event.chipInput.clear();
-    this.resetGroupSearchState();
-  }
-
-  removeNestedGroup(id: string): void {
-    this.memberGroupNames = this.memberGroupNames.filter((x) => x !== id);
-    this.groupSearchTerms.next(this.groupSearchQuery);
-  }
-
-  private resetGroupSearchState(): void {
-    this.groupSearchQuery = '';
-    this.filteredGroups = [];
-    this.groupSearchTerms.next('');
-  }
-
   private resetSearchState(): void {
     this.userSearchQuery = '';
     this.filteredUsers = [];
@@ -264,7 +207,6 @@ export class GroupFormDialogComponent implements OnInit {
       groupname: this.groupname.trim(),
       grouplabel: this.grouplabel.trim(),
       memberUsers: [...this.memberUsernames],
-      memberGroups: [...this.memberGroupNames],
       ...(this.data.mode === 'create' ? { createAnother } : {}),
     });
   }
