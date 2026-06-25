@@ -70,6 +70,23 @@ export class UserService {
     lastName: string;
     company?: string;
     email: string;
+    password?: string;
+    groups?: string[];
+  }): Observable<NuxeoUser> {
+    const password = input.password?.trim();
+    if (password) {
+      return this.createUserWithPassword({ ...input, password });
+    }
+    return this.inviteUser(input);
+  }
+
+  /** Immediate account creation with an admin-set password (Nuxeo Web UI parity). */
+  private createUserWithPassword(input: {
+    username: string;
+    firstName: string;
+    lastName: string;
+    company?: string;
+    email: string;
     password: string;
     groups?: string[];
   }): Observable<NuxeoUser> {
@@ -86,6 +103,60 @@ export class UserService {
         groups: input.groups ?? [],
       },
     });
+  }
+
+  /**
+   * Invitation flow when no password is set — mirrors Nuxeo Web UI `User.Invite` with a
+   * user entity input so the invitee receives an email to set their own password.
+   */
+  private inviteUser(input: {
+    username: string;
+    firstName: string;
+    lastName: string;
+    company?: string;
+    email: string;
+    groups?: string[];
+  }): Observable<NuxeoUser> {
+    return this.api
+      .post<string>('/nuxeo/api/v1/automation/User.Invite', {
+        input: {
+          'entity-type': 'user',
+          id: '',
+          properties: {
+            username: input.username,
+            firstName: input.firstName,
+            lastName: input.lastName,
+            company: input.company ?? '',
+            email: input.email,
+            groups: input.groups ?? [],
+          },
+        },
+        params: {},
+        context: {},
+      })
+      .pipe(map(() => this.buildUserFromInput(input)));
+  }
+
+  private buildUserFromInput(input: {
+    username: string;
+    firstName: string;
+    lastName: string;
+    company?: string;
+    email: string;
+    groups?: string[];
+  }): NuxeoUser {
+    return {
+      'entity-type': 'user',
+      id: input.username,
+      properties: {
+        username: input.username,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        company: input.company ?? '',
+        email: input.email,
+        groups: input.groups ?? [],
+      },
+    };
   }
 
   updateUser(

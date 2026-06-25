@@ -6,13 +6,14 @@ This guide documents the coding conventions, project structure, and step-by-step
 
 ## 1. Prerequisites and Setup
 
-| Requirement     | Version / Notes                                                          |
-| --------------- | ------------------------------------------------------------------------ |
-| **Node.js**     | LTS (v20 or v22 recommended; odd versions like v25 work but are not LTS) |
-| **npm**         | Ships with Node; used as the package manager (see `.npmrc`)              |
-| **Nuxeo**       | Running on `http://localhost:8080` for local development                 |
-| **Angular CLI** | Installed via `devDependencies` (`~19.2`); do not install globally       |
-| **Nx**          | Installed via `devDependencies` (`22.6`); invoked with `npx nx`          |
+| Requirement     | Version / Notes                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Node.js**     | LTS (v20 or v22 recommended; odd versions like v25 work but are not LTS)                                                    |
+| **npm**         | Ships with Node; used as the package manager (see `.npmrc`)                                                                 |
+| **Nuxeo**       | Running on `http://localhost:8080` for local development                                                                    |
+| **Mailpit**     | Optional — required for `User.Invite` / invitation emails locally; see [`../nuxeo-conf/README.md`](../nuxeo-conf/README.md) |
+| **Angular CLI** | Installed via `devDependencies` (`~19.2`); do not install globally                                                          |
+| **Nx**          | Installed via `devDependencies` (`22.6`); invoked with `npx nx`                                                             |
 
 ### First-time setup
 

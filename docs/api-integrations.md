@@ -1240,6 +1240,69 @@ so the UI shows **Already in Content Lake** without re-ingesting. The marker
 prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
 `dc:source` is already occupied — PDF metadata often populates `dc:rights`.
 
+---
+
+## Administration — Create User (with password)
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| **Service**     | `UserService` (`libs/shared/nuxeo-client/src/lib/services/user.service.ts`) |
+| **Method**      | `createUser(...)` when `password` is provided                               |
+| **HTTP Method** | `POST`                                                                      |
+| **Endpoint**    | `/nuxeo/api/v1/user`                                                        |
+
+**Request Payload:**
+
+```json
+{
+  "entity-type": "user",
+  "id": "jdoe",
+  "properties": {
+    "username": "jdoe",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "company": "Hyland",
+    "email": "jdoe@example.com",
+    "password": "Secret123",
+    "groups": ["members"]
+  }
+}
+```
+
+---
+
+## Administration — Invite User (no password)
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| **Service**     | `UserService` (`libs/shared/nuxeo-client/src/lib/services/user.service.ts`) |
+| **Method**      | `createUser(...)` when `password` is omitted (Nuxeo Web UI parity)          |
+| **HTTP Method** | `POST`                                                                      |
+| **Endpoint**    | `/nuxeo/api/v1/automation/User.Invite`                                      |
+
+**Request Payload:**
+
+```json
+{
+  "input": {
+    "entity-type": "user",
+    "id": "",
+    "properties": {
+      "username": "jdoe",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "company": "Hyland",
+      "email": "jdoe@example.com",
+      "groups": ["members"]
+    }
+  },
+  "params": {},
+  "context": {}
+}
+```
+
+**Notes:** Sends an invitation email so the user can set their own password. Requires Nuxeo mail configuration (see [`../nuxeo-conf/README.md`](../nuxeo-conf/README.md) — local dev uses Mailpit via `mailpit-docker-compose.yml`). Matches `nuxeo-create-user.html` in nuxeo-ui-elements.
+
 <!--
 ## N. Title
 
