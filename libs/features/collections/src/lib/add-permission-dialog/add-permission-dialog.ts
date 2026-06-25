@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,7 +15,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { DocumentDetailService, UserGroupSuggestion } from '@agentic-ui/shared/nuxeo-client';
 
@@ -259,6 +259,7 @@ export class AddPermissionDialogComponent {
   private readonly data = inject<AddPermissionDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly searchSubject = new Subject<string>();
 
@@ -324,6 +325,7 @@ export class AddPermissionDialogComponent {
             : null,
         end: this.timeFrame === 'date-based' && this.endDate ? this.formatDate(this.endDate) : null,
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.saving.set(false);

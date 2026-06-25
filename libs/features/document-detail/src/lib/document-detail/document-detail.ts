@@ -2654,9 +2654,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data,
       autoFocus: false,
     });
-    ref.afterClosed().subscribe((saved: boolean) => {
-      if (saved) this.loadDocument(this.docUid);
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((saved: boolean) => {
+        if (saved) this.loadDocument(this.docUid);
+      });
   }
 
   editPermission(ace: NuxeoAce): void {
@@ -2665,12 +2668,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data: { documentUid: this.docUid, ace } satisfies UpdatePermissionDialogData,
       autoFocus: false,
     });
-    ref.afterClosed().subscribe((updated: boolean | undefined) => {
-      if (updated) {
-        this.toast('Permission updated');
-        this.loadDocument(this.docUid);
-      }
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.toast('Permission updated');
+          this.loadDocument(this.docUid);
+        }
+      });
   }
 
   deletePermission(ace: NuxeoAce): void {
@@ -2684,12 +2690,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } satisfies DeletePermissionDialogData,
       autoFocus: false,
     });
-    ref.afterClosed().subscribe((deleted: boolean | undefined) => {
-      if (deleted) {
-        this.toast('Permission deleted');
-        this.loadDocument(this.docUid);
-      }
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((deleted: boolean | undefined) => {
+        if (deleted) {
+          this.toast('Permission deleted');
+          this.loadDocument(this.docUid);
+        }
+      });
   }
 
   editExternalPermission(ace: NuxeoAce): void {
@@ -2702,12 +2711,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } satisfies UpdatePermissionDialogData,
       autoFocus: false,
     });
-    ref.afterClosed().subscribe((updated: boolean | undefined) => {
-      if (updated) {
-        this.toast('Permission updated');
-        this.loadDocument(this.docUid);
-      }
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.toast('Permission updated');
+          this.loadDocument(this.docUid);
+        }
+      });
   }
 
   sendPermissionNotification(ace: NuxeoAce): void {

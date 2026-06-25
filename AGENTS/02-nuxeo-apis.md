@@ -104,20 +104,20 @@ enrichers-document: firstAccessibleAncestor → adds breadcrumb parent
 
 Automation operations use `POST /nuxeo/api/v1/automation/:operationId` with body `{ params: {}, context: {}, input: "" }`.
 
-| Operation               | ID                                      | Key params                                                                   |
-| ----------------------- | --------------------------------------- | ---------------------------------------------------------------------------- |
-| Create collection       | `Collection.Create`                     | `name`, `description`                                                        |
-| Add to collection       | `Collection.AddToCollection`            | `collection` (uid)                                                           |
-| Publish document        | `Document.PublishToSection`             | `target` (section uid)                                                       |
-| Lock document           | `Document.Lock`                         | —                                                                            |
-| Unlock document         | `Document.Unlock`                       | —                                                                            |
-| Add permission          | `Document.AddPermission`                | `username`, `permission`, `notify`, `comment`, `begin`, `end`                |
-| Replace permission      | `Document.ReplacePermission`            | `id`, `username`, `permission`, `notify`, `comment`, `begin`, `end`          |
-| Add permission (legacy) | `Document.AddACE`                       | `user`, `permission` only — no notify/dates; prefer `Document.AddPermission` |
-| Block inheritance       | `Document.BlockPermissionInheritance`   | —                                                                            |
-| Unblock inheritance     | `Document.UnblockPermissionInheritance` | —                                                                            |
-| Bulk download           | `Blob.BulkDownload`                     | `uids`                                                                       |
-| CSV export              | `Bulk.RunAction`                        | `action: "csvExport"`                                                        |
+| Operation               | ID                                      | Key params                                                                                                                      |
+| ----------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Create collection       | `Collection.Create`                     | `name`, `description`                                                                                                           |
+| Add to collection       | `Collection.AddToCollection`            | `collection` (uid)                                                                                                              |
+| Publish document        | `Document.PublishToSection`             | `target` (section uid)                                                                                                          |
+| Lock document           | `Document.Lock`                         | —                                                                                                                               |
+| Unlock document         | `Document.Unlock`                       | —                                                                                                                               |
+| Add permission          | `Document.AddPermission`                | `username`, `permission`, `notify`, `comment`, `begin`, `end`                                                                   |
+| Replace permission      | `Document.ReplacePermission`            | `id`, `username`, `permission`, `notify`, `comment`, `begin`, `end`                                                             |
+| Add permission (legacy) | `Document.AddACE`                       | `user`, `permission` — client may pass `notify`/`comment`/`begin`/`end` but Nuxeo ignores them; prefer `Document.AddPermission` |
+| Block inheritance       | `Document.BlockPermissionInheritance`   | —                                                                                                                               |
+| Unblock inheritance     | `Document.UnblockPermissionInheritance` | —                                                                                                                               |
+| Bulk download           | `Blob.BulkDownload`                     | `uids`                                                                                                                          |
+| CSV export              | `Bulk.RunAction`                        | `action: "csvExport"`                                                                                                           |
 
 ---
 

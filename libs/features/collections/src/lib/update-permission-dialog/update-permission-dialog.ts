@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -202,6 +203,7 @@ export class UpdatePermissionDialogComponent {
   private readonly data = inject<UpdatePermissionDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly saving = signal(false);
   readonly permissionOptions = PERMISSION_OPTIONS;
@@ -248,6 +250,7 @@ export class UpdatePermissionDialogComponent {
             : null,
         end: this.timeFrame === 'date-based' && this.endDate ? this.formatDate(this.endDate) : null,
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.saving.set(false);
@@ -281,6 +284,7 @@ export class UpdatePermissionDialogComponent {
             comment: this.notifyComment.trim() || undefined,
           }),
         ),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: () => {
