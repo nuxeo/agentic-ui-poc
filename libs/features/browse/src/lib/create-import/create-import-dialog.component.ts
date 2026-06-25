@@ -20,7 +20,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, switchMap } from 'rxjs';
+import { forkJoin } from 'rxjs';
 
 import {
   BrowseService,
@@ -28,6 +28,7 @@ import {
   DocumentImportService,
   RESTRICTED_IMPORT_LOCATION_MESSAGE,
   docTypeIcon,
+  isBlobHoldingDocType,
   isFolderishDocument,
   isRestrictedImportParentPath,
   sanitizeDocumentName,
@@ -48,9 +49,6 @@ export interface DocTypeDef {
   label: string;
   icon: string;
 }
-
-/** Document types that expose a main-file upload on create. */
-const BLOB_CONTENT_TYPES = new Set(['File', 'Audio', 'Picture', 'Video']);
 
 const NOTE_FORMAT_OPTIONS = [
   { value: 'text/html', label: 'HTML' },
@@ -94,7 +92,7 @@ function toDocTypeDefs(types: string[]): DocTypeDef[] {
 
 const DIALOG_SIZE = {
   content: { width: '960px', height: '680px' },
-  success: { width: '480px', height: 'auto' },
+  success: { width: '440px' },
 } as const;
 
 @Component({
@@ -147,8 +145,11 @@ export class CreateImportDialogComponent implements OnInit {
 
     effect(() => {
       const v = this.view();
-      const size = v === 'success' ? DIALOG_SIZE.success : DIALOG_SIZE.content;
-      this.dialogRef.updateSize(size.width, size.height);
+      if (v === 'success') {
+        this.dialogRef.updateSize(DIALOG_SIZE.success.width);
+      } else {
+        this.dialogRef.updateSize(DIALOG_SIZE.content.width, DIALOG_SIZE.content.height);
+      }
     });
   }
 
@@ -200,7 +201,12 @@ export class CreateImportDialogComponent implements OnInit {
 
   readonly hasContentField = computed(() => {
     const type = this.selectedDocType()?.type;
-    return type ? BLOB_CONTENT_TYPES.has(type) : false;
+    return type ? isBlobHoldingDocType(type) : false;
+  });
+
+  readonly createMissingMainFile = computed(() => {
+    const type = this.selectedDocType()?.type;
+    return type ? isBlobHoldingDocType(type) && !this.mainFile() : false;
   });
 
   readonly isNoteType = computed(() => this.selectedDocType()?.type === 'Note');
@@ -612,28 +618,22 @@ export class CreateImportDialogComponent implements OnInit {
     this.busy.set(true);
     this.error.set(null);
 
+    if (isBlobHoldingDocType(docType.type)) {
+      if (!mainFile) {
+        this.error.set('A file is required for this document type.');
+        return;
+      }
+    }
+
     const create$ =
-      mainFile && BLOB_CONTENT_TYPES.has(docType.type)
-        ? this.importService
-            .initUploadBatch()
-            .pipe(
-              switchMap((batchId) =>
-                this.importService
-                  .uploadFileToBatch(batchId, 0, mainFile)
-                  .pipe(
-                    switchMap(() =>
-                      this.importService.createDocumentWithBlob(
-                        path,
-                        name,
-                        docType.type,
-                        properties,
-                        batchId,
-                        0,
-                      ),
-                    ),
-                  ),
-              ),
-            )
+      mainFile && isBlobHoldingDocType(docType.type)
+        ? this.importService.createBlobHoldingDocument(
+            path,
+            name,
+            docType.type,
+            properties,
+            mainFile,
+          )
         : this.importService.createChildDocument(path, name, docType.type, properties);
 
     create$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({

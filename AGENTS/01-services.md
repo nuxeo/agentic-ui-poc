@@ -244,9 +244,15 @@ getById(docId: string): Observable<NuxeoDocument>
 
 ```typescript
 getDefaultImportParentPath(): Observable<string>
-initUploadBatch(): Observable<string>
+initUploadBatch(handler?: string): Observable<string>
 uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void>
+createBlobHoldingDocument(parentPath, name, docType, properties, file): Observable<NuxeoDocument>
+createDocumentWithBlob(...): Observable<NuxeoDocument>
+createFileFromBatch(...): Observable<NuxeoDocument>
+importFiles(parentPath, files, options?): Observable<NuxeoDocument[]>
 importFromCsvText(parentPath: string, csvText: string): Observable<CsvImportResult>
+isBlobHoldingDocType(docType: string): boolean
+documentHasMainBlob(doc: NuxeoDocument): boolean
 ```
 
 ---

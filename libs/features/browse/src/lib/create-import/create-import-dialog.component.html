@@ -26,14 +26,13 @@
         Import
       </button>
     </div>
-  } @else {
-    <h2 mat-dialog-title class="dialog-heading">Done</h2>
   }
 
   <mat-dialog-content
     class="dialog-body"
     [class.dialog-body--main]="view() === 'main'"
     [class.dialog-body--form]="view() === 'templateForm'"
+    [class.dialog-body--success]="view() === 'success'"
   >
     @if (resolvingPath()) {
       <div class="state-row">
@@ -256,6 +255,11 @@
 
               @if (hasContentField()) {
                 <div class="field-label">Content</div>
+                @if (createMissingMainFile()) {
+                  <p class="error-text content-required-hint" role="alert">
+                    Upload a main file to create this document.
+                  </p>
+                }
                 <div
                   class="content-dropzone"
                   [class.content-dropzone--active]="dragOverContent()"
@@ -430,14 +434,22 @@
           }
         }
         @case ('success') {
-          <p class="success-text">{{ successMessage() }}</p>
+          <div class="success-panel" role="status" aria-live="polite">
+            <mat-icon class="success-icon" aria-hidden="true">check_circle</mat-icon>
+            <h2 class="success-heading">Done</h2>
+            <p class="success-message">{{ successMessage() }}</p>
+          </div>
         }
       }
     }
   </mat-dialog-content>
 
   @if (!resolvingPath() && !pathError()) {
-    <mat-dialog-actions class="dialog-footer" align="start">
+    <mat-dialog-actions
+      class="dialog-footer"
+      [class.dialog-footer--success]="view() === 'success'"
+      align="start"
+    >
       @if (view() !== 'success') {
         <button
           mat-stroked-button
@@ -469,7 +481,7 @@
           mat-flat-button
           color="primary"
           type="button"
-          [disabled]="busy() || !docTitle.trim() || locationRestricted()"
+          [disabled]="busy() || !docTitle.trim() || locationRestricted() || createMissingMainFile()"
           (click)="createDocument()"
         >
           Create

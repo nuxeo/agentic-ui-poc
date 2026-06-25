@@ -11,6 +11,12 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   min-width: min(95vw, 560px);
   max-width: 95vw;
   box-sizing: border-box;
+
+  &:has(.success-view) {
+    height: auto;
+    min-height: 0;
+    min-width: min(95vw, 440px);
+  }
 }
 
 .create-import-root {
@@ -19,15 +25,12 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
-}
 
-.dialog-heading {
-  margin: 0 0 4px;
-  padding: 16px 24px 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--mat-sys-on-surface, #1a1c1e);
+  &.success-view {
+    flex: 0 0 auto;
+    min-height: 0;
+    height: auto;
+  }
 }
 
 .dialog-body {
@@ -46,6 +49,14 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   min-height: 480px;
   max-height: none;
   overflow-y: auto;
+}
+
+.dialog-body--success {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: none !important;
+  overflow: hidden !important;
+  padding: 0;
 }
 
 /* ─── Tabs ─── */
@@ -599,10 +610,45 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   padding-top: 8px;
 }
 
-.success-text {
-  font-size: 14px;
-  margin: 0 24px 12px;
-  padding-top: 8px;
+.success-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 36px 32px 28px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.success-icon {
+  font-size: 56px;
+  width: 56px;
+  height: 56px;
+  color: $primary-blue;
+}
+
+.success-heading {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+}
+
+.success-message {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+  max-width: 34ch;
+  word-break: break-word;
+}
+
+.success-view .dialog-footer--success {
+  border-top: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
+  justify-content: flex-end;
+  padding: 12px 24px 20px;
 }
 
 .detail-list {
