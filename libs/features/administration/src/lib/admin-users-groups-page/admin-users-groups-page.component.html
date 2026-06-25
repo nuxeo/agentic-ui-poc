@@ -94,8 +94,14 @@
     }
   </section>
 
-  <mat-tab-group animationDuration="0ms" class="ug-tabs">
-    <mat-tab label="Users">
+  <mat-tab-group
+    #ugTabGroup
+    animationDuration="0ms"
+    class="ug-tabs"
+    [selectedIndex]="selectedTabIndex()"
+    (selectedIndexChange)="selectedTabIndex.set($event)"
+  >
+    <mat-tab [label]="usersTabLabel()">
       <div class="ug-tab-pad">
         @if (usersLoading()) {
           <div class="ug-center"><mat-spinner diameter="40" /></div>
@@ -172,14 +178,14 @@
               (page)="onUsersPage($event)"
             />
             @if (users().length === 0) {
-              <p class="ug-empty">No users match this search.</p>
+              <p class="ug-empty">{{ usersEmptyMessage() }}</p>
             }
           </div>
         }
       </div>
     </mat-tab>
 
-    <mat-tab label="Groups">
+    <mat-tab [label]="groupsTabLabel()">
       <div class="ug-tab-pad">
         @if (groupsLoading()) {
           <div class="ug-center"><mat-spinner diameter="40" /></div>
@@ -240,7 +246,7 @@
               (page)="onGroupsPage($event)"
             />
             @if (groups().length === 0) {
-              <p class="ug-empty">No groups match this search.</p>
+              <p class="ug-empty">{{ groupsEmptyMessage() }}</p>
             }
           </div>
         }

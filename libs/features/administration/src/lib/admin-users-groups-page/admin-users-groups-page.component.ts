@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTableModule } from '@angular/material/table';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatTabsModule, MatTabGroup } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -18,7 +18,9 @@ import { catchError, filter, forkJoin, map, of, switchMap, tap } from 'rxjs';
 
 import {
   NuxeoGroup,
+  NuxeoGroupList,
   NuxeoUser,
+  NuxeoUserList,
   UserService,
   resolvePaginatedListTotal,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -98,6 +100,11 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     return all.slice(start, start + this.recentPageSize);
   });
 
+  readonly selectedTabIndex = signal(0);
+  readonly usersTabLabel = computed(() => `Users (${this.usersTotal()})`);
+  readonly groupsTabLabel = computed(() => `Groups (${this.groupsTotal()})`);
+  private readonly tabGroup = viewChild<MatTabGroup>('ugTabGroup');
+
   ngOnInit(): void {
     this.runSearch();
     this.loadRecent();
@@ -106,8 +113,52 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   runSearch(): void {
     this.usersPageIndex.set(0);
     this.groupsPageIndex.set(0);
-    this.loadUsers();
-    this.loadGroups();
+    this.usersLoading.set(true);
+    this.groupsLoading.set(true);
+    this.usersError.set(null);
+    this.groupsError.set(null);
+
+    const query = this.combinedSearchQuery;
+
+    forkJoin({
+      users: this.userService.searchUsersPaged(query, this.pageSize, 0).pipe(
+        catchError((err) => {
+          this.usersError.set(err?.message ?? 'Could not load users.');
+          return of({ 'entity-type': 'users', entries: [], totalSize: 0 } satisfies NuxeoUserList);
+        }),
+      ),
+      groups: this.userService.searchGroupsPaged(query, this.pageSize, 0).pipe(
+        catchError((err) => {
+          this.groupsError.set(err?.message ?? 'Could not load groups.');
+          return of({
+            'entity-type': 'groups',
+            entries: [],
+            totalSize: 0,
+          } satisfies NuxeoGroupList);
+        }),
+      ),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ users, groups }) => {
+          const usersTotal = resolvePaginatedListTotal(users, this.pageSize, 0);
+          const groupsTotal = resolvePaginatedListTotal(groups, this.pageSize, 0);
+
+          this.users.set(users.entries ?? []);
+          this.usersTotal.set(usersTotal);
+          this.groups.set(groups.entries ?? []);
+          this.groupsTotal.set(groupsTotal);
+
+          this.applySearchTabSelection(query, usersTotal, groupsTotal);
+
+          this.usersLoading.set(false);
+          this.groupsLoading.set(false);
+        },
+        error: () => {
+          this.usersLoading.set(false);
+          this.groupsLoading.set(false);
+        },
+      });
   }
 
   loadRecent(): void {
@@ -437,6 +488,42 @@ export class AdminUsersGroupsPageComponent implements OnInit {
             this.snackBar.open(e?.error?.message ?? 'Delete failed', 'Dismiss', { duration: 5000 }),
         });
       });
+  }
+
+  usersEmptyMessage(): string {
+    if (this.combinedSearchQuery.trim() && this.users().length === 0 && this.groupsTotal() > 0) {
+      return 'No users match this search. Matching groups are on the Groups tab.';
+    }
+    return 'No users match this search.';
+  }
+
+  groupsEmptyMessage(): string {
+    if (this.combinedSearchQuery.trim() && this.groups().length === 0 && this.usersTotal() > 0) {
+      return 'No groups match this search. Matching users are on the Users tab.';
+    }
+    return 'No groups match this search.';
+  }
+
+  /** Switch tabs after a combined search based on which result set has matches. */
+  private applySearchTabSelection(query: string, usersTotal: number, groupsTotal: number): void {
+    if (!query.trim()) {
+      return;
+    }
+    if (usersTotal === 0 && groupsTotal > 0) {
+      this.selectResultsTab(1);
+    } else if (usersTotal > 0) {
+      this.selectResultsTab(0);
+    }
+  }
+
+  private selectResultsTab(index: 0 | 1): void {
+    this.selectedTabIndex.set(index);
+    queueMicrotask(() => {
+      const group = this.tabGroup();
+      if (group) {
+        group.selectedIndex = index;
+      }
+    });
   }
 
   displayName(user: NuxeoUser): string {
