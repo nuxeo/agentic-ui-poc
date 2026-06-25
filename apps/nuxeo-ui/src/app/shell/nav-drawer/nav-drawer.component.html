@@ -321,13 +321,12 @@
     </div>
   } @else if (isAdministration) {
     <div class="settings-panel">
-      @for (adminItem of administrationItems; track adminItem.path) {
+      @for (adminItem of administrationItems(); track adminItem.path) {
         <button
           type="button"
           class="settings-item"
-          [routerLink]="adminItem.path"
-          routerLinkActive="settings-item--active"
-          [routerLinkActiveOptions]="{ exact: adminItem.path !== '/administration/users-groups' }"
+          [class.settings-item--active]="isAdminDrawerPathActive(adminItem.path)"
+          (click)="onAdministrationItemClick(adminItem.path)"
         >
           {{ adminItem.label }}
         </button>

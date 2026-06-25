@@ -107,10 +107,10 @@ export class AppShellComponent implements OnDestroy {
   readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
-  /** Hides Administration for non-administrators. */
+  /** Hides Administration unless the user is an administrator or poweruser. */
   protected readonly navItems = computed(() => {
     return PLATFORM_NAV_ITEMS.filter((item) => {
-      if (item.path === '/administration' && !this.auth.isAdministrator()) return false;
+      if (item.path === '/administration' && !this.auth.hasAdministrationAccess()) return false;
       return true;
     });
   });
@@ -278,6 +278,12 @@ export class AppShellComponent implements OnDestroy {
       } else {
         this.activeDrawerItem.set(item);
         this.drawerOpen.set(true);
+        if (item.path === '/administration') {
+          const target = this.auth.isAdministrator()
+            ? '/administration/analytics'
+            : '/administration/users-groups';
+          void this.router.navigateByUrl(target);
+        }
       }
     } else {
       this.drawerOpen.set(false);

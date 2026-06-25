@@ -47,3 +47,10 @@ export const ADMINISTRATION_DRAWER_ITEMS: DrawerLinkItem[] = [
   { label: 'Cloud Services', path: '/administration/cloud-services' },
   { label: 'NXQL Search', path: '/administration/nxql-search' },
 ];
+
+/** Limited administration menu for `powerusers` (matches classic Web UI). */
+export const POWERUSER_ADMINISTRATION_DRAWER_ITEMS: DrawerLinkItem[] = [
+  { label: 'Users & Groups', path: '/administration/users-groups' },
+  { label: 'Vocabularies', path: '/administration/vocabularies' },
+  { label: 'Audit', path: '/administration/audit' },
+];
