@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -39,6 +40,7 @@ export class LoginPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
 
   readonly submitting = signal(false);
@@ -54,6 +56,16 @@ export class LoginPageComponent {
     password: [''],
     remember: [true],
   });
+
+  constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      if (params.get('reason') === 'session-expired') {
+        this.snackBar.open('Your session has expired. Please sign in again.', 'Dismiss', {
+          duration: 8000,
+        });
+      }
+    });
+  }
 
   /**
    * Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`.

@@ -1,0 +1,11 @@
+<h2 mat-dialog-title>Session expiring</h2>
+<mat-dialog-content class="session-expiry-warning-dialog__message">
+  Your session will expire in {{ data.warningMinutes }} minutes due to inactivity. Stay signed in to
+  continue working.
+</mat-dialog-content>
+<mat-dialog-actions align="end" class="session-expiry-warning-dialog__actions">
+  <button type="button" mat-button [mat-dialog-close]="false">Sign out</button>
+  <button type="button" mat-flat-button color="primary" [mat-dialog-close]="true">
+    Stay signed in
+  </button>
+</mat-dialog-actions>

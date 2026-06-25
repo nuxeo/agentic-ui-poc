@@ -53,6 +53,7 @@ import {
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 import { AuthService } from '../auth/auth.service';
+import { SessionTimeoutService } from '../auth/session-timeout.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
@@ -94,6 +95,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly router = inject(Router);
   private readonly platformNavState = inject(SatPlatformNavStateService);
   private readonly auth = inject(AuthService);
+  private readonly sessionTimeout = inject(SessionTimeoutService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   readonly selectionService = inject(SelectionService);
@@ -169,6 +171,8 @@ export class AppShellComponent implements OnDestroy {
   private favoritesChangedListener = () => this.refreshFavoritesCount();
 
   constructor() {
+    this.sessionTimeout.start();
+
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
     }
@@ -223,6 +227,7 @@ export class AppShellComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.sessionTimeout.stop();
     window.removeEventListener('storage', this.storageListener);
     window.removeEventListener('clipboard-changed', this.clipboardChangedListener);
     window.removeEventListener('favorites-changed', this.favoritesChangedListener);
