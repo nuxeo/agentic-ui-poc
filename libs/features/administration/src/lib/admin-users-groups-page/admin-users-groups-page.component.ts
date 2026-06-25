@@ -1,4 +1,5 @@
-import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -68,6 +69,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly userColumns = ['username', 'name', 'email', 'groups', 'admin', 'actions'] as const;
   readonly groupColumns = ['groupname', 'label', 'members', 'actions'] as const;
@@ -134,26 +136,28 @@ export class AdminUsersGroupsPageComponent implements OnInit {
           } satisfies NuxeoGroupList);
         }),
       ),
-    }).subscribe({
-      next: ({ users, groups }) => {
-        const usersTotal = users.totalSize ?? users.entries?.length ?? 0;
-        const groupsTotal = groups.totalSize ?? groups.entries?.length ?? 0;
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ users, groups }) => {
+          const usersTotal = users.totalSize ?? users.entries?.length ?? 0;
+          const groupsTotal = groups.totalSize ?? groups.entries?.length ?? 0;
 
-        this.users.set(users.entries ?? []);
-        this.usersTotal.set(usersTotal);
-        this.groups.set(groups.entries ?? []);
-        this.groupsTotal.set(groupsTotal);
+          this.users.set(users.entries ?? []);
+          this.usersTotal.set(usersTotal);
+          this.groups.set(groups.entries ?? []);
+          this.groupsTotal.set(groupsTotal);
 
-        this.applySearchTabSelection(query, usersTotal, groupsTotal);
+          this.applySearchTabSelection(query, usersTotal, groupsTotal);
 
-        this.usersLoading.set(false);
-        this.groupsLoading.set(false);
-      },
-      error: () => {
-        this.usersLoading.set(false);
-        this.groupsLoading.set(false);
-      },
-    });
+          this.usersLoading.set(false);
+          this.groupsLoading.set(false);
+        },
+        error: () => {
+          this.usersLoading.set(false);
+          this.groupsLoading.set(false);
+        },
+      });
   }
 
   loadRecent(): void {
