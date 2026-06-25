@@ -12,13 +12,11 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import {
-  DocumentDetailService,
-  UserGroupSuggestion,
-} from '@agentic-ui/shared/nuxeo-client';
+import { DocumentDetailService, UserGroupSuggestion } from '@agentic-ui/shared/nuxeo-client';
 
 export interface AddPermissionDialogData {
   documentUid: string;
@@ -47,6 +45,7 @@ const PERMISSION_OPTIONS = [
     MatIconModule,
     MatProgressSpinnerModule,
     MatAutocompleteModule,
+    MatSnackBarModule,
   ],
   providers: [provideNativeDateAdapter()],
   template: `
@@ -55,15 +54,19 @@ const PERMISSION_OPTIONS = [
     <mat-dialog-content>
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>User / Group</mat-label>
-        <input matInput
-               placeholder="Search for users and groups"
-               [ngModel]="searchText"
-               (ngModelChange)="onSearchChange($event)"
-               [matAutocomplete]="userAuto"
-               required />
-        <mat-autocomplete #userAuto="matAutocomplete"
-                          (optionSelected)="onUserSelected($event.option.value)"
-                          [displayWith]="displayUser">
+        <input
+          matInput
+          placeholder="Search for users and groups"
+          [ngModel]="searchText"
+          (ngModelChange)="onSearchChange($event)"
+          [matAutocomplete]="userAuto"
+          required
+        />
+        <mat-autocomplete
+          #userAuto="matAutocomplete"
+          (optionSelected)="onUserSelected($event.option.value)"
+          [displayWith]="displayUser"
+        >
           @for (suggestion of suggestions(); track suggestion.id) {
             <mat-option [value]="suggestion">
               <mat-icon class="suggestion-icon">
@@ -96,16 +99,24 @@ const PERMISSION_OPTIONS = [
       <div class="date-fields">
         <mat-form-field appearance="outline">
           <mat-label>From</mat-label>
-          <input matInput [matDatepicker]="fromPicker" [(ngModel)]="beginDate"
-                 [disabled]="timeFrame === 'permanent'" />
+          <input
+            matInput
+            [matDatepicker]="fromPicker"
+            [(ngModel)]="beginDate"
+            [disabled]="timeFrame === 'permanent'"
+          />
           <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
           <mat-datepicker #fromPicker />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>To</mat-label>
-          <input matInput [matDatepicker]="toPicker" [(ngModel)]="endDate"
-                 [disabled]="timeFrame === 'permanent'" />
+          <input
+            matInput
+            [matDatepicker]="toPicker"
+            [(ngModel)]="endDate"
+            [disabled]="timeFrame === 'permanent'"
+          />
           <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
           <mat-datepicker #toPicker />
         </mat-form-field>
@@ -119,10 +130,12 @@ const PERMISSION_OPTIONS = [
         <div class="notify-section">
           <label class="field-label">Notification email</label>
           <mat-form-field appearance="outline" class="full-width">
-            <textarea matInput
-                      [(ngModel)]="notifyComment"
-                      rows="2"
-                      placeholder="Hi! Could you comment on this document and..."></textarea>
+            <textarea
+              matInput
+              [(ngModel)]="notifyComment"
+              rows="2"
+              placeholder="Hi! Could you comment on this document and..."
+            ></textarea>
           </mat-form-field>
         </div>
       }
@@ -131,21 +144,25 @@ const PERMISSION_OPTIONS = [
     <mat-dialog-actions>
       <button mat-stroked-button mat-dialog-close>Cancel</button>
       <span class="spacer"></span>
-      <button mat-flat-button
-              color="primary"
-              class="create-another-btn"
-              [disabled]="!selectedUser || saving()"
-              (click)="create(true)">
+      <button
+        mat-flat-button
+        color="primary"
+        class="create-another-btn"
+        [disabled]="!selectedUser || saving()"
+        (click)="create(true)"
+      >
         @if (saving() && addAnother) {
           <mat-spinner diameter="18" />
         } @else {
           Create And Add Another
         }
       </button>
-      <button mat-flat-button
-              color="primary"
-              [disabled]="!selectedUser || saving()"
-              (click)="create(false)">
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="!selectedUser || saving()"
+        (click)="create(false)"
+      >
         @if (saving() && !addAnother) {
           <mat-spinner diameter="18" />
         } @else {
@@ -154,91 +171,94 @@ const PERMISSION_OPTIONS = [
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
-    :host {
-      display: block;
-      min-width: 480px;
-    }
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 480px;
+      }
 
-    mat-dialog-content {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding-top: 8px !important;
-    }
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-top: 8px !important;
+      }
 
-    .full-width {
-      width: 100%;
-    }
+      .full-width {
+        width: 100%;
+      }
 
-    .suggestion-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
-      margin-right: 8px;
-      vertical-align: middle;
-      color: #666;
-    }
+      .suggestion-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        margin-right: 8px;
+        vertical-align: middle;
+        color: #666;
+      }
 
-    .suggestion-id {
-      color: #999;
-      font-size: 12px;
-      margin-left: 4px;
-    }
+      .suggestion-id {
+        color: #999;
+        font-size: 12px;
+        margin-left: 4px;
+      }
 
-    .field-label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: #555;
-      margin-bottom: 6px;
-    }
+      .field-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+      }
 
-    .time-frame-section {
-      margin-bottom: 8px;
-    }
+      .time-frame-section {
+        margin-bottom: 8px;
+      }
 
-    .time-frame-radios {
-      display: flex;
-      gap: 24px;
-    }
+      .time-frame-radios {
+        display: flex;
+        gap: 24px;
+      }
 
-    .date-fields {
-      display: flex;
-      gap: 16px;
+      .date-fields {
+        display: flex;
+        gap: 16px;
 
-      mat-form-field {
+        mat-form-field {
+          flex: 1;
+        }
+      }
+
+      .notify-checkbox {
+        margin: 4px 0 8px;
+      }
+
+      .notify-section {
+        margin-top: 4px;
+      }
+
+      mat-dialog-actions {
+        display: flex;
+        gap: 8px;
+        padding: 8px 24px 16px;
+      }
+
+      .spacer {
         flex: 1;
       }
-    }
 
-    .notify-checkbox {
-      margin: 4px 0 8px;
-    }
-
-    .notify-section {
-      margin-top: 4px;
-    }
-
-    mat-dialog-actions {
-      display: flex;
-      gap: 8px;
-      padding: 8px 24px 16px;
-    }
-
-    .spacer {
-      flex: 1;
-    }
-
-    .create-another-btn {
-      background: #3f51b5 !important;
-    }
-  `],
+      .create-another-btn {
+        background: #3f51b5 !important;
+      }
+    `,
+  ],
 })
 export class AddPermissionDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<AddPermissionDialogComponent>);
   private readonly data = inject<AddPermissionDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
+  private readonly snackBar = inject(MatSnackBar);
 
   private readonly searchSubject = new Subject<string>();
 
@@ -263,9 +283,7 @@ export class AddPermissionDialogComponent {
         debounceTime(300),
         distinctUntilChanged(),
         switchMap((term) =>
-          term.length >= 1
-            ? this.detailService.searchUsersGroups(term)
-            : of([]),
+          term.length >= 1 ? this.detailService.searchUsersGroups(term) : of([]),
         ),
         takeUntilDestroyed(),
       )
@@ -294,45 +312,37 @@ export class AddPermissionDialogComponent {
     this.addAnother = andAddAnother;
     this.saving.set(true);
 
-    const params: {
-      user: string;
-      permission: string;
-      notify?: boolean;
-      comment?: string;
-      begin?: string;
-      end?: string;
-    } = {
-      user: this.selectedUser.id,
-      permission: this.permission,
-      notify: this.sendNotify,
-    };
-
-    if (this.sendNotify && this.notifyComment.trim()) {
-      params.comment = this.notifyComment.trim();
-    }
-
-    if (this.timeFrame === 'date-based') {
-      if (this.beginDate) {
-        params.begin = this.formatDate(this.beginDate);
-      }
-      if (this.endDate) {
-        params.end = this.formatDate(this.endDate);
-      }
-    }
-
-    this.detailService.addACE(this.data.documentUid, params).subscribe({
-      next: () => {
-        this.saving.set(false);
-        if (andAddAnother) {
-          this.resetForm();
-        } else {
-          this.dialogRef.close(true);
-        }
-      },
-      error: () => {
-        this.saving.set(false);
-      },
-    });
+    this.detailService
+      .addPermission(this.data.documentUid, {
+        username: this.selectedUser.id,
+        permission: this.permission,
+        notify: this.sendNotify,
+        comment: this.sendNotify && this.notifyComment.trim() ? this.notifyComment.trim() : '',
+        begin:
+          this.timeFrame === 'date-based' && this.beginDate
+            ? this.formatDate(this.beginDate)
+            : null,
+        end: this.timeFrame === 'date-based' && this.endDate ? this.formatDate(this.endDate) : null,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          if (andAddAnother) {
+            if (this.sendNotify) {
+              this.snackBar.open('Permission added and notification sent', 'Dismiss', {
+                duration: 4000,
+              });
+            }
+            this.resetForm();
+          } else {
+            this.dialogRef.close(true);
+          }
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+        },
+      });
   }
 
   private resetForm(): void {
@@ -351,5 +361,13 @@ export class AddPermissionDialogComponent {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
+  }
+
+  private permissionErrorMessage(err: unknown): string {
+    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
+    if (raw?.toLowerCase().includes('sending a mail')) {
+      return 'Permission could not be created. Configure outbound mail (SMTP) on the Nuxeo server.';
+    }
+    return raw || 'Could not add permission';
   }
 }

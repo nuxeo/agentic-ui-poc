@@ -10,6 +10,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { switchMap } from 'rxjs';
 import { NuxeoAce, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
@@ -41,6 +42,7 @@ const PERMISSION_OPTIONS = [
     MatCheckboxModule,
     MatDatepickerModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
   ],
   providers: [provideNativeDateAdapter()],
   template: `
@@ -69,17 +71,25 @@ const PERMISSION_OPTIONS = [
       <div class="date-fields">
         <mat-form-field appearance="outline">
           <mat-label>From</mat-label>
-          <input matInput [matDatepicker]="fromPicker" [(ngModel)]="beginDate"
-                 [disabled]="!isExternal && timeFrame === 'permanent'" />
+          <input
+            matInput
+            [matDatepicker]="fromPicker"
+            [(ngModel)]="beginDate"
+            [disabled]="!isExternal && timeFrame === 'permanent'"
+          />
           <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
           <mat-datepicker #fromPicker />
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>To</mat-label>
-          <input matInput [matDatepicker]="toPicker" [(ngModel)]="endDate"
-                 [disabled]="!isExternal && timeFrame === 'permanent'"
-                 [required]="isExternal" />
+          <input
+            matInput
+            [matDatepicker]="toPicker"
+            [(ngModel)]="endDate"
+            [disabled]="!isExternal && timeFrame === 'permanent'"
+            [required]="isExternal"
+          />
           <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
           <mat-datepicker #toPicker />
         </mat-form-field>
@@ -95,10 +105,12 @@ const PERMISSION_OPTIONS = [
         <div class="notify-section">
           <label class="field-label">Notification email</label>
           <mat-form-field appearance="outline" class="full-width">
-            <textarea matInput
-                      [(ngModel)]="notifyComment"
-                      rows="2"
-                      placeholder="Hi! Could you comment on this document and..."></textarea>
+            <textarea
+              matInput
+              [(ngModel)]="notifyComment"
+              rows="2"
+              placeholder="Hi! Could you comment on this document and..."
+            ></textarea>
           </mat-form-field>
         </div>
       }
@@ -107,10 +119,12 @@ const PERMISSION_OPTIONS = [
     <mat-dialog-actions>
       <button mat-stroked-button mat-dialog-close>Cancel</button>
       <span class="spacer"></span>
-      <button mat-flat-button
-              color="primary"
-              [disabled]="saving() || (isExternal && !endDate)"
-              (click)="update()">
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="saving() || (isExternal && !endDate)"
+        (click)="update()"
+      >
         @if (saving()) {
           <mat-spinner diameter="18" />
         } @else {
@@ -119,72 +133,75 @@ const PERMISSION_OPTIONS = [
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
-    :host {
-      display: block;
-      min-width: 440px;
-    }
+  styles: [
+    `
+      :host {
+        display: block;
+        min-width: 440px;
+      }
 
-    mat-dialog-content {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding-top: 8px !important;
-    }
+      mat-dialog-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-top: 8px !important;
+      }
 
-    .full-width {
-      width: 100%;
-    }
+      .full-width {
+        width: 100%;
+      }
 
-    .field-label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: #555;
-      margin-bottom: 6px;
-    }
+      .field-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 500;
+        color: #555;
+        margin-bottom: 6px;
+      }
 
-    .time-frame-section {
-      margin-bottom: 8px;
-    }
+      .time-frame-section {
+        margin-bottom: 8px;
+      }
 
-    .time-frame-radios {
-      display: flex;
-      gap: 24px;
-    }
+      .time-frame-radios {
+        display: flex;
+        gap: 24px;
+      }
 
-    .date-fields {
-      display: flex;
-      gap: 16px;
+      .date-fields {
+        display: flex;
+        gap: 16px;
 
-      mat-form-field {
+        mat-form-field {
+          flex: 1;
+        }
+      }
+
+      .notify-checkbox {
+        margin: 4px 0 8px;
+      }
+
+      .notify-section {
+        margin-top: 4px;
+      }
+
+      mat-dialog-actions {
+        display: flex;
+        gap: 8px;
+        padding: 8px 24px 16px;
+      }
+
+      .spacer {
         flex: 1;
       }
-    }
-
-    .notify-checkbox {
-      margin: 4px 0 8px;
-    }
-
-    .notify-section {
-      margin-top: 4px;
-    }
-
-    mat-dialog-actions {
-      display: flex;
-      gap: 8px;
-      padding: 8px 24px 16px;
-    }
-
-    .spacer {
-      flex: 1;
-    }
-  `],
+    `,
+  ],
 })
 export class UpdatePermissionDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<UpdatePermissionDialogComponent>);
   private readonly data = inject<UpdatePermissionDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly saving = signal(false);
   readonly permissionOptions = PERMISSION_OPTIONS;
@@ -218,37 +235,29 @@ export class UpdatePermissionDialogComponent {
   }
 
   private updateLocal(): void {
-    const params: {
-      user: string;
-      permission: string;
-      overwrite: boolean;
-      notify?: boolean;
-      comment?: string;
-      begin?: string;
-      end?: string;
-    } = {
-      user: this.data.ace.username,
-      permission: this.permission,
-      overwrite: true,
-      notify: this.sendNotify,
-    };
-
-    if (this.sendNotify && this.notifyComment.trim()) {
-      params.comment = this.notifyComment.trim();
-    }
-
-    if (this.timeFrame === 'date-based') {
-      if (this.beginDate) params.begin = this.formatDate(this.beginDate);
-      if (this.endDate) params.end = this.formatDate(this.endDate);
-    }
-
-    this.detailService.replaceACE(this.data.documentUid, params).subscribe({
-      next: () => {
-        this.saving.set(false);
-        this.dialogRef.close(true);
-      },
-      error: () => this.saving.set(false),
-    });
+    this.detailService
+      .replacePermission(this.data.documentUid, {
+        id: this.data.ace.id,
+        username: this.data.ace.username,
+        permission: this.permission,
+        notify: this.sendNotify,
+        comment: this.sendNotify && this.notifyComment.trim() ? this.notifyComment.trim() : null,
+        begin:
+          this.timeFrame === 'date-based' && this.beginDate
+            ? this.formatDate(this.beginDate)
+            : null,
+        end: this.timeFrame === 'date-based' && this.endDate ? this.formatDate(this.endDate) : null,
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.dialogRef.close(true);
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+        },
+      });
   }
 
   private updateExternal(): void {
@@ -278,8 +287,19 @@ export class UpdatePermissionDialogComponent {
           this.saving.set(false);
           this.dialogRef.close(true);
         },
-        error: () => this.saving.set(false),
+        error: (err) => {
+          this.saving.set(false);
+          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
+        },
       });
+  }
+
+  private permissionErrorMessage(err: unknown): string {
+    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
+    if (raw?.toLowerCase().includes('sending a mail')) {
+      return 'Permission could not be updated. Configure outbound mail (SMTP) on the Nuxeo server.';
+    }
+    return raw || 'Could not update permission';
   }
 
   private formatDate(d: Date): string {
