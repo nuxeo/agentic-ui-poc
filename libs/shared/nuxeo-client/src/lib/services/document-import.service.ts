@@ -20,7 +20,8 @@ const FOLDERISH_TYPES = new Set([
 ]);
 
 /** Document types whose create/import flow must attach a main blob (`file:content`). */
-export const BLOB_HOLDING_DOC_TYPES = new Set(['File', 'Audio', 'Picture', 'Video']);
+const BLOB_HOLDING_DOC_TYPES_INTERNAL = new Set(['File', 'Audio', 'Picture', 'Video']);
+export const BLOB_HOLDING_DOC_TYPES: ReadonlySet<string> = BLOB_HOLDING_DOC_TYPES_INTERNAL;
 
 export function isBlobHoldingDocType(docType: string): boolean {
   return BLOB_HOLDING_DOC_TYPES.has(docType);
@@ -112,7 +113,7 @@ export class DocumentImportService {
   uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/octet-stream',
-      'X-File-Name': file.name,
+      'X-File-Name': sanitizeHttpHeaderValue(file.name),
     };
     if (file.type) {
       headers['X-File-Type'] = file.type;
@@ -286,10 +287,17 @@ export class DocumentImportService {
           }
           const record = info as Record<string, unknown>;
           const size = record['size'] ?? record['uploadedSize'];
-          if (size !== null && size !== undefined && Number(size) > 0) {
+          if (size !== null && size !== undefined) {
+            const numericSize = Number(size);
+            if (Number.isFinite(numericSize) && numericSize >= 0) {
+              return undefined;
+            }
+          }
+          const name = record['name'];
+          if (typeof name === 'string' && name.length > 0) {
             return undefined;
           }
-          throw new Error('Upload verification failed: file has zero size');
+          throw new Error('Upload verification failed: batch file metadata missing');
         }),
       );
   }
@@ -417,6 +425,19 @@ export class DocumentImportService {
       }),
     );
   }
+}
+
+/** Strip control characters unsafe for HTTP header values (e.g. CR/LF injection). */
+function sanitizeHttpHeaderValue(value: string): string {
+  const cleaned = value
+    .split('')
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code >= 32 && code !== 127;
+    })
+    .join('')
+    .trim();
+  return cleaned || 'untitled';
 }
 
 function readBatchIdFromInitResponse(resp: HttpResponse<unknown>): string {

@@ -251,8 +251,14 @@ createDocumentWithBlob(...): Observable<NuxeoDocument>
 createFileFromBatch(...): Observable<NuxeoDocument>
 importFiles(parentPath, files, options?): Observable<NuxeoDocument[]>
 importFromCsvText(parentPath: string, csvText: string): Observable<CsvImportResult>
+```
+
+Exported helpers from the same module (not class methods):
+
+```typescript
 isBlobHoldingDocType(docType: string): boolean
 documentHasMainBlob(doc: NuxeoDocument): boolean
+BLOB_HOLDING_DOC_TYPES: ReadonlySet<string>
 ```
 
 ---

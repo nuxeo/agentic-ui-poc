@@ -118,4 +118,49 @@ describe('DocumentImportService', () => {
 
     await expect(import$).rejects.toThrow(BLOB_NOT_ATTACHED_ERROR);
   });
+
+  it('accepts zero-byte batch uploads during verification', async () => {
+    const file = new File([], 'empty.txt', { type: 'text/plain' });
+    const import$ = firstValueFrom(service.importFiles('/ws', [file]));
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-3' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-3/0').flush('');
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-3/0').flush({ name: 'empty.txt', size: 0 });
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-3',
+      title: 'empty',
+      type: 'File',
+      path: '/ws/empty',
+      properties: {
+        'dc:title': 'empty',
+        'file:content': { name: 'empty.txt', length: '0' },
+      },
+    });
+
+    const docs = await import$;
+    expect(docs).toHaveLength(1);
+  });
+
+  it('sanitizes unsafe characters in X-File-Name header', async () => {
+    const file = new File(['x'], 'bad\r\nname.jpg', { type: 'image/jpeg' });
+    const import$ = firstValueFrom(service.importFiles('/ws', [file]));
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-4' });
+    const uploadReq = httpMock.expectOne('/nuxeo/api/v1/upload/batch-4/0');
+    expect(uploadReq.request.headers.get('X-File-Name')).toBe('badname.jpg');
+    uploadReq.flush('');
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-4/0').flush({ name: 'badname.jpg', size: 1 });
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-4',
+      title: 'badname',
+      type: 'File',
+      path: '/ws/badname',
+      properties: {
+        'dc:title': 'badname',
+        'file:content': { name: 'badname.jpg', length: '1' },
+      },
+    });
+
+    await import$;
+  });
 });

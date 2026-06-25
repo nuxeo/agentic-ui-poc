@@ -615,15 +615,13 @@ export class CreateImportDialogComponent implements OnInit {
     const properties = this.buildDocumentProperties(title);
     const mainFile = this.mainFile();
 
+    if (isBlobHoldingDocType(docType.type) && !mainFile) {
+      this.error.set('A file is required for this document type.');
+      return;
+    }
+
     this.busy.set(true);
     this.error.set(null);
-
-    if (isBlobHoldingDocType(docType.type)) {
-      if (!mainFile) {
-        this.error.set('A file is required for this document type.');
-        return;
-      }
-    }
 
     const create$ =
       mainFile && isBlobHoldingDocType(docType.type)
