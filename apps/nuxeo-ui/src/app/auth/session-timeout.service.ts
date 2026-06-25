@@ -29,6 +29,7 @@ export class SessionTimeoutService {
     if (this.running || !this.auth.isAuthenticated()) {
       return;
     }
+    this.expiring = false;
     this.running = true;
     for (const event of ACTIVITY_EVENTS) {
       document.addEventListener(event, this.boundOnActivity, { passive: true });
@@ -46,7 +47,6 @@ export class SessionTimeoutService {
     }
     this.clearTimers();
     this.closeDialog();
-    this.expiring = false;
   }
 
   /** Resets the idle countdown after successful Nuxeo API activity. */
@@ -71,8 +71,13 @@ export class SessionTimeoutService {
 
   private scheduleIdleTimers(): void {
     this.clearTimers();
-    const warningDelay = Math.max(0, this.config.idleTimeoutMs - this.config.warningBeforeMs);
+    const warningBefore = this.effectiveWarningBeforeMs();
+    const warningDelay = Math.max(0, this.config.idleTimeoutMs - warningBefore);
     this.warningTimer = setTimeout(() => this.showWarning(), warningDelay);
+  }
+
+  private effectiveWarningBeforeMs(): number {
+    return Math.min(this.config.warningBeforeMs, this.config.idleTimeoutMs);
   }
 
   private showWarning(): void {
@@ -80,7 +85,8 @@ export class SessionTimeoutService {
       return;
     }
 
-    const warningMinutes = Math.max(1, Math.round(this.config.warningBeforeMs / 60_000));
+    const warningBefore = this.effectiveWarningBeforeMs();
+    const warningMinutes = Math.max(1, Math.round(warningBefore / 60_000));
     const data: SessionExpiryWarningDialogData = { warningMinutes };
 
     this.dialogRef = this.dialog.open(SessionExpiryWarningDialogComponent, {
@@ -92,7 +98,7 @@ export class SessionTimeoutService {
     this.logoutTimer = setTimeout(() => {
       this.closeDialog();
       this.expireSession();
-    }, this.config.warningBeforeMs);
+    }, warningBefore);
 
     this.dialogRef.afterClosed().subscribe((staySignedIn: boolean | undefined) => {
       this.dialogRef = null;

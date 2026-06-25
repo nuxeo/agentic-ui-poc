@@ -108,4 +108,38 @@ describe('SessionTimeoutService', () => {
       queryParams: { reason: 'session-expired' },
     });
   });
+
+  it('can expire again after a new session starts', () => {
+    service.expireDueToServer();
+    expect(auth.logout).toHaveBeenCalledTimes(1);
+
+    auth.logout.calls.reset();
+    router.navigate.calls.reset();
+    auth.isAuthenticated.and.returnValue(true);
+
+    service.start();
+    service.expireDueToServer();
+    expect(auth.logout).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs out after idleTimeoutMs when warningBeforeMs exceeds idleTimeoutMs', fakeAsync(() => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        SessionTimeoutService,
+        { provide: AuthService, useValue: auth },
+        { provide: Router, useValue: router },
+        { provide: MatDialog, useValue: dialog },
+        {
+          provide: SESSION_TIMEOUT_CONFIG,
+          useValue: { idleTimeoutMs: 3_000, warningBeforeMs: 10_000 },
+        },
+      ],
+    });
+    service = TestBed.inject(SessionTimeoutService);
+
+    service.start();
+    tick(3_000);
+    expect(auth.logout).toHaveBeenCalled();
+  }));
 });

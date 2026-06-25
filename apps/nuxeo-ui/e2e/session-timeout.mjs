@@ -6,9 +6,16 @@
 import { chromium } from 'playwright';
 
 const BASE = process.env.AGENTIC_UI_BASE_URL ?? 'http://localhost:4200';
-const user = process.env.NUXEO_TEST_USER ?? 'Administrator';
-const pass = process.env.NUXEO_TEST_PASSWORD ?? 'Administrator';
+const user = process.env.NUXEO_TEST_USER;
+const pass = process.env.NUXEO_TEST_PASSWORD;
 const DEBUG_TIMEOUT_MS = '8000';
+
+if (!user || !pass) {
+  console.error(
+    'Set NUXEO_TEST_USER and NUXEO_TEST_PASSWORD environment variables before running this script.',
+  );
+  process.exit(1);
+}
 
 async function login(page) {
   await page.goto(`${BASE}/#/login`);
