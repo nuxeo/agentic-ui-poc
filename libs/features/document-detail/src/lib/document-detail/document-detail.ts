@@ -113,8 +113,12 @@ import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-docume
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
+  DeletePermissionDialogComponent,
+  DeletePermissionDialogData,
   ShareExternalDialogComponent,
   ShareExternalDialogData,
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
 } from '@agentic-ui/feature-collections';
 
 export interface SectionNode {
@@ -617,6 +621,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (ace.begin) parts.push(`from ${new Date(ace.begin).toLocaleDateString()}`);
     if (ace.end) parts.push(`to ${new Date(ace.end).toLocaleDateString()}`);
     return parts.join(' ');
+  }
+
+  displayUsername(ace: NuxeoAce): string {
+    return ace.username.replace(/^transient\//, '');
   }
 
   readonly filteredAuditEntries = computed(() => {
@@ -2646,9 +2654,90 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data,
       autoFocus: false,
     });
-    ref.afterClosed().subscribe((saved: boolean) => {
-      if (saved) this.loadDocument(this.docUid);
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((saved: boolean) => {
+        if (saved) this.loadDocument(this.docUid);
+      });
+  }
+
+  editPermission(ace: NuxeoAce): void {
+    const ref = this.dialog.open(UpdatePermissionDialogComponent, {
+      width: '520px',
+      data: { documentUid: this.docUid, ace } satisfies UpdatePermissionDialogData,
+      autoFocus: false,
     });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.toast('Permission updated');
+          this.loadDocument(this.docUid);
+        }
+      });
+  }
+
+  deletePermission(ace: NuxeoAce): void {
+    const ref = this.dialog.open(DeletePermissionDialogComponent, {
+      width: '560px',
+      data: {
+        documentUid: this.docUid,
+        ace,
+        permissionLabel: this.permissionLabel(ace.permission),
+        timeFrameLabel: this.aceTimeFrame(ace),
+      } satisfies DeletePermissionDialogData,
+      autoFocus: false,
+    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((deleted: boolean | undefined) => {
+        if (deleted) {
+          this.toast('Permission deleted');
+          this.loadDocument(this.docUid);
+        }
+      });
+  }
+
+  editExternalPermission(ace: NuxeoAce): void {
+    const ref = this.dialog.open(UpdatePermissionDialogComponent, {
+      width: '520px',
+      data: {
+        documentUid: this.docUid,
+        ace,
+        isExternal: true,
+      } satisfies UpdatePermissionDialogData,
+      autoFocus: false,
+    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.toast('Permission updated');
+          this.loadDocument(this.docUid);
+        }
+      });
+  }
+
+  sendPermissionNotification(ace: NuxeoAce): void {
+    if (this.actionInProgress()) return;
+    this.actionInProgress.set('notify-' + ace.id);
+    this.detailService
+      .sendNotificationEmailForPermission(this.docUid, ace.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Notification email sent');
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to send notification');
+        },
+      });
   }
 
   toggleInheritanceBlock(): void {
