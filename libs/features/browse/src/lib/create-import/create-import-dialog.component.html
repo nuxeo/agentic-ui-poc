@@ -32,7 +32,6 @@
     class="dialog-body"
     [class.dialog-body--main]="view() === 'main'"
     [class.dialog-body--form]="view() === 'templateForm'"
-    [class.dialog-body--success]="view() === 'success'"
   >
     @if (resolvingPath()) {
       <div class="state-row">
@@ -445,11 +444,7 @@
   </mat-dialog-content>
 
   @if (!resolvingPath() && !pathError()) {
-    <mat-dialog-actions
-      class="dialog-footer"
-      [class.dialog-footer--success]="view() === 'success'"
-      align="start"
-    >
+    <mat-dialog-actions class="dialog-footer" align="start">
       @if (view() !== 'success') {
         <button
           mat-stroked-button
