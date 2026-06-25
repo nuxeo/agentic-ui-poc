@@ -141,6 +141,8 @@ export {
   sortDocumentSubtypes,
   type NuxeoSubtypeEntry,
 } from './lib/utils/parse-document-subtypes';
+export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
+export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {
   CONTENT_LAKE_INGEST_DOCUMENT_TYPES,
   CONTENT_LAKE_INGEST_MARKER_LEGACY_PROPERTY,
