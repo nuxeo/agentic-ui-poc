@@ -34,6 +34,19 @@ export function sanitizeDocumentName(name: string): string {
   return cleaned.slice(0, 200) || 'untitled';
 }
 
+/** Default location shown when no browse context is provided. */
+export const DEFAULT_IMPORT_PARENT_PATH = '/default-domain';
+
+export const RESTRICTED_IMPORT_LOCATION_MESSAGE =
+  'Select a different container to create your content.';
+
+/** True when content cannot be created or imported at this path (domain root only). */
+export function isRestrictedImportParentPath(path: string | null | undefined): boolean {
+  if (!path?.trim()) return true;
+  const normalized = path.trim().replace(/\/+$/, '') || '/';
+  return normalized === DEFAULT_IMPORT_PARENT_PATH;
+}
+
 export interface CsvImportResult {
   created: NuxeoDocument[];
   skipped: string[];
@@ -56,7 +69,7 @@ export class DocumentImportService {
    * Uses repository root: the default domain (`/default-domain`), not a user workspace.
    */
   getDefaultImportParentPath(): Observable<string> {
-    return of('/default-domain');
+    return of(DEFAULT_IMPORT_PARENT_PATH);
   }
 
   /** Start a batch upload session (POST /api/v1/upload — see Nuxeo batch upload HOWTO). */
@@ -157,6 +170,34 @@ export class DocumentImportService {
       name: sanitizeDocumentName(name),
       type: docType,
       properties,
+    };
+    return this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  /**
+   * Create a blob-holding document (File, Audio, Picture, Video) with an uploaded batch file.
+   */
+  createDocumentWithBlob(
+    parentPath: string,
+    name: string,
+    docType: string,
+    properties: Record<string, unknown>,
+    batchId: string,
+    fileIndex: number,
+  ): Observable<NuxeoDocument> {
+    const body = {
+      'entity-type': 'document',
+      name: sanitizeDocumentName(name),
+      type: docType,
+      properties: {
+        ...properties,
+        'file:content': {
+          'upload-batch': batchId,
+          'upload-fileId': String(fileIndex),
+        },
+      },
     };
     return this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
       headers: { 'Content-Type': 'application/json' },

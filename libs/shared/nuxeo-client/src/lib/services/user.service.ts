@@ -57,7 +57,11 @@ export class UserService {
   }
 
   getGroup(groupId: string): Observable<NuxeoGroup> {
-    return this.api.get<NuxeoGroup>(`/nuxeo/api/v1/group/${encodeURIComponent(groupId)}`);
+    return this.api.get<NuxeoGroup>(
+      `/nuxeo/api/v1/group/${encodeURIComponent(groupId)}`,
+      undefined,
+      { 'fetch.group': 'memberUsers,memberGroups' },
+    );
   }
 
   createUser(input: {

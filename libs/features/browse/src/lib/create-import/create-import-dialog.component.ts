@@ -1,39 +1,39 @@
 import {
   Component,
-  ElementRef,
+  DestroyRef,
+  HostListener,
   OnInit,
-  QueryList,
-  ViewChildren,
   computed,
   effect,
   inject,
   signal,
 } from '@angular/core';
-import {
-  MAT_DIALOG_DATA,
-  MatDialog,
-  MatDialogModule,
-  MatDialogRef,
-} from '@angular/material/dialog';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, switchMap } from 'rxjs';
 
 import {
+  BrowseService,
+  DirectoryService,
   DocumentImportService,
+  RESTRICTED_IMPORT_LOCATION_MESSAGE,
+  docTypeIcon,
+  isFolderishDocument,
+  isRestrictedImportParentPath,
   sanitizeDocumentName,
-  type CsvImportResult,
+  type DirectoryEntry,
+  type L10nDirectoryEntry,
 } from '@agentic-ui/shared/nuxeo-client';
-
-import {
-  FolderPickerDialogComponent,
-  type FolderPickerDialogResult,
-} from '../folder-picker/folder-picker-dialog.component';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
@@ -41,89 +41,61 @@ export interface CreateImportDialogData {
   parentTitle?: string;
 }
 
-export type CreateMode = 'template' | 'upload' | 'csv';
+export type DialogTab = 'create' | 'import';
 
-interface TemplateDef {
-  id: string;
-  label: string;
+export interface DocTypeDef {
   type: string;
-  description: string;
+  label: string;
   icon: string;
 }
 
-/** Business-facing labels mapped to Nuxeo document types */
-const BUSINESS_TEMPLATES: TemplateDef[] = [
-  {
-    id: 'claim-case',
-    label: 'Claim Case Manager',
-    type: 'Folder',
-    description: 'Connects to claims systems to review correspondence and attachments.',
-    icon: 'assignment_turned_in',
-  },
-  {
-    id: 'underwriting',
-    label: 'Underwriting',
-    type: 'Folder',
-    description: 'Analyzes risk factors using historical data and predictive models.',
-    icon: 'analytics',
-  },
-  {
-    id: 'fraud',
-    label: 'Fraud Detection',
-    type: 'Note',
-    description: 'Monitors behavior patterns to flag potentially fraudulent activities.',
-    icon: 'shield',
-  },
-  {
-    id: 'risk-pricing',
-    label: 'Risk Assessment & Pricing',
-    type: 'Folder',
-    description: 'Assesses risk based on data sources and sets dynamic pricing.',
-    icon: 'account_balance',
-  },
-  {
-    id: 'policy-renewals',
-    label: 'Policy Renewals & Adjustments',
-    type: 'OrderedFolder',
-    description: 'Suggests policy adjustments or renewals.',
-    icon: 'autorenew',
-  },
-  {
-    id: 'claims-auto',
-    label: 'Claims Processing & Automation',
-    type: 'Folder',
-    description: 'Reviews and adjudicates insurance claims.',
-    icon: 'fact_check',
-  },
-  {
-    id: 'rules-rate',
-    label: 'Rules & Rate Analyst',
-    type: 'Note',
-    description: 'Connects to claims systems to accelerate decision-making.',
-    icon: 'rule',
-  },
-  {
-    id: 'marketing',
-    label: 'Marketing & Lead Generation',
-    type: 'Folder',
-    description: 'Analyzes customer data to predict needs and tailor campaigns.',
-    icon: 'campaign',
-  },
-  {
-    id: 'retention',
-    label: 'Retention & Personalization',
-    type: 'Folder',
-    description: 'Identifies at-risk customers to improve retention.',
-    icon: 'person_pin',
-  },
-  {
-    id: 'support',
-    label: 'Customer Support & Chatbots',
-    type: 'Note',
-    description: 'AI-powered chatbots for handling inquiries and status updates.',
-    icon: 'support_agent',
-  },
-];
+/** Document types that expose a main-file upload on create. */
+const BLOB_CONTENT_TYPES = new Set(['File', 'Audio', 'Picture', 'Video']);
+
+const NOTE_FORMAT_OPTIONS = [
+  { value: 'text/html', label: 'HTML' },
+  { value: 'text/plain', label: 'Text' },
+  { value: 'text/xml', label: 'XML' },
+  { value: 'text/markdown', label: 'Markdown' },
+] as const;
+
+function defaultNoteContent(mimeType: string): string {
+  return mimeType === 'text/html' ? '<p></p>' : '';
+}
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  Audio: 'Audio',
+  Collection: 'Collection',
+  File: 'File',
+  Folder: 'Folder',
+  Note: 'Note',
+  OrderedFolder: 'Ordered Folder',
+  Picture: 'Picture',
+  Video: 'Video',
+  Workspace: 'Workspace',
+  Section: 'Section',
+  SectionRoot: 'Section Root',
+  TemplateRoot: 'Template Root',
+  Domain: 'Domain',
+  WorkspaceRoot: 'Workspace Root',
+};
+
+function docTypeLabel(type: string): string {
+  return DOC_TYPE_LABELS[type] ?? type.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+function toDocTypeDefs(types: string[]): DocTypeDef[] {
+  return types.map((type) => ({
+    type,
+    label: docTypeLabel(type),
+    icon: docTypeIcon(type),
+  }));
+}
+
+const DIALOG_SIZE = {
+  content: { width: '960px', height: '680px' },
+  success: { width: '480px', height: 'auto' },
+} as const;
 
 @Component({
   selector: 'lib-create-import-dialog',
@@ -135,39 +107,48 @@ const BUSINESS_TEMPLATES: TemplateDef[] = [
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatSlideToggleModule,
+    MatChipsModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     MatProgressSpinnerModule,
     FormsModule,
   ],
+  providers: [provideNativeDateAdapter()],
   templateUrl: './create-import-dialog.component.html',
   styleUrl: './create-import-dialog.component.scss',
 })
 export class CreateImportDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<CreateImportDialogComponent>);
-  private readonly matDialog = inject(MatDialog);
+  private readonly destroyRef = inject(DestroyRef);
   readonly data = inject<CreateImportDialogData>(MAT_DIALOG_DATA);
   private readonly importService = inject(DocumentImportService);
+  private readonly browse = inject(BrowseService);
+  private readonly directoryService = inject(DirectoryService);
 
-  readonly businessTemplates = BUSINESS_TEMPLATES;
+  private folderContextRequestId = 0;
+  private locationSuggestionsRequestId = 0;
+
+  readonly noteFormatOptions = NOTE_FORMAT_OPTIONS;
+  readonly restrictedLocationMessage = RESTRICTED_IMPORT_LOCATION_MESSAGE;
 
   constructor() {
     effect(() => {
+      const path = this.parentPath();
+      if (!path) return;
+      this.loadLocationSuggestions(path);
+      if (isRestrictedImportParentPath(path)) {
+        this.creatableTypes.set([]);
+        this.loadingContext.set(false);
+        this.typesLoadError.set(null);
+        return;
+      }
+      this.loadFolderContext(path);
+    });
+
+    effect(() => {
       const v = this.view();
-      const width =
-        v === 'templateBrowse'
-          ? '960px'
-          : v === 'landing'
-            ? '900px'
-            : v === 'uploadScreen'
-              ? '760px'
-              : v === 'csv'
-                ? '560px'
-                : v === 'templateForm'
-                  ? '520px'
-                  : v === 'success'
-                    ? '460px'
-                    : '900px';
-      this.dialogRef.updateSize(width);
+      const size = v === 'success' ? DIALOG_SIZE.success : DIALOG_SIZE.content;
+      this.dialogRef.updateSize(size.width, size.height);
     });
   }
 
@@ -175,262 +156,490 @@ export class CreateImportDialogComponent implements OnInit {
   readonly parentPath = signal<string | null>(null);
   readonly pathError = signal<string | null>(null);
 
-  /**
-   * landing → templateBrowse → templateForm
-   * landing → uploadScreen
-   * landing → csv → …
-   */
-  readonly view = signal<
-    'landing' | 'templateBrowse' | 'templateForm' | 'uploadScreen' | 'csv' | 'success'
-  >('landing');
+  readonly view = signal<'main' | 'templateForm' | 'success'>('main');
+  readonly activeTab = signal<DialogTab>('create');
 
-  readonly selectedMode = signal<CreateMode | null>(null);
-  readonly selectedTemplate = signal<TemplateDef | null>(null);
+  readonly selectedDocType = signal<DocTypeDef | null>(null);
+  readonly creatableTypes = signal<DocTypeDef[]>([]);
+  readonly loadingContext = signal(false);
+  readonly typesLoadError = signal<string | null>(null);
 
-  private readonly LANDING_MODES: CreateMode[] = ['template', 'upload', 'csv'];
+  locationInput = '';
 
-  @ViewChildren('choiceRadio') private readonly choiceButtons!: QueryList<
-    ElementRef<HTMLButtonElement>
-  >;
+  readonly locationSuggestions = signal<{ path: string; title: string }[]>([]);
+  readonly locationDropdownOpen = signal(false);
+  readonly locationHighlightIndex = signal(-1);
+  readonly loadingLocationSuggestions = signal(false);
 
-  /** Template gallery (signals so `filteredBusinessTemplates` recomputes on change) */
-  readonly templateSearch = signal('');
-  readonly filterA = signal('');
-  readonly filterB = signal('');
-  readonly filterC = signal('');
-  readonly templatePageIndex = signal(0);
-  readonly templatePageSize = 10;
-
-  readonly filteredBusinessTemplates = computed(() => {
-    const q = this.templateSearch().trim().toLowerCase();
-    const filterA = this.filterA().trim().toLowerCase();
-    const filterB = this.filterB().trim().toLowerCase();
-    const filterC = this.filterC().trim().toLowerCase();
-
-    return this.businessTemplates.filter((t) => {
-      const label = t.label.toLowerCase();
-      const description = t.description.toLowerCase();
-      const searchableText = `${label} ${description} ${JSON.stringify(t).toLowerCase()}`;
-
-      if (q && !searchableText.includes(q)) {
-        return false;
-      }
-
-      if (filterA && !searchableText.includes(filterA)) {
-        return false;
-      }
-
-      if (filterB && !searchableText.includes(filterB)) {
-        return false;
-      }
-
-      if (filterC && !searchableText.includes(filterC)) {
-        return false;
-      }
-
-      return true;
-    });
-  });
-
-  readonly pagedTemplates = computed(() => {
-    const all = this.filteredBusinessTemplates();
-    const maxPageIndex = Math.max(0, Math.ceil(all.length / this.templatePageSize) - 1);
-    const pageIndex = Math.min(this.templatePageIndex(), maxPageIndex);
-    const start = pageIndex * this.templatePageSize;
-    return all.slice(start, start + this.templatePageSize);
-  });
-
-  readonly templatePageCount = computed(() => {
-    return Math.max(1, Math.ceil(this.filteredBusinessTemplates().length / this.templatePageSize));
-  });
+  readonly natureEntries = signal<DirectoryEntry[]>([]);
+  readonly subjectEntries = signal<L10nDirectoryEntry[]>([]);
+  readonly coverageEntries = signal<L10nDirectoryEntry[]>([]);
+  readonly directoriesLoaded = signal(false);
 
   docTitle = '';
-  docName = '';
+  description = '';
+  nature: string | null = null;
+  subjects: string[] = [];
+  coverage: string | null = null;
+  naturePanelSearch = '';
+  subjectsPanelSearch = '';
+  coveragePanelSearch = '';
+  expires: Date | null = null;
+  noteFormat = 'text/html';
+
+  readonly mainFile = signal<File | null>(null);
+  readonly dragOverContent = signal(false);
 
   readonly uploadFiles = signal<File[]>([]);
-  autoClassifyOnUpload = false;
-  readonly csvFile = signal<File | null>(null);
 
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
-  readonly csvResult = signal<CsvImportResult | null>(null);
 
   readonly dragOverUpload = signal(false);
 
-  /**
-   * Matches filter dropdown values against template text (e.g. value `pnc` vs "P&C" in labels).
-   */
-  private templateFilterTokenMatches(searchableText: string, token: string): boolean {
-    if (searchableText.includes(token)) return true;
-    if (token === 'pnc') return searchableText.includes('p&c');
-    return false;
-  }
+  readonly hasContentField = computed(() => {
+    const type = this.selectedDocType()?.type;
+    return type ? BLOB_CONTENT_TYPES.has(type) : false;
+  });
+
+  readonly isNoteType = computed(() => this.selectedDocType()?.type === 'Note');
+
+  readonly locationRestricted = computed(() => isRestrictedImportParentPath(this.parentPath()));
 
   ngOnInit(): void {
+    this.loadDirectories();
+
     const p = this.data.parentPath;
     if (p && p.trim()) {
-      this.parentPath.set(p.replace(/\/+$/, '') || '/');
+      this.parentPath.set(this.normalizePath(p));
+      this.syncLocationInputFromPath();
     } else {
       this.resolvingPath.set(true);
-      this.importService.getDefaultImportParentPath().subscribe({
-        next: (path) => {
-          this.parentPath.set(path);
-          this.resolvingPath.set(false);
+      this.importService
+        .getDefaultImportParentPath()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (path) => {
+            this.parentPath.set(this.normalizePath(path));
+            this.syncLocationInputFromPath();
+            this.resolvingPath.set(false);
+          },
+          error: () => {
+            this.pathError.set(
+              'Could not resolve a default folder. Open a folder in Browse first.',
+            );
+            this.resolvingPath.set(false);
+          },
+        });
+    }
+  }
+
+  private loadDirectories(): void {
+    forkJoin({
+      nature: this.directoryService.getEntries('nature'),
+      subjects: this.directoryService.getAllL10nEntries('l10nsubjects'),
+      coverage: this.directoryService.getAllL10nEntries('l10ncoverage'),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ nature, subjects, coverage }) => {
+          this.natureEntries.set(nature);
+          this.subjectEntries.set(subjects);
+          this.coverageEntries.set(coverage);
+          this.directoriesLoaded.set(true);
         },
         error: () => {
-          this.pathError.set('Could not resolve a default folder. Open a folder in Browse first.');
-          this.resolvingPath.set(false);
+          this.directoriesLoaded.set(true);
         },
       });
-    }
   }
 
-  /** Open Nuxeo-backed folder picker; path is live data from the repository, not fixed text. */
-  openFolderPicker(): void {
-    const path = this.parentPath() ?? '/default-domain';
-    this.matDialog
-      .open(FolderPickerDialogComponent, {
-        width: '540px',
-        maxWidth: '95vw',
-        data: { initialPath: path },
-      })
-      .afterClosed()
-      .subscribe((result: FolderPickerDialogResult | undefined) => {
-        if (result?.path) {
-          this.parentPath.set(result.path.replace(/\/+$/, '') || '/');
-        }
+  private loadFolderContext(path: string): void {
+    const requestId = this.folderContextRequestId + 1;
+    this.folderContextRequestId = requestId;
+    this.loadingContext.set(true);
+    this.typesLoadError.set(null);
+    this.browse
+      .getCreatableSubtypes(path)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (types) => {
+          if (requestId !== this.folderContextRequestId) {
+            return;
+          }
+          this.creatableTypes.set(toDocTypeDefs(types));
+          this.loadingContext.set(false);
+        },
+        error: () => {
+          if (requestId !== this.folderContextRequestId) {
+            return;
+          }
+          this.creatableTypes.set([]);
+          this.typesLoadError.set('Could not load creatable document types for this folder.');
+          this.loadingContext.set(false);
+        },
       });
   }
 
-  /** Breadcrumb like "Domain > Workspaces > BMW" */
-  destinationBreadcrumb(): string {
-    const p = this.parentPath() ?? '';
-    const parts = p.split('/').filter(Boolean);
-    if (parts.length === 0) return '—';
-    return parts
-      .map((seg) => {
-        if (seg === 'default-domain') return 'Domain';
-        if (seg === 'workspaces' || seg === 'workspace') return 'Workspaces';
-        return decodeURIComponent(seg);
-      })
-      .join(' > ');
+  private loadLocationSuggestions(path: string): void {
+    const requestId = this.locationSuggestionsRequestId + 1;
+    this.locationSuggestionsRequestId = requestId;
+    this.loadingLocationSuggestions.set(true);
+    this.browse
+      .getChildren(path, 50, 0)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (list) => {
+          if (requestId !== this.locationSuggestionsRequestId) {
+            return;
+          }
+          const folders = (list.entries ?? []).filter((d) => isFolderishDocument(d));
+          this.locationSuggestions.set(
+            folders.map((f) => ({
+              path: this.normalizePath(f.path ?? path),
+              title: f.title ?? f.path?.split('/').pop() ?? '',
+            })),
+          );
+          this.locationHighlightIndex.set(folders.length > 0 ? 0 : -1);
+          this.loadingLocationSuggestions.set(false);
+        },
+        error: () => {
+          if (requestId !== this.locationSuggestionsRequestId) {
+            return;
+          }
+          this.locationSuggestions.set([]);
+          this.locationHighlightIndex.set(-1);
+          this.loadingLocationSuggestions.set(false);
+        },
+      });
   }
 
-  selectLandingMode(mode: CreateMode): void {
-    this.selectedMode.set(mode);
+  private normalizePath(path: string): string {
+    const trimmed = path.trim();
+    if (!trimmed) return '/';
+    const withLeading = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+    return withLeading.replace(/\/+$/, '') || '/';
   }
 
-  isModeSelected(mode: CreateMode): boolean {
-    return this.selectedMode() === mode;
-  }
-
-  /** Returns tabindex for roving-tabindex keyboard navigation within the radio group. */
-  getChoiceTabindex(mode: CreateMode): 0 | -1 {
-    const selected = this.selectedMode();
-    if (selected === null) {
-      return mode === this.LANDING_MODES[0] ? 0 : -1;
+  private syncLocationInputFromPath(): void {
+    const path = this.parentPath();
+    if (path) {
+      this.locationInput = this.normalizePath(path);
     }
-    return selected === mode ? 0 : -1;
   }
 
-  /** Handles Arrow key navigation across the landing choice radio group. */
-  onChoiceGridKeydown(event: KeyboardEvent): void {
-    const modes = this.LANDING_MODES;
-    const current = this.selectedMode() ?? modes[0];
-    const idx = modes.indexOf(current);
-    let next;
+  commitLocationInput(): void {
+    const raw = this.locationInput.trim();
+    if (!raw) return;
+    const normalized = this.normalizePath(raw);
+    this.parentPath.set(normalized);
+    this.locationInput = normalized;
+    this.locationDropdownOpen.set(false);
+    this.locationHighlightIndex.set(-1);
+  }
 
-    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
-      next = (idx + 1) % modes.length;
-      event.preventDefault();
-    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
-      next = (idx - 1 + modes.length) % modes.length;
-      event.preventDefault();
-    } else {
+  onLocationFocus(): void {
+    if (this.locationInput.endsWith('/')) {
+      this.locationDropdownOpen.set(true);
+      this.loadLocationSuggestions(this.pathForLocationSuggestions());
+    }
+  }
+
+  /** Show child folders when the input ends with `/`. */
+  onLocationInput(): void {
+    if (!this.locationInput.endsWith('/')) {
+      this.locationDropdownOpen.set(false);
+      this.locationHighlightIndex.set(-1);
       return;
     }
-
-    this.selectLandingMode(modes[next]);
-    this.choiceButtons.get(next)?.nativeElement.focus();
+    this.locationDropdownOpen.set(true);
+    this.loadLocationSuggestions(this.pathForLocationSuggestions());
   }
 
-  /** Landing: Next → branch to template gallery, upload screen, or CSV */
-  onLandingNext(): void {
-    const mode = this.selectedMode();
-    if (!mode) return;
-    this.error.set(null);
-    if (mode === 'template') {
-      this.templatePageIndex.set(0);
-      this.view.set('templateBrowse');
-    } else if (mode === 'upload') {
-      this.uploadFiles.set([]);
-      this.view.set('uploadScreen');
-    } else {
-      this.csvFile.set(null);
-      this.view.set('csv');
+  onLocationKeydown(event: KeyboardEvent): void {
+    const suggestions = this.locationSuggestions();
+    const navigable = this.isLocationDropdownNavigable();
+
+    switch (event.key) {
+      case 'ArrowDown':
+        if (!navigable) {
+          if (this.locationInput.endsWith('/')) {
+            this.locationDropdownOpen.set(true);
+            this.loadLocationSuggestions(this.pathForLocationSuggestions());
+          }
+          return;
+        }
+        event.preventDefault();
+        this.locationHighlightIndex.update((i) => (i < suggestions.length - 1 ? i + 1 : 0));
+        this.scrollLocationHighlightIntoView();
+        break;
+      case 'ArrowUp':
+        if (!navigable) return;
+        event.preventDefault();
+        this.locationHighlightIndex.update((i) => (i > 0 ? i - 1 : suggestions.length - 1));
+        this.scrollLocationHighlightIntoView();
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (navigable) {
+          const idx = this.locationHighlightIndex();
+          if (idx >= 0 && idx < suggestions.length) {
+            this.selectLocationSuggestion(suggestions[idx].path);
+            return;
+          }
+        }
+        this.commitLocationInput();
+        break;
+      case 'Escape':
+        if (this.locationDropdownOpen()) {
+          event.preventDefault();
+          this.locationDropdownOpen.set(false);
+          this.locationHighlightIndex.set(-1);
+        }
+        break;
     }
   }
 
-  goLanding(): void {
-    this.view.set('landing');
+  private isLocationDropdownNavigable(): boolean {
+    return (
+      this.locationDropdownOpen() &&
+      !this.loadingLocationSuggestions() &&
+      this.locationSuggestions().length > 0
+    );
+  }
+
+  private scrollLocationHighlightIntoView(): void {
+    setTimeout(() => {
+      document.querySelector('.location-option--active')?.scrollIntoView({ block: 'nearest' });
+    });
+  }
+
+  private pathForLocationSuggestions(): string {
+    const raw = this.locationInput.trim();
+    if (raw.endsWith('/')) {
+      return this.normalizePath(raw);
+    }
+    return this.parentPath() ?? '/';
+  }
+
+  onLocationBlur(): void {
+    setTimeout(() => {
+      this.locationDropdownOpen.set(false);
+      this.commitLocationInput();
+    }, 150);
+  }
+
+  selectLocationSuggestion(path: string): void {
+    const normalized = this.normalizePath(path);
+    this.parentPath.set(normalized);
+    this.locationInput = normalized;
+    this.locationDropdownOpen.set(false);
+    this.locationHighlightIndex.set(-1);
+  }
+
+  setActiveTab(tab: DialogTab): void {
+    if (this.view() === 'templateForm') {
+      this.resetFormState();
+      this.view.set('main');
+    }
+    this.activeTab.set(tab);
     this.error.set(null);
-    this.selectedTemplate.set(null);
   }
 
-  goTemplateBrowse(): void {
-    this.view.set('templateBrowse');
-    this.selectedTemplate.set(null);
-  }
-
-  prevTemplatePage(): void {
-    this.templatePageIndex.update((i) => Math.max(0, i - 1));
-  }
-
-  nextTemplatePage(): void {
-    const max = this.templatePageCount() - 1;
-    this.templatePageIndex.update((i) => Math.min(max, i + 1));
-  }
-
-  /** Card "Get Started" → title form */
-  startTemplateFromCard(t: TemplateDef): void {
-    this.selectedTemplate.set(t);
-    this.docTitle = t.label;
-    this.docName = '';
+  startCreateFromType(docType: DocTypeDef): void {
+    if (this.locationRestricted()) return;
+    this.resetFormState();
+    this.selectedDocType.set(docType);
+    this.error.set(null);
     this.view.set('templateForm');
   }
 
-  /** Template gallery: Next → form with current selection or first visible template */
-  onTemplateBrowseNext(): void {
-    if (!this.selectedTemplate()) {
-      const first = this.pagedTemplates()[0] ?? this.filteredBusinessTemplates()[0];
-      if (first) {
-        this.selectedTemplate.set(first);
-        this.docTitle = first.label;
-        this.docName = '';
-      }
-    }
-    if (this.selectedTemplate()) {
-      this.view.set('templateForm');
+  private resetFormState(): void {
+    this.selectedDocType.set(null);
+    this.docTitle = '';
+    this.description = '';
+    this.nature = null;
+    this.subjects = [];
+    this.coverage = null;
+    this.naturePanelSearch = '';
+    this.subjectsPanelSearch = '';
+    this.coveragePanelSearch = '';
+    this.expires = null;
+    this.noteFormat = 'text/html';
+    this.mainFile.set(null);
+    this.dragOverContent.set(false);
+  }
+
+  subjectPillLabel(id: string): string {
+    const entry = this.subjectEntries().find((e) => e.id === id);
+    if (!entry) return id;
+    const label = entry.properties.label_en ?? id;
+    const parentId = entry.properties.parent;
+    if (!parentId || label.includes('/')) return label;
+    const parent = this.subjectEntries().find((e) => e.id === parentId);
+    const parentLabel = parent?.properties.label_en ?? parentId;
+    return `${parentLabel}/${label}`;
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.locationDropdownOpen()) {
+      this.locationDropdownOpen.set(false);
+      this.locationHighlightIndex.set(-1);
     }
   }
 
-  createFromTemplate(): void {
+  onNaturePanelOpen(opened: boolean): void {
+    if (opened) {
+      this.naturePanelSearch = '';
+    }
+  }
+
+  onSubjectsPanelOpen(opened: boolean): void {
+    if (opened) {
+      this.subjectsPanelSearch = '';
+    }
+  }
+
+  onCoveragePanelOpen(opened: boolean): void {
+    if (opened) {
+      this.coveragePanelSearch = '';
+    }
+  }
+
+  filteredNatureOptions(): DirectoryEntry[] {
+    const q = this.naturePanelSearch.trim().toLowerCase();
+    return this.natureEntries()
+      .filter((e) => {
+        if (!q) return true;
+        const label = e.displayLabel.toLowerCase();
+        return label.includes(q) || e.id.toLowerCase().includes(q);
+      })
+      .sort((a, b) => a.displayLabel.localeCompare(b.displayLabel));
+  }
+
+  groupedSubjectOptions(): { parentLabel: string; entries: L10nDirectoryEntry[] }[] {
+    return this.groupL10nEntries(this.subjectEntries(), this.subjectsPanelSearch);
+  }
+
+  groupedCoverageOptions(): { parentLabel: string; entries: L10nDirectoryEntry[] }[] {
+    return this.groupL10nEntries(this.coverageEntries(), this.coveragePanelSearch);
+  }
+
+  private groupL10nEntries(
+    entries: L10nDirectoryEntry[],
+    query: string,
+  ): { parentLabel: string; entries: L10nDirectoryEntry[] }[] {
+    if (!entries.length) return [];
+
+    const parentLabels = new Map(entries.map((e) => [e.id, e.properties.label_en ?? e.id]));
+    const q = query.trim().toLowerCase();
+
+    const filtered = entries.filter((e) => {
+      if (e.properties.obsolete) return false;
+      if (!e.properties.parent) return false;
+      if (!q) return true;
+      const label = (e.properties.label_en ?? e.id).toLowerCase();
+      const parentLabel = (parentLabels.get(e.properties.parent) ?? '').toLowerCase();
+      return label.includes(q) || e.id.toLowerCase().includes(q) || parentLabel.includes(q);
+    });
+
+    const groups = new Map<string, L10nDirectoryEntry[]>();
+    for (const entry of filtered) {
+      const parent = entry.properties.parent;
+      const list = groups.get(parent) ?? [];
+      list.push(entry);
+      groups.set(parent, list);
+    }
+
+    return [...groups.entries()]
+      .map(([parentId, groupEntries]) => ({
+        parentLabel: parentLabels.get(parentId) ?? parentId,
+        entries: groupEntries.sort(
+          (a, b) => (a.properties.ordering ?? 0) - (b.properties.ordering ?? 0),
+        ),
+      }))
+      .sort((a, b) => a.parentLabel.localeCompare(b.parentLabel));
+  }
+
+  addSubject(id: string): void {
+    if (!id || this.subjects.includes(id)) return;
+    this.subjects = [...this.subjects, id];
+  }
+
+  removeSubject(id: string): void {
+    this.subjects = this.subjects.filter((v) => v !== id);
+  }
+
+  goMain(): void {
+    this.resetFormState();
+    this.view.set('main');
+    this.error.set(null);
+  }
+
+  private buildDocumentProperties(title: string): Record<string, unknown> {
+    const docType = this.selectedDocType();
+    const props: Record<string, unknown> = {
+      'dc:title': title,
+      'dc:description': this.description.trim() || null,
+      'dc:nature': this.nature || null,
+      'dc:subjects': this.subjects,
+      'dc:coverage': this.coverage || null,
+      'dc:expired': this.expires?.toISOString() ?? null,
+    };
+
+    if (docType?.type === 'Note') {
+      props['note:note'] = defaultNoteContent(this.noteFormat);
+      props['note:mime_type'] = this.noteFormat;
+    }
+
+    return props;
+  }
+
+  createDocument(): void {
+    this.commitLocationInput();
+    if (this.locationRestricted()) return;
     const path = this.parentPath();
-    const t = this.selectedTemplate();
-    if (!path || !t) return;
-    const title = this.docTitle.trim() || t.label;
-    const name = sanitizeDocumentName(this.docName.trim() || title);
+    const docType = this.selectedDocType();
+    if (!path || !docType || !this.docTitle.trim()) return;
+
+    const title = this.docTitle.trim();
+    const name = sanitizeDocumentName(title);
+    const properties = this.buildDocumentProperties(title);
+    const mainFile = this.mainFile();
+
     this.busy.set(true);
     this.error.set(null);
-    const props: Record<string, unknown> = { 'dc:title': title };
-    if (t.type === 'Note') {
-      props['note:note'] = '<p></p>';
-    }
-    this.importService.createChildDocument(path, name, t.type, props).subscribe({
+
+    const create$ =
+      mainFile && BLOB_CONTENT_TYPES.has(docType.type)
+        ? this.importService
+            .initUploadBatch()
+            .pipe(
+              switchMap((batchId) =>
+                this.importService
+                  .uploadFileToBatch(batchId, 0, mainFile)
+                  .pipe(
+                    switchMap(() =>
+                      this.importService.createDocumentWithBlob(
+                        path,
+                        name,
+                        docType.type,
+                        properties,
+                        batchId,
+                        0,
+                      ),
+                    ),
+                  ),
+              ),
+            )
+        : this.importService.createChildDocument(path, name, docType.type, properties);
+
+    create$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.busy.set(false);
-        this.successMessage.set(`Created ${t.type} “${title}”.`);
+        this.successMessage.set(`Created ${docType.type} “${title}”.`);
         this.view.set('success');
       },
       error: (err: { error?: { message?: string }; message?: string }) => {
@@ -438,6 +647,35 @@ export class CreateImportDialogComponent implements OnInit {
         this.error.set(err?.error?.message ?? err?.message ?? 'Create failed');
       },
     });
+  }
+
+  onMainFileInputChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) this.mainFile.set(file);
+    input.value = '';
+  }
+
+  onContentDrop(ev: DragEvent): void {
+    ev.preventDefault();
+    this.dragOverContent.set(false);
+    const file = ev.dataTransfer?.files?.[0];
+    if (file) this.mainFile.set(file);
+  }
+
+  onContentDragOver(ev: DragEvent): void {
+    ev.preventDefault();
+    ev.stopPropagation();
+    this.dragOverContent.set(true);
+  }
+
+  onContentDragLeave(ev: DragEvent): void {
+    ev.preventDefault();
+    this.dragOverContent.set(false);
+  }
+
+  clearMainFile(): void {
+    this.mainFile.set(null);
   }
 
   onUploadInputChange(event: Event): void {
@@ -474,21 +712,17 @@ export class CreateImportDialogComponent implements OnInit {
     this.uploadFiles.update((files) => files.filter((_, j) => j !== i));
   }
 
-  onCsvInputChange(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const f = input.files?.[0];
-    this.csvFile.set(f ?? null);
-  }
-
-  /** Upload screen: Next runs import */
   runUpload(): void {
+    this.commitLocationInput();
+    if (this.locationRestricted()) return;
     const path = this.parentPath();
     const files = this.uploadFiles();
     if (!path || files.length === 0) return;
     this.busy.set(true);
     this.error.set(null);
     this.importService
-      .importFiles(path, files, { autoClassify: this.autoClassifyOnUpload })
+      .importFiles(path, files)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (docs) => {
           this.busy.set(false);
@@ -502,39 +736,6 @@ export class CreateImportDialogComponent implements OnInit {
       });
   }
 
-  runCsv(): void {
-    const path = this.parentPath();
-    const file = this.csvFile();
-    if (!path || !file) return;
-    this.busy.set(true);
-    this.error.set(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const text = String(reader.result ?? '');
-      this.importService.importFromCsvText(path, text).subscribe({
-        next: (res) => {
-          this.busy.set(false);
-          this.csvResult.set(res);
-          const parts: string[] = [];
-          parts.push(`Created ${res.created.length} document(s).`);
-          if (res.skipped.length) parts.push(`${res.skipped.length} row(s) skipped.`);
-          if (res.errors.length) parts.push(`${res.errors.length} error(s).`);
-          this.successMessage.set(parts.join(' '));
-          this.view.set('success');
-        },
-        error: (err: { error?: { message?: string }; message?: string }) => {
-          this.busy.set(false);
-          this.error.set(err?.error?.message ?? err?.message ?? 'CSV import failed');
-        },
-      });
-    };
-    reader.onerror = () => {
-      this.busy.set(false);
-      this.error.set('Could not read CSV file');
-    };
-    reader.readAsText(file);
-  }
-
   close(): void {
     this.dialogRef.close();
   }
@@ -542,59 +743,5 @@ export class CreateImportDialogComponent implements OnInit {
   doneNavigateBrowse(): void {
     const p = this.parentPath();
     this.dialogRef.close({ refreshed: true, path: p });
-  }
-
-  showFooterNext(): boolean {
-    const v = this.view();
-    if (v === 'landing') return true;
-    if (v === 'templateBrowse') return true;
-    if (v === 'uploadScreen') return true;
-    return false;
-  }
-
-  footerNextLabel(): string {
-    const v = this.view();
-    if (v === 'landing') return 'Next';
-    if (v === 'templateBrowse') return 'Next';
-    if (v === 'uploadScreen') return 'Next';
-    return 'Next';
-  }
-
-  onFooterNext(): void {
-    const v = this.view();
-    if (v === 'landing') this.onLandingNext();
-    else if (v === 'templateBrowse') this.onTemplateBrowseNext();
-    else if (v === 'uploadScreen') this.runUpload();
-  }
-
-  footerNextDisabled(): boolean {
-    if (this.busy() || this.resolvingPath()) return true;
-    const v = this.view();
-    if (v === 'landing') return !this.selectedMode();
-    if (v === 'uploadScreen') return this.uploadFiles().length === 0;
-    if (v === 'templateBrowse') return false;
-    return false;
-  }
-
-  showFooterBack(): boolean {
-    const v = this.view();
-    return v === 'templateBrowse' || v === 'templateForm' || v === 'uploadScreen' || v === 'csv';
-  }
-
-  onFooterBack(): void {
-    const v = this.view();
-    if (v === 'templateForm') this.goTemplateBrowse();
-    else if (v === 'templateBrowse' || v === 'uploadScreen' || v === 'csv') this.goLanding();
-  }
-
-  /** Explains why Next is disabled on the upload step (clearer than a grey button alone). */
-  uploadFooterHint(): string | null {
-    if (this.view() !== 'uploadScreen' || this.busy()) {
-      return null;
-    }
-    if (this.uploadFiles().length > 0) {
-      return null;
-    }
-    return 'Add at least one file to continue.';
   }
 }

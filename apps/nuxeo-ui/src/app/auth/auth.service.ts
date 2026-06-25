@@ -7,6 +7,8 @@ import {
   NUXEO_SAML_LOGIN_ENDPOINTS,
   NUXEO_SSO_POST_LOGIN_PATH,
   NUXEO_SSO_RETURN_QUERY_PARAM,
+  isPowerUserFromGroups,
+  readGroupsFromMe,
   type NuxeoSamlLoginEndpoint,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -18,12 +20,14 @@ interface BasicStoredSession {
   username: string;
   basic: string;
   isAdministrator: boolean;
+  groups: string[];
 }
 
 interface CookieStoredSession {
   kind: 'cookie';
   username: string;
   isAdministrator: boolean;
+  groups: string[];
 }
 
 type StoredSession = BasicStoredSession | CookieStoredSession;
@@ -33,6 +37,7 @@ interface LegacyStoredSession {
   username: string;
   basic: string;
   isAdministrator: boolean;
+  groups?: string[];
 }
 
 /** Nuxeo may return boolean, string, or numeric 1 depending on marshaller/version. */
@@ -70,6 +75,13 @@ function isBuiltInAdministratorUsername(username: string): boolean {
   return username.trim().toLowerCase() === 'administrator';
 }
 
+function readSessionFlagsFromMe(me: unknown): { isAdministrator: boolean; groups: string[] } {
+  return {
+    isAdministrator: readIsAdministratorFromMe(me),
+    groups: readGroupsFromMe(me),
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -95,6 +107,12 @@ export class AuthService {
     if (s.isAdministrator) return true;
     return isBuiltInAdministratorUsername(s.username);
   });
+  readonly isPowerUser = computed(() => {
+    const s = this.state();
+    if (!s) return false;
+    return isPowerUserFromGroups(s.groups);
+  });
+  readonly hasAdministrationAccess = computed(() => this.isAdministrator() || this.isPowerUser());
 
   constructor() {
     this.restoreSession();
@@ -143,6 +161,7 @@ export class AuthService {
               kind: 'cookie',
               username: c.username,
               isAdministrator: c.isAdministrator ?? false,
+              groups: c.groups ?? [],
             });
           }
           return;
@@ -155,6 +174,7 @@ export class AuthService {
               username: b.username,
               basic: b.basic,
               isAdministrator: b.isAdministrator ?? false,
+              groups: b.groups ?? [],
             });
           }
           return;
@@ -166,6 +186,7 @@ export class AuthService {
             username: legacy.username,
             basic: legacy.basic,
             isAdministrator: legacy.isAdministrator ?? false,
+            groups: legacy.groups ?? [],
           });
         }
       }
@@ -217,19 +238,23 @@ export class AuthService {
               return;
             }
             if (existing.kind === 'basic') {
+              const flags = readSessionFlagsFromMe(me);
               this.state.set({
                 kind: 'basic',
                 username: user,
                 basic: existing.basic,
-                isAdministrator: readIsAdministratorFromMe(me),
+                isAdministrator: flags.isAdministrator,
+                groups: flags.groups,
               });
               const remember = localStorage.getItem(STORAGE_KEY) !== null;
               this.persist(this.state()!, remember);
             } else {
+              const flags = readSessionFlagsFromMe(me);
               const cookieSession: CookieStoredSession = {
                 kind: 'cookie',
                 username: user,
-                isAdministrator: readIsAdministratorFromMe(me),
+                isAdministrator: flags.isAdministrator,
+                groups: flags.groups,
               };
               this.state.set(cookieSession);
               this.persistCookie(cookieSession);
@@ -253,10 +278,12 @@ export class AuthService {
         tap((me) => {
           const user = readUsernameFromMe(me);
           if (!user) return;
+          const flags = readSessionFlagsFromMe(me);
           const session: CookieStoredSession = {
             kind: 'cookie',
             username: user,
-            isAdministrator: readIsAdministratorFromMe(me),
+            isAdministrator: flags.isAdministrator,
+            groups: flags.groups,
           };
           this.state.set(session);
           this.persistCookie(session);
@@ -304,11 +331,13 @@ export class AuthService {
 
     return this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers }).pipe(
       tap((me) => {
+        const flags = readSessionFlagsFromMe(me);
         const session: BasicStoredSession = {
           kind: 'basic',
           username: trimmed,
           basic,
-          isAdministrator: readIsAdministratorFromMe(me),
+          isAdministrator: flags.isAdministrator,
+          groups: flags.groups,
         };
         this.state.set(session);
         this.persist(session, remember);
@@ -358,19 +387,23 @@ export class AuthService {
             return;
           }
           if (session.kind === 'basic') {
+            const flags = readSessionFlagsFromMe(me);
             const next: BasicStoredSession = {
               kind: 'basic',
               username: user,
               basic: session.basic,
-              isAdministrator: readIsAdministratorFromMe(me),
+              isAdministrator: flags.isAdministrator,
+              groups: flags.groups,
             };
             this.state.set(next);
             this.persistCurrent(next);
           } else {
+            const flags = readSessionFlagsFromMe(me);
             const next: CookieStoredSession = {
               kind: 'cookie',
               username: user,
-              isAdministrator: readIsAdministratorFromMe(me),
+              isAdministrator: flags.isAdministrator,
+              groups: flags.groups,
             };
             this.state.set(next);
             this.persistCookie(next);

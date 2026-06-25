@@ -52,6 +52,17 @@ export type { NuxeoOAuth2Provider } from './lib/models/oauth.model';
 // Config
 export { NUXEO_API_ORIGIN, NUXEO_SERVER_URL } from './lib/nuxeo-api.config';
 export { CURRENT_USERNAME } from './lib/current-user.token';
+export { ADMIN_ACCESS_CHECKS, type AdminAccessChecks } from './lib/auth/admin-access.token';
+export {
+  administrationAccessGuard,
+  administrationLandingGuard,
+  fullAdministratorGuard,
+} from './lib/auth/admin-route.guards';
+export {
+  NUXEO_POWERUSERS_GROUP,
+  isPowerUserFromGroups,
+  readGroupsFromMe,
+} from './lib/auth/user-groups.util';
 export type { NuxeoSamlLoginEndpoint } from './lib/saml-login.config';
 export {
   NUXEO_SAML_LOGIN_ENDPOINTS,
@@ -69,7 +80,10 @@ export {
 export { DocumentService } from './lib/services/document.service';
 export {
   DocumentImportService,
+  DEFAULT_IMPORT_PARENT_PATH,
+  RESTRICTED_IMPORT_LOCATION_MESSAGE,
   isFolderishDocument,
+  isRestrictedImportParentPath,
   sanitizeDocumentName,
   type CsvImportResult,
   type ImportFilesOptions,
@@ -121,6 +135,14 @@ export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { avatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
 export { NON_CONTENT_DOCUMENT_TYPES } from './lib/constants/non-content-document-types';
+export {
+  WORKSPACE_CONTENT_TYPE_ORDER,
+  parseDocumentSubtypes,
+  sortDocumentSubtypes,
+  type NuxeoSubtypeEntry,
+} from './lib/utils/parse-document-subtypes';
+export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
+export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {
   CONTENT_LAKE_INGEST_DOCUMENT_TYPES,
   CONTENT_LAKE_INGEST_MARKER_LEGACY_PROPERTY,

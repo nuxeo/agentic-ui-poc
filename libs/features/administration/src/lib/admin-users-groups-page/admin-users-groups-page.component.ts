@@ -16,7 +16,12 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { Router } from '@angular/router';
 import { catchError, filter, forkJoin, map, of, switchMap, tap } from 'rxjs';
 
-import { NuxeoGroup, NuxeoUser, UserService } from '@agentic-ui/shared/nuxeo-client';
+import {
+  NuxeoGroup,
+  NuxeoUser,
+  UserService,
+  resolvePaginatedListTotal,
+} from '@agentic-ui/shared/nuxeo-client';
 
 import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
 import {
@@ -108,48 +113,52 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   loadRecent(): void {
     this.recentLoading.set(true);
     forkJoin({
-      users: this.userService.searchUsersPaged('', 10, 0),
-      groups: this.userService.searchGroupsPaged('', 10, 0),
-    }).subscribe({
-      next: ({ users, groups }) => {
-        const rows: RecentUserGroupRow[] = [];
-        for (const u of users.entries ?? []) {
-          rows.push({
-            kind: 'user',
-            name: this.displayName(u),
-            identifier: u.id,
-            email: u.properties.email ?? '',
-          });
-        }
-        for (const g of groups.entries ?? []) {
-          rows.push({
-            kind: 'group',
-            name: g.grouplabel || g.groupname,
-            identifier: g.groupname,
-            email: '',
-          });
-        }
-        this.recentPageIndex.set(0);
-        this.recentRows.set(rows);
-        this.recentLoading.set(false);
-      },
-      error: () => {
-        this.recentPageIndex.set(0);
-        this.recentRows.set([]);
-        this.recentLoading.set(false);
-      },
-    });
+      users: this.userService.searchUsersPaged('', 50, 0),
+      groups: this.userService.searchGroupsPaged('', 50, 0),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ users, groups }) => {
+          const rows: RecentUserGroupRow[] = [];
+          for (const u of users.entries ?? []) {
+            rows.push({
+              kind: 'user',
+              name: this.displayName(u),
+              identifier: u.id,
+              email: u.properties.email ?? '',
+            });
+          }
+          for (const g of groups.entries ?? []) {
+            rows.push({
+              kind: 'group',
+              name: g.grouplabel || g.groupname,
+              identifier: g.groupname,
+              email: '',
+            });
+          }
+          this.recentPageIndex.set(0);
+          this.recentRows.set(rows);
+          this.recentLoading.set(false);
+        },
+        error: () => {
+          this.recentPageIndex.set(0);
+          this.recentRows.set([]);
+          this.recentLoading.set(false);
+        },
+      });
   }
 
   loadUsers(): void {
     this.usersLoading.set(true);
     this.usersError.set(null);
+    const pageIndex = this.usersPageIndex();
     this.userService
-      .searchUsersPaged(this.combinedSearchQuery, this.pageSize, this.usersPageIndex())
+      .searchUsersPaged(this.combinedSearchQuery, this.pageSize, pageIndex)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           this.users.set(res.entries ?? []);
-          this.usersTotal.set(res.totalSize ?? res.entries?.length ?? 0);
+          this.usersTotal.set(resolvePaginatedListTotal(res, this.pageSize, pageIndex));
           this.usersLoading.set(false);
         },
         error: (err) => {
@@ -162,12 +171,14 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   loadGroups(): void {
     this.groupsLoading.set(true);
     this.groupsError.set(null);
+    const pageIndex = this.groupsPageIndex();
     this.userService
-      .searchGroupsPaged(this.combinedSearchQuery, this.pageSize, this.groupsPageIndex())
+      .searchGroupsPaged(this.combinedSearchQuery, this.pageSize, pageIndex)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           this.groups.set(res.entries ?? []);
-          this.groupsTotal.set(res.totalSize ?? res.entries?.length ?? 0);
+          this.groupsTotal.set(resolvePaginatedListTotal(res, this.pageSize, pageIndex));
           this.groupsLoading.set(false);
         },
         error: (err) => {
