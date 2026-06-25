@@ -32,6 +32,8 @@ export interface UserFormDialogResult {
   email: string;
   password?: string;
   groups: string[];
+  /** When creating, submit again with a fresh dialog (Nuxeo Web UI parity for bulk entry). */
+  createAnother?: boolean;
 }
 
 @Component({
@@ -234,7 +236,8 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
       return false;
     }
     if (this.setUserPassword) {
-      return this.password.length > 0 && this.password === this.confirmPassword;
+      const trimmedPassword = this.password.trim();
+      return trimmedPassword.length > 0 && trimmedPassword === this.confirmPassword.trim();
     }
     return true;
   }
@@ -247,7 +250,7 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     }
   }
 
-  submit(): void {
+  submit(createAnother = false): void {
     if (!this.canSave) {
       return;
     }
@@ -259,9 +262,11 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
       company: this.company.trim(),
       email: this.email.trim(),
       groups: this.groups,
+      ...(this.data.mode === 'create' ? { createAnother } : {}),
     };
-    if (this.setUserPassword && this.password.length > 0) {
-      result.password = this.password;
+    const trimmedPassword = this.password.trim();
+    if (this.setUserPassword && trimmedPassword.length > 0) {
+      result.password = trimmedPassword;
     }
     this.dialogRef.close(result);
   }
