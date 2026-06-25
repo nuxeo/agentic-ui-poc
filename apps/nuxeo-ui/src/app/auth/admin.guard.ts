@@ -1,14 +1,16 @@
 import { inject } from '@angular/core';
-import { Router, CanActivateFn } from '@angular/router';
+import { CanActivateFn, Router } from '@angular/router';
+import { map } from 'rxjs';
 
 import { AuthService } from './auth.service';
 
-/** Allows access only when `AuthService.isAdministrator` reports admin rights; otherwise redirects to `/dashboard`. */
+/** Allows administrators and powerusers after session hydration; others go to dashboard. */
 export const adminGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
-  if (auth.isAdministrator()) {
-    return true;
-  }
-  return router.createUrlTree(['/dashboard']);
+  return auth
+    .ensureHydrated()
+    .pipe(
+      map(() => (auth.hasAdministrationAccess() ? true : router.createUrlTree(['/dashboard']))),
+    );
 };

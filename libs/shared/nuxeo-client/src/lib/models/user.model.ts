@@ -19,9 +19,12 @@ export interface NuxeoUserList {
   'entity-type': 'users';
   entries: NuxeoUser[];
   totalSize?: number;
+  resultsCount?: number;
   currentPageSize?: number;
   currentPageIndex?: number;
   numberOfPages?: number;
+  isPaginable?: boolean;
+  isNextPageAvailable?: boolean;
 }
 
 export interface NuxeoGroup {
@@ -36,7 +39,10 @@ export interface NuxeoGroupList {
   'entity-type': 'groups';
   entries: NuxeoGroup[];
   totalSize?: number;
+  resultsCount?: number;
   currentPageSize?: number;
   currentPageIndex?: number;
   numberOfPages?: number;
+  isPaginable?: boolean;
+  isNextPageAvailable?: boolean;
 }
