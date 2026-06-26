@@ -433,7 +433,7 @@ export class DocumentDetailService {
   }
 
   /** Nuxeo stores this on the ACE as the "Granted by" audit field. */
-  private creatorParam(override?: string): { creator: string } | Record<string, never> {
+  private creatorParam(override?: string): Partial<{ creator: string }> {
     const creator = override?.trim() || this.currentUsername()?.trim();
     return creator ? { creator } : {};
   }
