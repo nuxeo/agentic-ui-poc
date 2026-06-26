@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, of, map, catchError } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
+import { CURRENT_USERNAME } from '../current-user.token';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoWorkflowModel } from '../models/workflow.model';
 import { AuditLogList } from '../models/audit.model';
@@ -12,6 +13,7 @@ import { NuxeoApiBase } from './nuxeo-api-base';
 export class DocumentDetailService {
   private readonly api = inject(NuxeoApiBase);
   private readonly http = inject(HttpClient);
+  private readonly currentUsername = inject(CURRENT_USERNAME);
 
   getFullDocument(uid: string): Observable<NuxeoDocument> {
     return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
@@ -376,6 +378,7 @@ export class DocumentDetailService {
       comment?: string;
       begin?: string | null;
       end?: string | null;
+      creator?: string;
     },
   ): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
@@ -389,6 +392,7 @@ export class DocumentDetailService {
           end: params.end ?? null,
           notify: params.notify ?? false,
           comment: params.comment ?? '',
+          ...this.creatorParam(params.creator),
         },
         context: {},
         input: uid,
@@ -406,6 +410,7 @@ export class DocumentDetailService {
       comment?: string;
       begin?: string | null;
       end?: string;
+      creator?: string;
     },
   ): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
@@ -418,12 +423,19 @@ export class DocumentDetailService {
           end: params.end,
           notify: params.notify ?? true,
           comment: params.comment ?? '',
+          ...this.creatorParam(params.creator),
         },
         context: {},
         input: uid,
       },
       { 'Content-Type': 'application/json' },
     );
+  }
+
+  /** Nuxeo stores this on the ACE as the "Granted by" audit field. */
+  private creatorParam(override?: string): Partial<{ creator: string }> {
+    const creator = override?.trim() || this.currentUsername()?.trim();
+    return creator ? { creator } : {};
   }
 
   sendNotificationEmailForPermission(uid: string, aceId: string): Observable<NuxeoDocument> {

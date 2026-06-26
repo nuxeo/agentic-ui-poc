@@ -111,7 +111,7 @@ Automation operations use `POST /nuxeo/api/v1/automation/:operationId` with body
 | Publish document        | `Document.PublishToSection`             | `target` (section uid)                                                                                                          |
 | Lock document           | `Document.Lock`                         | —                                                                                                                               |
 | Unlock document         | `Document.Unlock`                       | —                                                                                                                               |
-| Add permission          | `Document.AddPermission`                | `username`, `permission`, `notify`, `comment`, `begin`, `end`                                                                   |
+| Add permission          | `Document.AddPermission`                | `username`, `permission`, `notify`, `comment`, `begin`, `end`, `creator` (logged-in user — populates "Granted by")              |
 | Replace permission      | `Document.ReplacePermission`            | `id`, `username`, `permission`, `notify`, `comment`, `begin`, `end`                                                             |
 | Add permission (legacy) | `Document.AddACE`                       | `user`, `permission` — client may pass `notify`/`comment`/`begin`/`end` but Nuxeo ignores them; prefer `Document.AddPermission` |
 | Block inheritance       | `Document.BlockPermissionInheritance`   | —                                                                                                                               |
