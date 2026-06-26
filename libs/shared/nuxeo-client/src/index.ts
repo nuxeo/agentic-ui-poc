@@ -80,8 +80,12 @@ export {
 export { DocumentService } from './lib/services/document.service';
 export {
   DocumentImportService,
+  BLOB_HOLDING_DOC_TYPES,
+  BLOB_NOT_ATTACHED_ERROR,
   DEFAULT_IMPORT_PARENT_PATH,
   RESTRICTED_IMPORT_LOCATION_MESSAGE,
+  documentHasMainBlob,
+  isBlobHoldingDocType,
   isFolderishDocument,
   isRestrictedImportParentPath,
   sanitizeDocumentName,

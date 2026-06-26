@@ -26,8 +26,6 @@
         Import
       </button>
     </div>
-  } @else {
-    <h2 mat-dialog-title class="dialog-heading">Done</h2>
   }
 
   <mat-dialog-content
@@ -256,6 +254,11 @@
 
               @if (hasContentField()) {
                 <div class="field-label">Content</div>
+                @if (createMissingMainFile()) {
+                  <p class="error-text content-required-hint" role="alert">
+                    Upload a main file to create this document.
+                  </p>
+                }
                 <div
                   class="content-dropzone"
                   [class.content-dropzone--active]="dragOverContent()"
@@ -430,7 +433,11 @@
           }
         }
         @case ('success') {
-          <p class="success-text">{{ successMessage() }}</p>
+          <div class="success-panel" role="status" aria-live="polite">
+            <mat-icon class="success-icon" aria-hidden="true">check_circle</mat-icon>
+            <h2 mat-dialog-title class="success-heading">Done</h2>
+            <p class="success-message">{{ successMessage() }}</p>
+          </div>
         }
       }
     }
@@ -469,7 +476,7 @@
           mat-flat-button
           color="primary"
           type="button"
-          [disabled]="busy() || !docTitle.trim() || locationRestricted()"
+          [disabled]="busy() || !docTitle.trim() || locationRestricted() || createMissingMainFile()"
           (click)="createDocument()"
         >
           Create

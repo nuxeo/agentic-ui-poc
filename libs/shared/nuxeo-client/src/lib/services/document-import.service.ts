@@ -1,4 +1,4 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, concat, from, of } from 'rxjs';
 import { catchError, concatMap, map, switchMap, tap, toArray } from 'rxjs/operators';
@@ -18,6 +18,29 @@ const FOLDERISH_TYPES = new Set([
   'Collection',
   'Collections',
 ]);
+
+/** Document types whose create/import flow must attach a main blob (`file:content`). */
+const BLOB_HOLDING_DOC_TYPES_INTERNAL = new Set(['File', 'Audio', 'Picture', 'Video']);
+export const BLOB_HOLDING_DOC_TYPES: ReadonlySet<string> = BLOB_HOLDING_DOC_TYPES_INTERNAL;
+
+export function isBlobHoldingDocType(docType: string): boolean {
+  return BLOB_HOLDING_DOC_TYPES.has(docType);
+}
+
+/** True when Nuxeo returned a non-empty main blob on the document. */
+export function documentHasMainBlob(doc: NuxeoDocument): boolean {
+  const fc = doc.properties?.['file:content'];
+  if (!fc || typeof fc !== 'object') return false;
+  const blob = fc as Record<string, unknown>;
+  const length = blob['length'];
+  if (length !== null && length !== undefined && Number(length) > 0) return true;
+  const name = blob['name'];
+  if (typeof name === 'string' && name.length > 0) return true;
+  const digest = blob['digest'];
+  return typeof digest === 'string' && digest.length > 0;
+}
+
+export const BLOB_NOT_ATTACHED_ERROR = 'File was not attached to the document';
 
 /** True if documents can be created under this document. */
 export function isFolderishDocument(doc: NuxeoDocument | null): boolean {
@@ -72,36 +95,25 @@ export class DocumentImportService {
     return of(DEFAULT_IMPORT_PARENT_PATH);
   }
 
-  /** Start a batch upload session (POST /api/v1/upload — see Nuxeo batch upload HOWTO). */
-  initUploadBatch(): Observable<string> {
+  /**
+   * Start a batch upload session (`POST /api/v1/upload/new/default`).
+   * @see https://doc.nuxeo.com/nxdoc/howto-upload-file-nuxeo-using-rest-api/
+   */
+  initUploadBatch(handler = 'default'): Observable<string> {
     return this.http
-      .post<unknown>(this.api.apiUrl('/nuxeo/api/v1/upload'), null, {
-        headers: new HttpHeaders({ 'X-Upload-Type': 'batch' }),
-        observe: 'response',
-      })
-      .pipe(
-        map((resp) => {
-          const fromHeader = resp.headers.get('X-Batch-Id') ?? resp.headers.get('Batch-Id');
-          if (fromHeader) return fromHeader.trim();
-          const body = resp.body as Record<string, unknown> | null;
-          if (body && typeof body === 'object') {
-            const id =
-              (body['batchId'] as string) ??
-              (body['batch-id'] as string) ??
-              (body['uploadBatchId'] as string);
-            if (id) return id;
-          }
-          throw new Error('Could not read upload batch id from response');
-        }),
-      );
+      .post<unknown>(
+        this.api.apiUrl(`/nuxeo/api/v1/upload/new/${encodeURIComponent(handler)}`),
+        null,
+        { observe: 'response' },
+      )
+      .pipe(map((resp) => readBatchIdFromInitResponse(resp)));
   }
 
   /** Upload one file into a batch index (0-based). */
   uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void> {
-    const safeName = encodeURIComponent(file.name);
     const headers: Record<string, string> = {
       'Content-Type': 'application/octet-stream',
-      'X-File-Name': safeName,
+      'X-File-Name': sanitizeHttpHeaderValue(file.name),
     };
     if (file.type) {
       headers['X-File-Type'] = file.type;
@@ -156,7 +168,9 @@ export class DocumentImportService {
     if (batchNoDrop) {
       headers = headers.set('X-Batch-No-Drop', 'true');
     }
-    return this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, { headers });
+    return this.withMainBlobValidation(
+      this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, { headers }),
+    );
   }
 
   createChildDocument(
@@ -199,9 +213,33 @@ export class DocumentImportService {
         },
       },
     };
-    return this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.withMainBlobValidation(
+      this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  }
+
+  /**
+   * Initialize a batch, upload `file`, and create a blob-holding document with `file:content` set.
+   */
+  createBlobHoldingDocument(
+    parentPath: string,
+    name: string,
+    docType: string,
+    properties: Record<string, unknown>,
+    file: File,
+  ): Observable<NuxeoDocument> {
+    return this.initUploadBatch().pipe(
+      switchMap((batchId) =>
+        this.uploadFileToBatch(batchId, 0, file).pipe(
+          switchMap(() => this.verifyBatchFileUploaded(batchId, 0)),
+          switchMap(() =>
+            this.createDocumentWithBlob(parentPath, name, docType, properties, batchId, 0),
+          ),
+        ),
+      ),
+    );
   }
 
   /** Upload multiple files as File documents (single batch, sequential API calls). */
@@ -217,6 +255,7 @@ export class DocumentImportService {
         const last = files.length - 1;
         const steps = files.map((file, index) =>
           this.uploadFileToBatch(batchId, index, file).pipe(
+            switchMap(() => this.verifyBatchFileUploaded(batchId, index)),
             switchMap(() =>
               this.createFileFromBatch(
                 parentPath,
@@ -232,6 +271,44 @@ export class DocumentImportService {
           ),
         );
         return concat(...steps).pipe(toArray());
+      }),
+    );
+  }
+
+  private verifyBatchFileUploaded(batchId: string, fileIndex: number): Observable<void> {
+    return this.http
+      .get<unknown>(
+        this.api.apiUrl(`/nuxeo/api/v1/upload/${encodeURIComponent(batchId)}/${fileIndex}`),
+      )
+      .pipe(
+        map((info) => {
+          if (!info || typeof info !== 'object') {
+            throw new Error('Upload verification failed: batch file not found');
+          }
+          const record = info as Record<string, unknown>;
+          const size = record['size'] ?? record['uploadedSize'];
+          if (size !== null && size !== undefined) {
+            const numericSize = Number(size);
+            if (Number.isFinite(numericSize) && numericSize >= 0) {
+              return undefined;
+            }
+          }
+          const name = record['name'];
+          if (typeof name === 'string' && name.length > 0) {
+            return undefined;
+          }
+          throw new Error('Upload verification failed: batch file metadata missing');
+        }),
+      );
+  }
+
+  private withMainBlobValidation(create$: Observable<NuxeoDocument>): Observable<NuxeoDocument> {
+    return create$.pipe(
+      map((doc) => {
+        if (!documentHasMainBlob(doc)) {
+          throw new Error(BLOB_NOT_ATTACHED_ERROR);
+        }
+        return doc;
       }),
     );
   }
@@ -348,6 +425,34 @@ export class DocumentImportService {
       }),
     );
   }
+}
+
+/** Strip control characters unsafe for HTTP header values (e.g. CR/LF injection). */
+function sanitizeHttpHeaderValue(value: string): string {
+  const cleaned = value
+    .split('')
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code >= 32 && code !== 127;
+    })
+    .join('')
+    .trim();
+  return cleaned || 'untitled';
+}
+
+function readBatchIdFromInitResponse(resp: HttpResponse<unknown>): string {
+  const fromHeader = resp.headers.get('X-Batch-Id') ?? resp.headers.get('Batch-Id');
+  if (fromHeader?.trim()) return fromHeader.trim();
+  const body = resp.body;
+  if (body && typeof body === 'object') {
+    const record = body as Record<string, unknown>;
+    const id =
+      (record['batchId'] as string) ??
+      (record['batch-id'] as string) ??
+      (record['uploadBatchId'] as string);
+    if (id) return id;
+  }
+  throw new Error('Could not read upload batch id from response');
 }
 
 function titleFromFileName(fileName: string): string {

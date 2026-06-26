@@ -46,7 +46,7 @@ enrichers-document: firstAccessibleAncestor → adds breadcrumb parent
 
 | Operation              | Method | Endpoint                                            |
 | ---------------------- | ------ | --------------------------------------------------- |
-| Init upload batch      | POST   | `/nuxeo/api/v1/upload`                              |
+| Init upload batch      | POST   | `/nuxeo/api/v1/upload/new/default`                  |
 | Upload file to batch   | POST   | `/nuxeo/api/v1/upload/:batchId/:fileIndex`          |
 | Import batch to folder | POST   | `/nuxeo/api/v1/upload/:batchId/execute/Blob.Attach` |
 
