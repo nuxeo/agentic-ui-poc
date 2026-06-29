@@ -5,6 +5,7 @@
 /tmp
 /out-tsc
 /bazel-out
+**/target/
 
 # Node
 /node_modules
@@ -28,6 +29,9 @@ yarn-error.log
 !.vscode/extensions.json
 !.vscode/mcp.json
 .history/*
+
+# Cursor debug logs
+.cursor/debug*.log
 
 # Miscellaneous
 /.angular/cache

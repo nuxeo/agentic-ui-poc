@@ -44,7 +44,8 @@ agentic-ui-poc/
 │       ├── ui/            ← Reusable UI components
 │       ├── ai-client/     ← Angular AI gateway services
 │       └── drawers/       ← Shared drawer components
-├── nuxeo-agentic-ui-package/  ← Maven / Nuxeo Marketplace package
+├── nuxeo-agentic-core/        ← OSGi bundle (auth, startup page, notification URL codec)
+├── nuxeo-agentic-ui-package/  ← Maven / Nuxeo Marketplace package assembly
 ├── docs/                  ← Architecture, AI features, API registry
 ├── .github/workflows/     ← CI (lint + build), Marketplace build
 ├── nx.json                ← Nx configuration
@@ -413,21 +414,27 @@ Default-on assumes the Nuxeo AI operations and HAIP key are configured in the ta
 ### How the Angular app ships as a Nuxeo add-on
 
 ```
-mvn package  (triggered by GitHub Actions on nuxeo-agentic-package branch)
+mvn package -pl nuxeo-agentic-ui-package -am  (triggered by GitHub Actions on main)
     │
     ├── nx build nuxeo-ui --base-href=/nuxeo/agentic-ui/
     │       └── dist/nuxeo-ui/browser/  (Angular static files)
     │
-    └── Maven assembly
-            ├── nuxeo-agentic-core.jar  (OSGi bundle with auth config)
+    ├── nuxeo-agentic-core  (Maven JAR module)
+    │       └── nuxeo-agentic-core.jar  (OSGi bundle)
+    │
+    └── nuxeo-agentic-ui-package assembly
+            ├── install/bundles/nuxeo-agentic-core.jar
             └── web/nuxeo.war/agentic-ui/  (Angular files → served by Tomcat)
 ```
 
-**OSGi contributions in the JAR:**
+**Maven `nuxeo.version` (currently `11.5.154`):** imports the `nuxeo-parent` BOM so the `nuxeo-agentic-core` Java module can compile against Nuxeo platform APIs (for example `AbstractDocumentViewCodec`). This is a **build-time** dependency version. The **runtime** Nuxeo platform range is declared separately in `nuxeo-agentic-ui-package/src/main/resources/package.xml` (`[2025.0,2026.0)`).
+
+**OSGi contributions in `nuxeo-agentic-core`:**
 
 - `deployment-fragment.xml` — tells Nuxeo to pass all requests under `/agentic-ui/*` through `NuxeoAuthenticationFilter`, enabling SSO/SAML to work seamlessly
 - `auth-config-agentic.xml` — authentication configuration for the agentic UI path
 - `login-startup-page-agentic-contrib.xml` — registers the UI as a valid start URL
+- `agentic-notification-doc-url-contrib.xml` + `AgenticNotificationDocumentIdCodec` — permission notification emails link to `agentic-ui/#/doc/{uid}`
 
 **Result:** After installing the Marketplace package on a Nuxeo server, the UI is accessible at `https://your-nuxeo-server/nuxeo/agentic-ui/` with full SSO support. No separate server needed for the frontend.
 
@@ -469,26 +476,28 @@ mvn package  (triggered by GitHub Actions on nuxeo-agentic-package branch)
 
 ## 9. Repository Navigation — Where to Look
 
-| You want to see...          | Look here                                                                   |
-| --------------------------- | --------------------------------------------------------------------------- |
-| App bootstrap & providers   | `apps/nuxeo-ui/src/app/app.config.ts`                                       |
-| All routes                  | `apps/nuxeo-ui/src/app/app.routes.ts`                                       |
-| Auth interceptor            | `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`                      |
-| Dashboard widgets           | `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts`               |
-| Browse feature (full)       | `libs/features/browse/src/lib/browse/browse.ts`                             |
-| Document detail (tabs)      | `libs/features/document-detail/src/lib/document-detail/document-detail.ts`  |
-| Search with aggregations    | `libs/features/search/src/lib/search/search.ts`                             |
-| Nuxeo API base client       | `libs/shared/nuxeo-client/src/lib/services/nuxeo-api-base.ts`               |
-| Document service            | `libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`      |
-| Document viewer (PDF/video) | `libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts`       |
-| AI backend entry point      | `apps/ai-backend/src/main.ts`                                               |
-| AI system prompts           | `apps/ai-backend/src/context/system-prompts.ts`                             |
-| RAG chat service            | `apps/ai-backend/src/services/rag.service.ts`                               |
-| Marketplace config          | `nuxeo-agentic-ui-package/src/main/resources/package.xml`                   |
-| Nuxeo OSGi auth config      | `nuxeo-agentic-ui-package/src/main/bundle/OSGI-INF/deployment-fragment.xml` |
-| CI pipeline                 | `.github/workflows/ci.yml`                                                  |
-| Marketplace CI              | `.github/workflows/build-marketplace.yml`                                   |
-| Dependency graph            | `npx nx graph` (run locally)                                                |
+| You want to see...          | Look here                                                                  |
+| --------------------------- | -------------------------------------------------------------------------- |
+| App bootstrap & providers   | `apps/nuxeo-ui/src/app/app.config.ts`                                      |
+| All routes                  | `apps/nuxeo-ui/src/app/app.routes.ts`                                      |
+| Auth interceptor            | `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`                     |
+| Dashboard widgets           | `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts`              |
+| Browse feature (full)       | `libs/features/browse/src/lib/browse/browse.ts`                            |
+| Document detail (tabs)      | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
+| Search with aggregations    | `libs/features/search/src/lib/search/search.ts`                            |
+| Nuxeo API base client       | `libs/shared/nuxeo-client/src/lib/services/nuxeo-api-base.ts`              |
+| Document service            | `libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`     |
+| Document viewer (PDF/video) | `libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts`      |
+| AI backend entry point      | `apps/ai-backend/src/main.ts`                                              |
+| AI system prompts           | `apps/ai-backend/src/context/system-prompts.ts`                            |
+| RAG chat service            | `apps/ai-backend/src/services/rag.service.ts`                              |
+| Marketplace config          | `nuxeo-agentic-ui-package/src/main/resources/package.xml`                  |
+| OSGi bundle module          | `nuxeo-agentic-core/`                                                      |
+| Nuxeo OSGi auth config      | `nuxeo-agentic-core/src/main/resources/OSGI-INF/deployment-fragment.xml`   |
+| Notification doc URL codec  | `nuxeo-agentic-core/src/main/java/org/nuxeo/agentic/url/codec/`            |
+| CI pipeline                 | `.github/workflows/ci.yml`                                                 |
+| Marketplace CI              | `.github/workflows/build-marketplace.yml`                                  |
+| Dependency graph            | `npx nx graph` (run locally)                                               |
 
 ---
 
