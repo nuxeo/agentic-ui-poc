@@ -783,7 +783,14 @@ export class BrowseComponent {
       })
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((result: { refreshed?: boolean } | undefined) => {
+      .subscribe((result) => {
+        if (result?.navigateToUid) {
+          void this.router.navigate(['/doc', result.navigateToUid], {
+            queryParams: { fresh: '1' },
+            state: { freshBlobDocument: true },
+          });
+          return;
+        }
         if (result?.refreshed) this.loadContent();
       });
   }

@@ -1,7 +1,7 @@
-import { HttpClient, HttpHeaders, HttpResponse } from '@angular/common/http';
+import { HttpClient, HttpEventType, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, concat, from, of } from 'rxjs';
-import { catchError, concatMap, map, switchMap, tap, toArray } from 'rxjs/operators';
+import { Observable, concat, defer, from, of, throwError, timer } from 'rxjs';
+import { catchError, concatMap, filter, map, switchMap, tap, toArray } from 'rxjs/operators';
 
 import { NuxeoDocument } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
@@ -38,6 +38,34 @@ export function documentHasMainBlob(doc: NuxeoDocument): boolean {
   if (typeof name === 'string' && name.length > 0) return true;
   const digest = blob['digest'];
   return typeof digest === 'string' && digest.length > 0;
+}
+
+/**
+ * True when `file:content` is a persisted blob (not a pending upload-batch reference
+ * and not merely a filename placeholder before binary storage completes).
+ */
+export function documentHasPersistedMainBlob(doc: NuxeoDocument): boolean {
+  const fc = doc.properties?.['file:content'];
+  if (!fc || typeof fc !== 'object') return false;
+  const blob = fc as Record<string, unknown>;
+  if (blob['upload-batch']) return false;
+
+  const digest = blob['digest'];
+  if (typeof digest === 'string' && digest.length > 0) return true;
+
+  if (blob['data']) return true;
+
+  const lengthRaw = blob['length'];
+  if (lengthRaw !== null && lengthRaw !== undefined && lengthRaw !== '') {
+    const length = Number(lengthRaw);
+    if (Number.isFinite(length)) {
+      if (length > 0) return true;
+      if (length === 0 && (blob['mime-type'] || blob['data'])) return true;
+    }
+  }
+
+  const mime = blob['mime-type'];
+  return typeof mime === 'string' && mime.length > 0 && typeof blob['name'] === 'string';
 }
 
 export const BLOB_NOT_ATTACHED_ERROR = 'File was not attached to the document';
@@ -80,6 +108,21 @@ export interface CsvImportResult {
 export interface ImportFilesOptions {
   /** When true, run post-upload classification hook after each File document is created. */
   autoClassify?: boolean;
+  /** Reports upload/create progress (0–100) for UI progress bars. */
+  onProgress?: (progress: ImportProgress) => void;
+}
+
+/** Progress payload for blob upload and document creation flows. */
+export interface ImportProgress {
+  phase: 'uploading' | 'creating';
+  /** Overall progress from 0 to 100. */
+  percent: number;
+  fileIndex?: number;
+  fileCount?: number;
+}
+
+export interface CreateBlobHoldingDocumentOptions {
+  onProgress?: (progress: ImportProgress) => void;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -110,7 +153,12 @@ export class DocumentImportService {
   }
 
   /** Upload one file into a batch index (0-based). */
-  uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void> {
+  uploadFileToBatch(
+    batchId: string,
+    fileIndex: number,
+    file: File,
+    onUploadPercent?: (percent: number) => void,
+  ): Observable<void> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/octet-stream',
       'X-File-Name': sanitizeHttpHeaderValue(file.name),
@@ -125,9 +173,25 @@ export class DocumentImportService {
         {
           headers: new HttpHeaders(headers),
           responseType: 'text',
+          reportProgress: true,
+          observe: 'events',
         },
       )
-      .pipe(map(() => undefined));
+      .pipe(
+        tap((event) => {
+          if (event.type === HttpEventType.UploadProgress) {
+            const total = event.total && event.total > 0 ? event.total : file.size;
+            const percent = total > 0 ? Math.min(100, Math.round((event.loaded * 100) / total)) : 0;
+            onUploadPercent?.(percent);
+            return;
+          }
+          if (event.type === HttpEventType.Response) {
+            onUploadPercent?.(100);
+          }
+        }),
+        filter((event) => event.type === HttpEventType.Response),
+        map(() => undefined),
+      );
   }
 
   /**
@@ -229,14 +293,26 @@ export class DocumentImportService {
     docType: string,
     properties: Record<string, unknown>,
     file: File,
+    options?: CreateBlobHoldingDocumentOptions,
   ): Observable<NuxeoDocument> {
-    return this.initUploadBatch().pipe(
+    const report = options?.onProgress;
+    return defer(() => {
+      report?.({ phase: 'uploading', percent: 0 });
+      return this.initUploadBatch();
+    }).pipe(
       switchMap((batchId) =>
-        this.uploadFileToBatch(batchId, 0, file).pipe(
-          switchMap(() => this.verifyBatchFileUploaded(batchId, 0)),
-          switchMap(() =>
-            this.createDocumentWithBlob(parentPath, name, docType, properties, batchId, 0),
-          ),
+        this.uploadFileToBatch(batchId, 0, file, (uploadPct) => {
+          report?.({ phase: 'uploading', percent: uploadPct });
+        }).pipe(
+          switchMap(() => {
+            report?.({ phase: 'creating', percent: 90 });
+            return this.verifyBatchFileUploaded(batchId, 0);
+          }),
+          switchMap(() => {
+            report?.({ phase: 'creating', percent: 95 });
+            return this.createDocumentWithBlob(parentPath, name, docType, properties, batchId, 0);
+          }),
+          tap(() => report?.({ phase: 'creating', percent: 100 })),
         ),
       ),
     );
@@ -250,12 +326,32 @@ export class DocumentImportService {
   ): Observable<NuxeoDocument[]> {
     if (files.length === 0) return of([]);
     const autoClassify = options?.autoClassify === true;
+    const report = options?.onProgress;
+    const fileCount = files.length;
     return this.initUploadBatch().pipe(
       switchMap((batchId) => {
         const last = files.length - 1;
         const steps = files.map((file, index) =>
-          this.uploadFileToBatch(batchId, index, file).pipe(
-            switchMap(() => this.verifyBatchFileUploaded(batchId, index)),
+          this.uploadFileToBatch(batchId, index, file, (uploadPct) => {
+            if (!report) return;
+            const fileSpan = 85 / fileCount;
+            const base = (index / fileCount) * 85;
+            report({
+              phase: 'uploading',
+              percent: Math.round(base + (uploadPct / 100) * fileSpan),
+              fileIndex: index,
+              fileCount,
+            });
+          }).pipe(
+            switchMap(() => {
+              report?.({
+                phase: 'creating',
+                percent: Math.round(((index + 0.5) / fileCount) * 85 + 10),
+                fileIndex: index,
+                fileCount,
+              });
+              return this.verifyBatchFileUploaded(batchId, index);
+            }),
             switchMap(() =>
               this.createFileFromBatch(
                 parentPath,
@@ -265,6 +361,14 @@ export class DocumentImportService {
                 index,
                 index < last,
               ).pipe(
+                tap(() =>
+                  report?.({
+                    phase: 'creating',
+                    percent: Math.round(((index + 1) / fileCount) * 100),
+                    fileIndex: index,
+                    fileCount,
+                  }),
+                ),
                 switchMap((doc) => this.runPostUploadClassificationIfEnabled(doc, autoClassify)),
               ),
             ),
@@ -302,15 +406,40 @@ export class DocumentImportService {
       );
   }
 
+  /**
+   * Nuxeo may return create responses without hydrated `file:content` (null, batch refs,
+   * or name-only placeholders). Poll until the binary is persisted before returning.
+   */
   private withMainBlobValidation(create$: Observable<NuxeoDocument>): Observable<NuxeoDocument> {
-    return create$.pipe(
-      map((doc) => {
-        if (!documentHasMainBlob(doc)) {
-          throw new Error(BLOB_NOT_ATTACHED_ERROR);
+    return create$.pipe(switchMap((doc) => this.ensurePersistedMainBlob(doc)));
+  }
+
+  private ensurePersistedMainBlob(doc: NuxeoDocument): Observable<NuxeoDocument> {
+    if (documentHasPersistedMainBlob(doc)) {
+      return of(doc);
+    }
+    return this.pollDocumentMainBlob(doc.uid, 0);
+  }
+
+  private pollDocumentMainBlob(uid: string, attempt: number): Observable<NuxeoDocument> {
+    const maxAttempts = 12;
+    return this.fetchDocumentMainBlob(uid).pipe(
+      switchMap((refetched) => {
+        if (documentHasPersistedMainBlob(refetched)) {
+          return of(refetched);
         }
-        return doc;
+        if (attempt >= maxAttempts) {
+          return throwError(() => new Error(BLOB_NOT_ATTACHED_ERROR));
+        }
+        return timer(300).pipe(switchMap(() => this.pollDocumentMainBlob(uid, attempt + 1)));
       }),
     );
+  }
+
+  private fetchDocumentMainBlob(uid: string): Observable<NuxeoDocument> {
+    return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
+      properties: 'file:content',
+    });
   }
 
   /**

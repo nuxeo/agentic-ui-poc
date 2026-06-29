@@ -31,10 +31,13 @@ export class DocumentDetailService {
     });
   }
 
+  /** Main binary on file:content (Nuxeo Web UI pattern); falls back to blobholder:0. */
   fetchBlob(uid: string): Observable<Blob> {
-    return this.http.get(this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/blobholder:0`), {
-      responseType: 'blob',
-    });
+    const fileContentUrl = this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/file:content`);
+    const blobHolderUrl = this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/blobholder:0`);
+    return this.http
+      .get(fileContentUrl, { responseType: 'blob' })
+      .pipe(catchError(() => this.http.get(blobHolderUrl, { responseType: 'blob' })));
   }
 
   fetchBlobByXpath(uid: string, xpath: string): Observable<Blob> {

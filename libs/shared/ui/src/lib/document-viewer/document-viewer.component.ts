@@ -159,7 +159,10 @@ export class DocumentViewerComponent {
     if (mime === 'application/pdf') return 'pdf';
     if (this.hasPdfRendition() && this.blobUrl()) return 'pdfRendition';
     if (this.previewUrl()) return 'preview';
-    if (this.blobUrl()) return 'pdf';
+    if (this.blobUrl()) {
+      if (/\.(png|jpe?g|gif|webp|bmp|svg|tiff?)$/i.test(this.fileName())) return 'image';
+      return 'pdf';
+    }
 
     return 'none';
   });
