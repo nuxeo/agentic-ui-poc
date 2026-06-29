@@ -1610,6 +1610,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
               poll();
             }
           },
+          error: () => {
+            // Stop polling on transient failures; preview may already be visible.
+          },
         });
     };
 

@@ -57,6 +57,15 @@ describe('DocumentImportService', () => {
       }),
     ).toBe(false);
     expect(
+      documentHasPersistedMainBlob({
+        uid: '1',
+        title: 't',
+        type: 'File',
+        path: '/a',
+        properties: { 'file:content': { name: '', 'mime-type': 'image/jpeg' } },
+      }),
+    ).toBe(false);
+    expect(
       documentHasMainBlob({
         uid: '1',
         title: 't',

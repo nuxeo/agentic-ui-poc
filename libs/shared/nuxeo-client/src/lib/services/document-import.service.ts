@@ -65,7 +65,8 @@ export function documentHasPersistedMainBlob(doc: NuxeoDocument): boolean {
   }
 
   const mime = blob['mime-type'];
-  return typeof mime === 'string' && mime.length > 0 && typeof blob['name'] === 'string';
+  const name = blob['name'];
+  return typeof mime === 'string' && mime.length > 0 && typeof name === 'string' && name.length > 0;
 }
 
 export const BLOB_NOT_ATTACHED_ERROR = 'File was not attached to the document';
@@ -302,7 +303,7 @@ export class DocumentImportService {
     }).pipe(
       switchMap((batchId) =>
         this.uploadFileToBatch(batchId, 0, file, (uploadPct) => {
-          report?.({ phase: 'uploading', percent: uploadPct });
+          report?.({ phase: 'uploading', percent: Math.round(uploadPct * 0.85) });
         }).pipe(
           switchMap(() => {
             report?.({ phase: 'creating', percent: 90 });
@@ -331,14 +332,14 @@ export class DocumentImportService {
     return this.initUploadBatch().pipe(
       switchMap((batchId) => {
         const last = files.length - 1;
-        const steps = files.map((file, index) =>
-          this.uploadFileToBatch(batchId, index, file, (uploadPct) => {
+        const steps = files.map((file, index) => {
+          const segment = 100 / fileCount;
+          const segmentStart = index * segment;
+          return this.uploadFileToBatch(batchId, index, file, (uploadPct) => {
             if (!report) return;
-            const fileSpan = 85 / fileCount;
-            const base = (index / fileCount) * 85;
             report({
               phase: 'uploading',
-              percent: Math.round(base + (uploadPct / 100) * fileSpan),
+              percent: Math.round(segmentStart + (uploadPct / 100) * segment * 0.85),
               fileIndex: index,
               fileCount,
             });
@@ -346,7 +347,7 @@ export class DocumentImportService {
             switchMap(() => {
               report?.({
                 phase: 'creating',
-                percent: Math.round(((index + 0.5) / fileCount) * 85 + 10),
+                percent: Math.round(segmentStart + segment * 0.88),
                 fileIndex: index,
                 fileCount,
               });
@@ -364,7 +365,7 @@ export class DocumentImportService {
                 tap(() =>
                   report?.({
                     phase: 'creating',
-                    percent: Math.round(((index + 1) / fileCount) * 100),
+                    percent: index === last ? 100 : Math.round((index + 1) * segment),
                     fileIndex: index,
                     fileCount,
                   }),
@@ -372,8 +373,8 @@ export class DocumentImportService {
                 switchMap((doc) => this.runPostUploadClassificationIfEnabled(doc, autoClassify)),
               ),
             ),
-          ),
-        );
+          );
+        });
         return concat(...steps).pipe(toArray());
       }),
     );
