@@ -450,13 +450,21 @@
                           <td>{{ aceTimeFrame(ace) }}</td>
                           <td>{{ ace.creator ?? '—' }}</td>
                           <td class="perm-row-actions">
-                            <button mat-icon-button matTooltip="Edit" aria-label="Edit permission">
+                            <button
+                              mat-icon-button
+                              matTooltip="Edit"
+                              aria-label="Edit permission"
+                              type="button"
+                              (click)="editPermission(ace)"
+                            >
                               <mat-icon>edit</mat-icon>
                             </button>
                             <button
                               mat-icon-button
                               matTooltip="Delete"
                               aria-label="Delete permission"
+                              type="button"
+                              (click)="deletePermission(ace)"
                             >
                               <mat-icon>delete</mat-icon>
                             </button>
@@ -561,15 +569,36 @@
                     <tbody>
                       @for (ace of externalAces(); track ace.id) {
                         <tr>
-                          <td>{{ ace.username }}</td>
+                          <td>{{ displayUsername(ace) }}</td>
                           <td>{{ permissionLabel(ace.permission) }}</td>
                           <td>{{ aceTimeFrame(ace) }}</td>
                           <td>{{ ace.creator ?? '—' }}</td>
                           <td class="perm-row-actions">
                             <button
                               mat-icon-button
+                              matTooltip="Edit"
+                              aria-label="Edit permission"
+                              type="button"
+                              (click)="editExternalPermission(ace)"
+                            >
+                              <mat-icon>edit</mat-icon>
+                            </button>
+                            <button
+                              mat-icon-button
+                              matTooltip="Send notification email"
+                              aria-label="Send notification"
+                              type="button"
+                              [disabled]="actionInProgress() === 'notify-' + ace.id"
+                              (click)="sendPermissionNotification(ace)"
+                            >
+                              <mat-icon>send</mat-icon>
+                            </button>
+                            <button
+                              mat-icon-button
                               matTooltip="Delete"
                               aria-label="Delete permission"
+                              type="button"
+                              (click)="deletePermission(ace)"
                             >
                               <mat-icon>delete</mat-icon>
                             </button>

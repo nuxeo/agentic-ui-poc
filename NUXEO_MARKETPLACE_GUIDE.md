@@ -94,10 +94,24 @@ The parent POM defines the multi-module reactor and shared properties.
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
-    <nuxeo.version>2023.0</nuxeo.version>
+    <!-- Compile-time BOM for OSGi bundle Java code (see dependencyManagement below).
+         In agentic-ui-poc this is 11.5.154. Runtime deployment target is declared separately in package.xml. -->
+    <nuxeo.version>11.5.154</nuxeo.version>
     <node.version>v24.13.0</node.version>
     <npm.version>11.6.2</npm.version>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.nuxeo</groupId>
+        <artifactId>nuxeo-parent</artifactId>
+        <version>${nuxeo.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <repositories>
     <repository>
@@ -125,6 +139,8 @@ The parent POM defines the multi-module reactor and shared properties.
 
 </project>
 ```
+
+> **Compile vs runtime Nuxeo version:** `nuxeo.version` in the parent POM imports the `nuxeo-parent` Maven BOM so Java OSGi modules (for example `nuxeo-agentic-core`) can resolve Nuxeo platform APIs at build time. In **agentic-ui-poc** this is `11.5.154`. The Marketplace **runtime** target platform is declared separately in `package.xml` (for example `[2025.0,2026.0)`). Do not assume these two version numbers must match.
 
 ---
 

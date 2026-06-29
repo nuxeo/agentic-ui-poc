@@ -98,7 +98,7 @@ jobs:
 
       - name: Build Maven package
         run: |
-          mvn clean package -pl nuxeo-agentic-ui-package -B -V -nsu --no-transfer-progress
+          mvn clean package -pl nuxeo-agentic-ui-package -am -B -V -nsu --no-transfer-progress
           ls nuxeo-agentic-ui-package/target/*.zip
 
       - name: Upload package artifact

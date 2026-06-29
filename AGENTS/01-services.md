@@ -49,6 +49,13 @@ exportXml(uid: string): Observable<Blob>
 getRunnableWorkflows(uid: string): Observable<NuxeoWorkflowModel[]>
 createCollection(title: string, description?: string): Observable<NuxeoDocument>
 searchUsersGroups(searchTerm: string): Observable<UserGroupSuggestion[]>
+addPermission(uid: string, params: { username?, email?, permission, notify?, comment?, begin?, end?, creator? }): Observable<NuxeoDocument>  // creator defaults to CURRENT_USERNAME
+addExternalPermission(uid: string, params: { email, permission, notify?, comment?, begin?, end?, creator? }): Observable<NuxeoDocument>  // creator defaults to CURRENT_USERNAME
+replacePermission(uid: string, params: { id?, username?, email?, permission, notify?, comment?, begin?, end? }): Observable<NuxeoDocument>
+removePermission(uid: string, params: { user, permission, acl? }): Observable<NuxeoDocument>
+blockPermissionInheritance(uid: string): Observable<NuxeoDocument>
+unblockPermissionInheritance(uid: string): Observable<NuxeoDocument>
+sendNotificationEmailForPermission(uid: string, aceId: string): Observable<NuxeoDocument>
 ```
 
 ---
