@@ -29,6 +29,9 @@ yarn-error.log
 !.vscode/mcp.json
 .history/*
 
+# Cursor debug logs
+.cursor/debug*.log
+
 # Miscellaneous
 /.angular/cache
 .sass-cache/

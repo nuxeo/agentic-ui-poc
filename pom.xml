@@ -12,6 +12,7 @@
 
   <modules>
     <module>apps/nuxeo-ui</module>
+    <module>nuxeo-agentic-core</module>
     <module>nuxeo-agentic-ui-package</module>
   </modules>
 
@@ -19,10 +20,22 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
-    <nuxeo.version>2023.0</nuxeo.version>
+    <nuxeo.version>11.5.154</nuxeo.version>
     <node.version>v20.0.0</node.version>
     <npm.version>11.6.2</npm.version>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.nuxeo</groupId>
+        <artifactId>nuxeo-parent</artifactId>
+        <version>${nuxeo.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <repositories>
     <repository>

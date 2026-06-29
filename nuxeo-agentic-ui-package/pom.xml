@@ -14,6 +14,14 @@
   <packaging>pom</packaging>
   <name>Nuxeo Agentic UI - Marketplace Package</name>
 
+  <dependencies>
+    <dependency>
+      <groupId>org.nuxeo.agentic</groupId>
+      <artifactId>nuxeo-agentic-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+
   <build>
     <resources>
       <resource>
@@ -52,25 +60,28 @@
         </executions>
       </plugin>
 
-      <!-- Build the Nuxeo OSGi bundle JAR -->
+      <!-- Stage the OSGi bundle JAR built by nuxeo-agentic-core -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-antrun-plugin</artifactId>
-        <version>3.1.0</version>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.6.1</version>
         <executions>
           <execution>
-            <id>create-bundle-jar</id>
+            <id>copy-agentic-core-jar</id>
             <phase>prepare-package</phase>
-            <goals><goal>run</goal></goals>
+            <goals><goal>copy</goal></goals>
             <configuration>
-              <target>
-                <jar destfile="${project.build.directory}/nuxeo-agentic-core.jar"
-                     manifest="${project.basedir}/src/main/bundle/META-INF/MANIFEST.MF">
-                  <fileset dir="${project.basedir}/src/main/bundle">
-                    <include name="OSGI-INF/**"/>
-                  </fileset>
-                </jar>
-              </target>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.nuxeo.agentic</groupId>
+                  <artifactId>nuxeo-agentic-core</artifactId>
+                  <version>${project.version}</version>
+                  <type>jar</type>
+                  <overWrite>true</overWrite>
+                  <outputDirectory>${project.build.directory}</outputDirectory>
+                  <destFileName>nuxeo-agentic-core.jar</destFileName>
+                </artifactItem>
+              </artifactItems>
             </configuration>
           </execution>
         </executions>
