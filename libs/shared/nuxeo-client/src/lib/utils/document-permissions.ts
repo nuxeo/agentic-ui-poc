@@ -1,4 +1,4 @@
-import { NuxeoDocument } from '../models/document.model';
+import type { NuxeoDocument } from '../models/document.model';
 
 /** Nuxeo compound permission required to add/edit/delete document ACL entries (Nuxeo Web UI pattern). */
 export const MANAGE_DOCUMENT_PERMISSIONS = 'Everything';
