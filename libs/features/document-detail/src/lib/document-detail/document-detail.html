@@ -420,14 +420,16 @@
                   <div class="perm-section-title" role="heading" aria-level="3">
                     Permissions defined locally
                   </div>
-                  <button
-                    mat-button
-                    color="primary"
-                    class="perm-action-btn"
-                    (click)="openAddPermissionDialog()"
-                  >
-                    New
-                  </button>
+                  @if (canManagePermissions()) {
+                    <button
+                      mat-button
+                      color="primary"
+                      class="perm-action-btn"
+                      (click)="openAddPermissionDialog()"
+                    >
+                      New
+                    </button>
+                  }
                 </div>
                 @if (localAces().length === 0) {
                   <div class="perm-empty">There are no local permissions.</div>
@@ -439,7 +441,9 @@
                         <th>Right</th>
                         <th>Time Frame</th>
                         <th>Granted by</th>
-                        <th></th>
+                        @if (canManagePermissions()) {
+                          <th></th>
+                        }
                       </tr>
                     </thead>
                     <tbody>
@@ -449,26 +453,28 @@
                           <td>{{ permissionLabel(ace.permission) }}</td>
                           <td>{{ aceTimeFrame(ace) }}</td>
                           <td>{{ ace.creator ?? '—' }}</td>
-                          <td class="perm-row-actions">
-                            <button
-                              mat-icon-button
-                              matTooltip="Edit"
-                              aria-label="Edit permission"
-                              type="button"
-                              (click)="editPermission(ace)"
-                            >
-                              <mat-icon>edit</mat-icon>
-                            </button>
-                            <button
-                              mat-icon-button
-                              matTooltip="Delete"
-                              aria-label="Delete permission"
-                              type="button"
-                              (click)="deletePermission(ace)"
-                            >
-                              <mat-icon>delete</mat-icon>
-                            </button>
-                          </td>
+                          @if (canManagePermissions()) {
+                            <td class="perm-row-actions">
+                              <button
+                                mat-icon-button
+                                matTooltip="Edit"
+                                aria-label="Edit permission"
+                                type="button"
+                                (click)="editPermission(ace)"
+                              >
+                                <mat-icon>edit</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                matTooltip="Delete"
+                                aria-label="Delete permission"
+                                type="button"
+                                (click)="deletePermission(ace)"
+                              >
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </td>
+                          }
                         </tr>
                       }
                     </tbody>
@@ -482,15 +488,17 @@
                   <div class="perm-section-title" role="heading" aria-level="3">
                     Permissions inherited from upper levels
                   </div>
-                  <button
-                    mat-button
-                    color="primary"
-                    class="perm-action-btn"
-                    [disabled]="actionInProgress() === 'block-inheritance'"
-                    (click)="toggleInheritanceBlock()"
-                  >
-                    {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
-                  </button>
+                  @if (canManagePermissions()) {
+                    <button
+                      mat-button
+                      color="primary"
+                      class="perm-action-btn"
+                      [disabled]="actionInProgress() === 'block-inheritance'"
+                      (click)="toggleInheritanceBlock()"
+                    >
+                      {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+                    </button>
+                  }
                 </div>
                 @if (!isInheritanceBlocked()) {
                   <div class="perm-info-bar">
@@ -537,14 +545,16 @@
                   <div class="perm-section-title" role="heading" aria-level="3">
                     Permissions Assigned to External Users
                   </div>
-                  <button
-                    mat-button
-                    color="primary"
-                    class="perm-action-btn"
-                    (click)="openExternalPermissionDialog()"
-                  >
-                    New
-                  </button>
+                  @if (canManagePermissions()) {
+                    <button
+                      mat-button
+                      color="primary"
+                      class="perm-action-btn"
+                      (click)="openExternalPermissionDialog()"
+                    >
+                      New
+                    </button>
+                  }
                 </div>
                 <div class="perm-info-bar">
                   <span class="perm-info-accent"></span>
@@ -563,7 +573,9 @@
                         <th>Right</th>
                         <th>Time Frame</th>
                         <th>Granted by</th>
-                        <th></th>
+                        @if (canManagePermissions()) {
+                          <th></th>
+                        }
                       </tr>
                     </thead>
                     <tbody>
@@ -573,36 +585,38 @@
                           <td>{{ permissionLabel(ace.permission) }}</td>
                           <td>{{ aceTimeFrame(ace) }}</td>
                           <td>{{ ace.creator ?? '—' }}</td>
-                          <td class="perm-row-actions">
-                            <button
-                              mat-icon-button
-                              matTooltip="Edit"
-                              aria-label="Edit permission"
-                              type="button"
-                              (click)="editExternalPermission(ace)"
-                            >
-                              <mat-icon>edit</mat-icon>
-                            </button>
-                            <button
-                              mat-icon-button
-                              matTooltip="Send notification email"
-                              aria-label="Send notification"
-                              type="button"
-                              [disabled]="actionInProgress() === 'notify-' + ace.id"
-                              (click)="sendPermissionNotification(ace)"
-                            >
-                              <mat-icon>send</mat-icon>
-                            </button>
-                            <button
-                              mat-icon-button
-                              matTooltip="Delete"
-                              aria-label="Delete permission"
-                              type="button"
-                              (click)="deletePermission(ace)"
-                            >
-                              <mat-icon>delete</mat-icon>
-                            </button>
-                          </td>
+                          @if (canManagePermissions()) {
+                            <td class="perm-row-actions">
+                              <button
+                                mat-icon-button
+                                matTooltip="Edit"
+                                aria-label="Edit permission"
+                                type="button"
+                                (click)="editExternalPermission(ace)"
+                              >
+                                <mat-icon>edit</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                matTooltip="Send notification email"
+                                aria-label="Send notification"
+                                type="button"
+                                [disabled]="actionInProgress() === 'notify-' + ace.id"
+                                (click)="sendPermissionNotification(ace)"
+                              >
+                                <mat-icon>send</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                matTooltip="Delete"
+                                aria-label="Delete permission"
+                                type="button"
+                                (click)="deletePermission(ace)"
+                              >
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </td>
+                          }
                         </tr>
                       }
                     </tbody>

@@ -60,6 +60,7 @@ import {
   resolveIngestMarkerWriteProperty,
   shouldProbeContentLakeIngestStatus,
   supportsContentLakeIngest,
+  canManageDocumentPermissions,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -599,6 +600,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!acls) return false;
     return !acls.some((a) => a.name === 'inherited');
   });
+
+  readonly canManagePermissions = computed(() => canManageDocumentPermissions(this.doc()));
 
   permissionLabel(permission: string): string {
     const labels: Record<string, string> = {

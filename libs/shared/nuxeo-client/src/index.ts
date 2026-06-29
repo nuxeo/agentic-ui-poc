@@ -145,6 +145,11 @@ export {
   sortDocumentSubtypes,
   type NuxeoSubtypeEntry,
 } from './lib/utils/parse-document-subtypes';
+export {
+  MANAGE_DOCUMENT_PERMISSIONS,
+  canManageDocumentPermissions,
+  hasDocumentPermission,
+} from './lib/utils/document-permissions';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {
