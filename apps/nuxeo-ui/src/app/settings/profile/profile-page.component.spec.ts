@@ -118,13 +118,23 @@ describe('ProfilePageComponent', () => {
     ]);
   }));
 
-  it('loads group-inherited permissions for each group', fakeAsync(() => {
+  it('loads group-inherited permissions when the section becomes visible', fakeAsync(() => {
     const fixture = TestBed.createComponent(ProfilePageComponent);
     fixture.detectChanges();
     tick();
 
     const component = fixture.componentInstance;
+    expect(permService.listLocalPermissionRows).not.toHaveBeenCalled();
+
+    component.onGroupPermSectionVisible('members');
+    tick();
+
     expect(permService.listLocalPermissionRows).toHaveBeenCalledWith('members', 25, 0);
+    expect(permService.listLocalPermissionRows).not.toHaveBeenCalledWith('powerusers', 25, 0);
+
+    component.onGroupPermSectionVisible('powerusers');
+    tick();
+
     expect(permService.listLocalPermissionRows).toHaveBeenCalledWith('powerusers', 25, 0);
     expect(component.groupPermRows('members')).toEqual([
       {

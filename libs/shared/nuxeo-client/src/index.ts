@@ -153,6 +153,10 @@ export {
   canManageDocumentPermissions,
   hasDocumentPermission,
 } from './lib/utils/document-permissions';
+export {
+  principalPermissionTimeFrameLabel,
+  principalPermissionToLocalRow,
+} from './lib/utils/principal-permission-display';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {

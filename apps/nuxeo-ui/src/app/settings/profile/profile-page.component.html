@@ -120,14 +120,18 @@
     </article>
 
     @for (g of groups(); track g.identifier) {
-      <article class="profile-card">
+      <article
+        class="profile-card"
+        [libGroupPermLazyLoad]="g.identifier"
+        (visible)="onGroupPermSectionVisible($event)"
+      >
         <div class="profile-card__section-title" role="heading" aria-level="3">
           {{ g.label }} permissions
         </div>
 
         @if (isGroupPermLoading(g.identifier)) {
           <p class="profile-card__text">Loading {{ g.label }} permissions…</p>
-        } @else {
+        } @else if (hasGroupPermLoaded(g.identifier)) {
           <div class="profile-card__table-wrapper">
             <table class="profile-card__table">
               <thead>

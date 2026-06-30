@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   afterNextRender,
   computed,
@@ -17,26 +18,27 @@ import {
   PrincipalPermissionsService,
   SettingsService,
   UserService,
+  principalPermissionToLocalRow,
   type LocalPermissionRow,
   type NuxeoGroup,
-  type NuxeoUser,
   type PrincipalPermissionPage,
-  type PrincipalPermissionRow,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from '../../auth/auth.service';
 import { ChangePasswordDialogComponent } from './change-password-dialog/change-password-dialog.component';
+import { GroupPermLazyLoadDirective } from './group-perm-lazy-load.directive';
 
 const GROUP_PERM_PAGE_SIZE = 25;
 
 @Component({
   standalone: true,
-  imports: [MatIconModule, MatButtonModule],
+  imports: [MatIconModule, MatButtonModule, GroupPermLazyLoadDirective],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })
 export class ProfilePageComponent {
   private readonly auth = inject(AuthService);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly userService = inject(UserService);
   private readonly settingsService = inject(SettingsService);
   private readonly permService = inject(PrincipalPermissionsService);
@@ -98,7 +100,6 @@ export class ProfilePageComponent {
           if (!groupIds.length) {
             this.groups.set([]);
             this.groupsLoading.set(false);
-            this.loadAllGroupPerms(user);
             return of(null);
           }
 
@@ -124,7 +125,6 @@ export class ProfilePageComponent {
           }
           this.groups.set(result.groups);
           this.groupsLoading.set(false);
-          this.loadAllGroupPerms(result.user);
         },
         error: () => {
           this.groupsLoading.set(false);
@@ -176,12 +176,23 @@ export class ProfilePageComponent {
     return this.groupPermLoading()[groupId] === true;
   }
 
+  hasGroupPermLoaded(groupId: string): boolean {
+    return this.groupPermMap()[groupId] !== undefined;
+  }
+
+  onGroupPermSectionVisible(groupId: string): void {
+    if (this.hasGroupPermLoaded(groupId) || this.isGroupPermLoading(groupId)) {
+      return;
+    }
+    this.loadGroupPermPage(groupId, 0);
+  }
+
   groupPermRows(groupId: string): LocalPermissionRow[] {
     const page = this.groupPermPage(groupId);
     if (!page) {
       return [];
     }
-    return page.rows.map((row) => this.toPermissionRow(row));
+    return page.rows.map((row) => principalPermissionToLocalRow(row));
   }
 
   groupPermTotalPages(groupId: string): number {
@@ -215,25 +226,11 @@ export class ProfilePageComponent {
     this.adminPage.update((p) => Math.min(this.adminTotalPages() - 1, p + 1));
   }
 
-  private loadAllGroupPerms(user: NuxeoUser): void {
-    const groupIds = user.properties.groups ?? [];
-    this.groupPermMap.set({});
-    const loading: Record<string, boolean> = {};
-    for (const groupId of groupIds) {
-      loading[groupId] = true;
-    }
-    this.groupPermLoading.set(loading);
-
-    for (const groupId of groupIds) {
-      this.loadGroupPermPage(groupId, 0);
-    }
-  }
-
   private loadGroupPermPage(groupId: string, pageIndex: number): void {
     this.groupPermLoading.update((state) => ({ ...state, [groupId]: true }));
     this.permService
       .listLocalPermissionRows(groupId, GROUP_PERM_PAGE_SIZE, pageIndex)
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (page) => {
           this.groupPermMap.update((state) => ({ ...state, [groupId]: page }));
@@ -253,24 +250,5 @@ export class ProfilePageComponent {
           this.groupPermLoading.update((state) => ({ ...state, [groupId]: false }));
         },
       });
-  }
-
-  private toPermissionRow(row: PrincipalPermissionRow): LocalPermissionRow {
-    const pathSuffix = row.documentPath ? ` (${row.documentPath})` : '';
-    return {
-      on: `${row.documentTitle}${pathSuffix}`,
-      right: row.permission,
-      timeFrame: this.timeFrameLabel(row),
-      grantedBy: row.grantedBy ?? '—',
-    };
-  }
-
-  private timeFrameLabel(row: PrincipalPermissionRow): string {
-    if (!row.begin && !row.end) {
-      return 'Permanent';
-    }
-    const begin = row.begin ? new Date(row.begin).toLocaleString() : '—';
-    const end = row.end ? new Date(row.end).toLocaleString() : '—';
-    return `${begin} – ${end}`;
   }
 }

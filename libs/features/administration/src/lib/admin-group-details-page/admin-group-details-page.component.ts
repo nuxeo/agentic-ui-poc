@@ -17,6 +17,7 @@ import {
   PrincipalPermissionRow,
   PrincipalPermissionsService,
   UserService,
+  principalPermissionTimeFrameLabel,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
@@ -228,10 +229,7 @@ export class AdminGroupDetailsPageComponent implements OnInit {
   }
 
   timeFrameLabel(row: PrincipalPermissionRow): string {
-    if (!row.begin && !row.end) return 'Permanent';
-    const b = row.begin ? new Date(row.begin).toLocaleString() : '—';
-    const e = row.end ? new Date(row.end).toLocaleString() : '—';
-    return `${b} – ${e}`;
+    return principalPermissionTimeFrameLabel(row);
   }
 
   removeNestedGroup(nestedId: string): void {
