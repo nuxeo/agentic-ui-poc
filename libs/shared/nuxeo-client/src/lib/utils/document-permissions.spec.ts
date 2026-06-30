@@ -1,7 +1,15 @@
 import {
+  ADD_CHILDREN,
+  canAddChildren,
   canManageDocumentPermissions,
+  canRemoveDocument,
+  canWriteDocument,
   hasDocumentPermission,
+  isPermissionDeniedError,
   MANAGE_DOCUMENT_PERMISSIONS,
+  PERMISSION_DENIED_MESSAGE,
+  REMOVE_DOCUMENT,
+  WRITE_DOCUMENT,
 } from './document-permissions';
 import type { NuxeoDocument } from '../models/document.model';
 
@@ -34,5 +42,39 @@ describe('document-permissions', () => {
 
   it('canManageDocumentPermissions is true when user has Everything', () => {
     expect(canManageDocumentPermissions(docWithPermissions(['Read', 'Everything']))).toBe(true);
+  });
+
+  it('canWriteDocument is false for read-only users', () => {
+    expect(canWriteDocument(docWithPermissions(['Read']))).toBe(false);
+  });
+
+  it('canWriteDocument is true when user has Write', () => {
+    expect(canWriteDocument(docWithPermissions(['Read', WRITE_DOCUMENT]))).toBe(true);
+  });
+
+  it('canAddChildren is false for read-only users', () => {
+    expect(canAddChildren(docWithPermissions(['Read']))).toBe(false);
+  });
+
+  it('canAddChildren is true when user has AddChildren', () => {
+    expect(canAddChildren(docWithPermissions(['Read', ADD_CHILDREN]))).toBe(true);
+  });
+
+  it('canRemoveDocument is false for read-only users', () => {
+    expect(canRemoveDocument(docWithPermissions(['Read']))).toBe(false);
+  });
+
+  it('canRemoveDocument is true when user has Remove', () => {
+    expect(canRemoveDocument(docWithPermissions(['Read', REMOVE_DOCUMENT]))).toBe(true);
+  });
+
+  it('isPermissionDeniedError detects 401 and 403', () => {
+    expect(isPermissionDeniedError({ status: 403 })).toBe(true);
+    expect(isPermissionDeniedError({ status: 401 })).toBe(true);
+    expect(isPermissionDeniedError({ status: 500 })).toBe(false);
+  });
+
+  it('exports a user-facing permission denied message', () => {
+    expect(PERMISSION_DENIED_MESSAGE.length).toBeGreaterThan(0);
   });
 });

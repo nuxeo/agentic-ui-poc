@@ -49,6 +49,10 @@ import {
   docTypeIcon,
   avatarColor,
   isFolderishDocument,
+  canAddChildren,
+  canWriteDocument,
+  canRemoveDocument,
+  PERMISSION_DENIED_MESSAGE,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -200,6 +204,9 @@ export class BrowseComponent {
     if (!acls) return false;
     return !acls.some((a) => a.name === 'inherited');
   });
+  readonly canAddChildrenHere = computed(() => canAddChildren(this.currentDoc()));
+  readonly canWriteCurrentDoc = computed(() => canWriteDocument(this.currentDoc()));
+  readonly canRemoveCurrentDoc = computed(() => canRemoveDocument(this.currentDoc()));
   readonly actionInProgress = signal<string | null>(null);
 
   // History tab
@@ -773,6 +780,10 @@ export class BrowseComponent {
       this.snackBar.open('Open a folder to create or import content.', 'OK', { duration: 4000 });
       return;
     }
+    if (!canAddChildren(doc)) {
+      this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+      return;
+    }
     this.dialog
       .open(CreateImportDialogComponent, {
         width: '960px',
@@ -798,6 +809,10 @@ export class BrowseComponent {
   openEditDialog(): void {
     const doc = this.currentDoc();
     if (!doc) return;
+    if (!canWriteDocument(doc)) {
+      this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+      return;
+    }
     const data: EditMetadataDialogData = {
       uid: doc.uid,
       title: doc.title,
@@ -816,6 +831,10 @@ export class BrowseComponent {
   deleteDocument(): void {
     const doc = this.currentDoc();
     if (!doc) return;
+    if (!canRemoveDocument(doc)) {
+      this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+      return;
+    }
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {

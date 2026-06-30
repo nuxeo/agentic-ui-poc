@@ -61,6 +61,9 @@ import {
   shouldProbeContentLakeIngestStatus,
   supportsContentLakeIngest,
   canManageDocumentPermissions,
+  canWriteDocument,
+  canRemoveDocument,
+  PERMISSION_DENIED_MESSAGE,
   isBlobHoldingDocType,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -636,6 +639,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly canManagePermissions = computed(() => canManageDocumentPermissions(this.doc()));
+  readonly canWriteDoc = computed(() => canWriteDocument(this.doc()));
+  readonly canRemoveDoc = computed(() => canRemoveDocument(this.doc()));
 
   permissionLabel(permission: string): string {
     const labels: Record<string, string> = {
@@ -2175,7 +2180,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Document Actions ──
 
   toggleLock(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireWritePermission()) return;
     this.actionInProgress.set('lock');
     const op = this.isLocked()
       ? this.detailService.unlockDocument(this.docUid)
@@ -2245,7 +2250,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   trashDocument(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Delete Document',
@@ -2273,7 +2278,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   restoreFromTrash(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireWritePermission()) return;
     this.actionInProgress.set('restore');
     this.detailService.restoreFromTrash(this.docUid).subscribe({
       next: () => {
@@ -2289,7 +2294,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   permanentlyDelete(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Permanently Delete Document',
@@ -2380,7 +2385,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   openEditDialog(): void {
     const currentDoc = this.doc();
-    if (!currentDoc) return;
+    if (!currentDoc || !this.requireWritePermission()) return;
 
     const ref = this.dialog.open(EditDocumentDialogComponent, {
       width: '560px',
@@ -2415,6 +2420,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       horizontalPosition: 'center',
       verticalPosition: 'bottom',
     });
+  }
+
+  private requireWritePermission(): boolean {
+    if (canWriteDocument(this.doc())) return true;
+    this.toast(PERMISSION_DENIED_MESSAGE);
+    return false;
+  }
+
+  private requireRemovePermission(): boolean {
+    if (canRemoveDocument(this.doc())) return true;
+    this.toast(PERMISSION_DENIED_MESSAGE);
+    return false;
   }
 
   goBack(): void {
@@ -2727,8 +2744,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Versioning ──
 
   openCreateVersionDialog(): void {
+    if (!this.requireWritePermission()) return;
     const ref = this.dialog.open(CreateVersionDialogComponent, {
-      width: '520px',
+      width: '600px',
+      maxWidth: '95vw',
+      panelClass: 'create-version-dialog-panel',
       data: {
         documentUid: this.docUid,
         documentTitle: this.doc()?.title ?? '',
@@ -2773,6 +2793,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   restoreVersion(version: NuxeoDocument): void {
+    if (!this.requireWritePermission()) return;
     this.versionDropdownOpen.set(false);
     this.actionInProgress.set('restore');
     this.detailService.restoreVersion(version.uid).subscribe({
@@ -2792,6 +2813,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Publish ──
 
   openPublishDialog(): void {
+    if (!this.requireWritePermission()) return;
     const openDialog = (versions: NuxeoDocument[]) => {
       const renditions = this.buildRenditionOptions();
       const ref = this.dialog.open(PublishDialogComponent, {
@@ -3002,6 +3024,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   uploadAttachment(event: Event): void {
+    if (!this.requireWritePermission()) {
+      (event.target as HTMLInputElement).value = '';
+      return;
+    }
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
@@ -3037,6 +3063,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   openReplaceDialog(att: { index: number; name: string }): void {
+    if (!this.requireWritePermission()) return;
     const ref = this.dialog.open(ReplaceAttachmentDialogComponent, {
       width: '480px',
       data: { fileName: att.name },
@@ -3059,6 +3086,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   openRemoveDialog(att: { index: number; name: string }): void {
+    if (!this.requireWritePermission()) return;
     const ref = this.dialog.open(RemoveAttachmentDialogComponent, { width: '400px' });
     ref.afterClosed().subscribe((confirmed: boolean) => {
       if (!confirmed) return;
