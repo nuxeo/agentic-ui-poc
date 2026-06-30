@@ -28,6 +28,16 @@
         <mat-icon>refresh</mat-icon>
       </button>
     }
+    @if (isBrowse) {
+      <button
+        mat-icon-button
+        (click)="refreshBrowseTree()"
+        matTooltip="Refresh"
+        class="refresh-btn"
+      >
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
   </div>
 
   @if (isBrowse) {

@@ -34,6 +34,7 @@ import {
   CURRENT_USERNAME,
   docTypeIcon,
   FOLDERISH_TYPES,
+  isFolderishDocument,
   type SearchQueryParams,
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -498,7 +499,7 @@ export class NavDrawerComponent {
         this.rootNodes.set([rootNode]);
         this.rootLoading.set(false);
 
-        this.browseService.getChildren('/', 50).subscribe({
+        this.browseService.getTreeChildren(rootDoc.uid).subscribe({
           next: (res) => {
             const domainNodes = this.toFolderNodes(res.entries);
             rootNode.children = domainNodes;
@@ -511,7 +512,7 @@ export class NavDrawerComponent {
               domainNode.loading = true;
               this.rootNodes.update((n) => [...n]);
 
-              this.browseService.getChildren(domainNode.doc.path, 50).subscribe({
+              this.browseService.getTreeChildren(domainNode.doc.uid).subscribe({
                 next: (domainRes) => {
                   domainNode.children = this.toFolderNodes(domainRes.entries);
                   domainNode.loaded = true;
@@ -539,9 +540,14 @@ export class NavDrawerComponent {
     });
   }
 
+  refreshBrowseTree(): void {
+    this.rootNodes.set([]);
+    this.loadRootTree();
+  }
+
   private toFolderNodes(entries: NuxeoDocument[]): FolderNode[] {
-    return entries
-      .filter((e) => FOLDERISH_TYPES.has(e.type))
+    return (entries ?? [])
+      .filter((e) => isFolderishDocument(e))
       .map((doc) => ({
         doc,
         children: [],
@@ -562,7 +568,7 @@ export class NavDrawerComponent {
       node.loading = true;
       this.rootNodes.update((nodes) => [...nodes]);
 
-      this.browseService.getChildren(node.doc.path, 50).subscribe({
+      this.browseService.getTreeChildren(node.doc.uid).subscribe({
         next: (res) => {
           node.children = this.toFolderNodes(res.entries);
           node.loaded = true;
@@ -587,7 +593,7 @@ export class NavDrawerComponent {
     if (unloaded.length === 0) return;
 
     const checks$ = unloaded.map((n) =>
-      this.browseService.getChildren(n.doc.path, 50).pipe(catchError(() => of(null))),
+      this.browseService.getTreeChildren(n.doc.uid).pipe(catchError(() => of(null))),
     );
 
     forkJoin(checks$).subscribe((results) => {

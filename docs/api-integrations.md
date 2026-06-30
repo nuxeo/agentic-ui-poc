@@ -372,7 +372,40 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 **Used by:**
 
 - **Browse page** (`libs/features/browse/src/lib/browse/browse.ts`) — displays folder contents
-- **Nav drawer** (`apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts`) — builds folder tree
+
+---
+
+## 7b. Browse Tree — Get Folder Children via `tree_children` Page Provider
+
+| Field           | Value                                                                           |
+| --------------- | ------------------------------------------------------------------------------- |
+| **Service**     | `BrowseService` (`libs/shared/nuxeo-client/src/lib/services/browse.service.ts`) |
+| **Method**      | `getTreeChildren(parentUid, pageSize)`                                          |
+| **HTTP Method** | `GET`                                                                           |
+| **Endpoint**    | `/nuxeo/api/v1/search/pp/tree_children/execute`                                 |
+
+**Query Parameters:**
+
+| Parameter          | Value                                      |
+| ------------------ | ------------------------------------------ |
+| `queryParams`      | Parent document UID                        |
+| `pageSize`         | `50` (default)                             |
+| `currentPageIndex` | `0`, `1`, … (auto-fetched until exhausted) |
+
+**Request Headers:**
+
+| Header       | Value |
+| ------------ | ----- |
+| `properties` | `*`   |
+
+**Notes:**
+
+- Uses the same `tree_children` page provider as Nuxeo Web UI (Folderish children, excludes trashed, versions, and `HiddenInNavigation`).
+- `getTreeChildren` concatenates all pages when `isNextPageAvailable` is true.
+
+**Used by:**
+
+- **Nav drawer browse tree** (`apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts`) — builds the left-side folder tree
 
 ---
 
