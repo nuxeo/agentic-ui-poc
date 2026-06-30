@@ -35,12 +35,12 @@ enrichers-document: firstAccessibleAncestor → adds breadcrumb parent
 
 ### Blobs
 
-| Operation         | Method | Endpoint                                     |
-| ----------------- | ------ | -------------------------------------------- |
-| Get main blob     | GET    | `/nuxeo/api/v1/id/:uid/@blob/blobholder:0`   |
-| Get blob by xpath | GET    | `/nuxeo/api/v1/id/:uid/@blob/:xpath`         |
-| Get thumbnail     | GET    | `/nuxeo/api/v1/id/:uid/@rendition/thumbnail` |
-| Get PDF rendition | GET    | `/nuxeo/api/v1/id/:uid/@rendition/pdf`       |
+| Operation         | Method | Endpoint                                                                    |
+| ----------------- | ------ | --------------------------------------------------------------------------- |
+| Get main blob     | GET    | `/nuxeo/api/v1/id/:uid/@blob/file:content` (fallback: `@blob/blobholder:0`) |
+| Get blob by xpath | GET    | `/nuxeo/api/v1/id/:uid/@blob/:xpath`                                        |
+| Get thumbnail     | GET    | `/nuxeo/api/v1/id/:uid/@rendition/thumbnail`                                |
+| Get PDF rendition | GET    | `/nuxeo/api/v1/id/:uid/@rendition/pdf`                                      |
 
 ### Upload
 

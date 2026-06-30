@@ -487,7 +487,7 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 | **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
 | **Method**      | `fetchBlob(uid)`                                                                                 |
 | **HTTP Method** | `GET`                                                                                            |
-| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@blob/blobholder:0`                                                      |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@blob/file:content` (fallback: `@blob/blobholder:0`)                     |
 
 **Request Headers:**
 
@@ -915,7 +915,7 @@ The `directoryName` parameter varies:
 | **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
 | **Method**      | `exportBlob(uid)`                                                                                |
 | **HTTP Method** | `GET`                                                                                            |
-| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@blob/blobholder:0`                                                      |
+| **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@blob/file:content` (fallback: `@blob/blobholder:0`)                     |
 
 **Response:** Raw binary blob. Downloaded via a dynamically created `<a>` element with `URL.createObjectURL`.
 

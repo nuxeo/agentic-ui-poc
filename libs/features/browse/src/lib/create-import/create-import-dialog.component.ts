@@ -19,6 +19,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
@@ -34,12 +35,20 @@ import {
   sanitizeDocumentName,
   type DirectoryEntry,
   type L10nDirectoryEntry,
+  type NuxeoDocument,
 } from '@agentic-ui/shared/nuxeo-client';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */
   parentPath?: string | null;
   parentTitle?: string;
+}
+
+export interface CreateImportDialogResult {
+  refreshed?: boolean;
+  path?: string | null;
+  /** When set, the opener should navigate to this document's detail page. */
+  navigateToUid?: string;
 }
 
 export type DialogTab = 'create' | 'import';
@@ -109,6 +118,7 @@ const DIALOG_SIZE = {
     MatDatepickerModule,
     MatNativeDateModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
     FormsModule,
   ],
   providers: [provideNativeDateAdapter()],
@@ -116,12 +126,15 @@ const DIALOG_SIZE = {
   styleUrl: './create-import-dialog.component.scss',
 })
 export class CreateImportDialogComponent implements OnInit {
-  private readonly dialogRef = inject(MatDialogRef<CreateImportDialogComponent>);
+  private readonly dialogRef = inject(
+    MatDialogRef<CreateImportDialogComponent, CreateImportDialogResult>,
+  );
   private readonly destroyRef = inject(DestroyRef);
   readonly data = inject<CreateImportDialogData>(MAT_DIALOG_DATA);
   private readonly importService = inject(DocumentImportService);
   private readonly browse = inject(BrowseService);
   private readonly directoryService = inject(DirectoryService);
+  private readonly snackBar = inject(MatSnackBar);
 
   private folderContextRequestId = 0;
   private locationSuggestionsRequestId = 0;
@@ -635,15 +648,29 @@ export class CreateImportDialogComponent implements OnInit {
         : this.importService.createChildDocument(path, name, docType.type, properties);
 
     create$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => {
-        this.busy.set(false);
-        this.successMessage.set(`Created ${docType.type} “${title}”.`);
-        this.view.set('success');
-      },
+      next: (doc) => this.finishCreateAndNavigate(doc, title, docType.type, !!mainFile),
       error: (err: { error?: { message?: string }; message?: string }) => {
         this.busy.set(false);
         this.error.set(err?.error?.message ?? err?.message ?? 'Create failed');
       },
+    });
+  }
+
+  private finishCreateAndNavigate(
+    doc: NuxeoDocument,
+    title: string,
+    docTypeName: string,
+    hadFile: boolean,
+  ): void {
+    this.busy.set(false);
+    this.mainFile.set(null);
+    if (!hadFile) {
+      this.snackBar.open(`Created ${docTypeName} “${title}”`, 'Close', { duration: 4000 });
+    }
+    this.dialogRef.close({
+      refreshed: true,
+      path: this.parentPath(),
+      navigateToUid: doc.uid,
     });
   }
 
@@ -724,8 +751,12 @@ export class CreateImportDialogComponent implements OnInit {
       .subscribe({
         next: (docs) => {
           this.busy.set(false);
-          this.successMessage.set(`Uploaded ${docs.length} file(s).`);
-          this.view.set('success');
+          this.snackBar.open(`Uploaded ${docs.length} file(s).`, 'Close', { duration: 4000 });
+          this.dialogRef.close({
+            refreshed: true,
+            path,
+            navigateToUid: docs.length === 1 ? docs[0].uid : undefined,
+          });
         },
         error: (err: { error?: { message?: string }; message?: string }) => {
           this.busy.set(false);

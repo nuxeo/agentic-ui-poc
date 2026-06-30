@@ -60,6 +60,7 @@ import {
   resolveIngestMarkerWriteProperty,
   shouldProbeContentLakeIngestStatus,
   supportsContentLakeIngest,
+  isBlobHoldingDocType,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -82,7 +83,7 @@ import {
 } from '@agentic-ui/shared/ke-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
 import DOMPurify from 'dompurify';
-import { finalize, forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { finalize, forkJoin, map, Observable, of, switchMap, timer } from 'rxjs';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -180,6 +181,31 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void {
   }
 }
 
+const MIME_BY_EXTENSION: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+  mp4: 'video/mp4',
+  webm: 'video/webm',
+  mov: 'video/quicktime',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  html: 'text/html',
+  htm: 'text/html',
+  xml: 'text/xml',
+  json: 'application/json',
+  md: 'text/markdown',
+};
+
 @Component({
   selector: 'lib-document-detail',
   standalone: true,
@@ -241,6 +267,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   readonly doc = signal<NuxeoDocument | null>(null);
   readonly loading = signal(true);
+  readonly blobLoading = signal(false);
+  readonly viewerLoading = computed(
+    () => this.loading() || (this.blobLoading() && !this.blobUrl()),
+  );
   readonly error = signal<string | null>(null);
   readonly blobUrl = signal<SafeResourceUrl | null>(null);
   readonly noteContent = signal<string | null>(null);
@@ -262,6 +292,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
   private docUid = '';
+  private metadataRefreshAttempt = 0;
+  private blobLoadGeneration = 0;
+  /** Set when navigating here immediately after create/import with a main blob. */
+  private freshBlobDocument = false;
   private breadcrumbPathCache: string | null = null;
   private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
@@ -400,7 +434,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const noteMime = d.properties['note:mime_type'] as string | undefined;
     if (noteMime) return noteMime;
     const fc = d.properties['file:content'] as Record<string, unknown> | null;
-    return (fc?.['mime-type'] as string) ?? '';
+    return this.resolveMainContentMime(fc, d);
   });
 
   readonly isImage = computed(() => this.mimeType().startsWith('image/'));
@@ -672,17 +706,31 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadNatureVocabulary();
-    this.route.paramMap.subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const uid = params.get('uid');
       if (!uid) {
         this.error.set('No document ID provided.');
         this.loading.set(false);
         return;
       }
+      this.freshBlobDocument =
+        this.route.snapshot.queryParamMap.get('fresh') === '1' ||
+        this.readFreshBlobNavigationState();
       this.resetState();
       this.docUid = uid;
       this.loadDocument(uid);
     });
+  }
+
+  private readFreshBlobNavigationState(): boolean {
+    const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
+      | { freshBlobDocument?: boolean }
+      | undefined;
+    if (fromCurrent?.freshBlobDocument === true) {
+      return true;
+    }
+    const historyState = history.state as { freshBlobDocument?: boolean } | undefined;
+    return historyState?.freshBlobDocument === true;
   }
 
   /**
@@ -706,12 +754,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private resetState(): void {
+    this.metadataRefreshAttempt = 0;
+    this.blobLoadGeneration += 1;
+    this.resetViewerState();
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
       this.rawBlobUrl = null;
     }
     this.doc.set(null);
     this.blobUrl.set(null);
+    this.blobLoading.set(false);
     this.arenderUrl.set(null);
     this.error.set(null);
     this.comments.set([]);
@@ -1225,6 +1277,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.syncActionStates(doc);
         this.loading.set(false);
         this.loadBlob(doc);
+        this.scheduleMetadataRefreshIfNeeded(doc);
         this.loadPublicationCount(uid);
         this.loadDocumentTasks(uid);
         this.loadDocumentWorkflows(uid);
@@ -1354,7 +1407,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadBlob(doc: NuxeoDocument): void {
+    const generation = ++this.blobLoadGeneration;
     this.resetViewerState();
+    this.blobLoading.set(true);
 
     const noteText = doc.properties['note:note'] as string | undefined;
     const noteMime = doc.properties['note:mime_type'] as string | undefined;
@@ -1365,41 +1420,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
         this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
       }
+      this.blobLoading.set(false);
       return;
     }
 
     const picViews = doc.properties['picture:views'] as Array<Record<string, unknown>> | undefined;
-    if (picViews && picViews.length > 0) {
+    if (picViews?.length) {
       this.extractPictureMetadata(doc, picViews);
-      const fullHd = picViews.find((v) => v['title'] === 'FullHD') ?? picViews[0];
-      const content = fullHd['content'] as Record<string, unknown> | undefined;
-      const dataUrl = (content?.['data'] as string) ?? '';
-      if (dataUrl) {
-        const requestedDocUid = doc.uid;
-        this.http.get(dataUrl, { responseType: 'blob' }).subscribe({
-          next: (blob) => {
-            if (requestedDocUid !== this.docUid) return;
-            this.setBlobUrl(blob);
-          },
-          error: () => {
-            if (requestedDocUid !== this.docUid) return;
-            this.loadFallbackBlob(doc);
-          },
-        });
-        return;
-      }
     }
 
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
       | Array<Record<string, unknown>>
       | undefined;
     if (transcodedVideos && transcodedVideos.length > 0) {
-      this.loadVideoSources(doc, transcodedVideos);
+      this.loadVideoSources(doc, transcodedVideos, generation);
       return;
     }
 
     const fc = doc.properties['file:content'] as Record<string, unknown> | null;
     if (!fc) {
+      if (doc.type === 'Picture') {
+        this.fetchMainBlob(doc, generation);
+        this.scheduleMetadataRefreshIfNeeded(doc);
+        return;
+      }
       const noPreviewTypes = [
         'Collection',
         'Folder',
@@ -1410,53 +1454,220 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       ];
       if (!noPreviewTypes.includes(doc.type)) {
         this.loadPreviewFallback(doc);
+      } else {
+        this.blobLoading.set(false);
       }
       return;
     }
 
-    const mime = (fc['mime-type'] as string) ?? '';
+    const mime = this.resolveMainContentMime(fc, doc);
+
+    if (doc.type === 'Picture' || (picViews?.length && !mime)) {
+      this.fetchMainBlob(doc, generation);
+      this.scheduleMetadataRefreshIfNeeded(doc);
+      return;
+    }
 
     if (mime.startsWith('video/')) {
-      this.detailService.fetchBlob(doc.uid).subscribe({
-        next: (blob) => this.setBlobUrl(blob),
-        error: () => this.loadPreviewFallback(doc),
-      });
+      this.fetchMainBlob(doc, generation);
       this.loadStoryboard(doc);
       return;
     }
 
     if (mime.startsWith('audio/') || mime.startsWith('image/') || mime === 'application/pdf') {
-      this.detailService.fetchBlob(doc.uid).subscribe({
-        next: (blob) => this.setBlobUrl(blob),
-        error: () => this.loadPreviewFallback(doc),
-      });
+      this.fetchMainBlob(doc, generation);
       return;
     }
 
     if (mime.startsWith('text/') || mime === 'application/json') {
-      this.detailService.fetchBlob(doc.uid).subscribe({
-        next: (blob) => blob.text().then((text) => this.noteContent.set(text)),
-        error: () => this.loadPreviewFallback(doc),
-      });
+      this.detailService
+        .fetchBlob(doc.uid)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (blob) => {
+            if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+            void blob.text().then((text) => this.noteContent.set(text));
+            this.blobLoading.set(false);
+            this.freshBlobDocument = false;
+          },
+          error: () => {
+            if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+            this.loadPreviewFallback(doc);
+          },
+        });
       return;
     }
 
     const renditions = (doc.contextParameters?.['renditions'] ?? []) as Array<{ name: string }>;
     if (renditions.some((r) => r.name === 'pdf')) {
       this.hasPdfRendition.set(true);
-      this.detailService.fetchPdfRendition(doc.uid).subscribe({
-        next: (blob) => this.setBlobUrl(blob),
-        error: () => this.loadPreviewFallback(doc),
-      });
+      this.detailService
+        .fetchPdfRendition(doc.uid)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (blob) => {
+            if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+            this.setBlobUrl(blob);
+            this.blobLoading.set(false);
+            this.freshBlobDocument = false;
+          },
+          error: () => {
+            if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+            this.loadPreviewFallback(doc);
+          },
+        });
+      return;
+    }
+
+    if (isBlobHoldingDocType(doc.type) && this.hasFileContentBlob(fc)) {
+      this.fetchMainBlob(doc, generation);
       return;
     }
 
     this.loadPreviewFallback(doc);
   }
 
+  private resolveMainContentMime(fc: Record<string, unknown> | null, doc: NuxeoDocument): string {
+    const mime = (fc?.['mime-type'] as string) ?? '';
+    if (mime) return mime;
+    const fileName = (fc?.['name'] as string) ?? doc.title ?? '';
+    return this.mimeTypeFromFileName(fileName);
+  }
+
+  private mimeTypeFromFileName(fileName: string): string {
+    const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+    return MIME_BY_EXTENSION[ext] ?? '';
+  }
+
+  private hasFileContentBlob(fc: Record<string, unknown>): boolean {
+    return !!(
+      fc['digest'] ||
+      fc['data'] ||
+      (typeof fc['name'] === 'string' && fc['name'].length > 0) ||
+      Number(fc['length'] ?? 0) > 0
+    );
+  }
+
+  private fetchMainBlob(doc: NuxeoDocument, generation: number, attempt = 0): void {
+    const maxAttempts = this.freshBlobDocument || isBlobHoldingDocType(doc.type) ? 8 : 1;
+    this.detailService
+      .fetchBlob(doc.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+          this.setBlobUrl(blob);
+          this.blobLoading.set(false);
+          this.freshBlobDocument = false;
+          this.clearFreshUploadQueryParam();
+        },
+        error: () => {
+          if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+          if (attempt + 1 < maxAttempts) {
+            timer(400)
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe(() => {
+                if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+                this.fetchMainBlob(doc, generation, attempt + 1);
+              });
+            return;
+          }
+          this.freshBlobDocument = false;
+          this.loadPreviewFallback(doc);
+        },
+      });
+  }
+
+  private clearFreshUploadQueryParam(): void {
+    if (this.route.snapshot.queryParamMap.get('fresh') !== '1') return;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { fresh: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  /**
+   * Nuxeo may return partially hydrated Picture metadata immediately after create/import.
+   * Poll briefly and merge metadata without resetting an already-visible preview.
+   */
+  private scheduleMetadataRefreshIfNeeded(doc: NuxeoDocument): void {
+    if (!this.documentMetadataIncomplete(doc)) return;
+
+    const uid = doc.uid;
+    const maxAttempts = 6;
+
+    const poll = (): void => {
+      if (uid !== this.docUid || this.metadataRefreshAttempt >= maxAttempts) return;
+      this.metadataRefreshAttempt += 1;
+
+      timer(500)
+        .pipe(
+          takeUntilDestroyed(this.destroyRef),
+          switchMap(() => this.detailService.getFullDocument(uid)),
+        )
+        .subscribe({
+          next: (refetched) => {
+            if (uid !== this.docUid) return;
+            this.syncDocumentMetadataFromRefetch(refetched);
+            if (
+              this.documentMetadataIncomplete(refetched) &&
+              this.metadataRefreshAttempt < maxAttempts
+            ) {
+              poll();
+            }
+          },
+          error: () => {
+            // Stop polling on transient failures; preview may already be visible.
+          },
+        });
+    };
+
+    poll();
+  }
+
+  private syncDocumentMetadataFromRefetch(doc: NuxeoDocument): void {
+    this.doc.set(doc);
+    const picViews = doc.properties['picture:views'] as Array<Record<string, unknown>> | undefined;
+    if (picViews?.length) {
+      this.extractPictureMetadata(doc, picViews);
+    }
+    if (!this.blobUrl()) {
+      this.fetchMainBlob(doc, this.blobLoadGeneration);
+    }
+  }
+
+  private documentMetadataIncomplete(doc: NuxeoDocument): boolean {
+    if (doc.type !== 'Picture') {
+      return false;
+    }
+
+    const info = doc.properties['picture:info'] as Record<string, unknown> | undefined;
+    const views = doc.properties['picture:views'] as Array<Record<string, unknown>> | undefined;
+    if (!info || !views?.length) {
+      return true;
+    }
+
+    const width = Number(info['width'] ?? 0);
+    const height = Number(info['height'] ?? 0);
+    if (width <= 0 || height <= 0) {
+      return true;
+    }
+
+    return !views.some((view) => {
+      const title = (view['title'] as string) ?? '';
+      const viewWidth = Number(view['width'] ?? 0);
+      return (
+        (title === 'FullHD' || title === 'OriginalJpeg' || title === 'Medium') && viewWidth > 200
+      );
+    });
+  }
+
   private loadVideoSources(
     doc: NuxeoDocument,
     transcodedVideos: Array<Record<string, unknown>>,
+    generation: number,
   ): void {
     const sources: VideoSource[] = [];
     for (const tv of transcodedVideos) {
@@ -1474,11 +1685,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     if (sources.length > 0) {
       this.videoSources.set(sources);
+      this.blobLoading.set(false);
     } else {
-      this.detailService.fetchBlob(doc.uid).subscribe({
-        next: (blob) => this.setBlobUrl(blob),
-        error: () => this.loadPreviewFallback(doc),
-      });
+      this.fetchMainBlob(doc, generation);
     }
     this.loadStoryboard(doc);
   }
@@ -1498,11 +1707,22 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.storyboard.set(items);
   }
 
-  private loadFallbackBlob(doc: NuxeoDocument): void {
-    this.detailService.fetchBlob(doc.uid).subscribe({
-      next: (blob) => this.setBlobUrl(blob),
-      error: () => this.loadPreviewFallback(doc),
-    });
+  private loadFallbackBlob(doc: NuxeoDocument, generation = this.blobLoadGeneration): void {
+    this.detailService
+      .fetchBlob(doc.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+          this.setBlobUrl(blob);
+          this.blobLoading.set(false);
+          this.freshBlobDocument = false;
+        },
+        error: () => {
+          if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+          this.loadPreviewFallback(doc);
+        },
+      });
   }
 
   private loadPreviewFallback(doc: NuxeoDocument): void {
@@ -1510,6 +1730,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (previewCtx?.url) {
       this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(previewCtx.url));
     }
+    this.blobLoading.set(false);
+    this.freshBlobDocument = false;
   }
 
   private resetViewerState(): void {
@@ -1537,15 +1759,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   ): void {
     const info = doc.properties['picture:info'] as Record<string, unknown> | undefined;
     if (info) {
-      const weight = Number(info['weight'] ?? 0);
-      this.pictureInfo.set({
-        width: Number(info['width'] ?? 0),
-        height: Number(info['height'] ?? 0),
-        format: (info['format'] as string) ?? '',
-        colorSpace: (info['colorSpace'] as string) ?? '',
-        depth: Number(info['depth'] ?? 0),
-        weight: this.formatBytes(weight),
-      });
+      const width = Number(info['width'] ?? 0);
+      const height = Number(info['height'] ?? 0);
+      if (width > 0 && height > 0) {
+        const weight = Number(info['weight'] ?? 0);
+        this.pictureInfo.set({
+          width,
+          height,
+          format: (info['format'] as string) ?? '',
+          colorSpace: (info['colorSpace'] as string) ?? '',
+          depth: Number(info['depth'] ?? 0),
+          weight: this.formatBytes(weight),
+        });
+      }
     }
 
     const views: PictureView[] = picViews.map((v) => {

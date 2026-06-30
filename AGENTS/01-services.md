@@ -21,7 +21,7 @@ Primary service for single-document operations.
 ```typescript
 getFullDocument(uid: string): Observable<NuxeoDocument>
 getDocumentPermissions(uid: string): Observable<NuxeoDocument>
-fetchBlob(uid: string): Observable<Blob>
+fetchBlob(uid: string): Observable<Blob>  // GET @blob/file:content, fallback blobholder:0
 fetchBlobByXpath(uid: string, xpath: string): Observable<Blob>
 fetchPdfRendition(uid: string): Observable<Blob>
 fetchThumbnail(uid: string): Observable<Blob>
@@ -253,7 +253,7 @@ getById(docId: string): Observable<NuxeoDocument>
 getDefaultImportParentPath(): Observable<string>
 initUploadBatch(handler?: string): Observable<string>
 uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void>
-createBlobHoldingDocument(parentPath, name, docType, properties, file): Observable<NuxeoDocument>
+createBlobHoldingDocument(parentPath, name, docType, properties, file, options?): Observable<NuxeoDocument>
 createDocumentWithBlob(...): Observable<NuxeoDocument>
 createFileFromBatch(...): Observable<NuxeoDocument>
 importFiles(parentPath, files, options?): Observable<NuxeoDocument[]>
@@ -266,6 +266,14 @@ Exported helpers from the same module (not class methods):
 isBlobHoldingDocType(docType: string): boolean
 documentHasMainBlob(doc: NuxeoDocument): boolean
 BLOB_HOLDING_DOC_TYPES: ReadonlySet<string>
+```
+
+Types exported from the same module:
+
+```typescript
+ImportProgress;
+ImportFilesOptions;
+CreateBlobHoldingDocumentOptions;
 ```
 
 ---
