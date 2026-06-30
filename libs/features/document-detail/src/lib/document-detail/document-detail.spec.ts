@@ -129,6 +129,7 @@ describe('DocumentDetailComponent', () => {
           useValue: {
             paramMap: of(convertToParamMap({ uid: 'doc-uid-1' })),
             queryParamMap: of(convertToParamMap({})),
+            snapshot: { queryParamMap: convertToParamMap({}) },
           },
         },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },

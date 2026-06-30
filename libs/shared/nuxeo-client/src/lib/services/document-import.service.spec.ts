@@ -2,12 +2,14 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
+import { vi } from 'vitest';
 
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
 import {
   BLOB_NOT_ATTACHED_ERROR,
   DocumentImportService,
   documentHasMainBlob,
+  documentHasPersistedMainBlob,
   isBlobHoldingDocType,
 } from './document-import.service';
 
@@ -45,6 +47,24 @@ describe('DocumentImportService', () => {
         properties: { 'file:content': { name: 'photo.jpg', length: '1024' } },
       }),
     ).toBe(true);
+    expect(
+      documentHasPersistedMainBlob({
+        uid: '1',
+        title: 't',
+        type: 'File',
+        path: '/a',
+        properties: { 'file:content': { name: 'photo.jpg' } },
+      }),
+    ).toBe(false);
+    expect(
+      documentHasPersistedMainBlob({
+        uid: '1',
+        title: 't',
+        type: 'File',
+        path: '/a',
+        properties: { 'file:content': { name: '', 'mime-type': 'image/jpeg' } },
+      }),
+    ).toBe(false);
     expect(
       documentHasMainBlob({
         uid: '1',
@@ -102,6 +122,7 @@ describe('DocumentImportService', () => {
   });
 
   it('fails import when created document has no main blob', async () => {
+    vi.useFakeTimers();
     const file = new File(['x'], 'empty.jpg', { type: 'image/jpeg' });
     const import$ = firstValueFrom(service.importFiles('/ws', [file]));
 
@@ -116,7 +137,103 @@ describe('DocumentImportService', () => {
       properties: { 'dc:title': 'empty', 'file:content': null },
     });
 
-    await expect(import$).rejects.toThrow(BLOB_NOT_ATTACHED_ERROR);
+    const nullDoc = {
+      uid: 'doc-2',
+      title: 'empty',
+      type: 'File',
+      path: '/ws/empty',
+      properties: { 'dc:title': 'empty', 'file:content': null },
+    };
+
+    const rejection = expect(import$).rejects.toThrow(BLOB_NOT_ATTACHED_ERROR);
+    for (let i = 0; i < 13; i++) {
+      await Promise.resolve();
+      const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-2');
+      expect(refetchReq.request.headers.get('properties')).toBe('file:content');
+      refetchReq.flush(nullDoc);
+      await vi.advanceTimersByTimeAsync(300);
+    }
+
+    await rejection;
+    vi.useRealTimers();
+  });
+
+  it('succeeds when create response omits blob but re-fetch has file:content', async () => {
+    const file = new File(['jpeg-bytes'], 'cat.jpg', { type: 'image/jpeg' });
+    const import$ = firstValueFrom(service.importFiles('/ws', [file]));
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-5' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-5/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-5/0')
+      .flush({ name: 'cat.jpg', size: file.size });
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-5',
+      title: 'cat',
+      type: 'File',
+      path: '/ws/cat',
+      properties: { 'dc:title': 'cat', 'file:content': null },
+    });
+
+    const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-5');
+    expect(refetchReq.request.headers.get('properties')).toBe('file:content');
+    refetchReq.flush({
+      uid: 'doc-5',
+      title: 'cat',
+      type: 'File',
+      path: '/ws/cat',
+      properties: {
+        'dc:title': 'cat',
+        'file:content': { name: 'cat.jpg', length: String(file.size), 'mime-type': 'image/jpeg' },
+      },
+    });
+
+    const docs = await import$;
+    expect(docs).toHaveLength(1);
+    expect(docs[0].properties?.['file:content']).toEqual({
+      name: 'cat.jpg',
+      length: String(file.size),
+      'mime-type': 'image/jpeg',
+    });
+  });
+
+  it('succeeds when create response only has upload-batch reference', async () => {
+    const file = new File(['bytes'], 'photo.jpg', { type: 'image/jpeg' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocument('/ws', 'photo', 'Picture', { 'dc:title': 'photo' }, file),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-6' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-6/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-6/0')
+      .flush({ name: 'photo.jpg', size: file.size });
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-6',
+      title: 'photo',
+      type: 'Picture',
+      path: '/ws/photo',
+      properties: {
+        'dc:title': 'photo',
+        'file:content': { 'upload-batch': 'batch-6', 'upload-fileId': '0' },
+      },
+    });
+
+    const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-6');
+    refetchReq.flush({
+      uid: 'doc-6',
+      title: 'photo',
+      type: 'Picture',
+      path: '/ws/photo',
+      properties: {
+        'dc:title': 'photo',
+        'file:content': { name: 'photo.jpg', length: String(file.size), digest: 'abc123' },
+      },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-6');
+    expect(documentHasMainBlob(doc)).toBe(true);
   });
 
   it('accepts zero-byte batch uploads during verification', async () => {
@@ -133,7 +250,7 @@ describe('DocumentImportService', () => {
       path: '/ws/empty',
       properties: {
         'dc:title': 'empty',
-        'file:content': { name: 'empty.txt', length: '0' },
+        'file:content': { name: 'empty.txt', length: '0', 'mime-type': 'text/plain' },
       },
     });
 

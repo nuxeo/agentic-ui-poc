@@ -85,12 +85,15 @@ export {
   DEFAULT_IMPORT_PARENT_PATH,
   RESTRICTED_IMPORT_LOCATION_MESSAGE,
   documentHasMainBlob,
+  documentHasPersistedMainBlob,
   isBlobHoldingDocType,
   isFolderishDocument,
   isRestrictedImportParentPath,
   sanitizeDocumentName,
   type CsvImportResult,
+  type CreateBlobHoldingDocumentOptions,
   type ImportFilesOptions,
+  type ImportProgress,
 } from './lib/services/document-import.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';

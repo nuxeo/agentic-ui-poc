@@ -168,12 +168,21 @@ export class DashboardPageComponent {
         })
         .afterClosed()
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((result: { refreshed?: boolean; path?: string } | undefined) => {
-          if (result?.refreshed && result.path) {
-            const parts = result.path.replace(/^\/+/, '').split('/').filter(Boolean);
-            void this.router.navigate(['/browse', ...parts]);
-          }
-        });
+        .subscribe(
+          (result: { refreshed?: boolean; path?: string; navigateToUid?: string } | undefined) => {
+            if (result?.navigateToUid) {
+              void this.router.navigate(['/doc', result.navigateToUid], {
+                queryParams: { fresh: '1' },
+                state: { freshBlobDocument: true },
+              });
+              return;
+            }
+            if (result?.refreshed && result.path) {
+              const parts = result.path.replace(/^\/+/, '').split('/').filter(Boolean);
+              void this.router.navigate(['/browse', ...parts]);
+            }
+          },
+        );
     });
   }
 
