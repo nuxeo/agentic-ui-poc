@@ -486,62 +486,70 @@ export class NavDrawerComponent {
   private loadRootTree(): void {
     this.rootLoading.set(true);
 
-    this.browseService.getByPath('/').subscribe({
-      next: (rootDoc) => {
-        const rootNode: FolderNode = {
-          doc: rootDoc,
-          children: [],
-          expanded: true,
-          loaded: false,
-          loading: true,
-          isRoot: true,
-        };
-        this.rootNodes.set([rootNode]);
-        this.rootLoading.set(false);
+    this.browseService
+      .getByPath('/')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (rootDoc) => {
+          const rootNode: FolderNode = {
+            doc: rootDoc,
+            children: [],
+            expanded: true,
+            loaded: false,
+            loading: true,
+            isRoot: true,
+          };
+          this.rootNodes.set([rootNode]);
+          this.rootLoading.set(false);
 
-        this.browseService.getTreeChildren(rootDoc.uid).subscribe({
-          next: (res) => {
-            const domainNodes = this.toFolderNodes(res.entries);
-            rootNode.children = domainNodes;
-            rootNode.loaded = true;
-            rootNode.loading = false;
+          this.browseService
+            .getTreeChildren(rootDoc.uid)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (res) => {
+                const domainNodes = this.toFolderNodes(res.entries);
+                rootNode.children = domainNodes;
+                rootNode.loaded = true;
+                rootNode.loading = false;
 
-            const domainNode = domainNodes[0];
-            if (domainNode) {
-              domainNode.expanded = true;
-              domainNode.loading = true;
-              this.rootNodes.update((n) => [...n]);
-
-              this.browseService.getTreeChildren(domainNode.doc.uid).subscribe({
-                next: (domainRes) => {
-                  domainNode.children = this.toFolderNodes(domainRes.entries);
-                  domainNode.loaded = true;
-                  domainNode.loading = false;
+                const domainNode = domainNodes[0];
+                if (domainNode) {
+                  domainNode.expanded = true;
+                  domainNode.loading = true;
                   this.rootNodes.update((n) => [...n]);
-                  this.prefetchChildStatus(domainNode.children);
-                },
-                error: () => {
-                  domainNode.loading = false;
-                  domainNode.loaded = true;
+
+                  this.browseService
+                    .getTreeChildren(domainNode.doc.uid)
+                    .pipe(takeUntilDestroyed(this.destroyRef))
+                    .subscribe({
+                      next: (domainRes) => {
+                        domainNode.children = this.toFolderNodes(domainRes.entries);
+                        domainNode.loaded = true;
+                        domainNode.loading = false;
+                        this.rootNodes.update((n) => [...n]);
+                        this.prefetchChildStatus(domainNode.children);
+                      },
+                      error: () => {
+                        domainNode.loading = false;
+                        domainNode.loaded = true;
+                        this.rootNodes.update((n) => [...n]);
+                      },
+                    });
+                } else {
                   this.rootNodes.update((n) => [...n]);
-                },
-              });
-            } else {
-              this.rootNodes.update((n) => [...n]);
-            }
-          },
-          error: () => {
-            rootNode.loading = false;
-            this.rootNodes.update((n) => [...n]);
-          },
-        });
-      },
-      error: () => this.rootLoading.set(false),
-    });
+                }
+              },
+              error: () => {
+                rootNode.loading = false;
+                this.rootNodes.update((n) => [...n]);
+              },
+            });
+        },
+        error: () => this.rootLoading.set(false),
+      });
   }
 
   refreshBrowseTree(): void {
-    this.rootNodes.set([]);
     this.loadRootTree();
   }
 
@@ -568,20 +576,23 @@ export class NavDrawerComponent {
       node.loading = true;
       this.rootNodes.update((nodes) => [...nodes]);
 
-      this.browseService.getTreeChildren(node.doc.uid).subscribe({
-        next: (res) => {
-          node.children = this.toFolderNodes(res.entries);
-          node.loaded = true;
-          node.loading = false;
-          node.expanded = true;
-          this.rootNodes.update((nodes) => [...nodes]);
-          this.prefetchChildStatus(node.children);
-        },
-        error: () => {
-          node.loading = false;
-          this.rootNodes.update((nodes) => [...nodes]);
-        },
-      });
+      this.browseService
+        .getTreeChildren(node.doc.uid)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (res) => {
+            node.children = this.toFolderNodes(res.entries);
+            node.loaded = true;
+            node.loading = false;
+            node.expanded = true;
+            this.rootNodes.update((nodes) => [...nodes]);
+            this.prefetchChildStatus(node.children);
+          },
+          error: () => {
+            node.loading = false;
+            this.rootNodes.update((nodes) => [...nodes]);
+          },
+        });
     } else {
       node.expanded = true;
       this.rootNodes.update((nodes) => [...nodes]);
@@ -596,16 +607,18 @@ export class NavDrawerComponent {
       this.browseService.getTreeChildren(n.doc.uid).pipe(catchError(() => of(null))),
     );
 
-    forkJoin(checks$).subscribe((results) => {
-      results.forEach((res, i) => {
-        const node = unloaded[i];
-        if (res) {
-          node.children = this.toFolderNodes(res.entries);
-          node.loaded = true;
-        }
+    forkJoin(checks$)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((results) => {
+        results.forEach((res, i) => {
+          const node = unloaded[i];
+          if (res) {
+            node.children = this.toFolderNodes(res.entries);
+            node.loaded = true;
+          }
+        });
+        this.rootNodes.update((n) => [...n]);
       });
-      this.rootNodes.update((n) => [...n]);
-    });
   }
 
   navigateToFolder(node: FolderNode): void {

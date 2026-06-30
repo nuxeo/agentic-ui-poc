@@ -75,6 +75,14 @@ export class BrowseService {
       );
     };
 
+    const emptyList: NuxeoDocumentList = {
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    };
+
     return fetchPage(0).pipe(
       expand((res) => (res.isNextPageAvailable ? fetchPage(res.currentPageIndex + 1) : EMPTY)),
       reduce<TreeChildrenPage, NuxeoDocumentList>((acc, res) => {
@@ -86,7 +94,7 @@ export class BrowseService {
           currentPageIndex: 0,
           numberOfPages: 1,
         };
-      }),
+      }, emptyList),
     );
   }
 
