@@ -19,7 +19,7 @@ export class DocumentDetailService {
     return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
       properties: '*',
       'enrichers.document':
-        'acls,renditions,favorites,subscribedNotifications,collections,preview,thumbnail',
+        'acls,permissions,renditions,favorites,subscribedNotifications,collections,preview,thumbnail',
     });
   }
 
