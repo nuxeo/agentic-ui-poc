@@ -823,9 +823,12 @@ export class BrowseComponent {
       expires: (doc.properties?.['dc:expired'] as string) ?? null,
     };
     const ref = this.dialog.open(EditMetadataDialogComponent, { data });
-    ref.afterClosed().subscribe((result) => {
-      if (result) this.loadContent();
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((result) => {
+        if (result) this.loadContent();
+      });
   }
 
   deleteDocument(): void {
@@ -844,16 +847,22 @@ export class BrowseComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) return;
-      this.detailService.trashDocument(doc.uid).subscribe({
-        next: () => {
-          this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
-          void this.router.navigateByUrl('/browse');
-        },
-        error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.detailService
+          .trashDocument(doc.uid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
+              void this.router.navigateByUrl('/browse');
+            },
+            error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+          });
       });
-    });
   }
 
   downloadAll(): void {

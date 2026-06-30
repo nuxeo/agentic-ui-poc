@@ -2259,38 +2259,47 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('trash');
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('trash');
 
-      this.detailService.trashDocument(this.docUid).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Document moved to trash');
-          this.goBack();
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to delete document');
-        },
+        this.detailService
+          .trashDocument(this.docUid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Document moved to trash');
+              this.goBack();
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to delete document');
+            },
+          });
       });
-    });
   }
 
   restoreFromTrash(): void {
     if (this.actionInProgress() || !this.requireWritePermission()) return;
     this.actionInProgress.set('restore');
-    this.detailService.restoreFromTrash(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document restored');
-        this.loadDocument(this.docUid);
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to restore document');
-      },
-    });
+    this.detailService
+      .restoreFromTrash(this.docUid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document restored');
+          this.loadDocument(this.docUid);
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to restore document');
+        },
+      });
   }
 
   permanentlyDelete(): void {
@@ -2303,21 +2312,27 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('permanentDelete');
-      this.detailService.permanentlyDelete(this.docUid).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Document permanently deleted');
-          this.goBack();
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to permanently delete document');
-        },
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('permanentDelete');
+        this.detailService
+          .permanentlyDelete(this.docUid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Document permanently deleted');
+              this.goBack();
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to permanently delete document');
+            },
+          });
       });
-    });
   }
 
   toggleClipboard(): void {
@@ -3068,41 +3083,53 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       width: '480px',
       data: { fileName: att.name },
     });
-    ref.afterClosed().subscribe((file: File | null) => {
-      if (!file) return;
-      this.actionInProgress.set('replace');
-      this.detailService.replaceAttachment(this.docUid, att.index, file).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast(`"${att.name}" replaced`);
-          this.loadDocument(this.docUid);
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to replace attachment');
-        },
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((file: File | null) => {
+        if (!file) return;
+        this.actionInProgress.set('replace');
+        this.detailService
+          .replaceAttachment(this.docUid, att.index, file)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast(`"${att.name}" replaced`);
+              this.loadDocument(this.docUid);
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to replace attachment');
+            },
+          });
       });
-    });
   }
 
   openRemoveDialog(att: { index: number; name: string }): void {
     if (!this.requireWritePermission()) return;
     const ref = this.dialog.open(RemoveAttachmentDialogComponent, { width: '400px' });
-    ref.afterClosed().subscribe((confirmed: boolean) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('remove');
-      this.detailService.removeAttachment(this.docUid, att.index).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast(`"${att.name}" removed`);
-          this.loadDocument(this.docUid);
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to remove attachment');
-        },
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed: boolean) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('remove');
+        this.detailService
+          .removeAttachment(this.docUid, att.index)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast(`"${att.name}" removed`);
+              this.loadDocument(this.docUid);
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to remove attachment');
+            },
+          });
       });
-    });
   }
 
   closePropertiesPanel(): void {
