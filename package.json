@@ -61,7 +61,7 @@
     "@analogjs/vite-plugin-angular": "~1.14.1",
     "@analogjs/vitest-angular": "~1.14.1",
     "@angular-devkit/build-angular": "~19.2.0",
-    "@angular-devkit/core": "~19.2.0",
+    "@angular-devkit/core": "~19.2.27",
     "@angular-devkit/schematics": "~19.2.0",
     "@angular/build": "~19.2.0",
     "@angular/cli": "~19.2.0",
