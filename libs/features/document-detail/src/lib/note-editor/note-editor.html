@@ -1,0 +1,284 @@
+<div class="note-editor">
+  @if (loading()) {
+    <div class="note-editor-loading">
+      <mat-spinner diameter="36" />
+    </div>
+  } @else {
+    <div class="note-body">
+      @if (isHtml() && !sourceMode()) {
+        <div class="note-quill-shell">
+          <div
+            #quillToolbar
+            class="note-quill-toolbar"
+            role="toolbar"
+            aria-label="Note formatting"
+            (mousedown)="onToolbarMouseDown($event)"
+          >
+            <span class="ql-formats">
+              <select class="ql-header" title="Text style" aria-label="Text style">
+                <option value="1"></option>
+                <option value="2"></option>
+                <option value="3"></option>
+                <option value="4"></option>
+                <option value="5"></option>
+                <option value="6"></option>
+                <option selected></option>
+              </select>
+            </span>
+            <span class="ql-formats">
+              <button type="button" class="ql-bold" title="Bold" aria-label="Bold"></button>
+              <button type="button" class="ql-italic" title="Italic" aria-label="Italic"></button>
+              <button
+                type="button"
+                class="ql-underline"
+                title="Underline"
+                aria-label="Underline"
+              ></button>
+              <button
+                type="button"
+                class="ql-strike"
+                title="Strikethrough"
+                aria-label="Strikethrough"
+              ></button>
+            </span>
+            <span class="ql-formats">
+              <button
+                type="button"
+                class="ql-blockquote"
+                title="Blockquote"
+                aria-label="Blockquote"
+              ></button>
+              <button
+                type="button"
+                class="ql-code-block"
+                title="Code block"
+                aria-label="Code block"
+              ></button>
+              <button
+                type="button"
+                class="ql-indent"
+                value="-1"
+                title="Decrease indent"
+                aria-label="Decrease indent"
+              ></button>
+              <button
+                type="button"
+                class="ql-indent"
+                value="+1"
+                title="Increase indent"
+                aria-label="Increase indent"
+              ></button>
+            </span>
+            <span class="ql-formats">
+              <button
+                type="button"
+                class="ql-align"
+                value=""
+                title="Align left"
+                aria-label="Align left"
+              ></button>
+              <button
+                type="button"
+                class="ql-align"
+                value="center"
+                title="Align center"
+                aria-label="Align center"
+              ></button>
+              <button
+                type="button"
+                class="ql-align"
+                value="right"
+                title="Align right"
+                aria-label="Align right"
+              ></button>
+              <button
+                type="button"
+                class="ql-align"
+                value="justify"
+                title="Justify"
+                aria-label="Justify"
+              ></button>
+            </span>
+            <span class="ql-formats">
+              <select class="ql-color" title="Text color" aria-label="Text color"></select>
+              <select
+                class="ql-background"
+                title="Highlight color"
+                aria-label="Highlight color"
+              ></select>
+            </span>
+            <span class="ql-formats">
+              <button
+                type="button"
+                class="ql-script"
+                value="sub"
+                title="Subscript"
+                aria-label="Subscript"
+              ></button>
+              <button
+                type="button"
+                class="ql-script"
+                value="super"
+                title="Superscript"
+                aria-label="Superscript"
+              ></button>
+            </span>
+            <span class="ql-formats">
+              <button
+                type="button"
+                class="ql-list"
+                value="ordered"
+                title="Numbered list"
+                aria-label="Numbered list"
+              ></button>
+              <button
+                type="button"
+                class="ql-list"
+                value="bullet"
+                title="Bulleted list"
+                aria-label="Bulleted list"
+              ></button>
+            </span>
+            <span class="ql-formats">
+              <button
+                type="button"
+                class="ql-link"
+                title="Insert link"
+                aria-label="Insert link"
+              ></button>
+              <button
+                #hiddenImageBtn
+                type="button"
+                class="ql-image note-quill-hidden-image"
+                title="Upload image"
+                aria-label="Upload image"
+              ></button>
+              <button
+                type="button"
+                class="note-quill-custom-btn"
+                title="Upload image"
+                aria-label="Upload image"
+                (mousedown)="$event.preventDefault()"
+                (click)="onImageUploadClick($event)"
+              >
+                <mat-icon>image</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="note-quill-custom-btn"
+                title="Insert image from URL"
+                aria-label="Insert image from URL"
+                (mousedown)="$event.preventDefault()"
+                (click)="insertImageFromUrl()"
+              >
+                <mat-icon>add_photo_alternate</mat-icon>
+              </button>
+              <button
+                type="button"
+                class="ql-video"
+                title="Insert video"
+                aria-label="Insert video"
+              ></button>
+            </span>
+            <span class="ql-formats">
+              <button
+                type="button"
+                class="ql-clean"
+                title="Clear formatting"
+                aria-label="Clear formatting"
+              ></button>
+            </span>
+          </div>
+          <div #quillEditor class="note-quill-editor"></div>
+        </div>
+      } @else if (isHtml() && sourceMode()) {
+        <textarea
+          class="note-text-surface"
+          [ngModel]="editText()"
+          (ngModelChange)="editText.set($event)"
+          aria-label="Note HTML source"
+          spellcheck="false"
+        ></textarea>
+      } @else {
+        <div class="note-plain-shell">
+          @if (!plainTextEditMode()) {
+            <div class="note-plain-view">
+              <button
+                type="button"
+                mat-icon-button
+                class="note-plain-edit-btn"
+                matTooltip="Edit"
+                aria-label="Edit note"
+                (click)="enterPlainTextEdit()"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              @if (isMarkdown()) {
+                <div class="note-markdown-rendered" [innerHTML]="markdownHtml()"></div>
+              } @else {
+                <pre class="note-plain-readonly">{{ content() }}</pre>
+              }
+            </div>
+          } @else {
+            <textarea
+              #plainTextEditor
+              class="note-text-surface note-plain-editor"
+              [class.note-markdown-editor]="isMarkdown()"
+              [ngModel]="editText()"
+              (ngModelChange)="editText.set($event)"
+              aria-label="Note content"
+              spellcheck="true"
+            ></textarea>
+            <div class="note-plain-actions">
+              <button type="button" mat-button (click)="cancelPlainTextEdit()">Cancel</button>
+              <button
+                type="button"
+                mat-flat-button
+                color="primary"
+                class="save-btn"
+                [disabled]="saving()"
+                (click)="onSave()"
+              >
+                @if (saving()) {
+                  <mat-spinner diameter="18" />
+                } @else {
+                  Save
+                }
+              </button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    @if (isHtml()) {
+      <div class="note-footer">
+        <button
+          type="button"
+          mat-icon-button
+          class="source-toggle"
+          [class.source-toggle--active]="sourceMode()"
+          [matTooltip]="sourceMode() ? 'Visual editor' : 'HTML source'"
+          [attr.aria-label]="sourceMode() ? 'Visual editor' : 'HTML source'"
+          (click)="toggleSourceMode()"
+        >
+          <mat-icon>{{ sourceMode() ? 'edit' : 'code' }}</mat-icon>
+        </button>
+        <button
+          type="button"
+          mat-flat-button
+          color="primary"
+          class="save-btn"
+          [disabled]="saving()"
+          (click)="onSave()"
+        >
+          @if (saving()) {
+            <mat-spinner diameter="18" />
+          } @else {
+            Save
+          }
+        </button>
+      </div>
+    }
+  }
+</div>

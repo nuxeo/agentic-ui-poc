@@ -149,10 +149,30 @@ export {
   type NuxeoSubtypeEntry,
 } from './lib/utils/parse-document-subtypes';
 export {
+  ADD_CHILDREN,
   MANAGE_DOCUMENT_PERMISSIONS,
+  PERMISSION_DENIED_MESSAGE,
+  REMOVE_DOCUMENT,
+  WRITE_DOCUMENT,
+  canAddChildren,
   canManageDocumentPermissions,
+  canRemoveDocument,
+  canWriteDocument,
   hasDocumentPermission,
+  isPermissionDeniedError,
 } from './lib/utils/document-permissions';
+export {
+  principalPermissionTimeFrameLabel,
+  principalPermissionToLocalRow,
+} from './lib/utils/principal-permission-display';
+export {
+  NOTE_FORMAT_OPTIONS,
+  defaultNoteContent,
+  isHtmlNoteFormat,
+  noteFormatLabel,
+  type NoteMimeType,
+} from './lib/utils/note-format';
+export { isMarkdownNoteFormat, isSafeHttpUrl, renderNoteMarkdown } from './lib/utils/note-markdown';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {

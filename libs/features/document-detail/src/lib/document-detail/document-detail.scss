@@ -1662,6 +1662,24 @@ sat-breadcrumbs {
   padding: 0;
 }
 
+::ng-deep .create-version-dialog-panel .mat-mdc-dialog-content {
+  max-height: none;
+  overflow: visible;
+  padding: 16px 24px;
+}
+
+::ng-deep .create-version-dialog-panel .mat-mdc-dialog-title {
+  padding: 24px 24px 0;
+}
+
+::ng-deep .create-version-dialog-panel .mat-mdc-dialog-actions {
+  padding: 8px 24px 24px;
+}
+
+::ng-deep .create-version-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+  overflow: visible;
+}
+
 ::ng-deep .preview-dialog-panel .mat-mdc-dialog-container .mdc-dialog__surface {
   padding: 0;
   overflow: hidden;

@@ -303,7 +303,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
       .pipe(
         filter((r): r is UserFormDialogResult => !!r && r.mode === 'create'),
         switchMap((r) => {
-          const invited = !r.password?.trim();
+          const invited = r.invited === true;
           if (invited) {
             return of({ r, invited: true as const, user: null });
           }

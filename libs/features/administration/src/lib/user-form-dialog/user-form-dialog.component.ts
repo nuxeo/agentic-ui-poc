@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged, finalize, Subject, switchMap } from 'rxjs';
 
 import { NuxeoUser, UserService } from '@agentic-ui/shared/nuxeo-client';
@@ -33,6 +33,8 @@ export interface UserFormDialogResult {
   email: string;
   password?: string;
   groups: string[];
+  /** Set after successful create when User.Invite was used (no admin-set password). */
+  invited?: boolean;
   /** When creating, submit again with a fresh dialog (Nuxeo Web UI parity for bulk entry). */
   createAnother?: boolean;
 }
@@ -51,6 +53,7 @@ export interface UserFormDialogResult {
     MatIconModule,
     MatProgressSpinnerModule,
     MatSlideToggleModule,
+    MatSnackBarModule,
   ],
   templateUrl: './user-form-dialog.component.html',
   styles: [
@@ -320,7 +323,20 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => this.dialogRef.close(result),
+        next: () => {
+          const closeResult: UserFormDialogResult = {
+            mode: 'create',
+            username: result.username,
+            firstName: result.firstName,
+            lastName: result.lastName,
+            company: result.company,
+            email: result.email,
+            groups: result.groups,
+            invited,
+            createAnother,
+          };
+          this.dialogRef.close(closeResult);
+        },
         error: (err) => {
           this.snackBar.open(this.createUserErrorMessage(err, invited), 'Dismiss', {
             duration: 7000,

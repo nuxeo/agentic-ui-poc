@@ -11,25 +11,31 @@
       }
     </div>
     <div class="header-actions">
-      <button
-        mat-flat-button
-        color="primary"
-        matTooltip="Create folder, upload files, or import CSV"
-        [disabled]="!isCurrentFolderish()"
-        (click)="openCreateImportDialog()"
-      >
-        <mat-icon>add</mat-icon>
-        Create / Import
-      </button>
+      @if (canAddChildrenHere()) {
+        <button
+          mat-flat-button
+          color="primary"
+          matTooltip="Create folder, upload files, or import CSV"
+          [disabled]="!isCurrentFolderish()"
+          (click)="openCreateImportDialog()"
+        >
+          <mat-icon>add</mat-icon>
+          Create / Import
+        </button>
+      }
       <button mat-icon-button matTooltip="Upload with Nuxeo Drive" (click)="openDriveDialog()">
         <mat-icon>cloud_upload</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Edit" (click)="openEditDialog()">
-        <mat-icon>edit</mat-icon>
-      </button>
-      <button mat-icon-button matTooltip="Delete" (click)="deleteDocument()">
-        <mat-icon>delete</mat-icon>
-      </button>
+      @if (canWriteCurrentDoc()) {
+        <button mat-icon-button matTooltip="Edit" (click)="openEditDialog()">
+          <mat-icon>edit</mat-icon>
+        </button>
+      }
+      @if (canRemoveCurrentDoc()) {
+        <button mat-icon-button matTooltip="Delete" (click)="deleteDocument()">
+          <mat-icon>delete</mat-icon>
+        </button>
+      }
       <button mat-icon-button matTooltip="Download All" (click)="downloadAll()">
         <mat-icon>download</mat-icon>
       </button>

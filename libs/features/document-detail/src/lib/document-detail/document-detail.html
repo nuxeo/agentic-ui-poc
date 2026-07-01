@@ -132,9 +132,11 @@
       }
 
       @if (!isTrashed()) {
-        <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
-          <mat-icon>edit</mat-icon>
-        </button>
+        @if (canWriteDoc()) {
+          <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
+            <mat-icon>edit</mat-icon>
+          </button>
+        }
         <button
           mat-icon-button
           (click)="openAddToCollectionDialog()"
@@ -143,15 +145,17 @@
         >
           <mat-icon>library_add</mat-icon>
         </button>
-        <button
-          mat-icon-button
-          (click)="trashDocument()"
-          [disabled]="actionInProgress() === 'trash'"
-          matTooltip="Delete"
-          aria-label="Delete"
-        >
-          <mat-icon>delete</mat-icon>
-        </button>
+        @if (canRemoveDoc()) {
+          <button
+            mat-icon-button
+            (click)="trashDocument()"
+            [disabled]="actionInProgress() === 'trash'"
+            matTooltip="Delete"
+            aria-label="Delete"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
       }
       <button
         mat-icon-button
@@ -187,10 +191,12 @@
         <span>Share</span>
       </button>
       @if (hasVersion()) {
-        <button mat-menu-item (click)="openPublishDialog()">
-          <mat-icon>publish</mat-icon>
-          <span>Publish document</span>
-        </button>
+        @if (canWriteDoc()) {
+          <button mat-menu-item (click)="openPublishDialog()">
+            <mat-icon>publish</mat-icon>
+            <span>Publish document</span>
+          </button>
+        }
       }
       <button
         mat-menu-item
@@ -204,10 +210,12 @@
         <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
         <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
       </button>
-      <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
-        <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
-        <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
-      </button>
+      @if (canWriteDoc()) {
+        <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
+          <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
+          <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
+        </button>
+      }
       <button mat-menu-item (click)="exportDocument()" [disabled]="actionInProgress() === 'export'">
         <mat-icon>download</mat-icon>
         <span>Export</span>
@@ -238,22 +246,26 @@
       <mat-icon class="trashed-banner-icon">info</mat-icon>
       <span class="trashed-banner-text">You are viewing a trashed document.</span>
       <span class="trashed-banner-spacer"></span>
-      <button
-        mat-stroked-button
-        class="trashed-banner-btn"
-        (click)="restoreFromTrash()"
-        [disabled]="actionInProgress() === 'restore'"
-      >
-        <mat-icon>restore_from_trash</mat-icon> Restore
-      </button>
-      <button
-        mat-stroked-button
-        class="trashed-banner-btn trashed-banner-btn--danger"
-        (click)="permanentlyDelete()"
-        [disabled]="actionInProgress() === 'permanentDelete'"
-      >
-        <mat-icon>delete_forever</mat-icon> Delete Permanently
-      </button>
+      @if (canWriteDoc()) {
+        <button
+          mat-stroked-button
+          class="trashed-banner-btn"
+          (click)="restoreFromTrash()"
+          [disabled]="actionInProgress() === 'restore'"
+        >
+          <mat-icon>restore_from_trash</mat-icon> Restore
+        </button>
+      }
+      @if (canRemoveDoc()) {
+        <button
+          mat-stroked-button
+          class="trashed-banner-btn trashed-banner-btn--danger"
+          (click)="permanentlyDelete()"
+          [disabled]="actionInProgress() === 'permanentDelete'"
+        >
+          <mat-icon>delete_forever</mat-icon> Delete Permanently
+        </button>
+      }
     </div>
   }
 
@@ -352,32 +364,44 @@
         >
           <mat-tab label="View">
             <ng-template matTabContent>
-              <lib-document-viewer
-                [blobUrl]="blobUrl()"
-                [mimeType]="mimeType()"
-                [fileName]="fileName()"
-                [fileSize]="fileSize()"
-                [loading]="viewerLoading()"
-                [noteContent]="noteContent()"
-                [noteHtml]="noteHtml()"
-                [videoSources]="videoSources()"
-                [storyboard]="storyboard()"
-                [posterUrl]="posterUrl()"
-                [hasPdfRendition]="hasPdfRendition()"
-                [previewUrl]="previewUrl()"
-                [pictureInfo]="pictureInfo()"
-                [pictureViews]="pictureViews()"
-                [exifData]="exifData()"
-                [iptcData]="iptcData()"
-                [arenderUrl]="arenderUrl()"
-                [arenderReloadId]="arenderReloadId()"
-                [viewerDocUid]="doc()?.uid ?? ''"
-                [annotationsTab]="false"
-                (downloadClicked)="download()"
-                (previewClicked)="previewMainBlob()"
-                (openWithDriveClicked)="openDriveDialog()"
-                (formatDownload)="downloadPictureFormat($event)"
-              />
+              @if (isNoteDocument()) {
+                <lib-note-editor
+                  [content]="noteEditorBody()"
+                  [mimeType]="mimeType()"
+                  [loading]="viewerLoading()"
+                  [saving]="noteSaving()"
+                  [autoFocus]="focusNoteEditor()"
+                  (saveNote)="saveNote($event)"
+                  (focused)="focusNoteEditor.set(false)"
+                />
+              } @else {
+                <lib-document-viewer
+                  [blobUrl]="blobUrl()"
+                  [mimeType]="mimeType()"
+                  [fileName]="fileName()"
+                  [fileSize]="fileSize()"
+                  [loading]="viewerLoading()"
+                  [noteContent]="noteContent()"
+                  [noteHtml]="noteHtml()"
+                  [videoSources]="videoSources()"
+                  [storyboard]="storyboard()"
+                  [posterUrl]="posterUrl()"
+                  [hasPdfRendition]="hasPdfRendition()"
+                  [previewUrl]="previewUrl()"
+                  [pictureInfo]="pictureInfo()"
+                  [pictureViews]="pictureViews()"
+                  [exifData]="exifData()"
+                  [iptcData]="iptcData()"
+                  [arenderUrl]="arenderUrl()"
+                  [arenderReloadId]="arenderReloadId()"
+                  [viewerDocUid]="doc()?.uid ?? ''"
+                  [annotationsTab]="false"
+                  (downloadClicked)="download()"
+                  (previewClicked)="previewMainBlob()"
+                  (openWithDriveClicked)="openDriveDialog()"
+                  (formatDownload)="downloadPictureFormat($event)"
+                />
+              }
             </ng-template>
           </mat-tab>
 
@@ -1333,7 +1357,7 @@
                               <mat-spinner diameter="20" />
                             </div>
                           } @else {
-                            @if (doc()?.isCheckedOut) {
+                            @if (doc()?.isCheckedOut && canWriteDoc()) {
                               <button
                                 class="version-dropdown-item version-dropdown-create"
                                 (click)="versionDropdownOpen.set(false); openCreateVersionDialog()"
@@ -1351,13 +1375,23 @@
                               >
                             </button>
                             @for (v of versions(); track v.uid) {
-                              <button class="version-dropdown-item" (click)="restoreVersion(v)">
-                                <span class="version-dropdown-label">{{ versionString(v) }}</span>
-                                <span class="version-dropdown-meta"
-                                  >Modified {{ relativeTime(v.lastModified) }} by
-                                  {{ v.properties['dc:lastContributor'] ?? 'Unknown' }}</span
-                                >
-                              </button>
+                              @if (canWriteDoc()) {
+                                <button class="version-dropdown-item" (click)="restoreVersion(v)">
+                                  <span class="version-dropdown-label">{{ versionString(v) }}</span>
+                                  <span class="version-dropdown-meta"
+                                    >Modified {{ relativeTime(v.lastModified) }} by
+                                    {{ v.properties['dc:lastContributor'] ?? 'Unknown' }}</span
+                                  >
+                                </button>
+                              } @else {
+                                <div class="version-dropdown-item version-dropdown-item--readonly">
+                                  <span class="version-dropdown-label">{{ versionString(v) }}</span>
+                                  <span class="version-dropdown-meta"
+                                    >Modified {{ relativeTime(v.lastModified) }} by
+                                    {{ v.properties['dc:lastContributor'] ?? 'Unknown' }}</span
+                                  >
+                                </div>
+                              }
                             }
                             @if (versions().length === 0) {
                               <div class="version-dropdown-empty">No previous versions</div>
@@ -1366,7 +1400,7 @@
                         </div>
                       }
                     </div>
-                  } @else {
+                  } @else if (canWriteDoc()) {
                     <button
                       mat-flat-button
                       color="primary"
@@ -1375,6 +1409,8 @@
                     >
                       Create Version
                     </button>
+                  } @else {
+                    <span class="no-publications">—</span>
                   }
                 </span>
               </div>
@@ -1437,6 +1473,13 @@
               <span class="prop-label">Title</span>
               <span class="prop-value">{{ doc()!.title }}</span>
             </div>
+
+            @if (isNoteDocument()) {
+              <div class="prop-field">
+                <span class="prop-label">Format</span>
+                <span class="prop-value">{{ noteFormatDisplay() }}</span>
+              </div>
+            }
 
             <div class="prop-field">
               <span class="prop-label">File Name</span>
@@ -1505,33 +1548,37 @@
                     >
                       <mat-icon>download</mat-icon>
                     </button>
-                    <button
-                      mat-icon-button
-                      [matMenuTriggerFor]="attMenu"
-                      matTooltip="More"
-                      aria-label="More actions"
-                    >
-                      <mat-icon>more_vert</mat-icon>
-                    </button>
-                    <mat-menu #attMenu="matMenu">
-                      <button mat-menu-item (click)="openReplaceDialog(att)">
-                        <mat-icon>find_replace</mat-icon>
-                        <span>Replace</span>
+                    @if (canWriteDoc()) {
+                      <button
+                        mat-icon-button
+                        [matMenuTriggerFor]="attMenu"
+                        matTooltip="More"
+                        aria-label="More actions"
+                      >
+                        <mat-icon>more_vert</mat-icon>
                       </button>
-                      <button mat-menu-item (click)="openRemoveDialog(att)">
-                        <mat-icon>cancel</mat-icon>
-                        <span>Remove</span>
-                      </button>
-                    </mat-menu>
+                      <mat-menu #attMenu="matMenu">
+                        <button mat-menu-item (click)="openReplaceDialog(att)">
+                          <mat-icon>find_replace</mat-icon>
+                          <span>Replace</span>
+                        </button>
+                        <button mat-menu-item (click)="openRemoveDialog(att)">
+                          <mat-icon>cancel</mat-icon>
+                          <span>Remove</span>
+                        </button>
+                      </mat-menu>
+                    }
                   </div>
                 </div>
               }
             }
 
-            <label class="upload-attachment-zone">
-              <span class="upload-link">Upload attachment</span>
-              <input #attachmentInput type="file" hidden (change)="uploadAttachment($event)" />
-            </label>
+            @if (canWriteDoc()) {
+              <label class="upload-attachment-zone">
+                <span class="upload-link">Upload attachment</span>
+                <input #attachmentInput type="file" hidden (change)="uploadAttachment($event)" />
+              </label>
+            }
 
             <div class="prop-section-divider"></div>
 

@@ -11,7 +11,7 @@ import { UserService } from '@agentic-ui/shared/nuxeo-client';
 
 import { UserFormDialogComponent, UserFormDialogData } from './user-form-dialog.component';
 
-describe('UserFormDialogComponent (NXSAT-152)', () => {
+describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
   let component: UserFormDialogComponent;
   let fixture: ComponentFixture<UserFormDialogComponent>;
   let closeSpy: ReturnType<typeof vi.fn>;
@@ -40,15 +40,12 @@ describe('UserFormDialogComponent (NXSAT-152)', () => {
             createUser: createUserSpy,
           },
         },
-        {
-          provide: MatSnackBar,
-          useValue: { open: snackBarOpenSpy },
-        },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(UserFormDialogComponent);
     component = fixture.componentInstance;
+    snackBarOpenSpy = vi.spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
     fixture.detectChanges();
     component.loadingGroups = false;
   });
@@ -64,7 +61,7 @@ describe('UserFormDialogComponent (NXSAT-152)', () => {
     expect(component.canSave).toBe(true);
   });
 
-  it('calls createUser and closes on success without password when toggle is off', () => {
+  it('calls createUser and closes with invited flag when password toggle is off', () => {
     component.username = 'invite.user';
     component.email = 'invite.user@example.com';
 
@@ -76,7 +73,13 @@ describe('UserFormDialogComponent (NXSAT-152)', () => {
         email: 'invite.user@example.com',
       }),
     );
-    expect(closeSpy).toHaveBeenCalled();
+    expect(closeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'invite.user',
+        invited: true,
+        createAnother: false,
+      }),
+    );
     const result = closeSpy.mock.calls[0][0];
     expect(result).not.toHaveProperty('password');
   });
@@ -87,7 +90,27 @@ describe('UserFormDialogComponent (NXSAT-152)', () => {
 
     component.submit(true);
 
-    expect(closeSpy).toHaveBeenCalledWith(expect.objectContaining({ createAnother: true }));
+    expect(closeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ createAnother: true, invited: true }),
+    );
+  });
+
+  it('closes with invited false and no password after password create', () => {
+    component.username = 'pwd.user';
+    component.email = 'pwd.user@example.com';
+    component.setUserPassword = true;
+    component.password = 'Secret123';
+    component.confirmPassword = 'Secret123';
+
+    component.submit(false);
+
+    expect(createUserSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ username: 'pwd.user', password: 'Secret123' }),
+    );
+    expect(closeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ username: 'pwd.user', invited: false }),
+    );
+    expect(closeSpy.mock.calls[0][0]).not.toHaveProperty('password');
   });
 
   it('shows toast and keeps dialog open when create fails', fakeAsync(() => {
@@ -151,5 +174,18 @@ describe('UserFormDialogComponent (NXSAT-152)', () => {
 
     expect(component.groups).toEqual(['powerusers']);
     expect(chipInput.clear).toHaveBeenCalled();
+  });
+
+  it('blocks save when email is missing (NXSAT-166)', () => {
+    component.username = 'new.user';
+    component.email = '   ';
+
+    expect(component.canSave).toBe(false);
+  });
+
+  it('keeps password fields empty when Set user password is off (NXSAT-166)', () => {
+    expect(component.setUserPassword).toBe(false);
+    expect(component.password).toBe('');
+    expect(component.confirmPassword).toBe('');
   });
 });
