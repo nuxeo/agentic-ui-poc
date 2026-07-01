@@ -162,6 +162,10 @@ export {
   isPermissionDeniedError,
 } from './lib/utils/document-permissions';
 export {
+  principalPermissionTimeFrameLabel,
+  principalPermissionToLocalRow,
+} from './lib/utils/principal-permission-display';
+export {
   NOTE_FORMAT_OPTIONS,
   defaultNoteContent,
   isHtmlNoteFormat,
