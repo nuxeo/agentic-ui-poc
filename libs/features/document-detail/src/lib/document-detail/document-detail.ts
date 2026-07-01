@@ -1304,32 +1304,35 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.loading.set(true);
     this.error.set(null);
 
-    this.detailService.getFullDocument(uid).subscribe({
-      next: (doc) => {
-        if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
-          void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
-          return;
-        }
-        this.doc.set(doc);
-        this.syncActionStates(doc);
-        this.loading.set(false);
-        this.loadBlob(doc);
-        if (this.freshNoteDocument && doc.type === 'Note') {
-          this.focusNoteEditor.set(true);
-          this.freshNoteDocument = false;
-        }
-        this.scheduleMetadataRefreshIfNeeded(doc);
-        this.loadPublicationCount(uid);
-        this.loadDocumentTasks(uid);
-        this.loadDocumentWorkflows(uid);
-        this.loadARenderUrl(doc);
-        this.maybeBackfillContentLakeMarker(doc);
-      },
-      error: () => {
-        this.error.set('Failed to load document.');
-        this.loading.set(false);
-      },
-    });
+    this.detailService
+      .getFullDocument(uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (doc) => {
+          if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
+            void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
+            return;
+          }
+          this.doc.set(doc);
+          this.syncActionStates(doc);
+          this.loading.set(false);
+          this.loadBlob(doc);
+          if (this.freshNoteDocument && doc.type === 'Note') {
+            this.focusNoteEditor.set(true);
+            this.freshNoteDocument = false;
+          }
+          this.scheduleMetadataRefreshIfNeeded(doc);
+          this.loadPublicationCount(uid);
+          this.loadDocumentTasks(uid);
+          this.loadDocumentWorkflows(uid);
+          this.loadARenderUrl(doc);
+          this.maybeBackfillContentLakeMarker(doc);
+        },
+        error: () => {
+          this.error.set('Failed to load document.');
+          this.loading.set(false);
+        },
+      });
   }
 
   /* ─── Workflow / Task methods ─── */

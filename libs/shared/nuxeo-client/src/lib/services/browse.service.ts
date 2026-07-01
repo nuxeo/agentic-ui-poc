@@ -44,7 +44,7 @@ export class BrowseService {
    */
   getNavTreeChildren(parent: NuxeoDocument, pageSize = 50): Observable<NuxeoDocumentList> {
     if (parent.type === 'Domain' || parent.type === 'Root') {
-      const safePath = parent.path?.replace(/\/+$/, '') || '/';
+      const safePath = parent.path?.replace(/\/+$/, '') ?? '';
       return this.getChildren(safePath, pageSize).pipe(
         map((list) => ({
           ...list,
@@ -60,7 +60,7 @@ export class BrowseService {
     pageSize = 50,
     currentPageIndex = 0,
   ): Observable<NuxeoDocumentList> {
-    const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
+    const safePath = nuxeoPath.replace(/\/+$/, '');
     const params = new HttpParams()
       .set('pageSize', pageSize)
       .set('currentPageIndex', currentPageIndex);

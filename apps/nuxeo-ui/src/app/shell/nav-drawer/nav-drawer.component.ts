@@ -613,8 +613,10 @@ export class NavDrawerComponent {
       .subscribe((results) => {
         results.forEach((res, i) => {
           const node = unloaded[i];
-          node.loaded = true;
-          node.children = res ? this.toFolderNodes(res.entries) : [];
+          if (res) {
+            node.loaded = true;
+            node.children = this.toFolderNodes(res.entries);
+          }
         });
         this.rootNodes.update((n) => [...n]);
       });
@@ -645,7 +647,7 @@ export class NavDrawerComponent {
       return true;
     }
     if (!node.loaded) {
-      return false;
+      return true;
     }
     return node.children.length > 0;
   }
