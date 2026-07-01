@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
+import type { NuxeoDocument } from '../models/document.model';
 import { BrowseService } from './browse.service';
 
 describe('BrowseService', () => {
@@ -90,5 +91,70 @@ describe('BrowseService', () => {
     const result = await result$;
     expect(result.entries.map((e) => e.uid)).toEqual(['d1', 'd2', 'd3']);
     expect(result.totalSize).toBe(3);
+  });
+
+  it('getNavTreeChildren uses @children for Domain parents', async () => {
+    const domain: NuxeoDocument = {
+      uid: 'domain-uid',
+      title: 'Domain-1',
+      type: 'Domain',
+      path: '/domain-1',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+    const result$ = firstValueFrom(service.getNavTreeChildren(domain));
+
+    const req = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/path/domain-1/@children' && r.params.get('pageSize') === '50',
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      entries: [
+        {
+          uid: 'ws-root',
+          title: 'Workspaces',
+          type: 'WorkspaceRoot',
+          path: '/domain-1/workspaces',
+          properties: {},
+        },
+        { uid: 'file-1', title: 'Readme', type: 'File', path: '/domain-1/readme', properties: {} },
+      ],
+      totalSize: 2,
+      currentPageSize: 2,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].type).toBe('WorkspaceRoot');
+  });
+
+  it('getNavTreeChildren uses tree_children for workspace folders', async () => {
+    const workspace: NuxeoDocument = {
+      uid: 'ws-uid',
+      title: 'Marketing',
+      type: 'Workspace',
+      path: '/domain-1/workspaces/marketing',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+    const result$ = firstValueFrom(service.getNavTreeChildren(workspace));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/tree_children/execute' &&
+        r.params.get('queryParams') === 'ws-uid',
+    );
+    req.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+      isNextPageAvailable: false,
+    });
+
+    await result$;
   });
 });

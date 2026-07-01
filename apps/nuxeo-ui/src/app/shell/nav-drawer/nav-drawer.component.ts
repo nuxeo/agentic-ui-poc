@@ -33,7 +33,6 @@ import {
   NuxeoTask,
   CURRENT_USERNAME,
   docTypeIcon,
-  FOLDERISH_TYPES,
   isFolderishDocument,
   type SearchQueryParams,
   type AssetAggregations,
@@ -418,7 +417,7 @@ export class NavDrawerComponent {
       return;
     }
 
-    if (FOLDERISH_TYPES.has(doc.type)) {
+    if (isFolderishDocument(doc)) {
       this.navigateKeepDrawer.emit(`/browse${doc.path}`);
       return;
     }
@@ -503,7 +502,7 @@ export class NavDrawerComponent {
           this.rootLoading.set(false);
 
           this.browseService
-            .getTreeChildren(rootDoc.uid)
+            .getNavTreeChildren(rootDoc)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (res) => {
@@ -519,7 +518,7 @@ export class NavDrawerComponent {
                   this.rootNodes.update((n) => [...n]);
 
                   this.browseService
-                    .getTreeChildren(domainNode.doc.uid)
+                    .getNavTreeChildren(domainNode.doc)
                     .pipe(takeUntilDestroyed(this.destroyRef))
                     .subscribe({
                       next: (domainRes) => {
@@ -577,7 +576,7 @@ export class NavDrawerComponent {
       this.rootNodes.update((nodes) => [...nodes]);
 
       this.browseService
-        .getTreeChildren(node.doc.uid)
+        .getNavTreeChildren(node.doc)
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
           next: (res) => {
@@ -590,6 +589,8 @@ export class NavDrawerComponent {
           },
           error: () => {
             node.loading = false;
+            node.loaded = true;
+            node.children = [];
             this.rootNodes.update((nodes) => [...nodes]);
           },
         });
@@ -604,7 +605,7 @@ export class NavDrawerComponent {
     if (unloaded.length === 0) return;
 
     const checks$ = unloaded.map((n) =>
-      this.browseService.getTreeChildren(n.doc.uid).pipe(catchError(() => of(null))),
+      this.browseService.getNavTreeChildren(n.doc).pipe(catchError(() => of(null))),
     );
 
     forkJoin(checks$)
@@ -612,10 +613,8 @@ export class NavDrawerComponent {
       .subscribe((results) => {
         results.forEach((res, i) => {
           const node = unloaded[i];
-          if (res) {
-            node.children = this.toFolderNodes(res.entries);
-            node.loaded = true;
-          }
+          node.loaded = true;
+          node.children = res ? this.toFolderNodes(res.entries) : [];
         });
         this.rootNodes.update((n) => [...n]);
       });
@@ -642,7 +641,13 @@ export class NavDrawerComponent {
   }
 
   hasChildren(node: FolderNode): boolean {
-    return !node.loaded || node.children.length > 0;
+    if (node.loading) {
+      return true;
+    }
+    if (!node.loaded) {
+      return false;
+    }
+    return node.children.length > 0;
   }
 
   // ── Tasks panel ──

@@ -11,6 +11,16 @@
   padding: 16px 24px;
 }
 
+.browse-domain-hint {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--mat-sys-primary-container, #e8f0fe);
+  color: var(--mat-sys-on-primary-container, #3d4f7c);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 // ── Header ──
 .browse-header {
   display: flex;

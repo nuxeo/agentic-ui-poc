@@ -28,11 +28,14 @@ import {
   DirectoryService,
   DocumentImportService,
   RESTRICTED_IMPORT_LOCATION_MESSAGE,
+  DOMAIN_CONTAINER_GUIDANCE,
   defaultNoteContent,
   docTypeIcon,
   isBlobHoldingDocType,
+  isDomainParentType,
   isFolderishDocument,
   isRestrictedImportParentPath,
+  resolveCreatableSubtypes,
   NOTE_FORMAT_OPTIONS,
   sanitizeDocumentName,
   type DirectoryEntry,
@@ -133,7 +136,6 @@ export class CreateImportDialogComponent implements OnInit {
   private locationSuggestionsRequestId = 0;
 
   readonly noteFormatOptions = NOTE_FORMAT_OPTIONS;
-  readonly restrictedLocationMessage = RESTRICTED_IMPORT_LOCATION_MESSAGE;
 
   constructor() {
     effect(() => {
@@ -167,6 +169,7 @@ export class CreateImportDialogComponent implements OnInit {
   readonly activeTab = signal<DialogTab>('create');
 
   readonly selectedDocType = signal<DocTypeDef | null>(null);
+  readonly parentFolderType = signal<string | null>(null);
   readonly creatableTypes = signal<DocTypeDef[]>([]);
   readonly loadingContext = signal(false);
   readonly typesLoadError = signal<string | null>(null);
@@ -217,7 +220,18 @@ export class CreateImportDialogComponent implements OnInit {
 
   readonly isNoteType = computed(() => this.selectedDocType()?.type === 'Note');
 
-  readonly locationRestricted = computed(() => isRestrictedImportParentPath(this.parentPath()));
+  readonly locationRestricted = computed(
+    () =>
+      isRestrictedImportParentPath(this.parentPath()) ||
+      isDomainParentType(this.parentFolderType()),
+  );
+
+  readonly importLocationHint = computed(() => {
+    if (isDomainParentType(this.parentFolderType())) {
+      return DOMAIN_CONTAINER_GUIDANCE;
+    }
+    return RESTRICTED_IMPORT_LOCATION_MESSAGE;
+  });
 
   ngOnInit(): void {
     this.loadDirectories();
@@ -273,20 +287,22 @@ export class CreateImportDialogComponent implements OnInit {
     this.loadingContext.set(true);
     this.typesLoadError.set(null);
     this.browse
-      .getCreatableSubtypes(path)
+      .getFolderContext(path)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (types) => {
+        next: (doc) => {
           if (requestId !== this.folderContextRequestId) {
             return;
           }
-          this.creatableTypes.set(toDocTypeDefs(types));
+          this.parentFolderType.set(doc.type);
+          this.creatableTypes.set(toDocTypeDefs(resolveCreatableSubtypes(doc)));
           this.loadingContext.set(false);
         },
         error: () => {
           if (requestId !== this.folderContextRequestId) {
             return;
           }
+          this.parentFolderType.set(null);
           this.creatableTypes.set([]);
           this.typesLoadError.set('Could not load creatable document types for this folder.');
           this.loadingContext.set(false);

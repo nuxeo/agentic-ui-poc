@@ -65,6 +65,7 @@ import {
   canRemoveDocument,
   PERMISSION_DENIED_MESSAGE,
   isBlobHoldingDocType,
+  isFolderishDocument,
   noteFormatLabel,
   renderNoteMarkdown,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -1305,6 +1306,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     this.detailService.getFullDocument(uid).subscribe({
       next: (doc) => {
+        if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
+          void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
+          return;
+        }
         this.doc.set(doc);
         this.syncActionStates(doc);
         this.loading.set(false);

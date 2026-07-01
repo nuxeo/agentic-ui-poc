@@ -92,10 +92,11 @@ export const DEFAULT_IMPORT_PARENT_PATH = '/default-domain';
 export const RESTRICTED_IMPORT_LOCATION_MESSAGE =
   'Select a different container to create your content.';
 
-/** True when content cannot be created or imported at this path (domain root only). */
+/** True when content cannot be created or imported at this path (repository or domain root). */
 export function isRestrictedImportParentPath(path: string | null | undefined): boolean {
   if (!path?.trim()) return true;
   const normalized = path.trim().replace(/\/+$/, '') || '/';
+  if (normalized === '/') return true;
   return normalized === DEFAULT_IMPORT_PARENT_PATH;
 }
 
