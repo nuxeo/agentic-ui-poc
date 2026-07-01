@@ -8,6 +8,7 @@ import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoWorkflowModel } from '../models/workflow.model';
 import { AuditLogList } from '../models/audit.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
+import { normalizeDocumentAcls } from '../utils/ace-principal';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentDetailService {
@@ -24,13 +25,15 @@ export class DocumentDetailService {
   }
 
   getDocumentPermissions(uid: string): Observable<NuxeoDocument> {
-    return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
-      properties: '*',
-      'enrichers.document': 'acls,permissions,userVisiblePermissions',
-      'fetch-acls': 'username,creator,extended',
-      depth: 'children',
-      time: String(Date.now()),
-    });
+    return this.api
+      .get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
+        properties: '*',
+        'enrichers.document': 'acls,permissions,userVisiblePermissions',
+        'fetch-acls': 'username,creator,extended',
+        depth: 'children',
+        time: String(Date.now()),
+      })
+      .pipe(map((doc) => normalizeDocumentAcls(doc)));
   }
 
   /** Main binary on file:content (Nuxeo Web UI pattern); falls back to blobholder:0. */

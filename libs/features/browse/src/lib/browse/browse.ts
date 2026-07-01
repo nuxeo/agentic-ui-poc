@@ -53,6 +53,7 @@ import {
   canWriteDocument,
   canRemoveDocument,
   PERMISSION_DENIED_MESSAGE,
+  resolveAcePrincipal,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -178,19 +179,20 @@ export class BrowseComponent {
 
   // Permissions tab
   readonly permissionsLoaded = signal(false);
+  readonly permissionsLoading = signal(false);
   readonly localAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
     const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
     if (!acls) return [];
     const local = acls.find((a) => a.name === 'local');
-    return local?.aces ?? [];
+    return local?.aces.filter((ace) => ace.granted && !ace.externalUser) ?? [];
   });
   readonly inheritedAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
     const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
     if (!acls) return [];
     const inherited = acls.find((a) => a.name === 'inherited');
-    return inherited?.aces ?? [];
+    return inherited?.aces.filter((ace) => ace.granted) ?? [];
   });
   readonly externalAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
@@ -393,6 +395,8 @@ export class BrowseComponent {
       this.currentNuxeoPath = subPath ? `/${subPath}` : '/';
       this.historyLoaded = false;
       this.trashLoaded = false;
+      this.permissionsLoaded.set(false);
+      this.permissionsLoading.set(false);
       this.activeTabIndex.set(0);
       this.loadContent();
     });
@@ -534,8 +538,8 @@ export class BrowseComponent {
 
   onTabChange(index: number): void {
     this.activeTabIndex.set(index);
-    if (index === 1 && !this.permissionsLoaded()) {
-      this.permissionsLoaded.set(true);
+    if (index === 1) {
+      this.loadPermissions();
     }
     if (index === 2 && !this.historyLoaded) {
       this.loadDirectoryEntries();
@@ -1025,15 +1029,58 @@ export class BrowseComponent {
   }
 
   displayUsername(ace: NuxeoAce): string {
-    return ace.username.replace(/^transient\//, '');
+    return resolveAcePrincipal(ace.username).replace(/^transient\//, '');
   }
 
-  private reloadCurrentDoc(): void {
+  aceGrantedBy(ace: NuxeoAce): string {
+    const creator = ace.creator ? resolveAcePrincipal(ace.creator) : '';
+    return creator || '—';
+  }
+
+  private loadPermissions(force = false): void {
     const doc = this.currentDoc();
-    if (!doc) return;
-    this.detailService.getFullDocument(doc.uid).subscribe({
-      next: (updated) => this.currentDoc.set(updated),
+    if (!doc || this.permissionsLoading()) return;
+    if (this.permissionsLoaded() && !force) return;
+
+    this.permissionsLoading.set(true);
+    this.detailService
+      .getDocumentPermissions(doc.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.applyPermissionsDoc(updated);
+          this.permissionsLoaded.set(true);
+          this.permissionsLoading.set(false);
+        },
+        error: () => {
+          this.permissionsLoading.set(false);
+          if (!this.permissionsLoaded()) {
+            this.permissionsLoaded.set(true);
+          }
+        },
+      });
+  }
+
+  private applyPermissionsDoc(updated: NuxeoDocument): void {
+    const existing = this.currentDoc();
+    if (!existing) {
+      this.currentDoc.set(updated);
+      return;
+    }
+    this.currentDoc.set({
+      ...existing,
+      contextParameters: {
+        ...existing.contextParameters,
+        ...updated.contextParameters,
+        acls: updated.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
+        permissions:
+          updated.contextParameters?.['permissions'] ?? existing.contextParameters?.['permissions'],
+      },
     });
+  }
+
+  private reloadPermissions(): void {
+    this.loadPermissions(true);
   }
 
   addPermission(): void {
@@ -1045,7 +1092,7 @@ export class BrowseComponent {
     });
     dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
       if (created) {
-        this.reloadCurrentDoc();
+        this.reloadPermissions();
         this.snackBar.open('Permission added', 'OK', { duration: 3000 });
       }
     });
@@ -1060,7 +1107,7 @@ export class BrowseComponent {
     });
     dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
       if (updated) {
-        this.reloadCurrentDoc();
+        this.reloadPermissions();
         this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
       }
     });
@@ -1080,7 +1127,7 @@ export class BrowseComponent {
     });
     dialogRef.afterClosed().subscribe((deleted: boolean | undefined) => {
       if (deleted) {
-        this.reloadCurrentDoc();
+        this.reloadPermissions();
         this.snackBar.open('Permission deleted', 'OK', { duration: 3000 });
       }
     });
@@ -1097,7 +1144,7 @@ export class BrowseComponent {
     op.subscribe({
       next: () => {
         this.actionInProgress.set(null);
-        this.reloadCurrentDoc();
+        this.reloadPermissions();
         this.snackBar.open(blocked ? 'Inheritance unblocked' : 'Inheritance blocked', 'OK', {
           duration: 3000,
         });
@@ -1118,7 +1165,7 @@ export class BrowseComponent {
     });
     dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
       if (created) {
-        this.reloadCurrentDoc();
+        this.reloadPermissions();
         this.snackBar.open('Shared with external user', 'OK', { duration: 3000 });
       }
     });
@@ -1133,7 +1180,7 @@ export class BrowseComponent {
     });
     dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
       if (updated) {
-        this.reloadCurrentDoc();
+        this.reloadPermissions();
         this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
       }
     });
