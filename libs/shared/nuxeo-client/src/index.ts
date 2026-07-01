@@ -161,6 +161,14 @@ export {
   hasDocumentPermission,
   isPermissionDeniedError,
 } from './lib/utils/document-permissions';
+export {
+  NOTE_FORMAT_OPTIONS,
+  defaultNoteContent,
+  isHtmlNoteFormat,
+  noteFormatLabel,
+  type NoteMimeType,
+} from './lib/utils/note-format';
+export { isMarkdownNoteFormat, isSafeHttpUrl, renderNoteMarkdown } from './lib/utils/note-markdown';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {

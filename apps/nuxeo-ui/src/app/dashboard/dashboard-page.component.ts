@@ -169,11 +169,18 @@ export class DashboardPageComponent {
         .afterClosed()
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe(
-          (result: { refreshed?: boolean; path?: string; navigateToUid?: string } | undefined) => {
+          (
+            result:
+              | { refreshed?: boolean; path?: string; navigateToUid?: string; freshNote?: boolean }
+              | undefined,
+          ) => {
             if (result?.navigateToUid) {
               void this.router.navigate(['/doc', result.navigateToUid], {
                 queryParams: { fresh: '1' },
-                state: { freshBlobDocument: true },
+                state: {
+                  freshBlobDocument: true,
+                  freshNote: result.freshNote === true,
+                },
               });
               return;
             }

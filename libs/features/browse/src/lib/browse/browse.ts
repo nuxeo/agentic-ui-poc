@@ -798,7 +798,10 @@ export class BrowseComponent {
         if (result?.navigateToUid) {
           void this.router.navigate(['/doc', result.navigateToUid], {
             queryParams: { fresh: '1' },
-            state: { freshBlobDocument: true },
+            state: {
+              freshBlobDocument: true,
+              freshNote: result.freshNote === true,
+            },
           });
           return;
         }

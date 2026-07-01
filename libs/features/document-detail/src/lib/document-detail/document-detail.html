@@ -364,32 +364,44 @@
         >
           <mat-tab label="View">
             <ng-template matTabContent>
-              <lib-document-viewer
-                [blobUrl]="blobUrl()"
-                [mimeType]="mimeType()"
-                [fileName]="fileName()"
-                [fileSize]="fileSize()"
-                [loading]="viewerLoading()"
-                [noteContent]="noteContent()"
-                [noteHtml]="noteHtml()"
-                [videoSources]="videoSources()"
-                [storyboard]="storyboard()"
-                [posterUrl]="posterUrl()"
-                [hasPdfRendition]="hasPdfRendition()"
-                [previewUrl]="previewUrl()"
-                [pictureInfo]="pictureInfo()"
-                [pictureViews]="pictureViews()"
-                [exifData]="exifData()"
-                [iptcData]="iptcData()"
-                [arenderUrl]="arenderUrl()"
-                [arenderReloadId]="arenderReloadId()"
-                [viewerDocUid]="doc()?.uid ?? ''"
-                [annotationsTab]="false"
-                (downloadClicked)="download()"
-                (previewClicked)="previewMainBlob()"
-                (openWithDriveClicked)="openDriveDialog()"
-                (formatDownload)="downloadPictureFormat($event)"
-              />
+              @if (isNoteDocument()) {
+                <lib-note-editor
+                  [content]="noteEditorBody()"
+                  [mimeType]="mimeType()"
+                  [loading]="viewerLoading()"
+                  [saving]="noteSaving()"
+                  [autoFocus]="focusNoteEditor()"
+                  (saveNote)="saveNote($event)"
+                  (focused)="focusNoteEditor.set(false)"
+                />
+              } @else {
+                <lib-document-viewer
+                  [blobUrl]="blobUrl()"
+                  [mimeType]="mimeType()"
+                  [fileName]="fileName()"
+                  [fileSize]="fileSize()"
+                  [loading]="viewerLoading()"
+                  [noteContent]="noteContent()"
+                  [noteHtml]="noteHtml()"
+                  [videoSources]="videoSources()"
+                  [storyboard]="storyboard()"
+                  [posterUrl]="posterUrl()"
+                  [hasPdfRendition]="hasPdfRendition()"
+                  [previewUrl]="previewUrl()"
+                  [pictureInfo]="pictureInfo()"
+                  [pictureViews]="pictureViews()"
+                  [exifData]="exifData()"
+                  [iptcData]="iptcData()"
+                  [arenderUrl]="arenderUrl()"
+                  [arenderReloadId]="arenderReloadId()"
+                  [viewerDocUid]="doc()?.uid ?? ''"
+                  [annotationsTab]="false"
+                  (downloadClicked)="download()"
+                  (previewClicked)="previewMainBlob()"
+                  (openWithDriveClicked)="openDriveDialog()"
+                  (formatDownload)="downloadPictureFormat($event)"
+                />
+              }
             </ng-template>
           </mat-tab>
 
@@ -1461,6 +1473,13 @@
               <span class="prop-label">Title</span>
               <span class="prop-value">{{ doc()!.title }}</span>
             </div>
+
+            @if (isNoteDocument()) {
+              <div class="prop-field">
+                <span class="prop-label">Format</span>
+                <span class="prop-value">{{ noteFormatDisplay() }}</span>
+              </div>
+            }
 
             <div class="prop-field">
               <span class="prop-label">File Name</span>
