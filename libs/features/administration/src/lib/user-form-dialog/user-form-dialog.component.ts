@@ -1,5 +1,5 @@
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
-import { Component, DestroyRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -14,7 +14,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { debounceTime, distinctUntilChanged, Subject, switchMap } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { debounceTime, distinctUntilChanged, finalize, Subject, switchMap } from 'rxjs';
 
 import { NuxeoUser, UserService } from '@agentic-ui/shared/nuxeo-client';
 
@@ -93,6 +94,19 @@ export interface UserFormDialogResult {
         justify-content: center;
         padding: 0.75rem 0 1rem;
       }
+      .dialog-shell {
+        position: relative;
+        min-height: 100%;
+      }
+      .dialog-busy {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--mat-sys-surface, #fff) 75%, transparent);
+      }
       @media (max-width: 640px) {
         .form {
           min-width: 0;
@@ -108,6 +122,7 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   readonly data = inject<UserFormDialogData>(MAT_DIALOG_DATA);
   private readonly userService = inject(UserService);
+  private readonly snackBar = inject(MatSnackBar);
 
   username = '';
   firstName = '';
@@ -123,7 +138,10 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
   groupSearchQuery = '';
   loadingGroupOptions = false;
   loadingGroups = true;
+  readonly saving = signal(false);
   private readonly groupSearchTerms = new Subject<string>();
+  /** Suppresses matChipInputTokenEnd after autocomplete selection (NXSAT-151). */
+  private skipNextChipInput = false;
 
   ngOnInit(): void {
     const u = this.data.user;
@@ -197,11 +215,17 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     if (groupname && !this.groups.includes(groupname)) {
       this.groups = [...this.groups, groupname];
     }
+    this.skipNextChipInput = true;
     this.clearGroupSearch();
     event.option.deselect();
   }
 
   addGroupFromInput(event: MatChipInputEvent): void {
+    if (this.skipNextChipInput) {
+      this.skipNextChipInput = false;
+      event.chipInput.clear();
+      return;
+    }
     const raw = (event.value ?? '').trim();
     if (!raw) {
       event.chipInput.clear();
@@ -226,7 +250,7 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
   }
 
   get canSave(): boolean {
-    if (this.loadingGroups) {
+    if (this.loadingGroups || this.saving()) {
       return false;
     }
     if (this.data.mode === 'edit' && !this.data.user) {
@@ -268,6 +292,79 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     if (this.setUserPassword && trimmedPassword.length > 0) {
       result.password = trimmedPassword;
     }
-    this.dialogRef.close(result);
+
+    if (this.data.mode === 'edit') {
+      this.dialogRef.close(result);
+      return;
+    }
+
+    const invited = !result.password?.trim();
+    this.saving.set(true);
+    this.dialogRef.disableClose = true;
+
+    this.userService
+      .createUser({
+        username: result.username,
+        firstName: result.firstName,
+        lastName: result.lastName,
+        company: result.company,
+        email: result.email,
+        password: result.password,
+        groups: result.groups,
+      })
+      .pipe(
+        finalize(() => {
+          this.saving.set(false);
+          this.dialogRef.disableClose = false;
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => this.dialogRef.close(result),
+        error: (err) => {
+          this.snackBar.open(this.createUserErrorMessage(err, invited), 'Dismiss', {
+            duration: 7000,
+          });
+        },
+      });
+  }
+
+  private createUserErrorMessage(err: unknown, invited: boolean): string {
+    const raw = this.extractApiErrorMessage(err);
+    const lower = raw.toLowerCase();
+
+    if (lower.includes('user already exists')) {
+      return 'A user or pending invitation with this username already exists.';
+    }
+    if (lower.includes('must have a password')) {
+      return 'Password is required for this server. Enable "Set user password" or configure User.Invite.';
+    }
+
+    const simplified = this.simplifyNuxeoAutomationMessage(raw);
+    if (simplified) {
+      return simplified;
+    }
+    return invited ? 'Invitation failed' : 'Create failed';
+  }
+
+  private extractApiErrorMessage(err: unknown): string {
+    return (
+      (err as { error?: { message?: string } })?.error?.message?.trim() ??
+      (err as { message?: string })?.message?.trim() ??
+      ''
+    );
+  }
+
+  /** Nuxeo automation errors repeat "Failed to invoke operation…"; keep the actionable tail. */
+  private simplifyNuxeoAutomationMessage(message: string): string {
+    if (!message) {
+      return '';
+    }
+    const parts = message
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const meaningful = parts.filter((part) => !/^Failed to invoke operation/i.test(part));
+    return meaningful.at(-1) ?? parts.at(-1) ?? message;
   }
 }
