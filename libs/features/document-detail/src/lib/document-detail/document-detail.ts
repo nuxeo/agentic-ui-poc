@@ -61,7 +61,12 @@ import {
   shouldProbeContentLakeIngestStatus,
   supportsContentLakeIngest,
   canManageDocumentPermissions,
+  canWriteDocument,
+  canRemoveDocument,
+  PERMISSION_DENIED_MESSAGE,
   isBlobHoldingDocType,
+  noteFormatLabel,
+  renderNoteMarkdown,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -112,6 +117,7 @@ import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/a
 import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
 import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
+import { NoteEditorComponent } from '../note-editor/note-editor';
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
@@ -231,6 +237,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     MatTableModule,
     MatPaginatorModule,
     DocumentViewerComponent,
+    NoteEditorComponent,
     SatAvatarModule,
     SatBreadcrumbsComponent,
     SatTagModule,
@@ -276,6 +283,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly blobUrl = signal<SafeResourceUrl | null>(null);
   readonly noteContent = signal<string | null>(null);
   readonly noteHtml = signal<SafeHtml | null>(null);
+  readonly noteSaving = signal(false);
+  readonly focusNoteEditor = signal(false);
   readonly videoSources = signal<VideoSource[]>([]);
   readonly storyboard = signal<StoryboardItem[]>([]);
   readonly posterUrl = signal<SafeResourceUrl | null>(null);
@@ -297,6 +306,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private blobLoadGeneration = 0;
   /** Set when navigating here immediately after create/import with a main blob. */
   private freshBlobDocument = false;
+  /** Set when navigating here immediately after creating a Note. */
+  private freshNoteDocument = false;
   private breadcrumbPathCache: string | null = null;
   private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
@@ -437,6 +448,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const fc = d.properties['file:content'] as Record<string, unknown> | null;
     return this.resolveMainContentMime(fc, d);
   });
+
+  readonly isNoteDocument = computed(() => this.doc()?.type === 'Note');
+  readonly noteFormatDisplay = computed(() => noteFormatLabel(this.mimeType()));
+  readonly noteEditorBody = computed(() => this.noteContent() ?? '');
 
   readonly isImage = computed(() => this.mimeType().startsWith('image/'));
   readonly isPdf = computed(() => this.mimeType() === 'application/pdf');
@@ -636,6 +651,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly canManagePermissions = computed(() => canManageDocumentPermissions(this.doc()));
+  readonly canWriteDoc = computed(() => canWriteDocument(this.doc()));
+  readonly canRemoveDoc = computed(() => canRemoveDocument(this.doc()));
 
   permissionLabel(permission: string): string {
     const labels: Record<string, string> = {
@@ -719,6 +736,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.freshBlobDocument =
         this.route.snapshot.queryParamMap.get('fresh') === '1' ||
         this.readFreshBlobNavigationState();
+      this.freshNoteDocument = this.readFreshNoteNavigationState();
       this.resetState();
       this.docUid = uid;
       this.loadDocument(uid);
@@ -734,6 +752,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     const historyState = history.state as { freshBlobDocument?: boolean } | undefined;
     return historyState?.freshBlobDocument === true;
+  }
+
+  private readFreshNoteNavigationState(): boolean {
+    const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
+      | { freshNote?: boolean }
+      | undefined;
+    if (fromCurrent?.freshNote === true) {
+      return true;
+    }
+    const historyState = history.state as { freshNote?: boolean } | undefined;
+    return historyState?.freshNote === true;
   }
 
   /**
@@ -1280,6 +1309,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.syncActionStates(doc);
         this.loading.set(false);
         this.loadBlob(doc);
+        if (this.freshNoteDocument && doc.type === 'Note') {
+          this.focusNoteEditor.set(true);
+          this.freshNoteDocument = false;
+        }
         this.scheduleMetadataRefreshIfNeeded(doc);
         this.loadPublicationCount(uid);
         this.loadDocumentTasks(uid);
@@ -1741,6 +1774,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.blobUrl.set(null);
     this.noteContent.set(null);
     this.noteHtml.set(null);
+    this.noteSaving.set(false);
+    this.focusNoteEditor.set(false);
     this.videoSources.set([]);
     this.storyboard.set([]);
     this.posterUrl.set(null);
@@ -1829,23 +1864,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private renderMarkdown(text: string): string {
-    return text
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-      )
-      .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^(?!<[hubloa])(.+)$/gm, '<p>$1</p>')
-      .replace(/<p><\/p>/g, '');
+    return renderNoteMarkdown(text);
   }
 
   private setBlobUrl(blob: Blob): void {
@@ -2175,7 +2194,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Document Actions ──
 
   toggleLock(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireWritePermission()) return;
     this.actionInProgress.set('lock');
     const op = this.isLocked()
       ? this.detailService.unlockDocument(this.docUid)
@@ -2245,7 +2264,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   trashDocument(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Delete Document',
@@ -2254,42 +2273,51 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('trash');
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('trash');
 
-      this.detailService.trashDocument(this.docUid).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Document moved to trash');
-          this.goBack();
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to delete document');
-        },
+        this.detailService
+          .trashDocument(this.docUid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Document moved to trash');
+              this.goBack();
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to delete document');
+            },
+          });
       });
-    });
   }
 
   restoreFromTrash(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireWritePermission()) return;
     this.actionInProgress.set('restore');
-    this.detailService.restoreFromTrash(this.docUid).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.toast('Document restored');
-        this.loadDocument(this.docUid);
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to restore document');
-      },
-    });
+    this.detailService
+      .restoreFromTrash(this.docUid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.toast('Document restored');
+          this.loadDocument(this.docUid);
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.toast('Failed to restore document');
+        },
+      });
   }
 
   permanentlyDelete(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.requireRemovePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Permanently Delete Document',
@@ -2298,21 +2326,27 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('permanentDelete');
-      this.detailService.permanentlyDelete(this.docUid).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Document permanently deleted');
-          this.goBack();
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to permanently delete document');
-        },
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('permanentDelete');
+        this.detailService
+          .permanentlyDelete(this.docUid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Document permanently deleted');
+              this.goBack();
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to permanently delete document');
+            },
+          });
       });
-    });
   }
 
   toggleClipboard(): void {
@@ -2380,7 +2414,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   openEditDialog(): void {
     const currentDoc = this.doc();
-    if (!currentDoc) return;
+    if (!currentDoc || !this.requireWritePermission()) return;
 
     const ref = this.dialog.open(EditDocumentDialogComponent, {
       width: '560px',
@@ -2396,6 +2430,39 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.syncActionStates(updatedDoc);
         this.toast('Document updated');
         this.loadDocument(this.docUid);
+      });
+  }
+
+  saveNote(body: string): void {
+    const doc = this.doc();
+    if (!doc || this.noteSaving()) return;
+
+    this.noteSaving.set(true);
+    const mime = this.mimeType();
+    this.browseService
+      .updateDocument(doc.uid, {
+        'note:note': body,
+        'note:mime_type': mime,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.noteSaving.set(false);
+          this.doc.set(updated);
+          this.noteContent.set(body);
+          if (mime === 'text/markdown') {
+            const rawHtml = this.renderMarkdown(body);
+            const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
+            this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
+          } else {
+            this.noteHtml.set(null);
+          }
+          this.toast('Note saved');
+        },
+        error: () => {
+          this.noteSaving.set(false);
+          this.toast('Failed to save note');
+        },
       });
   }
 
@@ -2415,6 +2482,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       horizontalPosition: 'center',
       verticalPosition: 'bottom',
     });
+  }
+
+  private requireWritePermission(): boolean {
+    if (canWriteDocument(this.doc())) return true;
+    this.toast(PERMISSION_DENIED_MESSAGE);
+    return false;
+  }
+
+  private requireRemovePermission(): boolean {
+    if (canRemoveDocument(this.doc())) return true;
+    this.toast(PERMISSION_DENIED_MESSAGE);
+    return false;
   }
 
   goBack(): void {
@@ -2727,8 +2806,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Versioning ──
 
   openCreateVersionDialog(): void {
+    if (!this.requireWritePermission()) return;
     const ref = this.dialog.open(CreateVersionDialogComponent, {
-      width: '520px',
+      width: '600px',
+      maxWidth: '95vw',
+      panelClass: 'create-version-dialog-panel',
       data: {
         documentUid: this.docUid,
         documentTitle: this.doc()?.title ?? '',
@@ -2773,6 +2855,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   restoreVersion(version: NuxeoDocument): void {
+    if (!this.requireWritePermission()) return;
     this.versionDropdownOpen.set(false);
     this.actionInProgress.set('restore');
     this.detailService.restoreVersion(version.uid).subscribe({
@@ -2792,6 +2875,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // ── Publish ──
 
   openPublishDialog(): void {
+    if (!this.requireWritePermission()) return;
     const openDialog = (versions: NuxeoDocument[]) => {
       const renditions = this.buildRenditionOptions();
       const ref = this.dialog.open(PublishDialogComponent, {
@@ -3002,6 +3086,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   uploadAttachment(event: Event): void {
+    if (!this.requireWritePermission()) {
+      (event.target as HTMLInputElement).value = '';
+      return;
+    }
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     if (!file) return;
@@ -3037,44 +3125,58 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   openReplaceDialog(att: { index: number; name: string }): void {
+    if (!this.requireWritePermission()) return;
     const ref = this.dialog.open(ReplaceAttachmentDialogComponent, {
       width: '480px',
       data: { fileName: att.name },
     });
-    ref.afterClosed().subscribe((file: File | null) => {
-      if (!file) return;
-      this.actionInProgress.set('replace');
-      this.detailService.replaceAttachment(this.docUid, att.index, file).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast(`"${att.name}" replaced`);
-          this.loadDocument(this.docUid);
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to replace attachment');
-        },
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((file: File | null) => {
+        if (!file) return;
+        this.actionInProgress.set('replace');
+        this.detailService
+          .replaceAttachment(this.docUid, att.index, file)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast(`"${att.name}" replaced`);
+              this.loadDocument(this.docUid);
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to replace attachment');
+            },
+          });
       });
-    });
   }
 
   openRemoveDialog(att: { index: number; name: string }): void {
+    if (!this.requireWritePermission()) return;
     const ref = this.dialog.open(RemoveAttachmentDialogComponent, { width: '400px' });
-    ref.afterClosed().subscribe((confirmed: boolean) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('remove');
-      this.detailService.removeAttachment(this.docUid, att.index).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast(`"${att.name}" removed`);
-          this.loadDocument(this.docUid);
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to remove attachment');
-        },
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed: boolean) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('remove');
+        this.detailService
+          .removeAttachment(this.docUid, att.index)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast(`"${att.name}" removed`);
+              this.loadDocument(this.docUid);
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to remove attachment');
+            },
+          });
       });
-    });
   }
 
   closePropertiesPanel(): void {

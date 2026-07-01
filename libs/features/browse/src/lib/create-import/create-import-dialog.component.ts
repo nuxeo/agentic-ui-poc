@@ -28,10 +28,12 @@ import {
   DirectoryService,
   DocumentImportService,
   RESTRICTED_IMPORT_LOCATION_MESSAGE,
+  defaultNoteContent,
   docTypeIcon,
   isBlobHoldingDocType,
   isFolderishDocument,
   isRestrictedImportParentPath,
+  NOTE_FORMAT_OPTIONS,
   sanitizeDocumentName,
   type DirectoryEntry,
   type L10nDirectoryEntry,
@@ -49,6 +51,8 @@ export interface CreateImportDialogResult {
   path?: string | null;
   /** When set, the opener should navigate to this document's detail page. */
   navigateToUid?: string;
+  /** When true, the detail page should focus the note editor (Note documents only). */
+  freshNote?: boolean;
 }
 
 export type DialogTab = 'create' | 'import';
@@ -57,17 +61,6 @@ export interface DocTypeDef {
   type: string;
   label: string;
   icon: string;
-}
-
-const NOTE_FORMAT_OPTIONS = [
-  { value: 'text/html', label: 'HTML' },
-  { value: 'text/plain', label: 'Text' },
-  { value: 'text/xml', label: 'XML' },
-  { value: 'text/markdown', label: 'Markdown' },
-] as const;
-
-function defaultNoteContent(mimeType: string): string {
-  return mimeType === 'text/html' ? '<p></p>' : '';
 }
 
 const DOC_TYPE_LABELS: Record<string, string> = {
@@ -671,6 +664,7 @@ export class CreateImportDialogComponent implements OnInit {
       refreshed: true,
       path: this.parentPath(),
       navigateToUid: doc.uid,
+      freshNote: docTypeName === 'Note',
     });
   }
 

@@ -8,7 +8,7 @@ import { UserService } from '@agentic-ui/shared/nuxeo-client';
 
 import { UserFormDialogComponent, UserFormDialogData } from './user-form-dialog.component';
 
-describe('UserFormDialogComponent (NXSAT-152)', () => {
+describe('UserFormDialogComponent (NXSAT-152 / NXSAT-166)', () => {
   let component: UserFormDialogComponent;
   let fixture: ComponentFixture<UserFormDialogComponent>;
   let closeSpy: ReturnType<typeof vi.fn>;
@@ -69,5 +69,18 @@ describe('UserFormDialogComponent (NXSAT-152)', () => {
     component.submit(true);
 
     expect(closeSpy).toHaveBeenCalledWith(expect.objectContaining({ createAnother: true }));
+  });
+
+  it('blocks save when email is missing (NXSAT-166)', () => {
+    component.username = 'new.user';
+    component.email = '   ';
+
+    expect(component.canSave).toBe(false);
+  });
+
+  it('keeps password fields empty when Set user password is off (NXSAT-166)', () => {
+    expect(component.setUserPassword).toBe(false);
+    expect(component.password).toBe('');
+    expect(component.confirmPassword).toBe('');
   });
 });
