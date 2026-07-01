@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, timer, switchMap, map, of, throwError } from 'rxjs';
+import { EMPTY, Observable, timer, switchMap, map, of, throwError, expand, reduce } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -52,6 +52,50 @@ export class BrowseService {
     return this.api.get<NuxeoDocumentList>(`/nuxeo/api/v1/path${safePath}/@children`, params, {
       properties: '*',
     });
+  }
+
+  /**
+   * Folder children for the browse tree via Nuxeo's `tree_children` page provider
+   * (same query Nuxeo Web UI uses: Folderish, not trashed, not hidden in navigation).
+   * Fetches all pages when the provider marks additional pages available.
+   */
+  getTreeChildren(parentUid: string, pageSize = 50): Observable<NuxeoDocumentList> {
+    type TreeChildrenPage = NuxeoDocumentList & { isNextPageAvailable?: boolean };
+
+    const fetchPage = (pageIndex: number) => {
+      const params = new HttpParams()
+        .set('queryParams', parentUid)
+        .set('pageSize', pageSize)
+        .set('currentPageIndex', pageIndex);
+
+      return this.api.get<TreeChildrenPage>(
+        '/nuxeo/api/v1/search/pp/tree_children/execute',
+        params,
+        { properties: '*' },
+      );
+    };
+
+    const emptyList: NuxeoDocumentList = {
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    };
+
+    return fetchPage(0).pipe(
+      expand((res) => (res.isNextPageAvailable ? fetchPage(res.currentPageIndex + 1) : EMPTY)),
+      reduce<TreeChildrenPage, NuxeoDocumentList>((acc, res) => {
+        const entries = [...acc.entries, ...(res.entries ?? [])];
+        return {
+          entries,
+          totalSize: res.totalSize ?? entries.length,
+          currentPageSize: entries.length,
+          currentPageIndex: 0,
+          numberOfPages: 1,
+        };
+      }, emptyList),
+    );
   }
 
   updateDocument(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument> {
