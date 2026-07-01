@@ -160,7 +160,7 @@ export {
   noteFormatLabel,
   type NoteMimeType,
 } from './lib/utils/note-format';
-export { isMarkdownNoteFormat, renderNoteMarkdown } from './lib/utils/note-markdown';
+export { isMarkdownNoteFormat, isSafeHttpUrl, renderNoteMarkdown } from './lib/utils/note-markdown';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {

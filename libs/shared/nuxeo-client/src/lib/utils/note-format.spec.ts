@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { defaultNoteContent, noteFormatLabel, NOTE_FORMAT_OPTIONS } from './note-format';
 
 describe('note-format', () => {

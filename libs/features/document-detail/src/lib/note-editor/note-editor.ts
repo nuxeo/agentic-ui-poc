@@ -22,6 +22,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   isHtmlNoteFormat,
   isMarkdownNoteFormat,
+  isSafeHttpUrl,
   renderNoteMarkdown,
 } from '@agentic-ui/shared/nuxeo-client';
 import DOMPurify from 'dompurify';
@@ -190,8 +191,10 @@ export class NoteEditorComponent {
     if (!this.quill) return;
     const url = window.prompt('Enter image URL', 'https://');
     if (!url?.trim()) return;
+    const trimmed = url.trim();
+    if (!isSafeHttpUrl(trimmed)) return;
     const range = this.quill.getSelection(true);
-    this.quill.insertEmbed(range.index, 'image', url.trim(), Quill.sources.USER);
+    this.quill.insertEmbed(range.index, 'image', trimmed, Quill.sources.USER);
     this.quill.setSelection(range.index + 1, Quill.sources.SILENT);
   }
 
