@@ -149,9 +149,17 @@ export {
   type NuxeoSubtypeEntry,
 } from './lib/utils/parse-document-subtypes';
 export {
+  ADD_CHILDREN,
   MANAGE_DOCUMENT_PERMISSIONS,
+  PERMISSION_DENIED_MESSAGE,
+  REMOVE_DOCUMENT,
+  WRITE_DOCUMENT,
+  canAddChildren,
   canManageDocumentPermissions,
+  canRemoveDocument,
+  canWriteDocument,
   hasDocumentPermission,
+  isPermissionDeniedError,
 } from './lib/utils/document-permissions';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';

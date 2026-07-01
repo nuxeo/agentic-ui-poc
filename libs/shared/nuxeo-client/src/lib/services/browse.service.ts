@@ -16,7 +16,7 @@ export class BrowseService {
     const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
     return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/path${safePath}`, undefined, {
       properties: '*',
-      'enrichers.document': 'acls,favorites,subscribedNotifications',
+      'enrichers.document': 'acls,permissions,favorites,subscribedNotifications',
     });
   }
 
