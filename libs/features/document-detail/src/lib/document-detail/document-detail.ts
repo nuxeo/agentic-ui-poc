@@ -62,6 +62,8 @@ import {
   supportsContentLakeIngest,
   canManageDocumentPermissions,
   isBlobHoldingDocType,
+  noteFormatLabel,
+  renderNoteMarkdown,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -112,6 +114,7 @@ import { AttachmentPreviewDialogComponent } from '../attachment-preview-dialog/a
 import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/replace-attachment-dialog';
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
 import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
+import { NoteEditorComponent } from '../note-editor/note-editor';
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
@@ -231,6 +234,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     MatTableModule,
     MatPaginatorModule,
     DocumentViewerComponent,
+    NoteEditorComponent,
     SatAvatarModule,
     SatBreadcrumbsComponent,
     SatTagModule,
@@ -276,6 +280,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly blobUrl = signal<SafeResourceUrl | null>(null);
   readonly noteContent = signal<string | null>(null);
   readonly noteHtml = signal<SafeHtml | null>(null);
+  readonly noteSaving = signal(false);
+  readonly focusNoteEditor = signal(false);
   readonly videoSources = signal<VideoSource[]>([]);
   readonly storyboard = signal<StoryboardItem[]>([]);
   readonly posterUrl = signal<SafeResourceUrl | null>(null);
@@ -297,6 +303,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private blobLoadGeneration = 0;
   /** Set when navigating here immediately after create/import with a main blob. */
   private freshBlobDocument = false;
+  /** Set when navigating here immediately after creating a Note. */
+  private freshNoteDocument = false;
   private breadcrumbPathCache: string | null = null;
   private breadcrumbItemsCache: SatBreadcrumbsItem[] = [];
 
@@ -437,6 +445,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const fc = d.properties['file:content'] as Record<string, unknown> | null;
     return this.resolveMainContentMime(fc, d);
   });
+
+  readonly isNoteDocument = computed(() => this.doc()?.type === 'Note');
+  readonly noteFormatDisplay = computed(() => noteFormatLabel(this.mimeType()));
+  readonly noteEditorBody = computed(() => this.noteContent() ?? '');
 
   readonly isImage = computed(() => this.mimeType().startsWith('image/'));
   readonly isPdf = computed(() => this.mimeType() === 'application/pdf');
@@ -719,6 +731,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.freshBlobDocument =
         this.route.snapshot.queryParamMap.get('fresh') === '1' ||
         this.readFreshBlobNavigationState();
+      this.freshNoteDocument = this.readFreshNoteNavigationState();
       this.resetState();
       this.docUid = uid;
       this.loadDocument(uid);
@@ -734,6 +747,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     const historyState = history.state as { freshBlobDocument?: boolean } | undefined;
     return historyState?.freshBlobDocument === true;
+  }
+
+  private readFreshNoteNavigationState(): boolean {
+    const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
+      | { freshNote?: boolean }
+      | undefined;
+    if (fromCurrent?.freshNote === true) {
+      return true;
+    }
+    const historyState = history.state as { freshNote?: boolean } | undefined;
+    return historyState?.freshNote === true;
   }
 
   /**
@@ -1280,6 +1304,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.syncActionStates(doc);
         this.loading.set(false);
         this.loadBlob(doc);
+        if (this.freshNoteDocument && doc.type === 'Note') {
+          this.focusNoteEditor.set(true);
+          this.freshNoteDocument = false;
+        }
         this.scheduleMetadataRefreshIfNeeded(doc);
         this.loadPublicationCount(uid);
         this.loadDocumentTasks(uid);
@@ -1741,6 +1769,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.blobUrl.set(null);
     this.noteContent.set(null);
     this.noteHtml.set(null);
+    this.noteSaving.set(false);
+    this.focusNoteEditor.set(false);
     this.videoSources.set([]);
     this.storyboard.set([]);
     this.posterUrl.set(null);
@@ -1829,23 +1859,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private renderMarkdown(text: string): string {
-    return text
-      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
-      )
-      .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-      .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/^(?!<[hubloa])(.+)$/gm, '<p>$1</p>')
-      .replace(/<p><\/p>/g, '');
+    return renderNoteMarkdown(text);
   }
 
   private setBlobUrl(blob: Blob): void {
@@ -2396,6 +2410,39 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.syncActionStates(updatedDoc);
         this.toast('Document updated');
         this.loadDocument(this.docUid);
+      });
+  }
+
+  saveNote(body: string): void {
+    const doc = this.doc();
+    if (!doc || this.noteSaving()) return;
+
+    this.noteSaving.set(true);
+    const mime = this.mimeType();
+    this.browseService
+      .updateDocument(doc.uid, {
+        'note:note': body,
+        'note:mime_type': mime,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.noteSaving.set(false);
+          this.doc.set(updated);
+          this.noteContent.set(body);
+          if (mime === 'text/markdown') {
+            const rawHtml = this.renderMarkdown(body);
+            const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
+            this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
+          } else {
+            this.noteHtml.set(null);
+          }
+          this.toast('Note saved');
+        },
+        error: () => {
+          this.noteSaving.set(false);
+          this.toast('Failed to save note');
+        },
       });
   }
 
