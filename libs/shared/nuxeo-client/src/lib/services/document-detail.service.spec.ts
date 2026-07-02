@@ -124,4 +124,88 @@ describe('DocumentDetailService permissions', () => {
 
     await doc$;
   });
+
+  it('addPermissionWithNotification creates ACE then sends notification separately', async () => {
+    const result$ = firstValueFrom(
+      service.addPermissionWithNotification('doc-uid', {
+        username: 'user-readonly01',
+        permission: 'Read',
+        notify: true,
+        comment: 'Please review',
+      }),
+    );
+
+    const addReq = httpMock.expectOne('/nuxeo/api/v1/automation/Document.AddPermission');
+    expect(addReq.request.body.params.notify).toBe(false);
+    expect(addReq.request.body.params.comment).toBe('Please review');
+    addReq.flush(docWithLocalAce('ace-42', 'user-readonly01'));
+
+    const notifyReq = httpMock.expectOne(
+      '/nuxeo/api/v1/automation/Document.SendNotificationEmailForPermission',
+    );
+    expect(notifyReq.request.body).toEqual({
+      params: { id: 'ace-42' },
+      context: {},
+      input: 'doc-uid',
+    });
+    notifyReq.flush({ uid: 'doc-uid' });
+
+    await expect(result$).resolves.toEqual({
+      document: { uid: 'doc-uid' },
+      notificationSent: true,
+    });
+  });
+
+  it('addPermissionWithNotification reports SMTP failure after permission is created', async () => {
+    const result$ = firstValueFrom(
+      service.addPermissionWithNotification('doc-uid', {
+        username: 'user-readonly01',
+        permission: 'Read',
+        notify: true,
+      }),
+    );
+
+    const addReq = httpMock.expectOne('/nuxeo/api/v1/automation/Document.AddPermission');
+    addReq.flush(docWithLocalAce('ace-42', 'user-readonly01'));
+
+    const notifyReq = httpMock.expectOne(
+      '/nuxeo/api/v1/automation/Document.SendNotificationEmailForPermission',
+    );
+    notifyReq.flush(
+      { message: 'An error occurred while sending a mail' },
+      { status: 500, statusText: 'Server Error' },
+    );
+
+    await expect(result$).resolves.toEqual({
+      document: docWithLocalAce('ace-42', 'user-readonly01'),
+      notificationSent: false,
+      notificationError: expect.stringContaining('SMTP'),
+    });
+  });
 });
+
+function docWithLocalAce(aceId: string, username: string) {
+  return {
+    uid: 'doc-uid',
+    contextParameters: {
+      acls: [
+        {
+          name: 'local',
+          aces: [
+            {
+              id: aceId,
+              username,
+              externalUser: false,
+              permission: 'Read',
+              granted: true,
+              creator: null,
+              begin: null,
+              end: null,
+              status: 'effective',
+            },
+          ],
+        },
+      ],
+    },
+  };
+}

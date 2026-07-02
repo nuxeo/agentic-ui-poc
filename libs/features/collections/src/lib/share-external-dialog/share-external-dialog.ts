@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,8 +9,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
-import { DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import {
+  DocumentDetailService,
+  PERMISSION_NOTIFICATION_MAIL_HINT,
+  isMailSendError,
+  permissionCreateMailFailureMessage,
+} from '@agentic-ui/shared/nuxeo-client';
 
 export interface ShareExternalDialogData {
   documentUid: string;
@@ -34,6 +41,7 @@ const PERMISSION_OPTIONS = [
     MatButtonModule,
     MatDatepickerModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
   ],
   providers: [provideNativeDateAdapter()],
   template: `
@@ -69,6 +77,8 @@ const PERMISSION_OPTIONS = [
           <mat-datepicker #toPicker />
         </mat-form-field>
       </div>
+
+      <p class="mail-hint">{{ mailHint }}</p>
 
       <div class="notify-section">
         <label class="field-label">Notification email</label>
@@ -152,6 +162,13 @@ const PERMISSION_OPTIONS = [
         margin-top: 4px;
       }
 
+      .mail-hint {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: #6b7280;
+        line-height: 1.4;
+      }
+
       mat-dialog-actions {
         display: flex;
         gap: 8px;
@@ -172,9 +189,12 @@ export class ShareExternalDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<ShareExternalDialogComponent>);
   private readonly data = inject<ShareExternalDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly saving = signal(false);
   readonly permissionOptions = PERMISSION_OPTIONS;
+  readonly mailHint = PERMISSION_NOTIFICATION_MAIL_HINT;
 
   email = '';
   permission = 'Read';
@@ -192,38 +212,41 @@ export class ShareExternalDialogComponent {
     this.addAnother = andAddAnother;
     this.saving.set(true);
 
-    const params: {
-      email: string;
-      permission: string;
-      notify: boolean;
-      comment?: string;
-      begin?: string | null;
-      end: string;
-    } = {
-      email: this.email,
-      permission: this.permission,
-      notify: true,
-      begin: this.beginDate ? this.formatDateISO(this.beginDate) : null,
-      end: this.endDate ? this.formatDateISO(this.endDate) : '',
-    };
-
-    if (this.notifyComment.trim()) {
-      params.comment = this.notifyComment.trim();
-    }
-
-    this.detailService.addExternalPermission(this.data.documentUid, params).subscribe({
-      next: () => {
-        this.saving.set(false);
-        if (andAddAnother) {
-          this.resetForm();
-        } else {
-          this.dialogRef.close(true);
-        }
-      },
-      error: () => {
-        this.saving.set(false);
-      },
-    });
+    this.detailService
+      .addExternalPermissionWithNotification(this.data.documentUid, {
+        email: this.email,
+        permission: this.permission,
+        notify: true,
+        begin: this.beginDate ? this.formatDateISO(this.beginDate) : null,
+        end: this.endDate ? this.formatDateISO(this.endDate) : '',
+        comment: this.notifyComment.trim() || undefined,
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.saving.set(false);
+          const message = result.notificationError
+            ? result.notificationError
+            : result.notificationSent
+              ? 'Permission added and notification sent'
+              : null;
+          if (message) {
+            this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+          }
+          if (andAddAnother) {
+            this.resetForm();
+          } else {
+            this.dialogRef.close(true);
+          }
+        },
+        error: (err) => {
+          this.saving.set(false);
+          const message = isMailSendError(err)
+            ? permissionCreateMailFailureMessage()
+            : 'Could not share with external user';
+          this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+        },
+      });
   }
 
   private resetForm(): void {

@@ -8,8 +8,9 @@ import {
   provideRouter,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { DocumentDetailComponent } from './document-detail';
 import {
   ARenderService,
@@ -17,6 +18,7 @@ import {
   CURRENT_USERNAME,
   DirectoryService,
   DocumentDetailService,
+  mailSendFailureMessage,
   NuxeoApiBase,
   type NuxeoDocument,
   TagService,
@@ -48,6 +50,7 @@ const mockDocumentDetailService = {
   // do not have to stub every downstream service for these focused tests.
   getFullDocument: (): Observable<NuxeoDocument> => new Observable<NuxeoDocument>(),
   fetchBlob: () => of(new Blob(['stub'], { type: 'application/pdf' })),
+  sendNotificationEmailForPermission: vi.fn(() => of({ uid: 'doc-uid-1' })),
 };
 
 const NATURE_ENTRIES = [
@@ -115,8 +118,10 @@ const mockNuxeoApiBase = {
 describe('DocumentDetailComponent', () => {
   let component: DocumentDetailComponent;
   let fixture: ComponentFixture<DocumentDetailComponent>;
+  let snackBarOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    snackBarOpenSpy = vi.fn();
     await TestBed.configureTestingModule({
       imports: [DocumentDetailComponent],
       providers: [
@@ -151,6 +156,7 @@ describe('DocumentDetailComponent', () => {
         { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
         { provide: NuxeoApiBase, useValue: mockNuxeoApiBase },
         { provide: CURRENT_USERNAME, useValue: () => 'tester' },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
     })
       .overrideComponent(DocumentDetailComponent, {
@@ -165,6 +171,48 @@ describe('DocumentDetailComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('sendPermissionNotification (NXSAT-159)', () => {
+    const ace = {
+      id: 'ace-1',
+      username: 'user-readonly01',
+      externalUser: false,
+      permission: 'Read',
+      granted: true,
+      creator: null,
+      begin: null,
+      end: null,
+      status: 'effective' as const,
+    };
+
+    it('shows success toast when resend succeeds', () => {
+      component.sendPermissionNotification(ace);
+
+      expect(mockDocumentDetailService.sendNotificationEmailForPermission).toHaveBeenCalledWith(
+        'doc-uid-1',
+        'ace-1',
+      );
+      expect(snackBarOpenSpy).toHaveBeenCalledWith('Notification email sent', 'OK', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom',
+      });
+    });
+
+    it('shows SMTP guidance when resend fails due to mail', () => {
+      mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
+        throwError(() => ({ error: { message: 'An error occurred while sending a mail' } })),
+      );
+
+      component.sendPermissionNotification(ace);
+
+      expect(snackBarOpenSpy).toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom',
+      });
+    });
   });
 
   describe('text classification', () => {

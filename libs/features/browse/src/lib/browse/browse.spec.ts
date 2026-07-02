@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { vi } from 'vitest';
 import { EMPTY, of, throwError } from 'rxjs';
 import { BrowseComponent } from './browse';
@@ -8,6 +9,7 @@ import {
   BrowseService,
   DocumentDetailService,
   DirectoryService,
+  mailSendFailureMessage,
   TagService,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -48,8 +50,10 @@ const mockTagService = {
 describe('BrowseComponent', () => {
   let component: BrowseComponent;
   let fixture: ComponentFixture<BrowseComponent>;
+  let snackBarOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
+    snackBarOpenSpy = vi.fn();
     await TestBed.configureTestingModule({
       imports: [BrowseComponent],
       providers: [
@@ -59,6 +63,7 @@ describe('BrowseComponent', () => {
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
         { provide: DirectoryService, useValue: mockDirectoryService },
         { provide: TagService, useValue: mockTagService },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
     })
       // Shallow-render: replace the complex Material/Satori template with a stub.
@@ -75,5 +80,69 @@ describe('BrowseComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {
+    mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
+      of({ uid: 'doc-1' }),
+    );
+    component.currentDoc.set({
+      uid: 'doc-1',
+      title: 'File',
+      type: 'File',
+      path: '/file',
+      lastModified: '',
+      properties: {},
+    });
+
+    component.sendNotificationEmail({
+      id: 'ace-1',
+      username: 'user-readonly01',
+      externalUser: false,
+      permission: 'Read',
+      granted: true,
+      creator: null,
+      begin: null,
+      end: null,
+      status: 'effective',
+    });
+
+    expect(mockDocumentDetailService.sendNotificationEmailForPermission).toHaveBeenCalledWith(
+      'doc-1',
+      'ace-1',
+    );
+    expect(snackBarOpenSpy).toHaveBeenCalledWith('Notification email sent', 'OK', {
+      duration: 3000,
+    });
+  });
+
+  it('sendNotificationEmail shows SMTP guidance on mail failure (NXSAT-159)', () => {
+    mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
+      throwError(() => ({ error: { message: 'An error occurred while sending a mail' } })),
+    );
+    component.currentDoc.set({
+      uid: 'doc-1',
+      title: 'File',
+      type: 'File',
+      path: '/file',
+      lastModified: '',
+      properties: {},
+    });
+
+    component.sendNotificationEmail({
+      id: 'ace-1',
+      username: 'user-readonly01',
+      externalUser: false,
+      permission: 'Read',
+      granted: true,
+      creator: null,
+      begin: null,
+      end: null,
+      status: 'effective',
+    });
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
+      duration: 7000,
+    });
   });
 });

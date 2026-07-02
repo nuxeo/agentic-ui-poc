@@ -67,6 +67,8 @@ import {
   isBlobHoldingDocType,
   noteFormatLabel,
   renderNoteMarkdown,
+  isMailSendError,
+  mailSendFailureMessage,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -3046,9 +3048,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.actionInProgress.set(null);
           this.toast('Notification email sent');
         },
-        error: () => {
+        error: (err) => {
           this.actionInProgress.set(null);
-          this.toast('Failed to send notification');
+          this.toast(
+            isMailSendError(err) ? mailSendFailureMessage('send') : 'Failed to send notification',
+          );
         },
       });
   }
