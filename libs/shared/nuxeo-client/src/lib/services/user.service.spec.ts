@@ -121,4 +121,58 @@ describe('UserService', () => {
     expect(req.request.headers.get('fetch.group')).toBe('memberUsers,memberGroups');
     req.flush({ 'entity-type': 'group', groupname: 'group/with space' });
   });
+
+  it('requests group members on paged group search (NXSAT-171)', () => {
+    service.searchGroupsPaged('*', 5, 0).subscribe();
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/group/search' &&
+        r.params.get('q') === '*' &&
+        r.params.get('pageSize') === '5',
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.headers.get('fetch.group')).toBe('memberUsers,memberGroups');
+    req.flush({
+      'entity-type': 'groups',
+      entries: [
+        {
+          'entity-type': 'group',
+          groupname: 'powerusers',
+          grouplabel: 'Power Users',
+          memberUsers: ['poweruser01', 'poweruser02'],
+          memberGroups: [],
+        },
+      ],
+      totalSize: 1,
+    });
+  });
+
+  it('loads recently created users and groups via page provider (NXSAT-171)', async () => {
+    const list$ = firstValueFrom(service.getRecentlyCreatedUsersAndGroups(50, 0));
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/LATEST_CREATED_USERS_OR_GROUPS_PROVIDER/execute' &&
+        r.params.get('pageSize') === '50' &&
+        r.params.get('currentPageIndex') === '0',
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.headers.get('properties')).toBe('*');
+    req.flush({
+      entries: [
+        {
+          uid: 'poweruser02',
+          type: 'user',
+          properties: {
+            'user:firstName': 'Power',
+            'user:lastName': 'User Two',
+            'user:email': 'pu02@example.com',
+          },
+        },
+      ],
+      totalSize: 1,
+    });
+
+    const list = await list$;
+    expect(list.entries?.[0]?.uid).toBe('poweruser02');
+  });
 });

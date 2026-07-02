@@ -11,12 +11,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatMenuModule } from '@angular/material/menu';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { Router } from '@angular/router';
-import { catchError, filter, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { catchError, filter, forkJoin, map, of, switchMap, tap, timer } from 'rxjs';
 
 import {
+  NuxeoDocument,
   NuxeoGroup,
   NuxeoGroupList,
   NuxeoUser,
@@ -71,6 +72,12 @@ export class AdminUsersGroupsPageComponent implements OnInit {
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
+  private membersMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private membersMenuHoverTrigger: MatMenuTrigger | null = null;
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.cancelCloseMembersMenu());
+  }
 
   readonly userColumns = ['username', 'name', 'email', 'groups', 'admin', 'actions'] as const;
   readonly groupColumns = ['groupname', 'label', 'members', 'actions'] as const;
@@ -163,30 +170,14 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   loadRecent(): void {
     this.recentLoading.set(true);
-    forkJoin({
-      users: this.userService.searchUsersPaged('', 50, 0),
-      groups: this.userService.searchGroupsPaged('', 50, 0),
-    })
+    this.userService
+      .getRecentlyCreatedUsersAndGroups(50, 0)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: ({ users, groups }) => {
-          const rows: RecentUserGroupRow[] = [];
-          for (const u of users.entries ?? []) {
-            rows.push({
-              kind: 'user',
-              name: this.displayName(u),
-              identifier: u.id,
-              email: u.properties.email ?? '',
-            });
-          }
-          for (const g of groups.entries ?? []) {
-            rows.push({
-              kind: 'group',
-              name: g.grouplabel || g.groupname,
-              identifier: g.groupname,
-              email: '',
-            });
-          }
+        next: (res) => {
+          const rows = (res.entries ?? [])
+            .map((doc) => this.mapRecentEntry(doc))
+            .filter((row): row is RecentUserGroupRow => row !== null);
           this.recentPageIndex.set(0);
           this.recentRows.set(rows);
           this.recentLoading.set(false);
@@ -282,7 +273,10 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   private afterMutation(): void {
     this.runSearch();
-    this.loadRecent();
+    // Audit indexing can be async (Nuxeo Web UI refreshes after a short delay).
+    timer(1000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadRecent());
   }
 
   openCreateUser(): void {
@@ -526,6 +520,31 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     });
   }
 
+  private mapRecentEntry(doc: NuxeoDocument): RecentUserGroupRow | null {
+    if (doc.type === 'user') {
+      const props = doc.properties;
+      const firstName = String(props['user:firstName'] ?? '').trim();
+      const lastName = String(props['user:lastName'] ?? '').trim();
+      const joined = `${firstName} ${lastName}`.trim();
+      return {
+        kind: 'user',
+        name: joined || doc.uid,
+        identifier: doc.uid,
+        email: String(props['user:email'] ?? ''),
+      };
+    }
+    if (doc.type === 'group') {
+      const label = String(doc.properties['group:grouplabel'] ?? '').trim();
+      return {
+        kind: 'group',
+        name: label || doc.uid,
+        identifier: doc.uid,
+        email: '',
+      };
+    }
+    return null;
+  }
+
   displayName(user: NuxeoUser): string {
     const fn = user.properties.firstName?.trim() ?? '';
     const ln = user.properties.lastName?.trim() ?? '';
@@ -537,10 +556,67 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     return (user.properties.groups ?? []).join(', ');
   }
 
+  memberUsernames(group: NuxeoGroup): string[] {
+    return group.memberUsers ?? [];
+  }
+
+  membersPreviewLeading(group: NuxeoGroup): string {
+    const members = this.memberUsernames(group);
+    if (!members.length) return '—';
+    return members.slice(0, 3).join(', ');
+  }
+
+  membersOverflowCount(group: NuxeoGroup): number {
+    return Math.max(0, this.memberUsernames(group).length - 3);
+  }
+
+  membersOverflowUsernames(group: NuxeoGroup): string[] {
+    return this.memberUsernames(group).slice(3);
+  }
+
+  openMembersMenu(trigger: MatMenuTrigger): void {
+    this.membersMenuHoverTrigger = trigger;
+    this.cancelCloseMembersMenu();
+    if (!trigger.menuOpen) {
+      trigger.openMenu();
+    }
+  }
+
+  scheduleCloseMembersMenu(trigger: MatMenuTrigger): void {
+    this.cancelCloseMembersMenu();
+    this.membersMenuCloseTimer = setTimeout(() => {
+      if (this.membersMenuHoverTrigger === trigger) {
+        trigger.closeMenu();
+      }
+    }, 200);
+  }
+
+  onMembersMenuPanelEnter(trigger: MatMenuTrigger): void {
+    this.membersMenuHoverTrigger = trigger;
+    this.cancelCloseMembersMenu();
+  }
+
+  onMembersMenuPanelLeave(trigger: MatMenuTrigger): void {
+    this.scheduleCloseMembersMenu(trigger);
+  }
+
+  cancelCloseMembersMenu(): void {
+    if (this.membersMenuCloseTimer) {
+      clearTimeout(this.membersMenuCloseTimer);
+      this.membersMenuCloseTimer = null;
+    }
+  }
+
+  membersMoreAriaLabel(group: NuxeoGroup): string {
+    const count = this.membersOverflowCount(group);
+    return `Show ${count} more member${count === 1 ? '' : 's'}`;
+  }
+
   membersPreview(group: NuxeoGroup): string {
-    const m = group.memberUsers ?? [];
-    if (m.length <= 3) return m.join(', ');
-    return `${m.slice(0, 3).join(', ')} +${m.length - 3}`;
+    const members = this.memberUsernames(group);
+    if (!members.length) return '—';
+    if (members.length <= 3) return members.join(', ');
+    return `${members.slice(0, 3).join(', ')}, +${members.length - 3}`;
   }
 
   private createUserErrorMessage(err: unknown, invited: boolean): string {

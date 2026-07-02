@@ -205,7 +205,51 @@
               </ng-container>
               <ng-container matColumnDef="members">
                 <th mat-header-cell *matHeaderCellDef>Members</th>
-                <td mat-cell *matCellDef="let g" class="cell-muted">{{ membersPreview(g) }}</td>
+                <td mat-cell *matCellDef="let g" class="cell-muted">
+                  @if (membersOverflowCount(g) > 0) {
+                    <span class="ug-members-inline">
+                      <span>{{ membersPreviewLeading(g) }},</span>
+                      <button
+                        type="button"
+                        class="ug-members-more"
+                        [matMenuTriggerFor]="membersMenu"
+                        #membersTrigger="matMenuTrigger"
+                        (mouseenter)="openMembersMenu(membersTrigger)"
+                        (mouseleave)="scheduleCloseMembersMenu(membersTrigger)"
+                        (focus)="openMembersMenu(membersTrigger)"
+                        (blur)="scheduleCloseMembersMenu(membersTrigger)"
+                        [attr.aria-label]="membersMoreAriaLabel(g)"
+                        [attr.aria-expanded]="membersTrigger.menuOpen"
+                        [attr.aria-haspopup]="'menu'"
+                      >
+                        +{{ membersOverflowCount(g) }}
+                      </button>
+                    </span>
+                    <mat-menu
+                      #membersMenu="matMenu"
+                      class="ug-members-menu"
+                      [hasBackdrop]="false"
+                      xPosition="after"
+                      yPosition="below"
+                    >
+                      <div
+                        class="ug-members-menu__panel"
+                        role="region"
+                        [attr.aria-label]="membersMoreAriaLabel(g)"
+                        (mouseenter)="onMembersMenuPanelEnter(membersTrigger)"
+                        (mouseleave)="onMembersMenuPanelLeave(membersTrigger)"
+                      >
+                        <ul class="ug-members-menu__list">
+                          @for (member of membersOverflowUsernames(g); track member) {
+                            <li class="ug-members-menu__item">{{ member }}</li>
+                          }
+                        </ul>
+                      </div>
+                    </mat-menu>
+                  } @else {
+                    {{ membersPreview(g) }}
+                  }
+                </td>
               </ng-container>
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef></th>
