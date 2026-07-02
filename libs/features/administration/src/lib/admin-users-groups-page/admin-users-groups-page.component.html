@@ -216,8 +216,6 @@
                         #membersTrigger="matMenuTrigger"
                         (mouseenter)="openMembersMenu(membersTrigger)"
                         (mouseleave)="scheduleCloseMembersMenu(membersTrigger)"
-                        (focus)="openMembersMenu(membersTrigger)"
-                        (blur)="scheduleCloseMembersMenu(membersTrigger)"
                         [attr.aria-label]="membersMoreAriaLabel(g)"
                         [attr.aria-expanded]="membersTrigger.menuOpen"
                         [attr.aria-haspopup]="'menu'"
@@ -234,16 +232,19 @@
                     >
                       <div
                         class="ug-members-menu__panel"
-                        role="region"
-                        [attr.aria-label]="membersMoreAriaLabel(g)"
                         (mouseenter)="onMembersMenuPanelEnter(membersTrigger)"
                         (mouseleave)="onMembersMenuPanelLeave(membersTrigger)"
                       >
-                        <ul class="ug-members-menu__list">
-                          @for (member of membersOverflowUsernames(g); track member) {
-                            <li class="ug-members-menu__item">{{ member }}</li>
-                          }
-                        </ul>
+                        @for (member of membersOverflowUsernames(g); track member) {
+                          <button
+                            mat-menu-item
+                            type="button"
+                            class="ug-members-menu__item"
+                            disabled
+                          >
+                            {{ member }}
+                          </button>
+                        }
                       </div>
                     </mat-menu>
                   } @else {

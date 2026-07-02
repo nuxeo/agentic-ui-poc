@@ -169,10 +169,12 @@ describe('AdminUsersGroupsPageComponent (NXSAT-166)', () => {
     expect(panel?.textContent).not.toContain('u1');
     expect(panel?.textContent).not.toContain('more members');
 
-    const items = document.querySelectorAll('.ug-members-menu__item');
+    const items = document.querySelectorAll('button.ug-members-menu__item');
     expect(items.length).toBe(4);
     expect(items[0]?.textContent?.trim()).toBe('u4');
     expect(items[3]?.textContent?.trim()).toBe('u7');
+    expect(items[0]?.tagName).toBe('BUTTON');
+    expect(items[0]?.classList.contains('mat-mdc-menu-item')).toBe(true);
   }));
 
   it('lists overflow members only in dropdown helpers', () => {

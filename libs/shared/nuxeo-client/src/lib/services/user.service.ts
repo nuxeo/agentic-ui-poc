@@ -38,7 +38,7 @@ export class UserService {
   searchGroups(query: string): Observable<NuxeoGroup[]> {
     const params = new HttpParams().set('q', query);
     return this.api
-      .get<NuxeoGroupList>('/nuxeo/api/v1/group/search', params, { ...GROUP_MEMBERS_FETCH_HEADER })
+      .get<NuxeoGroupList>('/nuxeo/api/v1/group/search', params)
       .pipe(map((res) => res.entries));
   }
 

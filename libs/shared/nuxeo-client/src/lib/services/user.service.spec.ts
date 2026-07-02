@@ -122,6 +122,20 @@ describe('UserService', () => {
     req.flush({ 'entity-type': 'group', groupname: 'group/with space' });
   });
 
+  it('does not request group members on lightweight group search (participant picker)', () => {
+    service.searchGroups('adm').subscribe();
+    const req = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/group/search' && r.params.get('q') === 'adm',
+    );
+    expect(req.request.headers.has('fetch.group')).toBe(false);
+    req.flush({
+      'entity-type': 'groups',
+      entries: [
+        { 'entity-type': 'group', groupname: 'administrators', grouplabel: 'Administrators' },
+      ],
+    });
+  });
+
   it('requests group members on paged group search (NXSAT-171)', () => {
     service.searchGroupsPaged('*', 5, 0).subscribe();
     const req = httpMock.expectOne(
