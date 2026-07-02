@@ -1,4 +1,5 @@
 import { normalizeDocumentAcls, resolveAcePrincipal } from './ace-principal';
+import type { NuxeoAce, NuxeoAcl } from '../models/acl.model';
 import type { NuxeoDocument } from '../models/document.model';
 
 describe('ace-principal', () => {
@@ -29,37 +30,39 @@ describe('ace-principal', () => {
   });
 
   it('normalizeDocumentAcls stringifies username and creator on all ACEs', () => {
-    const doc = {
-      uid: 'root-uid',
-      contextParameters: {
-        acls: [
-          {
-            name: 'local',
-            aces: [
-              {
-                id: 'ace-1',
-                username: {
-                  'entity-type': 'user',
-                  id: 'Administrator',
-                  properties: { username: 'Administrator' },
-                },
-                externalUser: false,
-                permission: 'Everything',
-                granted: true,
-                creator: {
-                  'entity-type': 'user',
-                  id: 'Administrator',
-                  properties: { username: 'Administrator' },
-                },
-                begin: null,
-                end: null,
-                status: 'effective',
-              },
-            ],
-          },
-        ],
+    const enrichedAces = [
+      {
+        id: 'ace-1',
+        username: {
+          'entity-type': 'user',
+          id: 'Administrator',
+          properties: { username: 'Administrator' },
+        },
+        externalUser: false,
+        permission: 'Everything',
+        granted: true,
+        creator: {
+          'entity-type': 'user',
+          id: 'Administrator',
+          properties: { username: 'Administrator' },
+        },
+        begin: null,
+        end: null,
+        status: 'effective',
       },
-    } as unknown as NuxeoDocument;
+    ] as unknown as NuxeoAce[];
+
+    const doc: NuxeoDocument = {
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: {
+        acls: [{ name: 'local', aces: enrichedAces } satisfies NuxeoAcl],
+      },
+    };
 
     const normalized = normalizeDocumentAcls(doc);
     const ace = normalized.contextParameters?.['acls']?.[0]?.aces?.[0];

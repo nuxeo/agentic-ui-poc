@@ -235,4 +235,33 @@ describe('BrowseComponent', () => {
       { name: 'local', aces: [] },
     ]);
   });
+
+  it('retries permissions load after a failed fetch when the tab is reopened', () => {
+    mockDocumentDetailService.getDocumentPermissions
+      .mockReturnValueOnce(throwError(() => new Error('network error')))
+      .mockReturnValueOnce(
+        of({
+          uid: 'root-uid',
+          contextParameters: { acls: [{ name: 'local', aces: [] }] },
+        } as NuxeoDocument),
+      );
+
+    component.currentDoc.set({
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: {},
+    } as NuxeoDocument);
+
+    component.onTabChange(1);
+    component.onTabChange(0);
+    component.onTabChange(1);
+
+    expect(mockDocumentDetailService.getDocumentPermissions).toHaveBeenCalledTimes(2);
+    expect(component.permissionsLoaded()).toBe(true);
+    expect(component.permissionsLoading()).toBe(false);
+  });
 });

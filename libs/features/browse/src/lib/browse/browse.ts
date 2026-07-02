@@ -1054,9 +1054,7 @@ export class BrowseComponent {
         },
         error: () => {
           this.permissionsLoading.set(false);
-          if (!this.permissionsLoaded()) {
-            this.permissionsLoaded.set(true);
-          }
+          this.snackBar.open('Failed to load permissions', 'OK', { duration: 4000 });
         },
       });
   }
@@ -1090,12 +1088,15 @@ export class BrowseComponent {
       data: { documentUid: doc.uid } satisfies AddPermissionDialogData,
       width: '560px',
     });
-    dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
-      if (created) {
-        this.reloadPermissions();
-        this.snackBar.open('Permission added', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created: boolean | undefined) => {
+        if (created) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission added', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   editPermission(ace: NuxeoAce): void {
@@ -1105,12 +1106,15 @@ export class BrowseComponent {
       data: { documentUid: doc.uid, ace } satisfies UpdatePermissionDialogData,
       width: '520px',
     });
-    dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
-      if (updated) {
-        this.reloadPermissions();
-        this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   deletePermission(ace: NuxeoAce): void {
@@ -1125,12 +1129,15 @@ export class BrowseComponent {
       } satisfies DeletePermissionDialogData,
       width: '560px',
     });
-    dialogRef.afterClosed().subscribe((deleted: boolean | undefined) => {
-      if (deleted) {
-        this.reloadPermissions();
-        this.snackBar.open('Permission deleted', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((deleted: boolean | undefined) => {
+        if (deleted) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission deleted', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   toggleInheritance(): void {
@@ -1141,7 +1148,7 @@ export class BrowseComponent {
     const op = blocked
       ? this.detailService.unblockPermissionInheritance(doc.uid)
       : this.detailService.blockPermissionInheritance(doc.uid);
-    op.subscribe({
+    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.actionInProgress.set(null);
         this.reloadPermissions();
@@ -1163,12 +1170,15 @@ export class BrowseComponent {
       data: { documentUid: doc.uid } satisfies ShareExternalDialogData,
       width: '520px',
     });
-    dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
-      if (created) {
-        this.reloadPermissions();
-        this.snackBar.open('Shared with external user', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created: boolean | undefined) => {
+        if (created) {
+          this.reloadPermissions();
+          this.snackBar.open('Shared with external user', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   editExternalPermission(ace: NuxeoAce): void {
@@ -1178,27 +1188,33 @@ export class BrowseComponent {
       data: { documentUid: doc.uid, ace, isExternal: true } satisfies UpdatePermissionDialogData,
       width: '520px',
     });
-    dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
-      if (updated) {
-        this.reloadPermissions();
-        this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   sendNotificationEmail(ace: NuxeoAce): void {
     const doc = this.currentDoc();
     if (!doc || this.actionInProgress()) return;
     this.actionInProgress.set('notify-' + ace.id);
-    this.detailService.sendNotificationEmailForPermission(doc.uid, ace.id).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.snackBar.open('Failed to send notification', 'OK', { duration: 3000 });
-      },
-    });
+    this.detailService
+      .sendNotificationEmailForPermission(doc.uid, ace.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.snackBar.open('Failed to send notification', 'OK', { duration: 3000 });
+        },
+      });
   }
 }

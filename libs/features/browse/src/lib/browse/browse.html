@@ -345,7 +345,7 @@
           <!-- ═══════ PERMISSIONS TAB ═══════ -->
           <mat-tab label="Permissions">
             <div class="permissions-container">
-              @if (permissionsLoading() || !permissionsLoaded()) {
+              @if (permissionsLoading()) {
                 <div class="browse-loading"><mat-spinner diameter="24" /></div>
               } @else {
                 <!-- Permissions defined locally -->
