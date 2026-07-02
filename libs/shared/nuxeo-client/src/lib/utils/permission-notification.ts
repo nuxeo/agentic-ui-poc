@@ -38,6 +38,15 @@ export function permissionUpdateMailFailureMessage(): string {
   return 'Permission could not be updated. Configure outbound mail (SMTP) on the Nuxeo server.';
 }
 
+/** Permission saved but local ACE id could not be resolved for a follow-up notification send. */
+export function permissionNotificationAceNotFoundMessage(context: 'add' | 'update'): string {
+  const action =
+    context === 'add'
+      ? 'Permission was added, but the notification email could not be sent because the new permission entry could not be located.'
+      : 'Permission was updated, but the notification email could not be sent because the permission entry could not be located.';
+  return `${action} Refresh the page and try resending from the Permissions tab.`;
+}
+
 /** Locates a granted local ACE for a user or group principal after AddPermission. */
 export function findLocalAceForPrincipal(
   doc: NuxeoDocument,

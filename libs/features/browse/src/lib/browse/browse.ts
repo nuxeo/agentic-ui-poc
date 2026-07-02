@@ -1145,18 +1145,21 @@ export class BrowseComponent {
     const doc = this.currentDoc();
     if (!doc || this.actionInProgress()) return;
     this.actionInProgress.set('notify-' + ace.id);
-    this.detailService.sendNotificationEmailForPermission(doc.uid, ace.id).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
-      },
-      error: (err) => {
-        this.actionInProgress.set(null);
-        const message = isMailSendError(err)
-          ? mailSendFailureMessage('send')
-          : 'Failed to send notification';
-        this.snackBar.open(message, 'OK', { duration: 7000 });
-      },
-    });
+    this.detailService
+      .sendNotificationEmailForPermission(doc.uid, ace.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
+        },
+        error: (err) => {
+          this.actionInProgress.set(null);
+          const message = isMailSendError(err)
+            ? mailSendFailureMessage('send')
+            : 'Failed to send notification';
+          this.snackBar.open(message, 'OK', { duration: 7000 });
+        },
+      });
   }
 }

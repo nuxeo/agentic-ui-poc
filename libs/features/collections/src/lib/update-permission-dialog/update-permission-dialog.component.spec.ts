@@ -36,6 +36,7 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
 
   beforeEach(async () => {
     closeSpy = vi.fn();
+    snackBarOpenSpy = vi.fn();
     replacePermissionWithNotification = vi
       .fn()
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
@@ -60,11 +61,15 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
             addExternalPermissionWithNotification,
           },
         },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(UpdatePermissionDialogComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(UpdatePermissionDialogComponent);
-    snackBarOpenSpy = vi.spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
     fixture.componentInstance.sendNotify = true;
     fixture.componentInstance.notifyComment = 'Updated access';
     fixture.detectChanges();
@@ -134,11 +139,15 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
             addExternalPermissionWithNotification,
           },
         },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(UpdatePermissionDialogComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
 
     const externalFixture = TestBed.createComponent(UpdatePermissionDialogComponent);
-    snackBarOpenSpy = vi.spyOn(externalFixture.debugElement.injector.get(MatSnackBar), 'open');
     externalFixture.componentInstance.endDate = new Date('2026-12-31');
     externalFixture.componentInstance.notifyComment = 'External invite';
     externalFixture.detectChanges();

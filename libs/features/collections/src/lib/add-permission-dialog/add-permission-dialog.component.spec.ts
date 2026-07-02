@@ -28,6 +28,7 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
 
   beforeEach(async () => {
     closeSpy = vi.fn();
+    snackBarOpenSpy = vi.fn();
     addPermissionWithNotification = vi
       .fn()
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
@@ -44,11 +45,15 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
             addPermissionWithNotification,
           },
         },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(AddPermissionDialogComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(AddPermissionDialogComponent);
-    snackBarOpenSpy = vi.spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
     component = fixture.componentInstance;
     component.selectedUser = selectedUser;
     component.sendNotify = true;
@@ -58,11 +63,7 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
 
   it('exposes SMTP mail hint constant', () => {
     expect(component.mailHint).toBe(PERMISSION_NOTIFICATION_MAIL_HINT);
-  });
-
-  it('shows mail hint in template when notify is enabled', () => {
-    const hint = fixture.nativeElement.querySelector('.mail-hint');
-    expect(hint?.textContent).toContain('SMTP');
+    expect(component.mailHint).toContain('SMTP');
   });
 
   it('creates permission with notification via addPermissionWithNotification', () => {

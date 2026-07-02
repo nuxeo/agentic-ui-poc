@@ -5,6 +5,7 @@ import {
   findLocalAceForPrincipal,
   isMailSendError,
   mailSendFailureMessage,
+  permissionNotificationAceNotFoundMessage,
 } from './permission-notification';
 
 function docWithLocalAces(
@@ -49,6 +50,11 @@ describe('permission-notification', () => {
   it('mailSendFailureMessage includes SMTP guidance', () => {
     expect(mailSendFailureMessage('add')).toContain('SMTP');
     expect(mailSendFailureMessage('send')).toContain('Notification email could not be sent');
+  });
+
+  it('permissionNotificationAceNotFoundMessage does not blame SMTP', () => {
+    expect(permissionNotificationAceNotFoundMessage('add')).toContain('could not be located');
+    expect(permissionNotificationAceNotFoundMessage('add')).not.toContain('SMTP');
   });
 
   it('findLocalAceForPrincipal returns the latest matching local ACE', () => {

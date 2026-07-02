@@ -8,6 +8,7 @@ import {
   findLocalAceForPrincipal,
   isMailSendError,
   mailSendFailureMessage,
+  permissionNotificationAceNotFoundMessage,
   type PermissionWithNotificationResult,
 } from '../utils/permission-notification';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -567,7 +568,7 @@ export class DocumentDetailService {
           return of({
             document,
             notificationSent: false,
-            notificationError: mailSendFailureMessage(context),
+            notificationError: permissionNotificationAceNotFoundMessage(context),
           });
         }
         return this.sendPermissionNotificationResult(uid, resolvedAce.id, document, context);

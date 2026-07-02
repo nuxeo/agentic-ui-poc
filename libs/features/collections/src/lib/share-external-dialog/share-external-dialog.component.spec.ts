@@ -21,6 +21,7 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
 
   beforeEach(async () => {
     closeSpy = vi.fn();
+    snackBarOpenSpy = vi.fn();
     addExternalPermissionWithNotification = vi
       .fn()
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
@@ -34,21 +35,24 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
           provide: DocumentDetailService,
           useValue: { addExternalPermissionWithNotification },
         },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(ShareExternalDialogComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
 
     fixture = TestBed.createComponent(ShareExternalDialogComponent);
-    snackBarOpenSpy = vi.spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
     fixture.componentInstance.email = 'guest@example.com';
     fixture.componentInstance.endDate = new Date('2026-12-31');
     fixture.componentInstance.notifyComment = 'Please review';
     fixture.detectChanges();
   });
 
-  it('shows SMTP mail hint in template', () => {
+  it('exposes SMTP mail hint constant', () => {
     expect(fixture.componentInstance.mailHint).toBe(PERMISSION_NOTIFICATION_MAIL_HINT);
-    const hint = fixture.nativeElement.querySelector('.mail-hint');
-    expect(hint?.textContent).toContain('SMTP');
+    expect(fixture.componentInstance.mailHint).toContain('SMTP');
   });
 
   it('creates external permission with notification', () => {

@@ -179,6 +179,7 @@ export {
   isMailSendError,
   mailSendFailureMessage,
   permissionCreateMailFailureMessage,
+  permissionNotificationAceNotFoundMessage,
   permissionUpdateMailFailureMessage,
   type PermissionWithNotificationResult,
 } from './lib/utils/permission-notification';

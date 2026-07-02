@@ -16,13 +16,19 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE = process.env.AGENTIC_UI_BASE_URL ?? 'http://localhost:4200';
 const NUXEO = process.env.NUXEO_BASE_URL ?? 'http://localhost:8080/nuxeo';
-const user = process.env.NUXEO_TEST_USER ?? 'Administrator';
-const pass = process.env.NUXEO_TEST_PASSWORD ?? 'Administrator';
+const user = process.env.NUXEO_TEST_USER;
+const pass = process.env.NUXEO_TEST_PASSWORD;
 const HEADED = process.env.AGENTIC_UI_HEADED !== '0';
 const SLOW_MO = Number(process.env.AGENTIC_UI_SLOW_MO ?? (HEADED ? 600 : 0));
-const DOC_UID =
-  process.env.NUXEO_TEST_DOC_UID ?? '609dffbe-7fab-4213-a743-b685a3eb0019';
+const DOC_UID = process.env.NUXEO_TEST_DOC_UID ?? '609dffbe-7fab-4213-a743-b685a3eb0019';
 const SHOT_DIR = path.join(__dirname, 'screenshots', 'nxsat-159');
+
+if (!user || !pass) {
+  console.error(
+    'Set NUXEO_TEST_USER and NUXEO_TEST_PASSWORD environment variables before running this script.',
+  );
+  process.exit(1);
+}
 
 const results = [];
 
@@ -342,7 +348,7 @@ async function main() {
 
   try {
     await login(page);
-    log('Login', 'PASS', user);
+    log('Login', 'PASS');
     await shot(page, '00-dashboard');
 
     await openPermissionsTab(page, 'doc-detail');

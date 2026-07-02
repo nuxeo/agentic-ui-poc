@@ -165,7 +165,7 @@ const PERMISSION_OPTIONS = [
       .mail-hint {
         margin: 0 0 8px;
         font-size: 12px;
-        color: #6b7280;
+        color: var(--mat-sys-on-surface-variant);
         line-height: 1.4;
       }
 
