@@ -1,7 +1,7 @@
+import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -14,6 +14,18 @@ import {
 
 import { UpdatePermissionDialogComponent } from './update-permission-dialog';
 
+const ace: NuxeoAce = {
+  id: 'ace-1',
+  username: 'user-readonly01',
+  externalUser: false,
+  permission: 'Read',
+  granted: true,
+  creator: 'admin',
+  begin: null,
+  end: null,
+  status: 'effective',
+};
+
 describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
   let fixture: ComponentFixture<UpdatePermissionDialogComponent>;
   let closeSpy: ReturnType<typeof vi.fn>;
@@ -21,18 +33,6 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
   let replacePermissionWithNotification: ReturnType<typeof vi.fn>;
   let removePermission: ReturnType<typeof vi.fn>;
   let addExternalPermissionWithNotification: ReturnType<typeof vi.fn>;
-
-  const ace: NuxeoAce = {
-    id: 'ace-1',
-    username: 'user-readonly01',
-    externalUser: false,
-    permission: 'Read',
-    granted: true,
-    creator: 'admin',
-    begin: null,
-    end: null,
-    status: 'effective',
-  };
 
   beforeEach(async () => {
     closeSpy = vi.fn();
@@ -46,8 +46,9 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
 
     await TestBed.configureTestingModule({
-      imports: [UpdatePermissionDialogComponent, NoopAnimationsModule],
+      imports: [UpdatePermissionDialogComponent],
       providers: [
+        provideExperimentalZonelessChangeDetection(),
         {
           provide: MAT_DIALOG_DATA,
           useValue: { documentUid: 'doc-1', ace, isExternal: false },
@@ -65,14 +66,13 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
       ],
     })
       .overrideComponent(UpdatePermissionDialogComponent, {
-        set: { imports: [], template: '<div></div>' },
+        set: { imports: [], providers: [], template: '<div></div>' },
       })
       .compileComponents();
 
     fixture = TestBed.createComponent(UpdatePermissionDialogComponent);
     fixture.componentInstance.sendNotify = true;
     fixture.componentInstance.notifyComment = 'Updated access';
-    fixture.detectChanges();
   });
 
   it('exposes SMTP mail hint constant', () => {
@@ -117,11 +117,45 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
     );
   });
 
-  it('updates external permission via addExternalPermissionWithNotification', async () => {
-    TestBed.resetTestingModule();
+  it('shows SMTP error when update fails due to mail', () => {
+    replacePermissionWithNotification.mockReturnValue(
+      throwError(() => ({
+        error: { message: 'An error occurred while sending a mail' },
+      })),
+    );
+
+    fixture.componentInstance.update();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(permissionUpdateMailFailureMessage(), 'Dismiss', {
+      duration: 7000,
+    });
+    expect(closeSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('UpdatePermissionDialogComponent external (NXSAT-159)', () => {
+  let fixture: ComponentFixture<UpdatePermissionDialogComponent>;
+  let closeSpy: ReturnType<typeof vi.fn>;
+  let snackBarOpenSpy: ReturnType<typeof vi.fn>;
+  let replacePermissionWithNotification: ReturnType<typeof vi.fn>;
+  let removePermission: ReturnType<typeof vi.fn>;
+  let addExternalPermissionWithNotification: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    closeSpy = vi.fn();
+    snackBarOpenSpy = vi.fn();
+    replacePermissionWithNotification = vi
+      .fn()
+      .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
+    removePermission = vi.fn().mockReturnValue(of({ uid: 'doc-1' }));
+    addExternalPermissionWithNotification = vi
+      .fn()
+      .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
+
     await TestBed.configureTestingModule({
-      imports: [UpdatePermissionDialogComponent, NoopAnimationsModule],
+      imports: [UpdatePermissionDialogComponent],
       providers: [
+        provideExperimentalZonelessChangeDetection(),
         {
           provide: MAT_DIALOG_DATA,
           useValue: {
@@ -143,16 +177,17 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
       ],
     })
       .overrideComponent(UpdatePermissionDialogComponent, {
-        set: { imports: [], template: '<div></div>' },
+        set: { imports: [], providers: [], template: '<div></div>' },
       })
       .compileComponents();
 
-    const externalFixture = TestBed.createComponent(UpdatePermissionDialogComponent);
-    externalFixture.componentInstance.endDate = new Date('2026-12-31');
-    externalFixture.componentInstance.notifyComment = 'External invite';
-    externalFixture.detectChanges();
+    fixture = TestBed.createComponent(UpdatePermissionDialogComponent);
+    fixture.componentInstance.endDate = new Date('2026-12-31');
+    fixture.componentInstance.notifyComment = 'External invite';
+  });
 
-    externalFixture.componentInstance.update();
+  it('updates external permission via addExternalPermissionWithNotification', () => {
+    fixture.componentInstance.update();
 
     expect(removePermission).toHaveBeenCalled();
     expect(addExternalPermissionWithNotification).toHaveBeenCalledWith(
@@ -168,20 +203,5 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
       'Dismiss',
       { duration: 7000 },
     );
-  });
-
-  it('shows SMTP error when update fails due to mail', () => {
-    replacePermissionWithNotification.mockReturnValue(
-      throwError(() => ({
-        error: { message: 'An error occurred while sending a mail' },
-      })),
-    );
-
-    fixture.componentInstance.update();
-
-    expect(snackBarOpenSpy).toHaveBeenCalledWith(permissionUpdateMailFailureMessage(), 'Dismiss', {
-      duration: 7000,
-    });
-    expect(closeSpy).not.toHaveBeenCalled();
   });
 });

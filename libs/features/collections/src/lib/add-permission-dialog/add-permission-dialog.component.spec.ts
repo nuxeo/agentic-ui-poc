@@ -1,7 +1,7 @@
+import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -34,8 +34,9 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
 
     await TestBed.configureTestingModule({
-      imports: [AddPermissionDialogComponent, NoopAnimationsModule],
+      imports: [AddPermissionDialogComponent],
       providers: [
+        provideExperimentalZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: { documentUid: 'doc-1' } },
         { provide: MatDialogRef, useValue: { close: closeSpy } },
         {
@@ -49,7 +50,7 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
       ],
     })
       .overrideComponent(AddPermissionDialogComponent, {
-        set: { imports: [], template: '<div></div>' },
+        set: { imports: [], providers: [], template: '<div></div>' },
       })
       .compileComponents();
 
@@ -58,7 +59,6 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
     component.selectedUser = selectedUser;
     component.sendNotify = true;
     component.notifyComment = 'Please review this document';
-    fixture.detectChanges();
   });
 
   it('exposes SMTP mail hint constant', () => {

@@ -340,7 +340,6 @@ async function writeReport() {
 async function main() {
   await mkdir(SHOT_DIR, { recursive: true });
   console.log(`\nNXSAT-159 permission notification — live browser QA`);
-  console.log(`UI: ${BASE}  |  Nuxeo: ${NUXEO}  |  Doc: ${DOC_UID}`);
   console.log(`Mode: ${HEADED ? 'HEADED (watch the browser)' : 'headless'}\n`);
 
   const browser = await chromium.launch({ headless: !HEADED, slowMo: SLOW_MO });

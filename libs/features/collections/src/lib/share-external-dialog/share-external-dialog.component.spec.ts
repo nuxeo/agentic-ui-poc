@@ -1,7 +1,7 @@
+import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -27,8 +27,9 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
       .mockReturnValue(of({ document: { uid: 'doc-1' }, notificationSent: true }));
 
     await TestBed.configureTestingModule({
-      imports: [ShareExternalDialogComponent, NoopAnimationsModule],
+      imports: [ShareExternalDialogComponent],
       providers: [
+        provideExperimentalZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: { documentUid: 'doc-1' } },
         { provide: MatDialogRef, useValue: { close: closeSpy } },
         {
@@ -39,7 +40,7 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
       ],
     })
       .overrideComponent(ShareExternalDialogComponent, {
-        set: { imports: [], template: '<div></div>' },
+        set: { imports: [], providers: [], template: '<div></div>' },
       })
       .compileComponents();
 
@@ -47,7 +48,6 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
     fixture.componentInstance.email = 'guest@example.com';
     fixture.componentInstance.endDate = new Date('2026-12-31');
     fixture.componentInstance.notifyComment = 'Please review';
-    fixture.detectChanges();
   });
 
   it('exposes SMTP mail hint constant', () => {
