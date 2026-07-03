@@ -98,6 +98,49 @@ describe('DocumentDetailService permissions', () => {
     await doc$;
   });
 
+  it('getDocumentPermissions normalizes enriched username and creator entities', async () => {
+    const doc$ = firstValueFrom(service.getDocumentPermissions('root-uid'));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/id/root-uid');
+    expect(req.request.headers.get('fetch-acls')).toBe('username,creator,extended');
+    req.flush({
+      uid: 'root-uid',
+      contextParameters: {
+        acls: [
+          {
+            name: 'local',
+            aces: [
+              {
+                id: 'ace-1',
+                username: {
+                  'entity-type': 'user',
+                  id: 'Administrator',
+                  properties: { username: 'Administrator' },
+                },
+                externalUser: false,
+                permission: 'Everything',
+                granted: true,
+                creator: {
+                  'entity-type': 'user',
+                  id: 'Administrator',
+                  properties: { username: 'Administrator' },
+                },
+                begin: null,
+                end: null,
+                status: 'effective',
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const doc = await doc$;
+    const ace = doc.contextParameters?.['acls']?.[0]?.aces?.[0];
+    expect(ace?.username).toBe('Administrator');
+    expect(ace?.creator).toBe('Administrator');
+  });
+
   it('addExternalPermission sends creator from CURRENT_USERNAME', async () => {
     const doc$ = firstValueFrom(
       service.addExternalPermission('doc-uid', {

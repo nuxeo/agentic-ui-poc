@@ -78,7 +78,7 @@ export class AdminUsersGroupsPageComponent implements OnInit {
 
   users = signal<NuxeoUser[]>([]);
   groups = signal<NuxeoGroup[]>([]);
-  readonly pageSize = 5;
+  readonly pageSize = 20;
   readonly usersPageIndex = signal(0);
   readonly groupsPageIndex = signal(0);
   readonly usersTotal = signal(0);
@@ -303,33 +303,35 @@ export class AdminUsersGroupsPageComponent implements OnInit {
       .pipe(
         filter((r): r is UserFormDialogResult => !!r && r.mode === 'create'),
         switchMap((r) => {
-          const invited = !r.password?.trim();
-          return this.userService
-            .createUser({
-              username: r.username,
-              firstName: r.firstName,
-              lastName: r.lastName,
-              company: r.company,
-              email: r.email,
-              password: r.password,
-              groups: r.groups,
-            })
-            .pipe(
-              tap(() => {
-                this.snackBar.open(invited ? 'Invitation sent' : 'User created', 'Dismiss', {
-                  duration: 3000,
-                });
-                this.afterMutation();
-              }),
-              map(() => r.createAnother === true),
-              catchError((e) => {
-                this.snackBar.open(this.createUserErrorMessage(e, invited), 'Dismiss', {
-                  duration: 7000,
-                });
-                return of(false);
-              }),
-            );
+          const invited = r.invited === true;
+          if (invited) {
+            return of({ r, invited: true as const, user: null });
+          }
+          return this.userService.getUser(r.username).pipe(
+            map((user) => ({ r, invited: false as const, user })),
+            catchError(() => of({ r, invited: false as const, user: null })),
+          );
         }),
+        tap(({ r, invited, user }) => {
+          if (!invited && user) {
+            const current = this.users();
+            if (!current.some((u) => u.id === user.id)) {
+              this.users.set([user, ...current]);
+            }
+          }
+          this.snackBar.open(
+            invited
+              ? `Invitation sent to ${r.email}. The user will appear after they accept.`
+              : 'User created',
+            'Dismiss',
+            { duration: invited ? 6000 : 3000 },
+          );
+          if (!invited) {
+            this.combinedSearchQuery = r.username;
+          }
+          this.afterMutation();
+        }),
+        map(({ r }) => r.createAnother === true),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((createAnother) => {
@@ -541,13 +543,5 @@ export class AdminUsersGroupsPageComponent implements OnInit {
     const m = group.memberUsers ?? [];
     if (m.length <= 3) return m.join(', ');
     return `${m.slice(0, 3).join(', ')} +${m.length - 3}`;
-  }
-
-  private createUserErrorMessage(err: unknown, invited: boolean): string {
-    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
-    if (invited && raw?.toLowerCase().includes('sending a mail')) {
-      return 'Invitation could not be sent. Configure outbound mail (SMTP) on the Nuxeo server.';
-    }
-    return raw || 'Create failed';
   }
 }

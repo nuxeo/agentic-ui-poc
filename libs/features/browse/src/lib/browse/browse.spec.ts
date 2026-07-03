@@ -10,6 +10,8 @@ import {
   DocumentDetailService,
   DirectoryService,
   mailSendFailureMessage,
+  NuxeoAce,
+  NuxeoDocument,
   TagService,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -24,6 +26,7 @@ const mockBrowseService = {
 
 const mockDocumentDetailService = {
   getFullDocument: vi.fn(() => EMPTY),
+  getDocumentPermissions: vi.fn(() => EMPTY),
   fetchThumbnail: vi.fn(() => EMPTY),
   getAuditLog: vi.fn(() => of({ entries: [], totalSize: 0 })),
   trashDocument: vi.fn(() => EMPTY),
@@ -54,6 +57,8 @@ describe('BrowseComponent', () => {
 
   beforeEach(async () => {
     snackBarOpenSpy = vi.fn();
+    vi.clearAllMocks();
+    mockDocumentDetailService.getDocumentPermissions.mockReturnValue(EMPTY);
     await TestBed.configureTestingModule({
       imports: [BrowseComponent],
       providers: [
@@ -144,5 +149,188 @@ describe('BrowseComponent', () => {
     expect(snackBarOpenSpy).toHaveBeenCalledWith(mailSendFailureMessage('send'), 'OK', {
       duration: 7000,
     });
+  });
+
+  it('aceTimeFrame shows date-based label when ACL has begin and end', () => {
+    const ace: NuxeoAce = {
+      id: 'ace-1',
+      username: 'members',
+      externalUser: false,
+      permission: 'Read',
+      granted: true,
+      creator: 'Administrator',
+      begin: '2026-07-01T00:00:00.000Z',
+      end: '2026-12-31T23:59:59.000Z',
+      status: 'effective',
+    };
+
+    expect(component.aceTimeFrame(ace)).not.toBe('Permanent');
+    expect(component.aceTimeFrame(ace)).toContain('from');
+    expect(component.aceTimeFrame(ace)).toContain('to');
+  });
+
+  it('localAces reflects persisted date-based permissions after reload', () => {
+    const doc = {
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: {
+        acls: [
+          {
+            name: 'local',
+            aces: [
+              {
+                id: 'ace-1',
+                username: 'members',
+                externalUser: false,
+                permission: 'Read',
+                granted: true,
+                creator: 'Administrator',
+                begin: '2026-07-01T00:00:00.000Z',
+                end: '2026-12-31T23:59:59.000Z',
+                status: 'effective',
+              },
+              {
+                id: 'ace-2',
+                username: 'administrators',
+                externalUser: false,
+                permission: 'Everything',
+                granted: true,
+                creator: 'Administrator',
+                begin: null,
+                end: null,
+                status: 'effective',
+              },
+            ],
+          },
+        ],
+      },
+    } as NuxeoDocument;
+
+    component.currentDoc.set(doc);
+
+    expect(component.localAces()).toHaveLength(2);
+    expect(component.aceTimeFrame(component.localAces()[0])).not.toBe('Permanent');
+    expect(component.aceTimeFrame(component.localAces()[1])).toBe('Permanent');
+  });
+
+  it('localAces excludes external and non-granted ACEs', () => {
+    const doc = {
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: {
+        acls: [
+          {
+            name: 'local',
+            aces: [
+              {
+                id: 'ace-1',
+                username: 'members',
+                externalUser: false,
+                permission: 'Read',
+                granted: true,
+                creator: 'Administrator',
+                begin: null,
+                end: null,
+                status: 'effective',
+              },
+              {
+                id: 'ace-2',
+                username: 'transient/guest@example.com',
+                externalUser: true,
+                permission: 'Read',
+                granted: true,
+                creator: 'Administrator',
+                begin: null,
+                end: null,
+                status: 'effective',
+              },
+              {
+                id: 'ace-3',
+                username: 'revoked',
+                externalUser: false,
+                permission: 'Read',
+                granted: false,
+                creator: 'Administrator',
+                begin: null,
+                end: null,
+                status: 'archived',
+              },
+            ],
+          },
+        ],
+      },
+    } as NuxeoDocument;
+
+    component.currentDoc.set(doc);
+
+    expect(component.localAces()).toHaveLength(1);
+    expect(component.localAces()[0].username).toBe('members');
+  });
+
+  it('onTabChange loads permissions via getDocumentPermissions', () => {
+    const permissionsDoc = {
+      uid: 'root-uid',
+      contextParameters: {
+        acls: [{ name: 'local', aces: [] }],
+      },
+    } as NuxeoDocument;
+    mockDocumentDetailService.getDocumentPermissions.mockReturnValue(of(permissionsDoc));
+
+    component.currentDoc.set({
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: { favorites: { isFavorite: false } },
+    } as NuxeoDocument);
+
+    component.onTabChange(1);
+
+    expect(mockDocumentDetailService.getDocumentPermissions).toHaveBeenCalledWith('root-uid');
+    expect(component.permissionsLoaded()).toBe(true);
+    expect(component.permissionsLoading()).toBe(false);
+    expect(component.currentDoc()?.contextParameters?.['favorites']).toEqual({ isFavorite: false });
+    expect(component.currentDoc()?.contextParameters?.['acls']).toEqual([
+      { name: 'local', aces: [] },
+    ]);
+  });
+
+  it('retries permissions load after a failed fetch when the tab is reopened', () => {
+    mockDocumentDetailService.getDocumentPermissions
+      .mockReturnValueOnce(throwError(() => new Error('network error')))
+      .mockReturnValueOnce(
+        of({
+          uid: 'root-uid',
+          contextParameters: { acls: [{ name: 'local', aces: [] }] },
+        } as NuxeoDocument),
+      );
+
+    component.currentDoc.set({
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: {},
+    } as NuxeoDocument);
+
+    component.onTabChange(1);
+    component.onTabChange(0);
+    component.onTabChange(1);
+
+    expect(mockDocumentDetailService.getDocumentPermissions).toHaveBeenCalledTimes(2);
+    expect(component.permissionsLoaded()).toBe(true);
+    expect(component.permissionsLoading()).toBe(false);
   });
 });

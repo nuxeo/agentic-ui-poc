@@ -121,4 +121,27 @@ describe('UserService', () => {
     expect(req.request.headers.get('fetch.group')).toBe('memberUsers,memberGroups');
     req.flush({ 'entity-type': 'group', groupname: 'group/with space' });
   });
+
+  it('uses wildcard user search when query is empty (NXSAT-151)', async () => {
+    const list$ = firstValueFrom(service.searchUsersPaged('', 20, 0));
+
+    const req = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/user/search');
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('q')).toBe('*');
+    expect(req.request.params.get('pageSize')).toBe('20');
+    expect(req.request.params.get('currentPageIndex')).toBe('0');
+    req.flush({ 'entity-type': 'users', entries: [], totalSize: 0 });
+
+    await list$;
+  });
+
+  it('searches users by query via /user/search when query is non-empty', async () => {
+    const list$ = firstValueFrom(service.searchUsersPaged('jdoe', 20, 0));
+
+    const req = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/user/search');
+    expect(req.request.params.get('q')).toBe('jdoe');
+    req.flush({ 'entity-type': 'users', entries: [], totalSize: 0 });
+
+    await list$;
+  });
 });

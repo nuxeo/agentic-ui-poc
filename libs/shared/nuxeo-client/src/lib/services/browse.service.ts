@@ -5,7 +5,8 @@ import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
-import { parseDocumentSubtypes, sortDocumentSubtypes } from '../utils/parse-document-subtypes';
+import { resolveCreatableSubtypes } from '../utils/creatable-subtypes';
+import { isFolderishDocument } from './document-import.service';
 
 @Injectable({ providedIn: 'root' })
 export class BrowseService {
@@ -34,9 +35,24 @@ export class BrowseService {
    * @see https://doc.nuxeo.com/rest-api/1/document-enrichers/#subtypes
    */
   getCreatableSubtypes(nuxeoPath: string): Observable<string[]> {
-    return this.getFolderContext(nuxeoPath).pipe(
-      map((doc) => sortDocumentSubtypes(parseDocumentSubtypes(doc))),
-    );
+    return this.getFolderContext(nuxeoPath).pipe(map((doc) => resolveCreatableSubtypes(doc)));
+  }
+
+  /**
+   * Folder children for the nav drawer tree. Domains use `@children` so structural
+   * containers (SectionRoot / TemplateRoot / WorkspaceRoot) are always listed.
+   */
+  getNavTreeChildren(parent: NuxeoDocument, pageSize = 50): Observable<NuxeoDocumentList> {
+    if (parent.type === 'Domain' || parent.type === 'Root') {
+      const safePath = parent.path?.replace(/\/+$/, '') ?? '';
+      return this.getChildren(safePath, pageSize).pipe(
+        map((list) => ({
+          ...list,
+          entries: (list.entries ?? []).filter((doc) => isFolderishDocument(doc)),
+        })),
+      );
+    }
+    return this.getTreeChildren(parent.uid, pageSize);
   }
 
   getChildren(
@@ -44,7 +60,7 @@ export class BrowseService {
     pageSize = 50,
     currentPageIndex = 0,
   ): Observable<NuxeoDocumentList> {
-    const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
+    const safePath = nuxeoPath.replace(/\/+$/, '');
     const params = new HttpParams()
       .set('pageSize', pageSize)
       .set('currentPageIndex', currentPageIndex);

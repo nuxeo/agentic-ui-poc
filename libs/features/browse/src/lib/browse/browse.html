@@ -11,7 +11,7 @@
       }
     </div>
     <div class="header-actions">
-      @if (canAddChildrenHere()) {
+      @if (canCreateContentHere()) {
         <button
           mat-flat-button
           color="primary"
@@ -61,6 +61,12 @@
 
   <!-- Breadcrumbs -->
   <sat-breadcrumbs [items]="breadcrumbs()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
+
+  @if (isDomainBrowse() || isRepositoryRootBrowse()) {
+    <p class="browse-domain-hint" role="note">
+      {{ domainContainerGuidance }}
+    </p>
+  }
 
   <!-- Main body: tabs on left, details panel on right -->
   <div class="browse-body">
@@ -345,7 +351,7 @@
           <!-- ═══════ PERMISSIONS TAB ═══════ -->
           <mat-tab label="Permissions">
             <div class="permissions-container">
-              @if (!permissionsLoaded()) {
+              @if (permissionsLoading()) {
                 <div class="browse-loading"><mat-spinner diameter="24" /></div>
               } @else {
                 <!-- Permissions defined locally -->
@@ -382,17 +388,17 @@
                             <td>
                               <span class="perm-user">
                                 <sat-avatar
-                                  [initials]="ace.username"
-                                  [category]="avatarColor(ace.username)"
+                                  [initials]="displayUsername(ace)"
+                                  [category]="avatarColor(displayUsername(ace))"
                                   size="24"
                                   [borderless]="true"
                                 />
-                                {{ ace.username }}
+                                {{ displayUsername(ace) }}
                               </span>
                             </td>
                             <td>{{ permissionLabel(ace.permission) }}</td>
                             <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ ace.creator ?? '—' }}</td>
+                            <td>{{ aceGrantedBy(ace) }}</td>
                             <td class="perm-row-actions">
                               <button
                                 mat-icon-button
@@ -463,17 +469,17 @@
                             <td>
                               <span class="perm-user">
                                 <sat-avatar
-                                  [initials]="ace.username"
-                                  [category]="avatarColor(ace.username)"
+                                  [initials]="displayUsername(ace)"
+                                  [category]="avatarColor(displayUsername(ace))"
                                   size="24"
                                   [borderless]="true"
                                 />
-                                {{ ace.username }}
+                                {{ displayUsername(ace) }}
                               </span>
                             </td>
                             <td>{{ permissionLabel(ace.permission) }}</td>
                             <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ ace.creator ?? '—' }}</td>
+                            <td>{{ aceGrantedBy(ace) }}</td>
                           </tr>
                         }
                       </tbody>
@@ -522,7 +528,7 @@
                             <td>{{ displayUsername(ace) }}</td>
                             <td>{{ permissionLabel(ace.permission) }}</td>
                             <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ ace.creator ?? '—' }}</td>
+                            <td>{{ aceGrantedBy(ace) }}</td>
                             <td class="perm-row-actions">
                               <button
                                 mat-icon-button
