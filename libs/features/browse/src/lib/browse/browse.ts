@@ -52,6 +52,9 @@ import {
   canAddChildren,
   canWriteDocument,
   canRemoveDocument,
+  DOMAIN_CONTAINER_GUIDANCE,
+  isDomainParentType,
+  isRestrictedImportParentPath,
   PERMISSION_DENIED_MESSAGE,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -153,6 +156,7 @@ export class BrowseComponent {
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
+  readonly browsePath = signal('/');
 
   // Details side panel
   readonly panelOpen = signal(false);
@@ -204,8 +208,17 @@ export class BrowseComponent {
     if (!acls) return false;
     return !acls.some((a) => a.name === 'inherited');
   });
-  readonly canAddChildrenHere = computed(() => canAddChildren(this.currentDoc()));
   readonly canWriteCurrentDoc = computed(() => canWriteDocument(this.currentDoc()));
+  readonly isDomainBrowse = computed(() => isDomainParentType(this.currentDoc()?.type));
+  readonly isRepositoryRootBrowse = computed(() => isRestrictedImportParentPath(this.browsePath()));
+  readonly domainContainerGuidance = DOMAIN_CONTAINER_GUIDANCE;
+  readonly canCreateContentHere = computed(() => {
+    const doc = this.currentDoc();
+    if (!doc || !canAddChildren(doc) || !this.isBrowseFolderish(doc)) {
+      return false;
+    }
+    return !isDomainParentType(doc.type) && !isRestrictedImportParentPath(doc.path);
+  });
   readonly canRemoveCurrentDoc = computed(() => canRemoveDocument(this.currentDoc()));
   readonly actionInProgress = signal<string | null>(null);
 
@@ -391,6 +404,7 @@ export class BrowseComponent {
     this.route.url.pipe(takeUntilDestroyed()).subscribe((segments) => {
       const subPath = segments.map((s) => s.path).join('/');
       this.currentNuxeoPath = subPath ? `/${subPath}` : '/';
+      this.browsePath.set(this.currentNuxeoPath);
       this.historyLoaded = false;
       this.trashLoaded = false;
       this.activeTabIndex.set(0);
@@ -782,6 +796,10 @@ export class BrowseComponent {
     }
     if (!canAddChildren(doc)) {
       this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+      return;
+    }
+    if (isDomainParentType(doc.type) || isRestrictedImportParentPath(doc.path)) {
+      this.snackBar.open(DOMAIN_CONTAINER_GUIDANCE, 'OK', { duration: 6000 });
       return;
     }
     this.dialog

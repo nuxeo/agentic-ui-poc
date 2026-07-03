@@ -11,7 +11,7 @@
       }
     </div>
     <div class="header-actions">
-      @if (canAddChildrenHere()) {
+      @if (canCreateContentHere()) {
         <button
           mat-flat-button
           color="primary"
@@ -61,6 +61,12 @@
 
   <!-- Breadcrumbs -->
   <sat-breadcrumbs [items]="breadcrumbs()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
+
+  @if (isDomainBrowse() || isRepositoryRootBrowse()) {
+    <p class="browse-domain-hint" role="note">
+      {{ domainContainerGuidance }}
+    </p>
+  }
 
   <!-- Main body: tabs on left, details panel on right -->
   <div class="browse-body">
