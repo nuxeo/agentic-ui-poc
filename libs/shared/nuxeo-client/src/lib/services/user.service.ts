@@ -2,8 +2,12 @@ import { HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, switchMap } from 'rxjs';
 
+import { NuxeoDocumentList } from '../models/document.model';
 import { NuxeoUser, NuxeoUserList, NuxeoGroup, NuxeoGroupList } from '../models/user.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
+
+/** Nuxeo REST header to include group membership on group list/detail responses. */
+const GROUP_MEMBERS_FETCH_HEADER = { 'fetch.group': 'memberUsers,memberGroups' } as const;
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -38,6 +42,24 @@ export class UserService {
       .pipe(map((res) => res.entries));
   }
 
+  /**
+   * Recently created users and groups, newest first (Nuxeo Web UI parity).
+   * Uses audit-backed page provider `LATEST_CREATED_USERS_OR_GROUPS_PROVIDER`.
+   */
+  getRecentlyCreatedUsersAndGroups(
+    pageSize = 50,
+    currentPageIndex = 0,
+  ): Observable<NuxeoDocumentList> {
+    const params = new HttpParams()
+      .set('pageSize', String(pageSize))
+      .set('currentPageIndex', String(currentPageIndex));
+    return this.api.get<NuxeoDocumentList>(
+      '/nuxeo/api/v1/search/pp/LATEST_CREATED_USERS_OR_GROUPS_PROVIDER/execute',
+      params,
+      { properties: '*' },
+    );
+  }
+
   searchGroupsPaged(
     query: string,
     pageSize = 50,
@@ -48,7 +70,9 @@ export class UserService {
       .set('q', q)
       .set('pageSize', String(pageSize))
       .set('currentPageIndex', String(currentPageIndex));
-    return this.api.get<NuxeoGroupList>('/nuxeo/api/v1/group/search', params);
+    return this.api.get<NuxeoGroupList>('/nuxeo/api/v1/group/search', params, {
+      ...GROUP_MEMBERS_FETCH_HEADER,
+    });
   }
 
   /** Get a specific user. */
@@ -60,7 +84,7 @@ export class UserService {
     return this.api.get<NuxeoGroup>(
       `/nuxeo/api/v1/group/${encodeURIComponent(groupId)}`,
       undefined,
-      { 'fetch.group': 'memberUsers,memberGroups' },
+      { ...GROUP_MEMBERS_FETCH_HEADER },
     );
   }
 

@@ -1275,6 +1275,19 @@ prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
 
 ---
 
+## Administration — Recently Created Users and Groups
+
+| Field           | Value                                                                       |
+| --------------- | --------------------------------------------------------------------------- |
+| **Service**     | `UserService` (`libs/shared/nuxeo-client/src/lib/services/user.service.ts`) |
+| **Method**      | `getRecentlyCreatedUsersAndGroups(pageSize?, currentPageIndex?)`            |
+| **HTTP Method** | `GET`                                                                       |
+| **Endpoint**    | `/nuxeo/api/v1/search/pp/LATEST_CREATED_USERS_OR_GROUPS_PROVIDER/execute`   |
+
+Returns users and groups sorted by creation date descending (newest first), using the same audit-backed page provider as Nuxeo Web UI. Request header: `properties: *`.
+
+---
+
 ## Administration — Create User (with password)
 
 | Field           | Value                                                                       |

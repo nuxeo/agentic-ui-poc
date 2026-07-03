@@ -195,6 +195,8 @@ getDocumentTasks(docId: string, userId?: string): Observable<NuxeoTask[]>
 ```typescript
 searchUsers(query: string): Observable<NuxeoUser[]>
 searchUsersPaged(query: string, pageSize?: number, currentPageIndex?: number): Observable<NuxeoUserList>
+getRecentlyCreatedUsersAndGroups(pageSize?: number, currentPageIndex?: number): Observable<NuxeoDocumentList>
+  // GET /nuxeo/api/v1/search/pp/LATEST_CREATED_USERS_OR_GROUPS_PROVIDER/execute
 searchGroups(query: string): Observable<NuxeoGroup[]>
 searchGroupsPaged(query: string, pageSize?: number, currentPageIndex?: number): Observable<NuxeoGroupList>
 getUser(userId: string): Observable<NuxeoUser>

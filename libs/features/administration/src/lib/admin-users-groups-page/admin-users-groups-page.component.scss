@@ -159,6 +159,47 @@ mat-paginator {
   font-size: 0.875rem;
 }
 
+.ug-members-inline {
+  display: inline;
+}
+
+.ug-members-more {
+  border: 0;
+  background: transparent;
+  color: var(--mat-sys-primary, #1565c0);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-left: 0.2rem;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ug-members-more:hover,
+.ug-members-more:focus-visible {
+  color: var(--mat-sys-primary, #0d47a1);
+}
+
+:host ::ng-deep .ug-members-menu.mat-mdc-menu-panel {
+  min-width: 12rem;
+  max-width: 20rem;
+}
+
+.ug-members-menu__panel {
+  padding: 0.25rem 0;
+}
+
+.ug-members-menu__item {
+  color: var(--mat-sys-on-surface, rgba(0, 0, 0, 0.87));
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.45;
+  min-height: 2.25rem;
+  opacity: 1;
+}
+
 .ok {
   color: var(--mat-sys-primary, #1565c0);
   font-size: 1.25rem;
