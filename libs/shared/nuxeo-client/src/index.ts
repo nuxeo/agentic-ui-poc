@@ -162,9 +162,17 @@ export {
   isPermissionDeniedError,
 } from './lib/utils/document-permissions';
 export {
+  DOMAIN_CONTAINER_GUIDANCE,
+  DOMAIN_STRUCTURAL_ROOT_TYPES,
+  filterCreatableSubtypesForParent,
+  isDomainParentType,
+  resolveCreatableSubtypes,
+} from './lib/utils/creatable-subtypes';
+export {
   principalPermissionTimeFrameLabel,
   principalPermissionToLocalRow,
 } from './lib/utils/principal-permission-display';
+export { normalizeDocumentAcls, resolveAcePrincipal } from './lib/utils/ace-principal';
 export {
   NOTE_FORMAT_OPTIONS,
   defaultNoteContent,

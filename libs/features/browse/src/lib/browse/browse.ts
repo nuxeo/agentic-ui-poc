@@ -52,7 +52,11 @@ import {
   canAddChildren,
   canWriteDocument,
   canRemoveDocument,
+  DOMAIN_CONTAINER_GUIDANCE,
+  isDomainParentType,
+  isRestrictedImportParentPath,
   PERMISSION_DENIED_MESSAGE,
+  resolveAcePrincipal,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -153,6 +157,7 @@ export class BrowseComponent {
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
+  readonly browsePath = signal('/');
 
   // Details side panel
   readonly panelOpen = signal(false);
@@ -178,19 +183,20 @@ export class BrowseComponent {
 
   // Permissions tab
   readonly permissionsLoaded = signal(false);
+  readonly permissionsLoading = signal(false);
   readonly localAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
     const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
     if (!acls) return [];
     const local = acls.find((a) => a.name === 'local');
-    return local?.aces ?? [];
+    return local?.aces.filter((ace) => ace.granted && !ace.externalUser) ?? [];
   });
   readonly inheritedAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
     const acls = doc?.contextParameters?.['acls'] as NuxeoAcl[] | undefined;
     if (!acls) return [];
     const inherited = acls.find((a) => a.name === 'inherited');
-    return inherited?.aces ?? [];
+    return inherited?.aces.filter((ace) => ace.granted) ?? [];
   });
   readonly externalAces = computed<NuxeoAce[]>(() => {
     const doc = this.currentDoc();
@@ -204,8 +210,17 @@ export class BrowseComponent {
     if (!acls) return false;
     return !acls.some((a) => a.name === 'inherited');
   });
-  readonly canAddChildrenHere = computed(() => canAddChildren(this.currentDoc()));
   readonly canWriteCurrentDoc = computed(() => canWriteDocument(this.currentDoc()));
+  readonly isDomainBrowse = computed(() => isDomainParentType(this.currentDoc()?.type));
+  readonly isRepositoryRootBrowse = computed(() => isRestrictedImportParentPath(this.browsePath()));
+  readonly domainContainerGuidance = DOMAIN_CONTAINER_GUIDANCE;
+  readonly canCreateContentHere = computed(() => {
+    const doc = this.currentDoc();
+    if (!doc || !canAddChildren(doc) || !this.isBrowseFolderish(doc)) {
+      return false;
+    }
+    return !isDomainParentType(doc.type) && !isRestrictedImportParentPath(doc.path);
+  });
   readonly canRemoveCurrentDoc = computed(() => canRemoveDocument(this.currentDoc()));
   readonly actionInProgress = signal<string | null>(null);
 
@@ -391,8 +406,11 @@ export class BrowseComponent {
     this.route.url.pipe(takeUntilDestroyed()).subscribe((segments) => {
       const subPath = segments.map((s) => s.path).join('/');
       this.currentNuxeoPath = subPath ? `/${subPath}` : '/';
+      this.browsePath.set(this.currentNuxeoPath);
       this.historyLoaded = false;
       this.trashLoaded = false;
+      this.permissionsLoaded.set(false);
+      this.permissionsLoading.set(false);
       this.activeTabIndex.set(0);
       this.loadContent();
     });
@@ -534,8 +552,8 @@ export class BrowseComponent {
 
   onTabChange(index: number): void {
     this.activeTabIndex.set(index);
-    if (index === 1 && !this.permissionsLoaded()) {
-      this.permissionsLoaded.set(true);
+    if (index === 1) {
+      this.loadPermissions();
     }
     if (index === 2 && !this.historyLoaded) {
       this.loadDirectoryEntries();
@@ -784,6 +802,10 @@ export class BrowseComponent {
       this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
       return;
     }
+    if (isDomainParentType(doc.type) || isRestrictedImportParentPath(doc.path)) {
+      this.snackBar.open(DOMAIN_CONTAINER_GUIDANCE, 'OK', { duration: 6000 });
+      return;
+    }
     this.dialog
       .open(CreateImportDialogComponent, {
         width: '960px',
@@ -1025,15 +1047,56 @@ export class BrowseComponent {
   }
 
   displayUsername(ace: NuxeoAce): string {
-    return ace.username.replace(/^transient\//, '');
+    return resolveAcePrincipal(ace.username).replace(/^transient\//, '');
   }
 
-  private reloadCurrentDoc(): void {
+  aceGrantedBy(ace: NuxeoAce): string {
+    const creator = ace.creator ? resolveAcePrincipal(ace.creator) : '';
+    return creator || '—';
+  }
+
+  private loadPermissions(force = false): void {
     const doc = this.currentDoc();
-    if (!doc) return;
-    this.detailService.getFullDocument(doc.uid).subscribe({
-      next: (updated) => this.currentDoc.set(updated),
+    if (!doc || this.permissionsLoading()) return;
+    if (this.permissionsLoaded() && !force) return;
+
+    this.permissionsLoading.set(true);
+    this.detailService
+      .getDocumentPermissions(doc.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.applyPermissionsDoc(updated);
+          this.permissionsLoaded.set(true);
+          this.permissionsLoading.set(false);
+        },
+        error: () => {
+          this.permissionsLoading.set(false);
+          this.snackBar.open('Failed to load permissions', 'OK', { duration: 4000 });
+        },
+      });
+  }
+
+  private applyPermissionsDoc(updated: NuxeoDocument): void {
+    const existing = this.currentDoc();
+    if (!existing) {
+      this.currentDoc.set(updated);
+      return;
+    }
+    this.currentDoc.set({
+      ...existing,
+      contextParameters: {
+        ...existing.contextParameters,
+        ...updated.contextParameters,
+        acls: updated.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
+        permissions:
+          updated.contextParameters?.['permissions'] ?? existing.contextParameters?.['permissions'],
+      },
     });
+  }
+
+  private reloadPermissions(): void {
+    this.loadPermissions(true);
   }
 
   addPermission(): void {
@@ -1043,12 +1106,15 @@ export class BrowseComponent {
       data: { documentUid: doc.uid } satisfies AddPermissionDialogData,
       width: '560px',
     });
-    dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
-      if (created) {
-        this.reloadCurrentDoc();
-        this.snackBar.open('Permission added', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created: boolean | undefined) => {
+        if (created) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission added', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   editPermission(ace: NuxeoAce): void {
@@ -1058,12 +1124,15 @@ export class BrowseComponent {
       data: { documentUid: doc.uid, ace } satisfies UpdatePermissionDialogData,
       width: '520px',
     });
-    dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
-      if (updated) {
-        this.reloadCurrentDoc();
-        this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   deletePermission(ace: NuxeoAce): void {
@@ -1078,12 +1147,15 @@ export class BrowseComponent {
       } satisfies DeletePermissionDialogData,
       width: '560px',
     });
-    dialogRef.afterClosed().subscribe((deleted: boolean | undefined) => {
-      if (deleted) {
-        this.reloadCurrentDoc();
-        this.snackBar.open('Permission deleted', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((deleted: boolean | undefined) => {
+        if (deleted) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission deleted', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   toggleInheritance(): void {
@@ -1094,10 +1166,10 @@ export class BrowseComponent {
     const op = blocked
       ? this.detailService.unblockPermissionInheritance(doc.uid)
       : this.detailService.blockPermissionInheritance(doc.uid);
-    op.subscribe({
+    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.actionInProgress.set(null);
-        this.reloadCurrentDoc();
+        this.reloadPermissions();
         this.snackBar.open(blocked ? 'Inheritance unblocked' : 'Inheritance blocked', 'OK', {
           duration: 3000,
         });
@@ -1116,12 +1188,15 @@ export class BrowseComponent {
       data: { documentUid: doc.uid } satisfies ShareExternalDialogData,
       width: '520px',
     });
-    dialogRef.afterClosed().subscribe((created: boolean | undefined) => {
-      if (created) {
-        this.reloadCurrentDoc();
-        this.snackBar.open('Shared with external user', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((created: boolean | undefined) => {
+        if (created) {
+          this.reloadPermissions();
+          this.snackBar.open('Shared with external user', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   editExternalPermission(ace: NuxeoAce): void {
@@ -1131,27 +1206,33 @@ export class BrowseComponent {
       data: { documentUid: doc.uid, ace, isExternal: true } satisfies UpdatePermissionDialogData,
       width: '520px',
     });
-    dialogRef.afterClosed().subscribe((updated: boolean | undefined) => {
-      if (updated) {
-        this.reloadCurrentDoc();
-        this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updated: boolean | undefined) => {
+        if (updated) {
+          this.reloadPermissions();
+          this.snackBar.open('Permission updated', 'OK', { duration: 3000 });
+        }
+      });
   }
 
   sendNotificationEmail(ace: NuxeoAce): void {
     const doc = this.currentDoc();
     if (!doc || this.actionInProgress()) return;
     this.actionInProgress.set('notify-' + ace.id);
-    this.detailService.sendNotificationEmailForPermission(doc.uid, ace.id).subscribe({
-      next: () => {
-        this.actionInProgress.set(null);
-        this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
-      },
-      error: () => {
-        this.actionInProgress.set(null);
-        this.snackBar.open('Failed to send notification', 'OK', { duration: 3000 });
-      },
-    });
+    this.detailService
+      .sendNotificationEmailForPermission(doc.uid, ace.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.actionInProgress.set(null);
+          this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
+        },
+        error: () => {
+          this.actionInProgress.set(null);
+          this.snackBar.open('Failed to send notification', 'OK', { duration: 3000 });
+        },
+      });
   }
 }

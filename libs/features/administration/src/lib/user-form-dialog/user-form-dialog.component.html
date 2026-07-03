@@ -1,135 +1,154 @@
-<div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
-  {{ data.mode === 'create' ? 'Create user' : 'Edit user' }}
-</div>
-<mat-dialog-content class="form">
-  @if (loadingGroups) {
-    <div class="spinner-wrap">
-      <mat-spinner diameter="36" />
+<div class="dialog-shell">
+  @if (saving()) {
+    <div class="dialog-busy" aria-busy="true" aria-live="polite">
+      <mat-spinner diameter="40" />
     </div>
   }
-  <mat-form-field appearance="outline" class="full first-field">
-    <mat-label>Username</mat-label>
-    <input
-      matInput
-      name="username"
-      [(ngModel)]="username"
-      [disabled]="data.mode === 'edit'"
-      autocomplete="off"
-      required
-    />
-  </mat-form-field>
-  <mat-form-field appearance="outline" class="full">
-    <mat-label>First name</mat-label>
-    <input matInput name="firstName" [(ngModel)]="firstName" />
-  </mat-form-field>
-  <mat-form-field appearance="outline" class="full">
-    <mat-label>Last name</mat-label>
-    <input matInput name="lastName" [(ngModel)]="lastName" />
-  </mat-form-field>
-  <mat-form-field appearance="outline" class="full">
-    <mat-label>Company</mat-label>
-    <input matInput name="company" [(ngModel)]="company" />
-  </mat-form-field>
-  <mat-form-field appearance="outline" class="full">
-    <mat-label>Email</mat-label>
-    <input matInput name="email" type="email" [(ngModel)]="email" autocomplete="off" required />
-  </mat-form-field>
-  <mat-form-field appearance="outline" class="full">
-    <mat-label>Groups</mat-label>
-    <mat-chip-grid #groupChipGrid>
-      @for (group of groups; track group) {
-        <mat-chip-row (removed)="removeGroup(group)">
-          {{ group }}
-          <button type="button" matChipRemove [attr.aria-label]="'Remove group ' + group">
-            <mat-icon>cancel</mat-icon>
-          </button>
-        </mat-chip-row>
-      }
-      <input
-        name="groupSearch"
-        [placeholder]="groups.length ? '' : 'Search groups or type a group name…'"
-        [matChipInputFor]="groupChipGrid"
-        [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
-        [matAutocomplete]="groupAuto"
-        [(ngModel)]="groupSearchQuery"
-        (focus)="onGroupInputFocus()"
-        (ngModelChange)="onGroupSearch($event)"
-        (matChipInputTokenEnd)="addGroupFromInput($event)"
-      />
-    </mat-chip-grid>
-    <mat-hint>
-      @if (loadingGroupOptions) {
-        Loading groups...
-      } @else {
-        Pick from search or enter a group name and press Enter
-      }
-    </mat-hint>
-  </mat-form-field>
-  <mat-autocomplete
-    #groupAuto="matAutocomplete"
-    autoActiveFirstOption
-    (optionSelected)="onGroupSelected($event)"
-  >
-    @for (g of groupOptions; track g.groupname) {
-      <mat-option [value]="g.groupname">{{ g.grouplabel }}</mat-option>
+  <div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
+    {{ data.mode === 'create' ? 'Create user' : 'Edit user' }}
+  </div>
+  <mat-dialog-content class="form">
+    @if (loadingGroups) {
+      <div class="spinner-wrap">
+        <mat-spinner diameter="36" />
+      </div>
     }
-  </mat-autocomplete>
-  <mat-slide-toggle
-    class="password-toggle"
-    [checked]="setUserPassword"
-    (change)="onSetUserPasswordChange($event.checked)"
-    color="primary"
-  >
-    Set user password
-  </mat-slide-toggle>
-  @if (setUserPassword) {
-    <mat-form-field appearance="outline" class="full">
-      <mat-label>Password</mat-label>
+    <mat-form-field appearance="outline" class="full first-field">
+      <mat-label>Username</mat-label>
       <input
         matInput
-        name="password"
-        type="password"
-        [(ngModel)]="password"
-        autocomplete="new-password"
+        name="username"
+        [(ngModel)]="username"
+        [disabled]="data.mode === 'edit' || saving()"
+        autocomplete="off"
         required
       />
     </mat-form-field>
     <mat-form-field appearance="outline" class="full">
-      <mat-label>Verify password</mat-label>
+      <mat-label>First name</mat-label>
+      <input matInput name="firstName" [(ngModel)]="firstName" [disabled]="saving()" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Last name</mat-label>
+      <input matInput name="lastName" [(ngModel)]="lastName" [disabled]="saving()" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Company</mat-label>
+      <input matInput name="company" [(ngModel)]="company" [disabled]="saving()" />
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Email</mat-label>
       <input
         matInput
-        name="confirmPassword"
-        type="password"
-        [(ngModel)]="confirmPassword"
-        autocomplete="new-password"
+        name="email"
+        type="email"
+        [(ngModel)]="email"
+        [disabled]="saving()"
+        autocomplete="off"
         required
       />
-      @if (confirmPassword && password !== confirmPassword) {
-        <mat-error>Passwords do not match</mat-error>
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="full">
+      <mat-label>Groups</mat-label>
+      <mat-chip-grid #groupChipGrid>
+        @for (group of groups; track group) {
+          <mat-chip-row (removed)="removeGroup(group)">
+            {{ group }}
+            <button type="button" matChipRemove [attr.aria-label]="'Remove group ' + group">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </mat-chip-row>
+        }
+        <input
+          name="groupSearch"
+          [placeholder]="groups.length ? '' : 'Search groups or type a group name…'"
+          [matChipInputFor]="groupChipGrid"
+          [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+          [matAutocomplete]="groupAuto"
+          [(ngModel)]="groupSearchQuery"
+          [disabled]="saving()"
+          (focus)="onGroupInputFocus()"
+          (ngModelChange)="onGroupSearch($event)"
+          (matChipInputTokenEnd)="addGroupFromInput($event)"
+        />
+      </mat-chip-grid>
+      <mat-hint>
+        @if (loadingGroupOptions) {
+          Loading groups...
+        } @else {
+          Pick from search or enter a group name and press Enter
+        }
+      </mat-hint>
+    </mat-form-field>
+    <mat-autocomplete
+      #groupAuto="matAutocomplete"
+      autoActiveFirstOption
+      (optionSelected)="onGroupSelected($event)"
+    >
+      @for (g of groupOptions; track g.groupname) {
+        <mat-option [value]="g.groupname">{{ g.grouplabel }}</mat-option>
       }
-    </mat-form-field>
-  }
-</mat-dialog-content>
-<mat-dialog-actions align="end" class="dialog-actions">
-  <button type="button" mat-button mat-dialog-close>Cancel</button>
-  @if (data.mode === 'create') {
+    </mat-autocomplete>
+    <mat-slide-toggle
+      class="password-toggle"
+      [checked]="setUserPassword"
+      [disabled]="saving()"
+      (change)="onSetUserPasswordChange($event.checked)"
+      color="primary"
+    >
+      Set user password
+    </mat-slide-toggle>
+    @if (setUserPassword) {
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Password</mat-label>
+        <input
+          matInput
+          name="password"
+          type="password"
+          [(ngModel)]="password"
+          [disabled]="saving()"
+          autocomplete="new-password"
+          required
+        />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Verify password</mat-label>
+        <input
+          matInput
+          name="confirmPassword"
+          type="password"
+          [(ngModel)]="confirmPassword"
+          [disabled]="saving()"
+          autocomplete="new-password"
+          required
+        />
+        @if (confirmPassword && password !== confirmPassword) {
+          <mat-error>Passwords do not match</mat-error>
+        }
+      </mat-form-field>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end" class="dialog-actions">
+    <button type="button" mat-button mat-dialog-close [disabled]="saving()">Cancel</button>
+    @if (data.mode === 'create') {
+      <button
+        type="button"
+        mat-flat-button
+        color="primary"
+        (click)="submit(true)"
+        [disabled]="!canSave"
+      >
+        Create another
+      </button>
+    }
     <button
       type="button"
       mat-flat-button
       color="primary"
-      (click)="submit(true)"
+      (click)="submit(false)"
       [disabled]="!canSave"
     >
-      Create another
+      {{ data.mode === 'create' ? 'Create' : 'Save' }}
     </button>
-  }
-  <button
-    type="button"
-    mat-flat-button
-    color="primary"
-    (click)="submit(false)"
-    [disabled]="!canSave"
-  >
-    Save
-  </button>
-</mat-dialog-actions>
+  </mat-dialog-actions>
+</div>

@@ -36,8 +36,9 @@ import {
   SearchAggregationService,
   SelectionService,
   DocumentDetailService,
-  NON_CONTENT_DOCUMENT_TYPES,
+  FOLDERISH_TYPES,
   NuxeoApiBase,
+  NON_CONTENT_DOCUMENT_TYPES,
   type SearchResultItem,
   type SearchResponse,
   type SearchQueryParams,
@@ -382,6 +383,15 @@ export class SearchComponent {
 
   openDocument(uid: string): void {
     if (!uid) return;
+    const item = this.results().find((r) => r.id === uid);
+    if (item?.type === 'Collection') {
+      void this.router.navigateByUrl(`/collections/${uid}`);
+      return;
+    }
+    if (item && FOLDERISH_TYPES.has(item.type) && item.path) {
+      void this.router.navigateByUrl(`/browse${item.path}`);
+      return;
+    }
     void this.router.navigateByUrl(`/doc/${uid}`);
   }
 

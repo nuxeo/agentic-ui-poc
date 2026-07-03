@@ -98,7 +98,7 @@
             @if (locationRestricted()) {
               <p class="location-hint" role="alert">
                 <span class="location-hint-bar" aria-hidden="true"></span>
-                {{ restrictedLocationMessage }}
+                {{ importLocationHint() }}
               </p>
             }
           </div>
@@ -114,8 +114,8 @@
                 <p class="error-text types-error">{{ typesLoadError() }}</p>
               } @else if (creatableTypes().length === 0) {
                 <p class="empty-hint">
-                  No document types can be created at this location. Navigate to a workspace folder
-                  to create content.
+                  No document types can be created at this location. Open Sections, Templates, or
+                  Workspaces, then create content inside those folders.
                 </p>
               } @else {
                 <div class="doctype-grid" role="list">
@@ -237,7 +237,7 @@
                 @if (locationRestricted()) {
                   <p class="location-hint" role="alert">
                     <span class="location-hint-bar" aria-hidden="true"></span>
-                    {{ restrictedLocationMessage }}
+                    {{ importLocationHint() }}
                   </p>
                 }
               </div>

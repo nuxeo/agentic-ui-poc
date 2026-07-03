@@ -1,20 +1,27 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import { MatChipInputEvent } from '@angular/material/chips';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { UserService } from '@agentic-ui/shared/nuxeo-client';
 
 import { UserFormDialogComponent, UserFormDialogData } from './user-form-dialog.component';
 
-describe('UserFormDialogComponent (NXSAT-152 / NXSAT-166)', () => {
+describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
   let component: UserFormDialogComponent;
   let fixture: ComponentFixture<UserFormDialogComponent>;
   let closeSpy: ReturnType<typeof vi.fn>;
+  let createUserSpy: ReturnType<typeof vi.fn>;
+  let snackBarOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     closeSpy = vi.fn();
+    createUserSpy = vi.fn().mockReturnValue(of({ id: 'new.user' }));
+    snackBarOpenSpy = vi.fn();
     await TestBed.configureTestingModule({
       imports: [UserFormDialogComponent, NoopAnimationsModule],
       providers: [
@@ -24,12 +31,13 @@ describe('UserFormDialogComponent (NXSAT-152 / NXSAT-166)', () => {
         },
         {
           provide: MatDialogRef,
-          useValue: { close: closeSpy },
+          useValue: { close: closeSpy, disableClose: false },
         },
         {
           provide: UserService,
           useValue: {
             searchGroupsPaged: vi.fn().mockReturnValue(of({ entries: [], totalSize: 0 })),
+            createUser: createUserSpy,
           },
         },
       ],
@@ -37,6 +45,7 @@ describe('UserFormDialogComponent (NXSAT-152 / NXSAT-166)', () => {
 
     fixture = TestBed.createComponent(UserFormDialogComponent);
     component = fixture.componentInstance;
+    snackBarOpenSpy = vi.spyOn(fixture.debugElement.injector.get(MatSnackBar), 'open');
     fixture.detectChanges();
     component.loadingGroups = false;
   });
@@ -52,12 +61,25 @@ describe('UserFormDialogComponent (NXSAT-152 / NXSAT-166)', () => {
     expect(component.canSave).toBe(true);
   });
 
-  it('omits password from dialog result when toggle is off', () => {
+  it('calls createUser and closes with invited flag when password toggle is off', () => {
     component.username = 'invite.user';
     component.email = 'invite.user@example.com';
 
     component.submit(false);
 
+    expect(createUserSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'invite.user',
+        email: 'invite.user@example.com',
+      }),
+    );
+    expect(closeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        username: 'invite.user',
+        invited: true,
+        createAnother: false,
+      }),
+    );
     const result = closeSpy.mock.calls[0][0];
     expect(result).not.toHaveProperty('password');
   });
@@ -68,7 +90,90 @@ describe('UserFormDialogComponent (NXSAT-152 / NXSAT-166)', () => {
 
     component.submit(true);
 
-    expect(closeSpy).toHaveBeenCalledWith(expect.objectContaining({ createAnother: true }));
+    expect(closeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ createAnother: true, invited: true }),
+    );
+  });
+
+  it('closes with invited false and no password after password create', () => {
+    component.username = 'pwd.user';
+    component.email = 'pwd.user@example.com';
+    component.setUserPassword = true;
+    component.password = 'Secret123';
+    component.confirmPassword = 'Secret123';
+
+    component.submit(false);
+
+    expect(createUserSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ username: 'pwd.user', password: 'Secret123' }),
+    );
+    expect(closeSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ username: 'pwd.user', invited: false }),
+    );
+    expect(closeSpy.mock.calls[0][0]).not.toHaveProperty('password');
+  });
+
+  it('shows toast and keeps dialog open when create fails', fakeAsync(() => {
+    createUserSpy.mockReturnValue(
+      throwError(() => ({ error: { message: 'Failed to invoke operation: User.Invite' } })),
+    );
+    component.username = 'fail.user';
+    component.email = 'fail.user@example.com';
+
+    component.submit(false);
+    tick();
+
+    expect(closeSpy).not.toHaveBeenCalled();
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Failed to invoke operation: User.Invite',
+      'Dismiss',
+      expect.objectContaining({ duration: 7000 }),
+    );
+    expect(component.saving()).toBe(false);
+  }));
+
+  it('shows simplified API message for invite mail failures', fakeAsync(() => {
+    createUserSpy.mockReturnValue(
+      throwError(() => ({
+        error: {
+          message:
+            'Failed to invoke operation: User.Invite, Failed to invoke operation User.Invite, An error occurred while sending a mail',
+        },
+      })),
+    );
+    component.username = 'fail.user';
+    component.email = 'fail.user@example.com';
+
+    component.submit(false);
+    tick();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'An error occurred while sending a mail',
+      'Dismiss',
+      expect.objectContaining({ duration: 7000 }),
+    );
+  }));
+
+  it('adds selected group without concatenating typed prefix (NXSAT-151)', () => {
+    const deselect = vi.fn();
+    component.groupSearchQuery = 'power';
+
+    component.onGroupSelected({
+      option: { value: 'powerusers', deselect },
+    } as unknown as MatAutocompleteSelectedEvent);
+
+    expect(component.groups).toEqual(['powerusers']);
+    expect(component.groupSearchQuery).toBe('');
+    expect(deselect).toHaveBeenCalled();
+
+    const chipInput = { clear: vi.fn() };
+    component.addGroupFromInput({
+      value: 'powerpowerusers',
+      chipInput,
+    } as unknown as MatChipInputEvent);
+
+    expect(component.groups).toEqual(['powerusers']);
+    expect(chipInput.clear).toHaveBeenCalled();
   });
 
   it('blocks save when email is missing (NXSAT-166)', () => {
