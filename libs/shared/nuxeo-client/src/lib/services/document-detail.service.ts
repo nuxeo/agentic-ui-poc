@@ -1,9 +1,16 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, forkJoin, of, map, catchError } from 'rxjs';
+import { Observable, forkJoin, of, map, catchError, throwError } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 import { CURRENT_USERNAME } from '../current-user.token';
+import {
+  findLocalAceForPrincipal,
+  isMailSendError,
+  mailSendFailureMessage,
+  permissionNotificationAceNotFoundMessage,
+  type PermissionWithNotificationResult,
+} from '../utils/permission-notification';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoWorkflowModel } from '../models/workflow.model';
 import { AuditLogList } from '../models/audit.model';
@@ -438,6 +445,100 @@ export class DocumentDetailService {
     );
   }
 
+  /**
+   * Adds a permission, then sends the notification in a separate call so SMTP
+   * failures surface to the UI instead of being swallowed by Document.AddPermission.
+   */
+  addPermissionWithNotification(
+    uid: string,
+    params: {
+      username: string;
+      permission: string;
+      notify?: boolean;
+      comment?: string;
+      begin?: string | null;
+      end?: string | null;
+      creator?: string;
+    },
+  ): Observable<PermissionWithNotificationResult> {
+    const notify = params.notify === true;
+    return this.addPermission(uid, {
+      username: params.username,
+      permission: params.permission,
+      begin: params.begin,
+      end: params.end,
+      comment: params.comment ?? '',
+      notify: false,
+      creator: params.creator,
+    }).pipe(
+      switchMap((document) =>
+        notify
+          ? this.notifyAfterPermissionChange(uid, document, params.username, 'add')
+          : of({ document, notificationSent: false }),
+      ),
+    );
+  }
+
+  /**
+   * Replaces a permission, then optionally sends the notification email separately.
+   */
+  replacePermissionWithNotification(
+    uid: string,
+    params: {
+      id: string;
+      username: string;
+      permission: string;
+      notify?: boolean;
+      comment?: string | null;
+      begin?: string | null;
+      end?: string | null;
+    },
+  ): Observable<PermissionWithNotificationResult> {
+    const notify = params.notify === true;
+    return this.replacePermission(uid, {
+      id: params.id,
+      username: params.username,
+      permission: params.permission,
+      begin: params.begin,
+      end: params.end,
+      comment: params.comment,
+      notify: false,
+    }).pipe(
+      switchMap((document) =>
+        notify
+          ? this.notifyAfterPermissionChange(uid, document, params.username, 'update')
+          : of({ document, notificationSent: false }),
+      ),
+    );
+  }
+
+  /** Adds an external (email) permission with optional separate notification send. */
+  addExternalPermissionWithNotification(
+    uid: string,
+    params: {
+      email: string;
+      permission: string;
+      notify?: boolean;
+      comment?: string;
+      begin?: string | null;
+      end?: string;
+      creator?: string;
+    },
+  ): Observable<PermissionWithNotificationResult> {
+    const notify = params.notify !== false;
+    const principalId = `transient/${params.email}`;
+    return this.addExternalPermission(uid, {
+      ...params,
+      notify: false,
+    }).pipe(
+      switchMap((document) =>
+        notify
+          ? this.notifyAfterPermissionChange(uid, document, principalId, 'add')
+          : of({ document, notificationSent: false }),
+      ),
+    );
+  }
+
   /** Nuxeo stores this on the ACE as the "Granted by" audit field. */
   private creatorParam(override?: string): Partial<{ creator: string }> {
     const creator = override?.trim() || this.currentUsername()?.trim();
@@ -449,6 +550,53 @@ export class DocumentDetailService {
       '/nuxeo/api/v1/automation/Document.SendNotificationEmailForPermission',
       { params: { id: aceId }, context: {}, input: uid },
       { 'Content-Type': 'application/json' },
+    );
+  }
+
+  private notifyAfterPermissionChange(
+    uid: string,
+    document: NuxeoDocument,
+    principalId: string,
+    context: 'add' | 'update',
+  ): Observable<PermissionWithNotificationResult> {
+    const ace = findLocalAceForPrincipal(document, principalId);
+    if (ace?.id) {
+      return this.sendPermissionNotificationResult(uid, ace.id, document, context);
+    }
+
+    return this.getDocumentPermissions(uid).pipe(
+      switchMap((permDoc) => {
+        const resolvedAce = findLocalAceForPrincipal(permDoc, principalId);
+        if (!resolvedAce?.id) {
+          return of({
+            document,
+            notificationSent: false,
+            notificationError: permissionNotificationAceNotFoundMessage(context),
+          });
+        }
+        return this.sendPermissionNotificationResult(uid, resolvedAce.id, document, context);
+      }),
+    );
+  }
+
+  private sendPermissionNotificationResult(
+    uid: string,
+    aceId: string,
+    document: NuxeoDocument,
+    context: 'add' | 'update',
+  ): Observable<PermissionWithNotificationResult> {
+    return this.sendNotificationEmailForPermission(uid, aceId).pipe(
+      map((updated) => ({ document: updated, notificationSent: true })),
+      catchError((err) => {
+        if (isMailSendError(err)) {
+          return of({
+            document,
+            notificationSent: false,
+            notificationError: mailSendFailureMessage(context),
+          });
+        }
+        return throwError(() => err);
+      }),
     );
   }
 

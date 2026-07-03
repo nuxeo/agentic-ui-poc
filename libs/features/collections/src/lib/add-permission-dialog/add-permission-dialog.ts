@@ -16,7 +16,13 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, of } from 'rxjs';
 
-import { DocumentDetailService, UserGroupSuggestion } from '@agentic-ui/shared/nuxeo-client';
+import {
+  DocumentDetailService,
+  UserGroupSuggestion,
+  PERMISSION_NOTIFICATION_MAIL_HINT,
+  isMailSendError,
+  permissionCreateMailFailureMessage,
+} from '@agentic-ui/shared/nuxeo-client';
 
 export interface AddPermissionDialogData {
   documentUid: string;
@@ -127,6 +133,7 @@ const PERMISSION_OPTIONS = [
       </mat-checkbox>
 
       @if (sendNotify) {
+        <p class="mail-hint">{{ mailHint }}</p>
         <div class="notify-section">
           <label class="field-label">Notification email</label>
           <mat-form-field appearance="outline" class="full-width">
@@ -234,6 +241,13 @@ const PERMISSION_OPTIONS = [
         margin: 4px 0 8px;
       }
 
+      .mail-hint {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+        line-height: 1.4;
+      }
+
       .notify-section {
         margin-top: 4px;
       }
@@ -267,6 +281,7 @@ export class AddPermissionDialogComponent {
   readonly saving = signal(false);
 
   readonly permissionOptions = PERMISSION_OPTIONS;
+  readonly mailHint = PERMISSION_NOTIFICATION_MAIL_HINT;
 
   searchText = '';
   selectedUser: UserGroupSuggestion | null = null;
@@ -314,7 +329,7 @@ export class AddPermissionDialogComponent {
     this.saving.set(true);
 
     this.detailService
-      .addPermission(this.data.documentUid, {
+      .addPermissionWithNotification(this.data.documentUid, {
         username: this.selectedUser.id,
         permission: this.permission,
         notify: this.sendNotify,
@@ -327,16 +342,18 @@ export class AddPermissionDialogComponent {
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (result) => {
           this.saving.set(false);
+          const message = this.successMessage(result.notificationSent, result.notificationError);
           if (andAddAnother) {
-            if (this.sendNotify) {
-              this.snackBar.open('Permission added and notification sent', 'Dismiss', {
-                duration: 4000,
-              });
+            if (message) {
+              this.snackBar.open(message, 'Dismiss', { duration: 7000 });
             }
             this.resetForm();
           } else {
+            if (message) {
+              this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+            }
             this.dialogRef.close(true);
           }
         },
@@ -345,6 +362,19 @@ export class AddPermissionDialogComponent {
           this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
         },
       });
+  }
+
+  private successMessage(notificationSent: boolean, notificationError?: string): string | null {
+    if (notificationError) {
+      return notificationError;
+    }
+    if (this.sendNotify && notificationSent) {
+      return 'Permission added and notification sent';
+    }
+    if (this.sendNotify) {
+      return null;
+    }
+    return null;
   }
 
   private resetForm(): void {
@@ -366,10 +396,10 @@ export class AddPermissionDialogComponent {
   }
 
   private permissionErrorMessage(err: unknown): string {
-    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
-    if (raw?.toLowerCase().includes('sending a mail')) {
-      return 'Permission could not be created. Configure outbound mail (SMTP) on the Nuxeo server.';
+    if (isMailSendError(err)) {
+      return permissionCreateMailFailureMessage();
     }
+    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
     return raw || 'Could not add permission';
   }
 }

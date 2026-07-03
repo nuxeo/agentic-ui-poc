@@ -35,6 +35,8 @@ import {
   docTypeIcon,
   avatarColor,
   NON_CONTENT_DOCUMENT_TYPES,
+  isMailSendError,
+  mailSendFailureMessage,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -378,7 +380,7 @@ export class CollectionDetailComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.actionInProgress.set('trash');
 
@@ -389,9 +391,9 @@ export class CollectionDetailComponent {
           void this.router.navigateByUrl('/collections');
         },
         error: () => {
-        this.actionInProgress.set(null);
-        this.toast('Failed to delete collection');
-      },
+          this.actionInProgress.set(null);
+          this.toast('Failed to delete collection');
+        },
       });
     });
   }
@@ -556,9 +558,11 @@ export class CollectionDetailComponent {
         this.actionInProgress.set(null);
         this.toast('Notification email sent');
       },
-      error: () => {
+      error: (err) => {
         this.actionInProgress.set(null);
-        this.toast('Failed to send notification');
+        this.toast(
+          isMailSendError(err) ? mailSendFailureMessage('send') : 'Failed to send notification',
+        );
       },
     });
   }

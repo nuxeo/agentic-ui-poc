@@ -14,7 +14,13 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { switchMap } from 'rxjs';
-import { NuxeoAce, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import {
+  DocumentDetailService,
+  NuxeoAce,
+  PERMISSION_NOTIFICATION_MAIL_HINT,
+  isMailSendError,
+  permissionUpdateMailFailureMessage,
+} from '@agentic-ui/shared/nuxeo-client';
 
 export interface UpdatePermissionDialogData {
   documentUid: string;
@@ -102,6 +108,10 @@ const PERMISSION_OPTIONS = [
         </mat-checkbox>
       }
 
+      @if (!isExternal && sendNotify) {
+        <p class="mail-hint">{{ mailHint }}</p>
+      }
+
       @if (isExternal || sendNotify) {
         <div class="notify-section">
           <label class="field-label">Notification email</label>
@@ -182,6 +192,13 @@ const PERMISSION_OPTIONS = [
         margin: 4px 0 8px;
       }
 
+      .mail-hint {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: var(--mat-sys-on-surface-variant);
+        line-height: 1.4;
+      }
+
       .notify-section {
         margin-top: 4px;
       }
@@ -207,6 +224,7 @@ export class UpdatePermissionDialogComponent {
 
   readonly saving = signal(false);
   readonly permissionOptions = PERMISSION_OPTIONS;
+  readonly mailHint = PERMISSION_NOTIFICATION_MAIL_HINT;
   readonly isExternal: boolean;
 
   permission: string;
@@ -238,7 +256,7 @@ export class UpdatePermissionDialogComponent {
 
   private updateLocal(): void {
     this.detailService
-      .replacePermission(this.data.documentUid, {
+      .replacePermissionWithNotification(this.data.documentUid, {
         id: this.data.ace.id,
         username: this.data.ace.username,
         permission: this.permission,
@@ -252,8 +270,12 @@ export class UpdatePermissionDialogComponent {
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (result) => {
           this.saving.set(false);
+          const message = this.successMessage(result.notificationSent, result.notificationError);
+          if (message) {
+            this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+          }
           this.dialogRef.close(true);
         },
         error: (err) => {
@@ -275,7 +297,7 @@ export class UpdatePermissionDialogComponent {
       })
       .pipe(
         switchMap(() =>
-          this.detailService.addExternalPermission(this.data.documentUid, {
+          this.detailService.addExternalPermissionWithNotification(this.data.documentUid, {
             email,
             permission: this.permission,
             begin: this.beginDate ? this.formatDateISO(this.beginDate) : null,
@@ -287,8 +309,12 @@ export class UpdatePermissionDialogComponent {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () => {
+        next: (result) => {
           this.saving.set(false);
+          const message = this.successMessage(result.notificationSent, result.notificationError);
+          if (message) {
+            this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+          }
           this.dialogRef.close(true);
         },
         error: (err) => {
@@ -298,11 +324,24 @@ export class UpdatePermissionDialogComponent {
       });
   }
 
-  private permissionErrorMessage(err: unknown): string {
-    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
-    if (raw?.toLowerCase().includes('sending a mail')) {
-      return 'Permission could not be updated. Configure outbound mail (SMTP) on the Nuxeo server.';
+  private successMessage(notificationSent: boolean, notificationError?: string): string | null {
+    if (notificationError) {
+      return notificationError;
     }
+    if (this.sendNotify && notificationSent) {
+      return 'Permission updated and notification sent';
+    }
+    if (this.isExternal && notificationSent) {
+      return 'Permission updated and notification sent';
+    }
+    return null;
+  }
+
+  private permissionErrorMessage(err: unknown): string {
+    if (isMailSendError(err)) {
+      return permissionUpdateMailFailureMessage();
+    }
+    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
     return raw || 'Could not update permission';
   }
 

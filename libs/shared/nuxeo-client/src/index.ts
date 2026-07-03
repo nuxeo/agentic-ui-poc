@@ -181,6 +181,16 @@ export {
   type NoteMimeType,
 } from './lib/utils/note-format';
 export { isMarkdownNoteFormat, isSafeHttpUrl, renderNoteMarkdown } from './lib/utils/note-markdown';
+export {
+  PERMISSION_NOTIFICATION_MAIL_HINT,
+  findLocalAceForPrincipal,
+  isMailSendError,
+  mailSendFailureMessage,
+  permissionCreateMailFailureMessage,
+  permissionNotificationAceNotFoundMessage,
+  permissionUpdateMailFailureMessage,
+  type PermissionWithNotificationResult,
+} from './lib/utils/permission-notification';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {

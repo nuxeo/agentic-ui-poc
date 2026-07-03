@@ -50,6 +50,9 @@ getRunnableWorkflows(uid: string): Observable<NuxeoWorkflowModel[]>
 createCollection(title: string, description?: string): Observable<NuxeoDocument>
 searchUsersGroups(searchTerm: string): Observable<UserGroupSuggestion[]>
 addPermission(uid: string, params: { username?, email?, permission, notify?, comment?, begin?, end?, creator? }): Observable<NuxeoDocument>  // creator defaults to CURRENT_USERNAME
+addPermissionWithNotification(uid, params): Observable<PermissionWithNotificationResult>  // add ACE then send notification separately
+replacePermissionWithNotification(uid, params): Observable<PermissionWithNotificationResult>
+addExternalPermissionWithNotification(uid, params): Observable<PermissionWithNotificationResult>
 addExternalPermission(uid: string, params: { email, permission, notify?, comment?, begin?, end?, creator? }): Observable<NuxeoDocument>  // creator defaults to CURRENT_USERNAME
 replacePermission(uid: string, params: { id?, username?, email?, permission, notify?, comment?, begin?, end? }): Observable<NuxeoDocument>
 removePermission(uid: string, params: { user, permission, acl? }): Observable<NuxeoDocument>

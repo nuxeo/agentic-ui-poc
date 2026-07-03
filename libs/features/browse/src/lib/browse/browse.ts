@@ -56,6 +56,8 @@ import {
   isDomainParentType,
   isRestrictedImportParentPath,
   PERMISSION_DENIED_MESSAGE,
+  isMailSendError,
+  mailSendFailureMessage,
   resolveAcePrincipal,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -1229,9 +1231,12 @@ export class BrowseComponent {
           this.actionInProgress.set(null);
           this.snackBar.open('Notification email sent', 'OK', { duration: 3000 });
         },
-        error: () => {
+        error: (err) => {
           this.actionInProgress.set(null);
-          this.snackBar.open('Failed to send notification', 'OK', { duration: 3000 });
+          const message = isMailSendError(err)
+            ? mailSendFailureMessage('send')
+            : 'Failed to send notification';
+          this.snackBar.open(message, 'OK', { duration: 7000 });
         },
       });
   }
