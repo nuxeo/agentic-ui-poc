@@ -54,6 +54,7 @@ import {
   canRemoveDocument,
   DOMAIN_CONTAINER_GUIDANCE,
   isDomainParentType,
+  isRepositoryRootPath,
   isRestrictedImportParentPath,
   PERMISSION_DENIED_MESSAGE,
   isMailSendError,
@@ -214,7 +215,7 @@ export class BrowseComponent {
   });
   readonly canWriteCurrentDoc = computed(() => canWriteDocument(this.currentDoc()));
   readonly isDomainBrowse = computed(() => isDomainParentType(this.currentDoc()?.type));
-  readonly isRepositoryRootBrowse = computed(() => isRestrictedImportParentPath(this.browsePath()));
+  readonly isRepositoryRootBrowse = computed(() => isRepositoryRootPath(this.browsePath()));
   readonly domainContainerGuidance = DOMAIN_CONTAINER_GUIDANCE;
   readonly canCreateContentHere = computed(() => {
     const doc = this.currentDoc();

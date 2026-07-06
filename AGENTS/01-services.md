@@ -264,6 +264,7 @@ createBlobHoldingDocument(parentPath, name, docType, properties, file, options?)
 createDocumentWithBlob(...): Observable<NuxeoDocument>
 createFileFromBatch(...): Observable<NuxeoDocument>
 importFiles(parentPath, files, options?): Observable<NuxeoDocument[]>
+importCsvFile(options: CsvServerImportOptions): Observable<string>
 importFromCsvText(parentPath: string, csvText: string): Observable<CsvImportResult>
 ```
 

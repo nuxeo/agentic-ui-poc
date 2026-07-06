@@ -86,24 +86,50 @@ export function sanitizeDocumentName(name: string): string {
   return cleaned.slice(0, 200) || 'untitled';
 }
 
-/** Default location shown when no browse context is provided. */
-export const DEFAULT_IMPORT_PARENT_PATH = '/default-domain';
+/** Default location when no browse context is provided (e.g. Dashboard Add Content). */
+export const DEFAULT_IMPORT_PARENT_PATH = '/';
+
+/** Auto-provisioned domain container — not a user content-creation target. */
+export const DOMAIN_CONTAINER_PATH = '/default-domain';
 
 export const RESTRICTED_IMPORT_LOCATION_MESSAGE =
   'Select a different container to create your content.';
 
-/** True when content cannot be created or imported at this path (repository or domain root). */
+export function normalizeImportParentPath(path: string): string {
+  const trimmed = path.trim();
+  if (!trimmed) return '/';
+  const withLeading = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withLeading.replace(/\/+$/, '') || '/';
+}
+
+/** True when the path is the repository root (Domain creation only). */
+export function isRepositoryRootPath(path: string | null | undefined): boolean {
+  if (!path?.trim()) return false;
+  return normalizeImportParentPath(path) === '/';
+}
+
+/** True when generic content cannot be created or imported at this path (domain container). */
 export function isRestrictedImportParentPath(path: string | null | undefined): boolean {
   if (!path?.trim()) return true;
-  const normalized = path.trim().replace(/\/+$/, '') || '/';
-  if (normalized === '/') return true;
-  return normalized === DEFAULT_IMPORT_PARENT_PATH;
+  return normalizeImportParentPath(path) === DOMAIN_CONTAINER_PATH;
 }
 
 export interface CsvImportResult {
   created: NuxeoDocument[];
   skipped: string[];
   errors: string[];
+}
+
+/** Options for server-side CSV import via Nuxeo CSV addon (`CSV.Import`). */
+export interface CsvServerImportOptions {
+  path: string;
+  file: File;
+  /** Email the import report when the server finishes processing. */
+  sendReport?: boolean;
+  /** Preserve UUID, dates, author, and contributors from the CSV (document import mode). */
+  documentMode?: boolean;
+  /** Trim whitespace from CSV cell values (server default). */
+  trim?: boolean;
 }
 
 /** Options for {@link DocumentImportService.importFiles}. */
@@ -134,10 +160,33 @@ export class DocumentImportService {
 
   /**
    * Default folder when no browse context is passed (e.g. Dashboard).
-   * Uses repository root: the default domain (`/default-domain`), not a user workspace.
+   * Uses repository root (`/`) so administrators can create domains.
    */
   getDefaultImportParentPath(): Observable<string> {
     return of(DEFAULT_IMPORT_PARENT_PATH);
+  }
+
+  /**
+   * Bulk CSV import via Nuxeo CSV addon (`POST /automation/CSV.Import`).
+   * @see https://doc.nuxeo.com/nxdoc/nuxeo-csv/
+   */
+  importCsvFile(options: CsvServerImportOptions): Observable<string> {
+    const path = normalizeImportParentPath(options.path);
+    const request = JSON.stringify({
+      params: {
+        path,
+        sendReport: options.sendReport === true,
+        documentMode: options.documentMode === true,
+        trim: options.trim !== false,
+      },
+      context: {},
+    });
+    const formData = new FormData();
+    formData.append('request', new Blob([request], { type: 'application/json' }));
+    formData.append('file', options.file);
+    return this.http.post(this.api.apiUrl('/nuxeo/api/v1/automation/CSV.Import'), formData, {
+      responseType: 'text',
+    });
   }
 
   /**
@@ -556,6 +605,18 @@ export class DocumentImportService {
       }),
     );
   }
+}
+
+/** Strip HTML from Nuxeo CSV import report for plain-text display. */
+export function summarizeCsvImportReport(report: string): string {
+  const text = report
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text || 'CSV import completed.';
 }
 
 /** Strip control characters unsafe for HTTP header values (e.g. CR/LF injection). */

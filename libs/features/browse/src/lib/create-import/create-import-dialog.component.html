@@ -25,6 +25,16 @@
       >
         Import
       </button>
+      <button
+        type="button"
+        role="tab"
+        class="tab-btn"
+        [class.tab-btn--active]="activeTab() === 'csv'"
+        [attr.aria-selected]="activeTab() === 'csv'"
+        (click)="setActiveTab('csv')"
+      >
+        CSV
+      </button>
     </div>
   }
 
@@ -134,51 +144,125 @@
                 </div>
               }
             }
-          } @else {
-            <div
-              class="dropzone"
-              [class.dropzone--active]="dragOverUpload()"
-              [class.dropzone--disabled]="locationRestricted()"
-              (dragover)="onUploadDragOver($event)"
-              (dragleave)="onUploadDragLeave($event)"
-              (drop)="onUploadDrop($event)"
-            >
-              <input
-                #fileInput
-                type="file"
-                multiple
-                (change)="onUploadInputChange($event)"
-                [disabled]="busy() || locationRestricted()"
-              />
-              <button
-                type="button"
-                class="dropzone-inner"
-                [disabled]="locationRestricted()"
-                (click)="fileInput.click()"
+          } @else if (activeTab() === 'import') {
+            @if (importRestricted()) {
+              <p class="empty-hint">
+                @if (isAtRepositoryRoot()) {
+                  File import is not available at the repository root. Create a domain first, or
+                  choose a folder below.
+                } @else {
+                  {{ importLocationHint() }}
+                }
+              </p>
+            } @else {
+              <div
+                class="dropzone dropzone--import"
+                [class.dropzone--active]="dragOverUpload()"
+                (dragover)="onUploadDragOver($event)"
+                (dragleave)="onUploadDragLeave($event)"
+                (drop)="onUploadDrop($event)"
               >
-                <span class="dropzone-text"
-                  >Drag and drop, or click to select files to upload.</span
+                <input
+                  #fileInput
+                  type="file"
+                  multiple
+                  (change)="onUploadInputChange($event)"
+                  [disabled]="busy()"
+                />
+                <button
+                  type="button"
+                  class="dropzone-inner"
+                  [disabled]="busy()"
+                  (click)="fileInput.click()"
                 >
-              </button>
-            </div>
+                  <span class="dropzone-text"
+                    >Drag and drop, or click to select files to upload.</span
+                  >
+                </button>
+              </div>
 
-            @if (uploadFiles().length > 0) {
-              <ul class="file-list">
-                @for (f of uploadFiles(); track $index) {
+              @if (uploadFiles().length > 0) {
+                <ul class="file-list">
+                  @for (f of uploadFiles(); track $index) {
+                    <li>
+                      <span class="file-name">{{ f.name }}</span>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [disabled]="busy()"
+                        (click)="removeUploadAt($index)"
+                        aria-label="Remove"
+                      >
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </li>
+                  }
+                </ul>
+              }
+            }
+          } @else {
+            @if (csvImportRestricted()) {
+              <p class="empty-hint">{{ importLocationHint() }}</p>
+            } @else {
+              <div
+                class="dropzone dropzone--csv"
+                [class.dropzone--active]="dragOverCsv()"
+                (dragover)="onCsvDragOver($event)"
+                (dragleave)="onCsvDragLeave($event)"
+                (drop)="onCsvDrop($event)"
+              >
+                <input
+                  #csvInput
+                  type="file"
+                  accept=".csv,text/csv"
+                  (change)="onCsvInputChange($event)"
+                  [disabled]="busy()"
+                />
+                <button
+                  type="button"
+                  class="dropzone-inner"
+                  [disabled]="busy()"
+                  (click)="csvInput.click()"
+                >
+                  <span class="dropzone-text"
+                    >Click to select a csv file or drag it to upload.</span
+                  >
+                </button>
+              </div>
+
+              @if (csvFile(); as csv) {
+                <ul class="file-list">
                   <li>
-                    <span class="file-name">{{ f.name }}</span>
+                    <span class="file-name">{{ csv.name }}</span>
                     <button
                       mat-icon-button
                       type="button"
                       [disabled]="busy()"
-                      (click)="removeUploadAt($index)"
-                      aria-label="Remove"
+                      (click)="clearCsvFile()"
+                      aria-label="Remove CSV file"
                     >
                       <mat-icon>close</mat-icon>
                     </button>
                   </li>
-                }
-              </ul>
+                </ul>
+              }
+
+              <div class="csv-options">
+                <mat-slide-toggle
+                  [checked]="csvSendReport()"
+                  [disabled]="busy()"
+                  (change)="csvSendReport.set($event.checked)"
+                >
+                  Receive the import report by email.
+                </mat-slide-toggle>
+                <mat-slide-toggle
+                  [checked]="csvDocumentMode()"
+                  [disabled]="busy()"
+                  (change)="csvDocumentMode.set($event.checked)"
+                >
+                  Apply Date, Author and Dublin Core properties.
+                </mat-slide-toggle>
+              </div>
             }
           }
         }
@@ -486,10 +570,20 @@
           mat-flat-button
           color="primary"
           type="button"
-          [disabled]="busy() || uploadFiles().length === 0 || locationRestricted()"
+          [disabled]="busy() || uploadFiles().length === 0 || importRestricted()"
           (click)="runUpload()"
         >
           Import
+        </button>
+      } @else if (view() === 'main' && activeTab() === 'csv') {
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="busy() || !csvFile() || csvImportRestricted()"
+          (click)="runCsvImport()"
+        >
+          Create
         </button>
       }
     </mat-dialog-actions>
