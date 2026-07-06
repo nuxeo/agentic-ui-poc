@@ -157,14 +157,7 @@ describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
   it('adds selected group without concatenating typed prefix (NXSAT-151)', () => {
     const deselect = vi.fn();
     component.groupSearchQuery = 'power';
-
-    component.onGroupSelected({
-      option: { value: 'powerusers', deselect },
-    } as unknown as MatAutocompleteSelectedEvent);
-
-    expect(component.groups).toEqual(['powerusers']);
-    expect(component.groupSearchQuery).toBe('');
-    expect(deselect).toHaveBeenCalled();
+    component.groupOptions = [{ groupname: 'powerusers', grouplabel: 'powerusers' }];
 
     const chipInput = { clear: vi.fn() };
     component.addGroupFromInput({
@@ -173,7 +166,37 @@ describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
     } as unknown as MatChipInputEvent);
 
     expect(component.groups).toEqual(['powerusers']);
+    expect(component.groupSearchQuery).toBe('');
     expect(chipInput.clear).toHaveBeenCalled();
+
+    component.onGroupSelected({
+      option: { value: 'powerusers', deselect },
+    } as unknown as MatAutocompleteSelectedEvent);
+
+    expect(component.groups).toEqual(['powerusers']);
+    expect(deselect).toHaveBeenCalled();
+  });
+
+  it('ignores partial prefix chip before autocomplete selection (NXSAT-151)', () => {
+    component.groupSearchQuery = 'power';
+    component.groupOptions = [{ groupname: 'powerusers', grouplabel: 'powerusers' }];
+
+    const chipInput = { clear: vi.fn() };
+    component.addGroupFromInput({
+      value: 'power',
+      chipInput,
+    } as unknown as MatChipInputEvent);
+
+    expect(component.groups).toEqual([]);
+    expect(chipInput.clear).toHaveBeenCalled();
+
+    component.groups = ['powe'];
+    component.onGroupSelected({
+      option: { value: 'powerusers', deselect: vi.fn() },
+    } as unknown as MatAutocompleteSelectedEvent);
+
+    expect(component.groups).toEqual(['powerusers']);
+    expect(component.groupSearchQuery).toBe('');
   });
 
   it('blocks save when email is missing (NXSAT-166)', () => {
