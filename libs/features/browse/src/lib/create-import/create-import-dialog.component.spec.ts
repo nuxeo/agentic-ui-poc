@@ -150,6 +150,25 @@ describe('CreateImportDialogComponent CSV', () => {
     expect(component.csvFile()?.name).toBe('docs.csv');
   });
 
+  it('rejects non-CSV files from file input', async () => {
+    await createDialog({ parentPath: '/default-domain/workspaces/demo' });
+    component.onCsvInputChange({
+      target: { files: [new File(['x'], 'notes.txt')], value: '' },
+    } as unknown as Event);
+    expect(component.csvFile()).toBeNull();
+    expect(component.error()).toBe('Please select a .csv file.');
+  });
+
+  it('rejects non-CSV files from drag and drop', async () => {
+    await createDialog({ parentPath: '/default-domain/workspaces/demo' });
+    component.onCsvDrop({
+      preventDefault: vi.fn(),
+      dataTransfer: { files: [new File(['x'], 'notes.txt')] },
+    } as unknown as DragEvent);
+    expect(component.csvFile()).toBeNull();
+    expect(component.error()).toBe('Please select a .csv file.');
+  });
+
   it('runCsvImport calls CSV.Import with toggle values', async () => {
     await createDialog({ parentPath: '/default-domain/workspaces/demo' });
     const file = new File(['name,type'], 'docs.csv', { type: 'text/csv' });

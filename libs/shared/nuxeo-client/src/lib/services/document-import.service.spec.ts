@@ -131,6 +131,10 @@ describe('DocumentImportService', () => {
     expect(summarizeCsvImportReport('<p>Imported <b>3</b> documents</p>')).toBe(
       'Imported 3 documents',
     );
+    expect(
+      summarizeCsvImportReport('<p>Imported 2 documents</p><br/>Skipped 1 row<br/>Errors: 0'),
+    ).toBe('Imported 2 documents\n\nSkipped 1 row\nErrors: 0');
+    expect(summarizeCsvImportReport('Row one<br/>Row two')).toBe('Row one\nRow two');
     expect(summarizeCsvImportReport('   ')).toBe('CSV import completed.');
   });
 

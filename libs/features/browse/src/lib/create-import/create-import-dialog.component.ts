@@ -779,8 +779,7 @@ export class CreateImportDialogComponent implements OnInit {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    this.csvFile.set(file);
-    this.error.set(null);
+    this.selectCsvFile(file);
   }
 
   onCsvDrop(ev: DragEvent): void {
@@ -788,6 +787,15 @@ export class CreateImportDialogComponent implements OnInit {
     this.dragOverCsv.set(false);
     const file = ev.dataTransfer?.files?.[0];
     if (!file) return;
+    this.selectCsvFile(file);
+  }
+
+  private selectCsvFile(file: File): void {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      this.csvFile.set(null);
+      this.error.set('Please select a .csv file.');
+      return;
+    }
     this.csvFile.set(file);
     this.error.set(null);
   }

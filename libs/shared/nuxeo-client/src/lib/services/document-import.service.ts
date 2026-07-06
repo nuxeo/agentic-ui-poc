@@ -614,7 +614,10 @@ export function summarizeCsvImportReport(report: string): string {
     .replace(/<\/p>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
-    .replace(/\s+/g, ' ')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
   return text || 'CSV import completed.';
 }
