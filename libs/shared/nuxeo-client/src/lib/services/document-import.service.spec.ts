@@ -154,6 +154,14 @@ describe('DocumentImportService', () => {
       await vi.advanceTimersByTimeAsync(300);
     }
 
+    const trashReq = httpMock.expectOne('/nuxeo/api/v1/automation/Document.Trash');
+    expect(trashReq.request.body).toEqual({
+      params: {},
+      context: {},
+      input: 'doc:doc-2',
+    });
+    trashReq.flush({ uid: 'doc-2', title: 'empty', type: 'File', path: '/ws/empty' });
+
     await rejection;
     vi.useRealTimers();
   });
@@ -279,5 +287,56 @@ describe('DocumentImportService', () => {
     });
 
     await import$;
+  });
+
+  it('creates a blob-holding document from a staged batch', async () => {
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocumentFromBatch(
+        '/ws',
+        'photo',
+        'Picture',
+        { 'dc:title': 'photo' },
+        'batch-staged',
+        0,
+      ),
+    );
+
+    const createReq = httpMock.expectOne('/nuxeo/api/v1/path/ws');
+    expect(createReq.request.body.properties['file:content']).toEqual({
+      'upload-batch': 'batch-staged',
+      'upload-fileId': '0',
+    });
+    createReq.flush({
+      uid: 'doc-staged',
+      title: 'photo',
+      type: 'Picture',
+      path: '/ws/photo',
+      properties: {
+        'dc:title': 'photo',
+        'file:content': { name: 'photo.jpg', length: '1024', digest: 'abc' },
+      },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-staged');
+  });
+
+  it('stages a file in a batch on selection (Web UI immediate upload)', async () => {
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const progress: number[] = [];
+    const stage$ = firstValueFrom(
+      service.stageFileInBatch(file, { onProgress: (pct) => progress.push(pct) }),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-stage' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-stage/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-stage/0')
+      .flush({ name: 'photo.jpg', size: file.size });
+
+    const staged = await stage$;
+    expect(staged).toEqual({ batchId: 'batch-stage', fileIndex: 0 });
+    expect(progress.length).toBeGreaterThan(0);
+    expect(progress[progress.length - 1]).toBe(100);
   });
 });

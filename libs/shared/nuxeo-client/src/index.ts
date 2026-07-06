@@ -94,6 +94,8 @@ export {
   type CreateBlobHoldingDocumentOptions,
   type ImportFilesOptions,
   type ImportProgress,
+  type StagedBatchFile,
+  type StageFileInBatchOptions,
 } from './lib/services/document-import.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';

@@ -1,8 +1,10 @@
 import {
   Component,
   DestroyRef,
+  ElementRef,
   HostListener,
   OnInit,
+  ViewChild,
   computed,
   effect,
   inject,
@@ -19,9 +21,10 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { FormsModule, NgModel } from '@angular/forms';
+import { finalize, forkJoin } from 'rxjs';
 
 import {
   BrowseService,
@@ -39,6 +42,7 @@ import {
   NOTE_FORMAT_OPTIONS,
   sanitizeDocumentName,
   type DirectoryEntry,
+  type ImportProgress,
   type L10nDirectoryEntry,
   type NuxeoDocument,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -114,6 +118,7 @@ const DIALOG_SIZE = {
     MatDatepickerModule,
     MatNativeDateModule,
     MatProgressSpinnerModule,
+    MatProgressBarModule,
     MatSnackBarModule,
     FormsModule,
   ],
@@ -122,6 +127,9 @@ const DIALOG_SIZE = {
   styleUrl: './create-import-dialog.component.scss',
 })
 export class CreateImportDialogComponent implements OnInit {
+  @ViewChild('mainFileInput') mainFileInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('expiresInput') expiresNgModel?: NgModel;
+
   private readonly dialogRef = inject(
     MatDialogRef<CreateImportDialogComponent, CreateImportDialogResult>,
   );
@@ -134,6 +142,8 @@ export class CreateImportDialogComponent implements OnInit {
 
   private folderContextRequestId = 0;
   private locationSuggestionsRequestId = 0;
+  private mainFileUploadRequestId = 0;
+  private mainFileBatchId: string | null = null;
 
   readonly noteFormatOptions = NOTE_FORMAT_OPTIONS;
 
@@ -195,15 +205,23 @@ export class CreateImportDialogComponent implements OnInit {
   subjectsPanelSearch = '';
   coveragePanelSearch = '';
   expires: Date | null = null;
+  expiresTouched = false;
+  expiresRawText = '';
   noteFormat = 'text/html';
 
   readonly mainFile = signal<File | null>(null);
+  readonly mainFileUploading = signal(false);
+  readonly mainFileUploadComplete = signal(false);
+  readonly mainFileUploadPercent = signal(0);
   readonly dragOverContent = signal(false);
 
   readonly uploadFiles = signal<File[]>([]);
 
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
+  readonly contentError = signal<string | null>(null);
+  readonly importError = signal<string | null>(null);
+  readonly uploadProgress = signal<ImportProgress | null>(null);
   readonly successMessage = signal<string | null>(null);
 
   readonly dragOverUpload = signal(false);
@@ -216,6 +234,14 @@ export class CreateImportDialogComponent implements OnInit {
   readonly createMissingMainFile = computed(() => {
     const type = this.selectedDocType()?.type;
     return type ? isBlobHoldingDocType(type) && !this.mainFile() : false;
+  });
+
+  readonly mainFileUploadPending = computed(() => {
+    const type = this.selectedDocType()?.type;
+    if (!type || !isBlobHoldingDocType(type)) return false;
+    const file = this.mainFile();
+    if (!file) return false;
+    return this.mainFileUploading() || !this.mainFileUploadComplete();
   });
 
   readonly isNoteType = computed(() => this.selectedDocType()?.type === 'Note');
@@ -473,6 +499,7 @@ export class CreateImportDialogComponent implements OnInit {
     }
     this.activeTab.set(tab);
     this.error.set(null);
+    this.importError.set(null);
   }
 
   startCreateFromType(docType: DocTypeDef): void {
@@ -480,6 +507,7 @@ export class CreateImportDialogComponent implements OnInit {
     this.resetFormState();
     this.selectedDocType.set(docType);
     this.error.set(null);
+    this.contentError.set(null);
     this.view.set('templateForm');
   }
 
@@ -494,9 +522,71 @@ export class CreateImportDialogComponent implements OnInit {
     this.subjectsPanelSearch = '';
     this.coveragePanelSearch = '';
     this.expires = null;
+    this.expiresTouched = false;
+    this.expiresRawText = '';
     this.noteFormat = 'text/html';
     this.mainFile.set(null);
+    this.mainFileUploading.set(false);
+    this.mainFileUploadComplete.set(false);
+    this.mainFileUploadPercent.set(0);
+    this.mainFileBatchId = null;
+    this.mainFileUploadRequestId++;
     this.dragOverContent.set(false);
+    this.contentError.set(null);
+    this.uploadProgress.set(null);
+  }
+
+  isExpiresValid(): boolean {
+    const raw = this.expiresRawText.trim();
+    if (!raw) return true;
+    if (this.expires && !Number.isNaN(this.expires.getTime())) return true;
+    if (this.expiresNgModel?.errors?.['matDatepickerParse']) return false;
+    if (this.expiresNgModel?.invalid) return false;
+    return this.isValidPartialOrCompleteDate(raw);
+  }
+
+  onExpiresInput(event: Event): void {
+    this.expiresTouched = true;
+    this.expiresRawText = (event.target as HTMLInputElement).value;
+    const ctrl = this.expiresNgModel?.control;
+    if (ctrl) {
+      ctrl.markAsDirty();
+      ctrl.updateValueAndValidity({ emitEvent: false });
+    }
+  }
+
+  onExpiresBlur(): void {
+    this.expiresTouched = true;
+  }
+
+  onExpiresChange(value: Date | null): void {
+    this.expires = value;
+    this.expiresTouched = true;
+    if (value && !Number.isNaN(value.getTime())) {
+      this.expiresRawText = '';
+    }
+  }
+
+  private isValidPartialOrCompleteDate(raw: string): boolean {
+    if (/^\d{0,2}(\/\d{0,2}(\/\d{0,4})?)?$/.test(raw)) {
+      if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(raw)) {
+        const parsed = new Date(raw);
+        return !Number.isNaN(parsed.getTime());
+      }
+      return true;
+    }
+    const parsed = new Date(raw);
+    return !Number.isNaN(parsed.getTime());
+  }
+
+  uploadProgressLabel(progress: ImportProgress): string {
+    if (progress.phase === 'creating') {
+      return 'Creating document…';
+    }
+    if (progress.fileCount && progress.fileCount > 1 && progress.fileIndex !== undefined) {
+      return `Uploading file ${progress.fileIndex + 1} of ${progress.fileCount}…`;
+    }
+    return 'Uploading…';
   }
 
   subjectPillLabel(id: string): string {
@@ -508,6 +598,30 @@ export class CreateImportDialogComponent implements OnInit {
     const parent = this.subjectEntries().find((e) => e.id === parentId);
     const parentLabel = parent?.properties.label_en ?? parentId;
     return `${parentLabel}/${label}`;
+  }
+
+  naturePillLabel(id: string): string {
+    const entry = this.natureEntries().find((e) => e.id === id);
+    return entry?.displayLabel ?? id;
+  }
+
+  coveragePillLabel(id: string): string {
+    const entry = this.coverageEntries().find((e) => e.id === id);
+    if (!entry) return id;
+    const label = entry.properties.label_en ?? id;
+    const parentId = entry.properties.parent;
+    if (!parentId || label.includes('/')) return label;
+    const parent = this.coverageEntries().find((e) => e.id === parentId);
+    const parentLabel = parent?.properties.label_en ?? parentId;
+    return `${parentLabel}/${label}`;
+  }
+
+  clearNature(): void {
+    this.nature = null;
+  }
+
+  clearCoverage(): void {
+    this.coverage = null;
   }
 
   @HostListener('document:keydown.escape')
@@ -604,6 +718,7 @@ export class CreateImportDialogComponent implements OnInit {
     this.resetFormState();
     this.view.set('main');
     this.error.set(null);
+    this.contentError.set(null);
   }
 
   private buildDocumentProperties(title: string): Record<string, unknown> {
@@ -614,7 +729,8 @@ export class CreateImportDialogComponent implements OnInit {
       'dc:nature': this.nature || null,
       'dc:subjects': this.subjects,
       'dc:coverage': this.coverage || null,
-      'dc:expired': this.expires?.toISOString() ?? null,
+      'dc:expired':
+        this.expires && !Number.isNaN(this.expires.getTime()) ? this.expires.toISOString() : null,
     };
 
     if (docType?.type === 'Note') {
@@ -632,37 +748,76 @@ export class CreateImportDialogComponent implements OnInit {
     const docType = this.selectedDocType();
     if (!path || !docType || !this.docTitle.trim()) return;
 
+    this.expiresTouched = true;
+    if (!this.isExpiresValid()) return;
+
     const title = this.docTitle.trim();
     const name = sanitizeDocumentName(title);
     const properties = this.buildDocumentProperties(title);
     const mainFile = this.mainFile();
+    const hasBlob = isBlobHoldingDocType(docType.type);
 
-    if (isBlobHoldingDocType(docType.type) && !mainFile) {
-      this.error.set('A file is required for this document type.');
+    if (hasBlob && !mainFile) {
+      this.contentError.set('A file is required for this document type.');
+      return;
+    }
+
+    if (hasBlob && mainFile && this.mainFileUploadPending()) {
+      this.contentError.set('Please wait for the file upload to finish.');
       return;
     }
 
     this.busy.set(true);
     this.error.set(null);
+    this.contentError.set(null);
 
     const create$ =
-      mainFile && isBlobHoldingDocType(docType.type)
-        ? this.importService.createBlobHoldingDocument(
-            path,
-            name,
-            docType.type,
-            properties,
-            mainFile,
-          )
+      mainFile && hasBlob
+        ? this.mainFileBatchId && this.mainFileUploadComplete()
+          ? this.importService.createBlobHoldingDocumentFromBatch(
+              path,
+              name,
+              docType.type,
+              properties,
+              this.mainFileBatchId,
+              0,
+              {
+                onProgress: (progress) => this.uploadProgress.set(progress),
+              },
+            )
+          : this.importService.createBlobHoldingDocument(
+              path,
+              name,
+              docType.type,
+              properties,
+              mainFile,
+              {
+                onProgress: (progress) => this.uploadProgress.set(progress),
+              },
+            )
         : this.importService.createChildDocument(path, name, docType.type, properties);
 
-    create$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: (doc) => this.finishCreateAndNavigate(doc, title, docType.type, !!mainFile),
-      error: (err: { error?: { message?: string }; message?: string }) => {
-        this.busy.set(false);
-        this.error.set(err?.error?.message ?? err?.message ?? 'Create failed');
-      },
-    });
+    create$
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.busy.set(false);
+          if (!this.mainFileUploading()) {
+            this.uploadProgress.set(null);
+          }
+        }),
+      )
+      .subscribe({
+        next: (doc) => this.finishCreateAndNavigate(doc, title, docType.type, !!mainFile),
+        error: (err: { error?: { message?: string }; message?: string }) => {
+          const message = err?.error?.message ?? err?.message ?? 'Create failed';
+          if (hasBlob && mainFile) {
+            this.contentError.set(message);
+          } else {
+            this.error.set(message);
+          }
+        },
+      });
   }
 
   private finishCreateAndNavigate(
@@ -671,7 +826,6 @@ export class CreateImportDialogComponent implements OnInit {
     docTypeName: string,
     hadFile: boolean,
   ): void {
-    this.busy.set(false);
     this.mainFile.set(null);
     if (!hadFile) {
       this.snackBar.open(`Created ${docTypeName} “${title}”`, 'Close', { duration: 4000 });
@@ -687,7 +841,9 @@ export class CreateImportDialogComponent implements OnInit {
   onMainFileInputChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    if (file) this.mainFile.set(file);
+    if (file) {
+      this.stageMainFile(file);
+    }
     input.value = '';
   }
 
@@ -695,7 +851,9 @@ export class CreateImportDialogComponent implements OnInit {
     ev.preventDefault();
     this.dragOverContent.set(false);
     const file = ev.dataTransfer?.files?.[0];
-    if (file) this.mainFile.set(file);
+    if (file) {
+      this.stageMainFile(file);
+    }
   }
 
   onContentDragOver(ev: DragEvent): void {
@@ -710,7 +868,56 @@ export class CreateImportDialogComponent implements OnInit {
   }
 
   clearMainFile(): void {
+    this.mainFileUploadRequestId++;
     this.mainFile.set(null);
+    this.mainFileUploading.set(false);
+    this.mainFileUploadComplete.set(false);
+    this.mainFileUploadPercent.set(0);
+    this.mainFileBatchId = null;
+    this.contentError.set(null);
+    if (this.mainFileInput?.nativeElement) {
+      this.mainFileInput.nativeElement.value = '';
+    }
+  }
+
+  private stageMainFile(file: File): void {
+    const requestId = ++this.mainFileUploadRequestId;
+    this.mainFile.set(file);
+    this.mainFileUploading.set(true);
+    this.mainFileUploadComplete.set(false);
+    this.mainFileUploadPercent.set(0);
+    this.mainFileBatchId = null;
+    this.contentError.set(null);
+
+    this.importService
+      .stageFileInBatch(file, {
+        onProgress: (percent) => {
+          if (requestId !== this.mainFileUploadRequestId) return;
+          this.mainFileUploadPercent.set(percent);
+        },
+      })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          if (requestId !== this.mainFileUploadRequestId) return;
+          this.mainFileUploading.set(false);
+        }),
+      )
+      .subscribe({
+        next: ({ batchId }) => {
+          if (requestId !== this.mainFileUploadRequestId) return;
+          this.mainFileBatchId = batchId;
+          this.mainFileUploadComplete.set(true);
+          this.mainFileUploadPercent.set(100);
+        },
+        error: (err: { error?: { message?: string }; message?: string }) => {
+          if (requestId !== this.mainFileUploadRequestId) return;
+          this.mainFile.set(null);
+          this.mainFileBatchId = null;
+          this.mainFileUploadPercent.set(0);
+          this.contentError.set(err?.error?.message ?? err?.message ?? 'File upload failed');
+        },
+      });
   }
 
   onUploadInputChange(event: Event): void {
@@ -718,6 +925,7 @@ export class CreateImportDialogComponent implements OnInit {
     const list = input.files;
     if (!list?.length) return;
     this.addFiles(Array.from(list));
+    this.importError.set(null);
     input.value = '';
   }
 
@@ -725,7 +933,10 @@ export class CreateImportDialogComponent implements OnInit {
     ev.preventDefault();
     this.dragOverUpload.set(false);
     const list = ev.dataTransfer?.files;
-    if (list?.length) this.addFiles(Array.from(list));
+    if (list?.length) {
+      this.addFiles(Array.from(list));
+      this.importError.set(null);
+    }
   }
 
   onUploadDragOver(ev: DragEvent): void {
@@ -755,12 +966,21 @@ export class CreateImportDialogComponent implements OnInit {
     if (!path || files.length === 0) return;
     this.busy.set(true);
     this.error.set(null);
+    this.importError.set(null);
+    this.uploadProgress.set(null);
     this.importService
-      .importFiles(path, files)
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .importFiles(path, files, {
+        onProgress: (progress) => this.uploadProgress.set(progress),
+      })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.busy.set(false);
+          this.uploadProgress.set(null);
+        }),
+      )
       .subscribe({
         next: (docs) => {
-          this.busy.set(false);
           this.snackBar.open(`Uploaded ${docs.length} file(s).`, 'Close', { duration: 4000 });
           this.dialogRef.close({
             refreshed: true,
@@ -769,8 +989,7 @@ export class CreateImportDialogComponent implements OnInit {
           });
         },
         error: (err: { error?: { message?: string }; message?: string }) => {
-          this.busy.set(false);
-          this.error.set(err?.error?.message ?? err?.message ?? 'Upload failed');
+          this.importError.set(err?.error?.message ?? err?.message ?? 'Upload failed');
         },
       });
   }

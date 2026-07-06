@@ -127,6 +127,16 @@ export interface CreateBlobHoldingDocumentOptions {
   onProgress?: (progress: ImportProgress) => void;
 }
 
+/** Result of staging a file in an upload batch before document creation (Web UI immediate upload). */
+export interface StagedBatchFile {
+  batchId: string;
+  fileIndex: number;
+}
+
+export interface StageFileInBatchOptions {
+  onProgress?: (percent: number) => void;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DocumentImportService {
   private readonly http = inject(HttpClient);
@@ -287,6 +297,46 @@ export class DocumentImportService {
   }
 
   /**
+   * Upload a file to a new batch immediately on selection (Nuxeo Web UI `immediate` upload).
+   * Document creation can later reference the returned `batchId` / `fileIndex`.
+   */
+  stageFileInBatch(file: File, options?: StageFileInBatchOptions): Observable<StagedBatchFile> {
+    const report = options?.onProgress;
+    return this.initUploadBatch().pipe(
+      switchMap((batchId) =>
+        this.uploadFileToBatch(batchId, 0, file, report).pipe(
+          switchMap(() => this.verifyBatchFileUploaded(batchId, 0)),
+          map(() => ({ batchId, fileIndex: 0 })),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Create a blob-holding document from a file already staged in an upload batch.
+   */
+  createBlobHoldingDocumentFromBatch(
+    parentPath: string,
+    name: string,
+    docType: string,
+    properties: Record<string, unknown>,
+    batchId: string,
+    fileIndex: number,
+    options?: CreateBlobHoldingDocumentOptions,
+  ): Observable<NuxeoDocument> {
+    const report = options?.onProgress;
+    report?.({ phase: 'creating', percent: 90 });
+    return this.createDocumentWithBlob(
+      parentPath,
+      name,
+      docType,
+      properties,
+      batchId,
+      fileIndex,
+    ).pipe(tap(() => report?.({ phase: 'creating', percent: 100 })));
+  }
+
+  /**
    * Initialize a batch, upload `file`, and create a blob-holding document with `file:content` set.
    */
   createBlobHoldingDocument(
@@ -431,11 +481,26 @@ export class DocumentImportService {
           return of(refetched);
         }
         if (attempt >= maxAttempts) {
-          return throwError(() => new Error(BLOB_NOT_ATTACHED_ERROR));
+          return this.trashOrphanDocument(uid).pipe(
+            catchError(() => of(undefined)),
+            switchMap(() => throwError(() => new Error(BLOB_NOT_ATTACHED_ERROR))),
+          );
         }
         return timer(300).pipe(switchMap(() => this.pollDocumentMainBlob(uid, attempt + 1)));
       }),
     );
+  }
+
+  /** Best-effort cleanup when blob attachment fails after the document shell was created. */
+  private trashOrphanDocument(uid: string): Observable<void> {
+    const input = uid.startsWith('doc:') ? uid : `doc:${uid}`;
+    return this.api
+      .post<NuxeoDocument>('/nuxeo/api/v1/automation/Document.Trash', {
+        params: {},
+        context: {},
+        input,
+      })
+      .pipe(map(() => undefined));
   }
 
   private fetchDocumentMainBlob(uid: string): Observable<NuxeoDocument> {
