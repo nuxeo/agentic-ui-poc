@@ -205,7 +205,6 @@ export class CreateImportDialogComponent implements OnInit {
   subjectsPanelSearch = '';
   coveragePanelSearch = '';
   expires: Date | null = null;
-  expiresTouched = false;
   expiresRawText = '';
   noteFormat = 'text/html';
 
@@ -522,7 +521,6 @@ export class CreateImportDialogComponent implements OnInit {
     this.subjectsPanelSearch = '';
     this.coveragePanelSearch = '';
     this.expires = null;
-    this.expiresTouched = false;
     this.expiresRawText = '';
     this.noteFormat = 'text/html';
     this.mainFile.set(null);
@@ -538,15 +536,13 @@ export class CreateImportDialogComponent implements OnInit {
 
   isExpiresValid(): boolean {
     const raw = this.expiresRawText.trim();
-    if (!raw) return true;
-    if (this.expires && !Number.isNaN(this.expires.getTime())) return true;
-    if (this.expiresNgModel?.errors?.['matDatepickerParse']) return false;
-    if (this.expiresNgModel?.invalid) return false;
+    if (!raw) {
+      return !this.expires || !Number.isNaN(this.expires.getTime());
+    }
     return this.isValidPartialOrCompleteDate(raw);
   }
 
   onExpiresInput(event: Event): void {
-    this.expiresTouched = true;
     this.expiresRawText = (event.target as HTMLInputElement).value;
     const ctrl = this.expiresNgModel?.control;
     if (ctrl) {
@@ -555,28 +551,39 @@ export class CreateImportDialogComponent implements OnInit {
     }
   }
 
-  onExpiresBlur(): void {
-    this.expiresTouched = true;
-  }
-
   onExpiresChange(value: Date | null): void {
     this.expires = value;
-    this.expiresTouched = true;
     if (value && !Number.isNaN(value.getTime())) {
       this.expiresRawText = '';
     }
   }
 
   private isValidPartialOrCompleteDate(raw: string): boolean {
-    if (/^\d{0,2}(\/\d{0,2}(\/\d{0,4})?)?$/.test(raw)) {
-      if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(raw)) {
-        const parsed = new Date(raw);
-        return !Number.isNaN(parsed.getTime());
-      }
+    if (!/^\d{0,2}(\/\d{0,2}(\/\d{0,4})?)?$/.test(raw)) {
+      return false;
+    }
+    if (!/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(raw)) {
       return true;
     }
-    const parsed = new Date(raw);
-    return !Number.isNaN(parsed.getTime());
+    return this.isValidMmDdYyyy(raw);
+  }
+
+  private isValidMmDdYyyy(raw: string): boolean {
+    const [monthPart, dayPart, yearPart] = raw.split('/');
+    const month = Number.parseInt(monthPart, 10);
+    const day = Number.parseInt(dayPart, 10);
+    let year = Number.parseInt(yearPart, 10);
+
+    if (yearPart.length === 2) {
+      year = year <= 69 ? 2000 + year : 1900 + year;
+    }
+
+    if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1000 || year > 9999) {
+      return false;
+    }
+
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
   }
 
   uploadProgressLabel(progress: ImportProgress): string {
@@ -748,7 +755,6 @@ export class CreateImportDialogComponent implements OnInit {
     const docType = this.selectedDocType();
     if (!path || !docType || !this.docTitle.trim()) return;
 
-    this.expiresTouched = true;
     if (!this.isExpiresValid()) return;
 
     const title = this.docTitle.trim();

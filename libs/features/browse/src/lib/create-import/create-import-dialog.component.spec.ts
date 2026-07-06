@@ -120,6 +120,28 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     expect(component.isExpiresValid()).toBe(true);
   });
 
+  it('allows partial expiry input even when datepicker parse would fail', () => {
+    component.onExpiresInput({ target: { value: '01/15/' } } as unknown as Event);
+    component.expiresNgModel = {
+      errors: { matDatepickerParse: { text: '01/15/' } },
+      invalid: true,
+      control: { markAsDirty: vi.fn(), updateValueAndValidity: vi.fn() },
+    } as unknown as typeof component.expiresNgModel;
+
+    expect(component.isExpiresValid()).toBe(true);
+  });
+
+  it('validates complete mm/dd/yyyy dates deterministically', () => {
+    component.onExpiresInput({ target: { value: '02/29/2024' } } as unknown as Event);
+    expect(component.isExpiresValid()).toBe(true);
+
+    component.onExpiresInput({ target: { value: '02/29/2023' } } as unknown as Event);
+    expect(component.isExpiresValid()).toBe(false);
+
+    component.onExpiresInput({ target: { value: '02/31/2024' } } as unknown as Event);
+    expect(component.isExpiresValid()).toBe(false);
+  });
+
   it('reports pending upload before batch staging completes', async () => {
     mockImportService.stageFileInBatch.mockReturnValue(
       timer(20).pipe(map(() => ({ batchId: 'batch-1', fileIndex: 0 }))),
