@@ -1905,7 +1905,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       return;
     }
     this.activeTabIndex.set(index);
-    if (index === 2) {
+    if (index === 2 && !this.permissionsTabLoaded) {
       this.reloadDocumentPermissions();
     }
     if (index === 3 && !this.historyLoaded) {
@@ -3116,7 +3116,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const op = blocked
       ? this.detailService.unblockPermissionInheritance(this.docUid)
       : this.detailService.blockPermissionInheritance(this.docUid);
-    op.subscribe({
+    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.actionInProgress.set(null);
         this.toast(blocked ? 'Permission inheritance unblocked' : 'Permission inheritance blocked');
@@ -3136,9 +3136,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data,
       autoFocus: false,
     });
-    ref.afterClosed().subscribe((saved: boolean) => {
-      if (saved) this.reloadDocumentPermissions();
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((saved: boolean) => {
+        if (saved) this.reloadDocumentPermissions();
+      });
   }
 
   uploadAttachment(event: Event): void {
