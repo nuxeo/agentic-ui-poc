@@ -265,7 +265,9 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     if (typed && raw.startsWith(typed) && raw.length > typed.length) {
       const suffix = raw.slice(typed.length);
       const optionMatch = this.groupOptions.find((g) => g.groupname === suffix);
-      return optionMatch?.groupname ?? suffix;
+      if (optionMatch) {
+        return optionMatch.groupname;
+      }
     }
 
     if (this.isIncompleteGroupPrefix(raw)) {
@@ -282,6 +284,9 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
 
   /** True when `value` is only a typed prefix of a known group (not a full name). */
   private isIncompleteGroupPrefix(value: string): boolean {
+    if (this.groupOptions.some((g) => g.groupname === value)) {
+      return false;
+    }
     return this.groupOptions.some((g) => g.groupname.startsWith(value) && g.groupname !== value);
   }
 

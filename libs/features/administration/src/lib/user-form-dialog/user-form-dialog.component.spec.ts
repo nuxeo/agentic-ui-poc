@@ -199,6 +199,34 @@ describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
     expect(component.groupSearchQuery).toBe('');
   });
 
+  it('does not strip typed prefix when suffix is not a known group (NXSAT-151)', () => {
+    component.groupSearchQuery = 'power';
+    component.groupOptions = [{ groupname: 'powerusers', grouplabel: 'powerusers' }];
+
+    const chipInput = { clear: vi.fn() };
+    component.addGroupFromInput({
+      value: 'powerusers',
+      chipInput,
+    } as unknown as MatChipInputEvent);
+
+    expect(component.groups).toEqual(['powerusers']);
+  });
+
+  it('accepts exact group name that is also a prefix of another option (NXSAT-151)', () => {
+    component.groupOptions = [
+      { groupname: 'admin', grouplabel: 'admin' },
+      { groupname: 'administrators', grouplabel: 'administrators' },
+    ];
+
+    const chipInput = { clear: vi.fn() };
+    component.addGroupFromInput({
+      value: 'admin',
+      chipInput,
+    } as unknown as MatChipInputEvent);
+
+    expect(component.groups).toEqual(['admin']);
+  });
+
   it('blocks save when email is missing (NXSAT-166)', () => {
     component.username = 'new.user';
     component.email = '   ';
