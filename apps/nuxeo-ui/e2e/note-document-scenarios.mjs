@@ -4,6 +4,7 @@
  * Run (records video to Desktop/NXSAT-174/videos/):
  *   $env:NUXEO_TEST_USER="Administrator"
  *   $env:NUXEO_TEST_PASSWORD="Administrator"
+ *   # optional: $env:NUXEO_CREATE_PARENT_PATH="/default-domain/workspaces/my-ws"
  *   node apps/nuxeo-ui/e2e/note-document-scenarios.mjs
  *
  * Requires: nx serve nuxeo-ui (:4200) and Nuxeo (:8080)
@@ -11,10 +12,8 @@
 import { chromium } from 'playwright';
 import { mkdir, writeFile, copyFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BASE = process.env.AGENTIC_UI_BASE_URL ?? 'http://localhost:4200';
 const NUXEO = process.env.NUXEO_BASE_URL ?? 'http://localhost:8080/nuxeo';
 const user = process.env.NUXEO_TEST_USER;
@@ -65,18 +64,20 @@ async function nuxeoFetch(pathname, init = {}) {
 }
 
 async function resolveCreateParentPath() {
-  const candidates = [
-    '/default-domain/workspaces/Akshitha',
-    '/default-domain/workspaces',
-  ];
-  for (const candidate of candidates) {
-    try {
-      const doc = await nuxeoFetch(`/api/v1/path${candidate}`);
-      if (doc?.path) return doc.path;
-    } catch {
-      // try next
-    }
+  const override = process.env.NUXEO_CREATE_PARENT_PATH;
+  if (override) {
+    const doc = await nuxeoFetch(`/api/v1/path${override}`);
+    if (doc?.path) return doc.path;
+    throw new Error(`NUXEO_CREATE_PARENT_PATH not found: ${override}`);
   }
+
+  try {
+    const doc = await nuxeoFetch('/api/v1/path/default-domain/workspaces');
+    if (doc?.path) return doc.path;
+  } catch {
+    // fall through to first child workspace
+  }
+
   const list = await nuxeoFetch('/api/v1/path/default-domain/workspaces/@children?pageSize=10');
   const entry = list.entries?.find((e) => e.type === 'Workspace') ?? list.entries?.[0];
   if (!entry?.path) throw new Error('Could not resolve a workspace folder for note creation');
