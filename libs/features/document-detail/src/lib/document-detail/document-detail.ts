@@ -63,6 +63,8 @@ import {
   canManageDocumentPermissions,
   canWriteDocument,
   canRemoveDocument,
+  mergeDocumentPermissionsContext,
+  resolveAcePrincipal,
   PERMISSION_DENIED_MESSAGE,
   isBlobHoldingDocType,
   isFolderishDocument,
@@ -417,6 +419,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     'docLifeCycle',
   ];
   private historyLoaded = false;
+  private permissionsTabLoaded = false;
+  private activeTabIndex = signal(0);
+  readonly permissionsLoading = signal(false);
 
   // History filters (signals so computed() reacts)
   readonly filterUsername = signal('');
@@ -681,7 +686,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   displayUsername(ace: NuxeoAce): string {
-    return ace.username.replace(/^transient\//, '');
+    return resolveAcePrincipal(ace.username).replace(/^transient\//, '');
+  }
+
+  aceGrantedBy(ace: NuxeoAce): string {
+    const creator = ace.creator ? resolveAcePrincipal(ace.creator) : '';
+    return creator || '—';
   }
 
   readonly filteredAuditEntries = computed(() => {
@@ -820,6 +830,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.contentLakePresenceVerified.set(false);
     this.contentLakePresenceChecking.set(false);
     this.panelSubTab.set('properties');
+    this.historyLoaded = false;
+    this.permissionsTabLoaded = false;
+    this.publishTabLoaded = false;
   }
 
   generateSummary(): void {
@@ -1318,6 +1331,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.doc.set(doc);
           this.syncActionStates(doc);
           this.loading.set(false);
+          if (this.activeTabIndex() === 2) {
+            this.reloadDocumentPermissions();
+          }
           this.loadBlob(doc);
           if (this.freshNoteDocument && doc.type === 'Note') {
             this.focusNoteEditor.set(true);
@@ -1888,6 +1904,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!Number.isFinite(index) || index < 0) {
       return;
     }
+    this.activeTabIndex.set(index);
+    if (index === 2) {
+      this.reloadDocumentPermissions();
+    }
     if (index === 3 && !this.historyLoaded) {
       this.loadDirectoryEntries();
       this.loadAuditLog();
@@ -1895,6 +1915,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (index === 4 && !this.publishTabLoaded) {
       this.loadPublishingData();
     }
+  }
+
+  private reloadDocumentPermissions(): void {
+    if (!this.docUid) return;
+    this.permissionsLoading.set(true);
+    this.detailService
+      .getDocumentPermissions(this.docUid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          const existing = this.doc();
+          if (!existing) {
+            this.doc.set(updated);
+          } else {
+            this.doc.set(mergeDocumentPermissionsContext(existing, updated));
+          }
+          this.permissionsTabLoaded = true;
+          this.permissionsLoading.set(false);
+        },
+        error: () => {
+          this.permissionsLoading.set(false);
+          this.toast('Failed to refresh permissions');
+        },
+      });
   }
 
   private loadDirectoryEntries(): void {
@@ -2981,7 +3025,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
-        if (saved) this.loadDocument(this.docUid);
+        if (saved) this.reloadDocumentPermissions();
       });
   }
 
@@ -2997,7 +3041,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe((updated: boolean | undefined) => {
         if (updated) {
           this.toast('Permission updated');
-          this.loadDocument(this.docUid);
+          this.reloadDocumentPermissions();
         }
       });
   }
@@ -3019,7 +3063,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe((deleted: boolean | undefined) => {
         if (deleted) {
           this.toast('Permission deleted');
-          this.loadDocument(this.docUid);
+          this.reloadDocumentPermissions();
         }
       });
   }
@@ -3040,7 +3084,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe((updated: boolean | undefined) => {
         if (updated) {
           this.toast('Permission updated');
-          this.loadDocument(this.docUid);
+          this.reloadDocumentPermissions();
         }
       });
   }
@@ -3076,7 +3120,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: () => {
         this.actionInProgress.set(null);
         this.toast(blocked ? 'Permission inheritance unblocked' : 'Permission inheritance blocked');
-        this.loadDocument(this.docUid);
+        this.reloadDocumentPermissions();
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -3093,7 +3137,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       autoFocus: false,
     });
     ref.afterClosed().subscribe((saved: boolean) => {
-      if (saved) this.loadDocument(this.docUid);
+      if (saved) this.reloadDocumentPermissions();
     });
   }
 

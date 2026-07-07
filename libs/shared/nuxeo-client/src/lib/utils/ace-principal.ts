@@ -25,6 +25,24 @@ export function resolveAcePrincipal(value: unknown): string {
   );
 }
 
+/** Merges ACL + permissions enrichers from a permissions fetch into an existing document. */
+export function mergeDocumentPermissionsContext(
+  existing: NuxeoDocument,
+  updated: NuxeoDocument,
+): NuxeoDocument {
+  const normalized = normalizeDocumentAcls(updated);
+  return {
+    ...existing,
+    contextParameters: {
+      ...existing.contextParameters,
+      acls: normalized.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
+      permissions:
+        normalized.contextParameters?.['permissions'] ??
+        existing.contextParameters?.['permissions'],
+    },
+  };
+}
+
 /** Normalizes ACL username/creator fields to strings for UI and automation calls. */
 export function normalizeDocumentAcls(doc: NuxeoDocument): NuxeoDocument {
   const acls = doc.contextParameters?.['acls'] as NuxeoAcl[] | undefined;

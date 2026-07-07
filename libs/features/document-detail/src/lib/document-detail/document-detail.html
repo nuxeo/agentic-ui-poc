@@ -438,8 +438,11 @@
 
           <mat-tab label="Permissions">
             <div class="permissions-container">
+              @if (permissionsLoading()) {
+                <div class="perm-loading"><mat-spinner diameter="28" /></div>
+              }
               <!-- Permissions defined locally -->
-              <section class="perm-section">
+              <section class="perm-section perm-section--local">
                 <div class="perm-section-header">
                   <div class="perm-section-title" role="heading" aria-level="3">
                     Permissions defined locally
@@ -456,53 +459,55 @@
                   }
                 </div>
                 @if (localAces().length === 0) {
-                  <div class="perm-empty">There are no local permissions.</div>
+                  <div class="perm-empty perm-empty--local">There are no local permissions.</div>
                 } @else {
-                  <table class="perm-table">
-                    <thead>
-                      <tr>
-                        <th>User / Group</th>
-                        <th>Right</th>
-                        <th>Time Frame</th>
-                        <th>Granted by</th>
-                        @if (canManagePermissions()) {
-                          <th></th>
-                        }
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (ace of localAces(); track ace.id) {
+                  <div class="perm-table-wrap">
+                    <table class="perm-table">
+                      <thead>
                         <tr>
-                          <td>{{ ace.username }}</td>
-                          <td>{{ permissionLabel(ace.permission) }}</td>
-                          <td>{{ aceTimeFrame(ace) }}</td>
-                          <td>{{ ace.creator ?? '—' }}</td>
+                          <th>User / Group</th>
+                          <th>Right</th>
+                          <th>Time Frame</th>
+                          <th>Granted by</th>
                           @if (canManagePermissions()) {
-                            <td class="perm-row-actions">
-                              <button
-                                mat-icon-button
-                                matTooltip="Edit"
-                                aria-label="Edit permission"
-                                type="button"
-                                (click)="editPermission(ace)"
-                              >
-                                <mat-icon>edit</mat-icon>
-                              </button>
-                              <button
-                                mat-icon-button
-                                matTooltip="Delete"
-                                aria-label="Delete permission"
-                                type="button"
-                                (click)="deletePermission(ace)"
-                              >
-                                <mat-icon>delete</mat-icon>
-                              </button>
-                            </td>
+                            <th></th>
                           }
                         </tr>
-                      }
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        @for (ace of localAces(); track ace.id) {
+                          <tr>
+                            <td>{{ displayUsername(ace) }}</td>
+                            <td>{{ permissionLabel(ace.permission) }}</td>
+                            <td>{{ aceTimeFrame(ace) }}</td>
+                            <td>{{ aceGrantedBy(ace) }}</td>
+                            @if (canManagePermissions()) {
+                              <td class="perm-row-actions">
+                                <button
+                                  mat-icon-button
+                                  matTooltip="Edit"
+                                  aria-label="Edit permission"
+                                  type="button"
+                                  (click)="editPermission(ace)"
+                                >
+                                  <mat-icon>edit</mat-icon>
+                                </button>
+                                <button
+                                  mat-icon-button
+                                  matTooltip="Delete"
+                                  aria-label="Delete permission"
+                                  type="button"
+                                  (click)="deletePermission(ace)"
+                                >
+                                  <mat-icon>delete</mat-icon>
+                                </button>
+                              </td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
                 }
               </section>
 
@@ -540,26 +545,28 @@
                 } @else if (inheritedAces().length === 0) {
                   <div class="perm-empty">No inherited permissions.</div>
                 } @else {
-                  <table class="perm-table">
-                    <thead>
-                      <tr>
-                        <th>User / Group</th>
-                        <th>Right</th>
-                        <th>Time Frame</th>
-                        <th>Granted by</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (ace of inheritedAces(); track ace.id) {
+                  <div class="perm-table-wrap">
+                    <table class="perm-table">
+                      <thead>
                         <tr>
-                          <td>{{ ace.username }}</td>
-                          <td>{{ permissionLabel(ace.permission) }}</td>
-                          <td>{{ aceTimeFrame(ace) }}</td>
-                          <td>{{ ace.creator ?? '—' }}</td>
+                          <th>User / Group</th>
+                          <th>Right</th>
+                          <th>Time Frame</th>
+                          <th>Granted by</th>
                         </tr>
-                      }
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        @for (ace of inheritedAces(); track ace.id) {
+                          <tr>
+                            <td>{{ displayUsername(ace) }}</td>
+                            <td>{{ permissionLabel(ace.permission) }}</td>
+                            <td>{{ aceTimeFrame(ace) }}</td>
+                            <td>{{ aceGrantedBy(ace) }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
                 }
               </section>
 
@@ -590,61 +597,63 @@
                 @if (externalAces().length === 0) {
                   <div class="perm-empty">The document is not shared with any external user.</div>
                 } @else {
-                  <table class="perm-table">
-                    <thead>
-                      <tr>
-                        <th>User</th>
-                        <th>Right</th>
-                        <th>Time Frame</th>
-                        <th>Granted by</th>
-                        @if (canManagePermissions()) {
-                          <th></th>
-                        }
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (ace of externalAces(); track ace.id) {
+                  <div class="perm-table-wrap">
+                    <table class="perm-table">
+                      <thead>
                         <tr>
-                          <td>{{ displayUsername(ace) }}</td>
-                          <td>{{ permissionLabel(ace.permission) }}</td>
-                          <td>{{ aceTimeFrame(ace) }}</td>
-                          <td>{{ ace.creator ?? '—' }}</td>
+                          <th>User</th>
+                          <th>Right</th>
+                          <th>Time Frame</th>
+                          <th>Granted by</th>
                           @if (canManagePermissions()) {
-                            <td class="perm-row-actions">
-                              <button
-                                mat-icon-button
-                                matTooltip="Edit"
-                                aria-label="Edit permission"
-                                type="button"
-                                (click)="editExternalPermission(ace)"
-                              >
-                                <mat-icon>edit</mat-icon>
-                              </button>
-                              <button
-                                mat-icon-button
-                                matTooltip="Send notification email"
-                                aria-label="Send notification"
-                                type="button"
-                                [disabled]="actionInProgress() === 'notify-' + ace.id"
-                                (click)="sendPermissionNotification(ace)"
-                              >
-                                <mat-icon>send</mat-icon>
-                              </button>
-                              <button
-                                mat-icon-button
-                                matTooltip="Delete"
-                                aria-label="Delete permission"
-                                type="button"
-                                (click)="deletePermission(ace)"
-                              >
-                                <mat-icon>delete</mat-icon>
-                              </button>
-                            </td>
+                            <th></th>
                           }
                         </tr>
-                      }
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        @for (ace of externalAces(); track ace.id) {
+                          <tr>
+                            <td>{{ displayUsername(ace) }}</td>
+                            <td>{{ permissionLabel(ace.permission) }}</td>
+                            <td>{{ aceTimeFrame(ace) }}</td>
+                            <td>{{ aceGrantedBy(ace) }}</td>
+                            @if (canManagePermissions()) {
+                              <td class="perm-row-actions">
+                                <button
+                                  mat-icon-button
+                                  matTooltip="Edit"
+                                  aria-label="Edit permission"
+                                  type="button"
+                                  (click)="editExternalPermission(ace)"
+                                >
+                                  <mat-icon>edit</mat-icon>
+                                </button>
+                                <button
+                                  mat-icon-button
+                                  matTooltip="Send notification email"
+                                  aria-label="Send notification"
+                                  type="button"
+                                  [disabled]="actionInProgress() === 'notify-' + ace.id"
+                                  (click)="sendPermissionNotification(ace)"
+                                >
+                                  <mat-icon>send</mat-icon>
+                                </button>
+                                <button
+                                  mat-icon-button
+                                  matTooltip="Delete"
+                                  aria-label="Delete permission"
+                                  type="button"
+                                  (click)="deletePermission(ace)"
+                                >
+                                  <mat-icon>delete</mat-icon>
+                                </button>
+                              </td>
+                            }
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
                 }
               </section>
             </div>
