@@ -371,6 +371,7 @@
                   [loading]="viewerLoading()"
                   [saving]="noteSaving()"
                   [autoFocus]="focusNoteEditor()"
+                  [readonly]="!canWriteDoc()"
                   (saveNote)="saveNote($event)"
                   (focused)="focusNoteEditor.set(false)"
                 />
@@ -1652,21 +1653,23 @@
                         {{ sent.sentiment }}
                       </span>
                     }
-                    <button
-                      mat-icon-button
-                      [matMenuTriggerFor]="commentMenu"
-                      class="comment-menu-btn"
-                    >
-                      <mat-icon>more_vert</mat-icon>
-                    </button>
-                    <mat-menu #commentMenu="matMenu">
-                      <button mat-menu-item (click)="startEditComment(comment)">
-                        <mat-icon>edit</mat-icon> Edit
+                    @if (canWriteDoc()) {
+                      <button
+                        mat-icon-button
+                        [matMenuTriggerFor]="commentMenu"
+                        class="comment-menu-btn"
+                      >
+                        <mat-icon>more_vert</mat-icon>
                       </button>
-                      <button mat-menu-item (click)="deleteComment(comment)">
-                        <mat-icon>delete</mat-icon> Delete
-                      </button>
-                    </mat-menu>
+                      <mat-menu #commentMenu="matMenu">
+                        <button mat-menu-item (click)="startEditComment(comment)">
+                          <mat-icon>edit</mat-icon> Edit
+                        </button>
+                        <button mat-menu-item (click)="deleteComment(comment)">
+                          <mat-icon>delete</mat-icon> Delete
+                        </button>
+                      </mat-menu>
+                    }
                   </div>
                   @if (editingCommentId() === comment.id) {
                     <div class="comment-edit-row">
@@ -1700,11 +1703,13 @@
                     }
                   }
 
-                  <div class="comment-footer">
-                    <button class="reply-toggle-btn" (click)="startReply(comment.id)">
-                      <mat-icon class="reply-icon">reply</mat-icon> Reply
-                    </button>
-                  </div>
+                  @if (canWriteDoc()) {
+                    <div class="comment-footer">
+                      <button class="reply-toggle-btn" (click)="startReply(comment.id)">
+                        <mat-icon class="reply-icon">reply</mat-icon> Reply
+                      </button>
+                    </div>
+                  }
 
                   @if (replyCount(comment.id) > 0) {
                     <div class="reply-summary">
@@ -1734,7 +1739,7 @@
                     </div>
                   }
 
-                  @if (replyingToId() === comment.id) {
+                  @if (canWriteDoc() && replyingToId() === comment.id) {
                     <div class="reply-input-row">
                       <input
                         class="new-comment-input reply-input"
@@ -1765,29 +1770,31 @@
                 <p class="section-empty">No comments yet</p>
               }
 
-              <!-- New comment input -->
-              <div class="new-comment-row">
-                <input
-                  class="new-comment-input"
-                  placeholder="Write a comment here"
-                  [value]="newCommentText()"
-                  (input)="newCommentText.set($any($event.target).value)"
-                  (keydown.enter)="submitComment()"
-                />
-                @if (newCommentText().trim()) {
-                  <button
-                    mat-icon-button
-                    (click)="submitComment()"
-                    [disabled]="commentSaving()"
-                    matTooltip="Submit"
-                  >
-                    <mat-icon>check</mat-icon>
-                  </button>
-                  <button mat-icon-button (click)="cancelNewComment()" matTooltip="Cancel">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                }
-              </div>
+              @if (canWriteDoc()) {
+                <!-- New comment input -->
+                <div class="new-comment-row">
+                  <input
+                    class="new-comment-input"
+                    placeholder="Write a comment here"
+                    [value]="newCommentText()"
+                    (input)="newCommentText.set($any($event.target).value)"
+                    (keydown.enter)="submitComment()"
+                  />
+                  @if (newCommentText().trim()) {
+                    <button
+                      mat-icon-button
+                      (click)="submitComment()"
+                      [disabled]="commentSaving()"
+                      matTooltip="Submit"
+                    >
+                      <mat-icon>check</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="cancelNewComment()" matTooltip="Cancel">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </div>
+              }
             }
           </div>
         }

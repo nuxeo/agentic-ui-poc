@@ -64,6 +64,7 @@ import {
   canWriteDocument,
   canRemoveDocument,
   PERMISSION_DENIED_MESSAGE,
+  isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
   noteFormatLabel,
@@ -2445,7 +2446,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   saveNote(body: string): void {
     const doc = this.doc();
-    if (!doc || this.noteSaving()) return;
+    if (!doc || this.noteSaving() || !this.requireWritePermission()) return;
 
     this.noteSaving.set(true);
     const mime = this.mimeType();
@@ -2469,9 +2470,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           }
           this.toast('Note saved');
         },
-        error: () => {
+        error: (err) => {
           this.noteSaving.set(false);
-          this.toast('Failed to save note');
+          this.toast(
+            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to save note',
+          );
         },
       });
   }
@@ -2638,7 +2641,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   submitComment(): void {
     const text = this.newCommentText().trim();
-    if (!text || this.commentSaving()) return;
+    if (!text || this.commentSaving() || !this.requireWritePermission()) return;
     this.commentSaving.set(true);
     this.detailService.createComment(this.docUid, text).subscribe({
       next: (comment) => {
@@ -2658,6 +2661,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   startEditComment(comment: NuxeoComment): void {
+    if (!this.requireWritePermission()) return;
     this.editingCommentId.set(comment.id);
     this.editingCommentText.set(comment.text);
   }
@@ -2670,7 +2674,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   saveEditComment(): void {
     const id = this.editingCommentId();
     const text = this.editingCommentText().trim();
-    if (!id || !text || this.commentSaving()) return;
+    if (!id || !text || this.commentSaving() || !this.requireWritePermission()) return;
     this.commentSaving.set(true);
     this.detailService.updateComment(this.docUid, id, text).subscribe({
       next: (updated) => {
@@ -2687,6 +2691,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   deleteComment(comment: NuxeoComment): void {
+    if (!this.requireWritePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Delete Comment',
@@ -2708,6 +2713,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   startReply(commentId: string): void {
+    if (!this.requireWritePermission()) return;
     this.replyingToId.set(commentId);
     this.replyText.set('');
   }
@@ -2719,7 +2725,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   submitReply(commentId: string): void {
     const text = this.replyText().trim();
-    if (!text || this.commentSaving()) return;
+    if (!text || this.commentSaving() || !this.requireWritePermission()) return;
     this.commentSaving.set(true);
     this.detailService.createReply(this.docUid, commentId, text).subscribe({
       next: (reply) => {

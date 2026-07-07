@@ -1,5 +1,21 @@
-<div class="note-editor">
-  @if (loading()) {
+<div class="note-editor" [class.note-editor--readonly]="readonly()">
+  @if (readonly()) {
+    @if (loading()) {
+      <div class="note-editor-loading">
+        <mat-spinner diameter="36" />
+      </div>
+    } @else {
+      <div class="note-body note-body--readonly">
+        @if (isMarkdown()) {
+          <div class="note-markdown-rendered" [innerHTML]="markdownHtml()"></div>
+        } @else if (isHtml()) {
+          <div class="note-html-readonly" [innerHTML]="htmlReadonlyView()"></div>
+        } @else {
+          <pre class="note-plain-readonly">{{ content() }}</pre>
+        }
+      </div>
+    }
+  } @else if (loading()) {
     <div class="note-editor-loading">
       <mat-spinner diameter="36" />
     </div>
