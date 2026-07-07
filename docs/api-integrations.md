@@ -405,7 +405,28 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Used by:**
 
-- **Nav drawer browse tree** (`apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts`) — builds the left-side folder tree
+- **Nav drawer browse tree** (`apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts`) — via `getNavTreeChildren()` for repository root and workspace folders
+
+---
+
+## 7c. Browse Tree — Nav Drawer Child Resolution (`getNavTreeChildren`)
+
+| Field       | Value                                                                           |
+| ----------- | ------------------------------------------------------------------------------- |
+| **Service** | `BrowseService` (`libs/shared/nuxeo-client/src/lib/services/browse.service.ts`) |
+| **Method**  | `getNavTreeChildren(parent, pageSize)`                                          |
+
+**Routing:**
+
+| Parent type | Data source     | Reason                                                             |
+| ----------- | --------------- | ------------------------------------------------------------------ |
+| `Root`      | `tree_children` | Lists every accessible domain (matches Nuxeo Web UI page provider) |
+| `Domain`    | `@children`     | Includes structural roots (`WorkspaceRoot`, `SectionRoot`, etc.)   |
+| Other       | `tree_children` | Standard folderish navigation under workspaces                     |
+
+**Used by:**
+
+- **Nav drawer browse tree** (`apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts`)
 
 ---
 
