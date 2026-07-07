@@ -371,7 +371,7 @@
                   [loading]="viewerLoading()"
                   [saving]="noteSaving()"
                   [autoFocus]="focusNoteEditor()"
-                  [readonly]="!canWriteDoc()"
+                  [readOnly]="!canWriteDoc()"
                   (saveNote)="saveNote($event)"
                   (focused)="focusNoteEditor.set(false)"
                 />

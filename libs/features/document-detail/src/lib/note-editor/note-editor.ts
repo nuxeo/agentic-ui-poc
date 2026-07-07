@@ -53,7 +53,7 @@ export class NoteEditorComponent {
   readonly saving = input(false);
   readonly loading = input(false);
   readonly autoFocus = input(false);
-  readonly readonly = input(false);
+  readonly readOnly = input(false);
 
   readonly saveNote = output<string>();
   readonly focused = output<void>();
@@ -134,7 +134,7 @@ export class NoteEditorComponent {
     });
 
     effect(() => {
-      if (this.readonly() || !this.autoFocus() || this.loading()) return;
+      if (this.readOnly() || !this.autoFocus() || this.loading()) return;
       if (this.isHtml()) {
         if (this.sourceMode()) return;
         queueMicrotask(() => {
@@ -166,7 +166,7 @@ export class NoteEditorComponent {
   }
 
   toggleSourceMode(): void {
-    if (!this.isHtml() || this.readonly()) return;
+    if (!this.isHtml() || this.readOnly()) return;
 
     if (this.sourceMode()) {
       const html = this.editText();
@@ -206,7 +206,7 @@ export class NoteEditorComponent {
   }
 
   onSave(): void {
-    if (this.readonly() || this.saving() || this.loading()) return;
+    if (this.readOnly() || this.saving() || this.loading()) return;
     const body = this.isHtml()
       ? this.sourceMode()
         ? this.editText()
@@ -219,7 +219,7 @@ export class NoteEditorComponent {
   }
 
   enterPlainTextEdit(): void {
-    if (this.readonly()) return;
+    if (this.readOnly()) return;
     this.editText.set(this.content());
     this.plainTextEditMode.set(true);
     queueMicrotask(() => this.plainTextEditorRef()?.nativeElement?.focus());
@@ -232,7 +232,7 @@ export class NoteEditorComponent {
   }
 
   private tryInitQuill(): void {
-    if (this.readonly() || this.sourceMode() || !this.isHtml() || this.loading() || this.quill)
+    if (this.readOnly() || this.sourceMode() || !this.isHtml() || this.loading() || this.quill)
       return;
 
     const toolbar = this.quillToolbarRef()?.nativeElement;

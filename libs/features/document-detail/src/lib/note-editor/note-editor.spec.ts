@@ -22,14 +22,14 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
   });
 
   it('shows edit controls for writable notes', () => {
-    fixture.componentRef.setInput('readonly', false);
+    fixture.componentRef.setInput('readOnly', false);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.note-plain-edit-btn')).toBeTruthy();
   });
 
-  it('hides edit controls in readonly mode', () => {
-    fixture.componentRef.setInput('readonly', true);
+  it('hides edit controls in read-only mode', () => {
+    fixture.componentRef.setInput('readOnly', true);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.note-plain-edit-btn')).toBeFalsy();
@@ -38,14 +38,27 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
     );
   });
 
-  it('does not emit saveNote when readonly', () => {
+  it('does not emit saveNote when read-only', () => {
     const saveSpy = vi.fn();
-    fixture.componentRef.setInput('readonly', true);
+    fixture.componentRef.setInput('readOnly', true);
     fixture.detectChanges();
     fixture.componentInstance.saveNote.subscribe(saveSpy);
 
     fixture.componentInstance.onSave();
 
     expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it('renders read-only HTML notes inside a Quill editor container', () => {
+    fixture.componentRef.setInput('content', '<p class="ql-align-center">Centered</p>');
+    fixture.componentRef.setInput('mimeType', 'text/html');
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.detectChanges();
+
+    const editor = fixture.nativeElement.querySelector(
+      '.note-quill-editor.ql-container .ql-editor',
+    );
+    expect(editor).toBeTruthy();
+    expect(editor.innerHTML).toContain('ql-align-center');
   });
 });
