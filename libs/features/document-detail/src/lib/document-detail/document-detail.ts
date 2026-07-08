@@ -25,7 +25,7 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelect, MatSelectModule } from '@angular/material/select';
+import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatSortModule, Sort } from '@angular/material/sort';
@@ -48,8 +48,6 @@ import {
   DirectoryService,
   L10nDirectoryEntry,
   formatHierarchicalL10nLabel,
-  groupL10nChildrenByParent,
-  l10nEntryLabel,
   resolveNatureLabel,
   NuxeoComment,
   NuxeoApiBase,
@@ -279,10 +277,6 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
-  private readonly coverageSelect = viewChild<MatSelect>('coverageSelect');
-
-  /** Exposed for templates (coverage option labels). */
-  readonly l10nEntryLabel = l10nEntryLabel;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -380,8 +374,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly coverageVocabulary = signal<L10nDirectoryEntry[]>([]);
   readonly subjectVocabulary = signal<L10nDirectoryEntry[]>([]);
   private indexingVocabulariesLoaded = false;
-  coveragePanelSearch = '';
-  readonly coverageUpdating = signal(false);
 
   // Tag management state (nuxeo-tag-suggestion style)
   tagInput = '';
@@ -604,10 +596,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   readonly documentCoverageDisplay = computed(() =>
     formatHierarchicalL10nLabel(this.documentCoverage(), this.coverageVocabulary()),
-  );
-
-  readonly groupedCoverageOptions = computed(() =>
-    groupL10nChildrenByParent(this.coverageVocabulary(), this.coveragePanelSearch),
   );
 
   readonly documentSubjects = computed(() => {
@@ -885,7 +873,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  /** Pre-loads l10n coverage/subjects for hierarchical labels and the inline picker. */
+  /** Pre-loads l10n coverage/subjects for hierarchical label display. */
   private loadIndexingVocabularies(): void {
     if (this.indexingVocabulariesLoaded) return;
     this.indexingVocabulariesLoaded = true;
@@ -901,45 +889,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.indexingVocabulariesLoaded = false;
-        },
-      });
-  }
-
-  openCoveragePicker(): void {
-    if (!this.canWriteDoc() || this.coverageUpdating()) return;
-    this.coverageSelect()?.open();
-  }
-
-  onCoveragePanelOpen(open: boolean): void {
-    if (!open) this.coveragePanelSearch = '';
-  }
-
-  onCoveragePicked(value: string | null): void {
-    this.updateCoverage(value);
-  }
-
-  clearCoverage(): void {
-    this.updateCoverage(null);
-  }
-
-  private updateCoverage(value: string | null): void {
-    if (!this.docUid || !this.canWriteDoc() || this.coverageUpdating()) return;
-    const current = this.documentCoverage() || null;
-    if (current === value) return;
-
-    this.coverageUpdating.set(true);
-    this.browseService
-      .updateDocument(this.docUid, { 'dc:coverage': value })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (updated) => {
-          this.doc.set(updated);
-          this.coverageUpdating.set(false);
-          this.coveragePanelSearch = '';
-        },
-        error: () => {
-          this.coverageUpdating.set(false);
-          this.snackBar.open('Failed to update coverage', 'Dismiss', { duration: 3000 });
         },
       });
   }

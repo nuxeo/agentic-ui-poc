@@ -478,6 +478,9 @@
                   panelClass="vocab-select-panel vocab-grouped-select-panel"
                   (openedChange)="onCoveragePanelOpen($event)"
                 >
+                  @if (coverage) {
+                    <mat-select-trigger>{{ coverageDisplayLabel() }}</mat-select-trigger>
+                  }
                   <div class="vocab-panel__search">
                     <input
                       type="text"

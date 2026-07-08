@@ -16,6 +16,7 @@ import {
   DirectoryService,
   L10nDirectoryEntry,
   NuxeoDocument,
+  formatHierarchicalL10nLabel,
   groupL10nChildrenByParent,
   l10nEntryLabel,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -101,6 +102,9 @@ export interface EditDocumentDialogData {
           panelClass="vocab-select-panel vocab-grouped-select-panel"
           (openedChange)="onCoveragePanelOpen($event)"
         >
+          @if (coverage) {
+            <mat-select-trigger>{{ coverageDisplayLabel() }}</mat-select-trigger>
+          }
           <div class="vocab-panel__search">
             <input
               type="text"
@@ -279,6 +283,10 @@ export class EditDocumentDialogComponent implements OnInit {
 
   onCoveragePanelOpen(open: boolean): void {
     if (!open) this.coveragePanelSearch = '';
+  }
+
+  coverageDisplayLabel(): string {
+    return formatHierarchicalL10nLabel(this.coverage, this.coverageEntries());
   }
 
   save(): void {
