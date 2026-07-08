@@ -54,6 +54,7 @@ import {
   mergeDocumentPermissionsContext,
   canWriteDocument,
   canRemoveDocument,
+  canViewDocumentAuditLog,
   DOMAIN_CONTAINER_GUIDANCE,
   isDomainParentType,
   isRepositoryRootPath,
@@ -503,6 +504,12 @@ export class BrowseComponent {
   }
 
   private loadActivity(uid: string): void {
+    if (!canViewDocumentAuditLog(this.currentDoc())) {
+      this.activityEntries.set([]);
+      this.activityLoading.set(false);
+      return;
+    }
+
     this.activityLoading.set(true);
     this.detailService.getAuditLog(uid, 5, 0).subscribe({
       next: (res) => {
@@ -595,6 +602,15 @@ export class BrowseComponent {
   loadAuditLog(): void {
     const doc = this.currentDoc();
     if (!doc) return;
+
+    if (!canViewDocumentAuditLog(doc)) {
+      this.auditEntries.set([]);
+      this.auditTotalSize.set(0);
+      this.auditLoading.set(false);
+      this.historyLoaded = true;
+      return;
+    }
+
     this.auditLoading.set(true);
     this.detailService.getAuditLog(doc.uid, this.auditPageSize(), this.auditPageIndex()).subscribe({
       next: (res) => {

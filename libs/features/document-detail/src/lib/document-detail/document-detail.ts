@@ -63,6 +63,7 @@ import {
   canManageDocumentPermissions,
   canWriteDocument,
   canRemoveDocument,
+  canViewDocumentAuditLog,
   mergeDocumentPermissionsContext,
   resolveAcePrincipal,
   PERMISSION_DENIED_MESSAGE,
@@ -1958,6 +1959,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   loadAuditLog(): void {
     if (!this.docUid) return;
+
+    if (!canViewDocumentAuditLog(this.doc())) {
+      this.auditEntries.set([]);
+      this.auditTotalSize.set(0);
+      this.auditLoading.set(false);
+      this.historyLoaded = true;
+      return;
+    }
+
     this.auditLoading.set(true);
 
     this.detailService
@@ -2820,6 +2830,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   loadPanelActivity(): void {
     if (!this.docUid) return;
+
+    if (!canViewDocumentAuditLog(this.doc())) {
+      this.panelActivity.set([]);
+      this.panelActivityLoading.set(false);
+      this.panelActivityLoaded = true;
+      return;
+    }
+
     this.panelActivityLoading.set(true);
     this.detailService.getAuditLog(this.docUid, 20, 0).subscribe({
       next: (res) => {

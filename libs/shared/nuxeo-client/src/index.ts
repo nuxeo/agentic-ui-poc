@@ -160,9 +160,11 @@ export {
   canAddChildren,
   canManageDocumentPermissions,
   canRemoveDocument,
+  canViewDocumentAuditLog,
   canWriteDocument,
   hasDocumentPermission,
   isPermissionDeniedError,
+  READ_WRITE_DOCUMENT,
 } from './lib/utils/document-permissions';
 export {
   DOMAIN_CONTAINER_GUIDANCE,

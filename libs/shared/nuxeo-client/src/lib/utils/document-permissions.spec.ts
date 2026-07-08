@@ -3,10 +3,12 @@ import {
   canAddChildren,
   canManageDocumentPermissions,
   canRemoveDocument,
+  canViewDocumentAuditLog,
   canWriteDocument,
   hasDocumentPermission,
   isPermissionDeniedError,
   MANAGE_DOCUMENT_PERMISSIONS,
+  READ_WRITE_DOCUMENT,
   WRITE_SECURITY,
   PERMISSION_DENIED_MESSAGE,
   REMOVE_DOCUMENT,
@@ -75,6 +77,33 @@ describe('document-permissions', () => {
 
   it('canRemoveDocument is true when user has Remove', () => {
     expect(canRemoveDocument(docWithPermissions(['Read', REMOVE_DOCUMENT]))).toBe(true);
+  });
+
+  it('canViewDocumentAuditLog is false for read-only users', () => {
+    expect(canViewDocumentAuditLog(docWithPermissions(['Read']))).toBe(false);
+  });
+
+  it('canViewDocumentAuditLog is false when permissions enricher is missing', () => {
+    expect(canViewDocumentAuditLog({} as NuxeoDocument)).toBe(false);
+    expect(canViewDocumentAuditLog(null)).toBe(false);
+  });
+
+  it('canViewDocumentAuditLog is true when user has Write', () => {
+    expect(canViewDocumentAuditLog(docWithPermissions(['Read', WRITE_DOCUMENT]))).toBe(true);
+  });
+
+  it('canViewDocumentAuditLog is true when user has ReadWrite', () => {
+    expect(canViewDocumentAuditLog(docWithPermissions(['Read', READ_WRITE_DOCUMENT]))).toBe(true);
+  });
+
+  it('canViewDocumentAuditLog is true when user has Everything', () => {
+    expect(canViewDocumentAuditLog(docWithPermissions(['Read', MANAGE_DOCUMENT_PERMISSIONS]))).toBe(
+      true,
+    );
+  });
+
+  it('canViewDocumentAuditLog is true when user has WriteSecurity', () => {
+    expect(canViewDocumentAuditLog(docWithPermissions(['Read', WRITE_SECURITY]))).toBe(true);
   });
 
   it('isPermissionDeniedError detects 401 and 403', () => {

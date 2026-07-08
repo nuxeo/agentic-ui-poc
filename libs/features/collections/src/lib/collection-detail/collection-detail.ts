@@ -34,6 +34,7 @@ import {
   DirectoryEntry,
   docTypeIcon,
   avatarColor,
+  canViewDocumentAuditLog,
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
   mailSendFailureMessage,
@@ -671,6 +672,15 @@ export class CollectionDetailComponent {
 
   loadAuditLog(): void {
     if (!this.collectionUid) return;
+
+    if (!canViewDocumentAuditLog(this.collection())) {
+      this.auditEntries.set([]);
+      this.auditTotalSize.set(0);
+      this.auditLoading.set(false);
+      this.historyLoaded = true;
+      return;
+    }
+
     this.auditLoading.set(true);
 
     this.detailService

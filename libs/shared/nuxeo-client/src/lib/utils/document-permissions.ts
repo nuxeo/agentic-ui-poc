@@ -8,6 +8,7 @@ export const MANAGE_DOCUMENT_PERMISSIONS = 'Everything';
 
 /** Atomic permissions returned by the Nuxeo `permissions` document enricher. */
 export const WRITE_DOCUMENT = 'Write';
+export const READ_WRITE_DOCUMENT = 'ReadWrite';
 export const ADD_CHILDREN = 'AddChildren';
 export const REMOVE_DOCUMENT = 'Remove';
 
@@ -42,6 +43,15 @@ export function canAddChildren(doc: NuxeoDocument | null | undefined): boolean {
 /** True when the current user can trash or permanently delete the document. */
 export function canRemoveDocument(doc: NuxeoDocument | null | undefined): boolean {
   return hasDocumentPermission(doc, REMOVE_DOCUMENT);
+}
+
+/** True when the current user can view document audit/history (Classic Web UI parity). */
+export function canViewDocumentAuditLog(doc: NuxeoDocument | null | undefined): boolean {
+  return (
+    canWriteDocument(doc) ||
+    hasDocumentPermission(doc, READ_WRITE_DOCUMENT) ||
+    canManageDocumentPermissions(doc)
+  );
 }
 
 /** True when an HTTP error indicates the server rejected the action for lack of permission. */
