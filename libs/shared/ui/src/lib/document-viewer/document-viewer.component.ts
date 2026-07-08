@@ -62,6 +62,16 @@ export interface IptcData {
   [key: string]: string | undefined;
 }
 
+export interface VideoInfo {
+  duration?: number;
+  width?: number;
+  height?: number;
+  format?: string;
+  videoCodec?: string;
+  audioCodec?: string;
+  frameRate?: number;
+}
+
 /**
  * Reusable document viewer component following Nuxeo Web UI's nuxeo-document-preview
  * dispatching logic. Renders content based on MIME type priority:
@@ -104,6 +114,7 @@ export class DocumentViewerComponent {
   readonly pictureViews = input<PictureView[]>([]);
   readonly exifData = input<ExifData | null>(null);
   readonly iptcData = input<IptcData | null>(null);
+  readonly videoInfo = input<VideoInfo | null>(null);
 
   readonly arenderUrl = input<SafeResourceUrl | null>(null);
   /** When this changes, the ARender iframe is destroyed and recreated. */
@@ -187,6 +198,13 @@ export class DocumentViewerComponent {
       this.contentType() === 'image' &&
       this.pictureInfo() !== null,
   );
+  readonly showVideoInfoCard = computed(
+    () =>
+      !this.annotationsTab() &&
+      !this.showARenderViewer() &&
+      this.contentType() === 'video' &&
+      this.videoInfo() !== null,
+  );
   readonly arenderAvailable = computed(() => this.arenderUrl() !== null);
 
   readonly exifEntries = computed(() => {
@@ -266,6 +284,14 @@ export class DocumentViewerComponent {
   formatTimecode(seconds: number): string {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  formatDuration(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 }

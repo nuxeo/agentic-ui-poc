@@ -111,6 +111,7 @@ import {
   type PictureView,
   type ExifData,
   type IptcData,
+  type VideoInfo,
 } from '@agentic-ui/shared/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
@@ -300,6 +301,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly pictureViews = signal<PictureView[]>([]);
   readonly exifData = signal<ExifData | null>(null);
   readonly iptcData = signal<IptcData | null>(null);
+  readonly videoInfo = signal<VideoInfo | null>(null);
   readonly arenderUrl = signal<SafeResourceUrl | null>(null);
   /** Bumped when the ARender previewer URL changes so the iframe is recreated (avoids stale session / wrong doc). */
   readonly arenderReloadId = signal(0);
@@ -347,6 +349,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // to `dc:nature` is in the vocabulary (Nuxeo enforces this and returns 422 otherwise).
   readonly natureVocabulary = signal<DirectoryEntry[]>([]);
   private natureVocabularyLoaded = false;
+
+  // Tag management state
+  readonly newTagText = signal('');
+  readonly tagAdding = signal(false);
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -522,12 +528,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly docState = computed(() => {
     const d = this.doc();
     if (!d) return '';
-    return (
-      (d.properties['ecm:currentLifeCycleState'] as string) ??
-      (d.properties['dc:nature'] as string) ??
-      d.type ??
-      ''
-    );
+    return d.state ?? '';
   });
 
   readonly publicationCount = computed(() => this.publishedDocs().length);
@@ -554,6 +555,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly documentCategory = computed(() => {
     const d = this.doc();
     return (d?.properties['dc:nature'] as string) ?? '';
+  });
+
+  readonly documentCoverage = computed(() => {
+    const d = this.doc();
+    return (d?.properties['dc:coverage'] as string) ?? '';
+  });
+
+  readonly documentSubjects = computed(() => {
+    const d = this.doc();
+    const subjects = d?.properties['dc:subjects'] as string[] | undefined;
+    return subjects ?? [];
   });
 
   readonly fileMimeType = computed(() => {
@@ -877,6 +889,59 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       },
       error: () => this.snackBar.open('Failed to apply tag', 'Dismiss', { duration: 3000 }),
     });
+  }
+
+  addInlineTag(): void {
+    const label = this.newTagText().trim();
+    if (!label || !this.docUid || this.tagAdding()) return;
+    this.tagAdding.set(true);
+    this.tagService
+      .addTag(this.docUid, label)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.doc.update((d) => {
+            if (!d) return d;
+            const existing = (d.properties['nxtag:tags'] as Array<{ label: string }>) ?? [];
+            return {
+              ...d,
+              properties: {
+                ...d.properties,
+                'nxtag:tags': [...existing, { label }],
+              },
+            };
+          });
+          this.newTagText.set('');
+          this.tagAdding.set(false);
+        },
+        error: () => {
+          this.snackBar.open('Failed to add tag', 'Dismiss', { duration: 3000 });
+          this.tagAdding.set(false);
+        },
+      });
+  }
+
+  removeInlineTag(tagLabel: string): void {
+    if (!this.docUid) return;
+    this.tagService
+      .removeTag(this.docUid, tagLabel)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.doc.update((d) => {
+            if (!d) return d;
+            const existing = (d.properties['nxtag:tags'] as Array<{ label: string }>) ?? [];
+            return {
+              ...d,
+              properties: {
+                ...d.properties,
+                'nxtag:tags': existing.filter((t) => t.label !== tagLabel),
+              },
+            };
+          });
+        },
+        error: () => this.snackBar.open('Failed to remove tag', 'Dismiss', { duration: 3000 }),
+      });
   }
 
   classifyDocument(): void {
@@ -1497,6 +1562,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       | undefined;
     if (transcodedVideos && transcodedVideos.length > 0) {
       this.loadVideoSources(doc, transcodedVideos, generation);
+      this.extractVideoInfo(doc);
       return;
     }
 
@@ -1534,6 +1600,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (mime.startsWith('video/')) {
       this.fetchMainBlob(doc, generation);
       this.loadStoryboard(doc);
+      this.extractVideoInfo(doc);
       return;
     }
 
@@ -1770,6 +1837,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.storyboard.set(items);
   }
 
+  private extractVideoInfo(doc: NuxeoDocument): void {
+    const raw = doc.properties['vid:info'] as
+      | {
+          duration?: number;
+          width?: number;
+          height?: number;
+          format?: string;
+          videoCodec?: string;
+          audioCodec?: string;
+          frameRate?: number;
+        }
+      | undefined;
+    if (!raw) return;
+    this.videoInfo.set({
+      duration: raw.duration,
+      width: raw.width,
+      height: raw.height,
+      format: raw.format,
+      videoCodec: raw.videoCodec,
+      audioCodec: raw.audioCodec,
+      frameRate: raw.frameRate,
+    });
+  }
+
   private loadFallbackBlob(doc: NuxeoDocument, generation = this.blobLoadGeneration): void {
     this.detailService
       .fetchBlob(doc.uid)
@@ -1812,6 +1903,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.pictureViews.set([]);
     this.exifData.set(null);
     this.iptcData.set(null);
+    this.videoInfo.set(null);
     for (const url of this.videoObjectUrls) {
       URL.revokeObjectURL(url);
     }
@@ -3239,6 +3331,61 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             error: () => {
               this.actionInProgress.set(null);
               this.toast('Failed to remove attachment');
+            },
+          });
+      });
+  }
+
+  openReplaceMainFileDialog(): void {
+    if (!this.requireWritePermission()) return;
+    const ref = this.dialog.open(ReplaceAttachmentDialogComponent, {
+      width: '480px',
+      data: { fileName: this.fileName() },
+    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((file: File | null) => {
+        if (!file) return;
+        this.actionInProgress.set('replace-main');
+        this.detailService
+          .replaceMainFile(this.docUid, file)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Main file replaced');
+              this.loadDocument(this.docUid);
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to replace main file');
+            },
+          });
+      });
+  }
+
+  openRemoveMainFileDialog(): void {
+    if (!this.requireWritePermission()) return;
+    const ref = this.dialog.open(RemoveAttachmentDialogComponent, { width: '400px' });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed: boolean) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('remove-main');
+        this.detailService
+          .removeMainFile(this.docUid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Main file removed');
+              this.loadDocument(this.docUid);
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to remove main file');
             },
           });
       });

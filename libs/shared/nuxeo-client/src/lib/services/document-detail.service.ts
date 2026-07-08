@@ -655,6 +655,28 @@ export class DocumentDetailService {
     );
   }
 
+  removeMainFile(uid: string): Observable<NuxeoDocument> {
+    return this.http.put<NuxeoDocument>(
+      this.api.apiUrl(`/nuxeo/api/v1/id/${uid}`),
+      { 'entity-type': 'document', uid, properties: { 'file:content': null } },
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+
+  replaceMainFile(uid: string, file: File): Observable<unknown> {
+    const params = JSON.stringify({
+      params: { document: uid, save: 'true', xpath: 'file:content' },
+    });
+    const formData = new FormData();
+    formData.append('request', new Blob([params], { type: 'application/json' }));
+    formData.append('file', file);
+    return this.http.post(
+      this.api.apiUrl('/nuxeo/api/v1/automation/Blob.AttachOnDocument'),
+      formData,
+      { responseType: 'blob' },
+    );
+  }
+
   // ── Versioning ──
 
   createVersion(uid: string, increment: 'Major' | 'Minor'): Observable<NuxeoDocument> {
