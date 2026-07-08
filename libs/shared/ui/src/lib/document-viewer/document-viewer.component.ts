@@ -127,9 +127,15 @@ export class DocumentViewerComponent {
    */
   readonly annotationsTab = input(false);
 
+  /** When true, show Replace / Remove actions for the primary blob in the footer toolbar. */
+  readonly showMainFileControls = input(false);
+  readonly mainFileActionInProgress = input<string | null>(null);
+
   readonly downloadClicked = output<void>();
   readonly openWithDriveClicked = output<void>();
   readonly previewClicked = output<void>();
+  readonly replaceMainFileClicked = output<void>();
+  readonly removeMainFileClicked = output<void>();
   readonly storyboardSeek = output<number>();
   readonly formatDownload = output<string>();
 

@@ -31,6 +31,11 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 
 import {
   NuxeoDocument,
@@ -95,7 +100,19 @@ import {
 } from '@agentic-ui/shared/ke-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
 import DOMPurify from 'dompurify';
-import { finalize, forkJoin, map, Observable, of, switchMap, timer } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  finalize,
+  forkJoin,
+  map,
+  Observable,
+  of,
+  Subject,
+  switchMap,
+  timer,
+} from 'rxjs';
 import {
   ShareDialogComponent,
   ShareDialogData,
@@ -243,6 +260,8 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     MatSortModule,
     MatTableModule,
     MatPaginatorModule,
+    MatChipsModule,
+    MatAutocompleteModule,
     DocumentViewerComponent,
     NoteEditorComponent,
     SatAvatarModule,
@@ -350,9 +369,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly natureVocabulary = signal<DirectoryEntry[]>([]);
   private natureVocabularyLoaded = false;
 
-  // Tag management state
-  readonly newTagText = signal('');
+  // Tag management state (nuxeo-tag-suggestion style)
+  tagInput = '';
+  readonly tagSearchResults = signal<string[]>([]);
+  readonly showCreateTagOption = signal(false);
   readonly tagAdding = signal(false);
+  private readonly tagSearch$ = new Subject<string>();
+  /** Autocomplete selection also fires matChipInputTokenEnd — skip the duplicate add. */
+  private skipNextChipInput = false;
 
   // Comments state
   readonly comments = signal<NuxeoComment[]>([]);
@@ -752,6 +776,25 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadNatureVocabulary();
+    this.tagSearch$
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        switchMap((term) =>
+          term.length > 0
+            ? this.tagService.searchTags(term).pipe(catchError(() => of([])))
+            : of([]),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((results) => {
+        const existing = this.tags();
+        const filtered = results.filter((r) => !existing.includes(r));
+        this.tagSearchResults.set(filtered);
+        const exactMatch = results.some((r) => r.toLowerCase() === this.tagInput.toLowerCase());
+        this.showCreateTagOption.set(this.tagInput.trim().length > 0 && !exactMatch);
+      });
+
     this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const uid = params.get('uid');
       if (!uid) {
@@ -891,8 +934,40 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  addInlineTag(): void {
-    const label = this.newTagText().trim();
+  onTagSearch(term: string): void {
+    this.tagSearch$.next(term);
+  }
+
+  selectTag(event: MatAutocompleteSelectedEvent): void {
+    const label = String(event.option.value ?? '').trim();
+    if (!label) return;
+    this.skipNextChipInput = true;
+    this.clearTagInput();
+    event.option.deselect();
+    this.applyInlineTag(label);
+  }
+
+  addInlineTagFromChip(event: MatChipInputEvent): void {
+    if (this.skipNextChipInput) {
+      this.skipNextChipInput = false;
+      event.chipInput.clear();
+      this.clearTagInput();
+      return;
+    }
+    const label = (event.value ?? '').trim();
+    event.chipInput.clear();
+    this.clearTagInput();
+    if (label) this.applyInlineTag(label);
+  }
+
+  private clearTagInput(): void {
+    this.tagInput = '';
+    this.tagSearchResults.set([]);
+    this.showCreateTagOption.set(false);
+    this.tagSearch$.next('');
+  }
+
+  private applyInlineTag(label: string): void {
     if (!label || !this.docUid || this.tagAdding()) return;
     this.tagAdding.set(true);
     this.tagService
@@ -915,7 +990,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
               },
             };
           });
-          this.newTagText.set('');
+          this.clearTagInput();
           this.tagAdding.set(false);
         },
         error: () => {

@@ -176,6 +176,27 @@
       >
         <mat-icon>download</mat-icon>
       </button>
+      @if (showMainFileControls()) {
+        <button
+          mat-icon-button
+          matTooltip="Replace"
+          aria-label="Replace main file"
+          [disabled]="mainFileActionInProgress() === 'replace-main'"
+          (click)="replaceMainFileClicked.emit()"
+        >
+          <mat-icon>find_replace</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          matTooltip="Remove"
+          aria-label="Remove main file"
+          class="footer-remove-btn"
+          [disabled]="mainFileActionInProgress() === 'remove-main'"
+          (click)="removeMainFileClicked.emit()"
+        >
+          <mat-icon>cancel</mat-icon>
+        </button>
+      }
     </div>
   </div>
 

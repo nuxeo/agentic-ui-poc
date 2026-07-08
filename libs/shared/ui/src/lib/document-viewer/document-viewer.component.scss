@@ -387,6 +387,10 @@
     &.active-toggle {
       color: #0073e6;
     }
+
+    &.footer-remove-btn {
+      color: var(--mat-sys-error, #b00020);
+    }
   }
 }
 

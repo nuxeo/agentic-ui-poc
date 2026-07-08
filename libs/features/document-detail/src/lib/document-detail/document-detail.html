@@ -156,25 +156,18 @@
             <mat-icon>delete</mat-icon>
           </button>
         }
+        @if (canWriteDoc()) {
+          <button
+            mat-icon-button
+            (click)="toggleLock()"
+            [disabled]="actionInProgress() === 'lock'"
+            [matTooltip]="isLocked() ? 'Unlock' : 'Lock'"
+            [attr.aria-label]="isLocked() ? 'Unlock' : 'Lock'"
+          >
+            <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
+          </button>
+        }
       }
-      <button
-        mat-icon-button
-        (click)="toggleClipboard()"
-        [matTooltip]="isInClipboard() ? 'Remove from clipboard' : 'Add to clipboard'"
-        aria-label="Clipboard"
-      >
-        <mat-icon>{{ isInClipboard() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        (click)="toggleFavorite()"
-        [disabled]="actionInProgress() === 'favorite'"
-        [matTooltip]="isFavorite() ? 'Remove from favorites' : 'Add to favorites'"
-        aria-label="Favorite"
-        [class.action-active]="isFavorite()"
-      >
-        <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
-      </button>
       <button
         mat-icon-button
         [matMenuTriggerFor]="moreMenu"
@@ -186,40 +179,50 @@
     </div>
 
     <mat-menu #moreMenu="matMenu">
-      <button mat-menu-item (click)="shareDocument()">
-        <mat-icon>share</mat-icon>
-        <span>Share</span>
-      </button>
-      @if (hasVersion()) {
-        @if (canWriteDoc()) {
-          <button mat-menu-item (click)="openPublishDialog()">
-            <mat-icon>publish</mat-icon>
-            <span>Publish document</span>
-          </button>
+      @if (!isTrashed()) {
+        <button
+          mat-menu-item
+          (click)="toggleFavorite()"
+          [disabled]="actionInProgress() === 'favorite'"
+        >
+          <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
+          <span>{{ isFavorite() ? 'Remove from Favorites' : 'Add to Favorites' }}</span>
+        </button>
+        <button mat-menu-item (click)="shareDocument()">
+          <mat-icon>share</mat-icon>
+          <span>Share</span>
+        </button>
+        @if (hasVersion()) {
+          @if (canWriteDoc()) {
+            <button mat-menu-item (click)="openPublishDialog()">
+              <mat-icon>publish</mat-icon>
+              <span>Publish document</span>
+            </button>
+          }
         }
-      }
-      <button
-        mat-menu-item
-        (click)="toggleSubscription()"
-        [disabled]="actionInProgress() === 'subscribe'"
-      >
-        <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
-        <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
-      </button>
-      @if (canWriteDoc()) {
-        <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
-          <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
-          <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
+        <button
+          mat-menu-item
+          (click)="toggleSubscription()"
+          [disabled]="actionInProgress() === 'subscribe'"
+        >
+          <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
+          <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
+        </button>
+        <button mat-menu-item (click)="toggleClipboard()">
+          <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
+          <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
         </button>
       }
       <button mat-menu-item (click)="exportDocument()" [disabled]="actionInProgress() === 'export'">
         <mat-icon>download</mat-icon>
         <span>Export</span>
       </button>
-      <button mat-menu-item (click)="openStartProcess()">
-        <mat-icon>play_circle</mat-icon>
-        <span>Start Process</span>
-      </button>
+      @if (!isTrashed()) {
+        <button mat-menu-item (click)="openStartProcess()">
+          <mat-icon>play_circle</mat-icon>
+          <span>Start Process</span>
+        </button>
+      }
     </mat-menu>
   </div>
 
@@ -394,10 +397,16 @@
                   [arenderReloadId]="arenderReloadId()"
                   [viewerDocUid]="doc()?.uid ?? ''"
                   [annotationsTab]="false"
+                  [showMainFileControls]="
+                    !isNoteDocument() && !!fileName() && canWriteDoc() && !isTrashed()
+                  "
+                  [mainFileActionInProgress]="actionInProgress()"
                   (downloadClicked)="download()"
                   (previewClicked)="previewMainBlob()"
                   (openWithDriveClicked)="openDriveDialog()"
                   (formatDownload)="downloadPictureFormat($event)"
+                  (replaceMainFileClicked)="openReplaceMainFileDialog()"
+                  (removeMainFileClicked)="openRemoveMainFileDialog()"
                 />
               }
             </ng-template>
@@ -427,10 +436,16 @@
                 [arenderReloadId]="arenderReloadId()"
                 [viewerDocUid]="doc()?.uid ?? ''"
                 [annotationsTab]="true"
+                [showMainFileControls]="
+                  !isNoteDocument() && !!fileName() && canWriteDoc() && !isTrashed()
+                "
+                [mainFileActionInProgress]="actionInProgress()"
                 (downloadClicked)="download()"
                 (previewClicked)="previewMainBlob()"
                 (openWithDriveClicked)="openDriveDialog()"
                 (formatDownload)="downloadPictureFormat($event)"
+                (replaceMainFileClicked)="openReplaceMainFileDialog()"
+                (removeMainFileClicked)="openRemoveMainFileDialog()"
               />
             </ng-template>
           </mat-tab>
@@ -1454,8 +1469,13 @@
                 <div class="doc-info-row">
                   <span class="doc-info-label">By</span>
                   <span class="doc-info-value creator-value">
-                    <span class="avatar-sm">{{ creator()!.charAt(0).toUpperCase() }}</span>
-                    {{ creator() }}
+                    <sat-avatar
+                      [initials]="creator()!.charAt(0).toUpperCase()"
+                      [category]="avatarColor(creator()!)"
+                      size="24"
+                      [borderless]="true"
+                    />
+                    <span class="creator-name">{{ creator() }}</span>
                   </span>
                 </div>
               }
@@ -1463,11 +1483,18 @@
               @if (contributors().length > 0) {
                 <div class="doc-info-row">
                   <span class="doc-info-label">Contributors</span>
-                  <span class="doc-info-value creator-value">
+                  <span class="doc-info-value contributors-value">
                     @for (c of contributors(); track c) {
-                      <span class="avatar-sm">{{ c.charAt(0).toUpperCase() }}</span>
+                      <span class="contributor-entry">
+                        <sat-avatar
+                          [initials]="c.charAt(0).toUpperCase()"
+                          [category]="avatarColor(c)"
+                          size="24"
+                          [borderless]="true"
+                        />
+                        <span class="contributor-name">{{ c }}</span>
+                      </span>
                     }
-                    {{ contributors().join(', ') }}
                   </span>
                 </div>
               }
@@ -1494,34 +1521,6 @@
               <span class="prop-value">{{ fileName() }}</span>
             </div>
 
-            @if (!isNoteDocument() && fileName() && canWriteDoc() && !isTrashed()) {
-              <div class="prop-field main-file-controls">
-                <span class="prop-label">File Controls</span>
-                <div class="main-file-actions">
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    class="main-file-btn"
-                    [disabled]="actionInProgress() === 'replace-main'"
-                    (click)="openReplaceMainFileDialog()"
-                  >
-                    <mat-icon>find_replace</mat-icon>
-                    Replace
-                  </button>
-                  <button
-                    mat-stroked-button
-                    type="button"
-                    class="main-file-btn main-file-btn--danger"
-                    [disabled]="actionInProgress() === 'remove-main'"
-                    (click)="openRemoveMainFileDialog()"
-                  >
-                    <mat-icon>cancel</mat-icon>
-                    Remove
-                  </button>
-                </div>
-              </div>
-            }
-
             @if (expires()) {
               <div class="prop-field">
                 <span class="prop-label">Expires</span>
@@ -1531,49 +1530,58 @@
 
             <div class="prop-field prop-field--tags">
               <span class="prop-label">Tags</span>
-              <div class="tags-area">
-                <div class="tags-row">
-                  @for (tag of tags(); track i; let i = $index) {
-                    <span class="tag-chip">
-                      <sat-category-tag [category]="tagCategory(i)">{{ tag }}</sat-category-tag>
-                      @if (canWriteDoc()) {
-                        <button
-                          type="button"
-                          class="tag-remove-btn"
-                          [attr.aria-label]="'Remove tag: ' + tag"
-                          [matTooltip]="'Remove tag: ' + tag"
-                          (click)="removeInlineTag(tag)"
-                        >
-                          <mat-icon>close</mat-icon>
+              @if (canWriteDoc()) {
+                <mat-form-field
+                  appearance="fill"
+                  class="tags-suggestion-field"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-chip-grid #tagChipGrid aria-label="Document tags">
+                    @for (tag of tags(); track tag) {
+                      <mat-chip-row (removed)="removeInlineTag(tag)">
+                        {{ tag }}
+                        <button type="button" matChipRemove [attr.aria-label]="'Remove tag ' + tag">
+                          <mat-icon>cancel</mat-icon>
                         </button>
-                      }
-                    </span>
+                      </mat-chip-row>
+                    }
+                    <input
+                      name="tagInput"
+                      [placeholder]="tags().length ? '' : 'Add a tag…'"
+                      [matChipInputFor]="tagChipGrid"
+                      [matAutocomplete]="tagAuto"
+                      [(ngModel)]="tagInput"
+                      [disabled]="tagAdding()"
+                      (ngModelChange)="onTagSearch($event)"
+                      (matChipInputTokenEnd)="addInlineTagFromChip($event)"
+                    />
+                  </mat-chip-grid>
+                  <mat-icon matSuffix>arrow_drop_down</mat-icon>
+                </mat-form-field>
+                <mat-autocomplete
+                  #tagAuto="matAutocomplete"
+                  autoActiveFirstOption
+                  (optionSelected)="selectTag($event)"
+                >
+                  @for (result of tagSearchResults(); track result) {
+                    <mat-option [value]="result">{{ result }}</mat-option>
+                  }
+                  @if (showCreateTagOption()) {
+                    <mat-option [value]="tagInput">
+                      <span class="create-tag-option">+ {{ tagInput }}</span>
+                    </mat-option>
+                  }
+                </mat-autocomplete>
+              } @else {
+                <div class="tags-readonly">
+                  @for (tag of tags(); track tag) {
+                    <span class="tags-readonly-chip">{{ tag }}</span>
+                  }
+                  @if (tags().length === 0) {
+                    <span class="tags-empty">—</span>
                   }
                 </div>
-                @if (canWriteDoc()) {
-                  <div class="tag-add-row">
-                    <input
-                      class="tag-add-input"
-                      placeholder="Add a tag…"
-                      [value]="newTagText()"
-                      (input)="newTagText.set($any($event.target).value)"
-                      (keydown.enter)="addInlineTag()"
-                    />
-                    @if (newTagText().trim()) {
-                      <button
-                        mat-icon-button
-                        type="button"
-                        aria-label="Add tag"
-                        [disabled]="tagAdding()"
-                        matTooltip="Add tag"
-                        (click)="addInlineTag()"
-                      >
-                        <mat-icon>add</mat-icon>
-                      </button>
-                    }
-                  </div>
-                }
-              </div>
+              }
             </div>
 
             @if (description()) {
