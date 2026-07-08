@@ -454,6 +454,10 @@ export class BrowseComponent {
       next: (doc) => {
         this.currentDoc.set(doc);
         this.loadActivity(doc.uid);
+        if (this.activeTabIndex() === 2 && !this.historyLoaded) {
+          this.loadDirectoryEntries();
+          this.loadAuditLog();
+        }
       },
       error: () => this.currentDoc.set(null),
     });
@@ -504,6 +508,11 @@ export class BrowseComponent {
   }
 
   private loadActivity(uid: string): void {
+    if (!this.currentDoc()) {
+      this.activityLoading.set(false);
+      return;
+    }
+
     if (!canViewDocumentAuditLog(this.currentDoc())) {
       this.activityEntries.set([]);
       this.activityLoading.set(false);
@@ -511,13 +520,16 @@ export class BrowseComponent {
     }
 
     this.activityLoading.set(true);
-    this.detailService.getAuditLog(uid, 5, 0).subscribe({
-      next: (res) => {
-        this.activityEntries.set(res.entries);
-        this.activityLoading.set(false);
-      },
-      error: () => this.activityLoading.set(false),
-    });
+    this.detailService
+      .getAuditLog(uid, 5, 0)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.activityEntries.set(res.entries);
+          this.activityLoading.set(false);
+        },
+        error: () => this.activityLoading.set(false),
+      });
   }
 
   onTagSearch(term: string): void {
@@ -612,15 +624,18 @@ export class BrowseComponent {
     }
 
     this.auditLoading.set(true);
-    this.detailService.getAuditLog(doc.uid, this.auditPageSize(), this.auditPageIndex()).subscribe({
-      next: (res) => {
-        this.auditEntries.set(res.entries);
-        this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
-        this.auditLoading.set(false);
-        this.historyLoaded = true;
-      },
-      error: () => this.auditLoading.set(false),
-    });
+    this.detailService
+      .getAuditLog(doc.uid, this.auditPageSize(), this.auditPageIndex())
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.auditEntries.set(res.entries);
+          this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
+          this.auditLoading.set(false);
+          this.historyLoaded = true;
+        },
+        error: () => this.auditLoading.set(false),
+      });
   }
 
   onAuditPageChange(event: PageEvent): void {

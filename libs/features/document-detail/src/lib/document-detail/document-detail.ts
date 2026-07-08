@@ -1336,6 +1336,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           if (this.activeTabIndex() === 2) {
             this.reloadDocumentPermissions();
           }
+          if (this.activeTabIndex() === 3 && !this.historyLoaded) {
+            this.loadDirectoryEntries();
+            this.loadAuditLog();
+          }
+          if (this.panelSubTab() === 'activity' && !this.panelActivityLoaded) {
+            this.loadPanelActivity();
+          }
           this.loadBlob(doc);
           if (this.freshNoteDocument && doc.type === 'Note') {
             this.focusNoteEditor.set(true);
@@ -1960,7 +1967,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   loadAuditLog(): void {
     if (!this.docUid) return;
 
-    if (!canViewDocumentAuditLog(this.doc())) {
+    const doc = this.doc();
+    if (!doc) {
+      this.auditLoading.set(false);
+      return;
+    }
+
+    if (!canViewDocumentAuditLog(doc)) {
       this.auditEntries.set([]);
       this.auditTotalSize.set(0);
       this.auditLoading.set(false);
@@ -1972,6 +1985,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     this.detailService
       .getAuditLog(this.docUid, this.auditPageSize(), this.auditPageIndex())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           this.auditEntries.set(res.entries);
@@ -2831,7 +2845,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   loadPanelActivity(): void {
     if (!this.docUid) return;
 
-    if (!canViewDocumentAuditLog(this.doc())) {
+    const doc = this.doc();
+    if (!doc) {
+      this.panelActivityLoading.set(false);
+      return;
+    }
+
+    if (!canViewDocumentAuditLog(doc)) {
       this.panelActivity.set([]);
       this.panelActivityLoading.set(false);
       this.panelActivityLoaded = true;
@@ -2839,14 +2859,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     this.panelActivityLoading.set(true);
-    this.detailService.getAuditLog(this.docUid, 20, 0).subscribe({
-      next: (res) => {
-        this.panelActivity.set(res.entries);
-        this.panelActivityLoading.set(false);
-        this.panelActivityLoaded = true;
-      },
-      error: () => this.panelActivityLoading.set(false),
-    });
+    this.detailService
+      .getAuditLog(this.docUid, 20, 0)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.panelActivity.set(res.entries);
+          this.panelActivityLoading.set(false);
+          this.panelActivityLoaded = true;
+        },
+        error: () => this.panelActivityLoading.set(false),
+      });
   }
 
   activityLabel(eventId: string): string {

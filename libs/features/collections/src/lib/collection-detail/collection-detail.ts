@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, DestroyRef, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -110,6 +110,7 @@ export class CollectionDetailComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly collection = signal<NuxeoDocument | null>(null);
   readonly members = signal<NuxeoDocument[]>([]);
@@ -143,6 +144,7 @@ export class CollectionDetailComponent {
     'docLifeCycle',
   ];
   private historyLoaded = false;
+  private readonly activeTabIndex = signal(0);
 
   readonly filterUsername = signal('');
   readonly filterDateFrom = signal<Date | null>(null);
@@ -220,6 +222,7 @@ export class CollectionDetailComponent {
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.collectionUid = params.get('uid') ?? '';
+      this.historyLoaded = false;
       if (this.collectionUid) {
         this.loadCollection();
         this.loadMembers();
@@ -228,20 +231,34 @@ export class CollectionDetailComponent {
   }
 
   private loadCollection(): void {
-    this.detailService.getFullDocument(this.collectionUid).subscribe({
-      next: (doc) => {
-        this.collection.set(doc);
-        this.syncActionStates(doc);
-      },
-      error: () => {
-        this.collectionService.getById(this.collectionUid).subscribe({
-          next: (doc) => this.collection.set(doc),
-          error: () => {
-            /* fallback also failed, ignore */
-          },
-        });
-      },
-    });
+    this.detailService
+      .getFullDocument(this.collectionUid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (doc) => {
+          this.collection.set(doc);
+          this.syncActionStates(doc);
+          if (this.activeTabIndex() === 2 && !this.historyLoaded) {
+            this.loadAuditLog();
+          }
+        },
+        error: () => {
+          this.collectionService
+            .getById(this.collectionUid)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (doc) => {
+                this.collection.set(doc);
+                if (this.activeTabIndex() === 2 && !this.historyLoaded) {
+                  this.loadAuditLog();
+                }
+              },
+              error: () => {
+                /* fallback also failed, ignore */
+              },
+            });
+        },
+      });
   }
 
   private syncActionStates(doc: NuxeoDocument): void {
@@ -650,6 +667,7 @@ export class CollectionDetailComponent {
   });
 
   onTabChange(index: number): void {
+    this.activeTabIndex.set(index);
     if (index === 2 && !this.historyLoaded) {
       this.loadDirectoryEntries();
       this.loadAuditLog();
@@ -673,7 +691,13 @@ export class CollectionDetailComponent {
   loadAuditLog(): void {
     if (!this.collectionUid) return;
 
-    if (!canViewDocumentAuditLog(this.collection())) {
+    const collection = this.collection();
+    if (!collection) {
+      this.auditLoading.set(false);
+      return;
+    }
+
+    if (!canViewDocumentAuditLog(collection)) {
       this.auditEntries.set([]);
       this.auditTotalSize.set(0);
       this.auditLoading.set(false);
@@ -685,6 +709,7 @@ export class CollectionDetailComponent {
 
     this.detailService
       .getAuditLog(this.collectionUid, this.auditPageSize(), this.auditPageIndex())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
           this.auditEntries.set(res.entries);
