@@ -20,6 +20,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 
@@ -34,10 +35,12 @@ import {
   isBlobHoldingDocType,
   isDomainParentType,
   isFolderishDocument,
+  isRepositoryRootPath,
   isRestrictedImportParentPath,
   resolveCreatableSubtypes,
   NOTE_FORMAT_OPTIONS,
   sanitizeDocumentName,
+  summarizeCsvImportReport,
   type DirectoryEntry,
   type L10nDirectoryEntry,
   type NuxeoDocument,
@@ -58,7 +61,7 @@ export interface CreateImportDialogResult {
   freshNote?: boolean;
 }
 
-export type DialogTab = 'create' | 'import';
+export type DialogTab = 'create' | 'import' | 'csv';
 
 export interface DocTypeDef {
   type: string;
@@ -115,6 +118,7 @@ const DIALOG_SIZE = {
     MatNativeDateModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatSlideToggleModule,
     FormsModule,
   ],
   providers: [provideNativeDateAdapter()],
@@ -201,12 +205,16 @@ export class CreateImportDialogComponent implements OnInit {
   readonly dragOverContent = signal(false);
 
   readonly uploadFiles = signal<File[]>([]);
+  readonly csvFile = signal<File | null>(null);
+  readonly csvSendReport = signal(false);
+  readonly csvDocumentMode = signal(false);
 
   readonly busy = signal(false);
   readonly error = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
 
   readonly dragOverUpload = signal(false);
+  readonly dragOverCsv = signal(false);
 
   readonly hasContentField = computed(() => {
     const type = this.selectedDocType()?.type;
@@ -225,6 +233,15 @@ export class CreateImportDialogComponent implements OnInit {
       isRestrictedImportParentPath(this.parentPath()) ||
       isDomainParentType(this.parentFolderType()),
   );
+
+  readonly importRestricted = computed(
+    () => this.locationRestricted() || isRepositoryRootPath(this.parentPath()),
+  );
+
+  /** CSV import matches Nuxeo Web UI: allowed at repository root, blocked on domain containers. */
+  readonly csvImportRestricted = computed(() => this.locationRestricted());
+
+  readonly isAtRepositoryRoot = computed(() => isRepositoryRootPath(this.parentPath()));
 
   readonly importLocationHint = computed(() => {
     if (isDomainParentType(this.parentFolderType())) {
@@ -473,6 +490,16 @@ export class CreateImportDialogComponent implements OnInit {
     }
     this.activeTab.set(tab);
     this.error.set(null);
+    if (tab === 'import') {
+      this.csvFile.set(null);
+      this.dragOverCsv.set(false);
+    } else if (tab === 'csv') {
+      this.uploadFiles.set([]);
+      this.dragOverUpload.set(false);
+    } else if (tab === 'create') {
+      this.csvFile.set(null);
+      this.uploadFiles.set([]);
+    }
   }
 
   startCreateFromType(docType: DocTypeDef): void {
@@ -747,9 +774,50 @@ export class CreateImportDialogComponent implements OnInit {
     this.uploadFiles.update((files) => files.filter((_, j) => j !== i));
   }
 
+  onCsvInputChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    this.selectCsvFile(file);
+  }
+
+  onCsvDrop(ev: DragEvent): void {
+    ev.preventDefault();
+    this.dragOverCsv.set(false);
+    const file = ev.dataTransfer?.files?.[0];
+    if (!file) return;
+    this.selectCsvFile(file);
+  }
+
+  private selectCsvFile(file: File): void {
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      this.csvFile.set(null);
+      this.error.set('Please select a .csv file.');
+      return;
+    }
+    this.csvFile.set(file);
+    this.error.set(null);
+  }
+
+  onCsvDragOver(ev: DragEvent): void {
+    ev.preventDefault();
+    ev.stopPropagation();
+    this.dragOverCsv.set(true);
+  }
+
+  onCsvDragLeave(ev: DragEvent): void {
+    ev.preventDefault();
+    this.dragOverCsv.set(false);
+  }
+
+  clearCsvFile(): void {
+    this.csvFile.set(null);
+  }
+
   runUpload(): void {
     this.commitLocationInput();
-    if (this.locationRestricted()) return;
+    if (this.importRestricted()) return;
     const path = this.parentPath();
     const files = this.uploadFiles();
     if (!path || files.length === 0) return;
@@ -771,6 +839,45 @@ export class CreateImportDialogComponent implements OnInit {
         error: (err: { error?: { message?: string }; message?: string }) => {
           this.busy.set(false);
           this.error.set(err?.error?.message ?? err?.message ?? 'Upload failed');
+        },
+      });
+  }
+
+  runCsvImport(): void {
+    this.commitLocationInput();
+    if (this.csvImportRestricted()) return;
+    const path = this.parentPath();
+    const file = this.csvFile();
+    if (!path || !file) return;
+
+    this.busy.set(true);
+    this.error.set(null);
+
+    this.importService
+      .importCsvFile({
+        path,
+        file,
+        sendReport: this.csvSendReport(),
+        documentMode: this.csvDocumentMode(),
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (report) => {
+          this.busy.set(false);
+          this.csvFile.set(null);
+          const summary = summarizeCsvImportReport(report);
+          this.successMessage.set(summary);
+          this.view.set('success');
+        },
+        error: (err: { status?: number; error?: { message?: string }; message?: string }) => {
+          this.busy.set(false);
+          if (err?.status === 404) {
+            this.error.set(
+              'CSV import is not available. Install the Nuxeo CSV addon on the server.',
+            );
+            return;
+          }
+          this.error.set(err?.error?.message ?? err?.message ?? 'CSV import failed');
         },
       });
   }

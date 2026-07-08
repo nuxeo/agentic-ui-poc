@@ -1,4 +1,8 @@
-import { normalizeDocumentAcls, resolveAcePrincipal } from './ace-principal';
+import {
+  mergeDocumentPermissionsContext,
+  normalizeDocumentAcls,
+  resolveAcePrincipal,
+} from './ace-principal';
 import type { NuxeoAce, NuxeoAcl } from '../models/acl.model';
 import type { NuxeoDocument } from '../models/document.model';
 
@@ -69,5 +73,55 @@ describe('ace-principal', () => {
 
     expect(ace?.username).toBe('Administrator');
     expect(ace?.creator).toBe('Administrator');
+  });
+
+  it('mergeDocumentPermissionsContext replaces acls and permissions only', () => {
+    const existing: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Doc',
+      type: 'File',
+      path: '/a/b',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: { 'dc:title': 'Doc' },
+      contextParameters: {
+        acls: [{ name: 'local', aces: [] }],
+        permissions: ['Read'],
+        favorites: { isFavorite: true },
+      },
+    };
+    const updated: NuxeoDocument = {
+      ...existing,
+      contextParameters: {
+        acls: [
+          {
+            name: 'local',
+            aces: [
+              {
+                id: 'u1:Read',
+                username: 'user-readonly01',
+                permission: 'Read',
+                granted: true,
+                externalUser: false,
+              },
+              {
+                id: 'u2:Read',
+                username: 'poweruser01',
+                permission: 'Read',
+                granted: true,
+                externalUser: false,
+              },
+            ],
+          },
+        ] as NuxeoAcl[],
+        permissions: ['Read', 'ReadSecurity'],
+      },
+    };
+
+    const merged = mergeDocumentPermissionsContext(existing, updated);
+    const local = merged.contextParameters?.['acls']?.find((a) => a.name === 'local');
+
+    expect(local?.aces).toHaveLength(2);
+    expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'ReadSecurity']);
+    expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: true });
   });
 });

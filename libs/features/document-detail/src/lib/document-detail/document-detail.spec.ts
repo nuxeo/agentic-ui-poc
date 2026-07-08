@@ -20,6 +20,7 @@ import {
   DocumentDetailService,
   mailSendFailureMessage,
   NuxeoApiBase,
+  PERMISSION_DENIED_MESSAGE,
   type NuxeoDocument,
   TagService,
   TaskService,
@@ -306,6 +307,60 @@ describe('DocumentDetailComponent', () => {
 
       expect(enrichSpy).not.toHaveBeenCalled();
       expect(component.keError()).toMatch(/nature.*vocabulary failed to load/i);
+    });
+  });
+
+  describe('write permission guards (NXSAT-163)', () => {
+    const readOnlyDoc: NuxeoDocument = {
+      ...STUB_DOC,
+      contextParameters: { permissions: ['Read'] },
+    };
+
+    it('canWriteDoc is false for read-only users', () => {
+      component.doc.set(readOnlyDoc);
+      expect(component.canWriteDoc()).toBe(false);
+    });
+
+    it('saveNote is blocked for read-only users', () => {
+      const browse = TestBed.inject(BrowseService);
+      const updateSpy = vi.spyOn(browse, 'updateDocument');
+      component.doc.set({ ...readOnlyDoc, type: 'Note' });
+
+      component.saveNote('updated body');
+
+      expect(updateSpy).not.toHaveBeenCalled();
+      expect(snackBarOpenSpy).toHaveBeenCalledWith(
+        PERMISSION_DENIED_MESSAGE,
+        'OK',
+        expect.objectContaining({ duration: 3000 }),
+      );
+    });
+
+    it('openCreateVersionDialog is blocked for read-only users', () => {
+      component.doc.set(readOnlyDoc);
+      const dialogSpy = vi.spyOn(component['dialog'], 'open');
+
+      component.openCreateVersionDialog();
+
+      expect(dialogSpy).not.toHaveBeenCalled();
+      expect(snackBarOpenSpy).toHaveBeenCalledWith(
+        PERMISSION_DENIED_MESSAGE,
+        'OK',
+        expect.objectContaining({ duration: 3000 }),
+      );
+    });
+
+    it('submitComment is blocked for read-only users', () => {
+      component.doc.set(readOnlyDoc);
+      component.newCommentText.set('hello');
+
+      component.submitComment();
+
+      expect(snackBarOpenSpy).toHaveBeenCalledWith(
+        PERMISSION_DENIED_MESSAGE,
+        'OK',
+        expect.objectContaining({ duration: 3000 }),
+      );
     });
   });
 });

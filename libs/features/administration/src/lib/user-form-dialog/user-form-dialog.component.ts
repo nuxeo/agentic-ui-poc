@@ -1,5 +1,5 @@
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
-import { Component, DestroyRef, OnDestroy, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, ViewChild, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -8,7 +8,7 @@ import {
   MatAutocompleteSelectedEvent,
 } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
-import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
+import { MatChipInput, MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -146,6 +146,8 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
   /** Suppresses matChipInputTokenEnd after autocomplete selection (NXSAT-151). */
   private skipNextChipInput = false;
 
+  @ViewChild(MatChipInput) private groupChipInput?: MatChipInput;
+
   ngOnInit(): void {
     const u = this.data.user;
     if (this.data.mode === 'edit' && u) {
@@ -214,11 +216,15 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
   }
 
   onGroupSelected(event: MatAutocompleteSelectedEvent): void {
-    const groupname = event.option.value as string;
-    if (groupname && !this.groups.includes(groupname)) {
-      this.groups = [...this.groups, groupname];
-    }
     this.skipNextChipInput = true;
+    const groupname = (event.option.value as string)?.trim();
+    if (groupname) {
+      // Autocomplete can emit matChipInputTokenEnd first with a partial prefix chip.
+      this.groups = this.groups.filter((g) => g === groupname || !groupname.startsWith(g));
+      if (!this.groups.includes(groupname)) {
+        this.groups = [...this.groups, groupname];
+      }
+    }
     this.clearGroupSearch();
     event.option.deselect();
   }
@@ -227,6 +233,7 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     if (this.skipNextChipInput) {
       this.skipNextChipInput = false;
       event.chipInput.clear();
+      this.clearGroupSearch();
       return;
     }
     const raw = (event.value ?? '').trim();
@@ -234,11 +241,53 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
       event.chipInput.clear();
       return;
     }
-    if (!this.groups.includes(raw)) {
-      this.groups = [...this.groups, raw];
+
+    const resolved = this.resolveGroupFromChipInput(raw);
+    if (resolved === null) {
+      event.chipInput.clear();
+      this.clearGroupSearch();
+      return;
+    }
+    if (resolved && !this.groups.includes(resolved)) {
+      this.groups = [...this.groups, resolved];
     }
     event.chipInput.clear();
     this.clearGroupSearch();
+  }
+
+  private resolveGroupFromChipInput(raw: string): string | null {
+    const typed = this.groupSearchQuery.trim();
+
+    if (typed && raw === typed && this.isIncompleteGroupPrefix(raw)) {
+      return null;
+    }
+
+    if (typed && raw.startsWith(typed) && raw.length > typed.length) {
+      const suffix = raw.slice(typed.length);
+      const optionMatch = this.groupOptions.find((g) => g.groupname === suffix);
+      if (optionMatch) {
+        return optionMatch.groupname;
+      }
+    }
+
+    if (this.isIncompleteGroupPrefix(raw)) {
+      return null;
+    }
+
+    const exactOption = this.groupOptions.find((g) => g.groupname === raw);
+    if (exactOption) {
+      return exactOption.groupname;
+    }
+
+    return raw;
+  }
+
+  /** True when `value` is only a typed prefix of a known group (not a full name). */
+  private isIncompleteGroupPrefix(value: string): boolean {
+    if (this.groupOptions.some((g) => g.groupname === value)) {
+      return false;
+    }
+    return this.groupOptions.some((g) => g.groupname.startsWith(value) && g.groupname !== value);
   }
 
   removeGroup(groupname: string): void {
@@ -250,6 +299,7 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     this.groupSearchQuery = '';
     this.groupOptions = [];
     this.groupSearchTerms.next('');
+    this.groupChipInput?.clear();
   }
 
   get canSave(): boolean {
