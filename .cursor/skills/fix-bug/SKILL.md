@@ -1,6 +1,6 @@
 ---
 name: fix-bug
-description: End-to-end playbook for fixing a bug in the agentic-ui-poc (Nx/Angular) repo — analyse the JIRA ticket, reproduce and capture before/after evidence, branch as fix/<desc>, fix at the root cause following the AGENTS conventions without inducing regressions, add a regression test, run the review:preflight gate, then open a conventional-commit PR to main and take it through CI + review. Use when asked to fix a bug, a JIRA bug ticket (NCO-/NXSAT-/NXENG-<id>), "fix and raise PR", or take a defect to review.
+description: End-to-end playbook for fixing a bug in the agentic-ui-poc (Nx/Angular) repo — analyse the JIRA ticket, reproduce and capture before/after evidence, branch as fix/<desc>, fix at the root cause following the AGENTS conventions without inducing regressions, add a regression test, run the review:preflight gate, collect Playwright evidence, get user sign-off, open a conventional-commit PR to main, then monitor CI checks and review comments until the PR is approved and ready to merge. Use when asked to fix a bug, a JIRA bug ticket (NCO-/NXSAT-/NXENG-<id>), "fix and raise PR", or take a defect to review.
 ---
 
 # Fix a bug — agentic, end-to-end
@@ -180,17 +180,65 @@ Complete the template sections (What changed & why, JIRA ticket, files modified,
 checklist). Attach the before/after evidence. Push branches to `origin` (never a fork) so CI
 runs against the upstream repo.
 
-## Phase 8 — CI + review
+## Phase 8 — Monitor PR (CI checks + review comments)
+
+### 8a — Ask the user whether to watch the PR
+
+Immediately after the PR URL is printed, use `AskQuestion` to present:
+
+- "Watch this PR for CI results and review comments now?"
+- "No thanks — I'll check manually."
+
+**Only start monitoring if the user says YES.**
+
+### 8b — Poll CI checks
+
+Run the following every ~60 seconds until all checks reach a terminal state
+(`SUCCESS`, `FAILURE`, `CANCELLED`, `SKIPPED`):
 
 ```bash
 gh pr view <N> --repo nuxeo/agentic-ui-poc --json statusCheckRollup \
-  --jq '[.statusCheckRollup[]|{name:(.name//.context),conclusion:(.conclusion//.state)}]'
+  --jq '[.statusCheckRollup[]|{name:(.name//.context),state:(.conclusion//.state)}]'
 ```
 
-- Real failure → read the failing job log, fix on the branch, re-run `review:preflight`, push.
-- Address Copilot/reviewer comments via the `fix-pr-comments` skill — do NOT suppress lint errors.
-- Wait for CI (guardrails + lint + build + test + bundle size) to pass and at least one approval;
-  squash-and-merge is the team's merge style.
+Report a compact summary table each time checks change state. Stop polling once every
+check is terminal.
+
+- All green → tell the user: "All CI checks passed ✓"
+- Any failure → read the failing job log and tell the user exactly which step failed
+  and what the error was, then offer to fix it:
+
+  ```bash
+  gh run view <run-id> --log-failed
+  ```
+
+  Fix on the branch → re-run `review:preflight` → push → continue monitoring.
+
+### 8c — Watch for review comments
+
+After CI is green, check for unresolved review comments:
+
+```bash
+gh pr view <N> --repo nuxeo/agentic-ui-poc --json reviews,comments \
+  --jq '{reviews:[.reviews[]|{author:.author.login,state:.state,body:.body}],
+         comments:[.comments[]|{author:.author.login,body:.body,path:.path,line:.line}]}'
+```
+
+- If there are `CHANGES_REQUESTED` reviews or inline comments, surface them to the
+  user grouped by file/concern, then invoke the `fix-pr-comments` skill to address them.
+- If the review state is `APPROVED` with CI green, tell the user the PR is ready to merge.
+
+### 8d — Report final status
+
+Once the PR is approved and all checks pass, present a closing summary:
+
+| Item      | Status                       |
+| --------- | ---------------------------- |
+| CI checks | ✅ all passed                |
+| Review    | ✅ approved                  |
+| PR        | 🟢 ready to squash-and-merge |
+
+Ask the user: "Merge now, or leave it for a team member?"
 
 ## Guardrails
 
