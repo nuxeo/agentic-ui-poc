@@ -3,6 +3,23 @@
 Reusable Playwright-based tooling for capturing before/after evidence when fixing bugs.
 Every run saves **screenshots** and a **screen recording** (MP4) to `~/Desktop/<TICKET-ID>/`.
 
+## Prerequisite: Playwright (local-only)
+
+Playwright is **not** a tracked dependency of this repo — it is deliberately kept out of
+`package.json`/`package-lock.json` so it never affects the CI install. It's only needed on the
+machine that actually collects evidence. Check whether you already have it:
+
+```bash
+node -e "require.resolve('@playwright/test')" 2>/dev/null && echo available || echo missing
+```
+
+If it's missing, install it locally without touching the lock file, then fetch the browser:
+
+```bash
+npm install --no-save @playwright/test
+npx playwright install chromium
+```
+
 ## Quick start
 
 ```bash

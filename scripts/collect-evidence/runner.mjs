@@ -14,11 +14,25 @@
  * Output: ~/Desktop/<ticket-id>/  (screenshots + optional video)
  */
 
-import { chromium } from '@playwright/test';
 import { mkdir } from 'fs/promises';
 import { resolve } from 'path';
 import { homedir } from 'os';
 import { pathToFileURL } from 'url';
+
+// Playwright is a local-only prerequisite, not a tracked dependency of this repo
+// (kept out of package.json/package-lock.json so it never affects the CI install).
+let chromium;
+try {
+  ({ chromium } = await import('@playwright/test'));
+} catch {
+  console.error(
+    '\n❌  Playwright is required to collect evidence but is not installed.\n' +
+      '   It is intentionally not a tracked dependency. Install it locally:\n\n' +
+      '     npm install --no-save @playwright/test\n' +
+      '     npx playwright install chromium\n',
+  );
+  process.exit(1);
+}
 
 const [, , ticketId, stepsFile] = process.argv;
 

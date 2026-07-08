@@ -106,7 +106,28 @@ Only proceed when everything is green. Never use `--no-verify` to bypass the Hus
 npx nx serve nuxeo-ui   # wait for "Local: http://localhost:4200/"
 ```
 
-### 6.5b — Create a ticket-specific evidence steps file and run the collector
+### 6.5b — Ensure Playwright is available locally
+
+The evidence runner uses Playwright, but it is **intentionally not** a tracked dependency in
+`package.json` (it's local-only DX tooling — keeping it out of the lock file avoids perturbing the
+CI install). So before running the collector, check whether Playwright is already available:
+
+```bash
+node -e "require.resolve('@playwright/test')" 2>/dev/null && echo "playwright: available" || echo "playwright: missing"
+```
+
+- **Available** → continue directly to 6.5c.
+- **Missing** → Playwright is **required to collect evidence**. Prompt the user to install it
+  locally before continuing (use `--no-save` so `package.json`/`package-lock.json` stay untouched):
+
+  ```bash
+  npm install --no-save @playwright/test
+  npx playwright install chromium
+  ```
+
+  Do not proceed to the collector until the install succeeds.
+
+### 6.5c — Create a ticket-specific evidence steps file and run the collector
 
 The project ships a reusable Playwright-based evidence runner at
 `scripts/collect-evidence/`. See `scripts/collect-evidence/README.md` for full docs.
@@ -125,7 +146,7 @@ The project ships a reusable Playwright-based evidence runner at
 
 3. **Present** a per-bug checklist table to the user (Before → After, navigation steps).
 
-### 6.5c — Wait for explicit user confirmation
+### 6.5d — Wait for explicit user confirmation
 
 Use `AskQuestion` to present a binary choice:
 
