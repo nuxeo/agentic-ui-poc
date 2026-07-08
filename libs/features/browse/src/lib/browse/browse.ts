@@ -465,6 +465,7 @@ export class BrowseComponent {
         }
         const { folder, entries, totalSize, redirectTo } = payload.result;
         if (redirectTo) {
+          this.loading.set(false);
           void this.router.navigateByUrl(`/browse${redirectTo}`, { replaceUrl: true });
           return;
         }

@@ -502,31 +502,31 @@ export class NavDrawerComponent {
           this.rootNodes.set([rootNode]);
           this.rootLoading.set(false);
 
-          const domainNodes = this.toFolderNodes(entries);
-          rootNode.children = domainNodes;
+          const topNodes = this.toFolderNodes(entries);
+          rootNode.children = topNodes;
           rootNode.loaded = true;
           rootNode.loading = false;
 
-          const domainNode = domainNodes[0];
-          if (domainNode) {
-            domainNode.expanded = true;
-            domainNode.loading = true;
+          const topNode = topNodes[0];
+          if (topNode) {
+            topNode.expanded = true;
+            topNode.loading = true;
             this.rootNodes.update((n) => [...n]);
 
             this.browseService
-              .getNavTreeChildren(domainNode.doc)
+              .getNavTreeChildren(topNode.doc)
               .pipe(takeUntilDestroyed(this.destroyRef))
               .subscribe({
-                next: (domainRes) => {
-                  domainNode.children = this.toFolderNodes(domainRes.entries);
-                  domainNode.loaded = true;
-                  domainNode.loading = false;
+                next: (topNodeRes) => {
+                  topNode.children = this.toFolderNodes(topNodeRes.entries);
+                  topNode.loaded = true;
+                  topNode.loading = false;
                   this.rootNodes.update((n) => [...n]);
-                  this.prefetchChildStatus(domainNode.children);
+                  this.prefetchChildStatus(topNode.children);
                 },
                 error: () => {
-                  domainNode.loading = false;
-                  domainNode.loaded = true;
+                  topNode.loading = false;
+                  topNode.loaded = true;
                   this.rootNodes.update((n) => [...n]);
                 },
               });
