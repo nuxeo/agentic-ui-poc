@@ -902,12 +902,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         next: () => {
           this.doc.update((d) => {
             if (!d) return d;
-            const existing = (d.properties['nxtag:tags'] as Array<{ label: string }>) ?? [];
+            const raw = (d.properties['nxtag:tags'] as Array<{ label: string } | string>) ?? [];
+            const normalized: Array<{ label: string }> = raw.map((t) =>
+              typeof t === 'string' ? { label: t } : t,
+            );
+            const alreadyExists = normalized.some((t) => t.label === label);
             return {
               ...d,
               properties: {
                 ...d.properties,
-                'nxtag:tags': [...existing, { label }],
+                'nxtag:tags': alreadyExists ? normalized : [...normalized, { label }],
               },
             };
           });
@@ -930,12 +934,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         next: () => {
           this.doc.update((d) => {
             if (!d) return d;
-            const existing = (d.properties['nxtag:tags'] as Array<{ label: string }>) ?? [];
+            const raw = (d.properties['nxtag:tags'] as Array<{ label: string } | string>) ?? [];
+            const normalized: Array<{ label: string }> = raw.map((t) =>
+              typeof t === 'string' ? { label: t } : t,
+            );
             return {
               ...d,
               properties: {
                 ...d.properties,
-                'nxtag:tags': existing.filter((t) => t.label !== tagLabel),
+                'nxtag:tags': normalized.filter((t) => t.label !== tagLabel),
               },
             };
           });
@@ -1838,17 +1845,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private extractVideoInfo(doc: NuxeoDocument): void {
-    const raw = doc.properties['vid:info'] as
-      | {
-          duration?: number;
-          width?: number;
-          height?: number;
-          format?: string;
-          videoCodec?: string;
-          audioCodec?: string;
-          frameRate?: number;
-        }
-      | undefined;
+    const raw = doc.properties['vid:info'] as VideoInfo | undefined;
     if (!raw) return;
     this.videoInfo.set({
       duration: raw.duration,

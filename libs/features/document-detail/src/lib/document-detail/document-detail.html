@@ -1533,13 +1533,14 @@
               <span class="prop-label">Tags</span>
               <div class="tags-area">
                 <div class="tags-row">
-                  @for (tag of tags(); track tag; let i = $index) {
+                  @for (tag of tags(); track i; let i = $index) {
                     <span class="tag-chip">
                       <sat-category-tag [category]="tagCategory(i)">{{ tag }}</sat-category-tag>
                       @if (canWriteDoc()) {
                         <button
                           type="button"
                           class="tag-remove-btn"
+                          [attr.aria-label]="'Remove tag: ' + tag"
                           [matTooltip]="'Remove tag: ' + tag"
                           (click)="removeInlineTag(tag)"
                         >
@@ -1562,6 +1563,7 @@
                       <button
                         mat-icon-button
                         type="button"
+                        aria-label="Add tag"
                         [disabled]="tagAdding()"
                         matTooltip="Add tag"
                         (click)="addInlineTag()"

@@ -663,7 +663,7 @@ export class DocumentDetailService {
     );
   }
 
-  replaceMainFile(uid: string, file: File): Observable<unknown> {
+  replaceMainFile(uid: string, file: File): Observable<Blob> {
     const params = JSON.stringify({
       params: { document: uid, save: 'true', xpath: 'file:content' },
     });
