@@ -1,6 +1,6 @@
 ---
 name: fix-bug
-description: End-to-end playbook for fixing a bug in the agentic-ui-poc (Nx/Angular) repo — analyse the JIRA ticket, reproduce and capture before/after evidence, branch as fix/<desc>, fix at the root cause following the AGENTS conventions without inducing regressions, add a regression test, run the review:preflight gate, then open a conventional-commit PR to main and take it through CI + review. Use when asked to fix a bug, a JIRA bug ticket (NCO-/NXSAT-/NXENG-<id>), "fix and raise PR", or take a defect to review.
+description: End-to-end playbook for fixing a bug in the agentic-ui-poc (Nx/Angular) repo — analyse the JIRA ticket, reproduce and capture before/after evidence, branch as fix/<desc>, fix at the root cause following the AGENTS conventions without inducing regressions, add a regression test, run the review:preflight gate, collect Playwright evidence, get user sign-off, open a conventional-commit PR to main, then monitor CI checks and review comments until the PR is approved and ready to merge. Use when asked to fix a bug, a JIRA bug ticket (NCO-/NXSAT-/NXENG-<id>), "fix and raise PR", or take a defect to review.
 ---
 
 # Fix a bug — agentic, end-to-end
@@ -96,9 +96,68 @@ If you touched `nuxeo-ui`, sanity-check the production build/bundle-size expecta
 (`npx nx build nuxeo-ui --configuration=production`; CI enforces a 5 MB JS+CSS limit).
 Only proceed when everything is green. Never use `--no-verify` to bypass the Husky hook.
 
+## Phase 6.5 — Evidence collection + human sign-off (mandatory gate)
+
+**STOP before committing.** You MUST collect evidence and get explicit user approval.
+
+### 6.5a — Start the dev server (if not already running)
+
+```bash
+npx nx serve nuxeo-ui   # wait for "Local: http://localhost:4200/"
+```
+
+### 6.5b — Ensure Playwright is available locally
+
+The evidence runner uses Playwright, but it is **intentionally not** a tracked dependency in
+`package.json` (it's local-only DX tooling — keeping it out of the lock file avoids perturbing the
+CI install). So before running the collector, check whether Playwright is already available:
+
+```bash
+node -e "require.resolve('@playwright/test')" 2>/dev/null && echo "playwright: available" || echo "playwright: missing"
+```
+
+- **Available** → continue directly to 6.5c.
+- **Missing** → Playwright is **required to collect evidence**. Prompt the user to install it
+  locally before continuing (use `--no-save` so `package.json`/`package-lock.json` stay untouched):
+
+  ```bash
+  npm install --no-save @playwright/test
+  npx playwright install chromium
+  ```
+
+  Do not proceed to the collector until the install succeeds.
+
+### 6.5c — Create a ticket-specific evidence steps file and run the collector
+
+The project ships a reusable Playwright-based evidence runner at
+`scripts/collect-evidence/`. See `scripts/collect-evidence/README.md` for full docs.
+
+1. **Create** `scripts/collect-evidence/<TICKET-ID>.mjs` — export a default async function
+   that calls `helpers.login()`, `helpers.goToDoc(uid)`, and `helpers.screenshot(name)` for
+   every fix being verified. Use the NXSAT-175 file as a template.
+
+2. **Run** the collector (dev server must be up, and a real Nuxeo instance reachable):
+
+   ```bash
+   NUXEO_DOC_UID=<uid> npm run evidence:collect -- <TICKET-ID> scripts/collect-evidence/<TICKET-ID>.mjs
+   ```
+
+   Output lands in `~/Desktop/<TICKET-ID>/` — screenshots + a WebM screen recording.
+
+3. **Present** a per-bug checklist table to the user (Before → After, navigation steps).
+
+### 6.5d — Wait for explicit user confirmation
+
+Use `AskQuestion` to present a binary choice:
+
+- "Evidence collected and recording saved — proceed with commit + PR?"
+- "No — I found a problem."
+
+**Do NOT commit or push until the user explicitly says YES.**
+
 ## Phase 7 — Commit + open PR
 
-This is the "fix and raise PR" trigger.
+This is the "fix and raise PR" trigger. Only reached after Phase 6.5 sign-off.
 
 - Conventional-commit message (`AGENTS/06-git-workflow.md`), lowercase, present tense, with the
   JIRA id when known:
@@ -121,17 +180,65 @@ Complete the template sections (What changed & why, JIRA ticket, files modified,
 checklist). Attach the before/after evidence. Push branches to `origin` (never a fork) so CI
 runs against the upstream repo.
 
-## Phase 8 — CI + review
+## Phase 8 — Monitor PR (CI checks + review comments)
+
+### 8a — Ask the user whether to watch the PR
+
+Immediately after the PR URL is printed, use `AskQuestion` to present:
+
+- "Watch this PR for CI results and review comments now?"
+- "No thanks — I'll check manually."
+
+**Only start monitoring if the user says YES.**
+
+### 8b — Poll CI checks
+
+Run the following every ~60 seconds until all checks reach a terminal state
+(`SUCCESS`, `FAILURE`, `CANCELLED`, `SKIPPED`):
 
 ```bash
 gh pr view <N> --repo nuxeo/agentic-ui-poc --json statusCheckRollup \
-  --jq '[.statusCheckRollup[]|{name:(.name//.context),conclusion:(.conclusion//.state)}]'
+  --jq '[.statusCheckRollup[]|{name:(.name//.context),state:(.conclusion//.state)}]'
 ```
 
-- Real failure → read the failing job log, fix on the branch, re-run `review:preflight`, push.
-- Address Copilot/reviewer comments via the `fix-pr-comments` skill — do NOT suppress lint errors.
-- Wait for CI (guardrails + lint + build + test + bundle size) to pass and at least one approval;
-  squash-and-merge is the team's merge style.
+Report a compact summary table each time checks change state. Stop polling once every
+check is terminal.
+
+- All green → tell the user: "All CI checks passed ✓"
+- Any failure → read the failing job log and tell the user exactly which step failed
+  and what the error was, then offer to fix it:
+
+  ```bash
+  gh run view <run-id> --log-failed
+  ```
+
+  Fix on the branch → re-run `review:preflight` → push → continue monitoring.
+
+### 8c — Watch for review comments
+
+After CI is green, check for unresolved review comments:
+
+```bash
+gh pr view <N> --repo nuxeo/agentic-ui-poc --json reviews,comments \
+  --jq '{reviews:[.reviews[]|{author:.author.login,state:.state,body:.body}],
+         comments:[.comments[]|{author:.author.login,body:.body,path:.path,line:.line}]}'
+```
+
+- If there are `CHANGES_REQUESTED` reviews or inline comments, surface them to the
+  user grouped by file/concern, then invoke the `fix-pr-comments` skill to address them.
+- If the review state is `APPROVED` with CI green, tell the user the PR is ready to merge.
+
+### 8d — Report final status
+
+Once the PR is approved and all checks pass, present a closing summary:
+
+| Item      | Status                       |
+| --------- | ---------------------------- |
+| CI checks | ✅ all passed                |
+| Review    | ✅ approved                  |
+| PR        | 🟢 ready to squash-and-merge |
+
+Ask the user: "Merge now, or leave it for a team member?"
 
 ## Guardrails
 
