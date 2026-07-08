@@ -6,12 +6,36 @@ import { catchError } from 'rxjs/operators';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 import { resolveCreatableSubtypes } from '../utils/creatable-subtypes';
-import { isFolderishDocument } from './document-import.service';
+import { isFolderishDocument, isBrowsableNavNode } from './document-import.service';
+
+export interface NavTreeBootstrap {
+  root: NuxeoDocument;
+  entries: NuxeoDocument[];
+}
+
+export interface BrowseFolderContents {
+  folder: NuxeoDocument;
+  entries: NuxeoDocument[];
+  totalSize: number;
+  /** Present when a restricted user should land on their only accessible folder. */
+  redirectTo?: string;
+}
 
 @Injectable({ providedIn: 'root' })
 export class BrowseService {
   private readonly api = inject(NuxeoApiBase);
   private readonly http = inject(HttpClient);
+
+  private static readonly ACCESSIBLE_DOMAINS_NXQL =
+    'SELECT * FROM Domain WHERE ecm:isTrashed = 0 ORDER BY dc:title';
+
+  private static readonly ACCESSIBLE_NAV_NODES_NXQL = [
+    'SELECT * FROM Document',
+    "WHERE ecm:mixinType != 'HiddenInNavigation'",
+    'AND ecm:isTrashed = 0',
+    "AND ecm:primaryType IN ('Domain', 'Workspace', 'Folder', 'OrderedFolder')",
+    'ORDER BY ecm:path',
+  ].join(' ');
 
   getByPath(nuxeoPath: string): Observable<NuxeoDocument> {
     const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
@@ -19,6 +43,161 @@ export class BrowseService {
       properties: '*',
       'enrichers.document': 'acls,permissions,favorites,subscribedNotifications',
     });
+  }
+
+  /**
+   * Repository root for the browse nav tree. Users with domain-only ACLs may receive 403 on
+   * `GET /path/` but can still resolve the root uid from an accessible Domain via NXQL.
+   */
+  getRepositoryRoot(): Observable<NuxeoDocument> {
+    return this.getByPath('/').pipe(catchError(() => this.resolveRepositoryRootFromDomains()));
+  }
+
+  /**
+   * Loads the browse nav tree root plus top-level folder entries. Handles administrators,
+   * domain-scoped users, and read-only users who only have workspace/folder ACLs.
+   */
+  getNavTreeBootstrap(pageSize = 50): Observable<NavTreeBootstrap> {
+    return this.getRepositoryRoot().pipe(
+      catchError(() => of(this.syntheticRepositoryRoot())),
+      switchMap((root) => this.loadNavTreeBootstrapEntries(root, pageSize)),
+      catchError(() =>
+        this.getAccessibleTopLevelNavNodes(pageSize).pipe(
+          map((entries) => ({
+            root: this.syntheticRepositoryRoot(entries),
+            entries,
+          })),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Loads the current browse folder and its children. When repository root is not readable,
+   * falls back to accessible top-level folders (User Workspaces, domain-scoped ACLs, etc.).
+   */
+  getBrowseFolderContents(nuxeoPath: string, pageSize = 50): Observable<BrowseFolderContents> {
+    const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
+
+    return this.getByPath(safePath).pipe(
+      switchMap((folder) =>
+        this.listBrowseFolderEntries(folder, safePath, pageSize).pipe(
+          map(({ entries, totalSize }) => ({ folder, entries, totalSize })),
+        ),
+      ),
+      catchError(() => {
+        if (safePath !== '/') {
+          return throwError(() => new Error(`Unable to load folder at ${safePath}`));
+        }
+        return this.getNavTreeBootstrap(pageSize).pipe(
+          map(({ root, entries }) => ({
+            folder: root,
+            entries,
+            totalSize: entries.length,
+            redirectTo: entries.length === 1 ? entries[0].path : undefined,
+          })),
+        );
+      }),
+    );
+  }
+
+  private listBrowseFolderEntries(
+    folder: NuxeoDocument,
+    safePath: string,
+    pageSize: number,
+  ): Observable<{ entries: NuxeoDocument[]; totalSize: number }> {
+    if (folder.type === 'Root' || folder.type === 'Domain') {
+      return this.getNavTreeChildren(folder, pageSize).pipe(
+        map((list) => this.toBrowseEntryList(list)),
+      );
+    }
+    if (folder.type === 'Favorites' || folder.type === 'Collection') {
+      return this.getCollectionMembers(folder.uid, pageSize).pipe(
+        map((list) => this.toBrowseEntryList(list)),
+      );
+    }
+    return this.getChildren(safePath, pageSize).pipe(map((list) => this.toBrowseEntryList(list)));
+  }
+
+  /** Collection / Favorites members (Nuxeo Web UI uses default_content_collection, not @children). */
+  getCollectionMembers(collectionUid: string, pageSize = 50): Observable<NuxeoDocumentList> {
+    const params = new HttpParams().set('queryParams', collectionUid).set('pageSize', pageSize);
+
+    return this.api.get<NuxeoDocumentList>(
+      '/nuxeo/api/v1/search/pp/default_content_collection/execute',
+      params,
+      { properties: '*' },
+    );
+  }
+
+  private toBrowseEntryList(list: NuxeoDocumentList): {
+    entries: NuxeoDocument[];
+    totalSize: number;
+  } {
+    return {
+      entries: list.entries ?? [],
+      totalSize: list.totalSize ?? list.entries?.length ?? 0,
+    };
+  }
+
+  private resolveRepositoryRootFromDomains(): Observable<NuxeoDocument> {
+    return this.api.nxqlSearch(BrowseService.ACCESSIBLE_DOMAINS_NXQL, 1, { properties: '*' }).pipe(
+      switchMap((list) => {
+        const domain = list.entries?.[0];
+        const rootUid = domain?.parentRef;
+        if (!rootUid) {
+          return throwError(() => new Error('Unable to resolve repository root for browse tree'));
+        }
+        return of({
+          uid: rootUid,
+          title: 'Root',
+          type: 'Root',
+          path: '/',
+          lastModified: domain?.lastModified ?? '',
+          properties: {},
+        });
+      }),
+    );
+  }
+
+  private loadNavTreeBootstrapEntries(
+    root: NuxeoDocument,
+    pageSize: number,
+  ): Observable<NavTreeBootstrap> {
+    return this.getNavTreeChildren(root, pageSize).pipe(
+      map((list) => list.entries ?? []),
+      switchMap((entries) =>
+        entries.length > 0
+          ? of({ root, entries })
+          : this.getAccessibleTopLevelNavNodes(pageSize).pipe(
+              map((fallback) => ({ root, entries: fallback })),
+            ),
+      ),
+    );
+  }
+
+  private getAccessibleTopLevelNavNodes(pageSize: number): Observable<NuxeoDocument[]> {
+    return this.api
+      .nxqlSearch(BrowseService.ACCESSIBLE_NAV_NODES_NXQL, pageSize, { properties: '*' })
+      .pipe(map((list) => this.filterTopLevelNavNodes(list.entries ?? [])));
+  }
+
+  private filterTopLevelNavNodes(entries: NuxeoDocument[]): NuxeoDocument[] {
+    const folderish = entries.filter((doc) => isBrowsableNavNode(doc));
+    const accessible = new Set(folderish.map((doc) => doc.uid));
+    return folderish.filter((doc) => !doc.parentRef || !accessible.has(doc.parentRef));
+  }
+
+  private syntheticRepositoryRoot(entries: NuxeoDocument[] = []): NuxeoDocument {
+    const rootUid = entries.find((entry) => entry.parentRef)?.parentRef ?? 'virtual-root';
+    return {
+      uid: rootUid,
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '',
+      properties: {},
+    };
   }
 
   /** Folder metadata plus allowed child document types (`@subtypes` enricher). */
@@ -56,7 +235,31 @@ export class BrowseService {
         })),
       );
     }
-    return this.getTreeChildren(parent.uid, pageSize);
+    return this.getTreeChildrenWithPathFallback(parent, pageSize);
+  }
+
+  private getTreeChildrenWithPathFallback(
+    parent: NuxeoDocument,
+    pageSize: number,
+  ): Observable<NuxeoDocumentList> {
+    return this.getTreeChildren(parent.uid, pageSize).pipe(
+      switchMap((list) => {
+        if ((list.entries?.length ?? 0) > 0) {
+          return of(list);
+        }
+        const safePath = parent.path?.replace(/\/+$/, '') ?? '';
+        if (!safePath || safePath === '/') {
+          return of(list);
+        }
+        return this.getChildren(safePath, pageSize).pipe(
+          map((children) => ({
+            ...children,
+            entries: (children.entries ?? []).filter((doc) => isBrowsableNavNode(doc)),
+          })),
+          catchError(() => of(list)),
+        );
+      }),
+    );
   }
 
   getChildren(

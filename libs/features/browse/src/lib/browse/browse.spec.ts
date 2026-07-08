@@ -17,6 +17,7 @@ import {
 
 const mockBrowseService = {
   getByPath: vi.fn(() => throwError(() => new Error('not connected'))),
+  getBrowseFolderContents: vi.fn(() => throwError(() => new Error('not connected'))),
   getChildren: vi.fn(() => throwError(() => new Error('not connected'))),
   getTrashedChildren: vi.fn(() => EMPTY),
   restoreDocument: vi.fn(() => EMPTY),
