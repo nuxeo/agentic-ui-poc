@@ -612,11 +612,28 @@ sat-breadcrumbs {
   line-height: 1.5;
 }
 
-// Tags — nuxeo-tag-suggestion style (chips inside fill field + dropdown suffix)
+// Tags / coverage — nuxeo-tag-suggestion style (chips inside fill field + dropdown suffix)
 .prop-field--tags {
   .tags-suggestion-field {
     width: 100%;
     margin-top: 2px;
+
+    &.tags-suggestion-field--picker {
+      cursor: pointer;
+
+      .mat-mdc-form-field-icon-suffix {
+        cursor: pointer;
+      }
+
+      .coverage-overlay-select {
+        position: absolute;
+        width: 0;
+        height: 0;
+        opacity: 0;
+        overflow: hidden;
+        pointer-events: none;
+      }
+    }
 
     .mat-mdc-form-field-flex {
       align-items: center;

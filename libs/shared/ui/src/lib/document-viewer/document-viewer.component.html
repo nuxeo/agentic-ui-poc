@@ -207,7 +207,7 @@
         <h4 class="picture-card-title">Video Info</h4>
         <div class="picture-card-body">
           @if (videoInfo(); as vi) {
-            @if (vi.duration !== null && vi.duration !== undefined) {
+            @if (isFiniteNumber(vi.duration)) {
               <div class="info-row">
                 <span class="info-label">Duration</span>
                 <span class="info-value">{{ formatDuration(vi.duration) }}</span>

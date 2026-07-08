@@ -201,6 +201,13 @@ export {
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export {
+  formatHierarchicalL10nLabel,
+  groupL10nChildrenByParent,
+  l10nEntryLabel,
+  resolveNatureLabel,
+} from './lib/utils/l10n-directory.utils';
+export type { L10nOptionGroup } from './lib/utils/l10n-directory.utils';
+export {
   CONTENT_LAKE_INGEST_DOCUMENT_TYPES,
   CONTENT_LAKE_INGEST_MARKER_LEGACY_PROPERTY,
   CONTENT_LAKE_INGEST_MARKER_PREFIX,

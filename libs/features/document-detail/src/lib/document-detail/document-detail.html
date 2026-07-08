@@ -1109,7 +1109,12 @@
                       } @else if (aiSuggestedTags().length) {
                         <div class="ai-tags-list">
                           @for (tag of aiSuggestedTags(); track tag.label) {
-                            <button class="ai-tag-chip" (click)="applyAiTag(tag.label)">
+                            <button
+                              class="ai-tag-chip"
+                              type="button"
+                              [attr.aria-label]="'Add tag ' + tag.label"
+                              (click)="applyAiTag(tag.label)"
+                            >
                               <span class="ai-tag-label">{{ tag.label }}</span>
                               <span class="ai-tag-confidence"
                                 >{{ (tag.confidence * 100).toFixed(0) }}%</span
@@ -1537,7 +1542,7 @@
                   subscriptSizing="dynamic"
                 >
                   <mat-chip-grid #tagChipGrid aria-label="Document tags">
-                    @for (tag of tags(); track tag) {
+                    @for (tag of tags(); track $index) {
                       <mat-chip-row (removed)="removeInlineTag(tag)">
                         {{ tag }}
                         <button type="button" matChipRemove [attr.aria-label]="'Remove tag ' + tag">
@@ -1598,17 +1603,78 @@
               </div>
             }
 
-            @if (documentCoverage()) {
-              <div class="prop-field">
-                <span class="prop-label">Coverage</span>
-                <span class="prop-value">{{ documentCoverage() }}</span>
-              </div>
-            }
+            <div class="prop-field prop-field--tags">
+              <span class="prop-label">Coverage</span>
+              @if (canWriteDoc()) {
+                <mat-form-field
+                  appearance="fill"
+                  class="tags-suggestion-field tags-suggestion-field--picker"
+                  subscriptSizing="dynamic"
+                  (click)="openCoveragePicker()"
+                >
+                  @if (documentCoverage()) {
+                    <mat-chip-grid
+                      aria-label="Document coverage"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <mat-chip-row (removed)="clearCoverage()" [disabled]="coverageUpdating()">
+                        {{ documentCoverageDisplay() }}
+                        <button
+                          type="button"
+                          matChipRemove
+                          aria-label="Remove coverage"
+                          [disabled]="coverageUpdating()"
+                        >
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      </mat-chip-row>
+                    </mat-chip-grid>
+                  }
+                  <mat-select
+                    #coverageSelect
+                    class="coverage-overlay-select"
+                    panelClass="vocab-select-panel vocab-grouped-select-panel"
+                    [value]="documentCoverage() || null"
+                    [disabled]="coverageUpdating()"
+                    (openedChange)="onCoveragePanelOpen($event)"
+                    (selectionChange)="onCoveragePicked($event.value)"
+                  >
+                    <div class="vocab-panel__search">
+                      <input
+                        type="text"
+                        placeholder="Search…"
+                        [(ngModel)]="coveragePanelSearch"
+                        [ngModelOptions]="{ standalone: true }"
+                        (click)="$event.stopPropagation()"
+                        (keydown)="$event.stopPropagation()"
+                      />
+                    </div>
+                    <div class="vocab-panel__list">
+                      <mat-option [value]="null">-- None --</mat-option>
+                      @for (group of groupedCoverageOptions(); track group.parentLabel) {
+                        <mat-optgroup [label]="group.parentLabel">
+                          @for (entry of group.entries; track entry.id) {
+                            <mat-option [value]="entry.id">{{ l10nEntryLabel(entry) }}</mat-option>
+                          }
+                        </mat-optgroup>
+                      }
+                    </div>
+                  </mat-select>
+                  <mat-icon matSuffix>arrow_drop_down</mat-icon>
+                </mat-form-field>
+              } @else if (documentCoverage()) {
+                <div class="tags-readonly">
+                  <span class="tags-readonly-chip">{{ documentCoverageDisplay() }}</span>
+                </div>
+              } @else {
+                <span class="tags-empty">—</span>
+              }
+            </div>
 
             @if (documentSubjects().length > 0) {
               <div class="prop-field">
                 <span class="prop-label">Subjects</span>
-                <span class="prop-value">{{ documentSubjects().join(', ') }}</span>
+                <span class="prop-value">{{ documentSubjectsDisplay() }}</span>
               </div>
             }
 

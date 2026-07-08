@@ -300,4 +300,8 @@ export class DocumentViewerComponent {
     if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
+
+  isFiniteNumber(value: number | null | undefined): value is number {
+    return value !== null && value !== undefined && Number.isFinite(value);
+  }
 }

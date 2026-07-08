@@ -25,7 +25,7 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSelect, MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatSortModule, Sort } from '@angular/material/sort';
@@ -46,6 +46,11 @@ import {
   DirectoryEntry,
   DocumentDetailService,
   DirectoryService,
+  L10nDirectoryEntry,
+  formatHierarchicalL10nLabel,
+  groupL10nChildrenByParent,
+  l10nEntryLabel,
+  resolveNatureLabel,
   NuxeoComment,
   NuxeoApiBase,
   TaskService,
@@ -274,6 +279,10 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly coverageSelect = viewChild<MatSelect>('coverageSelect');
+
+  /** Exposed for templates (coverage option labels). */
+  readonly l10nEntryLabel = l10nEntryLabel;
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -368,6 +377,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // to `dc:nature` is in the vocabulary (Nuxeo enforces this and returns 422 otherwise).
   readonly natureVocabulary = signal<DirectoryEntry[]>([]);
   private natureVocabularyLoaded = false;
+  readonly coverageVocabulary = signal<L10nDirectoryEntry[]>([]);
+  readonly subjectVocabulary = signal<L10nDirectoryEntry[]>([]);
+  private indexingVocabulariesLoaded = false;
+  coveragePanelSearch = '';
+  readonly coverageUpdating = signal(false);
 
   // Tag management state (nuxeo-tag-suggestion style)
   tagInput = '';
@@ -578,7 +592,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   readonly documentCategory = computed(() => {
     const d = this.doc();
-    return (d?.properties['dc:nature'] as string) ?? '';
+    const id = (d?.properties['dc:nature'] as string) ?? '';
+    if (!id) return '';
+    return resolveNatureLabel(id, this.natureVocabulary());
   });
 
   readonly documentCoverage = computed(() => {
@@ -586,11 +602,25 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return (d?.properties['dc:coverage'] as string) ?? '';
   });
 
+  readonly documentCoverageDisplay = computed(() =>
+    formatHierarchicalL10nLabel(this.documentCoverage(), this.coverageVocabulary()),
+  );
+
+  readonly groupedCoverageOptions = computed(() =>
+    groupL10nChildrenByParent(this.coverageVocabulary(), this.coveragePanelSearch),
+  );
+
   readonly documentSubjects = computed(() => {
     const d = this.doc();
     const subjects = d?.properties['dc:subjects'] as string[] | undefined;
     return subjects ?? [];
   });
+
+  readonly documentSubjectsDisplay = computed(() =>
+    this.documentSubjects()
+      .map((id) => formatHierarchicalL10nLabel(id, this.subjectVocabulary()))
+      .join(', '),
+  );
 
   readonly fileMimeType = computed(() => {
     const d = this.doc();
@@ -776,6 +806,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadNatureVocabulary();
+    this.loadIndexingVocabularies();
     this.tagSearch$
       .pipe(
         debounceTime(250),
@@ -850,6 +881,65 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         error: () => {
           // Allow another attempt on the next document if the directory call fails.
           this.natureVocabularyLoaded = false;
+        },
+      });
+  }
+
+  /** Pre-loads l10n coverage/subjects for hierarchical labels and the inline picker. */
+  private loadIndexingVocabularies(): void {
+    if (this.indexingVocabulariesLoaded) return;
+    this.indexingVocabulariesLoaded = true;
+    forkJoin({
+      coverage: this.directoryService.getAllL10nEntries('l10ncoverage'),
+      subjects: this.directoryService.getAllL10nEntries('l10nsubjects'),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ coverage, subjects }) => {
+          this.coverageVocabulary.set(coverage);
+          this.subjectVocabulary.set(subjects);
+        },
+        error: () => {
+          this.indexingVocabulariesLoaded = false;
+        },
+      });
+  }
+
+  openCoveragePicker(): void {
+    if (!this.canWriteDoc() || this.coverageUpdating()) return;
+    this.coverageSelect()?.open();
+  }
+
+  onCoveragePanelOpen(open: boolean): void {
+    if (!open) this.coveragePanelSearch = '';
+  }
+
+  onCoveragePicked(value: string | null): void {
+    this.updateCoverage(value);
+  }
+
+  clearCoverage(): void {
+    this.updateCoverage(null);
+  }
+
+  private updateCoverage(value: string | null): void {
+    if (!this.docUid || !this.canWriteDoc() || this.coverageUpdating()) return;
+    const current = this.documentCoverage() || null;
+    if (current === value) return;
+
+    this.coverageUpdating.set(true);
+    this.browseService
+      .updateDocument(this.docUid, { 'dc:coverage': value })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.doc.set(updated);
+          this.coverageUpdating.set(false);
+          this.coveragePanelSearch = '';
+        },
+        error: () => {
+          this.coverageUpdating.set(false);
+          this.snackBar.open('Failed to update coverage', 'Dismiss', { duration: 3000 });
         },
       });
   }
@@ -1920,17 +2010,32 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private extractVideoInfo(doc: NuxeoDocument): void {
-    const raw = doc.properties['vid:info'] as VideoInfo | undefined;
+    const raw = doc.properties['vid:info'] as Record<string, unknown> | undefined;
     if (!raw) return;
-    this.videoInfo.set({
-      duration: raw.duration,
-      width: raw.width,
-      height: raw.height,
-      format: raw.format,
-      videoCodec: raw.videoCodec,
-      audioCodec: raw.audioCodec,
-      frameRate: raw.frameRate,
-    });
+
+    const parseNum = (value: unknown): number | undefined => {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : undefined;
+    };
+    const parseStr = (value: unknown): string | undefined => {
+      if (value === null || value === undefined) return undefined;
+      const s = String(value).trim();
+      return s || undefined;
+    };
+
+    const info: VideoInfo = {
+      duration: parseNum(raw['duration']),
+      width: parseNum(raw['width']),
+      height: parseNum(raw['height']),
+      format: parseStr(raw['format']),
+      videoCodec: parseStr(raw['videoCodec']),
+      audioCodec: parseStr(raw['audioCodec']),
+      frameRate: parseNum(raw['frameRate']),
+    };
+
+    if (Object.values(info).some((v) => v !== undefined)) {
+      this.videoInfo.set(info);
+    }
   }
 
   private loadFallbackBlob(doc: NuxeoDocument, generation = this.blobLoadGeneration): void {
