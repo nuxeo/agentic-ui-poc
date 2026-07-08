@@ -42,6 +42,25 @@ const STUB_DOC: NuxeoDocument = {
   properties: {},
 };
 
+const NOTE_DOC: NuxeoDocument = {
+  uid: 'note-uid-1',
+  title: 'My Note',
+  type: 'Note',
+  path: '/default-domain/workspaces/ws/my-note',
+  lastModified: '2026-01-01T00:00:00Z',
+  properties: {
+    'note:note': '<p>hello</p>',
+    'note:mime_type': 'text/html',
+  },
+  contextParameters: {
+    permissions: ['Read', 'Write'],
+  },
+};
+
+const mockBrowseService = {
+  updateDocument: vi.fn((): Observable<NuxeoDocument> => of(STUB_DOC)),
+};
+
 const keResult = (result: string): KeEnrichmentResult =>
   ({ textClassification: { result } }) as KeEnrichmentResult;
 
@@ -123,6 +142,7 @@ describe('DocumentDetailComponent', () => {
 
   beforeEach(async () => {
     snackBarOpenSpy = vi.fn();
+    mockBrowseService.updateDocument.mockReturnValue(of(STUB_DOC));
     await TestBed.configureTestingModule({
       imports: [DocumentDetailComponent],
       providers: [
@@ -139,10 +159,7 @@ describe('DocumentDetailComponent', () => {
           },
         },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
-        {
-          provide: BrowseService,
-          useValue: { updateDocument: (): Observable<NuxeoDocument> => of(STUB_DOC) },
-        },
+        { provide: BrowseService, useValue: mockBrowseService },
         { provide: DirectoryService, useValue: mockDirectoryService },
         {
           provide: KeClientService,
@@ -213,6 +230,28 @@ describe('DocumentDetailComponent', () => {
         horizontalPosition: 'center',
         verticalPosition: 'bottom',
       });
+    });
+  });
+
+  describe('saveNote (NXSAT-174)', () => {
+    it('preserves write permissions when update response omits the permissions enricher', async () => {
+      component.doc.set(NOTE_DOC);
+      mockBrowseService.updateDocument.mockReturnValue(
+        of({
+          ...NOTE_DOC,
+          properties: {
+            'note:note': '<p>updated</p>',
+            'note:mime_type': 'text/html',
+          },
+          contextParameters: {},
+        }),
+      );
+
+      component.saveNote('<p>updated</p>');
+      await fixture.whenStable();
+
+      expect(component.canWriteDoc()).toBe(true);
+      expect(component.doc()?.contextParameters?.['permissions']).toEqual(['Read', 'Write']);
     });
   });
 

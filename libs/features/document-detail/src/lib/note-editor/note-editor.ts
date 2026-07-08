@@ -12,6 +12,7 @@ import {
   output,
   signal,
   viewChild,
+  Injector,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
@@ -46,6 +47,7 @@ import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-he
 })
 export class NoteEditorComponent {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly sanitizer = inject(DomSanitizer);
 
   readonly content = input.required<string>();
@@ -69,7 +71,8 @@ export class NoteEditorComponent {
     viewChild<ElementRef<HTMLTextAreaElement>>('plainTextEditor');
 
   private quill: Quill | null = null;
-  private syncedInputContent: string | null = null;
+  /** Last `content()` value pushed into the Quill visual editor. */
+  private lastParentContent: string | null = null;
   private syncedPlainContent: string | null = null;
   private lastEmittedSave: string | null = null;
   private savedRange: QuillRange | null = null;
@@ -100,15 +103,15 @@ export class NoteEditorComponent {
       const saving = this.saving();
 
       if (isHtmlNoteFormat(mime)) {
-        this.editText.set(text);
-        if (source || text === this.syncedInputContent) return;
+        if (source) return;
+        if (text === this.lastParentContent) return;
+        this.lastParentContent = text;
         queueMicrotask(() => {
           if (!this.quill) {
-            this.tryInitQuill();
+            this.tryInitQuill(text);
           } else {
             this.applyExternalContent(text);
           }
-          this.syncedInputContent = text;
         });
         return;
       }
@@ -150,7 +153,7 @@ export class NoteEditorComponent {
     });
 
     this.destroyRef.onDestroy(() => {
-      this.quill = null;
+      this.destroyQuill();
     });
   }
 
@@ -171,20 +174,21 @@ export class NoteEditorComponent {
     if (this.sourceMode()) {
       const html = this.editText();
       this.sourceMode.set(false);
-      this.syncedInputContent = null;
-      queueMicrotask(() => {
-        this.tryInitQuill();
-        this.applyExternalContent(html, true);
-        this.syncedInputContent = html;
-      });
+      afterNextRender(
+        () => {
+          this.destroyQuill();
+          this.tryInitQuill(html);
+          this.editText.set(html);
+        },
+        { injector: this.injector },
+      );
       return;
     }
 
     if (this.quill) {
       const html = this.readQuillHtml();
       this.editText.set(html);
-      this.syncedInputContent = html;
-      this.quill = null;
+      this.destroyQuill();
     }
     this.sourceMode.set(true);
   }
@@ -231,7 +235,7 @@ export class NoteEditorComponent {
     this.lastEmittedSave = null;
   }
 
-  private tryInitQuill(): void {
+  private tryInitQuill(initialHtml?: string): void {
     if (this.readOnly() || this.sourceMode() || !this.isHtml() || this.loading() || this.quill)
       return;
 
@@ -262,9 +266,11 @@ export class NoteEditorComponent {
       placeholder: 'Type here...',
     });
 
-    const html = this.content();
+    const html = initialHtml ?? this.content();
     this.applyExternalContent(html, true);
-    this.syncedInputContent = html;
+    if (initialHtml === undefined) {
+      this.lastParentContent = html;
+    }
   }
 
   private applyExternalContent(html: string, force = false): void {
@@ -291,5 +297,13 @@ export class NoteEditorComponent {
   private readQuillHtml(): string {
     if (!this.quill) return '';
     return this.quill.getSemanticHTML();
+  }
+
+  private destroyQuill(): void {
+    const editor = this.quillEditorRef()?.nativeElement;
+    if (editor) {
+      editor.innerHTML = '';
+    }
+    this.quill = null;
   }
 }
