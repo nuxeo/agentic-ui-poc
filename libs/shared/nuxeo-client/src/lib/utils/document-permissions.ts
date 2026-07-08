@@ -1,6 +1,9 @@
 import type { NuxeoDocument } from '../models/document.model';
 
-/** Nuxeo compound permission required to add/edit/delete document ACL entries (Nuxeo Web UI pattern). */
+/** Nuxeo permission to add/edit/delete document ACL entries (Nuxeo Web UI pattern). */
+export const WRITE_SECURITY = 'WriteSecurity';
+
+/** Legacy compound permission that also grants ACL management on some deployments. */
 export const MANAGE_DOCUMENT_PERMISSIONS = 'Everything';
 
 /** Atomic permissions returned by the Nuxeo `permissions` document enricher. */
@@ -20,7 +23,10 @@ export function hasDocumentPermission(
 
 /** True when the current user can manage ACL entries on the document. */
 export function canManageDocumentPermissions(doc: NuxeoDocument | null | undefined): boolean {
-  return hasDocumentPermission(doc, MANAGE_DOCUMENT_PERMISSIONS);
+  return (
+    hasDocumentPermission(doc, WRITE_SECURITY) ||
+    hasDocumentPermission(doc, MANAGE_DOCUMENT_PERMISSIONS)
+  );
 }
 
 /** True when the current user can edit content, create versions, lock, etc. */

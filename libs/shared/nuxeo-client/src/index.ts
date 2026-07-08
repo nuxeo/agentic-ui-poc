@@ -175,7 +175,11 @@ export {
   principalPermissionTimeFrameLabel,
   principalPermissionToLocalRow,
 } from './lib/utils/principal-permission-display';
-export { normalizeDocumentAcls, resolveAcePrincipal } from './lib/utils/ace-principal';
+export {
+  mergeDocumentPermissionsContext,
+  normalizeDocumentAcls,
+  resolveAcePrincipal,
+} from './lib/utils/ace-principal';
 export {
   NOTE_FORMAT_OPTIONS,
   defaultNoteContent,

@@ -275,6 +275,20 @@ describe('BrowseComponent', () => {
     expect(component.localAces()[0].username).toBe('members');
   });
 
+  it('canManageCurrentPermissions is false for read-only users (NXSAT-162)', () => {
+    component.currentDoc.set({
+      uid: 'doc-1',
+      title: 'File',
+      type: 'File',
+      path: '/file',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Read'] },
+    } as NuxeoDocument);
+
+    expect(component.canManageCurrentPermissions()).toBe(false);
+  });
+
   it('onTabChange loads permissions via getDocumentPermissions', () => {
     const permissionsDoc = {
       uid: 'root-uid',

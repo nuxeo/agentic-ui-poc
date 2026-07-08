@@ -50,6 +50,8 @@ import {
   avatarColor,
   isFolderishDocument,
   canAddChildren,
+  canManageDocumentPermissions,
+  mergeDocumentPermissionsContext,
   canWriteDocument,
   canRemoveDocument,
   DOMAIN_CONTAINER_GUIDANCE,
@@ -225,6 +227,9 @@ export class BrowseComponent {
     return !isDomainParentType(doc.type) && !isRestrictedImportParentPath(doc.path);
   });
   readonly canRemoveCurrentDoc = computed(() => canRemoveDocument(this.currentDoc()));
+  readonly canManageCurrentPermissions = computed(() =>
+    canManageDocumentPermissions(this.currentDoc()),
+  );
   readonly actionInProgress = signal<string | null>(null);
 
   // History tab
@@ -1086,16 +1091,7 @@ export class BrowseComponent {
       this.currentDoc.set(updated);
       return;
     }
-    this.currentDoc.set({
-      ...existing,
-      contextParameters: {
-        ...existing.contextParameters,
-        ...updated.contextParameters,
-        acls: updated.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
-        permissions:
-          updated.contextParameters?.['permissions'] ?? existing.contextParameters?.['permissions'],
-      },
-    });
+    this.currentDoc.set(mergeDocumentPermissionsContext(existing, updated));
   }
 
   private reloadPermissions(): void {
