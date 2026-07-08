@@ -283,7 +283,6 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 /* ─── Import dropzone ─── */
 .dropzone {
   position: relative;
-  min-height: 320px;
   margin: 24px;
   border: 2px dashed var(--mat-sys-outline-variant, #d1d5db);
   border-radius: 4px;
@@ -295,6 +294,17 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
     opacity: 0;
     cursor: pointer;
     z-index: 1;
+  }
+
+  &--import {
+    min-height: 320px;
+    margin-top: 0;
+  }
+
+  &--csv {
+    min-height: 320px;
+    margin-top: 0;
+    margin-bottom: 16px;
   }
 
   &--active {
@@ -326,6 +336,19 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   color: var(--mat-sys-on-surface-variant, #6b7280);
   text-align: center;
   line-height: 1.5;
+}
+
+.csv-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 24px 24px;
+  padding-top: 4px;
+
+  mat-slide-toggle {
+    font-size: 0.875rem;
+    color: var(--mat-sys-on-surface, #1a1c1e);
+  }
 }
 
 /* ─── Footer ─── */
