@@ -123,17 +123,6 @@ export class ContentLakeUploadComponent {
   readonly duplicateMatches = signal<ContentLakeDuplicate[]>([]);
   readonly checkingDuplicates = signal(false);
 
-  constructor() {
-    this.importService
-      .getDefaultImportParentPath()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (path) => {
-          this.parentPath.set(path);
-        },
-      });
-  }
-
   onParentPathUserInput(event: Event): void {
     const path = (event.target as HTMLInputElement).value;
     if (this.ignorePathInputValue === path) {

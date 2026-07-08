@@ -71,6 +71,7 @@ getFolderContext(nuxeoPath: string): Observable<NuxeoDocument>  // includes @sub
 getCreatableSubtypes(nuxeoPath: string): Observable<string[]>  // parsed allowed child types
 getChildren(nuxeoPath: string, pageSize?: number, currentPageIndex?: number): Observable<NuxeoDocumentList>
 getTreeChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>  // tree_children page provider, all pages
+getNavTreeChildren(parent: NuxeoDocument, pageSize?: number): Observable<NuxeoDocumentList>  // Root/workspaces: tree_children; Domain: @children
 updateDocument(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument>
 getTrashedChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>
 restoreDocument(uid: string): Observable<NuxeoDocument>
@@ -266,6 +267,7 @@ stageFileInBatch(file, options?): Observable<StagedBatchFile>
 createDocumentWithBlob(...): Observable<NuxeoDocument>
 createFileFromBatch(...): Observable<NuxeoDocument>
 importFiles(parentPath, files, options?): Observable<NuxeoDocument[]>
+importCsvFile(options: CsvServerImportOptions): Observable<string>
 importFromCsvText(parentPath: string, csvText: string): Observable<CsvImportResult>
 ```
 

@@ -93,6 +93,39 @@ describe('BrowseService', () => {
     expect(result.totalSize).toBe(3);
   });
 
+  it('getNavTreeChildren uses tree_children for Root parents', async () => {
+    const root: NuxeoDocument = {
+      uid: '00000000-0000-0000-0000-000000000000',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+    const result$ = firstValueFrom(service.getNavTreeChildren(root));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/tree_children/execute' &&
+        r.params.get('queryParams') === root.uid,
+    );
+    req.flush({
+      entries: [
+        { uid: 'd1', title: 'Domain', type: 'Domain', path: '/domain', properties: {} },
+        { uid: 'd2', title: 'Domain-2', type: 'Domain', path: '/domain-2', properties: {} },
+      ],
+      totalSize: 2,
+      currentPageSize: 2,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+      isNextPageAvailable: false,
+    });
+
+    const result = await result$;
+    expect(result.entries).toHaveLength(2);
+    expect(result.entries.map((e) => e.uid)).toEqual(['d1', 'd2']);
+  });
+
   it('getNavTreeChildren uses @children for Domain parents', async () => {
     const domain: NuxeoDocument = {
       uid: 'domain-uid',

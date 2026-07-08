@@ -39,11 +39,15 @@ export class BrowseService {
   }
 
   /**
-   * Folder children for the nav drawer tree. Domains use `@children` so structural
+   * Folder children for the nav drawer tree. Repository root uses `tree_children`
+   * so every accessible domain is listed; domains use `@children` so structural
    * containers (SectionRoot / TemplateRoot / WorkspaceRoot) are always listed.
    */
   getNavTreeChildren(parent: NuxeoDocument, pageSize = 50): Observable<NuxeoDocumentList> {
-    if (parent.type === 'Domain' || parent.type === 'Root') {
+    if (parent.type === 'Root') {
+      return this.getTreeChildren(parent.uid, pageSize);
+    }
+    if (parent.type === 'Domain') {
       const safePath = parent.path?.replace(/\/+$/, '') ?? '';
       return this.getChildren(safePath, pageSize).pipe(
         map((list) => ({

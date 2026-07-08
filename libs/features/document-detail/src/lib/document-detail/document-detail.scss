@@ -907,7 +907,28 @@ sat-breadcrumbs {
   background: #fff;
   border: 1px solid #e8e8e8;
   border-radius: 8px;
-  overflow: hidden;
+}
+
+.perm-loading {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+
+.perm-section--local {
+  border-color: var(--mat-sys-outline-variant, #d0d0d0);
+
+  .perm-section-header {
+    background: var(--mat-sys-surface-container-low, #f8f9fe);
+  }
+
+  .perm-section-title {
+    font-size: 15px;
+  }
+}
+
+.perm-table-wrap {
+  padding: 0 16px 16px;
 }
 
 .perm-section-header {
@@ -961,9 +982,27 @@ sat-breadcrumbs {
   color: #999;
 }
 
+.perm-empty--local {
+  margin: 0 16px 16px;
+  padding: 28px 20px;
+  background: var(--mat-sys-surface-container-lowest, #fafafa);
+  border: 1px dashed var(--mat-sys-outline-variant, #d8d8d8);
+  border-radius: 8px;
+  color: var(--mat-sys-on-surface-variant, #666);
+  font-weight: 500;
+}
+
 .perm-table {
   width: 100%;
   border-collapse: collapse;
+  background: var(--mat-sys-surface, #fff);
+  border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
+  border-radius: 8px;
+  table-layout: auto;
+
+  tbody tr {
+    height: auto;
+  }
 
   th {
     text-align: left;

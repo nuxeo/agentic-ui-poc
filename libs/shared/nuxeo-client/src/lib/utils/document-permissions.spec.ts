@@ -7,6 +7,7 @@ import {
   hasDocumentPermission,
   isPermissionDeniedError,
   MANAGE_DOCUMENT_PERMISSIONS,
+  WRITE_SECURITY,
   PERMISSION_DENIED_MESSAGE,
   REMOVE_DOCUMENT,
   WRITE_DOCUMENT,
@@ -40,8 +41,16 @@ describe('document-permissions', () => {
     expect(canManageDocumentPermissions(docWithPermissions(['Read']))).toBe(false);
   });
 
+  it('canManageDocumentPermissions is true when user has WriteSecurity', () => {
+    expect(canManageDocumentPermissions(docWithPermissions(['Read', WRITE_SECURITY]))).toBe(true);
+  });
+
   it('canManageDocumentPermissions is true when user has Everything', () => {
     expect(canManageDocumentPermissions(docWithPermissions(['Read', 'Everything']))).toBe(true);
+  });
+
+  it('canManageDocumentPermissions is false when user only has ReadSecurity', () => {
+    expect(canManageDocumentPermissions(docWithPermissions(['Read', 'ReadSecurity']))).toBe(false);
   });
 
   it('canWriteDocument is false for read-only users', () => {

@@ -7,10 +7,16 @@ import { vi } from 'vitest';
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
 import {
   BLOB_NOT_ATTACHED_ERROR,
+  DEFAULT_IMPORT_PARENT_PATH,
+  DOMAIN_CONTAINER_PATH,
   DocumentImportService,
   documentHasMainBlob,
   documentHasPersistedMainBlob,
   isBlobHoldingDocType,
+  isRepositoryRootPath,
+  isRestrictedImportParentPath,
+  normalizeImportParentPath,
+  summarizeCsvImportReport,
 } from './document-import.service';
 
 describe('DocumentImportService', () => {
@@ -35,6 +41,163 @@ describe('DocumentImportService', () => {
   it('identifies blob-holding document types', () => {
     expect(isBlobHoldingDocType('File')).toBe(true);
     expect(isBlobHoldingDocType('Folder')).toBe(false);
+  });
+
+  it('defaults import parent path to repository root', async () => {
+    await expect(firstValueFrom(service.getDefaultImportParentPath())).resolves.toBe('/');
+    expect(DEFAULT_IMPORT_PARENT_PATH).toBe('/');
+  });
+
+  it('classifies repository root vs restricted domain container paths', () => {
+    expect(isRepositoryRootPath('/')).toBe(true);
+    expect(isRepositoryRootPath('//')).toBe(true);
+    expect(isRepositoryRootPath('/workspaces/demo')).toBe(false);
+    expect(isRestrictedImportParentPath('/')).toBe(false);
+    expect(isRestrictedImportParentPath(DOMAIN_CONTAINER_PATH)).toBe(true);
+    expect(isRestrictedImportParentPath('/default-domain/')).toBe(true);
+    expect(normalizeImportParentPath('/workspaces/demo/')).toBe('/workspaces/demo');
+  });
+
+  it('imports CSV via CSV.Import automation', async () => {
+    const csv = new File(['name,type\na,File'], 'docs.csv', { type: 'text/csv' });
+    const report$ = firstValueFrom(
+      service.importCsvFile({
+        path: '/default-domain/workspaces/demo',
+        file: csv,
+        sendReport: true,
+        documentMode: false,
+      }),
+    );
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/CSV.Import');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeInstanceOf(FormData);
+    const form = req.request.body as FormData;
+    const requestJson = JSON.parse(await (form.get('request') as Blob).text());
+    expect(requestJson.params).toEqual({
+      path: '/default-domain/workspaces/demo',
+      sendReport: true,
+      documentMode: false,
+      trim: true,
+    });
+    expect(form.get('file')).toBe(csv);
+    req.flush('<p>Import completed</p>');
+
+    await expect(report$).resolves.toBe('<p>Import completed</p>');
+  });
+
+  it('normalizes path and passes documentMode/trim to CSV.Import', async () => {
+    const csv = new File(['name,type\na,File'], 'docs.csv', { type: 'text/csv' });
+    const report$ = firstValueFrom(
+      service.importCsvFile({
+        path: '/default-domain/workspaces/demo/',
+        file: csv,
+        sendReport: false,
+        documentMode: true,
+        trim: false,
+      }),
+    );
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/CSV.Import');
+    const form = req.request.body as FormData;
+    const requestJson = JSON.parse(await (form.get('request') as Blob).text());
+    expect(requestJson.params).toEqual({
+      path: '/default-domain/workspaces/demo',
+      sendReport: false,
+      documentMode: true,
+      trim: false,
+    });
+    req.flush('done');
+
+    await expect(report$).resolves.toBe('done');
+  });
+
+  it('surfaces CSV.Import HTTP errors', async () => {
+    const csv = new File(['name,type\na,File'], 'docs.csv', { type: 'text/csv' });
+    const report$ = firstValueFrom(
+      service.importCsvFile({
+        path: '/default-domain/workspaces/demo',
+        file: csv,
+      }),
+    );
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/CSV.Import');
+    req.flush('Not found', { status: 404, statusText: 'Not Found' });
+
+    await expect(report$).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('summarizeCsvImportReport strips HTML and falls back to default text', () => {
+    expect(summarizeCsvImportReport('<p>Imported <b>3</b> documents</p>')).toBe(
+      'Imported 3 documents',
+    );
+    expect(
+      summarizeCsvImportReport('<p>Imported 2 documents</p><br/>Skipped 1 row<br/>Errors: 0'),
+    ).toBe('Imported 2 documents\n\nSkipped 1 row\nErrors: 0');
+    expect(summarizeCsvImportReport('Row one<br/>Row two')).toBe('Row one\nRow two');
+    expect(summarizeCsvImportReport('   ')).toBe('CSV import completed.');
+  });
+
+  it('importFromCsvText creates documents from valid rows', async () => {
+    const csv = [
+      'name,type,dc:title',
+      'folder-a,Folder,Folder A',
+      'folder-a/doc-a,File,Doc A',
+    ].join('\n');
+
+    const result$ = firstValueFrom(
+      service.importFromCsvText('/default-domain/workspaces/demo', csv),
+    );
+
+    const folderReq = httpMock.expectOne('/nuxeo/api/v1/path/default-domain/workspaces/demo');
+    folderReq.flush({
+      uid: 'folder-a',
+      title: 'Folder A',
+      type: 'Folder',
+      path: '/default-domain/workspaces/demo/folder-a',
+      properties: { 'dc:title': 'Folder A' },
+    });
+
+    const fileReq = httpMock.expectOne(
+      '/nuxeo/api/v1/path/default-domain/workspaces/demo/folder-a',
+    );
+    fileReq.flush({
+      uid: 'doc-a',
+      title: 'Doc A',
+      type: 'File',
+      path: '/default-domain/workspaces/demo/folder-a/doc-a',
+      properties: { 'dc:title': 'Doc A' },
+    });
+
+    const result = await result$;
+    expect(result.created).toHaveLength(2);
+    expect(result.errors).toHaveLength(0);
+    expect(result.skipped).toHaveLength(0);
+  });
+
+  it('importFromCsvText rejects CSV without name/type columns', async () => {
+    const result = await firstValueFrom(
+      service.importFromCsvText('/ws', 'title,description\nA,Desc'),
+    );
+    expect(result.created).toHaveLength(0);
+    expect(result.errors[0]).toContain('name');
+    httpMock.expectNone('/nuxeo/api/v1/path/ws');
+  });
+
+  it('importFromCsvText skips rows with file:content', async () => {
+    const csv = ['name,type,file:content', 'doc,File,binary.pdf'].join('\n');
+    const result = await firstValueFrom(service.importFromCsvText('/ws', csv));
+    expect(result.created).toHaveLength(0);
+    expect(result.skipped[0]).toContain('file:content');
+    httpMock.expectNone('/nuxeo/api/v1/path/ws');
+  });
+
+  it('importFromCsvText reports missing parent paths', async () => {
+    const csv = ['name,type', 'orphan/doc,File'].join('\n');
+    const result = await firstValueFrom(service.importFromCsvText('/ws', csv));
+    expect(result.created).toHaveLength(0);
+    expect(result.errors[0]).toContain('orphan/doc');
+    httpMock.expectNone('/nuxeo/api/v1/path/ws');
   });
 
   it('detects main blob on document properties', () => {

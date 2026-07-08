@@ -63,7 +63,10 @@ import {
   canManageDocumentPermissions,
   canWriteDocument,
   canRemoveDocument,
+  mergeDocumentPermissionsContext,
+  resolveAcePrincipal,
   PERMISSION_DENIED_MESSAGE,
+  isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
   noteFormatLabel,
@@ -417,6 +420,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     'docLifeCycle',
   ];
   private historyLoaded = false;
+  private permissionsTabLoaded = false;
+  private activeTabIndex = signal(0);
+  readonly permissionsLoading = signal(false);
 
   // History filters (signals so computed() reacts)
   readonly filterUsername = signal('');
@@ -681,7 +687,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   displayUsername(ace: NuxeoAce): string {
-    return ace.username.replace(/^transient\//, '');
+    return resolveAcePrincipal(ace.username).replace(/^transient\//, '');
+  }
+
+  aceGrantedBy(ace: NuxeoAce): string {
+    const creator = ace.creator ? resolveAcePrincipal(ace.creator) : '';
+    return creator || '—';
   }
 
   readonly filteredAuditEntries = computed(() => {
@@ -820,6 +831,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.contentLakePresenceVerified.set(false);
     this.contentLakePresenceChecking.set(false);
     this.panelSubTab.set('properties');
+    this.historyLoaded = false;
+    this.permissionsTabLoaded = false;
+    this.publishTabLoaded = false;
   }
 
   generateSummary(): void {
@@ -1318,6 +1332,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.doc.set(doc);
           this.syncActionStates(doc);
           this.loading.set(false);
+          if (this.activeTabIndex() === 2) {
+            this.reloadDocumentPermissions();
+          }
           this.loadBlob(doc);
           if (this.freshNoteDocument && doc.type === 'Note') {
             this.focusNoteEditor.set(true);
@@ -1888,6 +1905,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!Number.isFinite(index) || index < 0) {
       return;
     }
+    this.activeTabIndex.set(index);
+    if (index === 2 && !this.permissionsTabLoaded) {
+      this.reloadDocumentPermissions();
+    }
     if (index === 3 && !this.historyLoaded) {
       this.loadDirectoryEntries();
       this.loadAuditLog();
@@ -1895,6 +1916,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (index === 4 && !this.publishTabLoaded) {
       this.loadPublishingData();
     }
+  }
+
+  private reloadDocumentPermissions(): void {
+    if (!this.docUid) return;
+    this.permissionsLoading.set(true);
+    this.detailService
+      .getDocumentPermissions(this.docUid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          const existing = this.doc();
+          if (!existing) {
+            this.doc.set(updated);
+          } else {
+            this.doc.set(mergeDocumentPermissionsContext(existing, updated));
+          }
+          this.permissionsTabLoaded = true;
+          this.permissionsLoading.set(false);
+        },
+        error: () => {
+          this.permissionsLoading.set(false);
+          this.toast('Failed to refresh permissions');
+        },
+      });
   }
 
   private loadDirectoryEntries(): void {
@@ -2445,7 +2490,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   saveNote(body: string): void {
     const doc = this.doc();
-    if (!doc || this.noteSaving()) return;
+    if (!doc || this.noteSaving() || !this.requireWritePermission()) return;
 
     this.noteSaving.set(true);
     const mime = this.mimeType();
@@ -2469,9 +2514,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           }
           this.toast('Note saved');
         },
-        error: () => {
+        error: (err) => {
           this.noteSaving.set(false);
-          this.toast('Failed to save note');
+          this.toast(
+            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to save note',
+          );
         },
       });
   }
@@ -2638,7 +2685,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   submitComment(): void {
     const text = this.newCommentText().trim();
-    if (!text || this.commentSaving()) return;
+    if (!text || this.commentSaving() || !this.requireWritePermission()) return;
     this.commentSaving.set(true);
     this.detailService.createComment(this.docUid, text).subscribe({
       next: (comment) => {
@@ -2658,6 +2705,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   startEditComment(comment: NuxeoComment): void {
+    if (!this.requireWritePermission()) return;
     this.editingCommentId.set(comment.id);
     this.editingCommentText.set(comment.text);
   }
@@ -2670,7 +2718,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   saveEditComment(): void {
     const id = this.editingCommentId();
     const text = this.editingCommentText().trim();
-    if (!id || !text || this.commentSaving()) return;
+    if (!id || !text || this.commentSaving() || !this.requireWritePermission()) return;
     this.commentSaving.set(true);
     this.detailService.updateComment(this.docUid, id, text).subscribe({
       next: (updated) => {
@@ -2687,6 +2735,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   deleteComment(comment: NuxeoComment): void {
+    if (!this.requireWritePermission()) return;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Delete Comment',
@@ -2708,6 +2757,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   startReply(commentId: string): void {
+    if (!this.requireWritePermission()) return;
     this.replyingToId.set(commentId);
     this.replyText.set('');
   }
@@ -2719,7 +2769,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   submitReply(commentId: string): void {
     const text = this.replyText().trim();
-    if (!text || this.commentSaving()) return;
+    if (!text || this.commentSaving() || !this.requireWritePermission()) return;
     this.commentSaving.set(true);
     this.detailService.createReply(this.docUid, commentId, text).subscribe({
       next: (reply) => {
@@ -2981,7 +3031,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((saved: boolean) => {
-        if (saved) this.loadDocument(this.docUid);
+        if (saved) this.reloadDocumentPermissions();
       });
   }
 
@@ -2997,7 +3047,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe((updated: boolean | undefined) => {
         if (updated) {
           this.toast('Permission updated');
-          this.loadDocument(this.docUid);
+          this.reloadDocumentPermissions();
         }
       });
   }
@@ -3019,7 +3069,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe((deleted: boolean | undefined) => {
         if (deleted) {
           this.toast('Permission deleted');
-          this.loadDocument(this.docUid);
+          this.reloadDocumentPermissions();
         }
       });
   }
@@ -3040,7 +3090,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe((updated: boolean | undefined) => {
         if (updated) {
           this.toast('Permission updated');
-          this.loadDocument(this.docUid);
+          this.reloadDocumentPermissions();
         }
       });
   }
@@ -3072,11 +3122,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const op = blocked
       ? this.detailService.unblockPermissionInheritance(this.docUid)
       : this.detailService.blockPermissionInheritance(this.docUid);
-    op.subscribe({
+    op.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.actionInProgress.set(null);
         this.toast(blocked ? 'Permission inheritance unblocked' : 'Permission inheritance blocked');
-        this.loadDocument(this.docUid);
+        this.reloadDocumentPermissions();
       },
       error: () => {
         this.actionInProgress.set(null);
@@ -3092,9 +3142,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data,
       autoFocus: false,
     });
-    ref.afterClosed().subscribe((saved: boolean) => {
-      if (saved) this.loadDocument(this.docUid);
-    });
+    ref
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((saved: boolean) => {
+        if (saved) this.reloadDocumentPermissions();
+      });
   }
 
   uploadAttachment(event: Event): void {
