@@ -157,6 +157,14 @@ lib-note-editor {
   color: var(--mat-sys-on-surface, #212121);
 }
 
+.note-body--read-only {
+  min-height: 120px;
+}
+
+.note-editor--read-only .note-quill-editor {
+  pointer-events: none;
+}
+
 .note-markdown-rendered {
   padding: 16px 48px 16px 20px;
   font-size: 14px;

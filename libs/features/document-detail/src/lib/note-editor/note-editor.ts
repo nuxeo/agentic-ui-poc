@@ -53,6 +53,7 @@ export class NoteEditorComponent {
   readonly saving = input(false);
   readonly loading = input(false);
   readonly autoFocus = input(false);
+  readonly readOnly = input(false);
 
   readonly saveNote = output<string>();
   readonly focused = output<void>();
@@ -80,6 +81,12 @@ export class NoteEditorComponent {
     if (!this.isMarkdown()) return null;
     const raw = renderNoteMarkdown(this.content() ?? '');
     const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });
+    return this.sanitizer.bypassSecurityTrustHtml(clean);
+  });
+
+  readonly htmlReadonlyView = computed(() => {
+    if (!this.isHtml()) return null;
+    const clean = DOMPurify.sanitize(this.content() ?? '', { ADD_ATTR: ['target', 'rel'] });
     return this.sanitizer.bypassSecurityTrustHtml(clean);
   });
 
@@ -127,7 +134,7 @@ export class NoteEditorComponent {
     });
 
     effect(() => {
-      if (!this.autoFocus() || this.loading()) return;
+      if (this.readOnly() || !this.autoFocus() || this.loading()) return;
       if (this.isHtml()) {
         if (this.sourceMode()) return;
         queueMicrotask(() => {
@@ -159,7 +166,7 @@ export class NoteEditorComponent {
   }
 
   toggleSourceMode(): void {
-    if (!this.isHtml()) return;
+    if (!this.isHtml() || this.readOnly()) return;
 
     if (this.sourceMode()) {
       const html = this.editText();
@@ -199,7 +206,7 @@ export class NoteEditorComponent {
   }
 
   onSave(): void {
-    if (this.saving() || this.loading()) return;
+    if (this.readOnly() || this.saving() || this.loading()) return;
     const body = this.isHtml()
       ? this.sourceMode()
         ? this.editText()
@@ -212,6 +219,7 @@ export class NoteEditorComponent {
   }
 
   enterPlainTextEdit(): void {
+    if (this.readOnly()) return;
     this.editText.set(this.content());
     this.plainTextEditMode.set(true);
     queueMicrotask(() => this.plainTextEditorRef()?.nativeElement?.focus());
@@ -224,7 +232,8 @@ export class NoteEditorComponent {
   }
 
   private tryInitQuill(): void {
-    if (this.sourceMode() || !this.isHtml() || this.loading() || this.quill) return;
+    if (this.readOnly() || this.sourceMode() || !this.isHtml() || this.loading() || this.quill)
+      return;
 
     const toolbar = this.quillToolbarRef()?.nativeElement;
     const editor = this.quillEditorRef()?.nativeElement;
