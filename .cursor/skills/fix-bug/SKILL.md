@@ -96,9 +96,47 @@ If you touched `nuxeo-ui`, sanity-check the production build/bundle-size expecta
 (`npx nx build nuxeo-ui --configuration=production`; CI enforces a 5 MB JS+CSS limit).
 Only proceed when everything is green. Never use `--no-verify` to bypass the Husky hook.
 
+## Phase 6.5 — Evidence collection + human sign-off (mandatory gate)
+
+**STOP before committing.** You MUST collect evidence and get explicit user approval.
+
+### 6.5a — Start the dev server (if not already running)
+
+```bash
+npx nx serve nuxeo-ui   # wait for "Local: http://localhost:4200/"
+```
+
+### 6.5b — Create a ticket-specific evidence steps file and run the collector
+
+The project ships a reusable Playwright-based evidence runner at
+`scripts/collect-evidence/`. See `scripts/collect-evidence/README.md` for full docs.
+
+1. **Create** `scripts/collect-evidence/<TICKET-ID>.mjs` — export a default async function
+   that calls `helpers.login()`, `helpers.goToDoc(uid)`, and `helpers.screenshot(name)` for
+   every fix being verified. Use the NXSAT-175 file as a template.
+
+2. **Run** the collector (dev server must be up, and a real Nuxeo instance reachable):
+
+   ```bash
+   NUXEO_DOC_UID=<uid> npm run evidence:collect -- <TICKET-ID> scripts/collect-evidence/<TICKET-ID>.mjs
+   ```
+
+   Output lands in `~/Desktop/<TICKET-ID>/` — screenshots + a WebM screen recording.
+
+3. **Present** a per-bug checklist table to the user (Before → After, navigation steps).
+
+### 6.5c — Wait for explicit user confirmation
+
+Use `AskQuestion` to present a binary choice:
+
+- "Evidence collected and recording saved — proceed with commit + PR?"
+- "No — I found a problem."
+
+**Do NOT commit or push until the user explicitly says YES.**
+
 ## Phase 7 — Commit + open PR
 
-This is the "fix and raise PR" trigger.
+This is the "fix and raise PR" trigger. Only reached after Phase 6.5 sign-off.
 
 - Conventional-commit message (`AGENTS/06-git-workflow.md`), lowercase, present tense, with the
   JIRA id when known:
