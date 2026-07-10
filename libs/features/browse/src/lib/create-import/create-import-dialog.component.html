@@ -264,6 +264,15 @@
                 </mat-slide-toggle>
               </div>
             }
+            @if (importError()) {
+              <p class="error-text import-error" role="alert">{{ importError() }}</p>
+            }
+            @if (uploadProgress(); as progress) {
+              <div class="upload-progress upload-progress--import" role="status" aria-live="polite">
+                <span class="upload-progress-label">{{ uploadProgressLabel(progress) }}</span>
+                <mat-progress-bar mode="determinate" [value]="progress.percent" />
+              </div>
+            }
           }
         }
         @case ('templateForm') {
@@ -343,10 +352,16 @@
                     Upload a main file to create this document.
                   </p>
                 }
+                @if (contentError()) {
+                  <p class="error-text content-required-hint" role="alert">
+                    {{ contentError() }}
+                  </p>
+                }
                 <div
                   class="content-dropzone"
                   [class.content-dropzone--active]="dragOverContent()"
                   [class.content-dropzone--filled]="mainFile()"
+                  [class.content-dropzone--uploading]="mainFileUploading()"
                   (dragover)="onContentDragOver($event)"
                   (dragleave)="onContentDragLeave($event)"
                   (drop)="onContentDrop($event)"
@@ -355,17 +370,34 @@
                     #mainFileInput
                     type="file"
                     (change)="onMainFileInputChange($event)"
-                    [disabled]="busy()"
+                    [disabled]="busy() || mainFileUploading()"
                   />
                   @if (mainFile(); as file) {
                     <div class="content-file-row">
-                      <span class="content-file-name">{{ file.name }}</span>
+                      <div class="content-file-info">
+                        <span class="content-file-name">{{ file.name }}</span>
+                        @if (mainFileUploading() || mainFileUploadComplete()) {
+                          <mat-progress-bar
+                            class="content-file-progress"
+                            mode="determinate"
+                            [value]="mainFileUploadPercent()"
+                            [class.content-file-progress--complete]="mainFileUploadComplete()"
+                          />
+                          <span class="content-file-progress-label">
+                            @if (mainFileUploading()) {
+                              Uploading… {{ mainFileUploadPercent() }}%
+                            } @else {
+                              Upload complete
+                            }
+                          </span>
+                        }
+                      </div>
                       <button
                         mat-icon-button
                         type="button"
                         aria-label="Remove file"
-                        [disabled]="busy()"
-                        (click)="clearMainFile()"
+                        [disabled]="busy() || mainFileUploading()"
+                        (click)="$event.stopPropagation(); clearMainFile()"
                       >
                         <mat-icon>close</mat-icon>
                       </button>
@@ -393,13 +425,36 @@
                 </mat-form-field>
               }
 
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+              <mat-form-field
+                appearance="outline"
+                subscriptSizing="dynamic"
+                class="full-width vocab-field"
+              >
                 <mat-label>Nature</mat-label>
                 <mat-select
+                  #natureSelect
                   [(ngModel)]="nature"
                   panelClass="vocab-select-panel"
                   (openedChange)="onNaturePanelOpen($event)"
+                  (selectionChange)="natureSelect.close()"
                 >
+                  <mat-select-trigger>
+                    @if (nature; as natureId) {
+                      <mat-chip-set class="subjects-trigger-chips">
+                        <mat-chip (removed)="clearNature()">
+                          {{ naturePillLabel(natureId) }}
+                          <button
+                            type="button"
+                            matChipRemove
+                            [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                            (click)="$event.stopPropagation(); clearNature()"
+                          >
+                            <mat-icon>cancel</mat-icon>
+                          </button>
+                        </mat-chip>
+                      </mat-chip-set>
+                    }
+                  </mat-select-trigger>
                   <div class="vocab-panel__search">
                     <input
                       type="text"
@@ -471,13 +526,36 @@
                 </mat-select>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+              <mat-form-field
+                appearance="outline"
+                subscriptSizing="dynamic"
+                class="full-width vocab-field"
+              >
                 <mat-label>Coverage</mat-label>
                 <mat-select
+                  #coverageSelect
                   [(ngModel)]="coverage"
                   panelClass="vocab-select-panel vocab-grouped-select-panel"
                   (openedChange)="onCoveragePanelOpen($event)"
+                  (selectionChange)="coverageSelect.close()"
                 >
+                  <mat-select-trigger>
+                    @if (coverage; as coverageId) {
+                      <mat-chip-set class="subjects-trigger-chips">
+                        <mat-chip (removed)="clearCoverage()">
+                          {{ coveragePillLabel(coverageId) }}
+                          <button
+                            type="button"
+                            matChipRemove
+                            [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                            (click)="$event.stopPropagation(); clearCoverage()"
+                          >
+                            <mat-icon>cancel</mat-icon>
+                          </button>
+                        </mat-chip>
+                      </mat-chip-set>
+                    }
+                  </mat-select-trigger>
                   <div class="vocab-panel__search">
                     <input
                       type="text"
@@ -502,16 +580,28 @@
                 </mat-select>
               </mat-form-field>
 
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+              <mat-form-field
+                appearance="outline"
+                subscriptSizing="dynamic"
+                class="full-width"
+                [class.expires-field-invalid]="expiresRawText.trim() && !isExpiresValid()"
+              >
                 <mat-label>Expires</mat-label>
                 <input
                   matInput
+                  name="expires"
                   [matDatepicker]="expiresPicker"
-                  [(ngModel)]="expires"
+                  [ngModel]="expires"
+                  (ngModelChange)="onExpiresChange($event)"
+                  (input)="onExpiresInput($event)"
+                  #expiresInput="ngModel"
                   placeholder="mm/dd/yyyy"
                 />
                 <mat-datepicker-toggle matIconSuffix [for]="expiresPicker" />
                 <mat-datepicker #expiresPicker />
+                @if (expiresRawText.trim() && !isExpiresValid()) {
+                  <mat-error>Enter a valid date</mat-error>
+                }
               </mat-form-field>
             </div>
           }
@@ -560,7 +650,14 @@
           mat-flat-button
           color="primary"
           type="button"
-          [disabled]="busy() || !docTitle.trim() || locationRestricted() || createMissingMainFile()"
+          [disabled]="
+            busy() ||
+            !docTitle.trim() ||
+            locationRestricted() ||
+            createMissingMainFile() ||
+            mainFileUploadPending() ||
+            !isExpiresValid()
+          "
           (click)="createDocument()"
         >
           Create

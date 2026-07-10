@@ -455,6 +455,14 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   &--filled {
     padding: 12px 16px;
     min-height: auto;
+
+    input[type='file'] {
+      display: none;
+    }
+  }
+
+  &--uploading {
+    border-color: $primary-blue;
   }
 }
 
@@ -474,16 +482,40 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 }
 
 .content-file-row {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   width: 100%;
 }
 
-.content-file-name {
+.content-file-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.content-file-progress {
+  width: 100%;
+  border-radius: 2px;
+
+  &--complete {
+    ::ng-deep .mdc-linear-progress__bar-inner {
+      border-color: var(--mat-sys-primary, #0066ff);
+    }
+  }
+}
+
+.content-file-progress-label {
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+}
+
+.content-file-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -495,15 +527,10 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 }
 
 .vocab-field {
-  ::ng-deep .mat-mdc-chip-set .mdc-evolution-chip {
-    margin: 2px 4px 2px 0;
-  }
-}
-
-.subjects-field {
   ::ng-deep .mat-mdc-select-trigger {
     height: auto;
     min-height: 24px;
+    overflow: visible;
   }
 
   .subjects-trigger-chips {
@@ -511,7 +538,20 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
     flex-wrap: wrap;
     gap: 4px;
     width: 100%;
-    padding: 4px 0 4px 8px;
+    padding: 6px 8px 6px 12px;
+    box-sizing: border-box;
+  }
+
+  ::ng-deep .mat-mdc-chip-set .mdc-evolution-chip {
+    margin: 2px 4px 2px 0;
+  }
+}
+
+.expires-field-invalid {
+  ::ng-deep .mdc-notched-outline__leading,
+  ::ng-deep .mdc-notched-outline__notch,
+  ::ng-deep .mdc-notched-outline__trailing {
+    border-color: var(--mat-sys-error, #b3261e);
   }
 }
 
@@ -701,4 +741,23 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
 .types-error {
   margin: 16px 24px;
   padding-top: 0;
+}
+
+.upload-progress {
+  margin: 0 24px 12px;
+
+  &--import {
+    margin-top: 8px;
+  }
+}
+
+.upload-progress-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+}
+
+.import-error {
+  margin-top: 0;
 }
