@@ -562,7 +562,15 @@ export class DocumentDetailService {
     }
 
     return this.getDocumentPermissions(uid).pipe(
+      catchError(() => of(null)),
       switchMap((permDoc) => {
+        if (!permDoc) {
+          return of({
+            document,
+            notificationSent: false,
+            notificationError: permissionNotificationAceNotFoundMessage(context),
+          });
+        }
         const resolvedAce = findLocalAceForPrincipal(permDoc, principalId);
         if (!resolvedAce?.id) {
           return of({
@@ -573,13 +581,6 @@ export class DocumentDetailService {
         }
         return this.sendPermissionNotificationResult(uid, resolvedAce.id, document, context);
       }),
-      catchError(() =>
-        of({
-          document,
-          notificationSent: false,
-          notificationError: permissionNotificationAceNotFoundMessage(context),
-        }),
-      ),
     );
   }
 

@@ -231,6 +231,47 @@ describe('DocumentDetailService permissions', () => {
     });
   });
 
+  it('addExternalPermissionWithNotification reports refetch failure without masking notify errors', async () => {
+    const refetchFailure$ = firstValueFrom(
+      service.addExternalPermissionWithNotification('doc-uid', {
+        email: 'guest@example.com',
+        permission: 'Read',
+        notify: true,
+        end: '2026-12-31',
+      }),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/automation/Document.AddPermission').flush({ uid: 'doc-uid' });
+    httpMock
+      .expectOne('/nuxeo/api/v1/id/doc-uid')
+      .flush('', { status: 500, statusText: 'Server Error' });
+
+    await expect(refetchFailure$).resolves.toEqual({
+      document: { uid: 'doc-uid' },
+      notificationSent: false,
+      notificationError: expect.stringContaining('could not be located'),
+    });
+
+    const notifyFailure$ = firstValueFrom(
+      service.addExternalPermissionWithNotification('doc-uid', {
+        email: 'guest@example.com',
+        permission: 'Read',
+        notify: true,
+        end: '2026-12-31',
+      }),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/automation/Document.AddPermission').flush({ uid: 'doc-uid' });
+    httpMock
+      .expectOne('/nuxeo/api/v1/id/doc-uid')
+      .flush(docWithLocalAce('ace-ext', 'transient/guest@example.com'));
+    httpMock
+      .expectOne('/nuxeo/api/v1/automation/Document.SendNotificationEmailForPermission')
+      .flush({ message: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });
+
+    await expect(notifyFailure$).rejects.toEqual(expect.objectContaining({ status: 403 }));
+  });
+
   it('addPermissionWithNotification creates ACE then sends notification separately', async () => {
     const result$ = firstValueFrom(
       service.addPermissionWithNotification('doc-uid', {
