@@ -381,16 +381,6 @@ export class BrowseComponent {
     return docs;
   });
 
-  readonly isAllSelected = computed(() => {
-    const docs = this.filteredEntries();
-    return this.selectionService.isAllSelected(docs.map((d) => d.uid));
-  });
-
-  readonly isIndeterminate = computed(() => {
-    const docs = this.filteredEntries();
-    return this.selectionService.isIndeterminate(docs.map((d) => d.uid));
-  });
-
   toggleBrowseSort(colKey: string): void {
     if (this.browseSortKey() === colKey) {
       this.browseSortDir.update((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -1096,25 +1086,6 @@ export class BrowseComponent {
   toggleSelection(id: string): void {
     const doc = this.filteredEntries().find((d) => d.uid === id);
     this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null);
-  }
-
-  toggleAll(): void {
-    if (this.isAllSelected()) {
-      this.selectionService.clear();
-    } else {
-      const docs = this.filteredEntries();
-      const labels: Record<string, string> = {};
-      const previews: Record<string, SafeUrl | null> = {};
-      docs.forEach((doc) => {
-        labels[doc.uid] = doc.title;
-        previews[doc.uid] = this.thumbnailMap()[doc.uid] ?? null;
-      });
-      this.selectionService.selectAll(
-        docs.map((d) => d.uid),
-        labels,
-        previews,
-      );
-    }
   }
 
   onRowClick(doc: NuxeoDocument): void {

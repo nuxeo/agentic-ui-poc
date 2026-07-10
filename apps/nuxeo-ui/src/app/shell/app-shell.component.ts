@@ -48,6 +48,7 @@ import {
 import {
   SelectionTopbarComponent,
   ConfirmDialogComponent,
+  openDocumentCompareDialog,
   type ConfirmDialogData,
 } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
@@ -484,6 +485,18 @@ export class AppShellComponent implements OnDestroy {
         });
       },
     });
+  }
+
+  onCompareSelected(): void {
+    const selected = this.selectionService.selectedItems();
+    if (selected.length < 2) {
+      this.snackBar.open('Select at least two documents to compare.', 'Dismiss', {
+        duration: 3000,
+      });
+      return;
+    }
+
+    openDocumentCompareDialog(this.dialog, selected);
   }
 
   onGlobalSearchInput(value: string): void {

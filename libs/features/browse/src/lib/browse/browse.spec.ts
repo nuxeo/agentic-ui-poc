@@ -117,37 +117,6 @@ describe('BrowseComponent', () => {
     expect(mockSelectionService.toggle).toHaveBeenCalledWith('doc-1', 'Quarterly Report', null);
   });
 
-  it('toggleAll selects visible browse entries (NXSAT-179)', () => {
-    const docs: NuxeoDocument[] = [
-      {
-        uid: 'doc-1',
-        title: 'First',
-        type: 'File',
-        path: '/workspaces/first',
-        lastModified: '',
-        properties: {},
-      },
-      {
-        uid: 'doc-2',
-        title: 'Second',
-        type: 'File',
-        path: '/workspaces/second',
-        lastModified: '',
-        properties: {},
-      },
-    ];
-    component.entries.set(docs);
-    mockSelectionService.isAllSelected.mockReturnValue(false);
-
-    component.toggleAll();
-
-    expect(mockSelectionService.selectAll).toHaveBeenCalledWith(
-      ['doc-1', 'doc-2'],
-      { 'doc-1': 'First', 'doc-2': 'Second' },
-      { 'doc-1': null, 'doc-2': null },
-    );
-  });
-
   it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {
     mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
       of({ uid: 'doc-1' }),

@@ -170,6 +170,16 @@ export {
   READ_WRITE_DOCUMENT,
 } from './lib/utils/document-permissions';
 export {
+  buildDocumentCompareRows,
+  buildDocumentCompareSections,
+  formatCompareDate,
+  formatCompareValue,
+  isCompareIconField,
+  resolveNuxeoIconPath,
+  type CompareRow,
+  type CompareSection,
+} from './lib/utils/document-compare.utils';
+export {
   DOMAIN_CONTAINER_GUIDANCE,
   DOMAIN_STRUCTURAL_ROOT_TYPES,
   filterCreatableSubtypesForParent,

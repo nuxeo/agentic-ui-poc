@@ -254,16 +254,7 @@
                   <table class="browse-table">
                     <thead>
                       <tr>
-                        <th class="col-checkbox">
-                          <mat-checkbox
-                            [checked]="isAllSelected()"
-                            [indeterminate]="isIndeterminate()"
-                            [disabled]="filteredEntries().length === 0"
-                            matTooltip="Select all"
-                            (change)="toggleAll()"
-                            (click)="$event.stopPropagation()"
-                          ></mat-checkbox>
-                        </th>
+                        <th class="col-checkbox"></th>
                         @for (col of visibleColumns(); track col.key) {
                           <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
                             <span class="th-label">{{ col.label }}</span>

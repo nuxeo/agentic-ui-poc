@@ -72,14 +72,6 @@ export default async function collectEvidence(page, helpers, _outDir) {
     await helpers.screenshot('03-selection-topbar-missing');
   }
 
-  helpers.step('Select all via header checkbox');
-  const selectAll = page.locator('.browse-table thead .col-checkbox mat-checkbox').first();
-  if (await selectAll.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await selectAll.click();
-    await page.waitForTimeout(800);
-    await helpers.screenshot('04-select-all');
-  }
-
   helpers.step('Switch to card view and select a file');
   const cardViewBtn = page.locator('button[matTooltip="Card view"]');
   if (await cardViewBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
