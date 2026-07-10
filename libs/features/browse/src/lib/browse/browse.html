@@ -254,7 +254,16 @@
                   <table class="browse-table">
                     <thead>
                       <tr>
-                        <th class="col-checkbox"></th>
+                        <th class="col-checkbox">
+                          <mat-checkbox
+                            [checked]="isAllSelected()"
+                            [indeterminate]="isIndeterminate()"
+                            [disabled]="filteredEntries().length === 0"
+                            matTooltip="Select all"
+                            (change)="toggleAll()"
+                            (click)="$event.stopPropagation()"
+                          ></mat-checkbox>
+                        </th>
                         @for (col of visibleColumns(); track col.key) {
                           <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
                             <span class="th-label">{{ col.label }}</span>
@@ -281,10 +290,17 @@
                       @for (doc of filteredEntries(); track doc.uid) {
                         <tr
                           class="browse-row"
+                          [class.browse-row--selected]="isSelected(doc.uid)"
                           [class.browse-row--folder]="isFolderish(doc)"
                           (click)="onRowClick(doc)"
                         >
-                          <td class="cell-checkbox"></td>
+                          <td class="cell-checkbox">
+                            <mat-checkbox
+                              [checked]="isSelected(doc.uid)"
+                              (change)="toggleSelection(doc.uid)"
+                              (click)="$event.stopPropagation()"
+                            ></mat-checkbox>
+                          </td>
                           @for (col of visibleColumns(); track col.key) {
                             <td [ngClass]="'cell-' + col.key">
                               @if (col.key === 'title') {
@@ -330,7 +346,19 @@
               <!-- Card view -->
               <div class="card-grid">
                 @for (doc of filteredEntries(); track doc.uid) {
-                  <button class="doc-card" type="button" (click)="onRowClick(doc)">
+                  <button
+                    class="doc-card"
+                    type="button"
+                    [class.doc-card--selected]="isSelected(doc.uid)"
+                    (click)="onRowClick(doc)"
+                  >
+                    <div class="grid-card-checkbox">
+                      <mat-checkbox
+                        [checked]="isSelected(doc.uid)"
+                        (change)="toggleSelection(doc.uid)"
+                        (click)="$event.stopPropagation()"
+                      ></mat-checkbox>
+                    </div>
                     <div class="card-thumb">
                       @if (thumbnailMap()[doc.uid]; as thumb) {
                         <img [src]="thumb" alt="" class="card-thumb-img" />

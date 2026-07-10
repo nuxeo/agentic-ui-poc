@@ -52,6 +52,7 @@ import {
   BrowseService,
   DocumentDetailService,
   DirectoryService,
+  SelectionService,
   TagService,
   docTypeIcon,
   avatarColor,
@@ -157,6 +158,7 @@ export class BrowseComponent {
   private readonly detailService = inject(DocumentDetailService);
   private readonly directoryService = inject(DirectoryService);
   private readonly tagService = inject(TagService);
+  readonly selectionService = inject(SelectionService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
@@ -377,6 +379,16 @@ export class BrowseComponent {
     }
 
     return docs;
+  });
+
+  readonly isAllSelected = computed(() => {
+    const docs = this.filteredEntries();
+    return this.selectionService.isAllSelected(docs.map((d) => d.uid));
+  });
+
+  readonly isIndeterminate = computed(() => {
+    const docs = this.filteredEntries();
+    return this.selectionService.isIndeterminate(docs.map((d) => d.uid));
   });
 
   toggleBrowseSort(colKey: string): void {
@@ -1075,6 +1087,34 @@ export class BrowseComponent {
   docState(): string {
     const doc = this.currentDoc();
     return (doc?.properties?.['dc:nature'] as string) ?? 'Project';
+  }
+
+  isSelected(id: string): boolean {
+    return this.selectionService.isSelected(id);
+  }
+
+  toggleSelection(id: string): void {
+    const doc = this.filteredEntries().find((d) => d.uid === id);
+    this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null);
+  }
+
+  toggleAll(): void {
+    if (this.isAllSelected()) {
+      this.selectionService.clear();
+    } else {
+      const docs = this.filteredEntries();
+      const labels: Record<string, string> = {};
+      const previews: Record<string, SafeUrl | null> = {};
+      docs.forEach((doc) => {
+        labels[doc.uid] = doc.title;
+        previews[doc.uid] = this.thumbnailMap()[doc.uid] ?? null;
+      });
+      this.selectionService.selectAll(
+        docs.map((d) => d.uid),
+        labels,
+        previews,
+      );
+    }
   }
 
   onRowClick(doc: NuxeoDocument): void {

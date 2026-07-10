@@ -618,6 +618,16 @@ sat-breadcrumbs {
   &:hover {
     background: #f8f9fe;
   }
+
+  &--selected {
+    background: var(--mat-sys-primary-container, #e8def8);
+  }
+}
+
+.cell-checkbox {
+  width: 40px;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .cell-name-inner {
@@ -683,6 +693,7 @@ sat-breadcrumbs {
 }
 
 .doc-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: #fff;
@@ -700,7 +711,34 @@ sat-breadcrumbs {
   &:hover {
     border-color: var(--mat-sys-primary);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+    .grid-card-checkbox {
+      opacity: 1;
+      visibility: visible;
+    }
   }
+
+  &--selected {
+    background: var(--mat-sys-primary-container, #e8def8);
+    border-color: var(--mat-sys-primary, #5c6bc0);
+
+    .grid-card-checkbox {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+}
+
+.grid-card-checkbox {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
+  z-index: 2;
 }
 
 .card-thumb {
