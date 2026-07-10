@@ -48,7 +48,7 @@
             </ng-container>
             <ng-container matColumnDef="label">
               <th mat-header-cell *matHeaderCellDef>Label</th>
-              <td mat-cell *matCellDef="let row">{{ row.label }}</td>
+              <td mat-cell *matCellDef="let row">{{ entryDisplayLabel(row) }}</td>
             </ng-container>
             <ng-container matColumnDef="obsolete">
               <th mat-header-cell *matHeaderCellDef>Obsolete</th>

@@ -8,7 +8,15 @@
     } @else {
       <mat-form-field appearance="outline" class="full first-field">
         <mat-label>Parent</mat-label>
-        <mat-select name="entryParent" [(ngModel)]="parent" required placeholder="Select a Parent">
+        <mat-select
+          name="entryParent"
+          [(ngModel)]="parent"
+          [required]="parentRequired"
+          placeholder="Select a Parent"
+        >
+          @if (!parentRequired) {
+            <mat-option [value]="">—</mat-option>
+          }
           @for (option of parentOptions(); track option.id) {
             <mat-option [value]="option.id">{{ parentOptionLabel(option) }}</mat-option>
           }

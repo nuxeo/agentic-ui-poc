@@ -35,6 +35,7 @@ export {
   entryPropertiesIncludeParent,
   getDirectoryMetadata,
   resolveParentSourceName,
+  vocabularyParentRequired,
   vocabularySupportsParent,
   vocabularyTableColumns,
 } from './lib/models/directory.model';

@@ -189,6 +189,15 @@ export function resolveParentSourceName(
   return null;
 }
 
+/** Parent is required when options come from a different vocabulary (e.g. country → continent). */
+export function vocabularyParentRequired(
+  directoryName: string,
+  metadata?: DirectoryMetadata,
+): boolean {
+  const source = resolveParentSourceName(directoryName, metadata);
+  return !!source && source !== directoryName;
+}
+
 export interface L10nDirectoryEntry {
   id: string;
   directoryName: string;

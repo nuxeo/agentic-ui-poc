@@ -5,6 +5,7 @@ import {
   directoryShowsParentField,
   entryPropertiesIncludeParent,
   getDirectoryMetadata,
+  vocabularyParentRequired,
   vocabularySupportsParent,
   vocabularyTableColumns,
 } from './directory.model';
@@ -93,6 +94,17 @@ describe('directory.model', () => {
       ],
     );
     expect(columns[0]).toBe('parent');
+  });
+
+  it('requires parent only for external parent vocabularies', () => {
+    expect(
+      vocabularyParentRequired('country', {
+        name: 'country',
+        schema: 'xvocabulary',
+        parentDirectory: 'continent',
+      }),
+    ).toBe(true);
+    expect(vocabularyParentRequired('l10nsubjects')).toBe(false);
   });
 
   it('omits parent column for continent vocabulary', () => {

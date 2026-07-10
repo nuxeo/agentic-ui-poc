@@ -17,6 +17,7 @@ import {
   DirectoryService,
   ManagedDirectoryEntry,
   VocabularyEntryFormValues,
+  directoryEntryDisplayLabel,
   getDirectoryMetadata,
   vocabularyTableColumns,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -60,6 +61,8 @@ export class AdminVocabulariesPageComponent implements OnInit {
   loadingList = signal(false);
   mutating = signal(false);
 
+  private loadRequestId = 0;
+
   readonly selectedDirectoryMeta = computed(() =>
     getDirectoryMetadata(this.directoryCatalog(), this.selectedDirectory()),
   );
@@ -102,21 +105,28 @@ export class AdminVocabulariesPageComponent implements OnInit {
     return row.parent ?? '—';
   }
 
+  entryDisplayLabel(row: ManagedDirectoryEntry): string {
+    return directoryEntryDisplayLabel(row);
+  }
+
   loadEntries(directoryName: string): void {
     if (!directoryName) {
       this.entries.set([]);
       return;
     }
+    const requestId = ++this.loadRequestId;
     this.loading.set(true);
     this.directoryService
       .getAdminEntries(directoryName)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (rows) => {
+          if (requestId !== this.loadRequestId) return;
           this.entries.set(rows);
           this.loading.set(false);
         },
         error: () => {
+          if (requestId !== this.loadRequestId) return;
           this.entries.set([]);
           this.loading.set(false);
           this.snackBar.open('Failed to load vocabulary entries', 'Dismiss', { duration: 4000 });
@@ -157,7 +167,7 @@ export class AdminVocabulariesPageComponent implements OnInit {
         {
           data: {
             title: 'Delete vocabulary entry',
-            message: `Permanently delete "${entry.label}" (${entry.id})? This cannot be undone.`,
+            message: `Permanently delete "${this.entryDisplayLabel(entry)}" (${entry.id})? This cannot be undone.`,
             confirmLabel: 'Delete',
           },
         },

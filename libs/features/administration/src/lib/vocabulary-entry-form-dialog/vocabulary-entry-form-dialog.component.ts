@@ -19,6 +19,7 @@ import {
   directoryEntryDisplayLabel,
   directoryUsesL10nLabel,
   resolveParentSourceName,
+  vocabularyParentRequired,
   vocabularySupportsParent,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -106,6 +107,7 @@ export class VocabularyEntryFormDialogComponent implements OnInit {
   readonly data = inject<VocabularyEntryFormDialogData>(MAT_DIALOG_DATA);
 
   showParentField = false;
+  parentRequired = false;
 
   readonly usesL10nLabel = directoryUsesL10nLabel(this.data.directoryName);
 
@@ -126,6 +128,10 @@ export class VocabularyEntryFormDialogComponent implements OnInit {
 
     this.loadingParents.set(true);
     const sourceName = resolveParentSourceName(this.data.directoryName, this.data.directoryMeta);
+    this.parentRequired = vocabularyParentRequired(
+      this.data.directoryName,
+      this.data.directoryMeta,
+    );
     if (!sourceName) {
       this.loadingParents.set(false);
       return;
@@ -173,7 +179,7 @@ export class VocabularyEntryFormDialogComponent implements OnInit {
   canSubmit(): boolean {
     const trimmedId = this.id.trim();
     if (!trimmedId) return false;
-    if (this.showParentField && !this.parent.trim()) return false;
+    if (this.parentRequired && !this.parent.trim()) return false;
     if (this.usesL10nLabel && !this.label.trim()) return false;
     return true;
   }
