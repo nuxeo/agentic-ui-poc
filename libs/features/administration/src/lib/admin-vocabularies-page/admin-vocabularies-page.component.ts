@@ -1,4 +1,5 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -6,12 +7,26 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { filter, forkJoin, switchMap } from 'rxjs';
 
 import {
-  AdministrationService,
-  DirectoryEntry,
+  DirectoryMetadata,
   DirectoryService,
+  ManagedDirectoryEntry,
+  VocabularyEntryFormValues,
+  getDirectoryMetadata,
+  vocabularyTableColumns,
 } from '@agentic-ui/shared/nuxeo-client';
+import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
+
+import {
+  VocabularyEntryFormDialogComponent,
+  VocabularyEntryFormDialogData,
+  VocabularyEntryFormDialogResult,
+} from '../vocabulary-entry-form-dialog/vocabulary-entry-form-dialog.component';
 
 @Component({
   selector: 'lib-admin-vocabularies-page',
@@ -24,40 +39,67 @@ import {
     MatProgressSpinnerModule,
     MatIconModule,
     MatButtonModule,
+    MatDialogModule,
+    MatSnackBarModule,
+    MatTooltipModule,
   ],
   templateUrl: './admin-vocabularies-page.component.html',
   styleUrl: './admin-vocabularies-page.component.scss',
 })
 export class AdminVocabulariesPageComponent implements OnInit {
   private readonly directoryService = inject(DirectoryService);
-  private readonly adminService = inject(AdministrationService);
+  private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   directoryNames = signal<string[]>([]);
+  directoryCatalog = signal<Map<string, DirectoryMetadata>>(new Map());
   selectedDirectory = signal<string>('');
-  entries = signal<DirectoryEntry[]>([]);
+  entries = signal<ManagedDirectoryEntry[]>([]);
   loading = signal(false);
   loadingList = signal(false);
+  mutating = signal(false);
 
-  readonly columns = ['id', 'label', 'ordering'] as const;
+  readonly selectedDirectoryMeta = computed(() =>
+    getDirectoryMetadata(this.directoryCatalog(), this.selectedDirectory()),
+  );
+
+  readonly columns = computed(() =>
+    vocabularyTableColumns(this.selectedDirectory(), this.selectedDirectoryMeta(), this.entries()),
+  );
 
   ngOnInit(): void {
     this.loadingList.set(true);
-    this.adminService.listDirectoryNames().subscribe({
-      next: (names) => {
-        this.directoryNames.set(names);
-        this.loadingList.set(false);
-        if (names.length && !this.selectedDirectory()) {
-          this.selectedDirectory.set(names[0]);
-          this.loadEntries(names[0]);
-        }
-      },
-      error: () => this.loadingList.set(false),
-    });
+    forkJoin({
+      catalog: this.directoryService.getDirectoryCatalog(),
+      names: this.directoryService.listDirectoryNames(),
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ catalog, names }) => {
+          const catalogNames = [...catalog.keys()].sort((a, b) => a.localeCompare(b));
+          const vocabNames = catalogNames.length ? catalogNames : names;
+          this.directoryNames.set(vocabNames);
+          this.directoryCatalog.set(catalog);
+          this.loadingList.set(false);
+          if (vocabNames.length && !this.selectedDirectory()) {
+            const preferred =
+              vocabNames.find((name) => name.toLowerCase() === 'country') ?? vocabNames[0];
+            this.selectedDirectory.set(preferred);
+            this.loadEntries(preferred);
+          }
+        },
+        error: () => this.loadingList.set(false),
+      });
   }
 
   onDirectoryChange(name: string): void {
     this.selectedDirectory.set(name);
     this.loadEntries(name);
+  }
+
+  parentCellValue(row: ManagedDirectoryEntry): string {
+    return row.parent ?? '—';
   }
 
   loadEntries(directoryName: string): void {
@@ -66,14 +108,132 @@ export class AdminVocabulariesPageComponent implements OnInit {
       return;
     }
     this.loading.set(true);
-    this.directoryService.getEntries(directoryName).subscribe({
-      next: (rows) => {
-        this.entries.set(rows);
-        this.loading.set(false);
+    this.directoryService
+      .getAdminEntries(directoryName)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (rows) => {
+          this.entries.set(rows);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.entries.set([]);
+          this.loading.set(false);
+          this.snackBar.open('Failed to load vocabulary entries', 'Dismiss', { duration: 4000 });
+        },
+      });
+  }
+
+  openCreateEntry(): void {
+    const directoryName = this.selectedDirectory();
+    if (!directoryName) return;
+    this.openEntryDialog({
+      mode: 'create',
+      directoryName,
+      directoryMeta: this.selectedDirectoryMeta(),
+      siblingEntries: this.entries(),
+    });
+  }
+
+  openEditEntry(entry: ManagedDirectoryEntry): void {
+    const directoryName = this.selectedDirectory();
+    if (!directoryName) return;
+    this.openEntryDialog({
+      mode: 'edit',
+      directoryName,
+      directoryMeta: this.selectedDirectoryMeta(),
+      entry,
+      siblingEntries: this.entries(),
+    });
+  }
+
+  confirmDeleteEntry(entry: ManagedDirectoryEntry): void {
+    const directoryName = this.selectedDirectory();
+    if (!directoryName) return;
+
+    this.dialog
+      .open<ConfirmDialogComponent, ConfirmDialogData, boolean | undefined>(
+        ConfirmDialogComponent,
+        {
+          data: {
+            title: 'Delete vocabulary entry',
+            message: `Permanently delete "${entry.label}" (${entry.id})? This cannot be undone.`,
+            confirmLabel: 'Delete',
+          },
+        },
+      )
+      .afterClosed()
+      .pipe(
+        filter((confirmed) => confirmed === true),
+        switchMap(() => {
+          this.mutating.set(true);
+          return this.directoryService.deleteEntry(directoryName, entry.id);
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: () => {
+          this.mutating.set(false);
+          this.snackBar.open('Entry deleted', 'Dismiss', { duration: 3000 });
+          this.loadEntries(directoryName);
+        },
+        error: () => {
+          this.mutating.set(false);
+          this.snackBar.open('Failed to delete entry', 'Dismiss', { duration: 4000 });
+        },
+      });
+  }
+
+  private openEntryDialog(data: VocabularyEntryFormDialogData): void {
+    this.dialog
+      .open<
+        VocabularyEntryFormDialogComponent,
+        VocabularyEntryFormDialogData,
+        VocabularyEntryFormDialogResult
+      >(VocabularyEntryFormDialogComponent, { data, width: '480px' })
+      .afterClosed()
+      .pipe(
+        filter((result): result is VocabularyEntryFormDialogResult => !!result),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((result) => this.saveEntry(data, result));
+  }
+
+  private saveEntry(
+    dialogData: VocabularyEntryFormDialogData,
+    result: VocabularyEntryFormDialogResult,
+  ): void {
+    const directoryName = dialogData.directoryName;
+    const directoryMeta = getDirectoryMetadata(this.directoryCatalog(), directoryName);
+    const values: VocabularyEntryFormValues = {
+      id: result.id,
+      label: result.label,
+      ordering: result.ordering,
+      obsolete: result.obsolete,
+      parent: result.parent,
+    };
+
+    this.mutating.set(true);
+    const request$ =
+      result.mode === 'create'
+        ? this.directoryService.createEntry(directoryName, values, directoryMeta)
+        : this.directoryService.updateEntry(
+            directoryName,
+            dialogData.entry?.id ?? result.id,
+            values,
+            directoryMeta,
+          );
+
+    request$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: () => {
+        this.mutating.set(false);
+        const action = result.mode === 'create' ? 'created' : 'updated';
+        this.snackBar.open(`Entry ${action}`, 'Dismiss', { duration: 3000 });
+        this.loadEntries(directoryName);
       },
       error: () => {
-        this.entries.set([]);
-        this.loading.set(false);
+        this.mutating.set(false);
+        this.snackBar.open('Failed to save entry', 'Dismiss', { duration: 4000 });
       },
     });
   }

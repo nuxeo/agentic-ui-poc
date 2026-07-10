@@ -307,10 +307,16 @@ deleteSelected(): Observable<NuxeoDocument[]>
 
 ## DirectoryService (`directory.service.ts`)
 
-Nuxeo vocabulary / directory lookups.
+Nuxeo vocabulary / directory lookups and admin CRUD.
 
 ```typescript
 getEntries(directoryName: string): Observable<DirectoryEntry[]>
+getAdminEntries(directoryName: string): Observable<ManagedDirectoryEntry[]>
+getDirectoryCatalog(): Observable<Map<string, DirectoryMetadata>>
+createEntry(directoryName: string, values: VocabularyEntryFormValues): Observable<ManagedDirectoryEntry>
+updateEntry(directoryName: string, entryId: string, values: VocabularyEntryFormValues): Observable<ManagedDirectoryEntry>
+deleteEntry(directoryName: string, entryId: string): Observable<void>
+invalidateCache(directoryName: string): void
 getL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
 getAllL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
 getEventTypes(): Observable<DirectoryEntry[]>

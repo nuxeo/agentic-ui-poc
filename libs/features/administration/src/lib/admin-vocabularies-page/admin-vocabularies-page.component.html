@@ -1,9 +1,6 @@
 <div class="voc-page">
   <header class="voc-page__header">
     <div class="voc-page__title" role="heading" aria-level="1">Vocabularies</div>
-    <button type="button" mat-icon-button aria-label="Search (placeholder)">
-      <mat-icon>search</mat-icon>
-    </button>
   </header>
 
   <div class="voc-card mat-elevation-z1">
@@ -23,25 +20,71 @@
         </mat-select>
       </mat-form-field>
 
-      @if (loading()) {
+      @if (selectedDirectory()) {
+        <div class="voc-toolbar">
+          <button
+            type="button"
+            class="voc-add-entry"
+            (click)="openCreateEntry()"
+            [disabled]="loading() || mutating()"
+          >
+            + Add Entry
+          </button>
+        </div>
+      }
+
+      @if (loading() || mutating()) {
         <div class="voc-center"><mat-spinner diameter="36" /></div>
       } @else {
         <div class="voc-table-wrap">
           <table mat-table [dataSource]="entries()" class="voc-table">
+            <ng-container matColumnDef="parent">
+              <th mat-header-cell *matHeaderCellDef>Parent</th>
+              <td mat-cell *matCellDef="let row">{{ parentCellValue(row) }}</td>
+            </ng-container>
             <ng-container matColumnDef="id">
-              <th mat-header-cell *matHeaderCellDef>Id</th>
+              <th mat-header-cell *matHeaderCellDef>ID</th>
               <td mat-cell *matCellDef="let row">{{ row.id }}</td>
             </ng-container>
             <ng-container matColumnDef="label">
               <th mat-header-cell *matHeaderCellDef>Label</th>
-              <td mat-cell *matCellDef="let row">{{ row.displayLabel ?? row.label }}</td>
+              <td mat-cell *matCellDef="let row">{{ row.label }}</td>
+            </ng-container>
+            <ng-container matColumnDef="obsolete">
+              <th mat-header-cell *matHeaderCellDef>Obsolete</th>
+              <td mat-cell *matCellDef="let row">{{ row.obsolete ? 'Yes' : 'No' }}</td>
             </ng-container>
             <ng-container matColumnDef="ordering">
               <th mat-header-cell *matHeaderCellDef>Ordering</th>
               <td mat-cell *matCellDef="let row">{{ row.ordering }}</td>
             </ng-container>
-            <tr mat-header-row *matHeaderRowDef="columns"></tr>
-            <tr mat-row *matRowDef="let row; columns: columns"></tr>
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef></th>
+              <td mat-cell *matCellDef="let row">
+                <div class="voc-row-actions">
+                  <button
+                    type="button"
+                    mat-icon-button
+                    (click)="openEditEntry(row)"
+                    aria-label="Edit entry"
+                    matTooltip="Edit"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    mat-icon-button
+                    (click)="confirmDeleteEntry(row)"
+                    aria-label="Delete entry"
+                    matTooltip="Delete"
+                  >
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="columns()"></tr>
+            <tr mat-row *matRowDef="let row; columns: columns()"></tr>
           </table>
           @if (entries().length === 0 && selectedDirectory()) {
             <p class="voc-empty">No entries in this vocabulary.</p>

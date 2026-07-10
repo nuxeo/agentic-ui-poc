@@ -1,0 +1,64 @@
+<div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
+  {{ data.mode === 'create' ? 'Add Vocabulary Entry' : 'Edit Vocabulary Entry' }}
+</div>
+<mat-dialog-content class="form">
+  @if (showParentField) {
+    @if (loadingParents()) {
+      <div class="parent-loading"><mat-spinner diameter="28" /></div>
+    } @else {
+      <mat-form-field appearance="outline" class="full first-field">
+        <mat-label>Parent</mat-label>
+        <mat-select name="entryParent" [(ngModel)]="parent" required placeholder="Select a Parent">
+          @for (option of parentOptions(); track option.id) {
+            <mat-option [value]="option.id">{{ parentOptionLabel(option) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    }
+  }
+
+  <mat-form-field appearance="outline" class="full" [class.first-field]="!showParentField">
+    <mat-label>ID</mat-label>
+    <input
+      matInput
+      name="entryId"
+      [(ngModel)]="id"
+      (ngModelChange)="onIdChange()"
+      [disabled]="data.mode === 'edit'"
+      required
+      autocomplete="off"
+    />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="full">
+    <mat-label>{{ usesL10nLabel ? 'Label (en)' : 'Label' }}</mat-label>
+    <input
+      matInput
+      name="entryLabel"
+      [(ngModel)]="label"
+      [required]="usesL10nLabel || data.mode === 'edit'"
+      autocomplete="off"
+    />
+  </mat-form-field>
+
+  <div class="obsolete-row">
+    <mat-slide-toggle name="entryObsolete" [(ngModel)]="obsolete">Obsolete</mat-slide-toggle>
+  </div>
+
+  <mat-form-field appearance="outline" class="full">
+    <mat-label>Ordering</mat-label>
+    <input matInput name="entryOrdering" type="number" [(ngModel)]="ordering" required />
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end" class="dialog-actions">
+  <button type="button" mat-button mat-dialog-close>Cancel</button>
+  <button
+    type="button"
+    mat-flat-button
+    color="primary"
+    (click)="submit()"
+    [disabled]="!canSubmit() || loadingParents()"
+  >
+    Save
+  </button>
+</mat-dialog-actions>
