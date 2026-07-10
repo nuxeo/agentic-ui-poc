@@ -94,11 +94,12 @@ const PERMISSION_OPTIONS = [
     </mat-dialog-content>
 
     <mat-dialog-actions>
-      <button mat-stroked-button mat-dialog-close>Cancel</button>
+      <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
       <span class="spacer"></span>
       <button
         mat-flat-button
         color="primary"
+        type="button"
         class="create-another-btn"
         [disabled]="!isValid() || saving()"
         (click)="create(true)"
@@ -112,6 +113,7 @@ const PERMISSION_OPTIONS = [
       <button
         mat-flat-button
         color="primary"
+        type="button"
         [disabled]="!isValid() || saving()"
         (click)="create(false)"
       >
@@ -186,7 +188,7 @@ const PERMISSION_OPTIONS = [
   ],
 })
 export class ShareExternalDialogComponent {
-  private readonly dialogRef = inject(MatDialogRef<ShareExternalDialogComponent>);
+  private readonly dialogRef = inject(MatDialogRef<ShareExternalDialogComponent, boolean>);
   private readonly data = inject<ShareExternalDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
   private readonly snackBar = inject(MatSnackBar);
@@ -202,34 +204,37 @@ export class ShareExternalDialogComponent {
   endDate: Date | null = null;
   notifyComment = '';
   addAnother = false;
+  private createdAny = false;
+
+  cancel(): void {
+    this.dialogRef.close(this.createdAny);
+  }
 
   isValid(): boolean {
-    return this.email.includes('@') && !!this.endDate;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim()) && !!this.endDate;
   }
 
   create(andAddAnother: boolean): void {
     if (!this.isValid() || this.saving()) return;
     this.addAnother = andAddAnother;
     this.saving.set(true);
+    const email = this.email.trim();
 
     this.detailService
       .addExternalPermissionWithNotification(this.data.documentUid, {
-        email: this.email,
+        email,
         permission: this.permission,
         notify: true,
-        begin: this.beginDate ? this.formatDateISO(this.beginDate) : null,
-        end: this.endDate ? this.formatDateISO(this.endDate) : '',
+        begin: this.beginDate ? this.formatDate(this.beginDate) : null,
+        end: this.endDate ? this.formatDate(this.endDate) : null,
         comment: this.notifyComment.trim() || undefined,
       })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           this.saving.set(false);
-          const message = result.notificationError
-            ? result.notificationError
-            : result.notificationSent
-              ? 'Permission added and notification sent'
-              : null;
+          this.createdAny = true;
+          const message = this.successMessage(result.notificationSent, result.notificationError);
           if (message) {
             this.snackBar.open(message, 'Dismiss', { duration: 7000 });
           }
@@ -241,12 +246,27 @@ export class ShareExternalDialogComponent {
         },
         error: (err) => {
           this.saving.set(false);
-          const message = isMailSendError(err)
-            ? permissionCreateMailFailureMessage()
-            : 'Could not share with external user';
-          this.snackBar.open(message, 'Dismiss', { duration: 7000 });
+          this.snackBar.open(this.permissionErrorMessage(err), 'Dismiss', { duration: 7000 });
         },
       });
+  }
+
+  private successMessage(notificationSent: boolean, notificationError?: string): string | null {
+    if (notificationError) {
+      return notificationError;
+    }
+    if (notificationSent) {
+      return 'Permission added and notification sent';
+    }
+    return null;
+  }
+
+  private permissionErrorMessage(err: unknown): string {
+    if (isMailSendError(err)) {
+      return permissionCreateMailFailureMessage();
+    }
+    const raw = (err as { error?: { message?: string } })?.error?.message?.trim();
+    return raw || 'Could not share with external user';
   }
 
   private resetForm(): void {
@@ -257,14 +277,10 @@ export class ShareExternalDialogComponent {
     this.notifyComment = '';
   }
 
-  private formatDateISO(d: Date): string {
+  private formatDate(d: Date): string {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    const offset = -d.getTimezoneOffset();
-    const sign = offset >= 0 ? '+' : '-';
-    const oh = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
-    const om = String(Math.abs(offset) % 60).padStart(2, '0');
-    return `${y}-${m}-${day}T23:59:59${sign}${oh}:${om}`;
+    return `${y}-${m}-${day}`;
   }
 }

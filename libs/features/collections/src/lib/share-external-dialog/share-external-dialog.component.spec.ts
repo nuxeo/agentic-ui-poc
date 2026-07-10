@@ -55,7 +55,7 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
     expect(fixture.componentInstance.mailHint).toContain('SMTP');
   });
 
-  it('creates external permission with notification', () => {
+  it('creates external permission with notification and date-only end', () => {
     fixture.componentInstance.create(false);
 
     expect(addExternalPermissionWithNotification).toHaveBeenCalledWith(
@@ -64,6 +64,7 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
         email: 'guest@example.com',
         notify: true,
         comment: 'Please review',
+        end: '2026-12-31',
       }),
     );
     expect(snackBarOpenSpy).toHaveBeenCalledWith(
@@ -99,6 +100,19 @@ describe('ShareExternalDialogComponent (NXSAT-159)', () => {
     expect(fixture.componentInstance.email).toBe('');
     expect(fixture.componentInstance.notifyComment).toBe('');
     expect(closeSpy).not.toHaveBeenCalled();
+  });
+
+  it('closes with true on cancel after create-and-add-another', () => {
+    fixture.componentInstance.create(true);
+    fixture.componentInstance.cancel();
+
+    expect(closeSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('closes with false on cancel when nothing was created', () => {
+    fixture.componentInstance.cancel();
+
+    expect(closeSpy).toHaveBeenCalledWith(false);
   });
 
   it('shows SMTP error when create fails due to mail', () => {

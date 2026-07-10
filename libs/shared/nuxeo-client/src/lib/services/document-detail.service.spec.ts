@@ -141,11 +141,12 @@ describe('DocumentDetailService permissions', () => {
     expect(ace?.creator).toBe('Administrator');
   });
 
-  it('addExternalPermission sends creator from CURRENT_USERNAME', async () => {
+  it('addExternalPermission sends creator from CURRENT_USERNAME with notify disabled', async () => {
     const doc$ = firstValueFrom(
       service.addExternalPermission('doc-uid', {
         email: 'guest@example.com',
         permission: 'Read',
+        end: '2026-12-31',
       }),
     );
 
@@ -155,8 +156,8 @@ describe('DocumentDetailService permissions', () => {
         email: 'guest@example.com',
         permission: 'Read',
         begin: null,
-        end: undefined,
-        notify: true,
+        end: '2026-12-31',
+        notify: false,
         comment: '',
         creator: 'satori-admin',
       },
@@ -166,6 +167,68 @@ describe('DocumentDetailService permissions', () => {
     req.flush({ uid: 'doc-uid' });
 
     await doc$;
+  });
+
+  it('addExternalPermissionWithNotification creates ACE then sends notification separately', async () => {
+    const result$ = firstValueFrom(
+      service.addExternalPermissionWithNotification('doc-uid', {
+        email: 'guest@example.com',
+        permission: 'Read',
+        notify: true,
+        end: '2026-12-31',
+        comment: 'Please review',
+      }),
+    );
+
+    const addReq = httpMock.expectOne('/nuxeo/api/v1/automation/Document.AddPermission');
+    expect(addReq.request.body.params).toEqual({
+      email: 'guest@example.com',
+      permission: 'Read',
+      begin: null,
+      end: '2026-12-31',
+      notify: false,
+      comment: 'Please review',
+      creator: 'satori-admin',
+    });
+    addReq.flush(docWithLocalAce('ace-ext', 'transient/guest@example.com'));
+
+    const notifyReq = httpMock.expectOne(
+      '/nuxeo/api/v1/automation/Document.SendNotificationEmailForPermission',
+    );
+    expect(notifyReq.request.body).toEqual({
+      params: { id: 'ace-ext' },
+      context: {},
+      input: 'doc-uid',
+    });
+    notifyReq.flush({ uid: 'doc-uid' });
+
+    await expect(result$).resolves.toEqual({
+      document: { uid: 'doc-uid' },
+      notificationSent: true,
+    });
+  });
+
+  it('addExternalPermissionWithNotification persists ACE when notification lookup fails', async () => {
+    const result$ = firstValueFrom(
+      service.addExternalPermissionWithNotification('doc-uid', {
+        email: 'guest@example.com',
+        permission: 'Read',
+        notify: true,
+        end: '2026-12-31',
+      }),
+    );
+
+    const addReq = httpMock.expectOne('/nuxeo/api/v1/automation/Document.AddPermission');
+    addReq.flush({ uid: 'doc-uid' });
+
+    const permReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-uid');
+    permReq.flush({ uid: 'doc-uid', contextParameters: { acls: [] } });
+
+    await expect(result$).resolves.toEqual({
+      document: { uid: 'doc-uid' },
+      notificationSent: false,
+      notificationError: expect.stringContaining('could not be located'),
+    });
   });
 
   it('addPermissionWithNotification creates ACE then sends notification separately', async () => {
@@ -275,7 +338,7 @@ function docWithLocalAce(aceId: string, username: string) {
             {
               id: aceId,
               username,
-              externalUser: false,
+              externalUser: username.startsWith('transient/'),
               permission: 'Read',
               granted: true,
               creator: null,
