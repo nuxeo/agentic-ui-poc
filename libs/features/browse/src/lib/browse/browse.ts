@@ -8,13 +8,20 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of, Subject } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import {
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  filter,
+  map,
+  switchMap,
+} from 'rxjs/operators';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -144,7 +151,6 @@ export class BrowseComponent {
   @ViewChild('columnPanel')
   private columnPanel?: ElementRef<HTMLElement>;
 
-  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
   private readonly detailService = inject(DocumentDetailService);
@@ -163,6 +169,8 @@ export class BrowseComponent {
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
   readonly browsePath = signal('/');
+  private readonly linkableBrowsePaths = signal<Set<string>>(new Set());
+  private readonly browsePath$ = new Subject<string>();
 
   // Details side panel
   readonly panelOpen = signal(false);
@@ -221,7 +229,7 @@ export class BrowseComponent {
   readonly domainContainerGuidance = DOMAIN_CONTAINER_GUIDANCE;
   readonly canCreateContentHere = computed(() => {
     const doc = this.currentDoc();
-    if (!doc || !canAddChildren(doc) || !this.isBrowseFolderish(doc)) {
+    if (!doc || doc.type === 'Favorites' || !canAddChildren(doc) || !this.isBrowseFolderish(doc)) {
       return false;
     }
     return !isDomainParentType(doc.type) && !isRestrictedImportParentPath(doc.path);
@@ -390,14 +398,21 @@ export class BrowseComponent {
     const doc = this.currentDoc();
     const crumbs: SatBreadcrumbsItem[] = [{ label: 'Root', href: '/browse' }];
     if (!doc || doc.path === '/') return crumbs;
+    const linkable = this.linkableBrowsePaths();
     const parts = doc.path.split('/').filter(Boolean);
-    let accumulated = '/browse';
+    let accumulated = '';
     for (const part of parts) {
       accumulated += `/${part}`;
-      crumbs.push({ label: decodeURIComponent(part), href: accumulated });
+      const label = decodeURIComponent(part);
+      const isCurrent = accumulated === doc.path;
+      if (isCurrent) {
+        crumbs.push({ label });
+      } else if (linkable.has(accumulated)) {
+        crumbs.push({ label, href: `/browse${accumulated}` });
+      } else {
+        crumbs.push({ label });
+      }
     }
-    const last = crumbs[crumbs.length - 1];
-    crumbs[crumbs.length - 1] = { label: last.label };
     return crumbs;
   });
 
@@ -411,17 +426,65 @@ export class BrowseComponent {
   }
 
   constructor() {
-    this.route.url.pipe(takeUntilDestroyed()).subscribe((segments) => {
-      const subPath = segments.map((s) => s.path).join('/');
-      this.currentNuxeoPath = subPath ? `/${subPath}` : '/';
-      this.browsePath.set(this.currentNuxeoPath);
-      this.historyLoaded = false;
-      this.trashLoaded = false;
-      this.permissionsLoaded.set(false);
-      this.permissionsLoading.set(false);
-      this.activeTabIndex.set(0);
-      this.loadContent();
-    });
+    const initialPath = this.parseBrowseNuxeoPath(this.router.url);
+    this.currentNuxeoPath = initialPath;
+    this.browsePath.set(initialPath);
+
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        map(() => this.parseBrowseNuxeoPath(this.router.url)),
+        distinctUntilChanged(),
+        takeUntilDestroyed(),
+      )
+      .subscribe((nuxeoPath) => {
+        this.resetBrowseTabState();
+        this.currentNuxeoPath = nuxeoPath;
+        this.browsePath.set(nuxeoPath);
+        this.browsePath$.next(nuxeoPath);
+      });
+
+    this.browsePath$
+      .pipe(
+        switchMap((nuxeoPath) => {
+          this.loading.set(true);
+          this.error.set(null);
+          return this.browseService.getBrowseFolderContents(nuxeoPath, 50).pipe(
+            map((result) => ({ nuxeoPath, result })),
+            catchError(() => of({ nuxeoPath, error: true as const })),
+          );
+        }),
+        takeUntilDestroyed(),
+      )
+      .subscribe((payload) => {
+        if (payload.nuxeoPath !== this.currentNuxeoPath) return;
+        if ('error' in payload) {
+          this.error.set('Failed to load folder contents.');
+          this.loading.set(false);
+          return;
+        }
+        const { folder, entries, totalSize, redirectTo } = payload.result;
+        if (redirectTo) {
+          this.loading.set(false);
+          void this.router.navigateByUrl(`/browse${redirectTo}`, { replaceUrl: true });
+          return;
+        }
+        this.linkableBrowsePaths.update((paths) => {
+          const next = new Set(paths);
+          next.add(folder.path);
+          return next;
+        });
+        this.currentDoc.set(folder);
+        this.entries.set(entries);
+        this.totalSize.set(totalSize);
+        this.loading.set(false);
+        this.loadThumbnails(entries);
+        if (folder.uid && folder.uid !== 'virtual-root') {
+          this.loadActivity(folder.uid);
+        }
+      });
+
+    this.browsePath$.next(initialPath);
 
     this.tagSearch$
       .pipe(
@@ -445,30 +508,27 @@ export class BrowseComponent {
 
   // ── Content loading ──
 
+  private resetBrowseTabState(): void {
+    this.historyLoaded = false;
+    this.trashLoaded = false;
+    this.permissionsLoaded.set(false);
+    this.permissionsLoading.set(false);
+    this.activeTabIndex.set(0);
+  }
+
+  private parseBrowseNuxeoPath(routerUrl: string): string {
+    const withoutQuery = routerUrl.split('?')[0];
+    const path = (withoutQuery.includes('#') ? withoutQuery.split('#').pop() : withoutQuery) ?? '/';
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    const prefix = '/browse';
+    if (normalized === prefix || normalized === `${prefix}/`) return '/';
+    if (!normalized.startsWith(`${prefix}/`)) return '/';
+    const remainder = normalized.slice(prefix.length);
+    return remainder.replace(/\/+$/, '') || '/';
+  }
+
   loadContent(): void {
-    this.loading.set(true);
-    this.error.set(null);
-
-    this.browseService.getByPath(this.currentNuxeoPath).subscribe({
-      next: (doc) => {
-        this.currentDoc.set(doc);
-        this.loadActivity(doc.uid);
-      },
-      error: () => this.currentDoc.set(null),
-    });
-
-    this.browseService.getChildren(this.currentNuxeoPath, 50).subscribe({
-      next: (res) => {
-        this.entries.set(res.entries);
-        this.totalSize.set(res.totalSize);
-        this.loading.set(false);
-        this.loadThumbnails(res.entries);
-      },
-      error: () => {
-        this.error.set('Failed to load folder contents.');
-        this.loading.set(false);
-      },
-    });
+    this.browsePath$.next(this.currentNuxeoPath);
   }
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {

@@ -2721,7 +2721,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (updated) => {
           this.noteSaving.set(false);
-          this.doc.set(updated);
+          this.doc.set(this.mergeUpdatedDocument(doc, updated));
           this.noteContent.set(body);
           if (mime === 'text/markdown') {
             const rawHtml = this.renderMarkdown(body);
@@ -2757,6 +2757,23 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       horizontalPosition: 'center',
       verticalPosition: 'bottom',
     });
+  }
+
+  /** Keeps enricher data (permissions, ACLs) when a PUT response omits contextParameters. */
+  private mergeUpdatedDocument(existing: NuxeoDocument, updated: NuxeoDocument): NuxeoDocument {
+    if (!existing.contextParameters && !updated.contextParameters) {
+      return updated;
+    }
+    return {
+      ...updated,
+      contextParameters: {
+        ...existing.contextParameters,
+        ...updated.contextParameters,
+        acls: updated.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
+        permissions:
+          updated.contextParameters?.['permissions'] ?? existing.contextParameters?.['permissions'],
+      },
+    };
   }
 
   private requireWritePermission(): boolean {
