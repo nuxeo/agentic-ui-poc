@@ -621,6 +621,10 @@ sat-breadcrumbs {
 
   &--selected {
     background: var(--mat-sys-primary-container, #e8def8);
+
+    &:hover {
+      background: var(--mat-sys-primary-container, #e8def8);
+    }
   }
 }
 
