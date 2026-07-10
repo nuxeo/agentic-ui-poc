@@ -176,8 +176,78 @@
       >
         <mat-icon>download</mat-icon>
       </button>
+      @if (showMainFileControls()) {
+        <button
+          mat-icon-button
+          matTooltip="Replace"
+          aria-label="Replace main file"
+          [disabled]="mainFileActionInProgress() === 'replace-main'"
+          (click)="replaceMainFileClicked.emit()"
+        >
+          <mat-icon>find_replace</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          matTooltip="Remove"
+          aria-label="Remove main file"
+          class="footer-remove-btn"
+          [disabled]="mainFileActionInProgress() === 'remove-main'"
+          (click)="removeMainFileClicked.emit()"
+        >
+          <mat-icon>cancel</mat-icon>
+        </button>
+      }
     </div>
   </div>
+
+  <!-- Video metadata card -->
+  @if (showVideoInfoCard()) {
+    <div class="picture-cards">
+      <div class="picture-card">
+        <h4 class="picture-card-title">Video Info</h4>
+        <div class="picture-card-body">
+          @if (videoInfo(); as vi) {
+            @if (isFiniteNumber(vi.duration)) {
+              <div class="info-row">
+                <span class="info-label">Duration</span>
+                <span class="info-value">{{ formatDuration(vi.duration) }}</span>
+              </div>
+            }
+            @if (vi.width && vi.height) {
+              <div class="info-row">
+                <span class="info-label">Resolution</span>
+                <span class="info-value">{{ vi.width }} × {{ vi.height }}</span>
+              </div>
+            }
+            @if (vi.format) {
+              <div class="info-row">
+                <span class="info-label">Format</span>
+                <span class="info-value">{{ vi.format }}</span>
+              </div>
+            }
+            @if (vi.videoCodec) {
+              <div class="info-row">
+                <span class="info-label">Video Codec</span>
+                <span class="info-value">{{ vi.videoCodec }}</span>
+              </div>
+            }
+            @if (vi.audioCodec) {
+              <div class="info-row">
+                <span class="info-label">Audio Codec</span>
+                <span class="info-value">{{ vi.audioCodec }}</span>
+              </div>
+            }
+            @if (vi.frameRate) {
+              <div class="info-row">
+                <span class="info-label">Frame Rate</span>
+                <span class="info-value">{{ vi.frameRate }} fps</span>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
 
   <!-- Picture metadata cards -->
   @if (showPictureCards()) {

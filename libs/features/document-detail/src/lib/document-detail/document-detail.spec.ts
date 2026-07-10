@@ -96,6 +96,7 @@ const mockDirectoryService = {
   getEventTypes: () => of([]),
   getEventCategories: () => of([]),
   getEntries: (name: string) => (name === 'nature' ? of(NATURE_ENTRIES) : of([])),
+  getAllL10nEntries: () => of([]),
 };
 
 const mockTaskService = {

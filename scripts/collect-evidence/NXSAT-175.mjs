@@ -49,14 +49,14 @@ export default async function collectEvidence(page, helpers, _outDir) {
     return;
   }
 
-  // ── FIX 6: Duplicate clipboard — check the More actions menu ─────────────
-  helpers.step('Fix 6: Open the ⋮ More actions menu (clipboard should NOT appear here)');
+  // ── FIX 6: More menu matches Web UI (clipboard in menu, not on toolbar) ───
+  helpers.step('Fix 6: Open the ⋮ More actions menu — Add to Clipboard in menu');
   const moreBtn = page.locator('button[aria-label="More actions"]').first();
   const moreBtnVisible = await moreBtn.isVisible({ timeout: 5000 }).catch(() => false);
   if (moreBtnVisible) {
     await moreBtn.click();
     await page.waitForTimeout(600);
-    await helpers.screenshot('fix6-more-menu-no-duplicate-clipboard');
+    await helpers.screenshot('fix6-more-menu-with-clipboard');
     await page.keyboard.press('Escape');
   } else {
     helpers.step('⚠️  More actions button not found — skipping fix6 screenshot');
@@ -67,24 +67,24 @@ export default async function collectEvidence(page, helpers, _outDir) {
   const propertiesPanel = page.locator('aside, .properties-panel, .detail-sidebar').first();
   await helpers.screenshot('fix1-state-field', propertiesPanel);
 
-  // ── Properties panel — Tags section always visible (Fix 4) ───────────────
-  helpers.step('Fix 4: Tags section always visible with Add input');
-  const tagsArea = page.locator('.tags-area, .tags-row').first();
-  if (await tagsArea.isVisible({ timeout: 4000 }).catch(() => false)) {
-    await tagsArea.scrollIntoViewIfNeeded();
+  // ── Properties panel — Tags (Fix 4) ───────────────────────────────────────
+  helpers.step('Fix 4: Tags field — chips inside fill input with dropdown');
+  const tagsField = page.locator('.tags-suggestion-field, .tags-readonly').first();
+  if (await tagsField.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await tagsField.scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);
-    await helpers.screenshot('fix4-tags-always-visible', tagsArea);
+    await helpers.screenshot('fix4-tags-always-visible', tagsField);
   } else {
     await helpers.screenshot('fix4-tags-always-visible');
   }
 
-  // ── Properties panel — File Controls (Fix 3) ─────────────────────────────
-  helpers.step('Fix 3: File Controls (Replace / Remove) for primary file');
-  const fileControls = page.locator('.main-file-controls').first();
-  if (await fileControls.isVisible({ timeout: 4000 }).catch(() => false)) {
-    await fileControls.scrollIntoViewIfNeeded();
+  // ── Viewer footer — File Controls (Fix 3) beside Download ────────────────
+  helpers.step('Fix 3: Viewer footer — Replace / Remove beside Download');
+  const viewerFooter = page.locator('.viewer-footer-actions');
+  if (await viewerFooter.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await viewerFooter.scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);
-    await helpers.screenshot('fix3-file-controls', fileControls);
+    await helpers.screenshot('fix3-file-controls', viewerFooter);
   } else {
     await helpers.screenshot('fix3-file-controls');
   }

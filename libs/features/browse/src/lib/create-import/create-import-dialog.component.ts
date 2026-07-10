@@ -48,6 +48,7 @@ import {
   type ImportProgress,
   type L10nDirectoryEntry,
   type NuxeoDocument,
+  formatHierarchicalL10nLabel,
 } from '@agentic-ui/shared/nuxeo-client';
 
 export interface CreateImportDialogData {
@@ -701,6 +702,10 @@ export class CreateImportDialogComponent implements OnInit {
 
   groupedCoverageOptions(): { parentLabel: string; entries: L10nDirectoryEntry[] }[] {
     return this.groupL10nEntries(this.coverageEntries(), this.coveragePanelSearch);
+  }
+
+  coverageDisplayLabel(): string {
+    return formatHierarchicalL10nLabel(this.coverage, this.coverageEntries());
   }
 
   private groupL10nEntries(

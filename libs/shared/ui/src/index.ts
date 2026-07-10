@@ -14,6 +14,7 @@ export {
   type PictureView,
   type ExifData,
   type IptcData,
+  type VideoInfo,
 } from './lib/document-viewer/document-viewer.component';
 export {
   ExportDialogComponent,

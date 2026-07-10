@@ -225,6 +225,43 @@ describe('DocumentDetailService permissions', () => {
       notificationError: expect.stringContaining('SMTP'),
     });
   });
+
+  it('removeMainFile clears file:content via PUT', async () => {
+    const doc$ = firstValueFrom(service.removeMainFile('doc-uid'));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-uid');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.headers.get('Content-Type')).toBe('application/json');
+    expect(req.request.body).toEqual({
+      'entity-type': 'document',
+      uid: 'doc-uid',
+      properties: { 'file:content': null },
+    });
+    req.flush({ uid: 'doc-uid', properties: { 'file:content': null } });
+
+    await expect(doc$).resolves.toEqual({ uid: 'doc-uid', properties: { 'file:content': null } });
+  });
+
+  it('replaceMainFile posts Blob.AttachOnDocument with file:content xpath', async () => {
+    const file = new File(['content'], 'replacement.pdf', { type: 'application/pdf' });
+    const blob$ = firstValueFrom(service.replaceMainFile('doc-uid', file));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Blob.AttachOnDocument');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toBeInstanceOf(FormData);
+    const form = req.request.body as FormData;
+    const requestJson = JSON.parse(await (form.get('request') as Blob).text());
+    expect(requestJson.params).toEqual({
+      document: 'doc-uid',
+      save: 'true',
+      xpath: 'file:content',
+    });
+    expect(form.get('file')).toBe(file);
+    req.flush(new Blob(['ok']));
+
+    const blob = await blob$;
+    expect(blob).toBeInstanceOf(Blob);
+  });
 });
 
 function docWithLocalAce(aceId: string, username: string) {

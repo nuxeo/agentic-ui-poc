@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,6 +16,9 @@ import {
   DirectoryService,
   L10nDirectoryEntry,
   NuxeoDocument,
+  formatHierarchicalL10nLabel,
+  groupL10nChildrenByParent,
+  l10nEntryLabel,
 } from '@agentic-ui/shared/nuxeo-client';
 
 export interface EditDocumentDialogData {
@@ -62,20 +65,66 @@ export interface EditDocumentDialogData {
 
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Subjects</mat-label>
-        <mat-select [(ngModel)]="subjects" multiple placeholder="Select a value.">
-          @for (entry of subjectEntries(); track entry.id) {
-            <mat-option [value]="entry.id">{{ entry.properties.label_en ?? entry.id }}</mat-option>
-          }
+        <mat-select
+          [(ngModel)]="subjects"
+          multiple
+          placeholder="Select a value."
+          panelClass="vocab-select-panel vocab-grouped-select-panel"
+          (openedChange)="onSubjectsPanelOpen($event)"
+        >
+          <div class="vocab-panel__search">
+            <input
+              type="text"
+              placeholder="Search…"
+              [(ngModel)]="subjectsPanelSearch"
+              [ngModelOptions]="{ standalone: true }"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            />
+          </div>
+          <div class="vocab-panel__list">
+            @for (group of groupedSubjectOptions(); track group.parentLabel) {
+              <mat-optgroup [label]="group.parentLabel">
+                @for (entry of group.entries; track entry.id) {
+                  <mat-option [value]="entry.id">{{ l10nEntryLabel(entry) }}</mat-option>
+                }
+              </mat-optgroup>
+            }
+          </div>
         </mat-select>
       </mat-form-field>
 
       <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
         <mat-label>Coverage</mat-label>
-        <mat-select [(ngModel)]="coverage" placeholder="Select a value.">
-          <mat-option [value]="null">-- None --</mat-option>
-          @for (entry of coverageEntries(); track entry.id) {
-            <mat-option [value]="entry.id">{{ entry.properties.label_en ?? entry.id }}</mat-option>
+        <mat-select
+          [(ngModel)]="coverage"
+          placeholder="Select a value."
+          panelClass="vocab-select-panel vocab-grouped-select-panel"
+          (openedChange)="onCoveragePanelOpen($event)"
+        >
+          @if (coverage) {
+            <mat-select-trigger>{{ coverageDisplayLabel() }}</mat-select-trigger>
           }
+          <div class="vocab-panel__search">
+            <input
+              type="text"
+              placeholder="Search…"
+              [(ngModel)]="coveragePanelSearch"
+              [ngModelOptions]="{ standalone: true }"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            />
+          </div>
+          <div class="vocab-panel__list">
+            <mat-option [value]="null">-- None --</mat-option>
+            @for (group of groupedCoverageOptions(); track group.parentLabel) {
+              <mat-optgroup [label]="group.parentLabel">
+                @for (entry of group.entries; track entry.id) {
+                  <mat-option [value]="entry.id">{{ l10nEntryLabel(entry) }}</mat-option>
+                }
+              </mat-optgroup>
+            }
+          </div>
         </mat-select>
       </mat-form-field>
 
@@ -90,7 +139,12 @@ export interface EditDocumentDialogData {
     <mat-dialog-actions>
       <button mat-stroked-button mat-dialog-close [disabled]="saving()">Cancel</button>
       <span class="spacer"></span>
-      <button mat-flat-button color="primary" [disabled]="!title.trim() || saving()" (click)="save()">
+      <button
+        mat-flat-button
+        color="primary"
+        [disabled]="!title.trim() || saving()"
+        (click)="save()"
+      >
         @if (saving()) {
           <mat-spinner diameter="18" />
         } @else {
@@ -126,6 +180,46 @@ export interface EditDocumentDialogData {
         flex: 1;
       }
     `,
+    `
+      ::ng-deep .mat-mdc-select-panel.vocab-select-panel {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        max-height: 320px;
+        padding-top: 0;
+      }
+
+      ::ng-deep .mat-mdc-select-panel.vocab-select-panel .vocab-panel__search {
+        flex: 0 0 auto;
+        padding: 8px 12px;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      ::ng-deep .mat-mdc-select-panel.vocab-select-panel .vocab-panel__search input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font: inherit;
+        font-size: 0.875rem;
+      }
+
+      ::ng-deep .mat-mdc-select-panel.vocab-select-panel .vocab-panel__list {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+      }
+
+      ::ng-deep .vocab-grouped-select-panel .mat-mdc-optgroup-label,
+      ::ng-deep .vocab-grouped-select-panel .mat-mdc-optgroup .mdc-list-group__subheader {
+        font-weight: 700;
+        font-size: 0.8125rem;
+        background: #fafafa;
+        padding: 10px 16px 6px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+    `,
   ],
 })
 export class EditDocumentDialogComponent implements OnInit {
@@ -134,10 +228,22 @@ export class EditDocumentDialogComponent implements OnInit {
   private readonly browseService = inject(BrowseService);
   private readonly directoryService = inject(DirectoryService);
 
+  readonly l10nEntryLabel = l10nEntryLabel;
   readonly natureEntries = signal<DirectoryEntry[]>([]);
   readonly subjectEntries = signal<L10nDirectoryEntry[]>([]);
   readonly coverageEntries = signal<L10nDirectoryEntry[]>([]);
   readonly saving = signal(false);
+
+  subjectsPanelSearch = '';
+  coveragePanelSearch = '';
+
+  readonly groupedSubjectOptions = computed(() =>
+    groupL10nChildrenByParent(this.subjectEntries(), this.subjectsPanelSearch),
+  );
+
+  readonly groupedCoverageOptions = computed(() =>
+    groupL10nChildrenByParent(this.coverageEntries(), this.coveragePanelSearch),
+  );
 
   title = '';
   description = '';
@@ -160,8 +266,8 @@ export class EditDocumentDialogComponent implements OnInit {
 
     forkJoin({
       nature: this.directoryService.getEntries('nature'),
-      subjects: this.directoryService.getL10nEntries('l10nsubjects'),
-      coverage: this.directoryService.getL10nEntries('l10ncoverage'),
+      subjects: this.directoryService.getAllL10nEntries('l10nsubjects'),
+      coverage: this.directoryService.getAllL10nEntries('l10ncoverage'),
     }).subscribe({
       next: ({ nature, subjects, coverage }) => {
         this.natureEntries.set(nature);
@@ -169,6 +275,18 @@ export class EditDocumentDialogComponent implements OnInit {
         this.coverageEntries.set(coverage);
       },
     });
+  }
+
+  onSubjectsPanelOpen(open: boolean): void {
+    if (!open) this.subjectsPanelSearch = '';
+  }
+
+  onCoveragePanelOpen(open: boolean): void {
+    if (!open) this.coveragePanelSearch = '';
+  }
+
+  coverageDisplayLabel(): string {
+    return formatHierarchicalL10nLabel(this.coverage, this.coverageEntries());
   }
 
   save(): void {
