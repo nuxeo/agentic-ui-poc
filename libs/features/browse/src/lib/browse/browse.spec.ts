@@ -117,6 +117,19 @@ describe('BrowseComponent', () => {
     expect(mockSelectionService.toggle).toHaveBeenCalledWith('doc-1', 'Quarterly Report', null);
   });
 
+  it('selectionAriaLabel includes document title for checkbox accessibility', () => {
+    const doc: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Quarterly Report',
+      type: 'File',
+      path: '/workspaces/quarterly-report',
+      lastModified: '',
+      properties: {},
+    };
+
+    expect(component.selectionAriaLabel(doc)).toBe('Select Quarterly Report');
+  });
+
   it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {
     mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
       of({ uid: 'doc-1' }),

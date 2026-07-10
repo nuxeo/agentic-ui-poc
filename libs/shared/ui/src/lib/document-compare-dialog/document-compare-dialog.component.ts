@@ -1,5 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -9,7 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { forkJoin, of } from 'rxjs';
-import { catchError, finalize } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 import {
   DocumentDetailService,
   NuxeoDocument,
@@ -41,7 +40,6 @@ export interface DocumentCompareDialogData {
   styleUrl: './document-compare-dialog.scss',
 })
 export class DocumentCompareDialogComponent {
-  private readonly destroyRef = inject(DestroyRef);
   private readonly detailService = inject(DocumentDetailService);
   readonly data = inject<DocumentCompareDialogData>(MAT_DIALOG_DATA);
 
@@ -66,36 +64,45 @@ export class DocumentCompareDialogComponent {
   }
 
   constructor() {
-    effect(() => {
+    effect((onCleanup) => {
       const leftId = this.leftId();
       const rightId = this.rightId();
       if (!leftId || !rightId || leftId === rightId) {
         this.leftDoc.set(null);
         this.rightDoc.set(null);
         this.error.set('Select two different documents to compare.');
+        this.loading.set(false);
         return;
       }
 
       this.loading.set(true);
       this.error.set(null);
+      let cancelled = false;
 
-      forkJoin({
+      const subscription = forkJoin({
         left: this.detailService.getFullDocument(leftId),
         right: this.detailService.getFullDocument(rightId),
       })
         .pipe(
           catchError(() => {
-            this.error.set('Failed to load documents for comparison.');
+            if (!cancelled) {
+              this.error.set('Failed to load documents for comparison.');
+            }
             return of(null);
           }),
-          finalize(() => this.loading.set(false)),
-          takeUntilDestroyed(this.destroyRef),
         )
         .subscribe((result) => {
+          if (cancelled) return;
+          this.loading.set(false);
           if (!result) return;
           this.leftDoc.set(result.left);
           this.rightDoc.set(result.right);
         });
+
+      onCleanup(() => {
+        cancelled = true;
+        subscription.unsubscribe();
+      });
     });
   }
 }

@@ -6,29 +6,8 @@ import { NUXEO_API_ORIGIN, resolveNuxeoIconPath } from '@agentic-ui/shared/nuxeo
 @Component({
   selector: 'lib-compare-icon-image',
   standalone: true,
-  template: `
-    @if (blobUrl()) {
-      <img [src]="blobUrl()!" [alt]="alt()" class="compare-icon-image" />
-    } @else if (path()) {
-      <span class="compare-icon-fallback">{{ path() }}</span>
-    }
-  `,
-  styles: `
-    :host {
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .compare-icon-image {
-      width: 16px;
-      height: 16px;
-      display: block;
-    }
-
-    .compare-icon-fallback {
-      font-size: 13px;
-    }
-  `,
+  templateUrl: './compare-icon-image.component.html',
+  styleUrl: './compare-icon-image.component.scss',
 })
 export class CompareIconImageComponent implements OnDestroy {
   private readonly http = inject(HttpClient);

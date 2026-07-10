@@ -288,6 +288,7 @@
                           <td class="cell-checkbox">
                             <mat-checkbox
                               [checked]="isSelected(doc.uid)"
+                              [attr.aria-label]="selectionAriaLabel(doc)"
                               (change)="toggleSelection(doc.uid)"
                               (click)="$event.stopPropagation()"
                             ></mat-checkbox>
@@ -337,31 +338,32 @@
               <!-- Card view -->
               <div class="card-grid">
                 @for (doc of filteredEntries(); track doc.uid) {
-                  <button
-                    class="doc-card"
-                    type="button"
-                    [class.doc-card--selected]="isSelected(doc.uid)"
-                    (click)="onRowClick(doc)"
+                  <div
+                    class="doc-card-wrapper"
+                    [class.doc-card-wrapper--selected]="isSelected(doc.uid)"
                   >
                     <div class="grid-card-checkbox">
                       <mat-checkbox
                         [checked]="isSelected(doc.uid)"
+                        [attr.aria-label]="selectionAriaLabel(doc)"
                         (change)="toggleSelection(doc.uid)"
                         (click)="$event.stopPropagation()"
                       ></mat-checkbox>
                     </div>
-                    <div class="card-thumb">
-                      @if (thumbnailMap()[doc.uid]; as thumb) {
-                        <img [src]="thumb" alt="" class="card-thumb-img" />
-                      } @else {
-                        <mat-icon class="card-thumb-icon">{{ docIcon(doc) }}</mat-icon>
-                      }
-                    </div>
-                    <div class="card-body">
-                      <span class="card-title">{{ doc.title }}</span>
-                      <span class="card-type">{{ doc.type }}</span>
-                    </div>
-                  </button>
+                    <button class="doc-card" type="button" (click)="onRowClick(doc)">
+                      <div class="card-thumb">
+                        @if (thumbnailMap()[doc.uid]; as thumb) {
+                          <img [src]="thumb" alt="" class="card-thumb-img" />
+                        } @else {
+                          <mat-icon class="card-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                        }
+                      </div>
+                      <div class="card-body">
+                        <span class="card-title">{{ doc.title }}</span>
+                        <span class="card-type">{{ doc.type }}</span>
+                      </div>
+                    </button>
+                  </div>
                 }
               </div>
             }

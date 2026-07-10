@@ -1083,6 +1083,10 @@ export class BrowseComponent {
     return this.selectionService.isSelected(id);
   }
 
+  selectionAriaLabel(doc: NuxeoDocument): string {
+    return `Select ${doc.title}`;
+  }
+
   toggleSelection(id: string): void {
     const doc = this.filteredEntries().find((d) => d.uid === id);
     this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null);

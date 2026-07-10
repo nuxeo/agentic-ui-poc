@@ -1,0 +1,5 @@
+@if (blobUrl()) {
+  <img [src]="blobUrl()!" [alt]="alt()" class="compare-icon-image" />
+} @else if (path()) {
+  <span class="compare-icon-fallback">{{ path() }}</span>
+}
