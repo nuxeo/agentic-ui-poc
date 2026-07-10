@@ -78,6 +78,12 @@ export function isFolderishDocument(doc: NuxeoDocument | null): boolean {
   return FOLDERISH_TYPES.has(doc.type);
 }
 
+/** Browse/nav tree nodes: folderish containers plus User Workspace Favorites. */
+export function isBrowsableNavNode(doc: NuxeoDocument | null): boolean {
+  if (!doc) return false;
+  return doc.type === 'Favorites' || isFolderishDocument(doc);
+}
+
 export function sanitizeDocumentName(name: string): string {
   const cleaned = name
     .replace(/[\\/:*?"<>|]/g, '-')

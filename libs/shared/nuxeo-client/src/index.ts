@@ -88,6 +88,7 @@ export {
   documentHasPersistedMainBlob,
   isBlobHoldingDocType,
   isFolderishDocument,
+  isBrowsableNavNode,
   isRepositoryRootPath,
   isRestrictedImportParentPath,
   sanitizeDocumentName,

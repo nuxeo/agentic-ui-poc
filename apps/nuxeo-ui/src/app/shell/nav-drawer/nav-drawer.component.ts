@@ -34,6 +34,7 @@ import {
   CURRENT_USERNAME,
   docTypeIcon,
   isFolderishDocument,
+  isBrowsableNavNode,
   type SearchQueryParams,
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -486,10 +487,10 @@ export class NavDrawerComponent {
     this.rootLoading.set(true);
 
     this.browseService
-      .getByPath('/')
+      .getNavTreeBootstrap()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (rootDoc) => {
+        next: ({ root: rootDoc, entries }) => {
           const rootNode: FolderNode = {
             doc: rootDoc,
             children: [],
@@ -501,48 +502,37 @@ export class NavDrawerComponent {
           this.rootNodes.set([rootNode]);
           this.rootLoading.set(false);
 
-          this.browseService
-            .getNavTreeChildren(rootDoc)
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe({
-              next: (res) => {
-                const domainNodes = this.toFolderNodes(res.entries);
-                rootNode.children = domainNodes;
-                rootNode.loaded = true;
-                rootNode.loading = false;
+          const topNodes = this.toFolderNodes(entries);
+          rootNode.children = topNodes;
+          rootNode.loaded = true;
+          rootNode.loading = false;
 
-                const domainNode = domainNodes[0];
-                if (domainNode) {
-                  domainNode.expanded = true;
-                  domainNode.loading = true;
-                  this.rootNodes.update((n) => [...n]);
+          const topNode = topNodes[0];
+          if (topNode) {
+            topNode.expanded = true;
+            topNode.loading = true;
+            this.rootNodes.update((n) => [...n]);
 
-                  this.browseService
-                    .getNavTreeChildren(domainNode.doc)
-                    .pipe(takeUntilDestroyed(this.destroyRef))
-                    .subscribe({
-                      next: (domainRes) => {
-                        domainNode.children = this.toFolderNodes(domainRes.entries);
-                        domainNode.loaded = true;
-                        domainNode.loading = false;
-                        this.rootNodes.update((n) => [...n]);
-                        this.prefetchChildStatus(domainNode.children);
-                      },
-                      error: () => {
-                        domainNode.loading = false;
-                        domainNode.loaded = true;
-                        this.rootNodes.update((n) => [...n]);
-                      },
-                    });
-                } else {
+            this.browseService
+              .getNavTreeChildren(topNode.doc)
+              .pipe(takeUntilDestroyed(this.destroyRef))
+              .subscribe({
+                next: (topNodeRes) => {
+                  topNode.children = this.toFolderNodes(topNodeRes.entries);
+                  topNode.loaded = true;
+                  topNode.loading = false;
                   this.rootNodes.update((n) => [...n]);
-                }
-              },
-              error: () => {
-                rootNode.loading = false;
-                this.rootNodes.update((n) => [...n]);
-              },
-            });
+                  this.prefetchChildStatus(topNode.children);
+                },
+                error: () => {
+                  topNode.loading = false;
+                  topNode.loaded = true;
+                  this.rootNodes.update((n) => [...n]);
+                },
+              });
+          } else {
+            this.rootNodes.update((n) => [...n]);
+          }
         },
         error: () => this.rootLoading.set(false),
       });
@@ -554,7 +544,7 @@ export class NavDrawerComponent {
 
   private toFolderNodes(entries: NuxeoDocument[]): FolderNode[] {
     return (entries ?? [])
-      .filter((e) => isFolderishDocument(e))
+      .filter((e) => isBrowsableNavNode(e))
       .map((doc) => ({
         doc,
         children: [],
@@ -624,6 +614,11 @@ export class NavDrawerComponent {
 
   navigateToFolder(node: FolderNode): void {
     if (node.isRoot) {
+      const soleChild = node.children.length === 1 ? node.children[0] : null;
+      if (soleChild && !soleChild.isRoot) {
+        this.itemSelected.emit(`/browse${soleChild.doc.path}`);
+        return;
+      }
       this.itemSelected.emit('/browse');
       return;
     }

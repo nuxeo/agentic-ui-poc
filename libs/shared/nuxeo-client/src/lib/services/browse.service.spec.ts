@@ -93,6 +93,323 @@ describe('BrowseService', () => {
     expect(result.totalSize).toBe(3);
   });
 
+  it('getRepositoryRoot returns the root document when path access succeeds', async () => {
+    const result$ = firstValueFrom(service.getRepositoryRoot());
+
+    const req = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/' && r.method === 'GET');
+    req.flush({
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    });
+
+    const result = await result$;
+    expect(result.uid).toBe('root-uid');
+    expect(result.type).toBe('Root');
+  });
+
+  it('getRepositoryRoot resolves root uid from accessible domains when path access is denied', async () => {
+    const result$ = firstValueFrom(service.getRepositoryRoot());
+
+    const rootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    rootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    const nxqlReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes('FROM Domain'),
+    );
+    nxqlReq.flush({
+      entries: [
+        {
+          uid: 'domain-5-uid',
+          title: 'Domain-5',
+          type: 'Domain',
+          path: '/domain-5',
+          parentRef: 'root-uid',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.uid).toBe('root-uid');
+    expect(result.type).toBe('Root');
+    expect(result.path).toBe('/');
+  });
+
+  it('getBrowseFolderContents redirects workspace-only users from repository root', async () => {
+    const result$ = firstValueFrom(service.getBrowseFolderContents('/'));
+
+    const rootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    rootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    const bootstrapRootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    bootstrapRootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    const domainNxqlReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes('FROM Domain'),
+    );
+    domainNxqlReq.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 0,
+    });
+
+    const treeReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/tree_children/execute' &&
+        r.params.get('queryParams') === 'virtual-root',
+    );
+    treeReq.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+      isNextPageAvailable: false,
+    });
+
+    const navNodesReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes("ecm:primaryType IN ('Domain', 'Workspace'"),
+    );
+    navNodesReq.flush({
+      entries: [
+        {
+          uid: 'ws-uid',
+          title: 'user readonly',
+          type: 'Workspace',
+          path: '/default-domain/UserWorkspaces/user-readonly01',
+          parentRef: 'userworkspaces-root',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.redirectTo).toBe('/default-domain/UserWorkspaces/user-readonly01');
+    expect(result.entries).toHaveLength(1);
+  });
+
+  it('getBrowseFolderContents loads Favorites members via default_content_collection', async () => {
+    const result$ = firstValueFrom(
+      service.getBrowseFolderContents('/default-domain/UserWorkspaces/user-readonly01/Favorites'),
+    );
+
+    const folderReq = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/path/default-domain/UserWorkspaces/user-readonly01/Favorites',
+    );
+    folderReq.flush({
+      uid: 'fav-uid',
+      title: 'My Favorites',
+      type: 'Favorites',
+      path: '/default-domain/UserWorkspaces/user-readonly01/Favorites',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    });
+
+    const membersReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/default_content_collection/execute' &&
+        r.params.get('queryParams') === 'fav-uid' &&
+        r.params.get('pageSize') === '50',
+    );
+    membersReq.flush({
+      entries: [
+        {
+          uid: 'doc-uid',
+          title: 'Sample doc',
+          type: 'File',
+          path: '/default-domain/workspaces/demo/sample',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.folder.title).toBe('My Favorites');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].title).toBe('Sample doc');
+  });
+
+  it('getBrowseFolderContents loads workspace children via @children', async () => {
+    const result$ = firstValueFrom(
+      service.getBrowseFolderContents('/default-domain/UserWorkspaces/user-readonly01'),
+    );
+
+    const folderReq = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/path/default-domain/UserWorkspaces/user-readonly01',
+    );
+    folderReq.flush({
+      uid: 'ws-uid',
+      title: 'user readonly',
+      type: 'Workspace',
+      path: '/default-domain/UserWorkspaces/user-readonly01',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    });
+
+    const childrenReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/path/default-domain/UserWorkspaces/user-readonly01/@children' &&
+        r.params.get('pageSize') === '50',
+    );
+    childrenReq.flush({
+      entries: [
+        {
+          uid: 'fav-uid',
+          title: 'My Favorites',
+          type: 'Favorites',
+          path: '/default-domain/UserWorkspaces/user-readonly01/Favorites',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.folder.title).toBe('user readonly');
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].title).toBe('My Favorites');
+  });
+
+  it('getNavTreeChildren falls back to @children when tree_children is empty', async () => {
+    const workspace: NuxeoDocument = {
+      uid: 'ws-uid',
+      title: 'user readonly',
+      type: 'Workspace',
+      path: '/default-domain/UserWorkspaces/user-readonly01',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+    const result$ = firstValueFrom(service.getNavTreeChildren(workspace));
+
+    const treeReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/tree_children/execute' &&
+        r.params.get('queryParams') === 'ws-uid',
+    );
+    treeReq.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+      isNextPageAvailable: false,
+    });
+
+    const childrenReq = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/path/default-domain/UserWorkspaces/user-readonly01/@children',
+    );
+    childrenReq.flush({
+      entries: [
+        {
+          uid: 'fav-uid',
+          title: 'My Favorites',
+          type: 'Favorites',
+          path: '/default-domain/UserWorkspaces/user-readonly01/Favorites',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].title).toBe('My Favorites');
+  });
+
+  it('getNavTreeBootstrap falls back to accessible workspaces when root and domains are unavailable', async () => {
+    const result$ = firstValueFrom(service.getNavTreeBootstrap());
+
+    const rootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    rootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    const domainNxqlReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes('FROM Domain'),
+    );
+    domainNxqlReq.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 0,
+    });
+
+    const treeReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/tree_children/execute' &&
+        r.params.get('queryParams') === 'virtual-root',
+    );
+    treeReq.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+      isNextPageAvailable: false,
+    });
+
+    const navNodesReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes("ecm:primaryType IN ('Domain', 'Workspace'"),
+    );
+    navNodesReq.flush({
+      entries: [
+        {
+          uid: 'ws-uid',
+          title: 'user readonly',
+          type: 'Workspace',
+          path: '/default-domain/UserWorkspaces/user-readonly01',
+          parentRef: 'userworkspaces-root',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.entries).toHaveLength(1);
+    expect(result.entries[0].title).toBe('user readonly');
+    expect(result.entries[0].type).toBe('Workspace');
+  });
+
   it('getNavTreeChildren uses tree_children for Root parents', async () => {
     const root: NuxeoDocument = {
       uid: '00000000-0000-0000-0000-000000000000',
@@ -188,6 +505,20 @@ describe('BrowseService', () => {
       isNextPageAvailable: false,
     });
 
-    await result$;
+    const childrenReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/path/domain-1/workspaces/marketing/@children' &&
+        r.params.get('pageSize') === '50',
+    );
+    childrenReq.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.entries).toHaveLength(0);
   });
 });

@@ -8,6 +8,7 @@ export interface NuxeoDocument {
   path: string;
   lastModified: string;
   properties: Record<string, unknown>;
+  parentRef?: string;
   lockOwner?: string | null;
   lockCreated?: string | null;
   state?: string;
