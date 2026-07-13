@@ -86,11 +86,18 @@ html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-
 /* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
 sat-platform-nav .sat-platform-nav-list {
   overflow-y: auto;
-  scrollbar-gutter: stable;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 sat-platform-nav .sat-platform-nav-list:hover {
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Long page titles must not squeeze the trailing logo + actions (avoids clipped "HYLAND" / settings). */

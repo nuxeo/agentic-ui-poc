@@ -26,6 +26,17 @@ sat-platform-nav-container.has-selection-topbar {
   border-right: none;
   box-shadow: 2px 0 8px rgb(0 0 0 / 8%);
   background: var(--mat-sys-surface);
+  overflow: hidden;
+}
+
+:host ::ng-deep .nav-drawer-sidenav .mat-drawer-inner-container {
+  overflow: hidden !important;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 :host ::ng-deep sat-app-header .sat-app-header-leading-container {

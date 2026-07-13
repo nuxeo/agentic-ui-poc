@@ -1,6 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { EMPTY, Observable, timer, switchMap, map, of, throwError, expand, reduce } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  timer,
+  switchMap,
+  map,
+  of,
+  throwError,
+  expand,
+  reduce,
+  forkJoin,
+} from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -335,6 +346,70 @@ export class BrowseService {
       { 'entity-type': 'document', properties },
       { 'Content-Type': 'application/json', properties: '*' },
     );
+  }
+
+  /** Copy clipboard items into `targetUid` (Web UI: `Document.Copy`). */
+  copyDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]> {
+    return this.runClipboardDocumentsOp('Document.Copy', uids, targetUid);
+  }
+
+  /** Move clipboard items into `targetUid` (Web UI: `Document.Move`). */
+  moveDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]> {
+    return this.runClipboardDocumentsOp('Document.Move', uids, targetUid);
+  }
+
+  private runClipboardDocumentsOp(
+    operation: 'Document.Copy' | 'Document.Move',
+    uids: string[],
+    targetUid: string,
+  ): Observable<NuxeoDocument[]> {
+    if (uids.length === 0) {
+      return of([]);
+    }
+
+    if (uids.length === 1) {
+      return this.api
+        .post<NuxeoDocument | NuxeoDocumentList>(`/nuxeo/api/v1/automation/${operation}`, {
+          params: { target: targetUid },
+          context: {},
+          input: `doc:${uids[0]}`,
+        })
+        .pipe(map((res) => this.normalizeClipboardOpResult(res)));
+    }
+
+    const input = `docs:${uids.join(',')}`;
+    return this.api
+      .post<NuxeoDocument | NuxeoDocumentList>(`/nuxeo/api/v1/automation/${operation}`, {
+        params: { target: targetUid },
+        context: {},
+        input,
+      })
+      .pipe(
+        map((res) => this.normalizeClipboardOpResult(res)),
+        catchError(() =>
+          forkJoin(
+            uids.map((uid) =>
+              this.api
+                .post<NuxeoDocument>(`/nuxeo/api/v1/automation/${operation}`, {
+                  params: { target: targetUid },
+                  context: {},
+                  input: `doc:${uid}`,
+                })
+                .pipe(catchError(() => of(null))),
+            ),
+          ).pipe(map((results) => results.filter((doc): doc is NuxeoDocument => doc !== null))),
+        ),
+      );
+  }
+
+  private normalizeClipboardOpResult(res: NuxeoDocument | NuxeoDocumentList): NuxeoDocument[] {
+    if (res && typeof res === 'object' && 'entries' in res && Array.isArray(res.entries)) {
+      return res.entries;
+    }
+    if (res && typeof res === 'object' && 'uid' in res) {
+      return [res as NuxeoDocument];
+    }
+    return [];
   }
 
   getTrashedChildren(parentUid: string, pageSize = 50): Observable<NuxeoDocumentList> {

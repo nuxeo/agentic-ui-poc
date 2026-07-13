@@ -126,6 +126,7 @@ export {
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';
+export { ClipboardTargetService } from './lib/services/clipboard-target.service';
 export { ContentLakeIngestService } from './lib/services/content-lake-ingest.service';
 export {
   DocumentDetailService,
@@ -208,6 +209,13 @@ export {
   isDomainParentType,
   resolveCreatableSubtypes,
 } from './lib/utils/creatable-subtypes';
+export {
+  CLIPBOARD_STORAGE_KEY,
+  canPasteClipboard,
+  readClipboardDocs,
+  writeClipboardDocs,
+  type ClipboardDoc,
+} from './lib/utils/clipboard.utils';
 export {
   principalPermissionTimeFrameLabel,
   principalPermissionToLocalRow,

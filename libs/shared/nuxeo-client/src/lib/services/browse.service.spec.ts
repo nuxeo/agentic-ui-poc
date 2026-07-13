@@ -542,4 +542,49 @@ describe('BrowseService', () => {
     const doc = await result$;
     expect(doc.path).toBe('/default-domain/UserWorkspaces/Administrator');
   });
+
+  it('copyDocuments calls Document.Copy with docs input and target param', async () => {
+    const result$ = firstValueFrom(service.copyDocuments(['doc-1', 'doc-2'], 'folder-uid'));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Document.Copy');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      params: { target: 'folder-uid' },
+      context: {},
+      input: 'docs:doc-1,doc-2',
+    });
+    req.flush({
+      entries: [
+        { uid: 'copy-1', title: 'Copy 1', type: 'File', path: '/folder/copy-1', properties: {} },
+      ],
+      totalSize: 1,
+    });
+
+    const result = await result$;
+    expect(result).toHaveLength(1);
+    expect(result[0].uid).toBe('copy-1');
+  });
+
+  it('moveDocuments calls Document.Move with single doc input', async () => {
+    const result$ = firstValueFrom(service.moveDocuments(['doc-1'], 'folder-uid'));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Document.Move');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      params: { target: 'folder-uid' },
+      context: {},
+      input: 'doc:doc-1',
+    });
+    req.flush({
+      uid: 'doc-1',
+      title: 'Moved',
+      type: 'File',
+      path: '/folder/doc-1',
+      properties: {},
+    });
+
+    const result = await result$;
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Moved');
+  });
 });
