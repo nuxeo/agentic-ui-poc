@@ -34,6 +34,7 @@ export class SelectionTopbarComponent {
   readonly addToClipboardRequested = output<void>();
   readonly addToCollectionRequested = output<void>();
   readonly downloadZipRequested = output<void>();
+  readonly compareRequested = output<void>();
   readonly deleted = output<void>();
   readonly selectionPopupOpen = signal(false);
 

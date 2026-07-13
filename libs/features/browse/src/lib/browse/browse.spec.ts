@@ -12,6 +12,7 @@ import {
   mailSendFailureMessage,
   NuxeoAce,
   NuxeoDocument,
+  SelectionService,
   TagService,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -51,6 +52,17 @@ const mockTagService = {
   removeTag: vi.fn(() => EMPTY),
 };
 
+const mockSelectionService = {
+  selectedIds: vi.fn(() => new Set<string>()),
+  selectedCount: vi.fn(() => 0),
+  isSelected: vi.fn(() => false),
+  isAllSelected: vi.fn(() => false),
+  isIndeterminate: vi.fn(() => false),
+  toggle: vi.fn(),
+  selectAll: vi.fn(),
+  clear: vi.fn(),
+};
+
 describe('BrowseComponent', () => {
   let component: BrowseComponent;
   let fixture: ComponentFixture<BrowseComponent>;
@@ -69,6 +81,7 @@ describe('BrowseComponent', () => {
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
         { provide: DirectoryService, useValue: mockDirectoryService },
         { provide: TagService, useValue: mockTagService },
+        { provide: SelectionService, useValue: mockSelectionService },
         { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
     })
@@ -86,6 +99,35 @@ describe('BrowseComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('toggleSelection delegates to SelectionService with doc title (NXSAT-179)', () => {
+    const doc: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Quarterly Report',
+      type: 'File',
+      path: '/workspaces/quarterly-report',
+      lastModified: '',
+      properties: {},
+    };
+    component.entries.set([doc]);
+
+    component.toggleSelection('doc-1');
+
+    expect(mockSelectionService.toggle).toHaveBeenCalledWith('doc-1', 'Quarterly Report', null);
+  });
+
+  it('selectionAriaLabel includes document title for checkbox accessibility', () => {
+    const doc: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Quarterly Report',
+      type: 'File',
+      path: '/workspaces/quarterly-report',
+      lastModified: '',
+      properties: {},
+    };
+
+    expect(component.selectionAriaLabel(doc)).toBe('Select Quarterly Report');
   });
 
   it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {

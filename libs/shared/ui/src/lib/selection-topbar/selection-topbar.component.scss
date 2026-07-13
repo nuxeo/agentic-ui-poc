@@ -55,8 +55,13 @@
   width: 36px;
   height: 36px;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.15);
+  }
+
+  &:disabled {
+    color: var(--mat-sys-on-primary, #fff);
+    opacity: 0.45;
   }
 }
 

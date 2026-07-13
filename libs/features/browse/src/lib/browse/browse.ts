@@ -52,6 +52,7 @@ import {
   BrowseService,
   DocumentDetailService,
   DirectoryService,
+  SelectionService,
   TagService,
   docTypeIcon,
   avatarColor,
@@ -157,6 +158,7 @@ export class BrowseComponent {
   private readonly detailService = inject(DocumentDetailService);
   private readonly directoryService = inject(DirectoryService);
   private readonly tagService = inject(TagService);
+  readonly selectionService = inject(SelectionService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
@@ -1075,6 +1077,19 @@ export class BrowseComponent {
   docState(): string {
     const doc = this.currentDoc();
     return (doc?.properties?.['dc:nature'] as string) ?? 'Project';
+  }
+
+  isSelected(id: string): boolean {
+    return this.selectionService.isSelected(id);
+  }
+
+  selectionAriaLabel(doc: NuxeoDocument): string {
+    return `Select ${doc.title}`;
+  }
+
+  toggleSelection(id: string): void {
+    const doc = this.filteredEntries().find((d) => d.uid === id);
+    this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null);
   }
 
   onRowClick(doc: NuxeoDocument): void {

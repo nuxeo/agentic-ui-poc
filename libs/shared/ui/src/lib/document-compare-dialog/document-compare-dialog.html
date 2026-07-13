@@ -1,0 +1,129 @@
+<h2 mat-dialog-title>Compare documents</h2>
+
+<mat-dialog-content class="compare-content">
+  <div class="compare-selectors">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compare-select">
+      <mat-label>Document 1</mat-label>
+      <mat-select [value]="leftId()" (selectionChange)="leftId.set($event.value)">
+        @for (item of data.items; track item.id) {
+          <mat-option [value]="item.id">{{ item.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-icon class="compare-swap-icon" aria-hidden="true">swap_horiz</mat-icon>
+
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="compare-select">
+      <mat-label>Document 2</mat-label>
+      <mat-select [value]="rightId()" (selectionChange)="rightId.set($event.value)">
+        @for (item of data.items; track item.id) {
+          <mat-option [value]="item.id">{{ item.name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="compare-view-controls">
+      <mat-checkbox [checked]="viewAllData()" (change)="viewAllData.set($event.checked)">
+        View all data
+      </mat-checkbox>
+      <mat-slide-toggle [checked]="unifiedView()" (change)="unifiedView.set($event.checked)">
+        Unified view
+      </mat-slide-toggle>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="compare-loading">
+      <mat-spinner diameter="32" />
+    </div>
+  } @else if (error()) {
+    <p class="compare-error">{{ error() }}</p>
+  } @else if (sections().length === 0) {
+    <p class="compare-empty">
+      @if (viewAllData()) {
+        No document data available to compare.
+      } @else {
+        No differences found between the selected documents.
+      }
+    </p>
+  } @else {
+    <div class="compare-sections">
+      @for (section of sections(); track section.id) {
+        <details class="compare-section" open>
+          <summary class="compare-section-header">
+            <span class="compare-section-title">{{ section.label }}</span>
+            <mat-icon class="compare-section-chevron">expand_more</mat-icon>
+          </summary>
+
+          <div class="compare-section-body">
+            @for (row of section.fields; track row.key) {
+              @if (unifiedView()) {
+                <div class="compare-field-row compare-field-row--unified">
+                  <span class="compare-field-label">{{ row.label }}</span>
+                  <div class="compare-field-values">
+                    @if (row.differs) {
+                      @if (row.left) {
+                        <span class="compare-field-value compare-field-value--removed">
+                          @if (isIconRow(row)) {
+                            <lib-compare-icon-image [path]="row.left" [alt]="row.label" />
+                          } @else {
+                            {{ row.left }}
+                          }
+                        </span>
+                      }
+                      @if (row.right) {
+                        <span class="compare-field-value compare-field-value--added">
+                          @if (isIconRow(row)) {
+                            <lib-compare-icon-image [path]="row.right" [alt]="row.label" />
+                          } @else {
+                            {{ row.right }}
+                          }
+                        </span>
+                      }
+                    } @else {
+                      <span class="compare-field-value">
+                        @if (isIconRow(row)) {
+                          <lib-compare-icon-image
+                            [path]="row.left || row.right"
+                            [alt]="row.label"
+                          />
+                        } @else {
+                          {{ row.left || row.right }}
+                        }
+                      </span>
+                    }
+                  </div>
+                </div>
+              } @else {
+                <div class="compare-field-row">
+                  <div class="compare-side compare-side--left">
+                    <span class="compare-field-label">{{ row.label }}</span>
+                    <span
+                      class="compare-field-value"
+                      [class.compare-field-value--changed]="row.differs && row.left"
+                    >
+                      {{ row.left }}
+                    </span>
+                  </div>
+                  <div class="compare-side compare-side--right">
+                    <span class="compare-field-label">{{ row.label }}</span>
+                    <span
+                      class="compare-field-value"
+                      [class.compare-field-value--changed]="row.differs && row.right"
+                    >
+                      {{ row.right }}
+                    </span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </details>
+      }
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button type="button" mat-stroked-button mat-dialog-close>Close</button>
+</mat-dialog-actions>

@@ -13,6 +13,8 @@
       type="button"
       class="topbar-icon-btn"
       matTooltip="Download All as Zip"
+      matTooltipPosition="below"
+      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
       aria-label="Download All as Zip"
       (click)="downloadZipRequested.emit()"
     >
@@ -23,6 +25,8 @@
       type="button"
       class="topbar-icon-btn"
       matTooltip="Add to Collection"
+      matTooltipPosition="below"
+      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
       aria-label="Add to Collection"
       (click)="addToCollectionRequested.emit()"
     >
@@ -32,7 +36,22 @@
       mat-icon-button
       type="button"
       class="topbar-icon-btn"
+      matTooltip="Compare"
+      matTooltipPosition="below"
+      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
+      aria-label="Compare"
+      [disabled]="selectedCount() < 2"
+      (click)="compareRequested.emit()"
+    >
+      <mat-icon>compare</mat-icon>
+    </button>
+    <button
+      mat-icon-button
+      type="button"
+      class="topbar-icon-btn"
       matTooltip="Add to Clipboard"
+      matTooltipPosition="below"
+      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
       aria-label="Add to Clipboard"
       (click)="addToClipboardRequested.emit()"
     >
@@ -43,6 +62,8 @@
       type="button"
       class="topbar-icon-btn"
       matTooltip="Publish Document"
+      matTooltipPosition="below"
+      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
       aria-label="Publish Document"
       (click)="publishRequested.emit()"
     >
@@ -51,8 +72,11 @@
     <button
       mat-icon-button
       matTooltip="Delete selected"
+      matTooltipPosition="below"
+      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
       type="button"
       class="topbar-icon-btn"
+      aria-label="Delete selected"
       (click)="deleted.emit()"
     >
       <mat-icon>delete</mat-icon>

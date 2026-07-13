@@ -1,5 +1,10 @@
 export * from './lib/ui/ui';
 export { SelectionTopbarComponent } from './lib/selection-topbar/selection-topbar.component';
+export {
+  DocumentCompareDialogComponent,
+  type DocumentCompareDialogData,
+} from './lib/document-compare-dialog/document-compare-dialog.component';
+export { openDocumentCompareDialog } from './lib/document-compare-dialog/open-document-compare-dialog';
 export { WidgetContainerComponent } from './lib/widget-container/widget-container.component';
 export { WidgetGridComponent } from './lib/widget-grid/widget-grid.component';
 export {
