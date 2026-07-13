@@ -38,6 +38,16 @@
         <mat-icon>refresh</mat-icon>
       </button>
     }
+    @if (isPersonalSpace) {
+      <button
+        mat-icon-button
+        (click)="refreshPersonalSpaceTree()"
+        matTooltip="Refresh"
+        class="refresh-btn"
+      >
+        <mat-icon>refresh</mat-icon>
+      </button>
+    }
   </div>
 
   @if (isBrowse) {
@@ -51,6 +61,29 @@
       } @else {
         <div class="tree-list">
           @for (node of rootNodes(); track node.doc.uid) {
+            <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: node, depth: 0 }" />
+          }
+        </div>
+      }
+    </div>
+  } @else if (isPersonalSpace) {
+    <div class="folder-tree">
+      @if (personalSpaceLoading()) {
+        <div class="tree-loading">
+          <mat-spinner diameter="24" />
+        </div>
+      } @else if (personalSpaceError()) {
+        <div class="tree-empty error">
+          <span>{{ personalSpaceError() }}</span>
+          <button mat-stroked-button type="button" (click)="refreshPersonalSpaceTree()">
+            Retry
+          </button>
+        </div>
+      } @else if (personalSpaceNodes().length === 0) {
+        <div class="tree-empty">No folders found</div>
+      } @else {
+        <div class="tree-list">
+          @for (node of personalSpaceNodes(); track node.doc.uid) {
             <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: node, depth: 0 }" />
           }
         </div>

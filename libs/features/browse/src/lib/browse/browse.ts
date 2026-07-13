@@ -170,7 +170,6 @@ export class BrowseComponent {
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
   readonly browsePath = signal('/');
-  private readonly linkableBrowsePaths = signal<Set<string>>(new Set());
   private readonly browsePath$ = new Subject<string>();
 
   // Details side panel
@@ -399,7 +398,6 @@ export class BrowseComponent {
     const doc = this.currentDoc();
     const crumbs: SatBreadcrumbsItem[] = [{ label: 'Root', href: '/browse' }];
     if (!doc || doc.path === '/') return crumbs;
-    const linkable = this.linkableBrowsePaths();
     const parts = doc.path.split('/').filter(Boolean);
     let accumulated = '';
     for (const part of parts) {
@@ -408,10 +406,8 @@ export class BrowseComponent {
       const isCurrent = accumulated === doc.path;
       if (isCurrent) {
         crumbs.push({ label });
-      } else if (linkable.has(accumulated)) {
-        crumbs.push({ label, href: `/browse${accumulated}` });
       } else {
-        crumbs.push({ label });
+        crumbs.push({ label, href: `/browse${accumulated}` });
       }
     }
     return crumbs;
@@ -470,11 +466,6 @@ export class BrowseComponent {
           void this.router.navigateByUrl(`/browse${redirectTo}`, { replaceUrl: true });
           return;
         }
-        this.linkableBrowsePaths.update((paths) => {
-          const next = new Set(paths);
-          next.add(folder.path);
-          return next;
-        });
         this.currentDoc.set(folder);
         this.entries.set(entries);
         this.totalSize.set(totalSize);

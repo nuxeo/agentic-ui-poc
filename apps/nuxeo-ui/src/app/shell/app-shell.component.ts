@@ -288,6 +288,8 @@ export class AppShellComponent implements OnDestroy {
             ? '/administration/analytics'
             : '/administration/users-groups';
           void this.router.navigateByUrl(target);
+        } else if (item.path === '/personal-space') {
+          void this.router.navigateByUrl('/personal-space');
         }
       }
     } else {

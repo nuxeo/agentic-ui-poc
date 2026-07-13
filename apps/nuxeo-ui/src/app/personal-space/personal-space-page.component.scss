@@ -1,0 +1,17 @@
+.personal-space-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 12rem;
+  padding: 1.5rem;
+}
+
+.personal-space-page__loading,
+.personal-space-page__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+}

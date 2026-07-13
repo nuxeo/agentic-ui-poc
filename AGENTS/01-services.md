@@ -67,6 +67,7 @@ sendNotificationEmailForPermission(uid: string, aceId: string): Observable<Nuxeo
 
 ```typescript
 getByPath(nuxeoPath: string): Observable<NuxeoDocument>
+getUserWorkspace(): Observable<NuxeoDocument>  // POST automation/User.GetUserWorkspace (Web UI)
 getRepositoryRoot(): Observable<NuxeoDocument>  // falls back to NXQL when GET /path/ is denied
 getNavTreeBootstrap(pageSize?: number): Observable<NavTreeBootstrap>  // root + top-level folders for all permission profiles
 getBrowseFolderContents(nuxeoPath: string, pageSize?: number): Observable<BrowseFolderContents>  // browse page loader with restricted-user fallbacks

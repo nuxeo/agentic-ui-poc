@@ -45,6 +45,14 @@ export class BrowseService {
     });
   }
 
+  /** Current user's personal workspace (Web UI: `User.GetUserWorkspace` automation). */
+  getUserWorkspace(): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>('/nuxeo/api/v1/automation/User.GetUserWorkspace', {
+      params: {},
+      context: {},
+    });
+  }
+
   /**
    * Repository root for the browse nav tree. Users with domain-only ACLs may receive 403 on
    * `GET /path/` but can still resolve the root uid from an accessible Domain via NXQL.
