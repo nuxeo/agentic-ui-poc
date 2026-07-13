@@ -2981,7 +2981,21 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.commentSaving.set(true);
     this.detailService.updateComment(this.docUid, id, text).subscribe({
       next: (updated) => {
-        this.comments.update((list) => list.map((c) => (c.id === id ? updated : c)));
+        if (this.comments().some((c) => c.id === id)) {
+          this.comments.update((list) => list.map((c) => (c.id === id ? updated : c)));
+        } else {
+          this.repliesMap.update((map) => {
+            const next = { ...map };
+            for (const parentId of Object.keys(next)) {
+              const replies = next[parentId];
+              if (replies.some((r) => r.id === id)) {
+                next[parentId] = replies.map((r) => (r.id === id ? updated : r));
+                break;
+              }
+            }
+            return next;
+          });
+        }
         this.editingCommentId.set(null);
         this.editingCommentText.set('');
         this.commentSaving.set(false);
@@ -2993,12 +3007,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  deleteComment(comment: NuxeoComment): void {
+  deleteComment(comment: NuxeoComment, parentCommentId?: string): void {
     if (!this.requireWritePermission()) return;
+    const isReply = !!parentCommentId;
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Comment',
-        message: 'Delete this comment?',
+        title: isReply ? 'Delete Reply' : 'Delete Comment',
+        message: isReply ? 'Delete this reply?' : 'Delete this comment?',
         confirmLabel: 'Delete',
       } as ConfirmDialogData,
     });
@@ -3007,10 +3022,22 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       if (!confirmed) return;
       this.detailService.deleteComment(this.docUid, comment.id).subscribe({
         next: () => {
-          this.comments.update((list) => list.filter((c) => c.id !== comment.id));
-          this.toast('Comment deleted');
+          if (parentCommentId) {
+            this.repliesMap.update((map) => ({
+              ...map,
+              [parentCommentId]: (map[parentCommentId] ?? []).filter((r) => r.id !== comment.id),
+            }));
+            this.toast('Reply deleted');
+          } else {
+            this.comments.update((list) => list.filter((c) => c.id !== comment.id));
+            this.repliesMap.update((map) => {
+              const { [comment.id]: _removed, ...rest } = map;
+              return rest;
+            });
+            this.toast('Comment deleted');
+          }
         },
-        error: () => this.toast('Failed to delete comment'),
+        error: () => this.toast(isReply ? 'Failed to delete reply' : 'Failed to delete comment'),
       });
     });
   }
