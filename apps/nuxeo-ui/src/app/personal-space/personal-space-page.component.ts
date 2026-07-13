@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -19,6 +19,7 @@ import { BrowseService } from '@agentic-ui/shared/nuxeo-client';
 export class PersonalSpacePageComponent {
   private readonly browseService = inject(BrowseService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -37,7 +38,7 @@ export class PersonalSpacePageComponent {
 
     this.browseService
       .getUserWorkspace()
-      .pipe(takeUntilDestroyed())
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (workspace) => {
           void this.router.navigateByUrl(`/browse${workspace.path}`, { replaceUrl: true });
