@@ -3412,6 +3412,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   openExternalPermissionDialog(): void {
+    if (!this.docUid) return;
     const data: ShareExternalDialogData = { documentUid: this.docUid };
     const ref = this.dialog.open(ShareExternalDialogComponent, {
       width: '540px',
@@ -3421,8 +3422,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     ref
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((saved: boolean) => {
-        if (saved) this.reloadDocumentPermissions();
+      .subscribe((saved: boolean | undefined) => {
+        if (saved) {
+          this.reloadDocumentPermissions();
+          this.toast('Shared with external user');
+        }
       });
   }
 

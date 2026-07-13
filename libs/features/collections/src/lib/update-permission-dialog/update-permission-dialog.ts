@@ -300,8 +300,8 @@ export class UpdatePermissionDialogComponent {
           this.detailService.addExternalPermissionWithNotification(this.data.documentUid, {
             email,
             permission: this.permission,
-            begin: this.beginDate ? this.formatDateISO(this.beginDate) : null,
-            end: this.endDate ? this.formatDateISO(this.endDate) : undefined,
+            begin: this.beginDate ? this.formatDate(this.beginDate) : null,
+            end: this.endDate ? this.formatDate(this.endDate) : null,
             notify: true,
             comment: this.notifyComment.trim() || undefined,
           }),
@@ -350,16 +350,5 @@ export class UpdatePermissionDialogComponent {
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
-  }
-
-  private formatDateISO(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const offset = -d.getTimezoneOffset();
-    const sign = offset >= 0 ? '+' : '-';
-    const oh = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0');
-    const om = String(Math.abs(offset) % 60).padStart(2, '0');
-    return `${y}-${m}-${day}T23:59:59${sign}${oh}:${om}`;
   }
 }

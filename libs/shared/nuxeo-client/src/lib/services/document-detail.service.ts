@@ -422,27 +422,19 @@ export class DocumentDetailService {
       notify?: boolean;
       comment?: string;
       begin?: string | null;
-      end?: string;
+      end?: string | null;
       creator?: string;
     },
   ): Observable<NuxeoDocument> {
-    return this.api.post<NuxeoDocument>(
-      '/nuxeo/api/v1/automation/Document.AddPermission',
-      {
-        params: {
-          email: params.email,
-          permission: params.permission,
-          begin: params.begin ?? null,
-          end: params.end,
-          notify: params.notify ?? true,
-          comment: params.comment ?? '',
-          ...this.creatorParam(params.creator),
-        },
-        context: {},
-        input: uid,
-      },
-      { 'Content-Type': 'application/json' },
-    );
+    return this.addPermission(uid, {
+      email: params.email,
+      permission: params.permission,
+      begin: params.begin,
+      end: params.end ?? null,
+      comment: params.comment ?? '',
+      notify: params.notify ?? false,
+      creator: params.creator,
+    });
   }
 
   /**
@@ -521,15 +513,20 @@ export class DocumentDetailService {
       notify?: boolean;
       comment?: string;
       begin?: string | null;
-      end?: string;
+      end?: string | null;
       creator?: string;
     },
   ): Observable<PermissionWithNotificationResult> {
     const notify = params.notify !== false;
-    const principalId = `transient/${params.email}`;
-    return this.addExternalPermission(uid, {
-      ...params,
+    const principalId = `transient/${params.email.trim()}`;
+    return this.addPermission(uid, {
+      email: params.email.trim(),
+      permission: params.permission,
+      begin: params.begin,
+      end: params.end ?? null,
+      comment: params.comment ?? '',
       notify: false,
+      creator: params.creator,
     }).pipe(
       switchMap((document) =>
         notify
@@ -565,7 +562,15 @@ export class DocumentDetailService {
     }
 
     return this.getDocumentPermissions(uid).pipe(
+      catchError(() => of(null)),
       switchMap((permDoc) => {
+        if (!permDoc) {
+          return of({
+            document,
+            notificationSent: false,
+            notificationError: permissionNotificationAceNotFoundMessage(context),
+          });
+        }
         const resolvedAce = findLocalAceForPrincipal(permDoc, principalId);
         if (!resolvedAce?.id) {
           return of({
