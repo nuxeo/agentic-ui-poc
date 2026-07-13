@@ -1,0 +1,13 @@
+<div class="personal-space-page">
+  @if (loading()) {
+    <div class="personal-space-page__loading">
+      <mat-spinner diameter="40" />
+      <p>Loading your personal workspace…</p>
+    </div>
+  } @else if (error()) {
+    <div class="personal-space-page__error">
+      <p>{{ error() }}</p>
+      <button mat-stroked-button type="button" (click)="retry()">Retry</button>
+    </div>
+  }
+</div>

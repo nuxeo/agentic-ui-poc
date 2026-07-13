@@ -521,4 +521,25 @@ describe('BrowseService', () => {
     const result = await result$;
     expect(result.entries).toHaveLength(0);
   });
+
+  it('getUserWorkspace calls User.GetUserWorkspace automation', async () => {
+    const result$ = firstValueFrom(service.getUserWorkspace());
+
+    const req = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/automation/User.GetUserWorkspace',
+    );
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ params: {}, context: {} });
+    req.flush({
+      uid: 'ws-uid',
+      title: 'Administrator',
+      type: 'Workspace',
+      path: '/default-domain/UserWorkspaces/Administrator',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    } satisfies NuxeoDocument);
+
+    const doc = await result$;
+    expect(doc.path).toBe('/default-domain/UserWorkspaces/Administrator');
+  });
 });

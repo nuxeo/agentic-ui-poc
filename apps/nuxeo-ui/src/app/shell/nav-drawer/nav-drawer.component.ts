@@ -101,6 +101,11 @@ export class NavDrawerComponent {
   readonly rootNodes = signal<FolderNode[]>([]);
   readonly rootLoading = signal(false);
 
+  readonly personalSpaceNodes = signal<FolderNode[]>([]);
+  readonly personalSpaceLoading = signal(false);
+  readonly personalSpaceError = signal<string | null>(null);
+  private personalSpaceLoaded = false;
+
   readonly collections = signal<NuxeoDocument[]>([]);
   readonly collectionsLoading = signal(false);
   private collectionsLoaded = false;
@@ -174,6 +179,9 @@ export class NavDrawerComponent {
       }
       if (item?.path === '/expired-queue' && !this.expiredLoaded) {
         this.loadExpiredDocuments();
+      }
+      if (item?.path === '/personal-space' && !this.personalSpaceLoaded) {
+        this.loadPersonalSpaceTree();
       }
     });
 
@@ -287,6 +295,10 @@ export class NavDrawerComponent {
 
   get isBrowse(): boolean {
     return this.activeItem()?.path === '/browse';
+  }
+
+  get isPersonalSpace(): boolean {
+    return this.activeItem()?.path === '/personal-space';
   }
 
   get isCollections(): boolean {
@@ -542,6 +554,67 @@ export class NavDrawerComponent {
     this.loadRootTree();
   }
 
+  refreshPersonalSpaceTree(): void {
+    this.personalSpaceLoaded = false;
+    this.loadPersonalSpaceTree();
+  }
+
+  private loadPersonalSpaceTree(): void {
+    this.personalSpaceLoaded = true;
+    this.personalSpaceLoading.set(true);
+    this.personalSpaceError.set(null);
+
+    this.browseService
+      .getUserWorkspace()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (workspace) => {
+          const rootNode: FolderNode = {
+            doc: workspace,
+            children: [],
+            expanded: true,
+            loaded: false,
+            loading: true,
+          };
+          this.personalSpaceNodes.set([rootNode]);
+          this.personalSpaceLoading.set(false);
+
+          this.browseService
+            .getNavTreeChildren(workspace)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (res) => {
+                rootNode.children = this.toFolderNodes(res.entries ?? []);
+                rootNode.loaded = true;
+                rootNode.loading = false;
+                this.personalSpaceNodes.update((nodes) => [...nodes]);
+                this.prefetchChildStatus(rootNode.children);
+              },
+              error: () => {
+                rootNode.loading = false;
+                rootNode.loaded = true;
+                rootNode.children = [];
+                this.personalSpaceNodes.update((nodes) => [...nodes]);
+                this.personalSpaceError.set('Failed to load workspace folders.');
+              },
+            });
+        },
+        error: () => {
+          this.personalSpaceError.set('Failed to load personal workspace.');
+          this.personalSpaceLoading.set(false);
+          this.personalSpaceLoaded = false;
+        },
+      });
+  }
+
+  private notifyActiveTreeChanged(): void {
+    if (this.isPersonalSpace) {
+      this.personalSpaceNodes.update((nodes) => [...nodes]);
+    } else {
+      this.rootNodes.update((nodes) => [...nodes]);
+    }
+  }
+
   private toFolderNodes(entries: NuxeoDocument[]): FolderNode[] {
     return (entries ?? [])
       .filter((e) => isBrowsableNavNode(e))
@@ -557,13 +630,13 @@ export class NavDrawerComponent {
   toggleNode(node: FolderNode): void {
     if (node.expanded) {
       node.expanded = false;
-      this.rootNodes.update((nodes) => [...nodes]);
+      this.notifyActiveTreeChanged();
       return;
     }
 
     if (!node.loaded) {
       node.loading = true;
-      this.rootNodes.update((nodes) => [...nodes]);
+      this.notifyActiveTreeChanged();
 
       this.browseService
         .getNavTreeChildren(node.doc)
@@ -574,19 +647,19 @@ export class NavDrawerComponent {
             node.loaded = true;
             node.loading = false;
             node.expanded = true;
-            this.rootNodes.update((nodes) => [...nodes]);
+            this.notifyActiveTreeChanged();
             this.prefetchChildStatus(node.children);
           },
           error: () => {
             node.loading = false;
             node.loaded = true;
             node.children = [];
-            this.rootNodes.update((nodes) => [...nodes]);
+            this.notifyActiveTreeChanged();
           },
         });
     } else {
       node.expanded = true;
-      this.rootNodes.update((nodes) => [...nodes]);
+      this.notifyActiveTreeChanged();
     }
   }
 
@@ -608,7 +681,7 @@ export class NavDrawerComponent {
             node.children = this.toFolderNodes(res.entries);
           }
         });
-        this.rootNodes.update((n) => [...n]);
+        this.notifyActiveTreeChanged();
       });
   }
 

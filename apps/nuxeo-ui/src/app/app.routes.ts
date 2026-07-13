@@ -71,7 +71,10 @@ export const routes: Routes = [
       },
       {
         path: 'personal-space',
-        loadComponent: placeholder,
+        loadComponent: () =>
+          import('./personal-space/personal-space-page.component').then(
+            (m) => m.PersonalSpacePageComponent,
+          ),
       },
       {
         path: 'clipboard',

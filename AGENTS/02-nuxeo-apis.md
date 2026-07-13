@@ -10,15 +10,15 @@ In prod: same-origin.
 
 ### Documents
 
-| Operation                  | Method | Endpoint                             |
-| -------------------------- | ------ | ------------------------------------ |
-| Fetch document by UID      | GET    | `/nuxeo/api/v1/id/:uid`              |
-| Fetch document by path     | GET    | `/nuxeo/api/v1/path/:path`           |
-| Fetch user workspace       | GET    | `/nuxeo/api/v1/path/@userWorkspace`  |
-| Update document properties | PUT    | `/nuxeo/api/v1/id/:uid`              |
-| Delete document            | DELETE | `/nuxeo/api/v1/id/:uid`              |
-| Get document children      | GET    | `/nuxeo/api/v1/id/:uid/@children`    |
-| Get children by path       | GET    | `/nuxeo/api/v1/path/:path/@children` |
+| Operation                  | Method | Endpoint                                         |
+| -------------------------- | ------ | ------------------------------------------------ |
+| Fetch document by UID      | GET    | `/nuxeo/api/v1/id/:uid`                          |
+| Fetch document by path     | GET    | `/nuxeo/api/v1/path/:path`                       |
+| Fetch user workspace       | POST   | `/nuxeo/api/v1/automation/User.GetUserWorkspace` |
+| Update document properties | PUT    | `/nuxeo/api/v1/id/:uid`                          |
+| Delete document            | DELETE | `/nuxeo/api/v1/id/:uid`                          |
+| Get document children      | GET    | `/nuxeo/api/v1/id/:uid/@children`                |
+| Get children by path       | GET    | `/nuxeo/api/v1/path/:path/@children`             |
 
 ### Document Headers / Enrichers
 
