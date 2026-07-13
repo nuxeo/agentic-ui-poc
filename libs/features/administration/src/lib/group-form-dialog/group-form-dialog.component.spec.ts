@@ -134,4 +134,26 @@ describe('GroupFormDialogComponent (NXSAT-151)', () => {
 
     expect(component.memberUsernames).toEqual(['admin']);
   });
+
+  it('suppresses matChipInputTokenEnd after autocomplete selection (NXSAT-151)', () => {
+    const user = mockUser('poweruser01');
+    component.userSearchQuery = 'power';
+    component.filteredUsers = [user];
+
+    component.onUserSelected({
+      option: { value: user, deselect: vi.fn() },
+    } as unknown as MatAutocompleteSelectedEvent);
+
+    expect(component.memberUsernames).toEqual(['poweruser01']);
+
+    const chipInput = { clear: vi.fn() };
+    component.addMemberFromInput({
+      value: 'powerpoweruser01',
+      chipInput,
+    } as unknown as MatChipInputEvent);
+
+    expect(component.memberUsernames).toEqual(['poweruser01']);
+    expect(chipInput.clear).toHaveBeenCalled();
+    expect(component.userSearchQuery).toBe('');
+  });
 });
