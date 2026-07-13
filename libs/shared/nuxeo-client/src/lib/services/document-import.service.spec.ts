@@ -12,10 +12,12 @@ import {
   DocumentImportService,
   documentHasMainBlob,
   documentHasPersistedMainBlob,
+  inferBlobDocTypeFromFile,
   isBlobHoldingDocType,
   isRepositoryRootPath,
   isRestrictedImportParentPath,
   normalizeImportParentPath,
+  resolveImportBlobDocType,
   summarizeCsvImportReport,
 } from './document-import.service';
 
@@ -501,5 +503,52 @@ describe('DocumentImportService', () => {
     expect(staged).toEqual({ batchId: 'batch-stage', fileIndex: 0 });
     expect(progress.length).toBeGreaterThan(0);
     expect(progress[progress.length - 1]).toBe(100);
+  });
+
+  it('infers Picture from png files', () => {
+    const file = new File(['x'], 'photo.png', { type: 'image/png' });
+    expect(inferBlobDocTypeFromFile(file)).toBe('Picture');
+    expect(resolveImportBlobDocType(file, ['File', 'Picture'])).toBe('Picture');
+  });
+
+  it('importFilesWithProperties creates documents with custom metadata and type', async () => {
+    const file = new File(['jpeg-bytes'], 'photo.png', { type: 'image/png' });
+    const import$ = firstValueFrom(
+      service.importFilesWithProperties('/ws', [
+        {
+          file,
+          docType: 'Picture',
+          properties: {
+            'dc:title': 'My Picture',
+            'dc:description': 'desc',
+            'dc:nature': 'article',
+          },
+        },
+      ]),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-pic' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-pic/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-pic/0')
+      .flush({ name: 'photo.png', size: file.size });
+    const createReq = httpMock.expectOne('/nuxeo/api/v1/path/ws');
+    expect(createReq.request.body.type).toBe('Picture');
+    expect(createReq.request.body.properties['dc:title']).toBe('My Picture');
+    expect(createReq.request.body.properties['dc:description']).toBe('desc');
+    expect(createReq.request.body.properties['dc:nature']).toBe('article');
+    createReq.flush({
+      uid: 'pic-1',
+      title: 'My Picture',
+      type: 'Picture',
+      path: '/ws/photo',
+      properties: {
+        'dc:title': 'My Picture',
+        'file:content': { name: 'photo.png', length: String(file.size), 'mime-type': 'image/png' },
+      },
+    });
+
+    const docs = await import$;
+    expect(docs[0].uid).toBe('pic-1');
   });
 });

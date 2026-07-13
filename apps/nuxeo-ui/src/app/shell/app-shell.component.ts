@@ -49,7 +49,7 @@ import {
   SelectionTopbarComponent,
   ConfirmDialogComponent,
   openDocumentCompareDialog,
-  type ConfirmDialogData,
+  trashSelectedDocumentsConfirmData,
 } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
@@ -342,11 +342,7 @@ export class AppShellComponent implements OnDestroy {
     if (count === 0) return;
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: {
-        title: 'Delete Selected Items',
-        message: `Delete ${count} selected item${count === 1 ? '' : 's'}? This action cannot be undone.`,
-        confirmLabel: 'Delete',
-      } as ConfirmDialogData,
+      data: trashSelectedDocumentsConfirmData(count),
     });
 
     dialogRef.afterClosed().subscribe((confirmed) => {

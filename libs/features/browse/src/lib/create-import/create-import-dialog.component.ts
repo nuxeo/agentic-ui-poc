@@ -24,6 +24,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { FormsModule, NgModel } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
 
@@ -41,6 +42,9 @@ import {
   isRepositoryRootPath,
   isRestrictedImportParentPath,
   resolveCreatableSubtypes,
+  resolveImportBlobDocType,
+  titleFromFileName,
+  type ImportFileEntry,
   NOTE_FORMAT_OPTIONS,
   sanitizeDocumentName,
   summarizeCsvImportReport,
@@ -68,6 +72,24 @@ export interface CreateImportDialogResult {
 
 export type DialogTab = 'create' | 'import' | 'csv';
 
+export interface ImportPropertiesState {
+  title: string;
+  description: string;
+  nature: string | null;
+  subjects: string[];
+  coverage: string | null;
+  expires: Date | null;
+  expiresRawText: string;
+}
+
+export interface StagedImportFile {
+  file: File;
+  checked: boolean;
+  docType: string;
+  visited: boolean;
+  state: ImportPropertiesState;
+}
+
 export interface DocTypeDef {
   type: string;
   label: string;
@@ -93,6 +115,39 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 
 function docTypeLabel(type: string): string {
   return DOC_TYPE_LABELS[type] ?? type.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+function defaultImportPropertiesState(file: File): ImportPropertiesState {
+  return {
+    title: titleFromFileName(file.name),
+    description: '',
+    nature: null,
+    subjects: [],
+    coverage: null,
+    expires: null,
+    expiresRawText: '',
+  };
+}
+
+function cloneImportPropertiesState(state: ImportPropertiesState): ImportPropertiesState {
+  return {
+    ...state,
+    subjects: [...state.subjects],
+    expires: state.expires ? new Date(state.expires.getTime()) : null,
+  };
+}
+
+/** Web UI copies metadata to all files but keeps each destination file's own name as title. */
+function applyImportPropertiesTemplate(
+  template: ImportPropertiesState,
+  file: File,
+  keepTemplateTitle: boolean,
+): ImportPropertiesState {
+  const state = cloneImportPropertiesState(template);
+  if (!keepTemplateTitle) {
+    state.title = titleFromFileName(file.name);
+  }
+  return state;
 }
 
 function toDocTypeDefs(types: string[]): DocTypeDef[] {
@@ -125,6 +180,7 @@ const DIALOG_SIZE = {
     MatProgressBarModule,
     MatSnackBarModule,
     MatSlideToggleModule,
+    MatCheckboxModule,
     FormsModule,
   ],
   providers: [provideNativeDateAdapter()],
@@ -133,6 +189,7 @@ const DIALOG_SIZE = {
 })
 export class CreateImportDialogComponent implements OnInit {
   @ViewChild('mainFileInput') mainFileInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('importFileInput') importFileInput?: ElementRef<HTMLInputElement>;
   @ViewChild('expiresInput') expiresNgModel?: NgModel;
 
   private readonly dialogRef = inject(
@@ -180,7 +237,7 @@ export class CreateImportDialogComponent implements OnInit {
   readonly parentPath = signal<string | null>(null);
   readonly pathError = signal<string | null>(null);
 
-  readonly view = signal<'main' | 'templateForm' | 'success'>('main');
+  readonly view = signal<'main' | 'templateForm' | 'importProperties' | 'success'>('main');
   readonly activeTab = signal<DialogTab>('create');
 
   readonly selectedDocType = signal<DocTypeDef | null>(null);
@@ -212,6 +269,10 @@ export class CreateImportDialogComponent implements OnInit {
   expires: Date | null = null;
   expiresRawText = '';
   noteFormat = 'text/html';
+  readonly importDocType = signal('');
+
+  readonly importEntries = signal<StagedImportFile[]>([]);
+  readonly importFileIndex = signal(0);
 
   readonly mainFile = signal<File | null>(null);
   readonly mainFileUploading = signal(false);
@@ -253,6 +314,35 @@ export class CreateImportDialogComponent implements OnInit {
   });
 
   readonly isNoteType = computed(() => this.selectedDocType()?.type === 'Note');
+
+  readonly importBlobTypeOptions = computed(() =>
+    this.creatableTypes().filter((dt) => isBlobHoldingDocType(dt.type)),
+  );
+
+  readonly importBlobTypeNames = computed(() => this.importBlobTypeOptions().map((dt) => dt.type));
+
+  /** Dublin Core metadata fields for blob-holding import types (File, Picture, Audio, Video). */
+  readonly showImportBlobMetadataFields = computed(() => {
+    const type = this.importDocType();
+    return !!type && isBlobHoldingDocType(type);
+  });
+
+  readonly canEditImportPrevious = computed(() => this.importFileIndex() > 0);
+
+  readonly canEditImportNext = computed(
+    () => this.importFileIndex() < this.importEntries().length - 1,
+  );
+
+  readonly hasCheckedImportFiles = computed(() =>
+    this.importEntries().some((entry) => entry.checked),
+  );
+
+  readonly canCreateImportWithProperties = computed(() => this.isImportBatchReadyToCreate());
+
+  readonly currentImportFileLabel = computed(() => {
+    const entry = this.importEntries()[this.importFileIndex()];
+    return entry?.file.name ?? '';
+  });
 
   readonly locationRestricted = computed(
     () =>
@@ -510,8 +600,9 @@ export class CreateImportDialogComponent implements OnInit {
   }
 
   setActiveTab(tab: DialogTab): void {
-    if (this.view() === 'templateForm') {
+    if (this.view() === 'templateForm' || this.view() === 'importProperties') {
       this.resetFormState();
+      this.resetImportPropertiesState();
       this.view.set('main');
     }
     this.activeTab.set(tab);
@@ -570,6 +661,32 @@ export class CreateImportDialogComponent implements OnInit {
     return this.isValidPartialOrCompleteDate(raw);
   }
 
+  /** Type selected and required Dublin Core fields are valid on the current form. */
+  isImportFormComplete(): boolean {
+    return this.showImportBlobMetadataFields() && !!this.docTitle.trim() && this.isExpiresValid();
+  }
+
+  /** Checked batch is ready for Create (form complete and on last file or all checked visited). */
+  isImportBatchReadyToCreate(): boolean {
+    if (!this.hasCheckedImportFiles() || !this.isImportFormComplete()) {
+      return false;
+    }
+    const entries = this.importEntries();
+    const onLast = this.importFileIndex() >= entries.length - 1;
+    const allCheckedVisited = entries
+      .filter((entry) => entry.checked)
+      .every((entry) => entry.visited);
+    return onLast || allCheckedVisited;
+  }
+
+  /** Apply To All is only available on the first file while metadata is still being configured. */
+  canApplyImportToAll(): boolean {
+    if (!this.hasCheckedImportFiles()) return false;
+    if (this.importEntries().length <= 1) return false;
+    if (this.importFileIndex() !== 0) return false;
+    return !this.isImportBatchReadyToCreate();
+  }
+
   onExpiresInput(event: Event): void {
     this.expiresRawText = (event.target as HTMLInputElement).value;
     const ctrl = this.expiresNgModel?.control;
@@ -622,6 +739,20 @@ export class CreateImportDialogComponent implements OnInit {
       return `Uploading file ${progress.fileIndex + 1} of ${progress.fileCount}…`;
     }
     return 'Uploading…';
+  }
+
+  formatFileSize(bytes: number): string {
+    if (!Number.isFinite(bytes) || bytes < 0) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(2)} KB`;
+    const mb = kb / 1024;
+    if (mb < 1024) return `${mb.toFixed(2)} MB`;
+    return `${(mb / 1024).toFixed(2)} GB`;
+  }
+
+  openImportFilePicker(): void {
+    this.importFileInput?.nativeElement.click();
   }
 
   subjectPillLabel(id: string): string {
@@ -755,9 +886,199 @@ export class CreateImportDialogComponent implements OnInit {
 
   goMain(): void {
     this.resetFormState();
+    this.resetImportPropertiesState();
     this.view.set('main');
     this.error.set(null);
     this.contentError.set(null);
+  }
+
+  startImportProperties(): void {
+    if (this.importRestricted()) return;
+    const files = this.uploadFiles();
+    if (files.length === 0) return;
+
+    const allowedTypes = this.importBlobTypeNames();
+    const entries: StagedImportFile[] = files.map((file) => ({
+      file,
+      checked: true,
+      docType: resolveImportBlobDocType(file, allowedTypes),
+      visited: false,
+      state: defaultImportPropertiesState(file),
+    }));
+
+    this.importEntries.set(entries);
+    this.importFileIndex.set(0);
+    this.error.set(null);
+    this.importError.set(null);
+    this.loadImportEntryToForm(0);
+    this.view.set('importProperties');
+  }
+
+  toggleImportFileChecked(index: number, checked: boolean): void {
+    this.importEntries.update((entries) =>
+      entries.map((entry, i) => (i === index ? { ...entry, checked } : entry)),
+    );
+  }
+
+  selectImportFile(index: number): void {
+    if (index === this.importFileIndex()) return;
+    this.saveImportFormToCurrentEntry();
+    this.importFileIndex.set(index);
+    this.loadImportEntryToForm(index);
+  }
+
+  editImportPrevious(): void {
+    if (!this.canEditImportPrevious()) return;
+    this.saveImportFormToCurrentEntry();
+    const nextIndex = this.importFileIndex() - 1;
+    this.importFileIndex.set(nextIndex);
+    this.loadImportEntryToForm(nextIndex);
+  }
+
+  editImportNext(): void {
+    if (!this.canEditImportNext()) return;
+    this.saveImportFormToCurrentEntry();
+    const nextIndex = this.importFileIndex() + 1;
+    this.importFileIndex.set(nextIndex);
+    this.loadImportEntryToForm(nextIndex);
+  }
+
+  applyImportToAll(): void {
+    if (!this.canApplyImportToAll()) return;
+    this.saveImportFormToCurrentEntry();
+    const template = cloneImportPropertiesState(this.readImportFormState());
+    const docType = this.importDocType();
+    this.importEntries.update((entries) =>
+      entries.map((entry, index) =>
+        entry.checked
+          ? {
+              ...entry,
+              docType: docType || entry.docType,
+              visited: true,
+              state: applyImportPropertiesTemplate(template, entry.file, index === 0),
+            }
+          : entry,
+      ),
+    );
+
+    const lastIndex = this.importEntries().length - 1;
+    this.importFileIndex.set(lastIndex);
+    this.loadImportEntryToForm(lastIndex);
+  }
+
+  runImportWithProperties(): void {
+    this.commitLocationInput();
+    if (this.importRestricted()) return;
+    if (!this.canCreateImportWithProperties()) return;
+
+    const path = this.parentPath();
+    if (!path) return;
+
+    this.saveImportFormToCurrentEntry();
+
+    const apiEntries: ImportFileEntry[] = this.importEntries()
+      .filter((entry) => entry.checked)
+      .map((entry) => ({
+        file: entry.file,
+        docType: entry.docType,
+        properties: this.buildPropertiesFromImportState(entry.state),
+      }));
+
+    if (apiEntries.length === 0) return;
+
+    this.busy.set(true);
+    this.error.set(null);
+    this.importError.set(null);
+    this.uploadProgress.set(null);
+
+    this.importService
+      .importFilesWithProperties(path, apiEntries, {
+        onProgress: (progress) => this.uploadProgress.set(progress),
+      })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.busy.set(false);
+          this.uploadProgress.set(null);
+        }),
+      )
+      .subscribe({
+        next: (docs) => {
+          this.snackBar.open(`Created ${docs.length} document(s).`, 'Close', { duration: 4000 });
+          this.dialogRef.close({
+            refreshed: true,
+            path,
+            navigateToUid: docs.length === 1 ? docs[0].uid : undefined,
+          });
+        },
+        error: (err: { error?: { message?: string }; message?: string }) => {
+          this.importError.set(err?.error?.message ?? err?.message ?? 'Create failed');
+        },
+      });
+  }
+
+  private resetImportPropertiesState(): void {
+    this.importEntries.set([]);
+    this.importFileIndex.set(0);
+    this.importDocType.set('');
+  }
+
+  private readImportFormState(): ImportPropertiesState {
+    return {
+      title: this.docTitle,
+      description: this.description,
+      nature: this.nature,
+      subjects: [...this.subjects],
+      coverage: this.coverage,
+      expires: this.expires,
+      expiresRawText: this.expiresRawText,
+    };
+  }
+
+  private saveImportFormToCurrentEntry(): void {
+    const index = this.importFileIndex();
+    const state = this.readImportFormState();
+    this.importEntries.update((entries) => {
+      if (!entries[index]) return entries;
+      const next = [...entries];
+      next[index] = {
+        ...next[index],
+        docType: this.importDocType() || next[index].docType,
+        visited: true,
+        state,
+      };
+      return next;
+    });
+  }
+
+  private loadImportEntryToForm(index: number): void {
+    const entry = this.importEntries()[index];
+    if (!entry) return;
+    this.importDocType.set(entry.docType);
+    this.docTitle = entry.state.title;
+    this.description = entry.state.description;
+    this.nature = entry.state.nature;
+    this.subjects = [...entry.state.subjects];
+    this.coverage = entry.state.coverage;
+    this.expires = entry.state.expires;
+    this.expiresRawText = entry.state.expiresRawText;
+    this.naturePanelSearch = '';
+    this.subjectsPanelSearch = '';
+    this.coveragePanelSearch = '';
+  }
+
+  private buildPropertiesFromImportState(state: ImportPropertiesState): Record<string, unknown> {
+    return {
+      'dc:title': state.title.trim(),
+      'dc:description': state.description.trim() || null,
+      'dc:nature': state.nature || null,
+      'dc:subjects': [...state.subjects],
+      'dc:coverage': state.coverage || null,
+      'dc:expired':
+        state.expires && !Number.isNaN(state.expires.getTime())
+          ? state.expires.toISOString()
+          : null,
+    };
   }
 
   private buildDocumentProperties(title: string): Record<string, unknown> {
@@ -1060,7 +1381,7 @@ export class CreateImportDialogComponent implements OnInit {
       )
       .subscribe({
         next: (docs) => {
-          this.snackBar.open(`Uploaded ${docs.length} file(s).`, 'Close', { duration: 4000 });
+          this.snackBar.open(`Created ${docs.length} file(s).`, 'Close', { duration: 4000 });
           this.dialogRef.close({
             refreshed: true,
             path,
