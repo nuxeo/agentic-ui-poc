@@ -1,12 +1,13 @@
 .voc-page {
   padding: var(--admin-space-4, 1.25rem) var(--admin-space-5, 1.5rem) 2rem;
-  max-width: 960px;
+  max-width: 1200px;
 }
 
 .voc-page__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 
@@ -28,12 +29,39 @@
   margin-bottom: 1rem;
 }
 
+.voc-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin: -0.25rem 0 0.75rem;
+}
+
+.voc-add-entry {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--mat-sys-primary, #1565c0);
+  cursor: pointer;
+}
+
+.voc-add-entry:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.voc-add-entry:disabled {
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.38));
+  cursor: default;
+}
+
 .voc-table-wrap {
   overflow: auto;
 }
 
 .voc-table {
   width: 100%;
+  min-width: 720px;
 }
 
 .voc-empty {
@@ -56,6 +84,20 @@
 .voc-table td.mat-mdc-cell {
   padding-top: var(--admin-row-padding-y, 0.68rem);
   padding-bottom: var(--admin-row-padding-y, 0.68rem);
+  vertical-align: middle;
+}
+
+.voc-table .mat-column-actions {
+  width: 1%;
+  white-space: nowrap;
+  padding-right: 0.25rem;
+}
+
+.voc-row-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0;
 }
 
 @media (max-width: 900px) {

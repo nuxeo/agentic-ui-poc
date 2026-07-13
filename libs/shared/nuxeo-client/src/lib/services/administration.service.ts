@@ -3,23 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap } from 'rxjs';
 
 import { AuditEntry, AuditLogList } from '../models/audit.model';
+import { FALLBACK_DIRECTORY_NAMES } from '../models/directory.model';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoOAuth2Provider } from '../models/oauth.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 
 /** Common directory / vocabulary names when the server does not expose a list endpoint. */
-export const FALLBACK_DIRECTORY_NAMES = [
-  'continent',
-  'country',
-  'eventTypes',
-  'eventCategories',
-  'l10nsubjects',
-  'l10ncoverage',
-  'nature',
-  'subtopic',
-  'oauth2TokenTypes',
-  'language',
-];
+export { FALLBACK_DIRECTORY_NAMES } from '../models/directory.model';
 
 @Injectable({ providedIn: 'root' })
 export class AdministrationService {
@@ -236,19 +226,28 @@ export class AdministrationService {
   }
 
   /**
-   * Tries to discover directory names; falls back to {@link FALLBACK_DIRECTORY_NAMES}.
+   * Tries to discover directory names from the Nuxeo registry; falls back to {@link FALLBACK_DIRECTORY_NAMES}.
    */
   listDirectoryNames(): Observable<string[]> {
     return this.http
       .get<
-        { directoryNames?: string[]; entries?: Array<{ name: string }> } | string[]
-      >(this.api.apiUrl('/nuxeo/api/v1/config/directory'))
+        | string[]
+        | Array<{ name: string }>
+        | { directoryNames?: string[]; entries?: Array<{ name: string }> }
+      >(this.api.apiUrl('/nuxeo/api/v1/directory'))
       .pipe(
         map((res) => {
-          if (Array.isArray(res)) return res as string[];
-          if (res.directoryNames?.length) return res.directoryNames;
-          if (res.entries?.length) return res.entries.map((e) => e.name);
-          return FALLBACK_DIRECTORY_NAMES;
+          if (Array.isArray(res)) {
+            const names = res
+              .map((row) => (typeof row === 'string' ? row : row.name))
+              .filter((name): name is string => !!name);
+            if (names.length) return names;
+          }
+          if (!Array.isArray(res) && res.entries?.length) {
+            return res.entries.map((e) => e.name).filter(Boolean);
+          }
+          if (!Array.isArray(res) && res.directoryNames?.length) return res.directoryNames;
+          return [...FALLBACK_DIRECTORY_NAMES];
         }),
         catchError(() => of([...FALLBACK_DIRECTORY_NAMES])),
       );

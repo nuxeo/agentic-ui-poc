@@ -16,7 +16,29 @@ export type {
 } from './lib/models/content-lake-ingest.model';
 export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
-export type { DirectoryEntry, L10nDirectoryEntry } from './lib/models/directory.model';
+export type {
+  DirectoryEntry,
+  DirectoryEntryRest,
+  DirectoryEntriesResponse,
+  DirectoryMetadata,
+  L10nDirectoryEntry,
+  ManagedDirectoryEntry,
+  VocabularyEntryFormValues,
+} from './lib/models/directory.model';
+export {
+  DEFAULT_VOCABULARY_ORDERING,
+  buildVocabularyTableColumns,
+  defaultVocabularyLabel,
+  directoryEntryDisplayLabel,
+  directoryShowsParentField,
+  directoryUsesL10nLabel,
+  entryPropertiesIncludeParent,
+  getDirectoryMetadata,
+  resolveParentSourceName,
+  vocabularyParentRequired,
+  vocabularySupportsParent,
+  vocabularyTableColumns,
+} from './lib/models/directory.model';
 export type { NuxeoAce, NuxeoAcl } from './lib/models/acl.model';
 export type {
   SearchQueryParams,

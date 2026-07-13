@@ -721,6 +721,57 @@ The `directoryName` parameter varies:
 
 ---
 
+## 12b. Directory — Vocabulary CRUD (Administration)
+
+| Field           | Value                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------- |
+| **Service**     | `DirectoryService` (`libs/shared/nuxeo-client/src/lib/services/directory.service.ts`) |
+| **Methods**     | `getAdminEntries()` / `createEntry()` / `updateEntry()` / `deleteEntry()`             |
+| **HTTP Method** | `GET` / `POST` / `PUT` / `DELETE`                                                     |
+| **Endpoint**    | `/nuxeo/api/v1/directory/{directoryName}` (+ `/{entryId}` for update/delete)          |
+
+**List entries (admin table, includes obsolete):**
+
+```
+GET /nuxeo/api/v1/directory/{directoryName}?pageSize=50&currentPageIndex=0
+```
+
+**Create entry:**
+
+```json
+POST /nuxeo/api/v1/directory/{directoryName}/
+{
+  "entity-type": "directoryEntry",
+  "directoryName": "nature",
+  "properties": {
+    "id": "contract",
+    "label": "Contract",
+    "ordering": 10000000,
+    "obsolete": 0
+  }
+}
+```
+
+**Update entry:**
+
+```
+PUT /nuxeo/api/v1/directory/{directoryName}/{entryId}
+```
+
+**Delete entry:**
+
+```
+DELETE /nuxeo/api/v1/directory/{directoryName}/{entryId}
+```
+
+L10n directories (`l10nsubjects`, `l10ncoverage`) use `label_en` instead of `label` and may include a `parent` property for hierarchical entries.
+
+**Used by:**
+
+- **Administration → Vocabularies** (`libs/features/administration/src/lib/admin-vocabularies-page/`)
+
+---
+
 ## 13. Publishing — Get Published Versions (Proxies)
 
 | Field           | Value                                                                                            |

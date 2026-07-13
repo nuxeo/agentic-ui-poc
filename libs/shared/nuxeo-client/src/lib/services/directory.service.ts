@@ -1,12 +1,21 @@
 import { HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, shareReplay, expand, reduce, EMPTY } from 'rxjs';
+import { Observable, EMPTY, catchError, expand, map, of, reduce, shareReplay, tap } from 'rxjs';
 
 import { NuxeoApiBase } from './nuxeo-api-base';
 import {
+  DEFAULT_VOCABULARY_ORDERING,
+  DirectoryEntriesResponse,
   DirectoryEntry,
-  L10nDirectoryResponse,
+  DirectoryEntryRest,
+  DirectoryMetadata,
+  FALLBACK_DIRECTORY_NAMES,
   L10nDirectoryEntry,
+  L10nDirectoryResponse,
+  ManagedDirectoryEntry,
+  VocabularyEntryFormValues,
+  directoryUsesL10nLabel,
+  resolveParentSourceName,
 } from '../models/directory.model';
 
 @Injectable({ providedIn: 'root' })
@@ -14,6 +23,64 @@ export class DirectoryService {
   private readonly api = inject(NuxeoApiBase);
   private readonly cache = new Map<string, Observable<DirectoryEntry[]>>();
   private readonly l10nCache = new Map<string, Observable<L10nDirectoryEntry[]>>();
+  private catalog$?: Observable<Map<string, DirectoryMetadata>>;
+
+  /** Nuxeo directory registry (name → metadata including parent vocabulary). */
+  getDirectoryCatalog(): Observable<Map<string, DirectoryMetadata>> {
+    if (!this.catalog$) {
+      this.catalog$ = this.fetchDirectoryCatalog().pipe(
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+    }
+    return this.catalog$;
+  }
+
+  /** Directory names from the Nuxeo registry (Web UI parity), with static fallback. */
+  listDirectoryNames(): Observable<string[]> {
+    return this.getDirectoryCatalog().pipe(
+      map((catalog) => {
+        const names = [...catalog.keys()].sort((a, b) => a.localeCompare(b));
+        return names.length ? names : [...FALLBACK_DIRECTORY_NAMES];
+      }),
+    );
+  }
+
+  invalidateDirectoryCatalog(): void {
+    this.catalog$ = undefined;
+  }
+
+  private fetchDirectoryCatalog(): Observable<Map<string, DirectoryMetadata>> {
+    return this.api.get<DirectoryCatalogResponse>('/nuxeo/api/v1/directory').pipe(
+      map((res) => this.parseDirectoryCatalog(res)),
+      catchError(() => {
+        this.catalog$ = undefined;
+        return of(new Map<string, DirectoryMetadata>());
+      }),
+    );
+  }
+
+  private parseDirectoryCatalog(res: DirectoryCatalogResponse): Map<string, DirectoryMetadata> {
+    const rows = this.extractDirectoryCatalogRows(res);
+    const catalog = new Map<string, DirectoryMetadata>();
+    for (const row of rows) {
+      const name = row.name;
+      if (!name) continue;
+      catalog.set(name, {
+        name,
+        schema: row.schema,
+        idField: row.idField,
+        parentDirectory: row.parent || row.parentDirectory || undefined,
+      });
+    }
+    return catalog;
+  }
+
+  private extractDirectoryCatalogRows(res: DirectoryCatalogResponse): DirectoryMetadataRest[] {
+    if (Array.isArray(res)) return res;
+    if (res.entries?.length) return res.entries;
+    if (res.directories?.length) return res.directories;
+    return [];
+  }
 
   getEntries(directoryName: string): Observable<DirectoryEntry[]> {
     const cached = this.cache.get(directoryName);
@@ -43,6 +110,102 @@ export class DirectoryService {
 
     this.cache.set(directoryName, result$);
     return result$;
+  }
+
+  /**
+   * Loads all directory entries for the admin vocabularies table (includes obsolete entries).
+   */
+  getAdminEntries(directoryName: string): Observable<ManagedDirectoryEntry[]> {
+    const fetchPage = (pageIndex: number) => {
+      const params = new HttpParams()
+        .set('pageSize', '50')
+        .set('currentPageIndex', String(pageIndex));
+      return this.api.get<DirectoryEntriesResponse>(
+        `/nuxeo/api/v1/directory/${encodeURIComponent(directoryName)}`,
+        params,
+      );
+    };
+
+    return fetchPage(0).pipe(
+      expand((res) => (res.isNextPageAvailable ? fetchPage(res.currentPageIndex + 1) : EMPTY)),
+      reduce<DirectoryEntriesResponse, DirectoryEntryRest[]>(
+        (acc, res) => acc.concat(res.entries ?? []),
+        [],
+      ),
+      map((entries) =>
+        entries
+          .map((entry) => this.normalizeAdminEntry(directoryName, entry))
+          .sort((a, b) => a.ordering - b.ordering || a.label.localeCompare(b.label)),
+      ),
+    );
+  }
+
+  createEntry(
+    directoryName: string,
+    values: VocabularyEntryFormValues,
+    metadata?: DirectoryMetadata,
+  ): Observable<ManagedDirectoryEntry> {
+    const body = {
+      'entity-type': 'directoryEntry',
+      directoryName,
+      properties: this.buildEntryProperties(directoryName, values, metadata),
+    };
+
+    return this.api
+      .post<DirectoryEntryRest>(
+        `/nuxeo/api/v1/directory/${encodeURIComponent(directoryName)}/`,
+        body,
+        { 'Content-Type': 'application/json' },
+      )
+      .pipe(
+        map((entry) => this.normalizeAdminEntry(directoryName, entry)),
+        tap(() => this.invalidateCache(directoryName)),
+      );
+  }
+
+  updateEntry(
+    directoryName: string,
+    entryId: string,
+    values: VocabularyEntryFormValues,
+    metadata?: DirectoryMetadata,
+  ): Observable<ManagedDirectoryEntry> {
+    const body = {
+      'entity-type': 'directoryEntry',
+      directoryName,
+      id: entryId,
+      properties: this.buildEntryProperties(directoryName, values, metadata),
+    };
+
+    return this.api
+      .put<DirectoryEntryRest>(
+        `/nuxeo/api/v1/directory/${encodeURIComponent(directoryName)}/${encodeURIComponent(entryId)}`,
+        body,
+        { 'Content-Type': 'application/json' },
+      )
+      .pipe(
+        map((entry) => this.normalizeAdminEntry(directoryName, entry)),
+        tap(() => this.invalidateCache(directoryName)),
+      );
+  }
+
+  deleteEntry(directoryName: string, entryId: string): Observable<void> {
+    return this.api
+      .delete<void>(
+        `/nuxeo/api/v1/directory/${encodeURIComponent(directoryName)}/${encodeURIComponent(entryId)}`,
+      )
+      .pipe(
+        tap(() => this.invalidateCache(directoryName)),
+        map(() => undefined),
+      );
+  }
+
+  invalidateCache(directoryName: string): void {
+    this.cache.delete(directoryName);
+    for (const key of this.l10nCache.keys()) {
+      if (key.startsWith(`${directoryName}:`)) {
+        this.l10nCache.delete(key);
+      }
+    }
   }
 
   /**
@@ -108,4 +271,65 @@ export class DirectoryService {
   getEventCategories(): Observable<DirectoryEntry[]> {
     return this.getEntries('eventCategories');
   }
+
+  private normalizeAdminEntry(
+    directoryName: string,
+    entry: DirectoryEntryRest,
+  ): ManagedDirectoryEntry {
+    const properties = entry.properties ?? {};
+    const propertyKeys = Object.keys(properties);
+    const l10n = directoryUsesL10nLabel(directoryName);
+    const parentValue = properties['parent'];
+    const parent =
+      parentValue !== undefined && parentValue !== null && String(parentValue) !== ''
+        ? String(parentValue)
+        : undefined;
+    return {
+      id: entry.id ?? String(properties['id'] ?? ''),
+      directoryName,
+      label: l10n
+        ? String(properties['label_en'] ?? properties['label'] ?? entry.id)
+        : String(properties['label'] ?? entry.id),
+      ordering: Number(properties['ordering'] ?? DEFAULT_VOCABULARY_ORDERING),
+      obsolete: Number(properties['obsolete'] ?? 0) === 1,
+      parent,
+      propertyKeys,
+    };
+  }
+
+  private buildEntryProperties(
+    directoryName: string,
+    values: VocabularyEntryFormValues,
+    metadata?: DirectoryMetadata,
+  ): Record<string, string | number> {
+    const properties: Record<string, string | number> = {
+      id: values.id.trim(),
+      ordering: values.ordering,
+      obsolete: values.obsolete ? 1 : 0,
+    };
+
+    if (directoryUsesL10nLabel(directoryName)) {
+      properties['label_en'] = values.label.trim();
+    } else {
+      properties['label'] = values.label.trim();
+    }
+
+    if (resolveParentSourceName(directoryName, metadata) || values.parent !== undefined) {
+      properties['parent'] = values.parent?.trim() ?? '';
+    }
+
+    return properties;
+  }
 }
+
+interface DirectoryMetadataRest {
+  name: string;
+  schema?: string;
+  idField?: string;
+  parent?: string;
+  parentDirectory?: string;
+}
+
+type DirectoryCatalogResponse =
+  | DirectoryMetadataRest[]
+  | { entries?: DirectoryMetadataRest[]; directories?: DirectoryMetadataRest[] };
