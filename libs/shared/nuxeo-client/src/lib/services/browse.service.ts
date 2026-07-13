@@ -12,7 +12,7 @@ import {
   reduce,
   forkJoin,
 } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
