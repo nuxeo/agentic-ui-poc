@@ -12,7 +12,7 @@ import {
   reduce,
   forkJoin,
 } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, switchMap } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
@@ -397,7 +397,14 @@ export class BrowseService {
                 })
                 .pipe(catchError(() => of(null))),
             ),
-          ).pipe(map((results) => results.filter((doc): doc is NuxeoDocument => doc !== null))),
+          ).pipe(
+            map((results) => results.filter((doc): doc is NuxeoDocument => doc !== null)),
+            switchMap((results) =>
+              results.length === 0
+                ? throwError(() => new Error('All clipboard documents failed'))
+                : of(results),
+            ),
+          ),
         ),
       );
   }

@@ -14,6 +14,7 @@ export class SelectionService {
   readonly selectedIds = signal<Set<string>>(new Set());
   readonly selectedLabels = signal<Map<string, string>>(new Map());
   readonly selectedPreviews = signal<Map<string, SelectionPreview>>(new Map());
+  readonly selectedTypes = signal<Map<string, string>>(new Map());
 
   readonly selectedCount = () => this.selectedIds().size;
   readonly selectedItems = () =>
@@ -21,9 +22,10 @@ export class SelectionService {
       id,
       name: this.selectedLabels().get(id) ?? id,
       preview: this.selectedPreviews().get(id) ?? null,
+      type: this.selectedTypes().get(id),
     }));
 
-  toggle(id: string, label?: string, preview?: SelectionPreview): void {
+  toggle(id: string, label?: string, preview?: SelectionPreview, type?: string): void {
     this.selectedIds.update((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -50,12 +52,24 @@ export class SelectionService {
       }
       return next;
     });
+
+    this.selectedTypes.update((current) => {
+      const next = new Map(current);
+      if (this.selectedIds().has(id)) {
+        if (type) next.set(id, type);
+        else next.delete(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
   }
 
   selectAll(
     ids: string[],
     labels?: Record<string, string>,
     previews?: Record<string, SelectionPreview>,
+    types?: Record<string, string>,
   ): void {
     this.selectedIds.set(new Set(ids));
     this.selectedLabels.update((current) => {
@@ -70,6 +84,15 @@ export class SelectionService {
       const next = new Map<string, SelectionPreview>();
       ids.forEach((id) => {
         next.set(id, previews?.[id] ?? current.get(id) ?? null);
+      });
+      return next;
+    });
+
+    this.selectedTypes.update((current) => {
+      const next = new Map<string, string>();
+      ids.forEach((id) => {
+        const docType = types?.[id] ?? current.get(id);
+        if (docType) next.set(id, docType);
       });
       return next;
     });
@@ -91,6 +114,7 @@ export class SelectionService {
     this.selectedIds.set(new Set());
     this.selectedLabels.set(new Map());
     this.selectedPreviews.set(new Map());
+    this.selectedTypes.set(new Map());
   }
 
   deleteSelected(): Observable<NuxeoDocument[]> {

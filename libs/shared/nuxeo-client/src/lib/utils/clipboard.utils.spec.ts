@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { NuxeoDocument } from '../models/document.model';
-import { canPasteClipboard, type ClipboardDoc } from './clipboard.utils';
+import {
+  canPasteClipboard,
+  CLIPBOARD_STORAGE_KEY,
+  readClipboardDocs,
+  type ClipboardDoc,
+} from './clipboard.utils';
 
 function folderWithSubtypes(types: string[]): NuxeoDocument {
   return {
@@ -15,6 +20,21 @@ function folderWithSubtypes(types: string[]): NuxeoDocument {
     },
   };
 }
+
+describe('readClipboardDocs', () => {
+  afterEach(() => localStorage.removeItem(CLIPBOARD_STORAGE_KEY));
+
+  it('filters out entries with non-string type', () => {
+    localStorage.setItem(
+      CLIPBOARD_STORAGE_KEY,
+      JSON.stringify([
+        { uid: 'a', title: 'A', type: 'File' },
+        { uid: 'b', title: 'B', type: 123 },
+      ]),
+    );
+    expect(readClipboardDocs()).toEqual([{ uid: 'a', title: 'A', type: 'File' }]);
+  });
+});
 
 describe('canPasteClipboard', () => {
   const items: ClipboardDoc[] = [{ uid: 'a', title: 'Doc A', type: 'File' }];

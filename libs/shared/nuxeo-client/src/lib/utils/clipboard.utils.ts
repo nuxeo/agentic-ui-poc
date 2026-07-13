@@ -20,7 +20,9 @@ export function readClipboardDocs(): ClipboardDoc[] {
             typeof item === 'object' &&
             item !== null &&
             typeof (item as ClipboardDoc).uid === 'string' &&
-            typeof (item as ClipboardDoc).title === 'string',
+            typeof (item as ClipboardDoc).title === 'string' &&
+            ((item as ClipboardDoc).type === undefined ||
+              typeof (item as ClipboardDoc).type === 'string'),
         )
       : [];
   } catch {

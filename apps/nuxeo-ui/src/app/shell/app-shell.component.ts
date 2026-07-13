@@ -410,7 +410,11 @@ export class AppShellComponent implements OnDestroy {
     const existing = new Set(current.map((item) => item.uid));
     const additions = selected
       .filter((item) => !existing.has(item.id))
-      .map((item) => ({ uid: item.id, title: item.name }));
+      .map((item) => ({
+        uid: item.id,
+        title: item.name,
+        ...(item.type ? { type: item.type } : {}),
+      }));
 
     const updated = [...current, ...additions];
     writeClipboardDocs(updated);

@@ -888,7 +888,17 @@ export class NavDrawerComponent {
       )
       .subscribe({
         next: (results) => {
-          const count = results.length || uids.length;
+          if (results.length === 0) {
+            this.snackBar.open(
+              action === 'copy'
+                ? 'Failed to copy clipboard items.'
+                : 'Failed to move clipboard items.',
+              'Dismiss',
+              { duration: 4000 },
+            );
+            return;
+          }
+          const count = results.length;
           this.clearClipboard();
           window.dispatchEvent(new Event('clipboard-action-performed'));
           const verb = action === 'copy' ? 'Copied' : 'Moved';
