@@ -114,7 +114,12 @@ describe('BrowseComponent', () => {
 
     component.toggleSelection('doc-1');
 
-    expect(mockSelectionService.toggle).toHaveBeenCalledWith('doc-1', 'Quarterly Report', null);
+    expect(mockSelectionService.toggle).toHaveBeenCalledWith(
+      'doc-1',
+      'Quarterly Report',
+      null,
+      'File',
+    );
   });
 
   it('selectionAriaLabel includes document title for checkbox accessibility', () => {
