@@ -3,7 +3,7 @@
  * "Properties Panel — File Name field is redundant for Note documents"
  *
  * Run with:
- *   NUXEO_DOC_UID=5b3fa9d1-9b2c-418e-a491-39890b9b3800 npm run evidence:collect -- NXSAT-190 scripts/collect-evidence/NXSAT-190.mjs
+ *   NUXEO_DOC_UID=<note-doc-uid> npm run evidence:collect -- NXSAT-190 scripts/collect-evidence/NXSAT-190.mjs
  *
  * Set NUXEO_FILE_DOC_UID to a File document for comparison (optional).
  */
@@ -12,8 +12,16 @@
 export default async function collectEvidence(page, helpers, _outDir) {
   await helpers.login();
 
-  const noteUid = process.env['NUXEO_DOC_UID'] ?? '5b3fa9d1-9b2c-418e-a491-39890b9b3800';
+  const noteUid = process.env['NUXEO_DOC_UID'];
   const fileUid = process.env['NUXEO_FILE_DOC_UID'];
+
+  if (!noteUid) {
+    console.warn(
+      '\n⚠️  NUXEO_DOC_UID not set — skipping document-specific evidence steps.\n' +
+        '   Set it to a Note document UID and re-run.\n',
+    );
+    return;
+  }
 
   // ── Note document: File Name should be hidden ─────────────────────────────
   helpers.step(`Navigate to Note document ${noteUid}`);

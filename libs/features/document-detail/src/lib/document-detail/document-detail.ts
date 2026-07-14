@@ -497,7 +497,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly isNoteDocument = computed(() => this.doc()?.type === 'Note');
-  readonly hasMainFileBlob = computed(() => {
+  readonly hasPersistedMainBlob = computed(() => {
     const d = this.doc();
     return d ? documentHasPersistedMainBlob(d) : false;
   });

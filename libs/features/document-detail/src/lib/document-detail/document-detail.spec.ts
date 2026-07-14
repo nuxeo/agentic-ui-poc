@@ -238,7 +238,7 @@ describe('DocumentDetailComponent', () => {
     it('hides File Name for Note documents without a file blob', () => {
       component.doc.set(NOTE_DOC);
 
-      expect(component.hasMainFileBlob()).toBe(false);
+      expect(component.hasPersistedMainBlob()).toBe(false);
     });
 
     it('shows File Name when file:content has a persisted blob', () => {
@@ -254,7 +254,7 @@ describe('DocumentDetailComponent', () => {
         },
       });
 
-      expect(component.hasMainFileBlob()).toBe(true);
+      expect(component.hasPersistedMainBlob()).toBe(true);
       expect(component.fileName()).toBe('File_loremIpsum-5.pdf');
     });
   });
