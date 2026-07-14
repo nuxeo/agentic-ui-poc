@@ -142,6 +142,11 @@ export class NavDrawerComponent {
   private expiredLoaded = false;
 
   private readonly destroyRef = inject(DestroyRef);
+  /** Tracks which user the drawer caches belong to — cleared on sign-out or user switch. */
+  private drawerSessionUser: string | null = null;
+  private browseTreeLoadedForUser: string | null = null;
+  /** Bumped on user switch / refresh so stale HTTP responses cannot overwrite the tree. */
+  private browseTreeLoadGen = 0;
 
   constructor() {
     // Dynamically load drawer components to avoid static import of lazy-loaded libraries
@@ -152,9 +157,23 @@ export class NavDrawerComponent {
       .subscribe(() => this.loadTasks());
 
     effect(() => {
+      const username = this.authService.username() ?? null;
+      if (username !== this.drawerSessionUser) {
+        this.clearUserScopedDrawerCaches();
+        this.drawerSessionUser = username;
+      }
+    });
+
+    effect(() => {
       const item = this.activeItem();
-      if (item?.path === '/browse' && this.rootNodes().length === 0) {
-        this.loadRootTree();
+      const username = this.authService.username();
+      if (item?.path === '/browse' && username) {
+        const needsReload =
+          this.browseTreeLoadedForUser !== username || this.rootNodes().length === 0;
+        if (needsReload) {
+          this.browseTreeLoadedForUser = username;
+          this.loadRootTree();
+        }
       }
       if (item?.path === '/collections' && !this.collectionsLoaded) {
         this.loadCollections();
@@ -496,6 +515,8 @@ export class NavDrawerComponent {
   // ── Browse tree ──
 
   private loadRootTree(): void {
+    const loadGen = ++this.browseTreeLoadGen;
+    const username = this.authService.username();
     this.rootLoading.set(true);
 
     this.browseService
@@ -503,6 +524,9 @@ export class NavDrawerComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ root: rootDoc, entries }) => {
+          if (loadGen !== this.browseTreeLoadGen || username !== this.authService.username()) {
+            return;
+          }
           const rootNode: FolderNode = {
             doc: rootDoc,
             children: [],
@@ -514,44 +538,57 @@ export class NavDrawerComponent {
           this.rootNodes.set([rootNode]);
           this.rootLoading.set(false);
 
-          const topNodes = this.toFolderNodes(entries);
+          const topNodes = this.toFolderNodes(entries.filter((entry) => entry.type === 'Domain'));
           rootNode.children = topNodes;
           rootNode.loaded = true;
           rootNode.loading = false;
-
-          const topNode = topNodes[0];
-          if (topNode) {
-            topNode.expanded = true;
-            topNode.loading = true;
-            this.rootNodes.update((n) => [...n]);
-
-            this.browseService
-              .getNavTreeChildren(topNode.doc)
-              .pipe(takeUntilDestroyed(this.destroyRef))
-              .subscribe({
-                next: (topNodeRes) => {
-                  topNode.children = this.toFolderNodes(topNodeRes.entries);
-                  topNode.loaded = true;
-                  topNode.loading = false;
-                  this.rootNodes.update((n) => [...n]);
-                  this.prefetchChildStatus(topNode.children);
-                },
-                error: () => {
-                  topNode.loading = false;
-                  topNode.loaded = true;
-                  this.rootNodes.update((n) => [...n]);
-                },
-              });
-          } else {
-            this.rootNodes.update((n) => [...n]);
-          }
+          this.rootNodes.update((n) => [...n]);
         },
-        error: () => this.rootLoading.set(false),
+        error: () => {
+          if (loadGen !== this.browseTreeLoadGen || username !== this.authService.username()) {
+            return;
+          }
+          this.rootLoading.set(false);
+        },
       });
   }
 
   refreshBrowseTree(): void {
+    this.browseTreeLoadGen++;
+    this.browseTreeLoadedForUser = null;
+    this.rootNodes.set([]);
+    const username = this.authService.username();
+    if (username) {
+      this.browseTreeLoadedForUser = username;
+    }
     this.loadRootTree();
+  }
+
+  private clearUserScopedDrawerCaches(): void {
+    this.browseTreeLoadGen++;
+    this.browseTreeLoadedForUser = null;
+    this.rootNodes.set([]);
+    this.rootLoading.set(false);
+    this.collectionsLoaded = false;
+    this.collections.set([]);
+    this.collectionsLoading.set(false);
+    this.recentlyViewedLoaded = false;
+    this.recentlyViewed.set([]);
+    this.recentlyViewedLoading.set(false);
+    this.recentlyViewedError.set(null);
+    this.expiredLoaded = false;
+    this.expiredDocs.set([]);
+    this.expiredLoading.set(false);
+    this.expiredError.set(null);
+    this.personalSpaceLoaded = false;
+    this.personalSpaceNodes.set([]);
+    this.personalSpaceLoading.set(false);
+    this.personalSpaceError.set(null);
+    this.favorites.set([]);
+    this.favoritesLoading.set(false);
+    this.tasks.set([]);
+    this.tasksLoading.set(false);
+    this.tasksError.set(null);
   }
 
   refreshPersonalSpaceTree(): void {

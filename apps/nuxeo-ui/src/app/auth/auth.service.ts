@@ -322,6 +322,11 @@ export class AuthService {
    * Validates credentials against Nuxeo (`GET /nuxeo/api/v1/me`).
    */
   login(username: string, password: string, remember: boolean): Observable<void> {
+    // Drop any prior session so Nuxeo requests use only the new credentials.
+    this.state.set(null);
+    this.clearStorage();
+    this.hydration$ = null;
+
     const trimmed = username.trim();
     const basic = btoa(`${trimmed}:${password}`);
     const headers = new HttpHeaders({
