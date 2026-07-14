@@ -286,6 +286,7 @@ stageFileInBatch(file, options?): Observable<StagedBatchFile>
 createDocumentWithBlob(...): Observable<NuxeoDocument>
 createFileFromBatch(...): Observable<NuxeoDocument>
 importFiles(parentPath, files, options?): Observable<NuxeoDocument[]>
+importFilesWithProperties(parentPath, entries: ImportFileEntry[], options?): Observable<NuxeoDocument[]>
 importCsvFile(options: CsvServerImportOptions): Observable<string>
 importFromCsvText(parentPath: string, csvText: string): Observable<CsvImportResult>
 ```
@@ -294,6 +295,9 @@ Exported helpers from the same module (not class methods):
 
 ```typescript
 isBlobHoldingDocType(docType: string): boolean
+inferBlobDocTypeFromFile(file: File): string
+resolveImportBlobDocType(file: File, allowedTypes: readonly string[]): string
+titleFromFileName(fileName: string): string
 documentHasMainBlob(doc: NuxeoDocument): boolean
 BLOB_HOLDING_DOC_TYPES: ReadonlySet<string>
 ```

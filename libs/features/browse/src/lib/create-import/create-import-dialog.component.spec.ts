@@ -40,6 +40,7 @@ const mockImportService = {
   createBlobHoldingDocument: vi.fn(),
   createChildDocument: vi.fn(),
   importFiles: vi.fn(() => of([])),
+  importFilesWithProperties: vi.fn(() => of([])),
   importCsvFile: vi.fn(() => of('<p>Imported 2 documents</p>')),
 };
 
@@ -291,6 +292,210 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
   });
 });
 
+describe('CreateImportDialogComponent import with properties (NXSAT-185)', () => {
+  let component: CreateImportDialogComponent;
+  let fixture: ComponentFixture<CreateImportDialogComponent>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await TestBed.configureTestingModule({
+      imports: [CreateImportDialogComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: MAT_DIALOG_DATA, useValue: { parentPath: PARENT_PATH } },
+        { provide: DocumentImportService, useValue: mockImportService },
+        { provide: BrowseService, useValue: mockBrowseService },
+        { provide: DirectoryService, useValue: mockDirectoryService },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      ],
+    })
+      .overrideComponent(CreateImportDialogComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
+
+    fixture = TestBed.createComponent(CreateImportDialogComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await flushAsync();
+  });
+
+  it('startImportProperties opens wizard with inferred Picture type for png', async () => {
+    component.uploadFiles.set([jpegFile('photo.png')]);
+    component.startImportProperties();
+
+    expect(component.view()).toBe('importProperties');
+    expect(component.importEntries()).toHaveLength(1);
+    expect(component.importEntries()[0].docType).toBe('Picture');
+    expect(component.importDocType()).toBe('Picture');
+    expect(component.docTitle).toBe('photo');
+  });
+
+  it('close dismisses the dialog from import properties view', async () => {
+    component.uploadFiles.set([jpegFile('photo.png')]);
+    component.startImportProperties();
+
+    component.close();
+
+    expect(mockDialogRef.close).toHaveBeenCalledWith();
+  });
+
+  it('editImportNext advances and marks previous file visited', async () => {
+    component.uploadFiles.set([jpegFile('a.png'), jpegFile('b.png')]);
+    component.startImportProperties();
+    component.docTitle = 'Alpha';
+
+    component.editImportNext();
+
+    expect(component.importFileIndex()).toBe(1);
+    expect(component.importEntries()[0].visited).toBe(true);
+    expect(component.importEntries()[0].state.title).toBe('Alpha');
+    expect(component.docTitle).toBe('b');
+  });
+
+  it('editImportPrevious is blocked on the first file', async () => {
+    component.uploadFiles.set([jpegFile('a.png'), jpegFile('b.png')]);
+    component.startImportProperties();
+
+    expect(component.canEditImportPrevious()).toBe(false);
+    component.editImportPrevious();
+    expect(component.importFileIndex()).toBe(0);
+  });
+
+  it('applyImportToAll copies metadata but preserves each file title (Web UI parity)', async () => {
+    component.uploadFiles.set([jpegFile('a.png'), jpegFile('b.png'), jpegFile('c.png')]);
+    component.startImportProperties();
+    component.docTitle = 'Shared title';
+    component.description = 'Shared description';
+    component.toggleImportFileChecked(1, false);
+
+    component.applyImportToAll();
+
+    expect(component.importEntries()[0].state.title).toBe('Shared title');
+    expect(component.importEntries()[0].state.description).toBe('Shared description');
+    expect(component.importEntries()[1].state.title).toBe('b');
+    expect(component.importEntries()[2].state.title).toBe('c');
+    expect(component.importEntries()[2].state.description).toBe('Shared description');
+    expect(component.importFileIndex()).toBe(2);
+    expect(component.docTitle).toBe('c');
+  });
+
+  it('disables Apply To All once required metadata is filled for the batch', async () => {
+    component.uploadFiles.set([jpegFile('a.png'), jpegFile('b.png')]);
+    component.startImportProperties();
+
+    expect(component.canApplyImportToAll()).toBe(true);
+
+    component.applyImportToAll();
+    expect(component.canApplyImportToAll()).toBe(false);
+    expect(component.isImportBatchReadyToCreate()).toBe(true);
+  });
+
+  it('disables Apply To All on the last file when form is complete', async () => {
+    component.uploadFiles.set([jpegFile('a.png'), jpegFile('b.png')]);
+    component.startImportProperties();
+    component.editImportNext();
+
+    expect(component.canApplyImportToAll()).toBe(false);
+    expect(component.isImportBatchReadyToCreate()).toBe(true);
+  });
+
+  it('disables Apply To All when only one file is staged', async () => {
+    component.uploadFiles.set([jpegFile('a.png')]);
+    component.startImportProperties();
+
+    expect(component.canApplyImportToAll()).toBe(false);
+  });
+
+  it('runImportWithProperties sends per-file titles after applyImportToAll', async () => {
+    mockImportService.importFilesWithProperties.mockReturnValue(of([]));
+    component.uploadFiles.set([jpegFile('a.png'), jpegFile('b.png')]);
+    component.startImportProperties();
+    component.docTitle = 'Custom first';
+    component.description = 'Shared description';
+    component.applyImportToAll();
+    component.runImportWithProperties();
+    await flushAsync();
+
+    const entries = mockImportService.importFilesWithProperties.mock.calls[0][1] as Array<{
+      properties: Record<string, unknown>;
+    }>;
+    expect(entries[0].properties['dc:title']).toBe('Custom first');
+    expect(entries[1].properties['dc:title']).toBe('b');
+    expect(entries[0].properties['dc:description']).toBe('Shared description');
+    expect(entries[1].properties['dc:description']).toBe('Shared description');
+  });
+
+  it('runImportWithProperties sends checked entries with metadata', async () => {
+    const created = {
+      uid: 'doc-import-1',
+      title: 'My photo',
+      type: 'Picture',
+      path: `${PARENT_PATH}/photo`,
+      properties: {},
+    };
+    mockImportService.importFilesWithProperties.mockReturnValue(of([created]));
+
+    component.uploadFiles.set([jpegFile('photo.png')]);
+    component.startImportProperties();
+    component.docTitle = 'My photo';
+    component.description = 'A picture';
+    component.nature = 'article';
+    component.importFileIndex.set(0);
+
+    component.runImportWithProperties();
+    await flushAsync();
+
+    expect(mockImportService.importFilesWithProperties).toHaveBeenCalledWith(
+      PARENT_PATH,
+      [
+        expect.objectContaining({
+          docType: 'Picture',
+          properties: expect.objectContaining({
+            'dc:title': 'My photo',
+            'dc:description': 'A picture',
+            'dc:nature': 'article',
+          }),
+        }),
+      ],
+      expect.any(Object),
+    );
+    expect(mockDialogRef.close).toHaveBeenCalledWith(
+      expect.objectContaining({ navigateToUid: 'doc-import-1' }),
+    );
+  });
+
+  it('excludes unchecked files from runImportWithProperties', async () => {
+    mockImportService.importFilesWithProperties.mockReturnValue(of([]));
+    component.uploadFiles.set([jpegFile('a.png'), jpegFile('b.png')]);
+    component.startImportProperties();
+    component.toggleImportFileChecked(1, false);
+    component.editImportNext();
+    component.runImportWithProperties();
+    await flushAsync();
+
+    const entries = mockImportService.importFilesWithProperties.mock.calls[0][1] as unknown[];
+    expect(entries).toHaveLength(1);
+    expect((entries[0] as { file: File }).file.name).toBe('a.png');
+  });
+
+  it('formats staged file sizes for the import cards', () => {
+    expect(component.formatFileSize(42875)).toBe('41.87 KB');
+    expect(component.formatFileSize(0)).toBe('0 B');
+  });
+
+  it('shows metadata fields only when a blob type is selected', async () => {
+    component.uploadFiles.set([jpegFile('photo.png')]);
+    component.startImportProperties();
+    expect(component.showImportBlobMetadataFields()).toBe(true);
+
+    component.importDocType.set('');
+    expect(component.showImportBlobMetadataFields()).toBe(false);
+    expect(component.canCreateImportWithProperties()).toBe(false);
+  });
+});
+
 describe('CreateImportDialogComponent CSV', () => {
   let fixture: ComponentFixture<CreateImportDialogComponent>;
   let component: CreateImportDialogComponent;
@@ -350,6 +555,28 @@ describe('CreateImportDialogComponent CSV', () => {
     await createDialog({ parentPath: '/default-domain/workspaces/demo' });
     expect(component.csvImportRestricted()).toBe(false);
     expect(component.importRestricted()).toBe(false);
+  });
+
+  it('shows staged import cards and action buttons only after files are selected', async () => {
+    await createDialog({ parentPath: '/default-domain/workspaces/demo' });
+    component.setActiveTab('import');
+    fixture.detectChanges();
+
+    let el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.btn-add-properties')).toBeFalsy();
+    expect(el.textContent).not.toContain('Add more files');
+
+    component.uploadFiles.set([new File(['x'], 'Console error.png', { type: 'image/png' })]);
+    fixture.detectChanges();
+
+    el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Console error.png');
+    expect(el.textContent).toContain('Add more files');
+    expect(el.querySelector('.btn-add-properties')).toBeTruthy();
+    const footerCreate = [...el.querySelectorAll('mat-dialog-actions button')].find(
+      (button) => button.textContent?.trim() === 'Create',
+    );
+    expect(footerCreate).toBeTruthy();
   });
 
   it('switches to CSV tab and shows Web UI options', async () => {

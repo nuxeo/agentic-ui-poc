@@ -85,7 +85,8 @@ import {
   ExportDialogData,
   ExportType,
   ConfirmDialogComponent,
-  ConfirmDialogData,
+  trashDocumentConfirmData,
+  trashSelectedDocumentsConfirmData,
 } from '@agentic-ui/shared/ui';
 
 import {
@@ -978,6 +979,12 @@ export class BrowseComponent {
   }
 
   deleteDocument(): void {
+    const selectedCount = this.selectionService.selectedCount();
+    if (selectedCount > 0) {
+      this.deleteSelectedDocuments();
+      return;
+    }
+
     const doc = this.currentDoc();
     if (!doc) return;
     if (!canRemoveDocument(doc)) {
@@ -986,11 +993,7 @@ export class BrowseComponent {
     }
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: {
-        title: 'Move to Trash',
-        message: `Move "${doc.title}" to trash?`,
-        confirmLabel: 'Delete',
-      } as ConfirmDialogData,
+      data: trashDocumentConfirmData(doc.title),
     });
 
     dialogRef
@@ -1005,6 +1008,36 @@ export class BrowseComponent {
             next: () => {
               this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
               void this.router.navigateByUrl('/browse');
+            },
+            error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+          });
+      });
+  }
+
+  private deleteSelectedDocuments(): void {
+    const count = this.selectionService.selectedCount();
+    if (count === 0) return;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: trashSelectedDocumentsConfirmData(count),
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.selectionService
+          .deleteSelected()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.snackBar.open(
+                count === 1 ? 'Moved to trash' : `${count} documents moved to trash`,
+                'OK',
+                { duration: 3000 },
+              );
+              this.loadContent();
             },
             error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
           });

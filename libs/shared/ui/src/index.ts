@@ -40,3 +40,7 @@ export {
   ConfirmDialogComponent,
   type ConfirmDialogData,
 } from './lib/confirm-dialog/confirm-dialog.component';
+export {
+  trashDocumentConfirmData,
+  trashSelectedDocumentsConfirmData,
+} from './lib/confirm-dialog/trash-confirm.utils';

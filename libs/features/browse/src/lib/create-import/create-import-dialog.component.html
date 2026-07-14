@@ -1,6 +1,6 @@
 <div
   class="create-import-root"
-  [class.form-view]="view() === 'templateForm'"
+  [class.form-view]="view() === 'templateForm' || view() === 'importProperties'"
   [class.success-view]="view() === 'success'"
 >
   @if (view() !== 'success') {
@@ -41,7 +41,7 @@
   <mat-dialog-content
     class="dialog-body"
     [class.dialog-body--main]="view() === 'main'"
-    [class.dialog-body--form]="view() === 'templateForm'"
+    [class.dialog-body--form]="view() === 'templateForm' || view() === 'importProperties'"
   >
     @if (resolvingPath()) {
       <div class="state-row">
@@ -155,50 +155,87 @@
                 }
               </p>
             } @else {
-              <div
-                class="dropzone dropzone--import"
-                [class.dropzone--active]="dragOverUpload()"
-                (dragover)="onUploadDragOver($event)"
-                (dragleave)="onUploadDragLeave($event)"
-                (drop)="onUploadDrop($event)"
-              >
-                <input
-                  #fileInput
-                  type="file"
-                  multiple
-                  (change)="onUploadInputChange($event)"
-                  [disabled]="busy()"
-                />
-                <button
-                  type="button"
-                  class="dropzone-inner"
-                  [disabled]="busy()"
-                  (click)="fileInput.click()"
+              <div class="import-tab-panel">
+                <div
+                  class="dropzone dropzone--import"
+                  [class.dropzone--filled]="uploadFiles().length > 0"
+                  [class.dropzone--active]="dragOverUpload()"
+                  (dragover)="onUploadDragOver($event)"
+                  (dragleave)="onUploadDragLeave($event)"
+                  (drop)="onUploadDrop($event)"
                 >
-                  <span class="dropzone-text"
-                    >Drag and drop, or click to select files to upload.</span
-                  >
-                </button>
-              </div>
+                  <input
+                    #importFileInput
+                    type="file"
+                    multiple
+                    class="dropzone-file-input"
+                    (change)="onUploadInputChange($event)"
+                    [disabled]="busy()"
+                  />
 
-              @if (uploadFiles().length > 0) {
-                <ul class="file-list">
-                  @for (f of uploadFiles(); track $index) {
-                    <li>
-                      <span class="file-name">{{ f.name }}</span>
-                      <button
-                        mat-icon-button
-                        type="button"
-                        [disabled]="busy()"
-                        (click)="removeUploadAt($index)"
-                        aria-label="Remove"
+                  @if (uploadFiles().length === 0) {
+                    <button
+                      type="button"
+                      class="dropzone-inner"
+                      [disabled]="busy()"
+                      (click)="openImportFilePicker()"
+                    >
+                      <span class="dropzone-text"
+                        >Drag and drop, or click to select files to upload.</span
                       >
-                        <mat-icon>close</mat-icon>
+                    </button>
+                  } @else {
+                    <div class="import-staged-files">
+                      <ul class="import-staged-grid" role="list" aria-label="Selected files">
+                        @for (f of uploadFiles(); track $index) {
+                          <li class="import-staged-card" role="listitem">
+                            <div class="import-staged-card__info">
+                              <span class="import-staged-card__name">{{ f.name }}</span>
+                              <span class="import-staged-card__size">{{
+                                formatFileSize(f.size)
+                              }}</span>
+                            </div>
+                            <button
+                              mat-icon-button
+                              type="button"
+                              class="import-staged-card__remove"
+                              [disabled]="busy()"
+                              (click)="removeUploadAt($index)"
+                              [attr.aria-label]="'Remove ' + f.name"
+                            >
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          </li>
+                        }
+                      </ul>
+                      <button
+                        type="button"
+                        class="import-add-more"
+                        [disabled]="busy()"
+                        (click)="openImportFilePicker()"
+                      >
+                        Add more files
                       </button>
-                    </li>
+                    </div>
                   }
-                </ul>
-              }
+                </div>
+
+                @if (importError()) {
+                  <p class="error-text import-error import-error--staged" role="alert">
+                    {{ importError() }}
+                  </p>
+                }
+                @if (uploadProgress(); as progress) {
+                  <div
+                    class="upload-progress upload-progress--import upload-progress--staged"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <span class="upload-progress-label">{{ uploadProgressLabel(progress) }}</span>
+                    <mat-progress-bar mode="determinate" [value]="progress.percent" />
+                  </div>
+                }
+              </div>
             }
           } @else {
             @if (csvImportRestricted()) {
@@ -606,6 +643,282 @@
             </div>
           }
         }
+        @case ('importProperties') {
+          <div class="import-properties-layout">
+            <div class="import-properties-form">
+              <div
+                class="location-bar location-bar--form"
+                [class.location-bar--restricted]="locationRestricted()"
+              >
+                <span class="location-label">Location</span>
+                <div class="location-input-wrap">
+                  <input
+                    type="text"
+                    class="location-input"
+                    [(ngModel)]="locationInput"
+                    aria-label="Location"
+                    [disabled]="busy()"
+                    (focus)="onLocationFocus()"
+                    (input)="onLocationInput()"
+                    (blur)="onLocationBlur()"
+                    (keydown)="onLocationKeydown($event)"
+                  />
+                </div>
+              </div>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                <mat-label>Type</mat-label>
+                <mat-select
+                  [ngModel]="importDocType()"
+                  (ngModelChange)="importDocType.set($event)"
+                  [disabled]="busy()"
+                >
+                  <mat-option value="">Select a value</mat-option>
+                  @for (dt of importBlobTypeOptions(); track dt.type) {
+                    <mat-option [value]="dt.type">{{ dt.label }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              @if (showImportBlobMetadataFields()) {
+                <div class="import-detail-fields">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                    <mat-label>Title</mat-label>
+                    <input matInput [(ngModel)]="docTitle" required />
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="full-width">
+                    <mat-label>Description</mat-label>
+                    <input matInput [(ngModel)]="description" />
+                  </mat-form-field>
+
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="full-width vocab-field"
+                  >
+                    <mat-label>Nature</mat-label>
+                    <mat-select
+                      #importNatureSelect
+                      [(ngModel)]="nature"
+                      panelClass="vocab-select-panel"
+                      (openedChange)="onNaturePanelOpen($event)"
+                      (selectionChange)="importNatureSelect.close()"
+                    >
+                      <mat-select-trigger>
+                        @if (nature; as natureId) {
+                          <mat-chip-set class="subjects-trigger-chips">
+                            <mat-chip (removed)="clearNature()">
+                              {{ naturePillLabel(natureId) }}
+                              <button
+                                type="button"
+                                matChipRemove
+                                [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                                (click)="$event.stopPropagation(); clearNature()"
+                              >
+                                <mat-icon>cancel</mat-icon>
+                              </button>
+                            </mat-chip>
+                          </mat-chip-set>
+                        }
+                      </mat-select-trigger>
+                      <div class="vocab-panel__search">
+                        <input
+                          type="text"
+                          placeholder="Search…"
+                          [(ngModel)]="naturePanelSearch"
+                          [ngModelOptions]="{ standalone: true }"
+                          (click)="$event.stopPropagation()"
+                          (keydown)="$event.stopPropagation()"
+                        />
+                      </div>
+                      <div class="vocab-panel__list">
+                        @for (entry of filteredNatureOptions(); track entry.id) {
+                          <mat-option [value]="entry.id">{{ entry.displayLabel }}</mat-option>
+                        }
+                      </div>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="full-width vocab-field subjects-field"
+                  >
+                    <mat-label>Subjects</mat-label>
+                    <mat-select
+                      multiple
+                      [(ngModel)]="subjects"
+                      panelClass="vocab-select-panel vocab-grouped-select-panel subjects-select-panel"
+                      (openedChange)="onSubjectsPanelOpen($event)"
+                    >
+                      <mat-select-trigger>
+                        <mat-chip-set class="subjects-trigger-chips">
+                          @for (id of subjects; track id) {
+                            <mat-chip (removed)="removeSubject(id)">
+                              {{ subjectPillLabel(id) }}
+                              <button
+                                type="button"
+                                matChipRemove
+                                [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                                (click)="$event.stopPropagation()"
+                              >
+                                <mat-icon>cancel</mat-icon>
+                              </button>
+                            </mat-chip>
+                          }
+                        </mat-chip-set>
+                      </mat-select-trigger>
+                      <div class="vocab-panel__search">
+                        <input
+                          type="text"
+                          placeholder="Search…"
+                          [(ngModel)]="subjectsPanelSearch"
+                          [ngModelOptions]="{ standalone: true }"
+                          (click)="$event.stopPropagation()"
+                          (keydown)="$event.stopPropagation()"
+                        />
+                      </div>
+                      <div class="vocab-panel__list">
+                        @for (group of groupedSubjectOptions(); track group.parentLabel) {
+                          <mat-optgroup [label]="group.parentLabel">
+                            @for (entry of group.entries; track entry.id) {
+                              <mat-option [value]="entry.id">{{
+                                entry.properties.label_en ?? entry.id
+                              }}</mat-option>
+                            }
+                          </mat-optgroup>
+                        }
+                      </div>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="full-width vocab-field"
+                  >
+                    <mat-label>Coverage</mat-label>
+                    <mat-select
+                      #importCoverageSelect
+                      [(ngModel)]="coverage"
+                      panelClass="vocab-select-panel vocab-grouped-select-panel"
+                      (openedChange)="onCoveragePanelOpen($event)"
+                      (selectionChange)="importCoverageSelect.close()"
+                    >
+                      <mat-select-trigger>
+                        @if (coverage; as coverageId) {
+                          <mat-chip-set class="subjects-trigger-chips">
+                            <mat-chip (removed)="clearCoverage()">
+                              {{ coveragePillLabel(coverageId) }}
+                              <button
+                                type="button"
+                                matChipRemove
+                                [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                                (click)="$event.stopPropagation(); clearCoverage()"
+                              >
+                                <mat-icon>cancel</mat-icon>
+                              </button>
+                            </mat-chip>
+                          </mat-chip-set>
+                        }
+                      </mat-select-trigger>
+                      <div class="vocab-panel__search">
+                        <input
+                          type="text"
+                          placeholder="Search…"
+                          [(ngModel)]="coveragePanelSearch"
+                          [ngModelOptions]="{ standalone: true }"
+                          (click)="$event.stopPropagation()"
+                          (keydown)="$event.stopPropagation()"
+                        />
+                      </div>
+                      <div class="vocab-panel__list">
+                        @for (group of groupedCoverageOptions(); track group.parentLabel) {
+                          <mat-optgroup [label]="group.parentLabel">
+                            @for (entry of group.entries; track entry.id) {
+                              <mat-option [value]="entry.id">{{
+                                entry.properties.label_en ?? entry.id
+                              }}</mat-option>
+                            }
+                          </mat-optgroup>
+                        }
+                      </div>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    class="full-width"
+                    [class.expires-field-invalid]="expiresRawText.trim() && !isExpiresValid()"
+                  >
+                    <mat-label>Expires</mat-label>
+                    <input
+                      matInput
+                      name="importExpires"
+                      [matDatepicker]="importExpiresPicker"
+                      [ngModel]="expires"
+                      (ngModelChange)="onExpiresChange($event)"
+                      (input)="onExpiresInput($event)"
+                      placeholder="mm/dd/yyyy"
+                    />
+                    <mat-datepicker-toggle matIconSuffix [for]="importExpiresPicker" />
+                    <mat-datepicker #importExpiresPicker />
+                    @if (expiresRawText.trim() && !isExpiresValid()) {
+                      <mat-error>Enter a valid date</mat-error>
+                    }
+                  </mat-form-field>
+                </div>
+              }
+
+              @if (importError()) {
+                <p class="error-text import-error" role="alert">{{ importError() }}</p>
+              }
+              @if (uploadProgress(); as progress) {
+                <div
+                  class="upload-progress upload-progress--import"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span class="upload-progress-label">{{ uploadProgressLabel(progress) }}</span>
+                  <mat-progress-bar mode="determinate" [value]="progress.percent" />
+                </div>
+              }
+            </div>
+
+            <aside class="import-properties-sidebar" aria-label="Files to import">
+              <p class="import-sidebar-hint">Unchecked files will be discarded.</p>
+              <ul class="import-file-list" role="list">
+                @for (entry of importEntries(); track $index; let i = $index) {
+                  <li
+                    class="import-file-item"
+                    [class.import-file-item--active]="importFileIndex() === i"
+                  >
+                    <mat-checkbox
+                      [checked]="entry.checked"
+                      [disabled]="busy()"
+                      (change)="toggleImportFileChecked(i, $event.checked)"
+                      [attr.aria-label]="'Include ' + entry.file.name"
+                    />
+                    <button
+                      type="button"
+                      class="import-file-select"
+                      [disabled]="busy()"
+                      (click)="selectImportFile(i)"
+                    >
+                      <span class="import-file-name">{{ entry.file.name }}</span>
+                      <span class="import-file-title">{{ entry.state.title }}</span>
+                    </button>
+                    @if (entry.visited) {
+                      <mat-icon class="import-file-done" aria-hidden="true">check_circle</mat-icon>
+                    }
+                  </li>
+                }
+              </ul>
+            </aside>
+          </div>
+        }
         @case ('success') {
           <div class="success-panel" role="status" aria-live="polite">
             <mat-icon class="success-icon" aria-hidden="true">check_circle</mat-icon>
@@ -662,15 +975,66 @@
         >
           Create
         </button>
-      } @else if (view() === 'main' && activeTab() === 'import') {
+      } @else if (view() === 'main' && activeTab() === 'import' && uploadFiles().length > 0) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="btn-add-properties"
+          [disabled]="busy() || importRestricted()"
+          (click)="startImportProperties()"
+        >
+          Add Properties
+        </button>
         <button
           mat-flat-button
           color="primary"
           type="button"
-          [disabled]="busy() || uploadFiles().length === 0 || importRestricted()"
+          [disabled]="busy() || importRestricted()"
           (click)="runUpload()"
         >
-          Import
+          Create
+        </button>
+      } @else if (view() === 'importProperties') {
+        <div class="import-footer-nav">
+          <button
+            mat-button
+            type="button"
+            class="btn-nav-link"
+            [disabled]="!canEditImportPrevious() || busy()"
+            (click)="editImportPrevious()"
+          >
+            <mat-icon aria-hidden="true">chevron_left</mat-icon>
+            Edit Previous
+          </button>
+          <button
+            mat-button
+            type="button"
+            class="btn-nav-link"
+            [disabled]="!canEditImportNext() || busy()"
+            (click)="editImportNext()"
+          >
+            Edit Next
+            <mat-icon aria-hidden="true">chevron_right</mat-icon>
+          </button>
+          <button
+            mat-button
+            type="button"
+            class="btn-nav-link"
+            [disabled]="busy() || !canApplyImportToAll()"
+            (click)="applyImportToAll()"
+          >
+            Apply To All
+          </button>
+        </div>
+        <span class="footer-spacer"></span>
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="busy() || !canCreateImportWithProperties()"
+          (click)="runImportWithProperties()"
+        >
+          Create
         </button>
       } @else if (view() === 'main' && activeTab() === 'csv') {
         <button

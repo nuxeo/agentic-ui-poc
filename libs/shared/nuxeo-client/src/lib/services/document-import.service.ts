@@ -146,6 +146,63 @@ export interface ImportFilesOptions {
   onProgress?: (progress: ImportProgress) => void;
 }
 
+/** One file in bulk import-with-properties (per-file type and Dublin Core metadata). */
+export interface ImportFileEntry {
+  file: File;
+  docType: string;
+  properties: Record<string, unknown>;
+}
+
+const IMAGE_EXTENSIONS = new Set([
+  'png',
+  'jpg',
+  'jpeg',
+  'gif',
+  'webp',
+  'bmp',
+  'svg',
+  'tif',
+  'tiff',
+  'heic',
+  'heif',
+]);
+const VIDEO_EXTENSIONS = new Set(['mp4', 'mov', 'avi', 'webm', 'mkv', 'm4v', 'wmv']);
+const AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'wma']);
+
+/** Infer blob-holding Nuxeo type from file MIME type / extension (Web UI import parity). */
+export function inferBlobDocTypeFromFile(file: File): string {
+  const mime = file.type.toLowerCase();
+  const ext = file.name.includes('.') ? (file.name.split('.').pop()?.toLowerCase() ?? '') : '';
+
+  if (mime.startsWith('image/') || IMAGE_EXTENSIONS.has(ext)) {
+    return 'Picture';
+  }
+  if (mime.startsWith('video/') || VIDEO_EXTENSIONS.has(ext)) {
+    return 'Video';
+  }
+  if (mime.startsWith('audio/') || AUDIO_EXTENSIONS.has(ext)) {
+    return 'Audio';
+  }
+  return 'File';
+}
+
+/** Pick an allowed creatable blob type for import, preferring MIME-based inference. */
+export function resolveImportBlobDocType(file: File, allowedTypes: readonly string[]): string {
+  const inferred = inferBlobDocTypeFromFile(file);
+  if (allowedTypes.includes(inferred)) {
+    return inferred;
+  }
+  if (allowedTypes.includes('File')) {
+    return 'File';
+  }
+  return allowedTypes.find((t) => isBlobHoldingDocType(t)) ?? 'File';
+}
+
+export function titleFromFileName(fileName: string): string {
+  const dot = fileName.lastIndexOf('.');
+  return dot > 0 ? fileName.slice(0, dot) : fileName;
+}
+
 /** Progress payload for blob upload and document creation flows. */
 export interface ImportProgress {
   phase: 'uploading' | 'creating';
@@ -278,7 +335,8 @@ export class DocumentImportService {
   createFileFromBatch(
     parentPath: string,
     fileName: string,
-    title: string,
+    docType: string,
+    properties: Record<string, unknown>,
     batchId: string,
     fileIndex: number,
     batchNoDrop = false,
@@ -286,9 +344,9 @@ export class DocumentImportService {
     const body = {
       'entity-type': 'document',
       name: sanitizeDocumentName(fileName),
-      type: 'File',
+      type: docType,
       properties: {
-        'dc:title': title,
+        ...properties,
         'file:content': {
           'upload-batch': batchId,
           'upload-fileId': String(fileIndex),
@@ -431,16 +489,38 @@ export class DocumentImportService {
     files: File[],
     options?: ImportFilesOptions,
   ): Observable<NuxeoDocument[]> {
-    if (files.length === 0) return of([]);
+    const entries: ImportFileEntry[] = files.map((file) => ({
+      file,
+      docType: 'File',
+      properties: { 'dc:title': titleFromFileName(file.name) },
+    }));
+    return this.importFilesWithProperties(parentPath, entries, options);
+  }
+
+  /**
+   * Bulk import with per-file document type and metadata (Nuxeo Web UI “Import with Properties”).
+   */
+  importFilesWithProperties(
+    parentPath: string,
+    entries: ImportFileEntry[],
+    options?: ImportFilesOptions,
+  ): Observable<NuxeoDocument[]> {
+    if (entries.length === 0) return of([]);
     const autoClassify = options?.autoClassify === true;
     const report = options?.onProgress;
-    const fileCount = files.length;
+    const fileCount = entries.length;
     return this.initUploadBatch().pipe(
       switchMap((batchId) => {
-        const last = files.length - 1;
-        const steps = files.map((file, index) => {
+        const last = entries.length - 1;
+        const steps = entries.map((entry, index) => {
           const segment = 100 / fileCount;
           const segmentStart = index * segment;
+          const { file, docType, properties } = entry;
+          const title = (properties['dc:title'] as string) || titleFromFileName(file.name);
+          const createProperties = {
+            ...properties,
+            'dc:title': title,
+          };
           return this.uploadFileToBatch(batchId, index, file, (uploadPct) => {
             if (!report) return;
             report({
@@ -463,7 +543,8 @@ export class DocumentImportService {
               this.createFileFromBatch(
                 parentPath,
                 file.name,
-                titleFromFileName(file.name),
+                docType,
+                createProperties,
                 batchId,
                 index,
                 index < last,
@@ -719,11 +800,6 @@ function readBatchIdFromInitResponse(resp: HttpResponse<unknown>): string {
     if (id) return id;
   }
   throw new Error('Could not read upload batch id from response');
-}
-
-function titleFromFileName(fileName: string): string {
-  const dot = fileName.lastIndexOf('.');
-  return dot > 0 ? fileName.slice(0, dot) : fileName;
 }
 
 /** RFC 4180–friendly: quoted fields may contain commas and newlines. */

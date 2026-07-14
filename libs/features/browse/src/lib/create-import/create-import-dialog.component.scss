@@ -65,6 +65,12 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   overflow-y: auto;
 }
 
+.dialog-body--main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* ─── Tabs ─── */
 .tab-header {
   display: flex;
@@ -280,6 +286,28 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   line-height: 1.3;
 }
 
+/* ─── Import tab panel ─── */
+.import-tab-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding-top: 24px;
+
+  .dropzone--import {
+    flex: 1 1 auto;
+    min-height: 320px;
+    margin: 0 24px 24px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .import-error--staged,
+  .upload-progress--staged {
+    margin: -8px 24px 16px;
+  }
+}
+
 /* ─── Import dropzone ─── */
 .dropzone {
   position: relative;
@@ -288,23 +316,47 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   border-radius: 4px;
   background: $tile-bg;
 
-  input[type='file'] {
+  .dropzone-file-input {
     position: absolute;
-    inset: 0;
+    width: 0;
+    height: 0;
     opacity: 0;
-    cursor: pointer;
-    z-index: 1;
+    overflow: hidden;
+    pointer-events: none;
   }
 
   &--import {
     min-height: 320px;
-    margin-top: 0;
+
+    &:not(.dropzone--filled) .dropzone-file-input {
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+      pointer-events: auto;
+      z-index: 1;
+    }
+  }
+
+  &--filled {
+    min-height: 0;
+    padding: 16px;
+    background: var(--mat-sys-surface, #fff);
   }
 
   &--csv {
     min-height: 320px;
     margin-top: 0;
     margin-bottom: 16px;
+
+    input[type='file'] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      z-index: 1;
+    }
   }
 
   &--active {
@@ -323,6 +375,7 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   align-items: center;
   justify-content: center;
   width: 100%;
+  flex: 1 1 auto;
   min-height: 320px;
   padding: 48px 24px;
   border: none;
@@ -336,6 +389,101 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   color: var(--mat-sys-on-surface-variant, #6b7280);
   text-align: center;
   line-height: 1.5;
+}
+
+.import-staged-files {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.import-staged-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  align-content: start;
+  overflow-y: auto;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.import-staged-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 8px 12px 12px;
+  border: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
+  border-radius: 4px;
+  background: var(--mat-sys-surface, #fff);
+  min-width: 0;
+}
+
+.import-staged-card__info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.import-staged-card__name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.import-staged-card__size {
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+  white-space: nowrap;
+}
+
+.import-staged-card__remove {
+  flex-shrink: 0;
+}
+
+.import-add-more {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 16px;
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  font: inherit;
+  font-size: 0.875rem;
+  color: $primary-blue;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &:hover:not(:disabled) {
+    text-decoration: underline;
+  }
+}
+
+.import-error--staged,
+.upload-progress--staged {
+  margin: 0 24px 16px;
 }
 
 .csv-options {
@@ -378,6 +526,138 @@ $tile-hover: var(--mat-sys-surface-container-high, #eef0f4);
   .btn-back {
     color: var(--mat-sys-on-surface-variant, #5c5f6b);
   }
+
+  .import-footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+  }
+
+  .btn-nav-link {
+    color: $primary-blue;
+    min-width: 0;
+    padding: 0 8px;
+
+    &:disabled {
+      color: var(--mat-sys-on-surface-variant, #9ca3af);
+    }
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+  }
+}
+
+/* ─── Import with properties (NXSAT-185) ─── */
+.import-properties-layout {
+  display: flex;
+  align-items: stretch;
+  min-height: 480px;
+}
+
+.import-properties-form {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 16px 24px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .location-bar--form {
+    margin-bottom: 0;
+  }
+}
+
+.import-detail-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.import-properties-sidebar {
+  flex: 0 0 280px;
+  max-width: 36%;
+  border-left: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
+  padding: 16px;
+  background: var(--mat-sys-surface-container-lowest, #fafafa);
+  overflow-y: auto;
+}
+
+.import-sidebar-hint {
+  margin: 0 0 12px;
+  font-size: 0.8125rem;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+}
+
+.import-file-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.import-file-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  border-left: 3px solid transparent;
+
+  &--active {
+    border-left-color: $primary-blue;
+    background: var(--mat-sys-primary-container, #e8f0fe);
+  }
+}
+
+.import-file-select {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  padding: 8px 4px;
+  cursor: pointer;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.import-file-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.import-file-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--mat-sys-on-surface-variant, #6b7280);
+}
+
+.import-file-done {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  color: var(--mat-sys-tertiary, #0d904f);
+}
+
+.btn-add-properties {
+  border-color: $primary-blue;
+  color: $primary-blue;
 }
 
 .template-form-lead {
