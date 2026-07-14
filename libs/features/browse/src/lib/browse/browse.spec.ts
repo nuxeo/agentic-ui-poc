@@ -185,6 +185,23 @@ describe('BrowseComponent', () => {
     ]);
   });
 
+  it('breadcrumbs do not throw when a path segment contains a literal percent sign', () => {
+    component.currentDoc.set({
+      uid: 'folder-1',
+      title: 'Current Folder',
+      type: 'Folder',
+      path: '/100% done',
+      lastModified: '',
+      properties: {},
+    });
+
+    expect(() => component.breadcrumbs()).not.toThrow();
+    expect(component.breadcrumbs()).toEqual([
+      { label: 'Root', href: '/browse' },
+      { label: 'Current Folder' },
+    ]);
+  });
+
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {
     mockSelectionService.selectedCount.mockReturnValue(3);
     component.currentDoc.set({

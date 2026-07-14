@@ -1,6 +1,15 @@
 import type { NuxeoDocument } from '../models/document.model';
 import { isFolderishDocument } from '../services/document-import.service';
 
+/** Decode a single repository path segment; returns the raw segment if decoding fails. */
+export function decodeNuxeoPathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 /** True when the router URL is a browse main-view route. */
 export function isBrowseRouterUrl(routerUrl: string): boolean {
   const withoutQuery = routerUrl.split('?')[0];
@@ -21,13 +30,7 @@ export function parseBrowseNuxeoPathFromRouterUrl(routerUrl: string): string {
   const decoded = remainder
     .split('/')
     .filter(Boolean)
-    .map((segment) => {
-      try {
-        return decodeURIComponent(segment);
-      } catch {
-        return segment;
-      }
-    })
+    .map((segment) => decodeNuxeoPathSegment(segment))
     .join('/');
   return decoded ? `/${decoded}` : '/';
 }
@@ -47,13 +50,7 @@ export function nuxeoPathsEqual(a: string, b: string): boolean {
 
 /** Slugify a single path segment for flexible matching (`Domain 1` ≈ `domain-1`). */
 export function slugifyNuxeoPathSegment(segment: string): string {
-  let decoded = segment;
-  try {
-    decoded = decodeURIComponent(segment);
-  } catch {
-    decoded = segment;
-  }
-  return decoded.trim().toLowerCase().replace(/\s+/g, '-');
+  return decodeNuxeoPathSegment(segment).trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 /** Segment-wise path comparison tolerating spaces vs hyphens and casing. */

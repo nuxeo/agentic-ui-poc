@@ -1,5 +1,6 @@
 import {
   Component,
+  DestroyRef,
   ElementRef,
   HostListener,
   OnDestroy,
@@ -107,6 +108,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly detailService = inject(DocumentDetailService);
   private readonly searchService = inject(SearchService);
   private readonly browseContext = inject(BrowseContextService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
@@ -351,24 +353,30 @@ export class AppShellComponent implements OnDestroy {
       data: trashSelectedDocumentsConfirmData(count),
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) {
-        this.selectionService.clear();
-        return;
-      }
-
-      this.selectionService.deleteSelected().subscribe({
-        next: () => {
-          this.browseContext.requestTreeRefresh();
-        },
-        error: (err) => {
-          console.error('Failed to delete selected documents', err);
-          const message = this.getDeleteErrorMessage(err);
-          this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) {
           this.selectionService.clear();
-        },
+          return;
+        }
+
+        this.selectionService
+          .deleteSelected()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.browseContext.requestTreeRefresh();
+            },
+            error: (err) => {
+              console.error('Failed to delete selected documents', err);
+              const message = this.getDeleteErrorMessage(err);
+              this.snackBar.open(message, 'Dismiss', { duration: 5000 });
+              this.selectionService.clear();
+            },
+          });
       });
-    });
   }
 
   onPublishSelected(): void {

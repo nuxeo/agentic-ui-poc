@@ -52,6 +52,7 @@ import {
   BrowseService,
   BrowseContextService,
   ClipboardTargetService,
+  decodeNuxeoPathSegment,
   parseBrowseNuxeoPathFromRouterUrl,
   isBrowseRouterUrl,
   nuxeoPathsEqualFlexible,
@@ -413,7 +414,7 @@ export class BrowseComponent {
     for (const part of parts) {
       accumulated += `/${part}`;
       const isCurrent = accumulated === doc.path;
-      const label = isCurrent ? doc.title : decodeURIComponent(part);
+      const label = isCurrent ? doc.title : decodeNuxeoPathSegment(part);
       if (isCurrent) {
         crumbs.push({ label });
       } else {
