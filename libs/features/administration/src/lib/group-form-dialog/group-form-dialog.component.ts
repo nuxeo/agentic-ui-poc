@@ -1,5 +1,5 @@
 import { COMMA, ENTER } from '@angular/cdk/keycodes';
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -8,7 +8,7 @@ import {
   MatAutocompleteModule,
   MatAutocompleteSelectedEvent,
 } from '@angular/material/autocomplete';
-import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
+import { MatChipInput, MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -96,7 +96,7 @@ export interface GroupFormDialogResult {
     `,
   ],
 })
-export class GroupFormDialogComponent implements OnInit {
+export class GroupFormDialogComponent implements OnInit, OnDestroy {
   private readonly dialogRef = inject(
     MatDialogRef<GroupFormDialogComponent, GroupFormDialogResult | undefined>,
   );
@@ -115,6 +115,10 @@ export class GroupFormDialogComponent implements OnInit {
   filteredUsers: NuxeoUser[] = [];
 
   private readonly searchTerms = new Subject<string>();
+  /** Suppresses matChipInputTokenEnd after autocomplete selection (NXSAT-151). */
+  private skipNextChipInput = false;
+
+  @ViewChild(MatChipInput) private memberChipInput?: MatChipInput;
 
   ngOnInit(): void {
     const g = this.data.group;
@@ -145,6 +149,10 @@ export class GroupFormDialogComponent implements OnInit {
       });
   }
 
+  ngOnDestroy(): void {
+    this.searchTerms.complete();
+  }
+
   onUserSearch(q: string): void {
     this.userSearchQuery = q;
     this.searchTerms.next(q);
@@ -165,25 +173,81 @@ export class GroupFormDialogComponent implements OnInit {
   }
 
   onUserSelected(event: MatAutocompleteSelectedEvent): void {
+    this.skipNextChipInput = true;
     const u = event.option.value as NuxeoUser;
-    if (u?.id && !this.memberUsernames.includes(u.id)) {
-      this.memberUsernames = [...this.memberUsernames, u.id];
+    const userId = u?.id?.trim();
+    if (userId) {
+      // Autocomplete can emit matChipInputTokenEnd first with a partial prefix chip.
+      this.memberUsernames = this.memberUsernames.filter(
+        (id) => id === userId || !userId.startsWith(id),
+      );
+      if (!this.memberUsernames.includes(userId)) {
+        this.memberUsernames = [...this.memberUsernames, userId];
+      }
     }
-    this.resetSearchState();
+    this.clearMemberSearch();
     event.option.deselect();
   }
 
   addMemberFromInput(event: MatChipInputEvent): void {
+    if (this.skipNextChipInput) {
+      this.skipNextChipInput = false;
+      event.chipInput.clear();
+      this.clearMemberSearch();
+      return;
+    }
     const raw = (event.value ?? '').trim();
     if (!raw) {
       event.chipInput.clear();
       return;
     }
-    if (!this.memberUsernames.includes(raw)) {
-      this.memberUsernames = [...this.memberUsernames, raw];
+
+    const resolved = this.resolveMemberFromChipInput(raw);
+    if (resolved === null) {
+      event.chipInput.clear();
+      this.clearMemberSearch();
+      return;
+    }
+    if (resolved && !this.memberUsernames.includes(resolved)) {
+      this.memberUsernames = [...this.memberUsernames, resolved];
     }
     event.chipInput.clear();
-    this.resetSearchState();
+    this.clearMemberSearch();
+  }
+
+  private resolveMemberFromChipInput(raw: string): string | null {
+    const typed = this.userSearchQuery.trim();
+
+    if (typed && raw === typed && this.isIncompleteUserPrefix(raw)) {
+      return null;
+    }
+
+    if (typed && raw.startsWith(typed) && raw.length > typed.length) {
+      const suffix = raw.slice(typed.length);
+      const optionMatch = this.filteredUsers.find((u) => u.id === suffix);
+      if (optionMatch?.id) {
+        return optionMatch.id;
+      }
+    }
+
+    if (this.isIncompleteUserPrefix(raw)) {
+      return null;
+    }
+
+    const exactOption = this.filteredUsers.find((u) => u.id === raw);
+    if (exactOption?.id) {
+      return exactOption.id;
+    }
+
+    return raw;
+  }
+
+  /** True when `value` is only a typed prefix of a known user id (not a full id). */
+  private isIncompleteUserPrefix(value: string): boolean {
+    if (this.filteredUsers.some((u) => u.id === value)) {
+      return false;
+    }
+    return this.filteredUsers.some((u) => u.id.startsWith(value) && u.id !== value);
   }
 
   removeMember(id: string): void {
@@ -191,11 +255,11 @@ export class GroupFormDialogComponent implements OnInit {
     this.searchTerms.next(this.userSearchQuery);
   }
 
-  private resetSearchState(): void {
+  private clearMemberSearch(): void {
     this.userSearchQuery = '';
     this.filteredUsers = [];
-    // Break distinctUntilChanged cache for reliable subsequent calls.
     this.searchTerms.next('');
+    this.memberChipInput?.clear();
   }
 
   submit(createAnother = false): void {
