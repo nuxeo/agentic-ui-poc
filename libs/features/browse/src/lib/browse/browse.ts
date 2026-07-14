@@ -50,7 +50,10 @@ import {
   AuditEntry,
   DirectoryEntry,
   BrowseService,
+  BrowseContextService,
   ClipboardTargetService,
+  parseBrowseNuxeoPathFromRouterUrl,
+  isBrowseRouterUrl,
   DocumentDetailService,
   DirectoryService,
   SelectionService,
@@ -157,6 +160,7 @@ export class BrowseComponent {
 
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
+  private readonly browseContext = inject(BrowseContextService);
   private readonly clipboardTargetService = inject(ClipboardTargetService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly directoryService = inject(DirectoryService);
@@ -423,19 +427,23 @@ export class BrowseComponent {
     const href = anchor?.getAttribute('href');
     if (href) {
       event.preventDefault();
+      this.browseContext.setFromRouterUrl(href);
       this.router.navigateByUrl(href);
     }
   }
 
   constructor() {
-    const initialPath = this.parseBrowseNuxeoPath(this.router.url);
+    const initialPath = parseBrowseNuxeoPathFromRouterUrl(this.router.url);
     this.currentNuxeoPath = initialPath;
     this.browsePath.set(initialPath);
+    if (isBrowseRouterUrl(this.router.url)) {
+      this.browseContext.setFromRouterUrl(this.router.url);
+    }
 
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-        map(() => this.parseBrowseNuxeoPath(this.router.url)),
+        map(() => parseBrowseNuxeoPathFromRouterUrl(this.router.url)),
         distinctUntilChanged(),
         takeUntilDestroyed(),
       )
@@ -443,6 +451,9 @@ export class BrowseComponent {
         this.resetBrowseTabState();
         this.currentNuxeoPath = nuxeoPath;
         this.browsePath.set(nuxeoPath);
+        if (isBrowseRouterUrl(this.router.url)) {
+          this.browseContext.setFromRouterUrl(this.router.url);
+        }
         this.browsePath$.next(nuxeoPath);
       });
 
@@ -472,6 +483,7 @@ export class BrowseComponent {
           return;
         }
         this.currentDoc.set(folder);
+        this.browseContext.setFromNuxeoPath(folder.path);
         this.entries.set(entries);
         this.totalSize.set(totalSize);
         this.loading.set(false);
@@ -542,17 +554,6 @@ export class BrowseComponent {
     this.permissionsLoaded.set(false);
     this.permissionsLoading.set(false);
     this.activeTabIndex.set(0);
-  }
-
-  private parseBrowseNuxeoPath(routerUrl: string): string {
-    const withoutQuery = routerUrl.split('?')[0];
-    const path = (withoutQuery.includes('#') ? withoutQuery.split('#').pop() : withoutQuery) ?? '/';
-    const normalized = path.startsWith('/') ? path : `/${path}`;
-    const prefix = '/browse';
-    if (normalized === prefix || normalized === `${prefix}/`) return '/';
-    if (!normalized.startsWith(`${prefix}/`)) return '/';
-    const remainder = normalized.slice(prefix.length);
-    return remainder.replace(/\/+$/, '') || '/';
   }
 
   loadContent(): void {
@@ -1151,6 +1152,7 @@ export class BrowseComponent {
 
   onRowClick(doc: NuxeoDocument): void {
     if (this.isFolderish(doc)) {
+      this.browseContext.setFromNuxeoPath(doc.path);
       void this.router.navigateByUrl(`/browse${doc.path}`);
     } else {
       void this.router.navigateByUrl(`/doc/${doc.uid}`);

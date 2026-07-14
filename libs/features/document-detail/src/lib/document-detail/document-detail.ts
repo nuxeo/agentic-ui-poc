@@ -78,6 +78,7 @@ import {
   isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
+  BrowseContextService,
   documentHasPersistedMainBlob,
   noteFormatLabel,
   renderNoteMarkdown,
@@ -259,6 +260,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
   private readonly detailService = inject(DocumentDetailService);
+  private readonly browseContext = inject(BrowseContextService);
   private readonly directoryService = inject(DirectoryService);
   private readonly http = inject(HttpClient);
   private readonly sanitizer = inject(DomSanitizer);
@@ -1494,10 +1496,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (doc) => {
           if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
+            this.browseContext.setFromDocument(doc);
             void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
             return;
           }
           this.doc.set(doc);
+          this.browseContext.setFromDocument(doc);
           this.syncActionStates(doc);
           this.loading.set(false);
           if (this.activeTabIndex() === 2) {

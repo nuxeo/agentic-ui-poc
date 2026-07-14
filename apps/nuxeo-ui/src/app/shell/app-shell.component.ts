@@ -39,6 +39,7 @@ import {
 import {
   CollectionService,
   DocumentDetailService,
+  BrowseContextService,
   NuxeoDocument,
   SearchService,
   SelectionService,
@@ -105,6 +106,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly searchService = inject(SearchService);
+  private readonly browseContext = inject(BrowseContextService);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
@@ -300,6 +302,9 @@ export class AppShellComponent implements OnDestroy {
   onDrawerItemSelected(path: string): void {
     this.clearGlobalSearch();
     const base = path.split('?')[0];
+    if (base === '/browse' || base.startsWith('/browse/')) {
+      this.browseContext.setFromRouterUrl(path);
+    }
     const keepTasksDrawer = /^\/tasks\/[^/]+$/.test(base);
     if (!keepTasksDrawer) {
       this.drawerOpen.set(false);
@@ -325,7 +330,11 @@ export class AppShellComponent implements OnDestroy {
 
   onNavigateKeepDrawer(path: string): void {
     this.clearGlobalSearch();
-    void this.router.navigateByUrl(path);
+    const base = path.split('?')[0];
+    if (base === '/browse' || base.startsWith('/browse/')) {
+      this.browseContext.setFromRouterUrl(path);
+    }
+    void this.router.navigateByUrl(path, { onSameUrlNavigation: 'reload' });
   }
 
   onDrawerClose(): void {

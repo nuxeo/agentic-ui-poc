@@ -59,8 +59,14 @@
       } @else if (rootNodes().length === 0) {
         <div class="tree-empty">No folders found</div>
       } @else {
+        @if (browseTreeShowRootBack()) {
+          <button class="tree-back" type="button" (click)="navigateToBrowseRoot()">
+            <mat-icon>chevron_left</mat-icon>
+            Root
+          </button>
+        }
         <div class="tree-list">
-          @for (node of rootNodes(); track node.doc.uid) {
+          @for (node of browseDisplayNodes(); track node.doc.uid) {
             <ng-container *ngTemplateOutlet="folderTpl; context: { $implicit: node, depth: 0 }" />
           }
         </div>
@@ -422,9 +428,12 @@
       <span class="tree-toggle-spacer"></span>
     }
 
-    <mat-icon class="tree-folder-icon">{{ folderIcon(node) }}</mat-icon>
-
-    <button class="tree-label" (click)="navigateToFolder(node)" type="button">
+    <button
+      class="tree-label"
+      [class.tree-label--active]="isNodeActive(node)"
+      (click)="navigateToFolder(node)"
+      type="button"
+    >
       {{ nodeLabel(node) }}
     </button>
   </div>
