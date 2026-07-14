@@ -126,6 +126,21 @@ export {
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';
+export { BrowseContextService } from './lib/services/browse-context.service';
+export {
+  browseTreeContextPath,
+  cumulativeNuxeoPathPrefixes,
+  expandableNuxeoPathPrefixes,
+  normalizeNuxeoPath,
+  parentNuxeoFolderPath,
+  parseBrowseNuxeoPathFromRouterUrl,
+  nuxeoPathsEqual,
+  nuxeoPathsEqualFlexible,
+  nuxeoPathSegments,
+  toBrowseRouterUrl,
+  isBrowseRouterUrl,
+  topLevelNuxeoFolderPath,
+} from './lib/utils/browse-path.utils';
 export { ContentLakeIngestService } from './lib/services/content-lake-ingest.service';
 export {
   DocumentDetailService,

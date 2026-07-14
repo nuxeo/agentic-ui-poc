@@ -86,6 +86,25 @@ pollAndDownloadCsv(executionId: string): Observable<Blob>
 
 ---
 
+## BrowseContextService (`browse-context.service.ts`)
+
+Tracks the Nuxeo path that drives the browse nav drawer tree (Nuxeo Web UI pattern). Updated
+from browse navigation, document detail, and tree clicks.
+
+```typescript
+readonly contextPath: Signal<string>  // normalized repository path, default '/'
+
+setFromRouterUrl(routerUrl: string): void
+setFromDocument(doc: NuxeoDocument): void  // folderish → doc.path; leaf → parent folder
+setFromNuxeoPath(nuxeoPath: string): void
+```
+
+Path helpers: `libs/shared/nuxeo-client/src/lib/utils/browse-path.utils.ts`
+(`parseBrowseNuxeoPathFromRouterUrl`, `cumulativeNuxeoPathPrefixes`, `topLevelNuxeoFolderPath`,
+`nuxeoPathsEqualFlexible`, …).
+
+---
+
 ## SearchAggregationService (`search-aggregation.service.ts`)
 
 Shared state service for search. Holds aggregation results and saved search state as signals.
