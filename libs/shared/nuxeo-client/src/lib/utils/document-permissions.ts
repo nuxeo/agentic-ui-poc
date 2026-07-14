@@ -7,6 +7,7 @@ export const WRITE_SECURITY = 'WriteSecurity';
 export const MANAGE_DOCUMENT_PERMISSIONS = 'Everything';
 
 /** Atomic permissions returned by the Nuxeo `permissions` document enricher. */
+export const READ_DOCUMENT = 'Read';
 export const WRITE_DOCUMENT = 'Write';
 export const READ_WRITE_DOCUMENT = 'ReadWrite';
 export const ADD_CHILDREN = 'AddChildren';
@@ -47,11 +48,7 @@ export function canRemoveDocument(doc: NuxeoDocument | null | undefined): boolea
 
 /** True when the current user can view document audit/history (Classic Web UI parity). */
 export function canViewDocumentAuditLog(doc: NuxeoDocument | null | undefined): boolean {
-  return (
-    canWriteDocument(doc) ||
-    hasDocumentPermission(doc, READ_WRITE_DOCUMENT) ||
-    canManageDocumentPermissions(doc)
-  );
+  return hasDocumentPermission(doc, READ_DOCUMENT);
 }
 
 /** True when an HTTP error indicates the server rejected the action for lack of permission. */
