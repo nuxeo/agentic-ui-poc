@@ -38,6 +38,9 @@ import {
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
   mailSendFailureMessage,
+  readClipboardDocs,
+  writeClipboardDocs,
+  type ClipboardDoc,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -123,9 +126,7 @@ export class CollectionDetailComponent {
   readonly lockOwner = signal<string | null>(null);
   readonly isSubscribed = signal(false);
   readonly actionInProgress = signal<string | null>(null);
-  readonly clipboardDocs = signal<Array<{ uid: string; title: string }>>(
-    JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]'),
-  );
+  readonly clipboardDocs = signal<ClipboardDoc[]>(readClipboardDocs());
 
   private collectionUid = '';
 
@@ -424,12 +425,12 @@ export class CollectionDetailComponent {
     if (this.isInClipboard()) {
       const updated = current.filter((c) => c.uid !== this.collectionUid);
       this.clipboardDocs.set(updated);
-      localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+      writeClipboardDocs(updated);
       this.toast('Removed from clipboard');
     } else {
-      const updated = [...current, { uid: col.uid, title: col.title }];
+      const updated = [...current, { uid: col.uid, title: col.title, type: col.type }];
       this.clipboardDocs.set(updated);
-      localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+      writeClipboardDocs(updated);
       this.toast('Added to clipboard');
     }
     window.dispatchEvent(new Event('clipboard-changed'));

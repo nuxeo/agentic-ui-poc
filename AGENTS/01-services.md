@@ -78,10 +78,24 @@ getChildren(nuxeoPath: string, pageSize?: number, currentPageIndex?: number): Ob
 getTreeChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>  // tree_children page provider, all pages
 getNavTreeChildren(parent: NuxeoDocument, pageSize?: number): Observable<NuxeoDocumentList>  // Root/workspaces: tree_children; Domain: @children
 updateDocument(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument>
+copyDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>  // Document.Copy automation
+moveDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>  // Document.Move automation
 getTrashedChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>
 restoreDocument(uid: string): Observable<NuxeoDocument>
 startCsvExport(parentUid: string): Observable<string>
 pollAndDownloadCsv(executionId: string): Observable<Blob>
+```
+
+---
+
+## ClipboardTargetService (`clipboard-target.service.ts`)
+
+Tracks the current browse folder used as the paste target for clipboard Copy/Move (Web UI `target-document`).
+
+```typescript
+readonly target: Signal<NuxeoDocument | null>
+setTarget(doc: NuxeoDocument | null): void
+clear(): void
 ```
 
 ---

@@ -83,6 +83,9 @@ import {
   renderNoteMarkdown,
   isMailSendError,
   mailSendFailureMessage,
+  readClipboardDocs,
+  writeClipboardDocs,
+  type ClipboardDoc,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -189,33 +192,6 @@ type KeUiAction =
   | 'named-entity-recognition-text'
   | 'text-summarization'
   | 'image-enrichment';
-
-type ClipboardDoc = { uid: string; title: string };
-
-function readClipboardDocs(): ClipboardDoc[] {
-  try {
-    const parsed: unknown = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
-    return Array.isArray(parsed)
-      ? parsed.filter(
-          (item): item is ClipboardDoc =>
-            typeof item === 'object' &&
-            item !== null &&
-            typeof (item as ClipboardDoc).uid === 'string' &&
-            typeof (item as ClipboardDoc).title === 'string',
-        )
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeClipboardDocs(docs: ClipboardDoc[]): void {
-  try {
-    localStorage.setItem('nuxeo_clipboard', JSON.stringify(docs));
-  } catch {
-    // Storage can be unavailable in restricted browser contexts and test runners.
-  }
-}
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   jpg: 'image/jpeg',
@@ -2662,7 +2638,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       writeClipboardDocs(updated);
       this.toast('Removed from clipboard');
     } else {
-      const updated = [...current, { uid: d.uid, title: d.title }];
+      const updated = [...current, { uid: d.uid, title: d.title, type: d.type }];
       this.clipboardDocs.set(updated);
       writeClipboardDocs(updated);
       this.toast('Added to clipboard');

@@ -50,6 +50,7 @@ import {
   AuditEntry,
   DirectoryEntry,
   BrowseService,
+  ClipboardTargetService,
   DocumentDetailService,
   DirectoryService,
   SelectionService,
@@ -155,6 +156,7 @@ export class BrowseComponent {
 
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
+  private readonly clipboardTargetService = inject(ClipboardTargetService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly directoryService = inject(DirectoryService);
   private readonly tagService = inject(TagService);
@@ -472,6 +474,7 @@ export class BrowseComponent {
         this.entries.set(entries);
         this.totalSize.set(totalSize);
         this.loading.set(false);
+        this.syncClipboardTarget(folder, payload.nuxeoPath);
         this.loadThumbnails(entries);
         if (folder.uid && folder.uid !== 'virtual-root') {
           this.loadActivity(folder.uid);
@@ -479,6 +482,17 @@ export class BrowseComponent {
       });
 
     this.browsePath$.next(initialPath);
+
+    const refreshAfterClipboardAction = () => {
+      if (this.currentNuxeoPath) {
+        this.browsePath$.next(this.currentNuxeoPath);
+      }
+    };
+    window.addEventListener('clipboard-action-performed', refreshAfterClipboardAction);
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('clipboard-action-performed', refreshAfterClipboardAction);
+      this.clipboardTargetService.clear();
+    });
 
     this.tagSearch$
       .pipe(
@@ -501,6 +515,25 @@ export class BrowseComponent {
   }
 
   // ── Content loading ──
+
+  private syncClipboardTarget(folder: NuxeoDocument, nuxeoPath: string): void {
+    if (!isFolderishDocument(folder) || folder.uid === 'virtual-root') {
+      this.clipboardTargetService.clear();
+      return;
+    }
+
+    const path = folder.path ?? nuxeoPath;
+    this.browseService
+      .getFolderContext(path)
+      .pipe(
+        catchError(() => of(folder)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((doc) => {
+        if (nuxeoPath !== this.currentNuxeoPath) return;
+        this.clipboardTargetService.setTarget(doc);
+      });
+  }
 
   private resetBrowseTabState(): void {
     this.historyLoaded = false;
@@ -1080,7 +1113,7 @@ export class BrowseComponent {
 
   toggleSelection(id: string): void {
     const doc = this.filteredEntries().find((d) => d.uid === id);
-    this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null);
+    this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null, doc?.type);
   }
 
   onRowClick(doc: NuxeoDocument): void {

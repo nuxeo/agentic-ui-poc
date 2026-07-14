@@ -42,6 +42,8 @@ import {
   NuxeoDocument,
   SearchService,
   SelectionService,
+  readClipboardDocs,
+  writeClipboardDocs,
   type GlobalSearchSuggestion,
   docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -249,12 +251,7 @@ export class AppShellComponent implements OnDestroy {
   }
 
   private readClipboardCount(): number {
-    try {
-      const items = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]');
-      return Array.isArray(items) ? items.length : 0;
-    } catch {
-      return 0;
-    }
+    return readClipboardDocs().length;
   }
 
   isActive(path: string): boolean {
@@ -409,23 +406,18 @@ export class AppShellComponent implements OnDestroy {
     const selected = this.selectionService.selectedItems();
     if (selected.length === 0) return;
 
-    let current: Array<{ uid: string; title: string }> = [];
-    try {
-      current = JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]') as Array<{
-        uid: string;
-        title: string;
-      }>;
-    } catch {
-      current = [];
-    }
-
+    const current = readClipboardDocs();
     const existing = new Set(current.map((item) => item.uid));
     const additions = selected
       .filter((item) => !existing.has(item.id))
-      .map((item) => ({ uid: item.id, title: item.name }));
+      .map((item) => ({
+        uid: item.id,
+        title: item.name,
+        ...(item.type ? { type: item.type } : {}),
+      }));
 
     const updated = [...current, ...additions];
-    localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+    writeClipboardDocs(updated);
     window.dispatchEvent(new Event('clipboard-changed'));
 
     this.snackBar.open(
