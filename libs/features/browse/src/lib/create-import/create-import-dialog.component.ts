@@ -66,6 +66,8 @@ export interface CreateImportDialogResult {
   path?: string | null;
   /** When set, the opener should navigate to this document's detail page. */
   navigateToUid?: string;
+  /** Nuxeo path of the created document (for browse navigation). */
+  navigateToPath?: string;
   /** When true, the detail page should focus the note editor (Note documents only). */
   freshNote?: boolean;
 }
@@ -1193,6 +1195,7 @@ export class CreateImportDialogComponent implements OnInit {
       refreshed: true,
       path: this.parentPath(),
       navigateToUid: doc.uid,
+      navigateToPath: doc.type === 'Domain' ? doc.path : undefined,
       freshNote: docTypeName === 'Note',
     });
   }

@@ -95,10 +95,13 @@ from browse navigation, document detail, and tree clicks.
 
 ```typescript
 readonly contextPath: Signal<string>  // normalized repository path, default '/'
+readonly treeRefreshTick: Signal<number>  // incremented when browse nav tree should reload
 
 setFromRouterUrl(routerUrl: string): void
 setFromDocument(doc: NuxeoDocument): void  // folderish → doc.path; leaf → parent folder
 setFromNuxeoPath(nuxeoPath: string): void
+requestTreeRefresh(): void  // invalidate/reload browse nav drawer tree (e.g. after domain creation)
+resetContext(): void  // restore repository root path (e.g. on sign-out)
 ```
 
 Path helpers: `libs/shared/nuxeo-client/src/lib/utils/browse-path.utils.ts`

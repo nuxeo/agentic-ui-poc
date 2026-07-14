@@ -358,6 +358,9 @@ export class AppShellComponent implements OnDestroy {
       }
 
       this.selectionService.deleteSelected().subscribe({
+        next: () => {
+          this.browseContext.requestTreeRefresh();
+        },
         error: (err) => {
           console.error('Failed to delete selected documents', err);
           const message = this.getDeleteErrorMessage(err);
