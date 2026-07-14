@@ -1523,10 +1523,12 @@
               </div>
             }
 
-            <div class="prop-field">
-              <span class="prop-label">File Name</span>
-              <span class="prop-value">{{ fileName() }}</span>
-            </div>
+            @if (hasPersistedMainBlob()) {
+              <div class="prop-field">
+                <span class="prop-label">File Name</span>
+                <span class="prop-value">{{ fileName() }}</span>
+              </div>
+            }
 
             @if (expires()) {
               <div class="prop-field">
@@ -1834,8 +1836,52 @@
                             @if (isCommentEdited(reply)) {
                               <span class="comment-edited">(edited)</span>
                             }
+                            @if (canWriteDoc()) {
+                              <button
+                                mat-icon-button
+                                [matMenuTriggerFor]="replyMenu"
+                                class="comment-menu-btn"
+                                aria-label="Reply actions"
+                              >
+                                <mat-icon>more_vert</mat-icon>
+                              </button>
+                              <mat-menu #replyMenu="matMenu">
+                                <button mat-menu-item (click)="startEditComment(reply)">
+                                  <mat-icon>edit</mat-icon> Edit
+                                </button>
+                                <button mat-menu-item (click)="deleteComment(reply, comment.id)">
+                                  <mat-icon>delete</mat-icon> Delete
+                                </button>
+                              </mat-menu>
+                            }
                           </div>
-                          <p class="comment-text reply-text">{{ reply.text }}</p>
+                          @if (editingCommentId() === reply.id) {
+                            <div class="comment-edit-row">
+                              <input
+                                class="comment-edit-input"
+                                [value]="editingCommentText()"
+                                (input)="editingCommentText.set($any($event.target).value)"
+                                (keydown.enter)="saveEditComment()"
+                              />
+                              <button
+                                mat-icon-button
+                                (click)="saveEditComment()"
+                                [disabled]="commentSaving()"
+                                matTooltip="Save"
+                              >
+                                <mat-icon>check</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                (click)="cancelEditComment()"
+                                matTooltip="Cancel"
+                              >
+                                <mat-icon>close</mat-icon>
+                              </button>
+                            </div>
+                          } @else {
+                            <p class="comment-text reply-text">{{ reply.text }}</p>
+                          }
                         </div>
                       }
                     </div>

@@ -122,6 +122,7 @@ describe('BrowseService', () => {
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
         r.params.get('query')?.includes('FROM Domain'),
     );
+    expect(nxqlReq.request.params.get('pageSize')).toBe('50');
     nxqlReq.flush({
       entries: [
         {
@@ -129,7 +130,7 @@ describe('BrowseService', () => {
           title: 'Domain-5',
           type: 'Domain',
           path: '/domain-5',
-          parentRef: 'root-uid',
+          parentRef: '00000000-0000-0000-0000-000000000000',
           lastModified: '2026-01-01T00:00:00.000Z',
           properties: {},
         },
@@ -141,9 +142,218 @@ describe('BrowseService', () => {
     });
 
     const result = await result$;
-    expect(result.uid).toBe('root-uid');
+    expect(result.uid).toBe('00000000-0000-0000-0000-000000000000');
     expect(result.type).toBe('Root');
     expect(result.path).toBe('/');
+  });
+
+  it('getRepositoryRoot skips nested domain NXQL hits for isolated users (NXSAT-164)', async () => {
+    const result$ = firstValueFrom(service.getRepositoryRoot());
+
+    const rootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    rootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    const nxqlReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes('FROM Domain'),
+    );
+    nxqlReq.flush({
+      entries: [
+        {
+          uid: 'demo-folder-uid',
+          title: 'Demo Folder',
+          type: 'Domain',
+          path: '/default-domain/Demo Folder',
+          parentRef: 'default-domain-uid',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+        {
+          uid: 'default-domain-uid',
+          title: 'Domain',
+          type: 'Domain',
+          path: '/default-domain',
+          parentRef: '00000000-0000-0000-0000-000000000000',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+        {
+          uid: 'domain-5-uid',
+          title: 'Domain-5',
+          type: 'Domain',
+          path: '/domain-5',
+          parentRef: '00000000-0000-0000-0000-000000000000',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+      ],
+      totalSize: 3,
+      currentPageSize: 3,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.uid).toBe('00000000-0000-0000-0000-000000000000');
+  });
+
+  it('getNavTreeBootstrap lists every accessible domain for isolated users (NXSAT-164)', async () => {
+    const result$ = firstValueFrom(service.getNavTreeBootstrap());
+
+    const rootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    rootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    const nxqlReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes('FROM Domain'),
+    );
+    nxqlReq.flush({
+      entries: [
+        {
+          uid: 'demo-folder-uid',
+          title: 'Demo Folder',
+          type: 'Domain',
+          path: '/default-domain/Demo Folder',
+          parentRef: 'default-domain-uid',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+        {
+          uid: 'default-domain-uid',
+          title: 'Domain',
+          type: 'Domain',
+          path: '/default-domain',
+          parentRef: '00000000-0000-0000-0000-000000000000',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+        {
+          uid: 'domain-5-uid',
+          title: 'Domain-5',
+          type: 'Domain',
+          path: '/domain-5',
+          parentRef: '00000000-0000-0000-0000-000000000000',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+      ],
+      totalSize: 3,
+      currentPageSize: 3,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const treeReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/tree_children/execute' &&
+        r.params.get('queryParams') === '00000000-0000-0000-0000-000000000000',
+    );
+    treeReq.flush({
+      entries: [
+        {
+          uid: 'default-domain-uid',
+          title: 'Domain',
+          type: 'Domain',
+          path: '/default-domain',
+          facets: ['Folderish'],
+          properties: {},
+        },
+        {
+          uid: 'domain-5-uid',
+          title: 'Domain-5',
+          type: 'Domain',
+          path: '/domain-5',
+          facets: ['Folderish'],
+          properties: {},
+        },
+      ],
+      totalSize: 2,
+      currentPageSize: 2,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+      isNextPageAvailable: false,
+    });
+
+    const result = await result$;
+    expect(result.root.uid).toBe('00000000-0000-0000-0000-000000000000');
+    expect(result.entries.map((e) => e.title)).toEqual(['Domain', 'Domain-5']);
+  });
+
+  it('getNavTreeBootstrap resolves non-null repository root uid (local Docker)', async () => {
+    const localRootUid = '4a56c793-d0ae-4ace-bef4-f909e6b9eb59';
+    const result$ = firstValueFrom(service.getNavTreeBootstrap());
+
+    const rootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    rootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    const nxqlReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('query')?.includes('FROM Domain'),
+    );
+    nxqlReq.flush({
+      entries: [
+        {
+          uid: 'default-domain-uid',
+          title: 'Domain',
+          type: 'Domain',
+          path: '/default-domain',
+          parentRef: localRootUid,
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+        {
+          uid: 'domain-5-uid',
+          title: 'Domain-5',
+          type: 'Domain',
+          path: '/domain-5',
+          parentRef: localRootUid,
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        },
+      ],
+      totalSize: 2,
+      currentPageSize: 2,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const treeReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/pp/tree_children/execute' &&
+        r.params.get('queryParams') === localRootUid,
+    );
+    treeReq.flush({
+      entries: [
+        {
+          uid: 'default-domain-uid',
+          title: 'Domain',
+          type: 'Domain',
+          path: '/default-domain',
+          facets: ['Folderish'],
+          properties: {},
+        },
+        {
+          uid: 'domain-5-uid',
+          title: 'Domain-5',
+          type: 'Domain',
+          path: '/domain-5',
+          facets: ['Folderish'],
+          properties: {},
+        },
+      ],
+      totalSize: 2,
+      currentPageSize: 2,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+      isNextPageAvailable: false,
+    });
+
+    const result = await result$;
+    expect(result.root.uid).toBe(localRootUid);
+    expect(result.entries.map((e) => e.title)).toEqual(['Domain', 'Domain-5']);
   });
 
   it('getBrowseFolderContents redirects workspace-only users from repository root', async () => {
@@ -541,5 +751,50 @@ describe('BrowseService', () => {
 
     const doc = await result$;
     expect(doc.path).toBe('/default-domain/UserWorkspaces/Administrator');
+  });
+
+  it('copyDocuments calls Document.Copy with docs input and target param', async () => {
+    const result$ = firstValueFrom(service.copyDocuments(['doc-1', 'doc-2'], 'folder-uid'));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Document.Copy');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      params: { target: 'folder-uid' },
+      context: {},
+      input: 'docs:doc-1,doc-2',
+    });
+    req.flush({
+      entries: [
+        { uid: 'copy-1', title: 'Copy 1', type: 'File', path: '/folder/copy-1', properties: {} },
+      ],
+      totalSize: 1,
+    });
+
+    const result = await result$;
+    expect(result).toHaveLength(1);
+    expect(result[0].uid).toBe('copy-1');
+  });
+
+  it('moveDocuments calls Document.Move with single doc input', async () => {
+    const result$ = firstValueFrom(service.moveDocuments(['doc-1'], 'folder-uid'));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Document.Move');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      params: { target: 'folder-uid' },
+      context: {},
+      input: 'doc:doc-1',
+    });
+    req.flush({
+      uid: 'doc-1',
+      title: 'Moved',
+      type: 'File',
+      path: '/folder/doc-1',
+      properties: {},
+    });
+
+    const result = await result$;
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Moved');
   });
 });

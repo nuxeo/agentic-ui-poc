@@ -320,12 +320,6 @@
           >
         </div>
       } @else {
-        <div class="clipboard-actions-bar">
-          <span class="clipboard-count">{{ clipboardDocs().length }} item(s)</span>
-          <button mat-button color="warn" class="clipboard-clear-btn" (click)="clearClipboard()">
-            <mat-icon>delete_sweep</mat-icon> Clear All
-          </button>
-        </div>
         <div class="clipboard-list">
           @for (doc of clipboardDocs(); track doc.uid) {
             <div class="clipboard-card">
@@ -350,6 +344,36 @@
               </button>
             </div>
           }
+        </div>
+        <div class="clipboard-footer">
+          <p class="clipboard-tip">Browse to a container to paste or move clipboard content.</p>
+          @if (clipboardActionLoading()) {
+            <div class="clipboard-loading">
+              <mat-spinner diameter="24" />
+            </div>
+          }
+          <div class="clipboard-primary-actions">
+            <button
+              mat-stroked-button
+              type="button"
+              class="clipboard-action-btn"
+              [disabled]="!clipboardCanPaste() || clipboardActionLoading()"
+              (click)="copyClipboard()"
+            >
+              <mat-icon>content_copy</mat-icon>
+              Copy
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              class="clipboard-action-btn"
+              [disabled]="!clipboardCanPaste() || clipboardActionLoading()"
+              (click)="moveClipboard()"
+            >
+              <mat-icon>drive_file_move</mat-icon>
+              Move
+            </button>
+          </div>
         </div>
       }
     </div>

@@ -108,16 +108,20 @@ export {
   RESTRICTED_IMPORT_LOCATION_MESSAGE,
   documentHasMainBlob,
   documentHasPersistedMainBlob,
+  inferBlobDocTypeFromFile,
   isBlobHoldingDocType,
   isFolderishDocument,
   isBrowsableNavNode,
   isRepositoryRootPath,
   isRestrictedImportParentPath,
+  resolveImportBlobDocType,
   sanitizeDocumentName,
   summarizeCsvImportReport,
+  titleFromFileName,
   type CsvImportResult,
   type CsvServerImportOptions,
   type CreateBlobHoldingDocumentOptions,
+  type ImportFileEntry,
   type ImportFilesOptions,
   type ImportProgress,
   type StagedBatchFile,
@@ -127,6 +131,7 @@ export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';
 export { BrowseContextService } from './lib/services/browse-context.service';
+export { ClipboardTargetService } from './lib/services/clipboard-target.service';
 export {
   browseTreeContextPath,
   cumulativeNuxeoPathPrefixes,
@@ -223,6 +228,13 @@ export {
   isDomainParentType,
   resolveCreatableSubtypes,
 } from './lib/utils/creatable-subtypes';
+export {
+  CLIPBOARD_STORAGE_KEY,
+  canPasteClipboard,
+  readClipboardDocs,
+  writeClipboardDocs,
+  type ClipboardDoc,
+} from './lib/utils/clipboard.utils';
 export {
   principalPermissionTimeFrameLabel,
   principalPermissionToLocalRow,

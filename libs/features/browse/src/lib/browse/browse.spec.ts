@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
 import { EMPTY, of, throwError } from 'rxjs';
 import { BrowseComponent } from './browse';
@@ -15,6 +16,7 @@ import {
   SelectionService,
   TagService,
 } from '@agentic-ui/shared/nuxeo-client';
+import { trashSelectedDocumentsConfirmData } from '@agentic-ui/shared/ui';
 
 const mockBrowseService = {
   getByPath: vi.fn(() => throwError(() => new Error('not connected'))),
@@ -61,15 +63,18 @@ const mockSelectionService = {
   toggle: vi.fn(),
   selectAll: vi.fn(),
   clear: vi.fn(),
+  deleteSelected: vi.fn(() => of([])),
 };
 
 describe('BrowseComponent', () => {
   let component: BrowseComponent;
   let fixture: ComponentFixture<BrowseComponent>;
   let snackBarOpenSpy: ReturnType<typeof vi.fn>;
+  let dialogOpenSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     snackBarOpenSpy = vi.fn();
+    dialogOpenSpy = vi.fn(() => ({ afterClosed: () => of(false) }));
     vi.clearAllMocks();
     mockDocumentDetailService.getDocumentPermissions.mockReturnValue(EMPTY);
     await TestBed.configureTestingModule({
@@ -83,6 +88,7 @@ describe('BrowseComponent', () => {
         { provide: TagService, useValue: mockTagService },
         { provide: SelectionService, useValue: mockSelectionService },
         { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
+        { provide: MatDialog, useValue: { open: dialogOpenSpy } },
       ],
     })
       // Shallow-render: replace the complex Material/Satori template with a stub.
@@ -114,7 +120,12 @@ describe('BrowseComponent', () => {
 
     component.toggleSelection('doc-1');
 
-    expect(mockSelectionService.toggle).toHaveBeenCalledWith('doc-1', 'Quarterly Report', null);
+    expect(mockSelectionService.toggle).toHaveBeenCalledWith(
+      'doc-1',
+      'Quarterly Report',
+      null,
+      'File',
+    );
   });
 
   it('selectionAriaLabel includes document title for checkbox accessibility', () => {
@@ -128,6 +139,29 @@ describe('BrowseComponent', () => {
     };
 
     expect(component.selectionAriaLabel(doc)).toBe('Select Quarterly Report');
+  });
+
+  it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {
+    mockSelectionService.selectedCount.mockReturnValue(3);
+    component.currentDoc.set({
+      uid: 'folder-1',
+      title: 'Akshitha',
+      type: 'Workspace',
+      path: '/workspaces/Akshitha',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Everything'] },
+    } as NuxeoDocument);
+
+    component.deleteDocument();
+
+    expect(dialogOpenSpy).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        data: trashSelectedDocumentsConfirmData(3),
+      }),
+    );
+    expect(mockDocumentDetailService.trashDocument).not.toHaveBeenCalled();
   });
 
   it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {

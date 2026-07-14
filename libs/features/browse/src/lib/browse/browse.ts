@@ -51,6 +51,7 @@ import {
   DirectoryEntry,
   BrowseService,
   BrowseContextService,
+  ClipboardTargetService,
   parseBrowseNuxeoPathFromRouterUrl,
   isBrowseRouterUrl,
   DocumentDetailService,
@@ -87,7 +88,8 @@ import {
   ExportDialogData,
   ExportType,
   ConfirmDialogComponent,
-  ConfirmDialogData,
+  trashDocumentConfirmData,
+  trashSelectedDocumentsConfirmData,
 } from '@agentic-ui/shared/ui';
 
 import {
@@ -159,6 +161,7 @@ export class BrowseComponent {
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
   private readonly browseContext = inject(BrowseContextService);
+  private readonly clipboardTargetService = inject(ClipboardTargetService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly directoryService = inject(DirectoryService);
   private readonly tagService = inject(TagService);
@@ -484,6 +487,7 @@ export class BrowseComponent {
         this.entries.set(entries);
         this.totalSize.set(totalSize);
         this.loading.set(false);
+        this.syncClipboardTarget(folder, payload.nuxeoPath);
         this.loadThumbnails(entries);
         if (folder.uid && folder.uid !== 'virtual-root') {
           this.loadActivity(folder.uid);
@@ -491,6 +495,17 @@ export class BrowseComponent {
       });
 
     this.browsePath$.next(initialPath);
+
+    const refreshAfterClipboardAction = () => {
+      if (this.currentNuxeoPath) {
+        this.browsePath$.next(this.currentNuxeoPath);
+      }
+    };
+    window.addEventListener('clipboard-action-performed', refreshAfterClipboardAction);
+    this.destroyRef.onDestroy(() => {
+      window.removeEventListener('clipboard-action-performed', refreshAfterClipboardAction);
+      this.clipboardTargetService.clear();
+    });
 
     this.tagSearch$
       .pipe(
@@ -513,6 +528,25 @@ export class BrowseComponent {
   }
 
   // ── Content loading ──
+
+  private syncClipboardTarget(folder: NuxeoDocument, nuxeoPath: string): void {
+    if (!isFolderishDocument(folder) || folder.uid === 'virtual-root') {
+      this.clipboardTargetService.clear();
+      return;
+    }
+
+    const path = folder.path ?? nuxeoPath;
+    this.browseService
+      .getFolderContext(path)
+      .pipe(
+        catchError(() => of(folder)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((doc) => {
+        if (nuxeoPath !== this.currentNuxeoPath) return;
+        this.clipboardTargetService.setTarget(doc);
+      });
+  }
 
   private resetBrowseTabState(): void {
     this.historyLoaded = false;
@@ -946,6 +980,12 @@ export class BrowseComponent {
   }
 
   deleteDocument(): void {
+    const selectedCount = this.selectionService.selectedCount();
+    if (selectedCount > 0) {
+      this.deleteSelectedDocuments();
+      return;
+    }
+
     const doc = this.currentDoc();
     if (!doc) return;
     if (!canRemoveDocument(doc)) {
@@ -954,11 +994,7 @@ export class BrowseComponent {
     }
 
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: {
-        title: 'Move to Trash',
-        message: `Move "${doc.title}" to trash?`,
-        confirmLabel: 'Delete',
-      } as ConfirmDialogData,
+      data: trashDocumentConfirmData(doc.title),
     });
 
     dialogRef
@@ -973,6 +1009,36 @@ export class BrowseComponent {
             next: () => {
               this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
               void this.router.navigateByUrl('/browse');
+            },
+            error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+          });
+      });
+  }
+
+  private deleteSelectedDocuments(): void {
+    const count = this.selectionService.selectedCount();
+    if (count === 0) return;
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      data: trashSelectedDocumentsConfirmData(count),
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.selectionService
+          .deleteSelected()
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.snackBar.open(
+                count === 1 ? 'Moved to trash' : `${count} documents moved to trash`,
+                'OK',
+                { duration: 3000 },
+              );
+              this.loadContent();
             },
             error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
           });
@@ -1081,7 +1147,7 @@ export class BrowseComponent {
 
   toggleSelection(id: string): void {
     const doc = this.filteredEntries().find((d) => d.uid === id);
-    this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null);
+    this.selectionService.toggle(id, doc?.title ?? id, this.thumbnailMap()[id] ?? null, doc?.type);
   }
 
   onRowClick(doc: NuxeoDocument): void {

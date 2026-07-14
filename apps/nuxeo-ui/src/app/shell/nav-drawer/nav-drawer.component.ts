@@ -16,14 +16,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { DynamicDrawerComponent } from './dynamic-drawer.component';
 import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, finalize } from 'rxjs/operators';
 
 import {
   NuxeoDocument,
   BrowseService,
   BrowseContextService,
+  ClipboardTargetService,
   CollectionService,
   AssetService,
   AssetAggregationService,
@@ -46,6 +48,10 @@ import {
   topLevelNuxeoFolderPath,
   type SearchQueryParams,
   type AssetAggregations,
+  canPasteClipboard,
+  readClipboardDocs,
+  writeClipboardDocs,
+  type ClipboardDoc,
 } from '@agentic-ui/shared/nuxeo-client';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
@@ -78,6 +84,7 @@ export interface FolderNode {
     MatProgressSpinnerModule,
     MatButtonModule,
     MatTooltipModule,
+    MatSnackBarModule,
     DynamicDrawerComponent,
   ],
   templateUrl: './nav-drawer.component.html',
@@ -86,6 +93,8 @@ export interface FolderNode {
 export class NavDrawerComponent {
   private readonly browseService = inject(BrowseService);
   private readonly browseContext = inject(BrowseContextService);
+  private readonly clipboardTargetService = inject(ClipboardTargetService);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly collectionService = inject(CollectionService);
   private readonly assetService = inject(AssetService);
   private readonly assetAggregationService = inject(AssetAggregationService);
@@ -156,10 +165,12 @@ export class NavDrawerComponent {
   readonly tasks = signal<NuxeoTask[]>([]);
   readonly tasksLoading = signal(false);
   readonly tasksError = signal<string | null>(null);
-  readonly clipboardDocs = signal<Array<{ uid: string; title: string }>>(
-    JSON.parse(localStorage.getItem('nuxeo_clipboard') ?? '[]'),
-  );
+  readonly clipboardDocs = signal<ClipboardDoc[]>(readClipboardDocs());
   readonly clipboardEmpty = computed(() => this.clipboardDocs().length === 0);
+  readonly clipboardCanPaste = computed(() =>
+    canPasteClipboard(this.clipboardDocs(), this.clipboardTargetService.target()),
+  );
+  readonly clipboardActionLoading = signal(false);
 
   readonly favorites = signal<NuxeoDocument[]>([]);
   readonly favoritesLoading = signal(false);
@@ -178,6 +189,11 @@ export class NavDrawerComponent {
   private expiredLoaded = false;
 
   private readonly destroyRef = inject(DestroyRef);
+  /** Tracks which user the drawer caches belong to — cleared on sign-out or user switch. */
+  private drawerSessionUser: string | null = null;
+  private browseTreeLoadedForUser: string | null = null;
+  /** Bumped on user switch / refresh so stale HTTP responses cannot overwrite the tree. */
+  private browseTreeLoadGen = 0;
 
   constructor() {
     // Dynamically load drawer components to avoid static import of lazy-loaded libraries
@@ -188,22 +204,31 @@ export class NavDrawerComponent {
       .subscribe(() => this.loadTasks());
 
     effect(() => {
-      const item = this.activeItem();
-      const contextPath = this.browseContext.contextPath();
-      if (item?.path !== '/browse') return;
-
-      untracked(() => {
-        if (this.rootNodes().length === 0) {
-          this.pendingBrowseSyncPath = contextPath;
-          this.loadRootTree();
-          return;
-        }
-        this.syncBrowseTreeToPath(contextPath);
-      });
+      const username = this.authService.username() ?? null;
+      if (username !== this.drawerSessionUser) {
+        this.clearUserScopedDrawerCaches();
+        this.drawerSessionUser = username;
+      }
     });
 
     effect(() => {
       const item = this.activeItem();
+      const contextPath = this.browseContext.contextPath();
+      const username = this.authService.username();
+
+      if (item?.path === '/browse' && username) {
+        untracked(() => {
+          const needsReload =
+            this.browseTreeLoadedForUser !== username || this.rootNodes().length === 0;
+          if (needsReload) {
+            this.pendingBrowseSyncPath = contextPath;
+            this.browseTreeLoadedForUser = username;
+            this.loadRootTree();
+            return;
+          }
+          this.syncBrowseTreeToPath(contextPath);
+        });
+      }
       if (item?.path === '/collections' && !this.collectionsLoaded) {
         this.loadCollections();
       }
@@ -544,6 +569,8 @@ export class NavDrawerComponent {
   // ── Browse tree ──
 
   private loadRootTree(): void {
+    const loadGen = ++this.browseTreeLoadGen;
+    const username = this.authService.username();
     this.rootLoading.set(true);
 
     this.browseService
@@ -551,6 +578,9 @@ export class NavDrawerComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ root: rootDoc, entries }) => {
+          if (loadGen !== this.browseTreeLoadGen || username !== this.authService.username()) {
+            return;
+          }
           const rootNode: FolderNode = {
             doc: rootDoc,
             children: [],
@@ -573,13 +603,24 @@ export class NavDrawerComponent {
           this.pendingBrowseSyncPath = null;
           this.syncBrowseTreeToPath(syncPath);
         },
-        error: () => this.rootLoading.set(false),
+        error: () => {
+          if (loadGen !== this.browseTreeLoadGen || username !== this.authService.username()) {
+            return;
+          }
+          this.rootLoading.set(false);
+        },
       });
   }
 
   refreshBrowseTree(): void {
     this.pendingBrowseSyncPath = this.browseContext.contextPath();
+    this.browseTreeLoadGen++;
+    this.browseTreeLoadedForUser = null;
     this.rootNodes.set([]);
+    const username = this.authService.username();
+    if (username) {
+      this.browseTreeLoadedForUser = username;
+    }
     this.loadRootTree();
   }
 
@@ -780,6 +821,34 @@ export class NavDrawerComponent {
         this.collapseDescendantsOffActivePath(child, activePath);
       }
     }
+  }
+
+  private clearUserScopedDrawerCaches(): void {
+    this.pendingBrowseSyncPath = null;
+    this.browseTreeLoadGen++;
+    this.browseTreeLoadedForUser = null;
+    this.rootNodes.set([]);
+    this.rootLoading.set(false);
+    this.collectionsLoaded = false;
+    this.collections.set([]);
+    this.collectionsLoading.set(false);
+    this.recentlyViewedLoaded = false;
+    this.recentlyViewed.set([]);
+    this.recentlyViewedLoading.set(false);
+    this.recentlyViewedError.set(null);
+    this.expiredLoaded = false;
+    this.expiredDocs.set([]);
+    this.expiredLoading.set(false);
+    this.expiredError.set(null);
+    this.personalSpaceLoaded = false;
+    this.personalSpaceNodes.set([]);
+    this.personalSpaceLoading.set(false);
+    this.personalSpaceError.set(null);
+    this.favorites.set([]);
+    this.favoritesLoading.set(false);
+    this.tasks.set([]);
+    this.tasksLoading.set(false);
+    this.tasksError.set(null);
   }
 
   refreshPersonalSpaceTree(): void {
@@ -1034,9 +1103,7 @@ export class NavDrawerComponent {
   // ── Clipboard ──
 
   refreshClipboard(): void {
-    const docs: { uid: string; title: string }[] = JSON.parse(
-      localStorage.getItem('nuxeo_clipboard') ?? '[]',
-    );
+    const docs = readClipboardDocs();
     this.clipboardDocs.set(docs);
     this.loadThumbnailsForIds(docs.map((d) => d.uid));
   }
@@ -1058,21 +1125,86 @@ export class NavDrawerComponent {
     }
   }
 
-  openClipboardDoc(doc: { uid: string; title: string }): void {
+  openClipboardDoc(doc: ClipboardDoc): void {
     this.navigateKeepDrawer.emit(`/doc/${doc.uid}`);
   }
 
-  removeFromClipboard(doc: { uid: string; title: string }): void {
+  removeFromClipboard(doc: ClipboardDoc): void {
     const updated = this.clipboardDocs().filter((d) => d.uid !== doc.uid);
     this.clipboardDocs.set(updated);
-    localStorage.setItem('nuxeo_clipboard', JSON.stringify(updated));
+    writeClipboardDocs(updated);
     window.dispatchEvent(new Event('clipboard-changed'));
   }
 
   clearClipboard(): void {
     this.clipboardDocs.set([]);
-    localStorage.setItem('nuxeo_clipboard', JSON.stringify([]));
+    writeClipboardDocs([]);
     window.dispatchEvent(new Event('clipboard-changed'));
+  }
+
+  copyClipboard(): void {
+    this.executeClipboardAction('copy');
+  }
+
+  moveClipboard(): void {
+    this.executeClipboardAction('move');
+  }
+
+  private executeClipboardAction(action: 'copy' | 'move'): void {
+    const target = this.clipboardTargetService.target();
+    const uids = this.clipboardDocs().map((doc) => doc.uid);
+    if (
+      !target ||
+      uids.length === 0 ||
+      !this.clipboardCanPaste() ||
+      this.clipboardActionLoading()
+    ) {
+      return;
+    }
+
+    this.clipboardActionLoading.set(true);
+    const request$ =
+      action === 'copy'
+        ? this.browseService.copyDocuments(uids, target.uid)
+        : this.browseService.moveDocuments(uids, target.uid);
+
+    request$
+      .pipe(
+        finalize(() => this.clipboardActionLoading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (results) => {
+          if (results.length === 0) {
+            this.snackBar.open(
+              action === 'copy'
+                ? 'Failed to copy clipboard items.'
+                : 'Failed to move clipboard items.',
+              'Dismiss',
+              { duration: 4000 },
+            );
+            return;
+          }
+          const count = results.length;
+          this.clearClipboard();
+          window.dispatchEvent(new Event('clipboard-action-performed'));
+          const verb = action === 'copy' ? 'Copied' : 'Moved';
+          this.snackBar.open(
+            `${verb} ${count} item${count === 1 ? '' : 's'} to ${target.title ?? 'folder'}.`,
+            'Dismiss',
+            { duration: 4000 },
+          );
+        },
+        error: () => {
+          this.snackBar.open(
+            action === 'copy'
+              ? 'Failed to copy clipboard items.'
+              : 'Failed to move clipboard items.',
+            'Dismiss',
+            { duration: 4000 },
+          );
+        },
+      });
   }
 
   // ── Favorites ──

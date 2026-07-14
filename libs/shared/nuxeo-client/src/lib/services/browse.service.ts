@@ -1,6 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { EMPTY, Observable, timer, switchMap, map, of, throwError, expand, reduce } from 'rxjs';
+import {
+  EMPTY,
+  Observable,
+  timer,
+  switchMap,
+  map,
+  of,
+  throwError,
+  expand,
+  reduce,
+  forkJoin,
+} from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
@@ -20,6 +31,24 @@ export interface BrowseFolderContents {
   /** Present when a restricted user should land on their only accessible folder. */
   redirectTo?: string;
 }
+
+/** True for Domain documents attached directly under the repository root. */
+function isTopLevelDomain(doc: NuxeoDocument | null | undefined): boolean {
+  if (!doc || doc.type !== 'Domain') {
+    return false;
+  }
+  const path = (doc.path ?? '').replace(/\/+$/, '');
+  const segments = path.split('/').filter(Boolean);
+  // Path depth is stable across environments (local Docker uses a non-null root uid).
+  if (segments.length === 1) {
+    return true;
+  }
+  // Null-UUID parent sentinel used on some Nuxeo deployments (not universal).
+  return doc.parentRef === NULL_REPOSITORY_ROOT_UID;
+}
+
+/** Parent-ref sentinel for top-level domains on deployments that use the null UUID root. */
+const NULL_REPOSITORY_ROOT_UID = '00000000-0000-0000-0000-000000000000';
 
 @Injectable({ providedIn: 'root' })
 export class BrowseService {
@@ -149,19 +178,18 @@ export class BrowseService {
   }
 
   private resolveRepositoryRootFromDomains(): Observable<NuxeoDocument> {
-    return this.api.nxqlSearch(BrowseService.ACCESSIBLE_DOMAINS_NXQL, 1, { properties: '*' }).pipe(
+    return this.api.nxqlSearch(BrowseService.ACCESSIBLE_DOMAINS_NXQL, 50, { properties: '*' }).pipe(
       switchMap((list) => {
-        const domain = list.entries?.[0];
-        const rootUid = domain?.parentRef;
-        if (!rootUid) {
+        const topLevelDomain = (list.entries ?? []).find((entry) => isTopLevelDomain(entry));
+        if (!topLevelDomain?.parentRef) {
           return throwError(() => new Error('Unable to resolve repository root for browse tree'));
         }
         return of({
-          uid: rootUid,
+          uid: topLevelDomain.parentRef,
           title: 'Root',
           type: 'Root',
           path: '/',
-          lastModified: domain?.lastModified ?? '',
+          lastModified: topLevelDomain.lastModified ?? '',
           properties: {},
         });
       }),
@@ -197,7 +225,9 @@ export class BrowseService {
   }
 
   private syntheticRepositoryRoot(entries: NuxeoDocument[] = []): NuxeoDocument {
-    const rootUid = entries.find((entry) => entry.parentRef)?.parentRef ?? 'virtual-root';
+    const topLevel = entries.find((entry) => isTopLevelDomain(entry));
+    const rootUid =
+      topLevel?.parentRef ?? entries.find((entry) => entry.parentRef)?.parentRef ?? 'virtual-root';
     return {
       uid: rootUid,
       title: 'Root',
@@ -335,6 +365,77 @@ export class BrowseService {
       { 'entity-type': 'document', properties },
       { 'Content-Type': 'application/json', properties: '*' },
     );
+  }
+
+  /** Copy clipboard items into `targetUid` (Web UI: `Document.Copy`). */
+  copyDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]> {
+    return this.runClipboardDocumentsOp('Document.Copy', uids, targetUid);
+  }
+
+  /** Move clipboard items into `targetUid` (Web UI: `Document.Move`). */
+  moveDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]> {
+    return this.runClipboardDocumentsOp('Document.Move', uids, targetUid);
+  }
+
+  private runClipboardDocumentsOp(
+    operation: 'Document.Copy' | 'Document.Move',
+    uids: string[],
+    targetUid: string,
+  ): Observable<NuxeoDocument[]> {
+    if (uids.length === 0) {
+      return of([]);
+    }
+
+    if (uids.length === 1) {
+      return this.api
+        .post<NuxeoDocument | NuxeoDocumentList>(`/nuxeo/api/v1/automation/${operation}`, {
+          params: { target: targetUid },
+          context: {},
+          input: `doc:${uids[0]}`,
+        })
+        .pipe(map((res) => this.normalizeClipboardOpResult(res)));
+    }
+
+    const input = `docs:${uids.join(',')}`;
+    return this.api
+      .post<NuxeoDocument | NuxeoDocumentList>(`/nuxeo/api/v1/automation/${operation}`, {
+        params: { target: targetUid },
+        context: {},
+        input,
+      })
+      .pipe(
+        map((res) => this.normalizeClipboardOpResult(res)),
+        catchError(() =>
+          forkJoin(
+            uids.map((uid) =>
+              this.api
+                .post<NuxeoDocument>(`/nuxeo/api/v1/automation/${operation}`, {
+                  params: { target: targetUid },
+                  context: {},
+                  input: `doc:${uid}`,
+                })
+                .pipe(catchError(() => of(null))),
+            ),
+          ).pipe(
+            map((results) => results.filter((doc): doc is NuxeoDocument => doc !== null)),
+            switchMap((results) =>
+              results.length === 0
+                ? throwError(() => new Error('All clipboard documents failed'))
+                : of(results),
+            ),
+          ),
+        ),
+      );
+  }
+
+  private normalizeClipboardOpResult(res: NuxeoDocument | NuxeoDocumentList): NuxeoDocument[] {
+    if (res && typeof res === 'object' && 'entries' in res && Array.isArray(res.entries)) {
+      return res.entries;
+    }
+    if (res && typeof res === 'object' && 'uid' in res) {
+      return [res as NuxeoDocument];
+    }
+    return [];
   }
 
   getTrashedChildren(parentUid: string, pageSize = 50): Observable<NuxeoDocumentList> {

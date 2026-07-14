@@ -1030,18 +1030,34 @@ L10n directories (`l10nsubjects`, `l10ncoverage`) use `label_en` instead of `lab
 
 ---
 
-## 22. Document Actions — Clipboard (Client-Side)
+## 22. Document Actions — Clipboard
 
-| Field       | Value                                            |
-| ----------- | ------------------------------------------------ |
-| **Storage** | `localStorage` key: `nuxeo_clipboard`            |
-| **Format**  | JSON array: `[{ "uid": "...", "title": "..." }]` |
+### Client storage
 
-No API call — clipboard is a client-side feature that stores document references in `localStorage`. Documents can be added/removed from the clipboard via the header toolbar bookmark icon or the "More actions" menu.
+| Field       | Value                                                           |
+| ----------- | --------------------------------------------------------------- |
+| **Storage** | `localStorage` key: `nuxeo_clipboard`                           |
+| **Format**  | JSON array: `[{ "uid": "...", "title": "...", "type": "..." }]` |
+
+Documents are added/removed via document detail, collection detail, or the selection topbar.
+
+### Copy / Move (Web UI parity)
+
+| Operation                                     | Method                                         | HTTP   | Endpoint                                 |
+| --------------------------------------------- | ---------------------------------------------- | ------ | ---------------------------------------- |
+| Copy clipboard items to current browse folder | `BrowseService.copyDocuments(uids, targetUid)` | `POST` | `/nuxeo/api/v1/automation/Document.Copy` |
+| Move clipboard items to current browse folder | `BrowseService.moveDocuments(uids, targetUid)` | `POST` | `/nuxeo/api/v1/automation/Document.Move` |
+
+**Request body:** `{ params: { target: "<folder-uid>" }, context: {}, input: "docs:<uid1>,<uid2>" }` (single doc: `doc:<uid>`).
+
+**Target folder:** `ClipboardTargetService` — updated by `BrowseComponent` while browsing. User must browse to a folderish container before Copy/Move are enabled.
 
 **Used by:**
 
-- **Document detail page** — Bookmark toggle button and "Add to / Remove from Clipboard" menu item
+- **Clipboard drawer** (`nav-drawer`) — Copy / Move buttons; clears clipboard on success
+- **Document detail page** — Add to / Remove from Clipboard
+- **Collection detail page** — Add to / Remove from Clipboard
+- **Selection topbar** — Add to Clipboard
 
 ---
 

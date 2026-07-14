@@ -79,8 +79,8 @@ describe('document-permissions', () => {
     expect(canRemoveDocument(docWithPermissions(['Read', REMOVE_DOCUMENT]))).toBe(true);
   });
 
-  it('canViewDocumentAuditLog is false for read-only users', () => {
-    expect(canViewDocumentAuditLog(docWithPermissions(['Read']))).toBe(false);
+  it('canViewDocumentAuditLog is true for read-only users (Classic Web UI parity)', () => {
+    expect(canViewDocumentAuditLog(docWithPermissions(['Read']))).toBe(true);
   });
 
   it('canViewDocumentAuditLog is false when permissions enricher is missing', () => {

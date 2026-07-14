@@ -12,7 +12,8 @@ This is the `agentic-ui-poc` **Nx + Angular 19** monorepo (`nuxeo/agentic-ui-poc
 branch `main`). Reuse the existing infra instead of reinventing it:
 
 - Conventions live in `AGENTS.md` and `AGENTS/*.md` — read the relevant ones per phase.
-- Local gate: `npm run review:preflight` (guardrails → `nx affected lint` → `nx affected test`).
+- Local gate: `npm run review:preflight` (guardrails → `nx affected lint` → `nx affected test`), then
+  **`npx nx affected -t build`** — build must pass before commit (see Phase 6 / Phase 7).
 - PR review feedback is handled by the [`fix-pr-comments`](../fix-pr-comments.md) skill.
 - New tests follow the [`generate-tests`](../generate-tests.md) skill + `AGENTS/05-test-standards.md`.
 
@@ -83,18 +84,22 @@ Add or extend a unit test that fails before the fix and passes after (`AGENTS/05
 npx nx test <project>            # e.g. npx nx test document-detail
 ```
 
-## Phase 6 — Validate locally (gate before push)
+## Phase 6 — Validate locally (gate before evidence + commit)
 
-Run the same checks CI gates on (`.github/workflows/ci.yml`):
+Run the same checks CI gates on (`.github/workflows/ci.yml`). **All three must pass** before
+moving to evidence collection or commit:
 
 ```bash
 npm run review:preflight          # guardrails + nx affected lint + nx affected test
-npx nx affected -t build          # CI also builds affected projects
+npx nx affected -t build          # mandatory — catches template/type/build errors preflight misses
 ```
 
 If you touched `nuxeo-ui`, sanity-check the production build/bundle-size expectation
 (`npx nx build nuxeo-ui --configuration=production`; CI enforces a 5 MB JS+CSS limit).
-Only proceed when everything is green. Never use `--no-verify` to bypass the Husky hook.
+
+**Do not proceed to Phase 6.5 or Phase 7 until lint, test, and build are all green.**
+If build fails, fix the errors and re-run the full gate. Never use `--no-verify` to bypass the
+Husky hook.
 
 ## Phase 6.5 — Evidence collection + human sign-off (mandatory gate)
 
@@ -158,6 +163,19 @@ Use `AskQuestion` to present a binary choice:
 ## Phase 7 — Commit + open PR
 
 This is the "fix and raise PR" trigger. Only reached after Phase 6.5 sign-off.
+
+### 7a — Re-run build gate immediately before commit
+
+Even if Phase 6 passed earlier, **re-run build right before committing** to catch any drift:
+
+```bash
+npx nx affected -t build
+```
+
+If build fails, fix the issue and re-run `npm run review:preflight` + build. **Do not commit**
+until build is green.
+
+### 7b — Commit and push
 
 - Conventional-commit message (`AGENTS/06-git-workflow.md`), lowercase, present tense, with the
   JIRA id when known:
