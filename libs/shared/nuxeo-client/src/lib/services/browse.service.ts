@@ -22,7 +22,7 @@ export interface BrowseFolderContents {
 }
 
 /** True for Domain documents attached directly under the repository root. */
-export function isTopLevelDomain(doc: NuxeoDocument | null | undefined): boolean {
+function isTopLevelDomain(doc: NuxeoDocument | null | undefined): boolean {
   if (!doc || doc.type !== 'Domain') {
     return false;
   }
@@ -32,11 +32,12 @@ export function isTopLevelDomain(doc: NuxeoDocument | null | undefined): boolean
   if (segments.length === 1) {
     return true;
   }
-  return doc.parentRef === REPOSITORY_ROOT_UID;
+  // Null-UUID parent sentinel used on some Nuxeo deployments (not universal).
+  return doc.parentRef === NULL_REPOSITORY_ROOT_UID;
 }
 
-/** Nuxeo repository root uid — parent of every top-level Domain document. */
-export const REPOSITORY_ROOT_UID = '00000000-0000-0000-0000-000000000000';
+/** Parent-ref sentinel for top-level domains on deployments that use the null UUID root. */
+const NULL_REPOSITORY_ROOT_UID = '00000000-0000-0000-0000-000000000000';
 
 @Injectable({ providedIn: 'root' })
 export class BrowseService {

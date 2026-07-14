@@ -538,7 +538,7 @@ export class NavDrawerComponent {
           this.rootNodes.set([rootNode]);
           this.rootLoading.set(false);
 
-          const topNodes = this.toFolderNodes(entries.filter((entry) => entry.type === 'Domain'));
+          const topNodes = this.toFolderNodes(entries);
           rootNode.children = topNodes;
           rootNode.loaded = true;
           rootNode.loading = false;
