@@ -99,6 +99,11 @@ describe('browse-path.utils', () => {
     it('treats spaced and hyphenated domain segments as equal', () => {
       expect(nuxeoPathsEqualFlexible('/Domain 1/workspaces', '/domain-1/workspaces')).toBe(true);
     });
+
+    it('does not throw when a segment contains a literal percent sign', () => {
+      expect(() => nuxeoPathsEqualFlexible('/100% done', '/100% done')).not.toThrow();
+      expect(nuxeoPathsEqualFlexible('/100% done', '/100% done')).toBe(true);
+    });
   });
 
   describe('nuxeoPathsEqual', () => {

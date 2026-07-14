@@ -715,7 +715,7 @@ export class NavDrawerComponent {
       this.expandAlongPrefixes(node.children, prefixes, index + 1, activePath);
     };
 
-    const needsChildLoad = !node.loaded || (node.children.length === 0 && !node.loading);
+    const needsChildLoad = !node.loaded;
 
     if (needsChildLoad) {
       node.loading = true;
@@ -904,9 +904,9 @@ export class NavDrawerComponent {
       .subscribe((results) => {
         results.forEach((res, i) => {
           const node = unloaded[i];
-          if (res && (res.entries?.length ?? 0) > 0) {
+          if (res) {
             node.loaded = true;
-            node.children = this.toFolderNodes(res.entries);
+            node.children = this.toFolderNodes(res.entries ?? []);
           }
         });
         this.notifyActiveTreeChanged();

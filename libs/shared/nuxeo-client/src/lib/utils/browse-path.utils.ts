@@ -47,7 +47,13 @@ export function nuxeoPathsEqual(a: string, b: string): boolean {
 
 /** Slugify a single path segment for flexible matching (`Domain 1` ≈ `domain-1`). */
 export function slugifyNuxeoPathSegment(segment: string): string {
-  return decodeURIComponent(segment).trim().toLowerCase().replace(/\s+/g, '-');
+  let decoded = segment;
+  try {
+    decoded = decodeURIComponent(segment);
+  } catch {
+    decoded = segment;
+  }
+  return decoded.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
 /** Segment-wise path comparison tolerating spaces vs hyphens and casing. */
