@@ -1523,10 +1523,12 @@
               </div>
             }
 
-            <div class="prop-field">
-              <span class="prop-label">File Name</span>
-              <span class="prop-value">{{ fileName() }}</span>
-            </div>
+            @if (hasMainFileBlob()) {
+              <div class="prop-field">
+                <span class="prop-label">File Name</span>
+                <span class="prop-value">{{ fileName() }}</span>
+              </div>
+            }
 
             @if (expires()) {
               <div class="prop-field">

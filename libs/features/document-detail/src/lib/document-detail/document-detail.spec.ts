@@ -234,6 +234,31 @@ describe('DocumentDetailComponent', () => {
     });
   });
 
+  describe('indexing properties File Name (NXSAT-190)', () => {
+    it('hides File Name for Note documents without a file blob', () => {
+      component.doc.set(NOTE_DOC);
+
+      expect(component.hasMainFileBlob()).toBe(false);
+    });
+
+    it('shows File Name when file:content has a persisted blob', () => {
+      component.doc.set({
+        ...STUB_DOC,
+        title: 'File_loremIpsum-5.pdf',
+        properties: {
+          'file:content': {
+            name: 'File_loremIpsum-5.pdf',
+            length: '1024',
+            digest: 'abc123',
+          },
+        },
+      });
+
+      expect(component.hasMainFileBlob()).toBe(true);
+      expect(component.fileName()).toBe('File_loremIpsum-5.pdf');
+    });
+  });
+
   describe('saveNote (NXSAT-174)', () => {
     it('preserves write permissions when update response omits the permissions enricher', async () => {
       component.doc.set(NOTE_DOC);

@@ -78,6 +78,7 @@ import {
   isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
+  documentHasPersistedMainBlob,
   noteFormatLabel,
   renderNoteMarkdown,
   isMailSendError,
@@ -496,6 +497,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly isNoteDocument = computed(() => this.doc()?.type === 'Note');
+  readonly hasMainFileBlob = computed(() => {
+    const d = this.doc();
+    return d ? documentHasPersistedMainBlob(d) : false;
+  });
   readonly noteFormatDisplay = computed(() => noteFormatLabel(this.mimeType()));
   readonly noteEditorBody = computed(() => this.noteContent() ?? '');
 
