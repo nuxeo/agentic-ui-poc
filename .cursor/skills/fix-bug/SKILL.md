@@ -5,15 +5,15 @@ description: End-to-end playbook for fixing a bug in the agentic-ui-poc (Nx/Angu
 
 # Fix a bug — agentic, end-to-end
 
-Drive the whole fix autonomously, but **present a short plan first and pause for a go-ahead**
-before changing code. Track the phases with a TODO list.
+Drive the whole fix autonomously, but **present a short plan after ticket + Web UI analysis**
+and pause for a go-ahead before changing code. Track the phases with a TODO list.
 
 This is the `agentic-ui-poc` **Nx + Angular 19** monorepo (`nuxeo/agentic-ui-poc`, single base
 branch `main`). Reuse the existing infra instead of reinventing it:
 
 - Conventions live in `AGENTS.md` and `AGENTS/*.md` — read the relevant ones per phase.
 - Local gate: `npm run review:preflight` (guardrails → `nx affected lint` → `nx affected test`), then
-  **`npx nx affected -t build`** — build must pass before commit (see Phase 6 / Phase 7).
+  **`npx nx affected -t build`** — build must pass before commit (see Phase 7 / Phase 8).
 - PR review feedback is handled by the [`fix-pr-comments`](../fix-pr-comments.md) skill.
 - New tests follow the [`generate-tests`](../generate-tests.md) skill + `AGENTS/05-test-standards.md`.
 
@@ -27,10 +27,10 @@ branch `main`). Reuse the existing infra instead of reinventing it:
 - Load context: `AGENTS.md`, `AGENTS/00-architecture.md`, `AGENTS/01-services.md`, and
   `AGENTS/08-bug-patterns.md` (check whether this is a known pattern).
 
-## Phase 1.5 — Classic Web UI parity check (before the fix plan)
+### Classic Web UI parity check
 
-**Do this after Phase 1 and before Phase 0.** Satori bugs often require matching Classic Web UI
-behavior — do not guess from audit labels or REST docs alone.
+Satori bugs often require matching Classic Web UI behavior — do not guess from audit labels or
+REST docs alone.
 
 1. **Find the Web UI reference** in upstream Hyland/Nuxeo repos:
    - UI behavior: [`nuxeo/nuxeo-web-ui`](https://github.com/nuxeo/nuxeo-web-ui) (`elements/`, `i18n/`, `test/`)
@@ -51,16 +51,16 @@ behavior — do not guess from audit labels or REST docs alone.
 4. **Cross-check this repo** — grep Satori for the same area (`fetchBlob`, `activityLabel`,
    `eventLabel`, `@audit`) and list the delta vs Web UI.
 
-5. **Record findings in the fix plan** — cite the Web UI file(s) and test(s) that define parity.
+5. **Record findings for the plan** — cite the Web UI file(s) and test(s) that define parity.
    If Web UI behavior is ambiguous or version-dependent, call that out before proposing a fix.
 
-## Phase 0 — Plan first
+## Phase 2 — Plan first (planning gate)
 
-Restate the bug, summarize **Phase 1.5 Web UI references**, list the phases below as concrete
-steps, then show the plan and pause for confirmation. Re-plan if scope changes or Web UI research
-contradicts the initial hypothesis.
+After Phase 1 (including the Classic Web UI parity check), restate the bug, summarize the Web UI
+references you found, list Phases 3–9 as concrete steps, then show the plan and pause for
+confirmation. Re-plan if scope changes or Web UI research contradicts the initial hypothesis.
 
-## Phase 2 — Branch
+## Phase 3 — Branch
 
 Never work on `main`. Branch per `AGENTS/06-git-workflow.md`:
 
@@ -71,7 +71,7 @@ git switch -c fix/<kebab-description> origin/main   # e.g. fix/thumbnail-blob-ur
 
 Keep the JIRA id for the commit/PR (`fix(NCO-1234): …`), not necessarily the branch name.
 
-## Phase 3 — Reproduce + capture evidence
+## Phase 4 — Reproduce + capture evidence
 
 Capture the bug **before** fixing so you can prove the fix.
 
@@ -88,7 +88,7 @@ mkdir -p ~/Desktop/<TICKET-ID>
   failing e2e/unit test that captures the bug is the strongest evidence — write it now so it goes
   red, then green after the fix.
 
-## Phase 4 — Fix at the root cause (no regressions)
+## Phase 5 — Fix at the root cause (no regressions)
 
 - Find the real root cause in the owning service/component before editing; make the **minimal** change.
 - Follow the conventions strictly:
@@ -103,7 +103,7 @@ mkdir -p ~/Desktop/<TICKET-ID>
   type escapes, and any new `@nx/vitest:test` project has a config + specs (or `passWithNoTests`).
 - Keep the diff focused — don't bundle unrelated changes. Capture the **after** evidence.
 
-## Phase 5 — Regression test
+## Phase 6 — Regression test
 
 Add or extend a unit test that fails before the fix and passes after (`AGENTS/05-test-standards.md`,
 `generate-tests` skill). Run just the affected project while iterating:
@@ -112,7 +112,7 @@ Add or extend a unit test that fails before the fix and passes after (`AGENTS/05
 npx nx test <project>            # e.g. npx nx test document-detail
 ```
 
-## Phase 6 — Validate locally (gate before evidence + commit)
+## Phase 7 — Validate locally (gate before evidence + commit)
 
 Run the same checks CI gates on (`.github/workflows/ci.yml`). **All three must pass** before
 moving to evidence collection or commit:
@@ -125,21 +125,21 @@ npx nx affected -t build          # mandatory — catches template/type/build er
 If you touched `nuxeo-ui`, sanity-check the production build/bundle-size expectation
 (`npx nx build nuxeo-ui --configuration=production`; CI enforces a 5 MB JS+CSS limit).
 
-**Do not proceed to Phase 6.5 or Phase 7 until lint, test, and build are all green.**
+**Do not proceed to Phase 7.5 or Phase 8 until lint, test, and build are all green.**
 If build fails, fix the errors and re-run the full gate. Never use `--no-verify` to bypass the
 Husky hook.
 
-## Phase 6.5 — Evidence collection + human sign-off (mandatory gate)
+## Phase 7.5 — Evidence collection + human sign-off (mandatory gate)
 
 **STOP before committing.** You MUST collect evidence and get explicit user approval.
 
-### 6.5a — Start the dev server (if not already running)
+### 7.5a — Start the dev server (if not already running)
 
 ```bash
 npx nx serve nuxeo-ui   # wait for "Local: http://localhost:4200/"
 ```
 
-### 6.5b — Ensure Playwright is available locally
+### 7.5b — Ensure Playwright is available locally
 
 The evidence runner uses Playwright, but it is **intentionally not** a tracked dependency in
 `package.json` (it's local-only DX tooling — keeping it out of the lock file avoids perturbing the
@@ -149,7 +149,7 @@ CI install). So before running the collector, check whether Playwright is alread
 node -e "require.resolve('@playwright/test')" 2>/dev/null && echo "playwright: available" || echo "playwright: missing"
 ```
 
-- **Available** → continue directly to 6.5c.
+- **Available** → continue directly to 7.5c.
 - **Missing** → Playwright is **required to collect evidence**. Prompt the user to install it
   locally before continuing (use `--no-save` so `package.json`/`package-lock.json` stay untouched):
 
@@ -160,7 +160,7 @@ node -e "require.resolve('@playwright/test')" 2>/dev/null && echo "playwright: a
 
   Do not proceed to the collector until the install succeeds.
 
-### 6.5c — Create a ticket-specific evidence steps file and run the collector
+### 7.5c — Create a ticket-specific evidence steps file and run the collector
 
 The project ships a reusable Playwright-based evidence runner at
 `scripts/collect-evidence/`. See `scripts/collect-evidence/README.md` for full docs.
@@ -179,7 +179,7 @@ The project ships a reusable Playwright-based evidence runner at
 
 3. **Present** a per-bug checklist table to the user (Before → After, navigation steps).
 
-### 6.5d — Wait for explicit user confirmation
+### 7.5d — Wait for explicit user confirmation
 
 Use `AskQuestion` to present a binary choice:
 
@@ -188,13 +188,13 @@ Use `AskQuestion` to present a binary choice:
 
 **Do NOT commit or push until the user explicitly says YES.**
 
-## Phase 7 — Commit + open PR
+## Phase 8 — Commit + open PR
 
-This is the "fix and raise PR" trigger. Only reached after Phase 6.5 sign-off.
+This is the "fix and raise PR" trigger. Only reached after Phase 7.5 sign-off.
 
-### 7a — Re-run build gate immediately before commit
+### 8a — Re-run build gate immediately before commit
 
-Even if Phase 6 passed earlier, **re-run build right before committing** to catch any drift:
+Even if Phase 7 passed earlier, **re-run build right before committing** to catch any drift:
 
 ```bash
 npx nx affected -t build
@@ -203,7 +203,7 @@ npx nx affected -t build
 If build fails, fix the issue and re-run `npm run review:preflight` + build. **Do not commit**
 until build is green.
 
-### 7b — Commit and push
+### 8b — Commit and push
 
 - Conventional-commit message (`AGENTS/06-git-workflow.md`), lowercase, present tense, with the
   JIRA id when known:
@@ -226,9 +226,9 @@ Complete the template sections (What changed & why, JIRA ticket, files modified,
 checklist). Attach the before/after evidence. Push branches to `origin` (never a fork) so CI
 runs against the upstream repo.
 
-## Phase 8 — Monitor PR (CI checks + review comments)
+## Phase 9 — Monitor PR (CI checks + review comments)
 
-### 8a — Ask the user whether to watch the PR
+### 9a — Ask the user whether to watch the PR
 
 Immediately after the PR URL is printed, use `AskQuestion` to present:
 
@@ -237,7 +237,7 @@ Immediately after the PR URL is printed, use `AskQuestion` to present:
 
 **Only start monitoring if the user says YES.**
 
-### 8b — Poll CI checks
+### 9b — Poll CI checks
 
 Run the following every ~60 seconds until all checks reach a terminal state
 (`SUCCESS`, `FAILURE`, `CANCELLED`, `SKIPPED`):
@@ -260,7 +260,7 @@ check is terminal.
 
   Fix on the branch → re-run `review:preflight` → push → continue monitoring.
 
-### 8c — Watch for review comments
+### 9c — Watch for review comments
 
 After CI is green, check for unresolved review comments:
 
@@ -274,7 +274,7 @@ gh pr view <N> --repo nuxeo/agentic-ui-poc --json reviews,comments \
   user grouped by file/concern, then invoke the `fix-pr-comments` skill to address them.
 - If the review state is `APPROVED` with CI green, tell the user the PR is ready to merge.
 
-### 8d — Report final status
+### 9d — Report final status
 
 Once the PR is approved and all checks pass, present a closing summary:
 

@@ -2809,11 +2809,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   download(): void {
-    if (!this.rawBlobUrl) return;
-    const a = document.createElement('a');
-    a.href = this.rawBlobUrl;
-    a.download = this.fileName();
-    a.click();
+    if (!this.docUid) return;
+    this.detailService
+      .fetchBlob(this.docUid, { clientReason: 'download' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = objectUrl;
+          anchor.download = this.fileName();
+          anchor.click();
+          URL.revokeObjectURL(objectUrl);
+          this.refreshPanelActivityIfVisible();
+        },
+        error: () => this.toast('Failed to download document'),
+      });
+  }
+
+  private refreshPanelActivityIfVisible(): void {
+    if (this.panelSubTab() !== 'activity') return;
+    this.panelActivityLoaded = false;
+    this.loadPanelActivity();
   }
 
   previewMainBlob(): void {

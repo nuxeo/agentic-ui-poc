@@ -62,16 +62,23 @@ export default async function collectEvidence(page, helpers, _outDir) {
   }
 
   helpers.step('Click explicit Download and re-check Activity');
-  const downloadBtn = page
-    .locator('button')
-    .filter({ has: page.locator('mat-icon', { hasText: 'download' }) })
-    .first();
+  const downloadBtn = page.locator('button[aria-label="Download"]').first();
   if (await downloadBtn.isVisible({ timeout: 4000 }).catch(() => false)) {
     await downloadBtn.click();
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(6000);
+    // Switch away and back to force Activity reload after audit indexing
+    await page.getByRole('button', { name: 'Properties', exact: true }).click();
+    await page.waitForTimeout(500);
     await activityTab.click();
     await page.waitForTimeout(2000);
-    await helpers.screenshot('03-activity-after-download', page.locator('.activity-panel'));
+
+    if (await downloadedLabel.first().isVisible({ timeout: 5000 }).catch(() => false)) {
+      helpers.step('Activity shows "downloaded the document" after explicit download');
+      await helpers.screenshot('03-activity-downloaded-label', page.locator('.activity-panel'));
+    } else {
+      helpers.step('Download clicked — capture Activity panel state');
+      await helpers.screenshot('03-activity-after-download', page.locator('.activity-panel'));
+    }
   } else {
     helpers.step('Download button not found — skipping download step');
     await helpers.screenshot('03-download-button-missing');
