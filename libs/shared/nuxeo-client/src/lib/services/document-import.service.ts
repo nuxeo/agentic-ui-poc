@@ -1,4 +1,10 @@
-import { HttpClient, HttpEventType, HttpHeaders, HttpResponse } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  HttpEventType,
+  HttpHeaders,
+  HttpResponse,
+} from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, concat, defer, from, of, throwError, timer } from 'rxjs';
 import { catchError, concatMap, filter, map, switchMap, tap, toArray } from 'rxjs/operators';
@@ -607,7 +613,12 @@ export class DocumentImportService {
   private isBatchFileAvailable(batchId: string, fileIndex: number): Observable<boolean> {
     return this.verifyBatchFileUploaded(batchId, fileIndex).pipe(
       map(() => true),
-      catchError(() => of(false)),
+      catchError((err: unknown) => {
+        if (err instanceof HttpErrorResponse && (err.status === 404 || err.status === 410)) {
+          return of(false);
+        }
+        return throwError(() => err);
+      }),
     );
   }
 

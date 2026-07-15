@@ -412,6 +412,63 @@ describe('DocumentImportService', () => {
     expect(doc.uid).toBe('doc-fresh');
   });
 
+  it('falls back to fresh upload when staged batch returns HTTP 410', async () => {
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocumentReliable(
+        '/ws',
+        'photo',
+        'Picture',
+        { 'dc:title': 'photo' },
+        file,
+        { batchId: 'batch-gone', fileIndex: 0 },
+      ),
+    );
+
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-gone/0')
+      .flush('gone', { status: 410, statusText: 'Gone' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-fresh' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-fresh/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-fresh/0')
+      .flush({ name: 'photo.jpg', size: file.size });
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-fresh',
+      title: 'photo',
+      type: 'Picture',
+      path: '/ws/photo',
+      properties: {
+        'dc:title': 'photo',
+        'file:content': { name: 'photo.jpg', length: String(file.size), digest: 'abc' },
+      },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-fresh');
+  });
+
+  it('does not fall back to fresh upload when batch check fails with auth or server errors', async () => {
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocumentReliable(
+        '/ws',
+        'photo',
+        'Picture',
+        { 'dc:title': 'photo' },
+        file,
+        { batchId: 'batch-auth', fileIndex: 0 },
+      ),
+    );
+
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-auth/0')
+      .flush('unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+    await expect(create$).rejects.toMatchObject({ status: 401 });
+    httpMock.expectNone('/nuxeo/api/v1/upload/new/default');
+  });
+
   it('succeeds when create response omits blob but re-fetch has file:content', async () => {
     const file = new File(['jpeg-bytes'], 'cat.jpg', { type: 'image/jpeg' });
     const import$ = firstValueFrom(service.importFiles('/ws', [file]));
