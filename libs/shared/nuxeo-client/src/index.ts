@@ -116,6 +116,8 @@ export {
   isRestrictedImportParentPath,
   resolveImportBlobDocType,
   sanitizeDocumentName,
+  sanitizeDocumentCreateName,
+  mergeCreateDocumentBody,
   summarizeCsvImportReport,
   titleFromFileName,
   type CsvImportResult,
@@ -126,6 +128,7 @@ export {
   type ImportProgress,
   type StagedBatchFile,
   type StageFileInBatchOptions,
+  type NuxeoCreateDocumentTemplate,
 } from './lib/services/document-import.service';
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
