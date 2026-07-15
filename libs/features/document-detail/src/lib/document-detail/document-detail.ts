@@ -73,6 +73,7 @@ import {
   canRemoveDocument,
   canViewDocumentAuditLog,
   mergeDocumentPermissionsContext,
+  auditActivityLabel,
   resolveAcePrincipal,
   PERMISSION_DENIED_MESSAGE,
   isPermissionDeniedError,
@@ -3131,36 +3132,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  activityLabel(eventId: string): string {
-    const labels: Record<string, string> = {
-      documentCreated: 'created the document',
-      documentModified: 'updated the document',
-      documentMoved: 'moved the document',
-      documentRemoved: 'removed the document',
-      documentLocked: 'locked the document',
-      documentUnlocked: 'unlocked the document',
-      documentSecurityUpdated: 'updated security settings',
-      lifecycle_transition_event: 'changed document state',
-      download: 'downloaded the document',
-      loginSuccess: 'logged in',
-      addedToCollection: 'added to collection',
-      removedFromCollection: 'removed from collection',
-      documentPublished: 'published the document',
-      documentProxyPublished: 'published the document',
-      'workflow.start': 'started a review',
-      'workflow.complete': 'completed a review',
-      documentCheckedIn: 'checked in the document',
-      documentCheckedOut: 'checked out the document',
-      documentRestored: 'restored the document',
-      'activity.deleted': 'activity.deleted',
-    };
-    return (
-      labels[eventId] ??
-      eventId
-        .replace(/([A-Z])/g, ' $1')
-        .toLowerCase()
-        .trim()
-    );
+  activityLabel(entry: AuditEntry): string {
+    return auditActivityLabel(entry, this.eventTypeLabelMap);
   }
 
   // ── Versioning ──

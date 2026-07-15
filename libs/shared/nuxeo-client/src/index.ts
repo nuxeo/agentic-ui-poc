@@ -16,6 +16,13 @@ export type {
 } from './lib/models/content-lake-ingest.model';
 export type { NuxeoTask, NuxeoTaskList } from './lib/models/task.model';
 export type { AuditEntry, AuditLogList } from './lib/models/audit.model';
+export { auditActivityLabel, auditActivityLabelKey } from './lib/utils/audit-activity-label';
+export {
+  BLOB_CLIENT_REASON_HEADER,
+  BLOB_CLIENT_REASON_PARAM,
+  type BlobClientReason,
+  type FetchBlobOptions,
+} from './lib/utils/blob-client-reason';
 export type {
   DirectoryEntry,
   DirectoryEntryRest,

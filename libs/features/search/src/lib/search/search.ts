@@ -655,7 +655,7 @@ export class SearchComponent {
     }
 
     this.documentDetailService
-      .fetchBlob(id)
+      .fetchBlob(id, { clientReason: 'download' })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {

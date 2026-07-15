@@ -16,6 +16,7 @@ import { NuxeoWorkflowModel } from '../models/workflow.model';
 import { AuditLogList } from '../models/audit.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 import { normalizeDocumentAcls } from '../utils/ace-principal';
+import { BLOB_CLIENT_REASON_PARAM, type FetchBlobOptions } from '../utils/blob-client-reason';
 
 @Injectable({ providedIn: 'root' })
 export class DocumentDetailService {
@@ -44,17 +45,23 @@ export class DocumentDetailService {
   }
 
   /** Main binary on file:content (Nuxeo Web UI pattern); falls back to blobholder:0. */
-  fetchBlob(uid: string): Observable<Blob> {
+  fetchBlob(uid: string, options?: FetchBlobOptions): Observable<Blob> {
+    const clientReason = options?.clientReason ?? 'view';
+    const params = new HttpParams().set(BLOB_CLIENT_REASON_PARAM, clientReason);
     const fileContentUrl = this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/file:content`);
     const blobHolderUrl = this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/blobholder:0`);
+    const blobOptions = { responseType: 'blob' as const, params };
     return this.http
-      .get(fileContentUrl, { responseType: 'blob' })
-      .pipe(catchError(() => this.http.get(blobHolderUrl, { responseType: 'blob' })));
+      .get(fileContentUrl, blobOptions)
+      .pipe(catchError(() => this.http.get(blobHolderUrl, blobOptions)));
   }
 
-  fetchBlobByXpath(uid: string, xpath: string): Observable<Blob> {
+  fetchBlobByXpath(uid: string, xpath: string, options?: FetchBlobOptions): Observable<Blob> {
+    const clientReason = options?.clientReason ?? 'view';
+    const params = new HttpParams().set(BLOB_CLIENT_REASON_PARAM, clientReason);
     return this.http.get(this.api.apiUrl(`/nuxeo/api/v1/id/${uid}/@blob/${xpath}`), {
       responseType: 'blob',
+      params,
     });
   }
 

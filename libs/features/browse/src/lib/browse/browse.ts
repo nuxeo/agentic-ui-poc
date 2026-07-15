@@ -67,6 +67,7 @@ import {
   canWriteDocument,
   canRemoveDocument,
   canViewDocumentAuditLog,
+  auditActivityLabel,
   DOMAIN_CONTAINER_GUIDANCE,
   isDomainParentType,
   isRepositoryRootPath,
@@ -735,6 +736,10 @@ export class BrowseComponent {
 
   eventLabel(eventId: string): string {
     return this.eventTypeLabelMap()[eventId] ?? eventId;
+  }
+
+  activityLabel(entry: AuditEntry): string {
+    return auditActivityLabel(entry, this.eventTypeLabelMap());
   }
 
   categoryLabel(category: string): string {

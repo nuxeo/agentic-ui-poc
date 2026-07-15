@@ -17,11 +17,6 @@ branch `main`). Reuse the existing infra instead of reinventing it:
 - PR review feedback is handled by the [`fix-pr-comments`](../fix-pr-comments.md) skill.
 - New tests follow the [`generate-tests`](../generate-tests.md) skill + `AGENTS/05-test-standards.md`.
 
-## Phase 0 — Plan first
-
-Restate the bug, list the phases below as concrete steps, then show the plan and pause for
-confirmation. Re-plan if scope changes.
-
 ## Phase 1 — Understand the ticket
 
 - If a JIRA id is given (e.g. `NCO-1234`, `NXSAT-160`), fetch it via the Atlassian MCP and read
@@ -31,6 +26,39 @@ confirmation. Re-plan if scope changes.
   (`apps/*`, `libs/*`) and feature (`browse`, `document-detail`, `knowledge-discovery`, `search`, …).
 - Load context: `AGENTS.md`, `AGENTS/00-architecture.md`, `AGENTS/01-services.md`, and
   `AGENTS/08-bug-patterns.md` (check whether this is a known pattern).
+
+## Phase 1.5 — Classic Web UI parity check (before the fix plan)
+
+**Do this after Phase 1 and before Phase 0.** Satori bugs often require matching Classic Web UI
+behavior — do not guess from audit labels or REST docs alone.
+
+1. **Find the Web UI reference** in upstream Hyland/Nuxeo repos:
+   - UI behavior: [`nuxeo/nuxeo-web-ui`](https://github.com/nuxeo/nuxeo-web-ui) (`elements/`, `i18n/`, `test/`)
+   - Shared elements: [`nuxeo/nuxeo-ui-elements`](https://github.com/nuxeo/nuxeo-ui-elements) (viewers, download actions)
+   - Platform API: Nuxeo `DownloadService` javadoc (`X-Client-Reason` header / `clientReason` query param)
+   - Release notes: [Web UI 3.0.18+ view vs download](https://doc.nuxeo.com/nxdoc/2021/web-ui-release-notes-3-0-18/)
+
+2. **Search for the relevant keywords** (via `gh api search/code` or GitHub UI):
+   `clientReason`, `activity.view`, `activity.download`, `@blob`, `nuxeo-document-activity`,
+   `nuxeo-document-preview`, `X-Client-Reason`.
+
+3. **Capture what to mirror** — note the exact:
+   - HTTP header or query param sent on preview vs explicit download
+   - Audit `extended.clientReason` values (`view` | `download`)
+   - Activity/history label logic (i18n keys, fallbacks when `clientReason` is missing)
+   - Unit tests in Web UI that encode expected behavior (prefer these as the spec)
+
+4. **Cross-check this repo** — grep Satori for the same area (`fetchBlob`, `activityLabel`,
+   `eventLabel`, `@audit`) and list the delta vs Web UI.
+
+5. **Record findings in the fix plan** — cite the Web UI file(s) and test(s) that define parity.
+   If Web UI behavior is ambiguous or version-dependent, call that out before proposing a fix.
+
+## Phase 0 — Plan first
+
+Restate the bug, summarize **Phase 1.5 Web UI references**, list the phases below as concrete
+steps, then show the plan and pause for confirmation. Re-plan if scope changes or Web UI research
+contradicts the initial hypothesis.
 
 ## Phase 2 — Branch
 
