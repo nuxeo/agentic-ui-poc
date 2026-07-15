@@ -300,6 +300,7 @@ getDefaultImportParentPath(): Observable<string>
 initUploadBatch(handler?: string): Observable<string>
 uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void>
 createBlobHoldingDocument(parentPath, name, docType, properties, file, options?): Observable<NuxeoDocument>
+createBlobHoldingDocumentReliable(parentPath, name, docType, properties, file, stagedBatch?, options?): Observable<NuxeoDocument>
 createBlobHoldingDocumentFromBatch(parentPath, name, docType, properties, batchId, fileIndex, options?): Observable<NuxeoDocument>
 stageFileInBatch(file, options?): Observable<StagedBatchFile>
 createDocumentWithBlob(...): Observable<NuxeoDocument>

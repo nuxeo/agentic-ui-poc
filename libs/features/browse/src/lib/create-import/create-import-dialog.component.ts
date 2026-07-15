@@ -1132,28 +1132,19 @@ export class CreateImportDialogComponent implements OnInit {
 
     const create$ =
       mainFile && hasBlob
-        ? this.mainFileBatchId && this.mainFileUploadComplete()
-          ? this.importService.createBlobHoldingDocumentFromBatch(
-              path,
-              name,
-              docType.type,
-              properties,
-              this.mainFileBatchId,
-              0,
-              {
-                onProgress: (progress) => this.uploadProgress.set(progress),
-              },
-            )
-          : this.importService.createBlobHoldingDocument(
-              path,
-              name,
-              docType.type,
-              properties,
-              mainFile,
-              {
-                onProgress: (progress) => this.uploadProgress.set(progress),
-              },
-            )
+        ? this.importService.createBlobHoldingDocumentReliable(
+            path,
+            name,
+            docType.type,
+            properties,
+            mainFile,
+            this.mainFileBatchId && this.mainFileUploadComplete()
+              ? { batchId: this.mainFileBatchId, fileIndex: 0 }
+              : null,
+            {
+              onProgress: (progress) => this.uploadProgress.set(progress),
+            },
+          )
         : this.importService.createChildDocument(path, name, docType.type, properties);
 
     create$

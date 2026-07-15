@@ -10,6 +10,8 @@ import {
   DEFAULT_IMPORT_PARENT_PATH,
   DOMAIN_CONTAINER_PATH,
   DocumentImportService,
+  MAIN_BLOB_POLL_INTERVAL_MS,
+  MAIN_BLOB_POLL_MAX_ATTEMPTS,
   documentHasMainBlob,
   documentHasPersistedMainBlob,
   inferBlobDocTypeFromFile,
@@ -311,24 +313,103 @@ describe('DocumentImportService', () => {
     };
 
     const rejection = expect(import$).rejects.toThrow(BLOB_NOT_ATTACHED_ERROR);
-    for (let i = 0; i < 13; i++) {
+    for (let i = 0; i <= MAIN_BLOB_POLL_MAX_ATTEMPTS; i++) {
       await Promise.resolve();
       const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-2');
       expect(refetchReq.request.headers.get('properties')).toBe('file:content');
       refetchReq.flush(nullDoc);
-      await vi.advanceTimersByTimeAsync(300);
+      await vi.advanceTimersByTimeAsync(MAIN_BLOB_POLL_INTERVAL_MS);
     }
 
-    const trashReq = httpMock.expectOne('/nuxeo/api/v1/automation/Document.Trash');
-    expect(trashReq.request.body).toEqual({
-      params: {},
-      context: {},
-      input: 'doc:doc-2',
-    });
-    trashReq.flush({ uid: 'doc-2', title: 'empty', type: 'File', path: '/ws/empty' });
+    httpMock.expectNone('/nuxeo/api/v1/automation/Document.Trash');
 
     await rejection;
     vi.useRealTimers();
+  });
+
+  it('succeeds when polling times out but documentHasMainBlob is true', async () => {
+    vi.useFakeTimers();
+    const file = new File(['x'], 'slow.jpg', { type: 'image/jpeg' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocument('/ws', 'slow', 'File', { 'dc:title': 'slow' }, file),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-slow' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-slow/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-slow/0')
+      .flush({ name: 'slow.jpg', size: file.size });
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-slow',
+      title: 'slow',
+      type: 'File',
+      path: '/ws/slow',
+      properties: { 'dc:title': 'slow', 'file:content': null },
+    });
+
+    const slowBlobDoc = {
+      uid: 'doc-slow',
+      title: 'slow',
+      type: 'File',
+      path: '/ws/slow',
+      properties: {
+        'dc:title': 'slow',
+        'file:content': { name: 'slow.jpg' },
+      },
+    };
+
+    for (let i = 0; i < MAIN_BLOB_POLL_MAX_ATTEMPTS; i++) {
+      await Promise.resolve();
+      const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-slow');
+      refetchReq.flush(slowBlobDoc);
+      await vi.advanceTimersByTimeAsync(MAIN_BLOB_POLL_INTERVAL_MS);
+    }
+
+    await Promise.resolve();
+    const finalRefetch = httpMock.expectOne('/nuxeo/api/v1/id/doc-slow');
+    finalRefetch.flush(slowBlobDoc);
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-slow');
+    expect(documentHasMainBlob(doc)).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it('falls back to fresh upload when staged batch is no longer available', async () => {
+    const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocumentReliable(
+        '/ws',
+        'photo',
+        'Picture',
+        { 'dc:title': 'photo' },
+        file,
+        { batchId: 'batch-expired', fileIndex: 0 },
+      ),
+    );
+
+    const staleBatchReq = httpMock.expectOne('/nuxeo/api/v1/upload/batch-expired/0');
+    expect(staleBatchReq.request.method).toBe('GET');
+    staleBatchReq.flush('not found', { status: 404, statusText: 'Not Found' });
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-fresh' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-fresh/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-fresh/0')
+      .flush({ name: 'photo.jpg', size: file.size });
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-fresh',
+      title: 'photo',
+      type: 'Picture',
+      path: '/ws/photo',
+      properties: {
+        'dc:title': 'photo',
+        'file:content': { name: 'photo.jpg', length: String(file.size), digest: 'abc' },
+      },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-fresh');
   });
 
   it('succeeds when create response omits blob but re-fetch has file:content', async () => {

@@ -71,6 +71,10 @@ export function documentHasPersistedMainBlob(doc: NuxeoDocument): boolean {
 
 export const BLOB_NOT_ATTACHED_ERROR = 'File was not attached to the document';
 
+/** Poll interval / cap when waiting for Nuxeo to persist `file:content` after create. */
+export const MAIN_BLOB_POLL_INTERVAL_MS = 500;
+export const MAIN_BLOB_POLL_MAX_ATTEMPTS = 30;
+
 /** True if documents can be created under this document. */
 export function isFolderishDocument(doc: NuxeoDocument | null): boolean {
   if (!doc) return false;
@@ -450,6 +454,39 @@ export class DocumentImportService {
   }
 
   /**
+   * Create a blob-holding document, preferring a staged batch when still available on the server.
+   * Falls back to a fresh upload+create when the batch expired (common after immediate upload UX).
+   */
+  createBlobHoldingDocumentReliable(
+    parentPath: string,
+    name: string,
+    docType: string,
+    properties: Record<string, unknown>,
+    file: File,
+    stagedBatch?: StagedBatchFile | null,
+    options?: CreateBlobHoldingDocumentOptions,
+  ): Observable<NuxeoDocument> {
+    if (!stagedBatch) {
+      return this.createBlobHoldingDocument(parentPath, name, docType, properties, file, options);
+    }
+    return this.isBatchFileAvailable(stagedBatch.batchId, stagedBatch.fileIndex).pipe(
+      switchMap((available) =>
+        available
+          ? this.createBlobHoldingDocumentFromBatch(
+              parentPath,
+              name,
+              docType,
+              properties,
+              stagedBatch.batchId,
+              stagedBatch.fileIndex,
+              options,
+            )
+          : this.createBlobHoldingDocument(parentPath, name, docType, properties, file, options),
+      ),
+    );
+  }
+
+  /**
    * Initialize a batch, upload `file`, and create a blob-holding document with `file:content` set.
    */
   createBlobHoldingDocument(
@@ -567,6 +604,13 @@ export class DocumentImportService {
     );
   }
 
+  private isBatchFileAvailable(batchId: string, fileIndex: number): Observable<boolean> {
+    return this.verifyBatchFileUploaded(batchId, fileIndex).pipe(
+      map(() => true),
+      catchError(() => of(false)),
+    );
+  }
+
   private verifyBatchFileUploaded(batchId: string, fileIndex: number): Observable<void> {
     return this.http
       .get<unknown>(
@@ -610,33 +654,22 @@ export class DocumentImportService {
   }
 
   private pollDocumentMainBlob(uid: string, attempt: number): Observable<NuxeoDocument> {
-    const maxAttempts = 12;
     return this.fetchDocumentMainBlob(uid).pipe(
       switchMap((refetched) => {
         if (documentHasPersistedMainBlob(refetched)) {
           return of(refetched);
         }
-        if (attempt >= maxAttempts) {
-          return this.trashOrphanDocument(uid).pipe(
-            catchError(() => of(undefined)),
-            switchMap(() => throwError(() => new Error(BLOB_NOT_ATTACHED_ERROR))),
-          );
+        if (attempt >= MAIN_BLOB_POLL_MAX_ATTEMPTS) {
+          if (documentHasMainBlob(refetched)) {
+            return of(refetched);
+          }
+          return throwError(() => new Error(BLOB_NOT_ATTACHED_ERROR));
         }
-        return timer(300).pipe(switchMap(() => this.pollDocumentMainBlob(uid, attempt + 1)));
+        return timer(MAIN_BLOB_POLL_INTERVAL_MS).pipe(
+          switchMap(() => this.pollDocumentMainBlob(uid, attempt + 1)),
+        );
       }),
     );
-  }
-
-  /** Best-effort cleanup when blob attachment fails after the document shell was created. */
-  private trashOrphanDocument(uid: string): Observable<void> {
-    const input = uid.startsWith('doc:') ? uid : `doc:${uid}`;
-    return this.api
-      .post<NuxeoDocument>('/nuxeo/api/v1/automation/Document.Trash', {
-        params: {},
-        context: {},
-        input,
-      })
-      .pipe(map(() => undefined));
   }
 
   private fetchDocumentMainBlob(uid: string): Observable<NuxeoDocument> {
