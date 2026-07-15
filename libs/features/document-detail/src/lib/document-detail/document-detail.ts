@@ -842,6 +842,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (entries) => this.natureVocabulary.set(entries),
+        error: () => this.natureVocabulary.set([]),
       });
 
     forkJoin({
@@ -853,6 +854,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         next: ({ coverage, subjects }) => {
           this.coverageVocabulary.set(coverage);
           this.subjectVocabulary.set(subjects);
+        },
+        error: () => {
+          this.coverageVocabulary.set([]);
+          this.subjectVocabulary.set([]);
         },
       });
   }

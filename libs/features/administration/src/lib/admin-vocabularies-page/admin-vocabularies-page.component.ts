@@ -19,7 +19,6 @@ import {
   VocabularyEntryFormValues,
   directoryAdminTableLabel,
   getDirectoryMetadata,
-  isManagedDirectory,
   vocabularyTableColumns,
 } from '@agentic-ui/shared/nuxeo-client';
 import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
@@ -81,17 +80,11 @@ export class AdminVocabulariesPageComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ catalog, names }) => {
-          const catalogNames = [...catalog.values()]
-            .filter(isManagedDirectory)
-            .map((meta) => meta.name)
-            .sort((a, b) => a.localeCompare(b));
-          const vocabNames = catalogNames.length ? catalogNames : names;
-          this.directoryNames.set(vocabNames);
+          this.directoryNames.set(names);
           this.directoryCatalog.set(catalog);
           this.loadingList.set(false);
-          if (vocabNames.length && !this.selectedDirectory()) {
-            const preferred =
-              vocabNames.find((name) => name.toLowerCase() === 'country') ?? vocabNames[0];
+          if (names.length && !this.selectedDirectory()) {
+            const preferred = names.find((name) => name.toLowerCase() === 'country') ?? names[0];
             this.selectedDirectory.set(preferred);
             this.loadEntries(preferred);
           }

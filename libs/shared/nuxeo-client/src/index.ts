@@ -37,6 +37,7 @@ export {
   entryPropertiesIncludeParent,
   getDirectoryMetadata,
   isManagedDirectory,
+  isManagedDirectoryName,
   resolveParentSourceName,
   vocabularyParentRequired,
   vocabularySupportsParent,

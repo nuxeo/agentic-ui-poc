@@ -136,6 +136,18 @@ describe('DirectoryService', () => {
     await expect(result$).resolves.toBeUndefined();
   });
 
+  it('listDirectoryNames excludes system directories from fallback when catalog is empty', async () => {
+    const names$ = firstValueFrom(service.listDirectoryNames());
+    const req = httpMock.expectOne('/nuxeo/api/v1/directory');
+    req.flush([]);
+
+    const names = await names$;
+    expect(names).not.toContain('eventTypes');
+    expect(names).not.toContain('eventCategories');
+    expect(names).toContain('country');
+    expect(names).toContain('nature');
+  });
+
   it('listDirectoryNames excludes system directories from the catalog', async () => {
     const names$ = firstValueFrom(service.listDirectoryNames());
     const req = httpMock.expectOne('/nuxeo/api/v1/directory');

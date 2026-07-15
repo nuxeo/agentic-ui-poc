@@ -17,6 +17,7 @@ import {
   directoryPickerLabel,
   directoryUsesL10nLabel,
   isManagedDirectory,
+  isManagedDirectoryName,
   resolveParentSourceName,
 } from '../models/directory.model';
 
@@ -43,7 +44,7 @@ export class DirectoryService {
           .filter(isManagedDirectory)
           .map((meta) => meta.name)
           .sort((a, b) => a.localeCompare(b));
-        return names.length ? names : [...FALLBACK_DIRECTORY_NAMES];
+        return names.length ? names : [...FALLBACK_DIRECTORY_NAMES].filter(isManagedDirectoryName);
       }),
     );
   }

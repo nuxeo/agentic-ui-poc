@@ -12,6 +12,13 @@ export const FALLBACK_DIRECTORY_NAMES = [
   'language',
 ] as const;
 
+/** Directories used for audit/system UI — excluded from Administration → Vocabularies. */
+export const SYSTEM_DIRECTORY_NAMES = new Set([
+  'eventTypes',
+  'eventCategories',
+  'oauth2TokenTypes',
+]);
+
 export interface DirectoryEntry {
   id: string;
   label: string;
@@ -144,6 +151,11 @@ export function defaultVocabularyLabel(directoryName: string, id: string): strin
 /** Whether a directory appears in Administration → Vocabularies (Nuxeo Web UI parity). */
 export function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean {
   return metadata.type?.toLowerCase() !== 'system';
+}
+
+/** Whether a directory name is manageable when catalog metadata is unavailable. */
+export function isManagedDirectoryName(name: string): boolean {
+  return !SYSTEM_DIRECTORY_NAMES.has(name);
 }
 
 /** Raw label stored on the directory entry — shown as-is in the admin table (Web UI parity). */

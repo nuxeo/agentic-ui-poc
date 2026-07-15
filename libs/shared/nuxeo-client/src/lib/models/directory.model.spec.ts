@@ -6,6 +6,7 @@ import {
   directoryPickerLabel,
   directoryShowsParentField,
   isManagedDirectory,
+  isManagedDirectoryName,
   entryPropertiesIncludeParent,
   getDirectoryMetadata,
   vocabularyParentRequired,
@@ -86,6 +87,11 @@ describe('directory.model', () => {
         label: 'label.directories.country.Afghanistan',
       }),
     ).toBe('label.directories.country.Afghanistan');
+  });
+
+  it('isManagedDirectoryName excludes known system directory names', () => {
+    expect(isManagedDirectoryName('eventTypes')).toBe(false);
+    expect(isManagedDirectoryName('country')).toBe(true);
   });
 
   it('isManagedDirectory excludes system directories like Web UI', () => {
