@@ -17,8 +17,9 @@ import {
   DirectoryService,
   ManagedDirectoryEntry,
   VocabularyEntryFormValues,
-  directoryEntryDisplayLabel,
+  directoryAdminTableLabel,
   getDirectoryMetadata,
+  isManagedDirectory,
   vocabularyTableColumns,
 } from '@agentic-ui/shared/nuxeo-client';
 import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
@@ -80,7 +81,10 @@ export class AdminVocabulariesPageComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: ({ catalog, names }) => {
-          const catalogNames = [...catalog.keys()].sort((a, b) => a.localeCompare(b));
+          const catalogNames = [...catalog.values()]
+            .filter(isManagedDirectory)
+            .map((meta) => meta.name)
+            .sort((a, b) => a.localeCompare(b));
           const vocabNames = catalogNames.length ? catalogNames : names;
           this.directoryNames.set(vocabNames);
           this.directoryCatalog.set(catalog);
@@ -105,8 +109,8 @@ export class AdminVocabulariesPageComponent implements OnInit {
     return row.parent ?? '—';
   }
 
-  entryDisplayLabel(row: ManagedDirectoryEntry): string {
-    return directoryEntryDisplayLabel(row);
+  entryTableLabel(row: ManagedDirectoryEntry): string {
+    return directoryAdminTableLabel(row);
   }
 
   loadEntries(directoryName: string): void {
@@ -167,7 +171,7 @@ export class AdminVocabulariesPageComponent implements OnInit {
         {
           data: {
             title: 'Delete vocabulary entry',
-            message: `Permanently delete "${this.entryDisplayLabel(entry)}" (${entry.id})? This cannot be undone.`,
+            message: `Permanently delete "${entry.id}" from ${directoryName}? This cannot be undone.`,
             confirmLabel: 'Delete',
           },
         },

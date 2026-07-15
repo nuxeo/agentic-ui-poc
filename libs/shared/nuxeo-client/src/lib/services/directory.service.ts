@@ -1,6 +1,6 @@
 import { HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, EMPTY, catchError, expand, map, of, reduce, shareReplay, tap } from 'rxjs';
+import { Observable, EMPTY, catchError, expand, map, of, reduce, shareReplay } from 'rxjs';
 
 import { NuxeoApiBase } from './nuxeo-api-base';
 import {
@@ -14,15 +14,15 @@ import {
   L10nDirectoryResponse,
   ManagedDirectoryEntry,
   VocabularyEntryFormValues,
+  directoryPickerLabel,
   directoryUsesL10nLabel,
+  isManagedDirectory,
   resolveParentSourceName,
 } from '../models/directory.model';
 
 @Injectable({ providedIn: 'root' })
 export class DirectoryService {
   private readonly api = inject(NuxeoApiBase);
-  private readonly cache = new Map<string, Observable<DirectoryEntry[]>>();
-  private readonly l10nCache = new Map<string, Observable<L10nDirectoryEntry[]>>();
   private catalog$?: Observable<Map<string, DirectoryMetadata>>;
 
   /** Nuxeo directory registry (name → metadata including parent vocabulary). */
@@ -35,11 +35,14 @@ export class DirectoryService {
     return this.catalog$;
   }
 
-  /** Directory names from the Nuxeo registry (Web UI parity), with static fallback. */
+  /** Directory names for Administration → Vocabularies (excludes system directories). */
   listDirectoryNames(): Observable<string[]> {
     return this.getDirectoryCatalog().pipe(
       map((catalog) => {
-        const names = [...catalog.keys()].sort((a, b) => a.localeCompare(b));
+        const names = [...catalog.values()]
+          .filter(isManagedDirectory)
+          .map((meta) => meta.name)
+          .sort((a, b) => a.localeCompare(b));
         return names.length ? names : [...FALLBACK_DIRECTORY_NAMES];
       }),
     );
@@ -70,6 +73,7 @@ export class DirectoryService {
         schema: row.schema,
         idField: row.idField,
         parentDirectory: row.parent || row.parentDirectory || undefined,
+        type: row.type,
       });
     }
     return catalog;
@@ -82,11 +86,12 @@ export class DirectoryService {
     return [];
   }
 
+  /**
+   * Loads active directory entries for metadata pickers via Directory.SuggestEntries.
+   * Each call queries the server (Nuxeo Web UI parity — no session-wide list cache).
+   */
   getEntries(directoryName: string): Observable<DirectoryEntry[]> {
-    const cached = this.cache.get(directoryName);
-    if (cached) return cached;
-
-    const result$ = this.api
+    return this.api
       .post<DirectoryEntry[]>(
         '/nuxeo/api/v1/automation/Directory.SuggestEntries',
         {
@@ -103,13 +108,15 @@ export class DirectoryService {
       )
       .pipe(
         map((entries) =>
-          entries.filter((e) => !e.obsolete).sort((a, b) => a.ordering - b.ordering),
+          entries
+            .filter((e) => !e.obsolete)
+            .map((entry) => ({
+              ...entry,
+              displayLabel: directoryPickerLabel(entry),
+            }))
+            .sort((a, b) => a.ordering - b.ordering),
         ),
-        shareReplay({ bufferSize: 1, refCount: false }),
       );
-
-    this.cache.set(directoryName, result$);
-    return result$;
   }
 
   /**
@@ -157,10 +164,7 @@ export class DirectoryService {
         body,
         { 'Content-Type': 'application/json' },
       )
-      .pipe(
-        map((entry) => this.normalizeAdminEntry(directoryName, entry)),
-        tap(() => this.invalidateCache(directoryName)),
-      );
+      .pipe(map((entry) => this.normalizeAdminEntry(directoryName, entry)));
   }
 
   updateEntry(
@@ -182,10 +186,7 @@ export class DirectoryService {
         body,
         { 'Content-Type': 'application/json' },
       )
-      .pipe(
-        map((entry) => this.normalizeAdminEntry(directoryName, entry)),
-        tap(() => this.invalidateCache(directoryName)),
-      );
+      .pipe(map((entry) => this.normalizeAdminEntry(directoryName, entry)));
   }
 
   deleteEntry(directoryName: string, entryId: string): Observable<void> {
@@ -193,19 +194,7 @@ export class DirectoryService {
       .delete<void>(
         `/nuxeo/api/v1/directory/${encodeURIComponent(directoryName)}/${encodeURIComponent(entryId)}`,
       )
-      .pipe(
-        tap(() => this.invalidateCache(directoryName)),
-        map(() => undefined),
-      );
-  }
-
-  invalidateCache(directoryName: string): void {
-    this.cache.delete(directoryName);
-    for (const key of this.l10nCache.keys()) {
-      if (key.startsWith(`${directoryName}:`)) {
-        this.l10nCache.delete(key);
-      }
-    }
+      .pipe(map(() => undefined));
   }
 
   /**
@@ -229,10 +218,6 @@ export class DirectoryService {
     directoryName: string,
     scope: 'top-level' | 'all',
   ): Observable<L10nDirectoryEntry[]> {
-    const cacheKey = `${directoryName}:${scope}`;
-    const cached = this.l10nCache.get(cacheKey);
-    if (cached) return cached;
-
     const fetchPage = (pageIndex: number) => {
       const params = new HttpParams().set('pageSize', 50).set('currentPageIndex', pageIndex);
       return this.api.get<L10nDirectoryResponse>(
@@ -241,7 +226,7 @@ export class DirectoryService {
       );
     };
 
-    const result$ = fetchPage(0).pipe(
+    return fetchPage(0).pipe(
       expand((res) => (res.isNextPageAvailable ? fetchPage(res.currentPageIndex + 1) : EMPTY)),
       reduce<L10nDirectoryResponse, L10nDirectoryEntry[]>(
         (acc, res) => acc.concat(res.entries),
@@ -257,11 +242,7 @@ export class DirectoryService {
             (a.properties.label_en ?? a.id).localeCompare(b.properties.label_en ?? b.id),
           ),
       ),
-      shareReplay({ bufferSize: 1, refCount: false }),
     );
-
-    this.l10nCache.set(cacheKey, result$);
-    return result$;
   }
 
   getEventTypes(): Observable<DirectoryEntry[]> {
@@ -328,6 +309,7 @@ interface DirectoryMetadataRest {
   idField?: string;
   parent?: string;
   parentDirectory?: string;
+  type?: string;
 }
 
 type DirectoryCatalogResponse =

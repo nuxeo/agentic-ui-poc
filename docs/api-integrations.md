@@ -713,7 +713,7 @@ The `directoryName` parameter varies:
 | `ordering`     | Sort order for dropdown options                                                      |
 | `obsolete`     | Entries with `obsolete: 1` are filtered out                                          |
 
-**Caching:** Results are cached per `directoryName` using `shareReplay` so subsequent calls reuse the same HTTP response.
+**Caching:** Picker queries (`getEntries`, `getL10nEntries`, `getAllL10nEntries`) hit the server on every call (Nuxeo Web UI parity). The directory catalog (`getDirectoryCatalog`) is cached for the session.
 
 **Used by:**
 
