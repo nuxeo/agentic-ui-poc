@@ -100,7 +100,7 @@ export function sanitizeDocumentName(name: string): string {
 
 /** Web UI `_sanitizeName`: document path segment from title (slashes only). */
 export function sanitizeDocumentCreateName(name: string): string {
-  return name.replace(/[\\/]/gi, '-');
+  return name.replace(/[\\/]/g, '-');
 }
 
 function isMeaningfulCreatePropertyValue(value: unknown): boolean {
