@@ -366,6 +366,33 @@ describe('DocumentDetailService permissions', () => {
     const blob = await blob$;
     expect(blob).toBeInstanceOf(Blob);
   });
+
+  it('fetchBlob sends clientReason=view by default (Web UI preview parity)', async () => {
+    const blob$ = firstValueFrom(service.fetchBlob('doc-uid'));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/id/doc-uid/@blob/file:content' &&
+        r.params.get('clientReason') === 'view',
+    );
+    expect(req.request.responseType).toBe('blob');
+    req.flush(new Blob(['preview']));
+
+    await expect(blob$).resolves.toBeInstanceOf(Blob);
+  });
+
+  it('fetchBlob sends clientReason=download for explicit downloads', async () => {
+    const blob$ = firstValueFrom(service.fetchBlob('doc-uid', { clientReason: 'download' }));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/id/doc-uid/@blob/file:content' &&
+        r.params.get('clientReason') === 'download',
+    );
+    req.flush(new Blob(['file']));
+
+    await expect(blob$).resolves.toBeInstanceOf(Blob);
+  });
 });
 
 function docWithLocalAce(aceId: string, username: string) {

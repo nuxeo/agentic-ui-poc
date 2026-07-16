@@ -21,8 +21,9 @@ Primary service for single-document operations.
 ```typescript
 getFullDocument(uid: string): Observable<NuxeoDocument>
 getDocumentPermissions(uid: string): Observable<NuxeoDocument>
-fetchBlob(uid: string): Observable<Blob>  // GET @blob/file:content, fallback blobholder:0
-fetchBlobByXpath(uid: string, xpath: string): Observable<Blob>
+fetchBlob(uid: string, options?: FetchBlobOptions): Observable<Blob>
+  // GET @blob/file:content?clientReason=view (default) or download; fallback blobholder:0
+fetchBlobByXpath(uid: string, xpath: string, options?: FetchBlobOptions): Observable<Blob>
 fetchPdfRendition(uid: string): Observable<Blob>
 fetchThumbnail(uid: string): Observable<Blob>
 getAuditLog(uid: string, pageSize?: number, currentPageIndex?: number): Observable<AuditLogList>

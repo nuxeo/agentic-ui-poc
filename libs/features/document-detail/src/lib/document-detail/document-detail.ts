@@ -73,6 +73,7 @@ import {
   canRemoveDocument,
   canViewDocumentAuditLog,
   mergeDocumentPermissionsContext,
+  auditActivityLabel,
   resolveAcePrincipal,
   PERMISSION_DENIED_MESSAGE,
   isPermissionDeniedError,
@@ -2811,11 +2812,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   download(): void {
-    if (!this.rawBlobUrl) return;
-    const a = document.createElement('a');
-    a.href = this.rawBlobUrl;
-    a.download = this.fileName();
-    a.click();
+    if (!this.docUid) return;
+    this.detailService
+      .fetchBlob(this.docUid, { clientReason: 'download' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = objectUrl;
+          anchor.download = this.fileName();
+          anchor.click();
+          URL.revokeObjectURL(objectUrl);
+          this.refreshPanelActivityIfVisible();
+        },
+        error: () => this.toast('Failed to download document'),
+      });
+  }
+
+  private refreshPanelActivityIfVisible(): void {
+    if (this.panelSubTab() !== 'activity') return;
+    this.panelActivityLoaded = false;
+    this.loadPanelActivity();
   }
 
   previewMainBlob(): void {
@@ -3134,36 +3152,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  activityLabel(eventId: string): string {
-    const labels: Record<string, string> = {
-      documentCreated: 'created the document',
-      documentModified: 'updated the document',
-      documentMoved: 'moved the document',
-      documentRemoved: 'removed the document',
-      documentLocked: 'locked the document',
-      documentUnlocked: 'unlocked the document',
-      documentSecurityUpdated: 'updated security settings',
-      lifecycle_transition_event: 'changed document state',
-      download: 'downloaded the document',
-      loginSuccess: 'logged in',
-      addedToCollection: 'added to collection',
-      removedFromCollection: 'removed from collection',
-      documentPublished: 'published the document',
-      documentProxyPublished: 'published the document',
-      'workflow.start': 'started a review',
-      'workflow.complete': 'completed a review',
-      documentCheckedIn: 'checked in the document',
-      documentCheckedOut: 'checked out the document',
-      documentRestored: 'restored the document',
-      'activity.deleted': 'activity.deleted',
-    };
-    return (
-      labels[eventId] ??
-      eventId
-        .replace(/([A-Z])/g, ' $1')
-        .toLowerCase()
-        .trim()
-    );
+  activityLabel(entry: AuditEntry): string {
+    return auditActivityLabel(entry, this.eventTypeLabelMap);
   }
 
   // ── Versioning ──
