@@ -36,6 +36,7 @@
         [(ngModel)]="userSearchQuery"
         (focus)="onMemberInputFocus()"
         (ngModelChange)="onUserSearch($event)"
+        (keydown)="onMemberInputKeydown($event)"
         (matChipInputTokenEnd)="addMemberFromInput($event)"
       />
     </mat-chip-grid>

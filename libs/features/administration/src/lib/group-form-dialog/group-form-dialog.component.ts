@@ -172,6 +172,21 @@ export class GroupFormDialogComponent implements OnInit, OnDestroy {
     return name || email || '';
   }
 
+  onMemberInputKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter') {
+      return;
+    }
+    const typed = this.userSearchQuery.trim();
+    if (!typed) {
+      return;
+    }
+
+    if (this.filteredUsers.length > 0) {
+      // Enter should select from autocomplete search results, not commit typed text as a chip.
+      this.skipNextChipInput = true;
+    }
+  }
+
   onUserSelected(event: MatAutocompleteSelectedEvent): void {
     this.skipNextChipInput = true;
     const u = event.option.value as NuxeoUser;

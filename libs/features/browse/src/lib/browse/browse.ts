@@ -5,8 +5,10 @@ import {
   HostListener,
   ViewChild,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
@@ -499,14 +501,18 @@ export class BrowseComponent {
 
     this.browsePath$.next(initialPath);
 
-    const refreshAfterClipboardAction = () => {
-      if (this.currentNuxeoPath) {
-        this.browsePath$.next(this.currentNuxeoPath);
+    effect(() => {
+      const tick = this.browseContext.contentRefreshTick();
+      if (tick > 0) {
+        untracked(() => {
+          if (this.currentNuxeoPath) {
+            this.loadContent();
+          }
+        });
       }
-    };
-    window.addEventListener('clipboard-action-performed', refreshAfterClipboardAction);
+    });
+
     this.destroyRef.onDestroy(() => {
-      window.removeEventListener('clipboard-action-performed', refreshAfterClipboardAction);
       this.clipboardTargetService.clear();
     });
 

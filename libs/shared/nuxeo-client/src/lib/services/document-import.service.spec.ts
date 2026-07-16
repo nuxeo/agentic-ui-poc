@@ -299,6 +299,7 @@ describe('DocumentImportService', () => {
     expect(verifyReq.request.method).toBe('GET');
     verifyReq.flush({ name: 'photo.jpg', size: file.size, uploadType: 'normal' });
 
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
     const createReq = httpMock.expectOne('/nuxeo/api/v1/path/ws');
     expect(createReq.request.body.properties['file:content']).toEqual({
       'upload-batch': 'batch-1',
@@ -328,6 +329,7 @@ describe('DocumentImportService', () => {
     httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-2' });
     httpMock.expectOne('/nuxeo/api/v1/upload/batch-2/0').flush('');
     httpMock.expectOne('/nuxeo/api/v1/upload/batch-2/0').flush({ name: 'empty.jpg', size: 1 });
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-2',
       title: 'empty',
@@ -371,6 +373,7 @@ describe('DocumentImportService', () => {
     httpMock
       .expectOne('/nuxeo/api/v1/upload/batch-slow/0')
       .flush({ name: 'slow.jpg', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-slow',
       title: 'slow',
@@ -429,6 +432,7 @@ describe('DocumentImportService', () => {
     httpMock
       .expectOne('/nuxeo/api/v1/upload/batch-fresh/0')
       .flush({ name: 'photo.jpg', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'Picture');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-fresh',
       title: 'photo',
@@ -465,6 +469,7 @@ describe('DocumentImportService', () => {
     httpMock
       .expectOne('/nuxeo/api/v1/upload/batch-fresh/0')
       .flush({ name: 'photo.jpg', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'Picture');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-fresh',
       title: 'photo',
@@ -510,6 +515,7 @@ describe('DocumentImportService', () => {
     httpMock
       .expectOne('/nuxeo/api/v1/upload/batch-5/0')
       .flush({ name: 'cat.jpg', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-5',
       title: 'cat',
@@ -551,6 +557,7 @@ describe('DocumentImportService', () => {
     httpMock
       .expectOne('/nuxeo/api/v1/upload/batch-6/0')
       .flush({ name: 'photo.jpg', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'Picture');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-6',
       title: 'photo',
@@ -586,6 +593,7 @@ describe('DocumentImportService', () => {
     httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-3' });
     httpMock.expectOne('/nuxeo/api/v1/upload/batch-3/0').flush('');
     httpMock.expectOne('/nuxeo/api/v1/upload/batch-3/0').flush({ name: 'empty.txt', size: 0 });
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-3',
       title: 'empty',
@@ -610,6 +618,7 @@ describe('DocumentImportService', () => {
     expect(uploadReq.request.headers.get('X-File-Name')).toBe('badname.jpg');
     uploadReq.flush('');
     httpMock.expectOne('/nuxeo/api/v1/upload/batch-4/0').flush({ name: 'badname.jpg', size: 1 });
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
     httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
       uid: 'doc-4',
       title: 'badname',
@@ -636,6 +645,7 @@ describe('DocumentImportService', () => {
       ),
     );
 
+    flushEmptyWithDefault(httpMock, '/ws', 'Picture');
     const createReq = httpMock.expectOne('/nuxeo/api/v1/path/ws');
     expect(createReq.request.body.properties['file:content']).toEqual({
       'upload-batch': 'batch-staged',
@@ -702,6 +712,7 @@ describe('DocumentImportService', () => {
     httpMock
       .expectOne('/nuxeo/api/v1/upload/batch-pic/0')
       .flush({ name: 'photo.png', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'Picture');
     const createReq = httpMock.expectOne('/nuxeo/api/v1/path/ws');
     expect(createReq.request.body.type).toBe('Picture');
     expect(createReq.request.body.properties['dc:title']).toBe('My Picture');
@@ -720,6 +731,79 @@ describe('DocumentImportService', () => {
 
     const docs = await import$;
     expect(docs[0].uid).toBe('pic-1');
+  });
+
+  it('createDocumentWithBlob uses emptyWithDefault and skips null DC overrides (Picture create)', async () => {
+    const file = new File(['png'], 'Screenshot 2024-07-16 132702.png', { type: 'image/png' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocument(
+        '/ws',
+        'Edit user',
+        'Picture',
+        {
+          'dc:title': 'Edit user',
+          'dc:description': null,
+          'dc:nature': null,
+          'dc:subjects': [],
+          'dc:coverage': null,
+          'dc:expired': null,
+        },
+        file,
+      ),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-picture' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-picture/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-picture/0')
+      .flush({ name: 'Screenshot 2024-07-16 132702.png', size: file.size });
+
+    const emptyReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/path/ws/@emptyWithDefault' && r.params.get('type') === 'Picture',
+    );
+    emptyReq.flush({
+      uid: '',
+      name: '',
+      title: '',
+      type: 'Picture',
+      path: '',
+      lastModified: '',
+      properties: {
+        'dc:title': '',
+        'dc:description': '',
+        'picture:info': { width: 0, height: 0 },
+      },
+    });
+
+    const createReq = httpMock.expectOne('/nuxeo/api/v1/path/ws');
+    expect(createReq.request.body.type).toBe('Picture');
+    expect(createReq.request.body.name).toBe('Edit user');
+    expect(createReq.request.body.properties['dc:title']).toBe('Edit user');
+    expect(createReq.request.body.properties['dc:description']).toBe('');
+    expect(createReq.request.body.properties['dc:nature']).toBeUndefined();
+    expect(createReq.request.body.properties['dc:coverage']).toBeUndefined();
+    expect(createReq.request.body.properties['file:content']).toEqual({
+      'upload-batch': 'batch-picture',
+      'upload-fileId': '0',
+    });
+    createReq.flush({
+      uid: 'pic-create',
+      title: 'Edit user',
+      type: 'Picture',
+      path: '/ws/Edit user',
+      properties: {
+        'dc:title': 'Edit user',
+        'file:content': {
+          name: 'Screenshot 2024-07-16 132702.png',
+          length: String(file.size),
+          digest: 'abc',
+        },
+      },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('pic-create');
   });
 
   it('sanitizeDocumentCreateName matches Web UI slash-only sanitization', () => {

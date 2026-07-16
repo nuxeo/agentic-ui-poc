@@ -212,6 +212,27 @@ describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
     expect(component.groups).toEqual(['powerusers']);
   });
 
+  it('selects autocomplete result on Enter when suggestions are shown (NXSAT-151)', () => {
+    component.groupSearchQuery = 'en';
+    component.groupOptions = [{ groupname: 'group01', grouplabel: 'Group 01' }];
+
+    component.onGroupInputKeydown(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    const chipInput = { clear: vi.fn() };
+    component.addGroupFromInput({
+      value: 'en',
+      chipInput,
+    } as unknown as MatChipInputEvent);
+
+    expect(component.groups).toEqual([]);
+
+    component.onGroupSelected({
+      option: { value: 'group01', deselect: vi.fn() },
+    } as unknown as MatAutocompleteSelectedEvent);
+
+    expect(component.groups).toEqual(['group01']);
+  });
+
   it('accepts exact group name that is also a prefix of another option (NXSAT-151)', () => {
     component.groupOptions = [
       { groupname: 'admin', grouplabel: 'admin' },

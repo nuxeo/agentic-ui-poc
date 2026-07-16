@@ -1207,7 +1207,11 @@ export class NavDrawerComponent {
           }
           const count = results.length;
           this.clearClipboard();
-          window.dispatchEvent(new Event('clipboard-action-performed'));
+          this.browseContext.requestContentRefresh();
+          this.browseContext.requestTreeRefresh();
+          if (this.browseTreeLoadedForUser) {
+            this.refreshBrowseTree();
+          }
           const verb = action === 'copy' ? 'Copied' : 'Moved';
           this.snackBar.open(
             `${verb} ${count} item${count === 1 ? '' : 's'} to ${target.title ?? 'folder'}.`,

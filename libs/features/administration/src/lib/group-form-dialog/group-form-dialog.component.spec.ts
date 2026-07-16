@@ -123,6 +123,27 @@ describe('GroupFormDialogComponent (NXSAT-151)', () => {
     expect(component.memberUsernames).toEqual(['poweruser01']);
   });
 
+  it('selects autocomplete result on Enter when suggestions are shown (NXSAT-151)', () => {
+    component.userSearchQuery = 'en';
+    component.filteredUsers = [mockUser('group01')];
+
+    component.onMemberInputKeydown(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+    const chipInput = { clear: vi.fn() };
+    component.addMemberFromInput({
+      value: 'en',
+      chipInput,
+    } as unknown as MatChipInputEvent);
+
+    expect(component.memberUsernames).toEqual([]);
+
+    component.onUserSelected({
+      option: { value: mockUser('group01'), deselect: vi.fn() },
+    } as unknown as MatAutocompleteSelectedEvent);
+
+    expect(component.memberUsernames).toEqual(['group01']);
+  });
+
   it('accepts exact user id that is also a prefix of another option (NXSAT-151)', () => {
     component.filteredUsers = [mockUser('admin'), mockUser('administrators')];
 

@@ -1063,6 +1063,8 @@ Documents are added/removed via document detail, collection detail, or the selec
 
 **Target folder:** `ClipboardTargetService` — updated by `BrowseComponent` while browsing. User must browse to a folderish container before Copy/Move are enabled.
 
+**After success:** `BrowseContextService.requestContentRefresh()` reloads the browse folder listing; `requestTreeRefresh()` updates the browse nav tree.
+
 **Used by:**
 
 - **Clipboard drawer** (`nav-drawer`) — Copy / Move buttons; clears clipboard on success

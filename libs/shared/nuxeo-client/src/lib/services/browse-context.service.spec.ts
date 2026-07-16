@@ -18,6 +18,14 @@ describe('BrowseContextService', () => {
     expect(service.treeRefreshTick()).toBe(2);
   });
 
+  it('requestContentRefresh increments contentRefreshTick', () => {
+    expect(service.contentRefreshTick()).toBe(0);
+    service.requestContentRefresh();
+    expect(service.contentRefreshTick()).toBe(1);
+    service.requestContentRefresh();
+    expect(service.contentRefreshTick()).toBe(2);
+  });
+
   it('resetContext restores repository root path', () => {
     service.setFromNuxeoPath('/default-domain/workspaces/demo');
     expect(service.contextPath()).toBe('/default-domain/workspaces/demo');
