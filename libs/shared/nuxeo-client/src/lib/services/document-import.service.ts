@@ -3,6 +3,7 @@ import {
   HttpErrorResponse,
   HttpEventType,
   HttpHeaders,
+  HttpParams,
   HttpResponse,
 } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
@@ -100,6 +101,69 @@ export function sanitizeDocumentName(name: string): string {
     .replace(/\s+/g, ' ')
     .trim();
   return cleaned.slice(0, 200) || 'untitled';
+}
+
+/** Web UI `_sanitizeName`: document path segment from title (slashes only). */
+export function sanitizeDocumentCreateName(name: string): string {
+  return name.replace(/[\\/]/g, '-');
+}
+
+function isMeaningfulCreatePropertyValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    return false;
+  }
+  if (Array.isArray(value) && value.length === 0) {
+    return false;
+  }
+  return true;
+}
+
+/** REST path prefix for creating a child under `parentPath`. */
+function nuxeoDocumentPathEndpoint(parentPath: string): string {
+  const safePath = normalizeImportParentPath(parentPath);
+  return safePath === '/' ? '/nuxeo/api/v1/path/' : `/nuxeo/api/v1/path${safePath}`;
+}
+
+/** Server `@emptyWithDefault` payload used to seed document creation (Web UI parity). */
+export interface NuxeoCreateDocumentTemplate {
+  name?: string;
+  properties?: Record<string, unknown>;
+}
+
+/**
+ * Merge user overrides into a server `@emptyWithDefault` template (Nuxeo Web UI create flow).
+ * Skips null/empty overrides so server defaults (e.g. Domain schema fields) are preserved.
+ */
+export function mergeCreateDocumentBody(
+  template: NuxeoCreateDocumentTemplate,
+  docType: string,
+  nameFallback: string,
+  overrides: Record<string, unknown>,
+): Record<string, unknown> {
+  const mergedProps: Record<string, unknown> = { ...(template.properties ?? {}) };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (isMeaningfulCreatePropertyValue(value)) {
+      mergedProps[key] = value;
+    }
+  }
+
+  const title =
+    typeof overrides['dc:title'] === 'string' && overrides['dc:title'].trim()
+      ? overrides['dc:title'].trim()
+      : nameFallback.trim();
+  const resolvedName =
+    (template.name && String(template.name).trim()) ||
+    sanitizeDocumentCreateName(title || 'untitled');
+
+  return {
+    'entity-type': 'document',
+    name: resolvedName,
+    type: docType,
+    properties: mergedProps,
+  };
 }
 
 /** Default location when no browse context is provided (e.g. Dashboard Add Content). */
@@ -334,8 +398,25 @@ export class DocumentImportService {
    * (`@children` is for GET listing; POST there can return 405).
    */
   private urlCreateUnderPath(parentPath: string): string {
-    const safePath = parentPath.replace(/\/+$/, '') || '/';
-    return this.api.apiUrl(`/nuxeo/api/v1/path${safePath}`);
+    return this.api.apiUrl(nuxeoDocumentPathEndpoint(parentPath));
+  }
+
+  /**
+   * Empty document model with server defaults for a type under `parentPath`.
+   * @see https://doc.nuxeo.com/nxdoc/rest-api-web-adapters/ (`@emptyWithDefault`)
+   */
+  getEmptyDocumentWithDefaults(
+    parentPath: string,
+    docType: string,
+  ): Observable<NuxeoCreateDocumentTemplate> {
+    const base = nuxeoDocumentPathEndpoint(parentPath).replace(/\/$/, '');
+    const params = new HttpParams().set('type', docType);
+    return this.api
+      .get<NuxeoDocument & { name?: string }>(`${base}/@emptyWithDefault`, params, {
+        properties: '*',
+        'fetch-document': 'properties',
+      })
+      .pipe(map((doc) => ({ name: doc.name, properties: doc.properties })));
   }
 
   /**
@@ -378,15 +459,14 @@ export class DocumentImportService {
     docType: string,
     properties: Record<string, unknown>,
   ): Observable<NuxeoDocument> {
-    const body = {
-      'entity-type': 'document',
-      name: sanitizeDocumentName(name),
-      type: docType,
-      properties,
-    };
-    return this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return this.getEmptyDocumentWithDefaults(parentPath, docType).pipe(
+      map((template) => mergeCreateDocumentBody(template, docType, name, properties)),
+      switchMap((body) =>
+        this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
   }
 
   /**

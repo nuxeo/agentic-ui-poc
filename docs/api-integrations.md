@@ -1374,6 +1374,39 @@ prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
 
 ---
 
+## 27. Document Import — Create Child Document (Web UI parity)
+
+| Field           | Value                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------ |
+| **Service**     | `DocumentImportService` (`libs/shared/nuxeo-client/src/lib/services/document-import.service.ts`) |
+| **Method**      | `getEmptyDocumentWithDefaults(parentPath, docType)` then `createChildDocument(...)`              |
+| **HTTP Method** | `GET` then `POST`                                                                                |
+
+**Step 1 — Seed create body from server defaults:**
+
+| Field        | Value                                                             |
+| ------------ | ----------------------------------------------------------------- |
+| **Endpoint** | `/nuxeo/api/v1/path{parentPath}/@emptyWithDefault?type={docType}` |
+
+**Request headers:**
+
+| Header           | Value        |
+| ---------------- | ------------ |
+| `properties`     | `*`          |
+| `fetch-document` | `properties` |
+
+**Step 2 — Create document under parent:**
+
+| Field        | Value                            |
+| ------------ | -------------------------------- |
+| **Endpoint** | `/nuxeo/api/v1/path{parentPath}` |
+
+**Request body:** Merged document entity from `@emptyWithDefault` with user overrides applied (`mergeCreateDocumentBody`). Null/empty optional Dublin Core fields are omitted so server defaults (e.g. Domain schema fields) are preserved.
+
+**Usage:** Dashboard Add Content (+) → Create tab → Domain at repository root `/` (`CreateImportDialogComponent` → `createChildDocument`).
+
+---
+
 ## Administration — Recently Created Users and Groups
 
 | Field           | Value                                                                       |

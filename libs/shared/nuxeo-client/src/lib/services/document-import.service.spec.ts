@@ -18,10 +18,40 @@ import {
   isBlobHoldingDocType,
   isRepositoryRootPath,
   isRestrictedImportParentPath,
+  mergeCreateDocumentBody,
   normalizeImportParentPath,
   resolveImportBlobDocType,
+  sanitizeDocumentCreateName,
   summarizeCsvImportReport,
 } from './document-import.service';
+
+function flushEmptyWithDefault(
+  httpMock: HttpTestingController,
+  parentPath: string,
+  docType: string,
+): void {
+  const base = nuxeoPathForEmptyWithDefault(parentPath);
+  const req = httpMock.expectOne(
+    (r) => r.url === `${base}/@emptyWithDefault` && r.params.get('type') === docType,
+  );
+  expect(req.request.method).toBe('GET');
+  req.flush({
+    uid: '',
+    name: '',
+    title: '',
+    type: docType,
+    path: '',
+    lastModified: '',
+    properties: { 'dc:title': '' },
+  });
+}
+
+function nuxeoPathForEmptyWithDefault(parentPath: string): string {
+  const safePath = normalizeImportParentPath(parentPath);
+  return safePath === '/'
+    ? '/nuxeo/api/v1/path'
+    : `/nuxeo/api/v1/path${safePath}`.replace(/\/$/, '');
+}
 
 describe('DocumentImportService', () => {
   let service: DocumentImportService;
@@ -153,6 +183,7 @@ describe('DocumentImportService', () => {
       service.importFromCsvText('/default-domain/workspaces/demo', csv),
     );
 
+    flushEmptyWithDefault(httpMock, '/default-domain/workspaces/demo', 'Folder');
     const folderReq = httpMock.expectOne('/nuxeo/api/v1/path/default-domain/workspaces/demo');
     folderReq.flush({
       uid: 'folder-a',
@@ -162,6 +193,7 @@ describe('DocumentImportService', () => {
       properties: { 'dc:title': 'Folder A' },
     });
 
+    flushEmptyWithDefault(httpMock, '/default-domain/workspaces/demo/folder-a', 'File');
     const fileReq = httpMock.expectOne(
       '/nuxeo/api/v1/path/default-domain/workspaces/demo/folder-a',
     );
@@ -688,5 +720,71 @@ describe('DocumentImportService', () => {
 
     const docs = await import$;
     expect(docs[0].uid).toBe('pic-1');
+  });
+
+  it('sanitizeDocumentCreateName matches Web UI slash-only sanitization', () => {
+    expect(sanitizeDocumentCreateName('Test Domain')).toBe('Test Domain');
+    expect(sanitizeDocumentCreateName('a/b\\c')).toBe('a-b-c');
+  });
+
+  it('mergeCreateDocumentBody preserves server defaults and skips null overrides', () => {
+    const body = mergeCreateDocumentBody(
+      {
+        name: '',
+        properties: {
+          'dc:title': '',
+          'domain:content_roots': [],
+          'domain:display_type': 'false',
+        },
+      },
+      'Domain',
+      'Test Domain',
+      {
+        'dc:title': 'Test Domain',
+        'dc:description': null,
+        'dc:nature': null,
+        'dc:subjects': [],
+        'dc:coverage': null,
+        'dc:expired': null,
+      },
+    );
+
+    expect(body['name']).toBe('Test Domain');
+    expect(body['type']).toBe('Domain');
+    expect((body['properties'] as Record<string, unknown>)['dc:title']).toBe('Test Domain');
+    expect((body['properties'] as Record<string, unknown>)['dc:nature']).toBeUndefined();
+    expect((body['properties'] as Record<string, unknown>)['domain:display_type']).toBe('false');
+  });
+
+  it('createChildDocument uses @emptyWithDefault then posts merged body (NXSAT-199)', async () => {
+    const create$ = firstValueFrom(
+      service.createChildDocument('/', 'Test Domain', 'Domain', {
+        'dc:title': 'Test Domain',
+        'dc:description': null,
+        'dc:nature': null,
+        'dc:subjects': [],
+        'dc:coverage': null,
+        'dc:expired': null,
+      }),
+    );
+
+    flushEmptyWithDefault(httpMock, '/', 'Domain');
+    const createReq = httpMock.expectOne('/nuxeo/api/v1/path/');
+    expect(createReq.request.method).toBe('POST');
+    expect(createReq.request.body.name).toBe('Test Domain');
+    expect(createReq.request.body.type).toBe('Domain');
+    expect(createReq.request.body.properties['dc:title']).toBe('Test Domain');
+    expect(createReq.request.body.properties['dc:nature']).toBeUndefined();
+    createReq.flush({
+      uid: 'domain-new',
+      title: 'Test Domain',
+      type: 'Domain',
+      path: '/Test Domain',
+      lastModified: '',
+      properties: { 'dc:title': 'Test Domain' },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('domain-new');
   });
 });

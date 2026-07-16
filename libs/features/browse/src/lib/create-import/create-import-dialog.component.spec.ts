@@ -724,3 +724,73 @@ describe('CreateImportDialogComponent CSV', () => {
     expect(component.error()).toBe('Invalid CSV format');
   });
 });
+
+describe('CreateImportDialogComponent domain create (NXSAT-199)', () => {
+  let fixture: ComponentFixture<CreateImportDialogComponent>;
+  let component: CreateImportDialogComponent;
+
+  const rootFolderDoc: NuxeoDocument = {
+    uid: 'root-1',
+    title: 'Root',
+    type: 'Root',
+    path: '/',
+    lastModified: '',
+    properties: {},
+    contextParameters: { subtypes: ['Domain', 'Folder'] },
+  };
+
+  async function createDialog(): Promise<void> {
+    vi.clearAllMocks();
+    mockImportService.getDefaultImportParentPath.mockReturnValue(of('/'));
+    mockBrowseService.getFolderContext.mockReturnValue(of(rootFolderDoc));
+    mockBrowseService.getChildren.mockReturnValue(of({ entries: [], totalSize: 0 }));
+
+    await TestBed.configureTestingModule({
+      imports: [CreateImportDialogComponent, NoopAnimationsModule],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        { provide: MAT_DIALOG_DATA, useValue: {} },
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: DocumentImportService, useValue: mockImportService },
+        { provide: BrowseService, useValue: mockBrowseService },
+        { provide: DirectoryService, useValue: mockDirectoryService },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(CreateImportDialogComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await Promise.resolve();
+  }
+
+  it('createDocument at repository root delegates Domain create to DocumentImportService', async () => {
+    const created: NuxeoDocument = {
+      uid: 'domain-1',
+      title: 'Test Domain',
+      type: 'Domain',
+      path: '/Test Domain',
+      lastModified: '',
+      properties: { 'dc:title': 'Test Domain' },
+    };
+    mockImportService.createChildDocument.mockReturnValue(of(created));
+
+    await createDialog();
+    expect(component.parentPath()).toBe('/');
+
+    component.startCreateFromType({ type: 'Domain', label: 'Domain', icon: 'domain' });
+    component.docTitle = 'Test Domain';
+    component.createDocument();
+    await Promise.resolve();
+
+    expect(mockImportService.createChildDocument).toHaveBeenCalledWith(
+      '/',
+      'Test Domain',
+      'Domain',
+      expect.objectContaining({ 'dc:title': 'Test Domain' }),
+    );
+    expect(mockDialogRef.close).toHaveBeenCalledWith(
+      expect.objectContaining({ navigateToUid: 'domain-1', refreshed: true }),
+    );
+  });
+});

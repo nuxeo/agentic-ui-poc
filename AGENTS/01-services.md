@@ -301,6 +301,8 @@ getById(docId: string): Observable<NuxeoDocument>
 
 ```typescript
 getDefaultImportParentPath(): Observable<string>
+getEmptyDocumentWithDefaults(parentPath: string, docType: string): Observable<NuxeoCreateDocumentTemplate>
+createChildDocument(parentPath, name, docType, properties): Observable<NuxeoDocument>
 initUploadBatch(handler?: string): Observable<string>
 uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void>
 createBlobHoldingDocument(parentPath, name, docType, properties, file, options?): Observable<NuxeoDocument>
@@ -322,6 +324,8 @@ isBlobHoldingDocType(docType: string): boolean
 inferBlobDocTypeFromFile(file: File): string
 resolveImportBlobDocType(file: File, allowedTypes: readonly string[]): string
 titleFromFileName(fileName: string): string
+sanitizeDocumentCreateName(name: string): string
+mergeCreateDocumentBody(template, docType, nameFallback, overrides): Record<string, unknown>
 documentHasMainBlob(doc: NuxeoDocument): boolean
 BLOB_HOLDING_DOC_TYPES: ReadonlySet<string>
 ```
