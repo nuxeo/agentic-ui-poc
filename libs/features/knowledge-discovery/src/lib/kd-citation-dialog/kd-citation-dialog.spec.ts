@@ -77,7 +77,11 @@ describe('KdCitationDialogComponent', () => {
       contextParameters: {},
     });
 
-    const blobReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-1/@blob/file:content');
+    const blobReq = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/id/doc-1/@blob/file:content' &&
+        r.params.get('clientReason') === 'view',
+    );
     blobReq.flush(new Blob(['image'], { type: 'image/png' }));
 
     fixture.detectChanges();

@@ -73,6 +73,7 @@ import {
   canRemoveDocument,
   canViewDocumentAuditLog,
   mergeDocumentPermissionsContext,
+  auditActivityLabel,
   resolveAcePrincipal,
   PERMISSION_DENIED_MESSAGE,
   isPermissionDeniedError,
@@ -349,11 +350,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // Loaded from the Nuxeo `nature` directory and supplied as candidate classes to the
   // KE text-classification model. Sourcing live ids guarantees the value we write back
   // to `dc:nature` is in the vocabulary (Nuxeo enforces this and returns 422 otherwise).
+  // Refreshed on each document navigation (Nuxeo Web UI parity).
   readonly natureVocabulary = signal<DirectoryEntry[]>([]);
-  private natureVocabularyLoaded = false;
   readonly coverageVocabulary = signal<L10nDirectoryEntry[]>([]);
   readonly subjectVocabulary = signal<L10nDirectoryEntry[]>([]);
-  private indexingVocabulariesLoaded = false;
 
   // Tag management state (nuxeo-tag-suggestion style)
   tagInput = '';
@@ -508,13 +508,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!d) return [];
 
     const path = d.path ?? '';
-    if (path === this.breadcrumbPathCache) {
+    const cacheKey = `${path}\0${d.title}`;
+    if (cacheKey === this.breadcrumbPathCache) {
       return this.breadcrumbItemsCache;
     }
 
     const parts = path.split('/').filter(Boolean);
     parts.pop();
-    this.breadcrumbPathCache = path;
+    this.breadcrumbPathCache = cacheKey;
     let accumulated = '/browse';
     this.breadcrumbItemsCache = parts.map((s) => {
       accumulated += `/${s}`;
@@ -777,8 +778,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    this.loadNatureVocabulary();
-    this.loadIndexingVocabularies();
     this.tagSearch$
       .pipe(
         debounceTime(250),
@@ -811,6 +810,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.freshNoteDocument = this.readFreshNoteNavigationState();
       this.resetState();
       this.docUid = uid;
+      this.loadVocabularies();
       this.loadDocument(uid);
     });
   }
@@ -837,30 +837,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return historyState?.freshNote === true;
   }
 
-  /**
-   * Pre-loads the `nature` vocabulary so the Classify action can supply real ids
-   * to the KE model. DirectoryService caches the response so navigating between
-   * documents is cheap.
-   */
-  private loadNatureVocabulary(): void {
-    if (this.natureVocabularyLoaded) return;
-    this.natureVocabularyLoaded = true;
+  /** Pre-loads vocabulary data for metadata display and KE classification (live queries). */
+  private loadVocabularies(): void {
     this.directoryService
       .getEntries('nature')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (entries) => this.natureVocabulary.set(entries),
-        error: () => {
-          // Allow another attempt on the next document if the directory call fails.
-          this.natureVocabularyLoaded = false;
-        },
+        error: () => this.natureVocabulary.set([]),
       });
-  }
 
-  /** Pre-loads l10n coverage/subjects for hierarchical label display. */
-  private loadIndexingVocabularies(): void {
-    if (this.indexingVocabulariesLoaded) return;
-    this.indexingVocabulariesLoaded = true;
     forkJoin({
       coverage: this.directoryService.getAllL10nEntries('l10ncoverage'),
       subjects: this.directoryService.getAllL10nEntries('l10nsubjects'),
@@ -872,7 +858,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.subjectVocabulary.set(subjects);
         },
         error: () => {
-          this.indexingVocabulariesLoaded = false;
+          this.coverageVocabulary.set([]);
+          this.subjectVocabulary.set([]);
         },
       });
   }
@@ -2708,6 +2695,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((updatedDoc: NuxeoDocument | undefined) => {
         if (!updatedDoc) return;
+        this.browseContext.requestTreeRefresh();
+        this.browseContext.setFromDocument(updatedDoc);
         this.doc.set(updatedDoc);
         this.syncActionStates(updatedDoc);
         this.toast('Document updated');
@@ -2808,11 +2797,28 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   download(): void {
-    if (!this.rawBlobUrl) return;
-    const a = document.createElement('a');
-    a.href = this.rawBlobUrl;
-    a.download = this.fileName();
-    a.click();
+    if (!this.docUid) return;
+    this.detailService
+      .fetchBlob(this.docUid, { clientReason: 'download' })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const anchor = document.createElement('a');
+          anchor.href = objectUrl;
+          anchor.download = this.fileName();
+          anchor.click();
+          URL.revokeObjectURL(objectUrl);
+          this.refreshPanelActivityIfVisible();
+        },
+        error: () => this.toast('Failed to download document'),
+      });
+  }
+
+  private refreshPanelActivityIfVisible(): void {
+    if (this.panelSubTab() !== 'activity') return;
+    this.panelActivityLoaded = false;
+    this.loadPanelActivity();
   }
 
   previewMainBlob(): void {
@@ -3131,36 +3137,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  activityLabel(eventId: string): string {
-    const labels: Record<string, string> = {
-      documentCreated: 'created the document',
-      documentModified: 'updated the document',
-      documentMoved: 'moved the document',
-      documentRemoved: 'removed the document',
-      documentLocked: 'locked the document',
-      documentUnlocked: 'unlocked the document',
-      documentSecurityUpdated: 'updated security settings',
-      lifecycle_transition_event: 'changed document state',
-      download: 'downloaded the document',
-      loginSuccess: 'logged in',
-      addedToCollection: 'added to collection',
-      removedFromCollection: 'removed from collection',
-      documentPublished: 'published the document',
-      documentProxyPublished: 'published the document',
-      'workflow.start': 'started a review',
-      'workflow.complete': 'completed a review',
-      documentCheckedIn: 'checked in the document',
-      documentCheckedOut: 'checked out the document',
-      documentRestored: 'restored the document',
-      'activity.deleted': 'activity.deleted',
-    };
-    return (
-      labels[eventId] ??
-      eventId
-        .replace(/([A-Z])/g, ' $1')
-        .toLowerCase()
-        .trim()
-    );
+  activityLabel(entry: AuditEntry): string {
+    return auditActivityLabel(entry, this.eventTypeLabelMap);
   }
 
   // ── Versioning ──

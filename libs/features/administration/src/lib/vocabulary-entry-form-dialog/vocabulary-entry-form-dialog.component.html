@@ -1,5 +1,5 @@
 <div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
-  {{ data.mode === 'create' ? 'Add Vocabulary Entry' : 'Edit Vocabulary Entry' }}
+  {{ data.mode === 'create' ? 'Add Entry' : 'Edit Entry' }} — {{ data.directoryName }}
 </div>
 <mat-dialog-content class="form">
   @if (showParentField) {

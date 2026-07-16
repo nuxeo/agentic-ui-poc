@@ -61,7 +61,7 @@ export interface EditMetadataDialogData {
         <mat-select [(ngModel)]="nature">
           <mat-option value="">Select a value.</mat-option>
           @for (entry of natureOptions(); track entry.id) {
-            <mat-option [value]="entry.id">{{ entry.label }}</mat-option>
+            <mat-option [value]="entry.id">{{ entry.displayLabel }}</mat-option>
           }
         </mat-select>
       </mat-form-field>

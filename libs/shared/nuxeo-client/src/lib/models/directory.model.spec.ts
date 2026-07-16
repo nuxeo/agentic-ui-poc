@@ -1,8 +1,12 @@
 import {
   buildVocabularyTableColumns,
   defaultVocabularyLabel,
+  directoryAdminTableLabel,
   directoryEntryDisplayLabel,
+  directoryPickerLabel,
   directoryShowsParentField,
+  isManagedDirectory,
+  isManagedDirectoryName,
   entryPropertiesIncludeParent,
   getDirectoryMetadata,
   vocabularyParentRequired,
@@ -75,6 +79,52 @@ describe('directory.model', () => {
         label: 'label.directories.continent.north-america',
       }),
     ).toBe('North America');
+  });
+
+  it('directoryAdminTableLabel returns the stored label value', () => {
+    expect(
+      directoryAdminTableLabel({
+        label: 'label.directories.country.Afghanistan',
+      }),
+    ).toBe('label.directories.country.Afghanistan');
+  });
+
+  it('isManagedDirectoryName excludes known system directory names', () => {
+    expect(isManagedDirectoryName('eventTypes')).toBe(false);
+    expect(isManagedDirectoryName('country')).toBe(true);
+  });
+
+  it('isManagedDirectory excludes system directories like Web UI', () => {
+    expect(isManagedDirectory({ type: 'system' })).toBe(false);
+    expect(isManagedDirectory({ type: 'vocabulary' })).toBe(true);
+    expect(isManagedDirectory({})).toBe(true);
+  });
+
+  it('directoryPickerLabel prefers absoluteLabel then displayLabel then i18n fallback', () => {
+    expect(
+      directoryPickerLabel({
+        id: 'contract',
+        label: 'label.directories.nature.contract',
+        displayLabel: 'Contract',
+      }),
+    ).toBe('Contract');
+
+    expect(
+      directoryPickerLabel({
+        id: 'my-custom',
+        label: 'label.directories.nature.my-custom',
+        displayLabel: 'label.directories.nature.my-custom',
+        absoluteLabel: 'Custom Absolute',
+      }),
+    ).toBe('Custom Absolute');
+
+    expect(
+      directoryPickerLabel({
+        id: 'my-custom',
+        label: 'label.directories.nature.my-custom',
+        displayLabel: 'label.directories.nature.my-custom',
+      }),
+    ).toBe('My Custom');
   });
 
   it('includes parent column for country via catalog metadata', () => {

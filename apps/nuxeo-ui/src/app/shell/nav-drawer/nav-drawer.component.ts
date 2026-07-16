@@ -212,6 +212,21 @@ export class NavDrawerComponent {
     });
 
     effect(() => {
+      const refreshTick = this.browseContext.treeRefreshTick();
+      if (refreshTick > 0) {
+        untracked(() => {
+          this.browseTreeLoadedForUser = null;
+          this.rootNodes.set([]);
+          const item = this.activeItem();
+          const username = this.authService.username();
+          if (item?.path === '/browse' && username) {
+            this.refreshBrowseTree();
+          }
+        });
+      }
+    });
+
+    effect(() => {
       const item = this.activeItem();
       const contextPath = this.browseContext.contextPath();
       const username = this.authService.username();
@@ -745,6 +760,11 @@ export class NavDrawerComponent {
     const targetPath = normalizeNuxeoPath(prefixes[index]);
     const node = this.findTreeNodeByPath(nodes, targetPath);
     if (!node) {
+      if (index === 0 && !this.rootLoading()) {
+        this.pendingBrowseSyncPath = activePath;
+        this.refreshBrowseTree();
+        return;
+      }
       this.finishTreeSync(activePath);
       return;
     }

@@ -66,6 +66,8 @@ export interface CreateImportDialogResult {
   path?: string | null;
   /** When set, the opener should navigate to this document's detail page. */
   navigateToUid?: string;
+  /** Nuxeo path of the created document (for browse navigation). */
+  navigateToPath?: string;
   /** When true, the detail page should focus the note editor (Note documents only). */
   freshNote?: boolean;
 }
@@ -1132,28 +1134,19 @@ export class CreateImportDialogComponent implements OnInit {
 
     const create$ =
       mainFile && hasBlob
-        ? this.mainFileBatchId && this.mainFileUploadComplete()
-          ? this.importService.createBlobHoldingDocumentFromBatch(
-              path,
-              name,
-              docType.type,
-              properties,
-              this.mainFileBatchId,
-              0,
-              {
-                onProgress: (progress) => this.uploadProgress.set(progress),
-              },
-            )
-          : this.importService.createBlobHoldingDocument(
-              path,
-              name,
-              docType.type,
-              properties,
-              mainFile,
-              {
-                onProgress: (progress) => this.uploadProgress.set(progress),
-              },
-            )
+        ? this.importService.createBlobHoldingDocumentReliable(
+            path,
+            name,
+            docType.type,
+            properties,
+            mainFile,
+            this.mainFileBatchId && this.mainFileUploadComplete()
+              ? { batchId: this.mainFileBatchId, fileIndex: 0 }
+              : null,
+            {
+              onProgress: (progress) => this.uploadProgress.set(progress),
+            },
+          )
         : this.importService.createChildDocument(path, name, docType.type, properties);
 
     create$
@@ -1193,6 +1186,7 @@ export class CreateImportDialogComponent implements OnInit {
       refreshed: true,
       path: this.parentPath(),
       navigateToUid: doc.uid,
+      navigateToPath: doc.type === 'Domain' ? doc.path : undefined,
       freshNote: docTypeName === 'Note',
     });
   }

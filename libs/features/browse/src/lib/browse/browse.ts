@@ -52,8 +52,10 @@ import {
   BrowseService,
   BrowseContextService,
   ClipboardTargetService,
+  decodeNuxeoPathSegment,
   parseBrowseNuxeoPathFromRouterUrl,
   isBrowseRouterUrl,
+  nuxeoPathsEqualFlexible,
   DocumentDetailService,
   DirectoryService,
   SelectionService,
@@ -67,6 +69,7 @@ import {
   canWriteDocument,
   canRemoveDocument,
   canViewDocumentAuditLog,
+  auditActivityLabel,
   DOMAIN_CONTAINER_GUIDANCE,
   isDomainParentType,
   isRepositoryRootPath,
@@ -411,8 +414,8 @@ export class BrowseComponent {
     let accumulated = '';
     for (const part of parts) {
       accumulated += `/${part}`;
-      const label = decodeURIComponent(part);
       const isCurrent = accumulated === doc.path;
+      const label = isCurrent ? doc.title : decodeNuxeoPathSegment(part);
       if (isCurrent) {
         crumbs.push({ label });
       } else {
@@ -737,6 +740,10 @@ export class BrowseComponent {
     return this.eventTypeLabelMap()[eventId] ?? eventId;
   }
 
+  activityLabel(entry: AuditEntry): string {
+    return auditActivityLabel(entry, this.eventTypeLabelMap());
+  }
+
   categoryLabel(category: string): string {
     return this.eventCategoryLabelMap()[category] ?? category;
   }
@@ -940,6 +947,14 @@ export class BrowseComponent {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result) => {
+        if (result?.navigateToUid || result?.refreshed) {
+          this.browseContext.requestTreeRefresh();
+        }
+        const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
+        if (browsePath && browsePath !== '/') {
+          void this.router.navigateByUrl(`/browse${browsePath}`);
+          return;
+        }
         if (result?.navigateToUid) {
           void this.router.navigate(['/doc', result.navigateToUid], {
             queryParams: { fresh: '1' },
@@ -975,8 +990,25 @@ export class BrowseComponent {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result) => {
-        if (result) this.loadContent();
+        if (result) this.afterBrowseMetadataEdit(result);
       });
+  }
+
+  /** Reload browse content and nav tree after metadata changes (title rename, etc.). */
+  private afterBrowseMetadataEdit(updatedDoc: NuxeoDocument): void {
+    this.browseContext.requestTreeRefresh();
+    const previousPath = this.currentDoc()?.path;
+    if (
+      updatedDoc.path &&
+      previousPath &&
+      !nuxeoPathsEqualFlexible(updatedDoc.path, previousPath)
+    ) {
+      this.browseContext.setFromNuxeoPath(updatedDoc.path);
+      void this.router.navigateByUrl(`/browse${updatedDoc.path}`);
+      return;
+    }
+    this.currentDoc.set(updatedDoc);
+    this.loadContent();
   }
 
   deleteDocument(): void {
@@ -1008,6 +1040,8 @@ export class BrowseComponent {
           .subscribe({
             next: () => {
               this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
+              this.browseContext.resetContext();
+              this.browseContext.requestTreeRefresh();
               void this.router.navigateByUrl('/browse');
             },
             error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
@@ -1038,6 +1072,7 @@ export class BrowseComponent {
                 'OK',
                 { duration: 3000 },
               );
+              this.browseContext.requestTreeRefresh();
               this.loadContent();
             },
             error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),

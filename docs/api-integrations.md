@@ -539,9 +539,19 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 | Field           | Value                                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------------ |
 | **Service**     | `DocumentDetailService` (`libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`) |
-| **Method**      | `fetchBlob(uid)`                                                                                 |
+| **Method**      | `fetchBlob(uid, options?)`                                                                       |
 | **HTTP Method** | `GET`                                                                                            |
 | **Endpoint**    | `/nuxeo/api/v1/id/{uid}/@blob/file:content` (fallback: `@blob/blobholder:0`)                     |
+
+**Query Parameters:**
+
+| Parameter      | Value                                                                |
+| -------------- | -------------------------------------------------------------------- |
+| `clientReason` | `view` (default, document preview) or `download` (explicit download) |
+
+Classic Web UI sends `clientReason=view` when loading blob content for preview and
+`clientReason=download` on explicit download. Nuxeo stores the value in audit
+`extended.clientReason` so the Activity tab can show "viewed" vs "downloaded".
 
 **Request Headers:**
 
@@ -633,15 +643,16 @@ This document tracks all Nuxeo REST API integrations used in the application. Wh
 
 **Key response fields used:**
 
-| Field                        | Usage                                                                 |
-| ---------------------------- | --------------------------------------------------------------------- |
-| `entries[].eventId`          | Mapped to human-readable action label (e.g., "download" → "Download") |
-| `entries[].eventDate`        | Shown in "Date" column                                                |
-| `entries[].principalName`    | Shown in "Username" column with avatar initial                        |
-| `entries[].category`         | Shown in "Category" column                                            |
-| `entries[].comment`          | Shown in "Comment" column                                             |
-| `entries[].docLifeCycle`     | Shown in "State" column as badge                                      |
-| `totalSize`, `numberOfPages` | Used for server-side pagination                                       |
+| Field                             | Usage                                                                                         |
+| --------------------------------- | --------------------------------------------------------------------------------------------- |
+| `entries[].eventId`               | Mapped to human-readable action label (e.g., "download" → "Download")                         |
+| `entries[].extended.clientReason` | Activity tab label: `view` → "viewed the document", `download` → "downloaded" (Web UI parity) |
+| `entries[].eventDate`             | Shown in "Date" column                                                                        |
+| `entries[].principalName`         | Shown in "Username" column with avatar initial                                                |
+| `entries[].category`              | Shown in "Category" column                                                                    |
+| `entries[].comment`               | Shown in "Comment" column                                                                     |
+| `entries[].docLifeCycle`          | Shown in "State" column as badge                                                              |
+| `totalSize`, `numberOfPages`      | Used for server-side pagination                                                               |
 
 **Used by:**
 
@@ -713,7 +724,7 @@ The `directoryName` parameter varies:
 | `ordering`     | Sort order for dropdown options                                                      |
 | `obsolete`     | Entries with `obsolete: 1` are filtered out                                          |
 
-**Caching:** Results are cached per `directoryName` using `shareReplay` so subsequent calls reuse the same HTTP response.
+**Caching:** Picker queries (`getEntries`, `getL10nEntries`, `getAllL10nEntries`) hit the server on every call (Nuxeo Web UI parity). The directory catalog (`getDirectoryCatalog`) is cached for the session.
 
 **Used by:**
 

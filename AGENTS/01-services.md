@@ -21,8 +21,9 @@ Primary service for single-document operations.
 ```typescript
 getFullDocument(uid: string): Observable<NuxeoDocument>
 getDocumentPermissions(uid: string): Observable<NuxeoDocument>
-fetchBlob(uid: string): Observable<Blob>  // GET @blob/file:content, fallback blobholder:0
-fetchBlobByXpath(uid: string, xpath: string): Observable<Blob>
+fetchBlob(uid: string, options?: FetchBlobOptions): Observable<Blob>
+  // GET @blob/file:content?clientReason=view (default) or download; fallback blobholder:0
+fetchBlobByXpath(uid: string, xpath: string, options?: FetchBlobOptions): Observable<Blob>
 fetchPdfRendition(uid: string): Observable<Blob>
 fetchThumbnail(uid: string): Observable<Blob>
 getAuditLog(uid: string, pageSize?: number, currentPageIndex?: number): Observable<AuditLogList>
@@ -95,10 +96,13 @@ from browse navigation, document detail, and tree clicks.
 
 ```typescript
 readonly contextPath: Signal<string>  // normalized repository path, default '/'
+readonly treeRefreshTick: Signal<number>  // incremented when browse nav tree should reload
 
 setFromRouterUrl(routerUrl: string): void
 setFromDocument(doc: NuxeoDocument): void  // folderish → doc.path; leaf → parent folder
 setFromNuxeoPath(nuxeoPath: string): void
+requestTreeRefresh(): void  // invalidate/reload browse nav drawer tree (e.g. after domain creation)
+resetContext(): void  // restore repository root path (e.g. on sign-out)
 ```
 
 Path helpers: `libs/shared/nuxeo-client/src/lib/utils/browse-path.utils.ts`
@@ -302,6 +306,7 @@ createChildDocument(parentPath, name, docType, properties): Observable<NuxeoDocu
 initUploadBatch(handler?: string): Observable<string>
 uploadFileToBatch(batchId: string, fileIndex: number, file: File): Observable<void>
 createBlobHoldingDocument(parentPath, name, docType, properties, file, options?): Observable<NuxeoDocument>
+createBlobHoldingDocumentReliable(parentPath, name, docType, properties, file, stagedBatch?, options?): Observable<NuxeoDocument>
 createBlobHoldingDocumentFromBatch(parentPath, name, docType, properties, batchId, fileIndex, options?): Observable<NuxeoDocument>
 stageFileInBatch(file, options?): Observable<StagedBatchFile>
 createDocumentWithBlob(...): Observable<NuxeoDocument>
@@ -349,7 +354,7 @@ deleteSelected(): Observable<NuxeoDocument[]>
 
 ## DirectoryService (`directory.service.ts`)
 
-Nuxeo vocabulary / directory lookups and admin CRUD.
+Nuxeo vocabulary / directory lookups and admin CRUD. Picker methods (`getEntries`, `getL10nEntries`, `getAllL10nEntries`) query the server on every call (Nuxeo Web UI parity).
 
 ```typescript
 getEntries(directoryName: string): Observable<DirectoryEntry[]>
@@ -358,7 +363,6 @@ getDirectoryCatalog(): Observable<Map<string, DirectoryMetadata>>
 createEntry(directoryName: string, values: VocabularyEntryFormValues): Observable<ManagedDirectoryEntry>
 updateEntry(directoryName: string, entryId: string, values: VocabularyEntryFormValues): Observable<ManagedDirectoryEntry>
 deleteEntry(directoryName: string, entryId: string): Observable<void>
-invalidateCache(directoryName: string): void
 getL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
 getAllL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
 getEventTypes(): Observable<DirectoryEntry[]>

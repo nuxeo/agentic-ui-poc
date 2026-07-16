@@ -1,4 +1,8 @@
-import type { DirectoryEntry, L10nDirectoryEntry } from '../models/directory.model';
+import {
+  directoryPickerLabel,
+  type DirectoryEntry,
+  type L10nDirectoryEntry,
+} from '../models/directory.model';
 
 /** Localized label for an l10n directory entry (defaults to id). */
 export function l10nEntryLabel(entry: L10nDirectoryEntry): string {
@@ -12,7 +16,7 @@ export function resolveNatureLabel(
 ): string {
   if (!id) return '';
   const match = entries.find((e) => e.id === id);
-  return match?.displayLabel ?? match?.label ?? id;
+  return match ? directoryPickerLabel(match) : id;
 }
 
 /**

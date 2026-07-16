@@ -8,6 +8,7 @@ import { EMPTY, of, throwError } from 'rxjs';
 import { BrowseComponent } from './browse';
 import {
   BrowseService,
+  BrowseContextService,
   DocumentDetailService,
   DirectoryService,
   mailSendFailureMessage,
@@ -139,6 +140,66 @@ describe('BrowseComponent', () => {
     };
 
     expect(component.selectionAriaLabel(doc)).toBe('Select Quarterly Report');
+  });
+
+  it('openEditDialog refreshes browse tree after metadata update (NXSAT-164)', () => {
+    const browseContext = TestBed.inject(BrowseContextService);
+    const refreshSpy = vi.spyOn(browseContext, 'requestTreeRefresh');
+    const updated: NuxeoDocument = {
+      uid: 'domain-1',
+      title: 'Domain Renamed',
+      type: 'Domain',
+      path: '/default-domain',
+      lastModified: '',
+      properties: {},
+    };
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(updated) });
+    component.currentDoc.set({
+      uid: 'domain-1',
+      title: 'Domain',
+      type: 'Domain',
+      path: '/default-domain',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Write'] },
+    } as NuxeoDocument);
+
+    component.openEditDialog();
+
+    expect(refreshSpy).toHaveBeenCalled();
+  });
+
+  it('breadcrumbs use document title for the current folder segment', () => {
+    component.currentDoc.set({
+      uid: 'domain-2',
+      title: 'Renamed Domain',
+      type: 'Domain',
+      path: '/Domain 2',
+      lastModified: '',
+      properties: {},
+    });
+
+    expect(component.breadcrumbs()).toEqual([
+      { label: 'Root', href: '/browse' },
+      { label: 'Renamed Domain' },
+    ]);
+  });
+
+  it('breadcrumbs do not throw when a path segment contains a literal percent sign', () => {
+    component.currentDoc.set({
+      uid: 'folder-1',
+      title: 'Current Folder',
+      type: 'Folder',
+      path: '/100% done',
+      lastModified: '',
+      properties: {},
+    });
+
+    expect(() => component.breadcrumbs()).not.toThrow();
+    expect(component.breadcrumbs()).toEqual([
+      { label: 'Root', href: '/browse' },
+      { label: 'Current Folder' },
+    ]);
   });
 
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {

@@ -16,6 +16,18 @@ import {
 @Injectable({ providedIn: 'root' })
 export class BrowseContextService {
   readonly contextPath = signal('/');
+  /** Incremented when the browse nav tree should reload (e.g. after domain creation). */
+  readonly treeRefreshTick = signal(0);
+
+  /** Ask the browse nav drawer to reload its folder tree on next open (or immediately if open). */
+  requestTreeRefresh(): void {
+    this.treeRefreshTick.update((tick) => tick + 1);
+  }
+
+  /** Reset browse navigation context (e.g. on sign-out / user switch). */
+  resetContext(): void {
+    this.contextPath.set('/');
+  }
 
   setFromRouterUrl(routerUrl: string): void {
     this.setPath(parseBrowseNuxeoPathFromRouterUrl(routerUrl));

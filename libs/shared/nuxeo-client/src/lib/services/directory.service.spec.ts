@@ -136,6 +136,90 @@ describe('DirectoryService', () => {
     await expect(result$).resolves.toBeUndefined();
   });
 
+  it('listDirectoryNames excludes system directories from fallback when catalog is empty', async () => {
+    const names$ = firstValueFrom(service.listDirectoryNames());
+    const req = httpMock.expectOne('/nuxeo/api/v1/directory');
+    req.flush([]);
+
+    const names = await names$;
+    expect(names).not.toContain('eventTypes');
+    expect(names).not.toContain('eventCategories');
+    expect(names).toContain('country');
+    expect(names).toContain('nature');
+  });
+
+  it('listDirectoryNames excludes system directories from the catalog', async () => {
+    const names$ = firstValueFrom(service.listDirectoryNames());
+    const req = httpMock.expectOne('/nuxeo/api/v1/directory');
+    req.flush([
+      { name: 'country', schema: 'xvocabulary', type: 'vocabulary' },
+      { name: 'eventTypes', schema: 'vocabulary', type: 'system' },
+      { name: 'nature', schema: 'vocabulary', type: 'vocabulary' },
+    ]);
+
+    const names = await names$;
+    expect(names).toEqual(['country', 'nature']);
+  });
+
+  it('getEntries queries Directory.SuggestEntries on every call (no session cache)', async () => {
+    const first$ = firstValueFrom(service.getEntries('nature'));
+    const req1 = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
+    req1.flush([
+      {
+        id: 'contract',
+        label: 'label.directories.nature.contract',
+        displayLabel: 'Contract',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ]);
+    await first$;
+
+    const second$ = firstValueFrom(service.getEntries('nature'));
+    const req2 = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
+    req2.flush([
+      {
+        id: 'contract',
+        label: 'label.directories.nature.contract',
+        displayLabel: 'Contract',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+      {
+        id: 'my-custom',
+        label: 'label.directories.nature.my-custom',
+        displayLabel: 'label.directories.nature.my-custom',
+        ordering: 2,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ]);
+
+    const entries = await second$;
+    expect(entries).toHaveLength(2);
+    expect(entries[1].displayLabel).toBe('My Custom');
+  });
+
+  it('getEntries resolves i18n display labels for custom vocabulary entries', async () => {
+    const entries$ = firstValueFrom(service.getEntries('nature'));
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
+    req.flush([
+      {
+        id: 'my-custom',
+        label: 'label.directories.nature.my-custom',
+        displayLabel: 'label.directories.nature.my-custom',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ]);
+
+    const entries = await entries$;
+    expect(entries[0].displayLabel).toBe('My Custom');
+  });
+
   it('loads admin entries with pagination from REST GET /directory/{name}', async () => {
     const entries$ = firstValueFrom(service.getAdminEntries('nature'));
 
