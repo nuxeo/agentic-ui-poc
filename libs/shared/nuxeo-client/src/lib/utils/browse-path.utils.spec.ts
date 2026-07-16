@@ -2,6 +2,7 @@ import type { NuxeoDocument } from '../models/document.model';
 import {
   browseTreeContextPath,
   cumulativeNuxeoPathPrefixes,
+  decodeNuxeoPathSegment,
   expandableNuxeoPathPrefixes,
   normalizeNuxeoPath,
   nuxeoPathsEqual,
@@ -13,6 +14,16 @@ import {
 } from './browse-path.utils';
 
 describe('browse-path.utils', () => {
+  describe('decodeNuxeoPathSegment', () => {
+    it('decodes percent-encoded segments', () => {
+      expect(decodeNuxeoPathSegment('Domain%201')).toBe('Domain 1');
+    });
+
+    it('returns the raw segment when decoding fails', () => {
+      expect(decodeNuxeoPathSegment('100% done')).toBe('100% done');
+    });
+  });
+
   describe('parseBrowseNuxeoPathFromRouterUrl', () => {
     it('returns / for bare browse route', () => {
       expect(parseBrowseNuxeoPathFromRouterUrl('/#/browse')).toBe('/');

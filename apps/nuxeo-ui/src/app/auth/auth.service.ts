@@ -1,12 +1,15 @@
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, defer, map, of, shareReplay, tap, throwError } from 'rxjs';
 
 import {
+  BrowseContextService,
+  ClipboardTargetService,
   NUXEO_API_ORIGIN,
   NUXEO_SAML_LOGIN_ENDPOINTS,
   NUXEO_SSO_POST_LOGIN_PATH,
   NUXEO_SSO_RETURN_QUERY_PARAM,
+  SelectionService,
   isPowerUserFromGroups,
   readGroupsFromMe,
   type NuxeoSamlLoginEndpoint,
@@ -85,6 +88,7 @@ function readSessionFlagsFromMe(me: unknown): { isAdministrator: boolean; groups
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly apiOrigin = inject(NUXEO_API_ORIGIN);
   private readonly samlEndpoints = inject(NUXEO_SAML_LOGIN_ENDPOINTS);
   private readonly ssoPostLoginPath = inject(NUXEO_SSO_POST_LOGIN_PATH);
@@ -367,10 +371,18 @@ export class AuthService {
    * Clears local session state and marks the browser session as explicitly signed out.
    */
   logout(): void {
+    this.clearUserScopedUiState();
     this.state.set(null);
     this.clearStorage();
     this.markSignedOut();
     this.hydration$ = null;
+  }
+
+  private clearUserScopedUiState(): void {
+    // Resolve lazily — eager inject() here would create a DI cycle via CURRENT_USERNAME.
+    this.injector.get(SelectionService).clear();
+    this.injector.get(BrowseContextService).resetContext();
+    this.injector.get(ClipboardTargetService).clear();
   }
 
   /**

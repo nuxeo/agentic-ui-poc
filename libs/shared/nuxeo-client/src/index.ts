@@ -135,6 +135,7 @@ export { ClipboardTargetService } from './lib/services/clipboard-target.service'
 export {
   browseTreeContextPath,
   cumulativeNuxeoPathPrefixes,
+  decodeNuxeoPathSegment,
   expandableNuxeoPathPrefixes,
   normalizeNuxeoPath,
   parentNuxeoFolderPath,

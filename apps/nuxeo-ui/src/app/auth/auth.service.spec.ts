@@ -1,7 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 
-import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
+import {
+  NUXEO_API_ORIGIN,
+  SelectionService,
+  BrowseContextService,
+  ClipboardTargetService,
+} from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from './auth.service';
 
 describe('AuthService poweruser access', () => {
@@ -80,5 +85,37 @@ describe('AuthService poweruser access', () => {
     const restored = TestBed.inject(AuthService);
     expect(restored.isPowerUser()).toBe(true);
     expect(restored.hasAdministrationAccess()).toBe(true);
+  });
+
+  it('logout clears browse selection and navigation context', () => {
+    const selection = TestBed.inject(SelectionService);
+    const browseContext = TestBed.inject(BrowseContextService);
+    const clipboardTarget = TestBed.inject(ClipboardTargetService);
+
+    selection.toggle('doc-1', 'Doc 1');
+    browseContext.setFromNuxeoPath('/default-domain/workspaces/demo');
+    clipboardTarget.setTarget({
+      uid: 'folder-1',
+      title: 'Demo',
+      type: 'Folder',
+      path: '/default-domain/workspaces/demo',
+      lastModified: '',
+      properties: {},
+    });
+
+    service.login('member01', 'secret', false).subscribe();
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
+      .flush({
+        id: 'member01',
+        properties: { username: 'member01', groups: ['members'] },
+        isAdministrator: false,
+      });
+
+    service.logout();
+
+    expect(selection.selectedCount()).toBe(0);
+    expect(browseContext.contextPath()).toBe('/');
+    expect(clipboardTarget.target()).toBeNull();
   });
 });

@@ -508,13 +508,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!d) return [];
 
     const path = d.path ?? '';
-    if (path === this.breadcrumbPathCache) {
+    const cacheKey = `${path}\0${d.title}`;
+    if (cacheKey === this.breadcrumbPathCache) {
       return this.breadcrumbItemsCache;
     }
 
     const parts = path.split('/').filter(Boolean);
     parts.pop();
-    this.breadcrumbPathCache = path;
+    this.breadcrumbPathCache = cacheKey;
     let accumulated = '/browse';
     this.breadcrumbItemsCache = parts.map((s) => {
       accumulated += `/${s}`;
@@ -2708,6 +2709,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((updatedDoc: NuxeoDocument | undefined) => {
         if (!updatedDoc) return;
+        this.browseContext.requestTreeRefresh();
+        this.browseContext.setFromDocument(updatedDoc);
         this.doc.set(updatedDoc);
         this.syncActionStates(updatedDoc);
         this.toast('Document updated');
