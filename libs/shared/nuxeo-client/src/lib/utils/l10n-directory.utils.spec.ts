@@ -54,6 +54,20 @@ describe('l10n-directory.utils', () => {
     expect(resolveNatureLabel('missing', nature)).toBe('missing');
   });
 
+  it('resolveNatureLabel formats i18n-key labels for custom entries', () => {
+    const nature: DirectoryEntry[] = [
+      {
+        id: 'my-custom',
+        label: 'label.directories.nature.my-custom',
+        displayLabel: 'My Custom',
+        ordering: 0,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ];
+    expect(resolveNatureLabel('my-custom', nature)).toBe('My Custom');
+  });
+
   it('groupL10nChildrenByParent groups children under parent labels', () => {
     const groups = groupL10nChildrenByParent(coverageEntries);
     expect(groups).toHaveLength(1);

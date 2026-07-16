@@ -12,10 +12,19 @@ export const FALLBACK_DIRECTORY_NAMES = [
   'language',
 ] as const;
 
+/** Directories used for audit/system UI — excluded from Administration → Vocabularies. */
+export const SYSTEM_DIRECTORY_NAMES = new Set([
+  'eventTypes',
+  'eventCategories',
+  'oauth2TokenTypes',
+]);
+
 export interface DirectoryEntry {
   id: string;
   label: string;
   displayLabel: string;
+  /** Hierarchical label from Directory.SuggestEntries (Web UI parity). */
+  absoluteLabel?: string;
   ordering: number;
   obsolete: number;
   directoryName: string;
@@ -63,6 +72,8 @@ export interface DirectoryMetadata {
   idField?: string;
   /** Parent directory name when entries reference another vocabulary (e.g. continent for country). */
   parentDirectory?: string;
+  /** Nuxeo directory type; Web UI hides `system` directories from the vocabularies admin page. */
+  type?: string;
 }
 
 /** Web UI: parent column when the entry schema includes a parent property. */
@@ -137,6 +148,21 @@ export function defaultVocabularyLabel(directoryName: string, id: string): strin
   return `label.directories.${directoryName}.${trimmedId}`;
 }
 
+/** Whether a directory appears in Administration → Vocabularies (Nuxeo Web UI parity). */
+export function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean {
+  return metadata.type?.toLowerCase() !== 'system';
+}
+
+/** Whether a directory name is manageable when catalog metadata is unavailable. */
+export function isManagedDirectoryName(name: string): boolean {
+  return !SYSTEM_DIRECTORY_NAMES.has(name);
+}
+
+/** Raw label stored on the directory entry — shown as-is in the admin table (Web UI parity). */
+export function directoryAdminTableLabel(entry: Pick<ManagedDirectoryEntry, 'label'>): string {
+  return entry.label;
+}
+
 /** Human-readable label for directory entries whose label is an i18n key. */
 export function directoryEntryDisplayLabel(
   entry: Pick<ManagedDirectoryEntry, 'id' | 'label'>,
@@ -148,6 +174,23 @@ export function directoryEntryDisplayLabel(
       .replace(/\b\w/g, (char) => char.toUpperCase());
   }
   return entry.label;
+}
+
+/**
+ * Resolves the label shown in vocabulary pickers (Nuxeo Web UI parity:
+ * absoluteLabel → displayLabel → formatted id for i18n keys).
+ */
+export function directoryPickerLabel(
+  entry: Pick<DirectoryEntry, 'id' | 'label' | 'displayLabel'> & { absoluteLabel?: string },
+): string {
+  const absolute = entry.absoluteLabel?.trim();
+  if (absolute) return absolute;
+
+  const display = entry.displayLabel?.trim();
+  if (display && !display.startsWith('label.')) return display;
+
+  const rawLabel = entry.label?.trim() || display || entry.id;
+  return directoryEntryDisplayLabel({ id: entry.id, label: rawLabel });
 }
 
 export function directoryUsesL10nLabel(directoryName: string): boolean {

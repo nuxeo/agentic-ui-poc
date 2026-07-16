@@ -350,11 +350,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   // Loaded from the Nuxeo `nature` directory and supplied as candidate classes to the
   // KE text-classification model. Sourcing live ids guarantees the value we write back
   // to `dc:nature` is in the vocabulary (Nuxeo enforces this and returns 422 otherwise).
+  // Refreshed on each document navigation (Nuxeo Web UI parity).
   readonly natureVocabulary = signal<DirectoryEntry[]>([]);
-  private natureVocabularyLoaded = false;
   readonly coverageVocabulary = signal<L10nDirectoryEntry[]>([]);
   readonly subjectVocabulary = signal<L10nDirectoryEntry[]>([]);
-  private indexingVocabulariesLoaded = false;
 
   // Tag management state (nuxeo-tag-suggestion style)
   tagInput = '';
@@ -779,8 +778,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    this.loadNatureVocabulary();
-    this.loadIndexingVocabularies();
     this.tagSearch$
       .pipe(
         debounceTime(250),
@@ -813,6 +810,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.freshNoteDocument = this.readFreshNoteNavigationState();
       this.resetState();
       this.docUid = uid;
+      this.loadVocabularies();
       this.loadDocument(uid);
     });
   }
@@ -839,30 +837,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return historyState?.freshNote === true;
   }
 
-  /**
-   * Pre-loads the `nature` vocabulary so the Classify action can supply real ids
-   * to the KE model. DirectoryService caches the response so navigating between
-   * documents is cheap.
-   */
-  private loadNatureVocabulary(): void {
-    if (this.natureVocabularyLoaded) return;
-    this.natureVocabularyLoaded = true;
+  /** Pre-loads vocabulary data for metadata display and KE classification (live queries). */
+  private loadVocabularies(): void {
     this.directoryService
       .getEntries('nature')
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (entries) => this.natureVocabulary.set(entries),
-        error: () => {
-          // Allow another attempt on the next document if the directory call fails.
-          this.natureVocabularyLoaded = false;
-        },
+        error: () => this.natureVocabulary.set([]),
       });
-  }
 
-  /** Pre-loads l10n coverage/subjects for hierarchical label display. */
-  private loadIndexingVocabularies(): void {
-    if (this.indexingVocabulariesLoaded) return;
-    this.indexingVocabulariesLoaded = true;
     forkJoin({
       coverage: this.directoryService.getAllL10nEntries('l10ncoverage'),
       subjects: this.directoryService.getAllL10nEntries('l10nsubjects'),
@@ -874,7 +858,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.subjectVocabulary.set(subjects);
         },
         error: () => {
-          this.indexingVocabulariesLoaded = false;
+          this.coverageVocabulary.set([]);
+          this.subjectVocabulary.set([]);
         },
       });
   }

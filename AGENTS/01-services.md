@@ -350,7 +350,7 @@ deleteSelected(): Observable<NuxeoDocument[]>
 
 ## DirectoryService (`directory.service.ts`)
 
-Nuxeo vocabulary / directory lookups and admin CRUD.
+Nuxeo vocabulary / directory lookups and admin CRUD. Picker methods (`getEntries`, `getL10nEntries`, `getAllL10nEntries`) query the server on every call (Nuxeo Web UI parity).
 
 ```typescript
 getEntries(directoryName: string): Observable<DirectoryEntry[]>
@@ -359,7 +359,6 @@ getDirectoryCatalog(): Observable<Map<string, DirectoryMetadata>>
 createEntry(directoryName: string, values: VocabularyEntryFormValues): Observable<ManagedDirectoryEntry>
 updateEntry(directoryName: string, entryId: string, values: VocabularyEntryFormValues): Observable<ManagedDirectoryEntry>
 deleteEntry(directoryName: string, entryId: string): Observable<void>
-invalidateCache(directoryName: string): void
 getL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
 getAllL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>
 getEventTypes(): Observable<DirectoryEntry[]>
