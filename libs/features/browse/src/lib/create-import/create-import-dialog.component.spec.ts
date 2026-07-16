@@ -36,6 +36,7 @@ const mockDialogRef = {
 const mockImportService = {
   getDefaultImportParentPath: vi.fn(() => of(PARENT_PATH)),
   stageFileInBatch: vi.fn(),
+  createBlobHoldingDocumentReliable: vi.fn(),
   createBlobHoldingDocumentFromBatch: vi.fn(),
   createBlobHoldingDocument: vi.fn(),
   createChildDocument: vi.fn(),
@@ -228,7 +229,7 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     expect(component.mainFileUploadPercent()).toBe(0);
   });
 
-  it('createDocument uses staged batch when upload already completed', async () => {
+  it('createDocument uses reliable blob create with staged batch when upload completed', async () => {
     const created: NuxeoDocument = {
       uid: 'doc-1',
       title: 'Photo',
@@ -239,7 +240,7 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     };
 
     mockImportService.stageFileInBatch.mockReturnValue(of({ batchId: 'batch-1', fileIndex: 0 }));
-    mockImportService.createBlobHoldingDocumentFromBatch.mockReturnValue(of(created));
+    mockImportService.createBlobHoldingDocumentReliable.mockReturnValue(of(created));
 
     component.startCreateFromType(pictureType());
     component.docTitle = 'Photo';
@@ -251,16 +252,42 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     component.createDocument();
     await flushAsync();
 
-    expect(mockImportService.createBlobHoldingDocumentFromBatch).toHaveBeenCalled();
+    expect(mockImportService.createBlobHoldingDocumentReliable).toHaveBeenCalledWith(
+      PARENT_PATH,
+      'Photo',
+      'Picture',
+      expect.any(Object),
+      expect.any(File),
+      { batchId: 'batch-1', fileIndex: 0 },
+      expect.any(Object),
+    );
     expect(mockImportService.createBlobHoldingDocument).not.toHaveBeenCalled();
     expect(mockDialogRef.close).toHaveBeenCalledWith(
       expect.objectContaining({ navigateToUid: 'doc-1', refreshed: true }),
     );
   });
 
+  it('createDocument blocks submit while immediate upload is still pending', async () => {
+    mockImportService.stageFileInBatch.mockReturnValue(
+      timer(20).pipe(map(() => ({ batchId: 'batch-1', fileIndex: 0 }))),
+    );
+
+    component.startCreateFromType(pictureType());
+    component.docTitle = 'Photo';
+    component.onMainFileInputChange({
+      target: { files: [jpegFile()], value: '' },
+    } as unknown as Event);
+
+    component.createDocument();
+    await flushAsync();
+
+    expect(component.contentError()).toBe('Please wait for the file upload to finish.');
+    expect(mockImportService.createBlobHoldingDocumentReliable).not.toHaveBeenCalled();
+  });
+
   it('routes blob create failures to contentError instead of dialog error', async () => {
     mockImportService.stageFileInBatch.mockReturnValue(of({ batchId: 'batch-1', fileIndex: 0 }));
-    mockImportService.createBlobHoldingDocumentFromBatch.mockReturnValue(
+    mockImportService.createBlobHoldingDocumentReliable.mockReturnValue(
       throwError(() => ({ message: 'File was not attached to the document' })),
     );
 
