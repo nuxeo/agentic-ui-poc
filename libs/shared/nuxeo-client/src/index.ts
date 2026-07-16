@@ -217,6 +217,7 @@ export {
   PERMISSION_DENIED_MESSAGE,
   REMOVE_DOCUMENT,
   WRITE_DOCUMENT,
+  WRITE_PROPERTIES,
   canAddChildren,
   canManageDocumentPermissions,
   canRemoveDocument,
@@ -262,6 +263,7 @@ export {
 export {
   NOTE_FORMAT_OPTIONS,
   defaultNoteContent,
+  formatNoteHtmlForSourceView,
   isHtmlNoteFormat,
   noteFormatLabel,
   type NoteMimeType,

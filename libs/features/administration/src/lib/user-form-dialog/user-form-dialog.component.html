@@ -69,6 +69,7 @@
           [disabled]="saving()"
           (focus)="onGroupInputFocus()"
           (ngModelChange)="onGroupSearch($event)"
+          (keydown)="onGroupInputKeydown($event)"
           (matChipInputTokenEnd)="addGroupFromInput($event)"
         />
       </mat-chip-grid>

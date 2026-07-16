@@ -5,8 +5,10 @@ import {
   HostListener,
   ViewChild,
   computed,
+  effect,
   inject,
   signal,
+  untracked,
 } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
@@ -181,6 +183,8 @@ export class BrowseComponent {
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
+  /** Skips the initial contentRefreshTick effect run to avoid duplicate folder loads. */
+  private lastSeenContentRefreshTick = -1;
   readonly browsePath = signal('/');
   private readonly browsePath$ = new Subject<string>();
 
@@ -499,14 +503,21 @@ export class BrowseComponent {
 
     this.browsePath$.next(initialPath);
 
-    const refreshAfterClipboardAction = () => {
-      if (this.currentNuxeoPath) {
-        this.browsePath$.next(this.currentNuxeoPath);
+    effect(() => {
+      const tick = this.browseContext.contentRefreshTick();
+      const previousTick = this.lastSeenContentRefreshTick;
+      this.lastSeenContentRefreshTick = tick;
+      if (previousTick < 0 || tick === previousTick) {
+        return;
       }
-    };
-    window.addEventListener('clipboard-action-performed', refreshAfterClipboardAction);
+      untracked(() => {
+        if (this.currentNuxeoPath) {
+          this.loadContent();
+        }
+      });
+    });
+
     this.destroyRef.onDestroy(() => {
-      window.removeEventListener('clipboard-action-performed', refreshAfterClipboardAction);
       this.clipboardTargetService.clear();
     });
 

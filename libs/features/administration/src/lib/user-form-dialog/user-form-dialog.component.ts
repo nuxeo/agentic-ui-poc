@@ -215,6 +215,21 @@ export class UserFormDialogComponent implements OnInit, OnDestroy {
     this.groupSearchTerms.next(this.groupSearchQuery?.trim() || '*');
   }
 
+  onGroupInputKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter') {
+      return;
+    }
+    const typed = this.groupSearchQuery.trim();
+    if (!typed) {
+      return;
+    }
+
+    if (this.groupOptions.length > 0) {
+      // Enter should select from autocomplete search results, not commit typed text as a chip.
+      this.skipNextChipInput = true;
+    }
+  }
+
   onGroupSelected(event: MatAutocompleteSelectedEvent): void {
     this.skipNextChipInput = true;
     const groupname = (event.option.value as string)?.trim();

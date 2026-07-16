@@ -22,6 +22,7 @@ import { trashSelectedDocumentsConfirmData } from '@agentic-ui/shared/ui';
 const mockBrowseService = {
   getByPath: vi.fn(() => throwError(() => new Error('not connected'))),
   getBrowseFolderContents: vi.fn(() => throwError(() => new Error('not connected'))),
+  getFolderContext: vi.fn(() => throwError(() => new Error('not connected'))),
   getChildren: vi.fn(() => throwError(() => new Error('not connected'))),
   getTrashedChildren: vi.fn(() => EMPTY),
   restoreDocument: vi.fn(() => EMPTY),
@@ -106,6 +107,34 @@ describe('BrowseComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('requestContentRefresh reloads folder contents after clipboard copy/move', () => {
+    const browseContext = TestBed.inject(BrowseContextService);
+    const folder: NuxeoDocument = {
+      uid: 'ws-1',
+      title: 'Workspace',
+      type: 'Workspace',
+      path: '/default-domain/workspaces/ws-1',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['AddChildren'] },
+    };
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder, entries: [], totalSize: 0 }),
+    );
+    mockBrowseService.getFolderContext.mockReturnValue(of(folder));
+
+    fixture.detectChanges();
+    const callsAfterInit = mockBrowseService.getBrowseFolderContents.mock.calls.length;
+    expect(callsAfterInit).toBeGreaterThan(0);
+
+    browseContext.requestContentRefresh();
+    fixture.detectChanges();
+
+    expect(mockBrowseService.getBrowseFolderContents.mock.calls.length).toBeGreaterThan(
+      callsAfterInit,
+    );
   });
 
   it('toggleSelection delegates to SelectionService with doc title (NXSAT-179)', () => {

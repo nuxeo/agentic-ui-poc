@@ -21,6 +21,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
+  formatNoteHtmlForSourceView,
   isHtmlNoteFormat,
   isMarkdownNoteFormat,
   isSafeHttpUrl,
@@ -76,6 +77,8 @@ export class NoteEditorComponent {
   private syncedPlainContent: string | null = null;
   private lastEmittedSave: string | null = null;
   private savedRange: QuillRange | null = null;
+  /** True when the Quill visual editor has unsaved edits vs persisted `content()`. */
+  private visualDirty = false;
 
   readonly isHtml = () => isHtmlNoteFormat(this.mimeType());
   readonly isMarkdown = () => isMarkdownNoteFormat(this.mimeType());
@@ -106,6 +109,7 @@ export class NoteEditorComponent {
         if (source) return;
         if (text === this.lastParentContent) return;
         this.lastParentContent = text;
+        this.visualDirty = false;
         queueMicrotask(() => {
           if (!this.quill) {
             this.tryInitQuill(text);
@@ -174,6 +178,7 @@ export class NoteEditorComponent {
     if (this.sourceMode()) {
       const html = this.editText();
       this.sourceMode.set(false);
+      this.visualDirty = false;
       afterNextRender(
         () => {
           this.destroyQuill();
@@ -185,9 +190,9 @@ export class NoteEditorComponent {
       return;
     }
 
+    const html = this.visualDirty && this.quill ? this.readQuillHtml() : (this.content() ?? '');
+    this.editText.set(formatNoteHtmlForSourceView(html));
     if (this.quill) {
-      const html = this.readQuillHtml();
-      this.editText.set(html);
       this.destroyQuill();
     }
     this.sourceMode.set(true);
@@ -264,6 +269,10 @@ export class NoteEditorComponent {
         },
       },
       placeholder: 'Type here...',
+    });
+
+    this.quill.on('text-change', () => {
+      this.visualDirty = true;
     });
 
     const html = initialHtml ?? this.content();

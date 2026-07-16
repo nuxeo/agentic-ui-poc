@@ -18,15 +18,24 @@ export class BrowseContextService {
   readonly contextPath = signal('/');
   /** Incremented when the browse nav tree should reload (e.g. after domain creation). */
   readonly treeRefreshTick = signal(0);
+  /** Incremented when the browse main view should reload folder children (e.g. clipboard paste). */
+  readonly contentRefreshTick = signal(0);
 
   /** Ask the browse nav drawer to reload its folder tree on next open (or immediately if open). */
   requestTreeRefresh(): void {
     this.treeRefreshTick.update((tick) => tick + 1);
   }
 
+  /** Ask the browse page to reload the current folder listing (e.g. after clipboard copy/move). */
+  requestContentRefresh(): void {
+    this.contentRefreshTick.update((tick) => tick + 1);
+  }
+
   /** Reset browse navigation context (e.g. on sign-out / user switch). */
   resetContext(): void {
     this.contextPath.set('/');
+    this.treeRefreshTick.set(0);
+    this.contentRefreshTick.set(0);
   }
 
   setFromRouterUrl(routerUrl: string): void {

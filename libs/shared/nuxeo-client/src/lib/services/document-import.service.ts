@@ -432,24 +432,23 @@ export class DocumentImportService {
     fileIndex: number,
     batchNoDrop = false,
   ): Observable<NuxeoDocument> {
-    const body = {
-      'entity-type': 'document',
-      name: sanitizeDocumentName(fileName),
-      type: docType,
-      properties: {
-        ...properties,
-        'file:content': {
-          'upload-batch': batchId,
-          'upload-fileId': String(fileIndex),
-        },
-      },
-    };
     let headers = new HttpHeaders({ 'Content-Type': 'application/json' });
     if (batchNoDrop) {
       headers = headers.set('X-Batch-No-Drop', 'true');
     }
-    return this.withMainBlobValidation(
-      this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, { headers }),
+    return this.buildBlobDocumentCreateRequest(
+      parentPath,
+      docType,
+      sanitizeDocumentName(fileName),
+      properties,
+      batchId,
+      fileIndex,
+    ).pipe(
+      switchMap((body) =>
+        this.withMainBlobValidation(
+          this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, { headers }),
+        ),
+      ),
     );
   }
 
@@ -480,22 +479,21 @@ export class DocumentImportService {
     batchId: string,
     fileIndex: number,
   ): Observable<NuxeoDocument> {
-    const body = {
-      'entity-type': 'document',
-      name: sanitizeDocumentName(name),
-      type: docType,
-      properties: {
-        ...properties,
-        'file:content': {
-          'upload-batch': batchId,
-          'upload-fileId': String(fileIndex),
-        },
-      },
-    };
-    return this.withMainBlobValidation(
-      this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
-        headers: { 'Content-Type': 'application/json' },
-      }),
+    return this.buildBlobDocumentCreateRequest(
+      parentPath,
+      docType,
+      name,
+      properties,
+      batchId,
+      fileIndex,
+    ).pipe(
+      switchMap((body) =>
+        this.withMainBlobValidation(
+          this.http.post<NuxeoDocument>(this.urlCreateUnderPath(parentPath), body, {
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        ),
+      ),
     );
   }
 
@@ -687,6 +685,29 @@ export class DocumentImportService {
         });
         return concat(...steps).pipe(toArray());
       }),
+    );
+  }
+
+  /** Web UI parity: seed blob create from `@emptyWithDefault`, merge user props, attach batch blob. */
+  private buildBlobDocumentCreateRequest(
+    parentPath: string,
+    docType: string,
+    nameFallback: string,
+    properties: Record<string, unknown>,
+    batchId: string,
+    fileIndex: number,
+  ): Observable<Record<string, unknown>> {
+    const propertiesWithBlob: Record<string, unknown> = {
+      ...properties,
+      'file:content': {
+        'upload-batch': batchId,
+        'upload-fileId': String(fileIndex),
+      },
+    };
+    return this.getEmptyDocumentWithDefaults(parentPath, docType).pipe(
+      map((template) =>
+        mergeCreateDocumentBody(template, docType, nameFallback, propertiesWithBlob),
+      ),
     );
   }
 

@@ -282,6 +282,33 @@ describe('DocumentDetailComponent', () => {
       expect(component.canWriteDoc()).toBe(true);
       expect(component.doc()?.contextParameters?.['permissions']).toEqual(['Read', 'Write']);
     });
+
+    it('preserves WriteProperties when update response omits the permissions enricher', async () => {
+      const noteWithWriteProperties: NuxeoDocument = {
+        ...NOTE_DOC,
+        contextParameters: { permissions: ['Read', 'WriteProperties'] },
+      };
+      component.doc.set(noteWithWriteProperties);
+      mockBrowseService.updateDocument.mockReturnValue(
+        of({
+          ...noteWithWriteProperties,
+          properties: {
+            'note:note': '<p>updated</p>',
+            'note:mime_type': 'text/html',
+          },
+          contextParameters: {},
+        }),
+      );
+
+      component.saveNote('<p>updated</p>');
+      await fixture.whenStable();
+
+      expect(component.canWriteDoc()).toBe(true);
+      expect(component.doc()?.contextParameters?.['permissions']).toEqual([
+        'Read',
+        'WriteProperties',
+      ]);
+    });
   });
 
   describe('text classification', () => {
