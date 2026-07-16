@@ -22,11 +22,20 @@
 
 const BETA_API_HOST = 'satori-ui.beta.nuxeocloud.com';
 
+function resolveEvidenceEnvTag(baseUrl) {
+  if (process.env['EVIDENCE_ENV']) {
+    return process.env['EVIDENCE_ENV'];
+  }
+  try {
+    return new URL(baseUrl).hostname === BETA_API_HOST ? 'beta-ui' : 'local';
+  } catch {
+    return 'local';
+  }
+}
+
 /** @param {import('@playwright/test').Page} page */
 export default async function collectEvidence(page, helpers, outDir) {
-  const envTag =
-    process.env['EVIDENCE_ENV'] ??
-    (helpers.baseUrl.includes(BETA_API_HOST) ? 'beta-ui' : 'local');
+  const envTag = resolveEvidenceEnvTag(helpers.baseUrl);
 
   const apiCalls = [];
   page.on('response', (response) => {

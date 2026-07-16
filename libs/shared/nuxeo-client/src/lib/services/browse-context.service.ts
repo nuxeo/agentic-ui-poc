@@ -34,6 +34,8 @@ export class BrowseContextService {
   /** Reset browse navigation context (e.g. on sign-out / user switch). */
   resetContext(): void {
     this.contextPath.set('/');
+    this.treeRefreshTick.set(0);
+    this.contentRefreshTick.set(0);
   }
 
   setFromRouterUrl(routerUrl: string): void {

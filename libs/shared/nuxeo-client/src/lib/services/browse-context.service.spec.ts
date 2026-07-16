@@ -29,7 +29,11 @@ describe('BrowseContextService', () => {
   it('resetContext restores repository root path', () => {
     service.setFromNuxeoPath('/default-domain/workspaces/demo');
     expect(service.contextPath()).toBe('/default-domain/workspaces/demo');
+    service.requestTreeRefresh();
+    service.requestContentRefresh();
     service.resetContext();
     expect(service.contextPath()).toBe('/');
+    expect(service.treeRefreshTick()).toBe(0);
+    expect(service.contentRefreshTick()).toBe(0);
   });
 });

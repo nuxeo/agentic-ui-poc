@@ -183,6 +183,8 @@ export class BrowseComponent {
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
+  /** Skips the initial contentRefreshTick effect run to avoid duplicate folder loads. */
+  private lastSeenContentRefreshTick = -1;
   readonly browsePath = signal('/');
   private readonly browsePath$ = new Subject<string>();
 
@@ -503,13 +505,16 @@ export class BrowseComponent {
 
     effect(() => {
       const tick = this.browseContext.contentRefreshTick();
-      if (tick > 0) {
-        untracked(() => {
-          if (this.currentNuxeoPath) {
-            this.loadContent();
-          }
-        });
+      const previousTick = this.lastSeenContentRefreshTick;
+      this.lastSeenContentRefreshTick = tick;
+      if (previousTick < 0 || tick === previousTick) {
+        return;
       }
+      untracked(() => {
+        if (this.currentNuxeoPath) {
+          this.loadContent();
+        }
+      });
     });
 
     this.destroyRef.onDestroy(() => {
