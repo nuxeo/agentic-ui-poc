@@ -224,6 +224,27 @@ async function scenarioEditAndSaveHtml(page) {
   }
 }
 
+async function scenarioHtmlCodeModeReadable(page) {
+  const step = '2b. Code mode shows readable HTML (not Quill nbsp blob) — NXSAT-174';
+  try {
+    await page.getByRole('button', { name: 'HTML source' }).click();
+    const source = page.locator('textarea[aria-label="Note HTML source"]');
+    await source.waitFor({ state: 'visible', timeout: 10_000 });
+    const value = await source.inputValue();
+    if (/&nbsp;/i.test(value)) {
+      throw new Error(`Source mode still contains &nbsp;: ${value.slice(0, 160)}`);
+    }
+    await shot(page, '05b-code-mode-readable');
+    await page.getByRole('button', { name: 'Visual editor' }).click();
+    await page.locator('.note-quill-editor .ql-editor').waitFor({ state: 'visible', timeout: 15_000 });
+    log(step, 'PASS');
+  } catch (err) {
+    await shot(page, '05b-code-mode-FAIL');
+    log(step, 'FAIL', err.message);
+    throw err;
+  }
+}
+
 async function scenarioHtmlSourceToggle(page) {
   const step = '3. HTML source mode toggle — edit source, return to visual, save';
   try {
@@ -350,6 +371,7 @@ async function main() {
 
     await scenarioCreateHtmlNote(page, parentPath);
     await scenarioEditAndSaveHtml(page);
+    await scenarioHtmlCodeModeReadable(page);
     await scenarioHtmlSourceToggle(page);
     await scenarioCreatePlainFormat(
       page,

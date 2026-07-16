@@ -111,4 +111,14 @@ describe('NoteEditorComponent source sync (NXSAT-174)', () => {
     expect(component.sourceMode()).toBe(false);
     expect(component.editText()).toBe('<p>edited in source</p>');
   });
+
+  it('enters source mode from stored note:note when visual editor is unchanged (NXSAT-174)', () => {
+    fixture.componentRef.setInput('content', '<h1>Heading 1</h1><h2>Heading 2</h2>');
+    fixture.detectChanges();
+
+    component.toggleSourceMode();
+
+    expect(component.sourceMode()).toBe(true);
+    expect(component.editText()).toBe('<h1>Heading 1</h1>\n<h2>Heading 2</h2>');
+  });
 });

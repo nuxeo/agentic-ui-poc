@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { defaultNoteContent, noteFormatLabel, NOTE_FORMAT_OPTIONS } from './note-format';
+import {
+  defaultNoteContent,
+  formatNoteHtmlForSourceView,
+  noteFormatLabel,
+  NOTE_FORMAT_OPTIONS,
+} from './note-format';
 
 describe('note-format', () => {
   it('exposes all Web UI note formats', () => {
@@ -21,5 +26,12 @@ describe('note-format', () => {
     expect(noteFormatLabel('text/markdown')).toBe('Markdown');
     expect(noteFormatLabel(null)).toBe('HTML');
     expect(noteFormatLabel('application/custom')).toBe('application/custom');
+  });
+
+  it('formatNoteHtmlForSourceView expands block tags and decodes nbsp (NXSAT-174)', () => {
+    expect(formatNoteHtmlForSourceView('<h1>Heading&nbsp;1</h1><h2>Heading&nbsp;2</h2>')).toBe(
+      '<h1>Heading 1</h1>\n<h2>Heading 2</h2>',
+    );
+    expect(formatNoteHtmlForSourceView('')).toBe('');
   });
 });

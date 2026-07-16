@@ -26,3 +26,16 @@ export function noteFormatLabel(mimeType: string | null | undefined): string {
 export function isHtmlNoteFormat(mimeType: string): boolean {
   return mimeType === 'text/html';
 }
+
+/**
+ * Formats note HTML for the code/source textarea (display only).
+ *
+ * Nuxeo Web UI toggles source mode on the persisted `note:note` string. Satori uses Quill for
+ * the visual editor; `getSemanticHTML()` collapses markup onto one line with `&nbsp;` entities.
+ * This helper restores a readable multi-line source view without mutating the saved document.
+ */
+export function formatNoteHtmlForSourceView(html: string): string {
+  if (!html) return '';
+  const normalized = html.replace(/\r\n/g, '\n').replace(/&nbsp;/gi, ' ');
+  return normalized.replace(/>\s*</g, '>\n<').trim();
+}

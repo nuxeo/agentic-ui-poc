@@ -9,6 +9,8 @@ export const MANAGE_DOCUMENT_PERMISSIONS = 'Everything';
 /** Atomic permissions returned by the Nuxeo `permissions` document enricher. */
 export const READ_DOCUMENT = 'Read';
 export const WRITE_DOCUMENT = 'Write';
+/** Nuxeo Web UI uses WriteProperties for note/metadata edit actions. */
+export const WRITE_PROPERTIES = 'WriteProperties';
 export const READ_WRITE_DOCUMENT = 'ReadWrite';
 export const ADD_CHILDREN = 'AddChildren';
 export const REMOVE_DOCUMENT = 'Remove';
@@ -33,7 +35,7 @@ export function canManageDocumentPermissions(doc: NuxeoDocument | null | undefin
 
 /** True when the current user can edit content, create versions, lock, etc. */
 export function canWriteDocument(doc: NuxeoDocument | null | undefined): boolean {
-  return hasDocumentPermission(doc, WRITE_DOCUMENT);
+  return hasDocumentPermission(doc, WRITE_DOCUMENT) || hasDocumentPermission(doc, WRITE_PROPERTIES);
 }
 
 /** True when the current user can create child documents in a folder. */

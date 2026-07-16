@@ -13,6 +13,7 @@ import {
   PERMISSION_DENIED_MESSAGE,
   REMOVE_DOCUMENT,
   WRITE_DOCUMENT,
+  WRITE_PROPERTIES,
 } from './document-permissions';
 import type { NuxeoDocument } from '../models/document.model';
 
@@ -61,6 +62,10 @@ describe('document-permissions', () => {
 
   it('canWriteDocument is true when user has Write', () => {
     expect(canWriteDocument(docWithPermissions(['Read', WRITE_DOCUMENT]))).toBe(true);
+  });
+
+  it('canWriteDocument is true when user has WriteProperties (Web UI note parity)', () => {
+    expect(canWriteDocument(docWithPermissions(['Read', WRITE_PROPERTIES]))).toBe(true);
   });
 
   it('canAddChildren is false for read-only users', () => {
