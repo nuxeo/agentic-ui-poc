@@ -785,9 +785,50 @@ export class DocumentImportService {
   }
 
   private fetchDocumentMainBlob(uid: string): Observable<NuxeoDocument> {
-    return this.api.get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
-      properties: 'file:content',
-    });
+    return this.api
+      .get<NuxeoDocument>(`/nuxeo/api/v1/id/${uid}`, undefined, {
+        properties: 'file:content',
+      })
+      .pipe(switchMap((doc) => this.enrichDocumentFromBlobEndpointIfNeeded(doc)));
+  }
+
+  /**
+   * Nuxeo Cloud may omit `file:content` from properties GET even after a successful batch attach.
+   * Web UI reads blobs via `@blob`; fall back to HEAD on that endpoint before failing create.
+   */
+  private enrichDocumentFromBlobEndpointIfNeeded(doc: NuxeoDocument): Observable<NuxeoDocument> {
+    if (documentHasPersistedMainBlob(doc) || documentHasMainBlob(doc)) {
+      return of(doc);
+    }
+    return this.http
+      .head(this.api.apiUrl(`/nuxeo/api/v1/id/${doc.uid}/@blob/file:content`), {
+        observe: 'response',
+      })
+      .pipe(
+        map((resp) => {
+          if (resp.status !== 200) {
+            return doc;
+          }
+          const lengthHeader = resp.headers.get('Content-Length');
+          const mimeHeader = resp.headers.get('Content-Type') ?? 'application/octet-stream';
+          const disposition = resp.headers.get('Content-Disposition') ?? '';
+          const nameMatch = /filename="?([^";]+)"?/i.exec(disposition);
+          const blobMeta: Record<string, unknown> = {
+            name: nameMatch?.[1] ?? 'file',
+            'mime-type': mimeHeader.split(';')[0]?.trim() || 'application/octet-stream',
+          };
+          const length = lengthHeader !== null ? Number(lengthHeader) : NaN;
+          blobMeta['length'] = Number.isFinite(length) && length >= 0 ? String(length) : '1';
+          return {
+            ...doc,
+            properties: {
+              ...(doc.properties ?? {}),
+              'file:content': blobMeta,
+            },
+          };
+        }),
+        catchError(() => of(doc)),
+      );
   }
 
   /**

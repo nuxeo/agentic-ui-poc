@@ -352,6 +352,9 @@ describe('DocumentImportService', () => {
       const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-2');
       expect(refetchReq.request.headers.get('properties')).toBe('file:content');
       refetchReq.flush(nullDoc);
+      const blobHeadReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-2/@blob/file:content');
+      expect(blobHeadReq.request.method).toBe('HEAD');
+      blobHeadReq.flush(null, { status: 404, statusText: 'Not Found' });
       await vi.advanceTimersByTimeAsync(MAIN_BLOB_POLL_INTERVAL_MS);
     }
 
@@ -359,6 +362,89 @@ describe('DocumentImportService', () => {
 
     await rejection;
     vi.useRealTimers();
+  });
+
+  it('does not call @blob HEAD when properties already include a persisted blob', async () => {
+    const file = new File(['x'], 'local.png', { type: 'image/png' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocument('/ws', 'local', 'File', { 'dc:title': 'local' }, file),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-local' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-local/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-local/0')
+      .flush({ name: 'local.png', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-local',
+      title: 'local',
+      type: 'File',
+      path: '/ws/local',
+      properties: { 'dc:title': 'local', 'file:content': null },
+    });
+
+    const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-local');
+    refetchReq.flush({
+      uid: 'doc-local',
+      title: 'local',
+      type: 'File',
+      path: '/ws/local',
+      properties: {
+        'dc:title': 'local',
+        'file:content': {
+          name: 'local.png',
+          length: '1',
+          'mime-type': 'image/png',
+          digest: 'abc123',
+        },
+      },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-local');
+    httpMock.expectNone('/nuxeo/api/v1/id/doc-local/@blob/file:content');
+  });
+
+  it('succeeds when cloud properties omit file:content but @blob HEAD succeeds (NXSAT-198)', async () => {
+    const file = new File(['x'], 'cloud.png', { type: 'image/png' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocument('/ws', 'cloud', 'Picture', { 'dc:title': 'cloud' }, file),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-cloud' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-cloud/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-cloud/0')
+      .flush({ name: 'cloud.png', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'Picture');
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-cloud',
+      title: 'cloud',
+      type: 'Picture',
+      path: '/ws/cloud',
+      properties: { 'dc:title': 'cloud' },
+    });
+
+    const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-cloud');
+    refetchReq.flush({
+      uid: 'doc-cloud',
+      title: 'cloud',
+      type: 'Picture',
+      path: '/ws/cloud',
+      properties: {},
+    });
+    const blobHeadReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-cloud/@blob/file:content');
+    expect(blobHeadReq.request.method).toBe('HEAD');
+    blobHeadReq.flush(null, {
+      status: 200,
+      statusText: 'OK',
+      headers: { 'Content-Type': 'image/png', 'Content-Length': '70' },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-cloud');
+    expect(documentHasPersistedMainBlob(doc)).toBe(true);
   });
 
   it('succeeds when polling times out but documentHasMainBlob is true', async () => {
