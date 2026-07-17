@@ -800,13 +800,17 @@ export class DocumentImportService {
     if (documentHasPersistedMainBlob(doc) || documentHasMainBlob(doc)) {
       return of(doc);
     }
+    const props = doc.properties ?? {};
+    if ('file:content' in props) {
+      return of(doc);
+    }
     return this.http
       .head(this.api.apiUrl(`/nuxeo/api/v1/id/${doc.uid}/@blob/file:content`), {
         observe: 'response',
       })
       .pipe(
         map((resp) => {
-          if (resp.status !== 200) {
+          if (!resp.ok) {
             return doc;
           }
           const lengthHeader = resp.headers.get('Content-Length');

@@ -352,9 +352,7 @@ describe('DocumentImportService', () => {
       const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-2');
       expect(refetchReq.request.headers.get('properties')).toBe('file:content');
       refetchReq.flush(nullDoc);
-      const blobHeadReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-2/@blob/file:content');
-      expect(blobHeadReq.request.method).toBe('HEAD');
-      blobHeadReq.flush(null, { status: 404, statusText: 'Not Found' });
+      httpMock.expectNone('/nuxeo/api/v1/id/doc-2/@blob/file:content');
       await vi.advanceTimersByTimeAsync(MAIN_BLOB_POLL_INTERVAL_MS);
     }
 
@@ -404,6 +402,60 @@ describe('DocumentImportService', () => {
     const doc = await create$;
     expect(doc.uid).toBe('doc-local');
     httpMock.expectNone('/nuxeo/api/v1/id/doc-local/@blob/file:content');
+  });
+
+  it('does not call @blob HEAD when file:content key is present but null', async () => {
+    vi.useFakeTimers();
+    const file = new File(['x'], 'pending.png', { type: 'image/png' });
+    const create$ = firstValueFrom(
+      service.createBlobHoldingDocument('/ws', 'pending', 'File', { 'dc:title': 'pending' }, file),
+    );
+
+    httpMock.expectOne('/nuxeo/api/v1/upload/new/default').flush({ batchId: 'batch-pending' });
+    httpMock.expectOne('/nuxeo/api/v1/upload/batch-pending/0').flush('');
+    httpMock
+      .expectOne('/nuxeo/api/v1/upload/batch-pending/0')
+      .flush({ name: 'pending.png', size: file.size });
+    flushEmptyWithDefault(httpMock, '/ws', 'File');
+    httpMock.expectOne('/nuxeo/api/v1/path/ws').flush({
+      uid: 'doc-pending',
+      title: 'pending',
+      type: 'File',
+      path: '/ws/pending',
+      properties: { 'dc:title': 'pending', 'file:content': null },
+    });
+
+    const nullDoc = {
+      uid: 'doc-pending',
+      title: 'pending',
+      type: 'File',
+      path: '/ws/pending',
+      properties: { 'dc:title': 'pending', 'file:content': null },
+    };
+
+    const refetchReq = httpMock.expectOne('/nuxeo/api/v1/id/doc-pending');
+    refetchReq.flush(nullDoc);
+    httpMock.expectNone('/nuxeo/api/v1/id/doc-pending/@blob/file:content');
+
+    await vi.advanceTimersByTimeAsync(MAIN_BLOB_POLL_INTERVAL_MS);
+    const refetchReq2 = httpMock.expectOne('/nuxeo/api/v1/id/doc-pending');
+    refetchReq2.flush({
+      ...nullDoc,
+      properties: {
+        'dc:title': 'pending',
+        'file:content': {
+          name: 'pending.png',
+          length: '1',
+          'mime-type': 'image/png',
+          digest: 'abc123',
+        },
+      },
+    });
+
+    const doc = await create$;
+    expect(doc.uid).toBe('doc-pending');
+    httpMock.expectNone('/nuxeo/api/v1/id/doc-pending/@blob/file:content');
+    vi.useRealTimers();
   });
 
   it('succeeds when cloud properties omit file:content but @blob HEAD succeeds (NXSAT-198)', async () => {
