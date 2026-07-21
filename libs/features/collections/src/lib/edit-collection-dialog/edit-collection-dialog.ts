@@ -93,6 +93,7 @@ export interface EditCollectionDialogData {
             <input
               type="text"
               placeholder="Search…"
+              aria-label="Search Nature"
               [(ngModel)]="naturePanelSearch"
               [ngModelOptions]="{ standalone: true }"
               (click)="$event.stopPropagation()"
@@ -136,6 +137,7 @@ export interface EditCollectionDialogData {
             <input
               type="text"
               placeholder="Search…"
+              aria-label="Search Subjects"
               [(ngModel)]="subjectsPanelSearch"
               [ngModelOptions]="{ standalone: true }"
               (click)="$event.stopPropagation()"
@@ -184,6 +186,7 @@ export interface EditCollectionDialogData {
             <input
               type="text"
               placeholder="Search…"
+              aria-label="Search Coverage"
               [(ngModel)]="coveragePanelSearch"
               [ngModelOptions]="{ standalone: true }"
               (click)="$event.stopPropagation()"
@@ -528,14 +531,17 @@ export class EditCollectionDialogComponent implements OnInit {
         this.expires && !Number.isNaN(this.expires.getTime()) ? this.expires.toISOString() : null,
     };
 
-    this.collectionService.updateProperties(this.data.document.uid, properties).subscribe({
-      next: (updatedDoc) => {
-        this.saving.set(false);
-        this.dialogRef.close(updatedDoc);
-      },
-      error: () => {
-        this.saving.set(false);
-      },
-    });
+    this.collectionService
+      .updateProperties(this.data.document.uid, properties)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updatedDoc) => {
+          this.saving.set(false);
+          this.dialogRef.close(updatedDoc);
+        },
+        error: () => {
+          this.saving.set(false);
+        },
+      });
   }
 }

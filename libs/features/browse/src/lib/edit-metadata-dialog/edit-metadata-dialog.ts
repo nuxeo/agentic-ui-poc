@@ -99,6 +99,7 @@ export interface EditMetadataDialogData {
             <input
               type="text"
               placeholder="Search…"
+              aria-label="Search Nature"
               [(ngModel)]="naturePanelSearch"
               [ngModelOptions]="{ standalone: true }"
               (click)="$event.stopPropagation()"
@@ -142,6 +143,7 @@ export interface EditMetadataDialogData {
             <input
               type="text"
               placeholder="Search…"
+              aria-label="Search Subjects"
               [(ngModel)]="subjectsPanelSearch"
               [ngModelOptions]="{ standalone: true }"
               (click)="$event.stopPropagation()"
@@ -190,6 +192,7 @@ export interface EditMetadataDialogData {
             <input
               type="text"
               placeholder="Search…"
+              aria-label="Search Coverage"
               [(ngModel)]="coveragePanelSearch"
               [ngModelOptions]="{ standalone: true }"
               (click)="$event.stopPropagation()"
@@ -517,16 +520,19 @@ export class EditMetadataDialogComponent {
         this.expires && !Number.isNaN(this.expires.getTime()) ? this.expires.toISOString() : null,
     };
 
-    this.browseService.updateDocument(this.data.uid, properties).subscribe({
-      next: (doc) => {
-        this.saving.set(false);
-        this.snackBar.open('Document updated', 'OK', { duration: 3000 });
-        this.dialogRef.close(doc);
-      },
-      error: () => {
-        this.saving.set(false);
-        this.snackBar.open('Failed to update document', 'OK', { duration: 3000 });
-      },
-    });
+    this.browseService
+      .updateDocument(this.data.uid, properties)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (doc) => {
+          this.saving.set(false);
+          this.snackBar.open('Document updated', 'OK', { duration: 3000 });
+          this.dialogRef.close(doc);
+        },
+        error: () => {
+          this.saving.set(false);
+          this.snackBar.open('Failed to update document', 'OK', { duration: 3000 });
+        },
+      });
   }
 }
