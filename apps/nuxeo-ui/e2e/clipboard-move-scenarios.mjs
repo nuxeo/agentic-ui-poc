@@ -12,8 +12,15 @@ import { chromium } from 'playwright';
 
 const BASE = process.env.AGENTIC_UI_BASE_URL ?? 'http://localhost:4200';
 const NUXEO = process.env.NUXEO_BASE_URL ?? 'http://localhost:8080/nuxeo';
-const user = process.env.NUXEO_TEST_USER ?? 'Administrator';
-const pass = process.env.NUXEO_TEST_PASSWORD ?? 'Administrator';
+const user = process.env.NUXEO_TEST_USER;
+const pass = process.env.NUXEO_TEST_PASSWORD;
+
+if (!user || !pass) {
+  console.error(
+    'Set NUXEO_TEST_USER and NUXEO_TEST_PASSWORD environment variables before running this script.',
+  );
+  process.exit(1);
+}
 
 const results = [];
 

@@ -621,16 +621,17 @@ export class BrowseComponent {
     }
 
     let added = 0;
+    let additions: NuxeoDocument[] = [];
     this.entries.update((entries) => {
       const existingUids = new Set(entries.map((entry) => entry.uid));
-      const additions = documents.filter((doc) => doc.uid && !existingUids.has(doc.uid));
+      additions = documents.filter((doc) => doc.uid && !existingUids.has(doc.uid));
       added = additions.length;
       return additions.length > 0 ? [...entries, ...additions] : entries;
     });
 
     if (added > 0) {
       this.totalSize.update((count) => count + added);
-      this.loadThumbnails(documents, false);
+      this.loadThumbnails(additions, false);
     }
   }
 
