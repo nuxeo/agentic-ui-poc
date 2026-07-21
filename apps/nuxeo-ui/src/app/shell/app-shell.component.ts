@@ -128,6 +128,14 @@ export class AppShellComponent implements OnDestroy {
   readonly drawerOpen = signal(false);
   readonly activeDrawerItem = signal<AppNavItem | null>(null);
   readonly clipboardCount = signal(this.readClipboardCount());
+  readonly clipboardBadgeLabel = computed(() => {
+    const count = this.clipboardCount();
+    return count > 99 ? '99+' : String(count);
+  });
+  readonly clipboardBadgeCssContent = computed(() => {
+    const label = this.clipboardBadgeLabel();
+    return this.clipboardCount() > 0 ? `"${label}"` : null;
+  });
   readonly favoritesCount = signal(0);
   readonly globalSearchTerm = signal('');
   readonly globalSearchLoading = signal(false);
@@ -435,6 +443,7 @@ export class AppShellComponent implements OnDestroy {
     const updated = [...current, ...additions];
     writeClipboardDocs(updated);
     window.dispatchEvent(new Event('clipboard-changed'));
+    this.refreshClipboardCount();
 
     this.snackBar.open(
       additions.length > 0

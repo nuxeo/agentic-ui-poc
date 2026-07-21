@@ -1207,7 +1207,11 @@ export class NavDrawerComponent {
           }
           const count = results.length;
           this.clearClipboard();
-          this.browseContext.requestContentRefresh();
+          this.browseContext.notifyClipboardPasteComplete({
+            targetUid: target.uid,
+            documents: results,
+            action,
+          });
           this.browseContext.requestTreeRefresh();
           if (this.browseTreeLoadedForUser) {
             this.refreshBrowseTree();

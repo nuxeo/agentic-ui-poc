@@ -137,6 +137,47 @@ describe('BrowseComponent', () => {
     );
   });
 
+  it('notifyClipboardPasteComplete merges pasted documents into current folder listing', () => {
+    const browseContext = TestBed.inject(BrowseContextService);
+    const folder: NuxeoDocument = {
+      uid: 'folder-1',
+      title: 'Target Folder',
+      type: 'Folder',
+      path: '/default-domain/workspaces/folder-1',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['AddChildren'] },
+    };
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder, entries: [], totalSize: 0 }),
+    );
+    mockBrowseService.getFolderContext.mockReturnValue(of(folder));
+
+    fixture.detectChanges();
+    component.currentDoc.set(folder);
+    component.entries.set([]);
+    component.totalSize.set(0);
+
+    const pasted: NuxeoDocument = {
+      uid: 'copy-1',
+      title: 'Copied File',
+      type: 'File',
+      path: '/default-domain/workspaces/folder-1/copied-file',
+      lastModified: '',
+      properties: {},
+    };
+
+    browseContext.notifyClipboardPasteComplete({
+      targetUid: 'folder-1',
+      documents: [pasted],
+      action: 'copy',
+    });
+    fixture.detectChanges();
+
+    expect(component.entries().some((entry) => entry.uid === 'copy-1')).toBe(true);
+    expect(component.totalSize()).toBe(1);
+  });
+
   it('toggleSelection delegates to SelectionService with doc title (NXSAT-179)', () => {
     const doc: NuxeoDocument = {
       uid: 'doc-1',

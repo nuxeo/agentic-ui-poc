@@ -15,7 +15,7 @@ import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, of, Subject } from 'rxjs';
+import { forkJoin, of, Subject, timer } from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -185,6 +185,10 @@ export class BrowseComponent {
   private currentNuxeoPath = '/';
   /** Skips the initial contentRefreshTick effect run to avoid duplicate folder loads. */
   private lastSeenContentRefreshTick = -1;
+  /** Skips the initial clipboardPasteTick effect run. */
+  private lastSeenClipboardPasteTick = -1;
+  /** Clipboard paste results not yet visible in @children (eventual consistency on Cloud). */
+  private readonly pendingPasteEntries = new Map<string, NuxeoDocument>();
   readonly browsePath = signal('/');
   private readonly browsePath$ = new Subject<string>();
 
@@ -492,7 +496,8 @@ export class BrowseComponent {
         this.currentDoc.set(folder);
         this.browseContext.setFromNuxeoPath(folder.path);
         this.entries.set(entries);
-        this.totalSize.set(totalSize);
+        this.reconcilePendingPasteEntries(entries);
+        this.totalSize.set(totalSize + this.pendingPasteEntries.size);
         this.loading.set(false);
         this.syncClipboardTarget(folder, payload.nuxeoPath);
         this.loadThumbnails(entries);
@@ -513,6 +518,34 @@ export class BrowseComponent {
       untracked(() => {
         if (this.currentNuxeoPath) {
           this.loadContent();
+        }
+      });
+    });
+
+    effect(() => {
+      const tick = this.browseContext.clipboardPasteTick();
+      const previousTick = this.lastSeenClipboardPasteTick;
+      this.lastSeenClipboardPasteTick = tick;
+      if (previousTick < 0 || tick === previousTick) {
+        return;
+      }
+      untracked(() => {
+        const paste = this.browseContext.consumeClipboardPasteEvent();
+        if (!paste) {
+          return;
+        }
+        const current = this.currentDoc();
+        if (current?.uid === paste.targetUid) {
+          this.applyClipboardPasteToListing(paste.documents);
+        }
+        if (this.currentNuxeoPath) {
+          timer(1500)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(() => {
+              if (this.currentDoc()?.uid === paste.targetUid && this.currentNuxeoPath) {
+                this.loadContent();
+              }
+            });
         }
       });
     });
@@ -568,10 +601,61 @@ export class BrowseComponent {
     this.permissionsLoaded.set(false);
     this.permissionsLoading.set(false);
     this.activeTabIndex.set(0);
+    this.pendingPasteEntries.clear();
   }
 
   loadContent(): void {
     this.browsePath$.next(this.currentNuxeoPath);
+  }
+
+  /** Merge clipboard copy/move API results into the visible folder (Web UI updates listing immediately). */
+  private applyClipboardPasteToListing(documents: NuxeoDocument[]): void {
+    if (documents.length === 0) {
+      return;
+    }
+
+    for (const doc of documents) {
+      if (doc.uid) {
+        this.pendingPasteEntries.set(doc.uid, doc);
+      }
+    }
+
+    let added = 0;
+    this.entries.update((entries) => {
+      const existingUids = new Set(entries.map((entry) => entry.uid));
+      const additions = documents.filter((doc) => doc.uid && !existingUids.has(doc.uid));
+      added = additions.length;
+      return additions.length > 0 ? [...entries, ...additions] : entries;
+    });
+
+    if (added > 0) {
+      this.totalSize.update((count) => count + added);
+      this.loadThumbnails(documents, false);
+    }
+  }
+
+  /** Keep optimistic paste rows until Nuxeo @children includes them. */
+  private reconcilePendingPasteEntries(serverEntries: NuxeoDocument[]): void {
+    if (this.pendingPasteEntries.size === 0) {
+      return;
+    }
+
+    const serverUids = new Set(serverEntries.map((entry) => entry.uid));
+    for (const uid of serverUids) {
+      this.pendingPasteEntries.delete(uid);
+    }
+
+    const pending = [...this.pendingPasteEntries.values()];
+    if (pending.length === 0) {
+      return;
+    }
+
+    this.entries.update((current) => {
+      const currentUids = new Set(current.map((entry) => entry.uid));
+      const additions = pending.filter((doc) => doc.uid && !currentUids.has(doc.uid));
+      return additions.length > 0 ? [...current, ...additions] : current;
+    });
+    this.loadThumbnails(pending, false);
   }
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
