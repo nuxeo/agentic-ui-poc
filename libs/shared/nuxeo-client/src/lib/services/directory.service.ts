@@ -98,6 +98,7 @@ export class DirectoryService {
         {
           params: {
             directoryName,
+            contains: true,
             dbl10n: false,
             localize: true,
             lang: 'en',

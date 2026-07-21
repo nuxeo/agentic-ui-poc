@@ -1,5 +1,6 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, DestroyRef, ViewChild, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule, NgModel } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -9,14 +10,21 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
 
 import {
   BrowseService,
   DirectoryService,
   DirectoryEntry,
+  directoryPickerLabel,
+  filterDirectoryPickerEntries,
   L10nDirectoryEntry,
   formatHierarchicalL10nLabel,
   groupL10nChildrenByParent,
+  createExpiresErrorStateMatcher,
+  isExpiresFieldValid,
+  shouldShowExpiresFieldError,
   l10nEntryLabel,
 } from '@agentic-ui/shared/nuxeo-client';
 
@@ -44,6 +52,8 @@ export interface EditMetadataDialogData {
     MatNativeDateModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatChipsModule,
+    MatIconModule,
   ],
   template: `
     <h2 mat-dialog-title>Edit</h2>
@@ -59,17 +69,51 @@ export interface EditMetadataDialogData {
         <textarea matInput [(ngModel)]="description" rows="2"></textarea>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" class="full-width vocab-field">
         <mat-label>Nature</mat-label>
-        <mat-select [(ngModel)]="nature">
-          <mat-option value="">Select a value.</mat-option>
-          @for (entry of natureOptions(); track entry.id) {
-            <mat-option [value]="entry.id">{{ entry.displayLabel }}</mat-option>
-          }
+        <mat-select
+          #natureSelect
+          [(ngModel)]="nature"
+          panelClass="vocab-select-panel"
+          (openedChange)="onNaturePanelOpen($event)"
+          (selectionChange)="natureSelect.close()"
+        >
+          <mat-select-trigger>
+            @if (nature; as natureId) {
+              <mat-chip-set class="vocab-trigger-chips">
+                <mat-chip (removed)="clearNature()">
+                  {{ naturePillLabel(natureId) }}
+                  <button
+                    type="button"
+                    matChipRemove
+                    [attr.aria-label]="'Remove ' + naturePillLabel(natureId)"
+                    (click)="$event.stopPropagation(); clearNature()"
+                  >
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip>
+              </mat-chip-set>
+            }
+          </mat-select-trigger>
+          <div class="vocab-panel__search">
+            <input
+              type="text"
+              placeholder="Search…"
+              [(ngModel)]="naturePanelSearch"
+              [ngModelOptions]="{ standalone: true }"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            />
+          </div>
+          <div class="vocab-panel__list">
+            @for (entry of filteredNatureOptions(); track entry.id) {
+              <mat-option [value]="entry.id">{{ directoryPickerLabel(entry) }}</mat-option>
+            }
+          </div>
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" class="full-width vocab-field">
         <mat-label>Subjects</mat-label>
         <mat-select
           [(ngModel)]="subjects"
@@ -77,6 +121,23 @@ export interface EditMetadataDialogData {
           panelClass="vocab-select-panel vocab-grouped-select-panel"
           (openedChange)="onSubjectsPanelOpen($event)"
         >
+          <mat-select-trigger>
+            <mat-chip-set class="vocab-trigger-chips">
+              @for (id of subjects; track id) {
+                <mat-chip (removed)="removeSubject(id)">
+                  {{ subjectPillLabel(id) }}
+                  <button
+                    type="button"
+                    matChipRemove
+                    [attr.aria-label]="'Remove ' + subjectPillLabel(id)"
+                    (click)="$event.stopPropagation()"
+                  >
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip>
+              }
+            </mat-chip-set>
+          </mat-select-trigger>
           <div class="vocab-panel__search">
             <input
               type="text"
@@ -99,16 +160,32 @@ export interface EditMetadataDialogData {
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field appearance="outline" class="full-width vocab-field">
         <mat-label>Coverage</mat-label>
         <mat-select
+          #coverageSelect
           [(ngModel)]="coverage"
           panelClass="vocab-select-panel vocab-grouped-select-panel"
           (openedChange)="onCoveragePanelOpen($event)"
+          (selectionChange)="coverageSelect.close()"
         >
-          @if (coverage) {
-            <mat-select-trigger>{{ coverageDisplayLabel() }}</mat-select-trigger>
-          }
+          <mat-select-trigger>
+            @if (coverage; as coverageId) {
+              <mat-chip-set class="vocab-trigger-chips">
+                <mat-chip (removed)="clearCoverage()">
+                  {{ coveragePillLabel(coverageId) }}
+                  <button
+                    type="button"
+                    matChipRemove
+                    [attr.aria-label]="'Remove ' + coveragePillLabel(coverageId)"
+                    (click)="$event.stopPropagation(); clearCoverage()"
+                  >
+                    <mat-icon>cancel</mat-icon>
+                  </button>
+                </mat-chip>
+              </mat-chip-set>
+            }
+          </mat-select-trigger>
           <div class="vocab-panel__search">
             <input
               type="text"
@@ -120,7 +197,6 @@ export interface EditMetadataDialogData {
             />
           </div>
           <div class="vocab-panel__list">
-            <mat-option value="">Select a value.</mat-option>
             @for (group of groupedCoverageOptions(); track group.parentLabel) {
               <mat-optgroup [label]="group.parentLabel">
                 @for (entry of group.entries; track entry.id) {
@@ -132,11 +208,29 @@ export interface EditMetadataDialogData {
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full-width">
+      <mat-form-field
+        appearance="outline"
+        subscriptSizing="dynamic"
+        class="full-width"
+        [class.expires-field-invalid]="showExpiresError()"
+      >
         <mat-label>Expires</mat-label>
-        <input matInput [matDatepicker]="picker" [(ngModel)]="expires" />
+        <input
+          matInput
+          name="expires"
+          [matDatepicker]="picker"
+          [ngModel]="expires"
+          [errorStateMatcher]="expiresErrorMatcher"
+          (ngModelChange)="onExpiresChange($event)"
+          (input)="onExpiresInput($event)"
+          #expiresInput="ngModel"
+          placeholder="mm/dd/yyyy"
+        />
         <mat-datepicker-toggle matIconSuffix [for]="picker" />
         <mat-datepicker #picker />
+        @if (showExpiresError()) {
+          <mat-error>Enter a valid date</mat-error>
+        }
       </mat-form-field>
     </mat-dialog-content>
 
@@ -145,7 +239,7 @@ export interface EditMetadataDialogData {
       <button
         mat-flat-button
         color="primary"
-        [disabled]="saving() || !title.trim()"
+        [disabled]="saving() || !title.trim() || !isExpiresValid()"
         (click)="save()"
       >
         @if (saving()) {
@@ -173,6 +267,14 @@ export interface EditMetadataDialogData {
       }
       mat-dialog-actions {
         padding: 8px 24px 16px;
+      }
+
+      .expires-field-invalid {
+        ::ng-deep .mdc-notched-outline__leading,
+        ::ng-deep .mdc-notched-outline__notch,
+        ::ng-deep .mdc-notched-outline__trailing {
+          border-color: var(--mat-sys-error, #b3261e);
+        }
       }
     `,
     `
@@ -214,6 +316,25 @@ export interface EditMetadataDialogData {
         padding: 10px 16px 6px;
         border-bottom: 1px solid #f0f0f0;
       }
+
+      ::ng-deep .vocab-field .mat-mdc-select-trigger {
+        height: auto;
+        min-height: 24px;
+        overflow: visible;
+      }
+
+      .vocab-trigger-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        width: 100%;
+        padding: 6px 8px 6px 12px;
+        box-sizing: border-box;
+      }
+
+      ::ng-deep .vocab-trigger-chips .mdc-evolution-chip {
+        margin: 2px 4px 2px 0;
+      }
     `,
   ],
 })
@@ -223,6 +344,7 @@ export class EditMetadataDialogComponent {
   private readonly browseService = inject(BrowseService);
   private readonly directoryService = inject(DirectoryService);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
 
   title = this.data.title;
   description = this.data.description;
@@ -230,6 +352,12 @@ export class EditMetadataDialogComponent {
   subjects: string[] = [...this.data.subjects];
   coverage = this.data.coverage;
   expires: Date | null = this.data.expires ? new Date(this.data.expires) : null;
+  expiresRawText = '';
+  readonly expiresErrorMatcher = createExpiresErrorStateMatcher(() =>
+    shouldShowExpiresFieldError(this.expiresRawText, this.expires),
+  );
+
+  @ViewChild('expiresInput') expiresNgModel?: NgModel;
 
   readonly saving = signal(false);
   readonly natureOptions = signal<DirectoryEntry[]>([]);
@@ -237,43 +365,146 @@ export class EditMetadataDialogComponent {
   readonly coverageOptions = signal<L10nDirectoryEntry[]>([]);
 
   readonly l10nEntryLabel = l10nEntryLabel;
+  protected readonly directoryPickerLabel = directoryPickerLabel;
+  naturePanelSearch = '';
   subjectsPanelSearch = '';
   coveragePanelSearch = '';
 
-  readonly groupedSubjectOptions = computed(() =>
-    groupL10nChildrenByParent(this.subjectOptions(), this.subjectsPanelSearch),
-  );
+  filteredNatureOptions(): DirectoryEntry[] {
+    return filterDirectoryPickerEntries(this.natureOptions(), this.naturePanelSearch);
+  }
 
-  readonly groupedCoverageOptions = computed(() =>
-    groupL10nChildrenByParent(this.coverageOptions(), this.coveragePanelSearch),
-  );
+  groupedSubjectOptions(): ReturnType<typeof groupL10nChildrenByParent> {
+    return groupL10nChildrenByParent(this.subjectOptions(), this.subjectsPanelSearch);
+  }
+
+  groupedCoverageOptions(): ReturnType<typeof groupL10nChildrenByParent> {
+    return groupL10nChildrenByParent(this.coverageOptions(), this.coveragePanelSearch);
+  }
 
   constructor() {
-    this.directoryService.getEntries('nature').subscribe({
-      next: (entries) => this.natureOptions.set(entries),
-    });
-    this.directoryService.getAllL10nEntries('l10nsubjects').subscribe({
-      next: (entries) => this.subjectOptions.set(entries),
-    });
-    this.directoryService.getAllL10nEntries('l10ncoverage').subscribe({
-      next: (entries) => this.coverageOptions.set(entries),
-    });
+    this.directoryService
+      .getEntries('nature')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.natureOptions.set(entries),
+      });
+    this.directoryService
+      .getAllL10nEntries('l10nsubjects')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.subjectOptions.set(entries),
+      });
+    this.directoryService
+      .getAllL10nEntries('l10ncoverage')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.coverageOptions.set(entries),
+      });
+  }
+
+  onNaturePanelOpen(open: boolean): void {
+    if (!open) {
+      this.naturePanelSearch = '';
+      return;
+    }
+    this.directoryService
+      .getEntries('nature')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.natureOptions.set(entries),
+      });
+  }
+
+  natureDisplayLabel(): string {
+    if (!this.nature) return '';
+    return this.naturePillLabel(this.nature);
+  }
+
+  naturePillLabel(id: string): string {
+    const entry = this.natureOptions().find((item) => item.id === id);
+    return entry ? directoryPickerLabel(entry) : id;
+  }
+
+  subjectPillLabel(id: string): string {
+    return formatHierarchicalL10nLabel(id, this.subjectOptions());
+  }
+
+  coveragePillLabel(id: string): string {
+    return formatHierarchicalL10nLabel(id, this.coverageOptions());
+  }
+
+  clearNature(): void {
+    this.nature = '';
+  }
+
+  clearCoverage(): void {
+    this.coverage = '';
+  }
+
+  removeSubject(id: string): void {
+    this.subjects = this.subjects.filter((value) => value !== id);
   }
 
   onSubjectsPanelOpen(open: boolean): void {
-    if (!open) this.subjectsPanelSearch = '';
+    if (!open) {
+      this.subjectsPanelSearch = '';
+      return;
+    }
+    this.loadL10nEntries('l10nsubjects', this.subjectOptions);
   }
 
   onCoveragePanelOpen(open: boolean): void {
-    if (!open) this.coveragePanelSearch = '';
+    if (!open) {
+      this.coveragePanelSearch = '';
+      return;
+    }
+    this.loadL10nEntries('l10ncoverage', this.coverageOptions);
+  }
+
+  private loadL10nEntries(
+    directoryName: string,
+    target: { set: (entries: L10nDirectoryEntry[]) => void },
+  ): void {
+    this.directoryService
+      .getAllL10nEntries(directoryName)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => target.set(entries),
+      });
   }
 
   coverageDisplayLabel(): string {
     return formatHierarchicalL10nLabel(this.coverage, this.coverageOptions());
   }
 
+  isExpiresValid(): boolean {
+    return isExpiresFieldValid(this.expiresRawText, this.expires);
+  }
+
+  showExpiresError(): boolean {
+    return shouldShowExpiresFieldError(this.expiresRawText, this.expires);
+  }
+
+  onExpiresInput(event: Event): void {
+    this.expiresRawText = (event.target as HTMLInputElement).value;
+    const ctrl = this.expiresNgModel?.control;
+    if (ctrl) {
+      ctrl.markAsDirty();
+      ctrl.markAsTouched();
+      ctrl.updateValueAndValidity({ emitEvent: false });
+    }
+  }
+
+  onExpiresChange(value: Date | null): void {
+    this.expires = value;
+    if (value && !Number.isNaN(value.getTime())) {
+      this.expiresRawText = '';
+    }
+  }
+
   save(): void {
-    if (this.saving()) return;
+    if (this.saving() || !this.isExpiresValid()) return;
     this.saving.set(true);
 
     const properties: Record<string, unknown> = {
@@ -282,7 +513,8 @@ export class EditMetadataDialogComponent {
       'dc:nature': this.nature || null,
       'dc:subjects': this.subjects,
       'dc:coverage': this.coverage || null,
-      'dc:expired': this.expires ? this.expires.toISOString() : null,
+      'dc:expired':
+        this.expires && !Number.isNaN(this.expires.getTime()) ? this.expires.toISOString() : null,
     };
 
     this.browseService.updateDocument(this.data.uid, properties).subscribe({
