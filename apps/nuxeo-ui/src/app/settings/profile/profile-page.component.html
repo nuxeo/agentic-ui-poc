@@ -112,18 +112,18 @@
         (visible)="onGroupPermSectionVisible($event)"
       >
         <div class="profile-card__section-title" role="heading" aria-level="3">
-          {{ g.identifier }} permissions
+          {{ g.label }} permissions
         </div>
 
         @if (isGroupPermLoading(g.identifier)) {
-          <p class="profile-card__text">Loading {{ g.identifier }} permissions…</p>
+          <p class="profile-card__text">Loading {{ g.label }} permissions…</p>
         } @else if (hasGroupPermLoaded(g.identifier)) {
           <ng-container
             *ngTemplateOutlet="
               permissionTableBody;
               context: {
                 rows: groupPermRows(g.identifier),
-                emptyMessage: g.identifier + ' does not have permissions.',
+                emptyMessage: g.label + ' does not have permissions.',
               }
             "
           />

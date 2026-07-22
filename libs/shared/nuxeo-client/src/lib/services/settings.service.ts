@@ -42,13 +42,15 @@ export class SettingsService {
   }
 
   private queryPermissions(principal: string, pageSize: number): Observable<LocalPermissionRow[]> {
-    // Escape single quotes in principal for safe inclusion in NXQL string literal
     const safePrincipal = principal.replace(/'/g, "''");
-
     const nxql =
       `SELECT * FROM Document WHERE ecm:mixinType != "HiddenInNavigation" ` +
       `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ` +
-      `AND ecm:acl/*1/principal = '${safePrincipal}'`;
+      `AND (` +
+      `(ecm:acl/*1/principal = '${safePrincipal}' AND ecm:acl/*1/name = 'local') OR ` +
+      `(ecm:acl/*1/principal = 'user:${safePrincipal}' AND ecm:acl/*1/name = 'local') OR ` +
+      `(ecm:acl/*1/principal = 'group:${safePrincipal}' AND ecm:acl/*1/name = 'local')` +
+      `)`;
 
     return this.api
       .post<NuxeoDocumentList>(

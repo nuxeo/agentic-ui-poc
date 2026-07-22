@@ -30,6 +30,8 @@ describe('SettingsService', () => {
 
     const req = httpMock.expectOne('/nuxeo/api/v1/automation/Repository.Query');
     expect(req.request.method).toBe('POST');
+    expect(req.request.body.params.query).toContain("ecm:acl/*1/name = 'local'");
+    expect(req.request.body.params.query).toContain("ecm:acl/*1/principal = 'Administrator'");
     req.flush({
       entries: [
         {
@@ -87,6 +89,7 @@ describe('SettingsService', () => {
     const rows$ = firstValueFrom(service.getLocalPermissions('members'));
 
     const req = httpMock.expectOne('/nuxeo/api/v1/automation/Repository.Query');
+    expect(req.request.body.params.query).toContain("ecm:acl/*1/principal = 'group:members'");
     req.flush({
       entries: [
         {

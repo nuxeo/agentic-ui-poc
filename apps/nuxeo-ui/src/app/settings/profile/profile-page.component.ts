@@ -192,12 +192,12 @@ export class ProfilePageComponent {
 
   /** Display-only: split combined `on` values like `Title (/path)` for Web UI layout. */
   permissionDocTitle(on: string): string {
-    const match = on.match(/^(.+?) \((\/[^)]+)\)$/);
+    const match = on.match(/^(.+) \((\/[^)]+)\)$/);
     return match?.[1]?.trim() ?? on;
   }
 
   permissionDocPath(on: string): string | null {
-    const match = on.match(/^(.+?) \((\/[^)]+)\)$/);
+    const match = on.match(/^(.+) \((\/[^)]+)\)$/);
     return match?.[2]?.trim() ?? null;
   }
 

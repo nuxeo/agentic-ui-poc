@@ -79,6 +79,14 @@ describe('nuxeoAuthInterceptor', () => {
     req.flush({ id: 'Administrator' });
   });
 
+  it('sends browser credentials for basic-auth logout to clear stale cookies', () => {
+    auth.basicCredentials.and.returnValue(btoa('Administrator:Administrator'));
+    http.get('/nuxeo/logout', { withCredentials: true }).subscribe();
+    const req = httpMock.expectOne('/nuxeo/logout');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush('');
+  });
+
   it('sends browser credentials for cookie-based sessions', () => {
     http.get('/nuxeo/api/v1/me').subscribe();
     const req = httpMock.expectOne('/nuxeo/api/v1/me');

@@ -2,18 +2,42 @@
  * Profile + auth refresh verification against Web UI permission filtering reference.
  *
  * Run (requires nx serve nuxeo-ui :4200 and Nuxeo :8080):
+ *   $env:NUXEO_VERIFY_USERS="Administrator:Administrator,poweruser01:poweruser01"
  *   node apps/nuxeo-ui/e2e/profile-auth-verification.mjs
+ *
+ * Or single user via:
+ *   $env:NUXEO_TEST_USER="Administrator"; $env:NUXEO_TEST_PASSWORD="Administrator"
  */
 import { chromium } from 'playwright';
 
 const BASE = process.env.AGENTIC_UI_BASE_URL ?? 'http://localhost:4200';
 const NUXEO = process.env.NUXEO_BASE_URL ?? 'http://localhost:8080/nuxeo';
 
-const USERS = [
-  { username: 'Administrator', password: 'Administrator' },
-  { username: 'poweruser01', password: 'poweruser01' },
-  { username: 'user-readonly01', password: 'user-readonly01' },
-];
+function parseUsers() {
+  const list = process.env.NUXEO_VERIFY_USERS;
+  if (list) {
+    return list.split(',').map((entry) => {
+      const [username, password] = entry.trim().split(':');
+      if (!username || !password) {
+        throw new Error(`Invalid NUXEO_VERIFY_USERS entry: ${entry}`);
+      }
+      return { username, password };
+    });
+  }
+
+  const user = process.env.NUXEO_TEST_USER;
+  const pass = process.env.NUXEO_TEST_PASSWORD;
+  if (user && pass) {
+    return [{ username: user, password: pass }];
+  }
+
+  console.error(
+    'Set NUXEO_VERIFY_USERS=user:pass,user:pass or NUXEO_TEST_USER + NUXEO_TEST_PASSWORD before running.',
+  );
+  process.exit(1);
+}
+
+const USERS = parseUsers();
 
 const results = [];
 
