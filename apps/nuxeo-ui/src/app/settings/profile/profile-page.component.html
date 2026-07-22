@@ -82,40 +82,26 @@
       @if (localPermissionsLoading()) {
         <p class="profile-card__text">Loading local permissions…</p>
       } @else {
-        <div class="profile-card__table-wrapper">
-          <table class="profile-card__table">
-            <thead>
-              <tr>
-                <th>On</th>
-                <th>Right</th>
-                <th>Time Frame</th>
-                <th>Granted by</th>
-              </tr>
-            </thead>
-            <tbody>
-              @if (localPermissions().length === 0) {
-                <tr>
-                  <td colspan="4" class="profile-card__table-empty">No local permissions found.</td>
-                </tr>
-              } @else {
-                @for (
-                  permission of localPermissions();
-                  track permission.on +
-                    permission.right +
-                    permission.timeFrame +
-                    permission.grantedBy
-                ) {
-                  <tr>
-                    <td>{{ permission.on }}</td>
-                    <td>{{ permission.right }}</td>
-                    <td>{{ permission.timeFrame }}</td>
-                    <td>{{ permission.grantedBy }}</td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
-        </div>
+        <ng-container
+          *ngTemplateOutlet="
+            permissionTableBody;
+            context: {
+              rows: localPermissions(),
+              emptyMessage: username() + ' does not have permissions.',
+            }
+          "
+        />
+        <ng-container
+          *ngTemplateOutlet="
+            permissionPagination;
+            context: {
+              totalPages: 1,
+              currentPage: 0,
+              prev: noopHandler,
+              next: noopHandler,
+            }
+          "
+        />
       }
     </article>
 
@@ -126,143 +112,109 @@
         (visible)="onGroupPermSectionVisible($event)"
       >
         <div class="profile-card__section-title" role="heading" aria-level="3">
-          {{ g.label }} permissions
+          {{ g.identifier }} permissions
         </div>
 
         @if (isGroupPermLoading(g.identifier)) {
-          <p class="profile-card__text">Loading {{ g.label }} permissions…</p>
+          <p class="profile-card__text">Loading {{ g.identifier }} permissions…</p>
         } @else if (hasGroupPermLoaded(g.identifier)) {
-          <div class="profile-card__table-wrapper">
-            <table class="profile-card__table">
-              <thead>
-                <tr>
-                  <th>On</th>
-                  <th>Right</th>
-                  <th>Time Frame</th>
-                  <th>Granted by</th>
-                </tr>
-              </thead>
-              <tbody>
-                @if (groupPermRows(g.identifier).length === 0) {
-                  <tr>
-                    <td colspan="4" class="profile-card__table-empty">
-                      {{ g.label }} does not have permissions.
-                    </td>
-                  </tr>
-                } @else {
-                  @for (
-                    permission of groupPermRows(g.identifier);
-                    track permission.on +
-                      permission.right +
-                      permission.timeFrame +
-                      permission.grantedBy
-                  ) {
-                    <tr>
-                      <td>{{ permission.on }}</td>
-                      <td>{{ permission.right }}</td>
-                      <td>{{ permission.timeFrame }}</td>
-                      <td>{{ permission.grantedBy }}</td>
-                    </tr>
-                  }
-                }
-              </tbody>
-            </table>
-          </div>
-          @if (groupPermTotalPages(g.identifier) > 1) {
-            <div class="profile-card__pagination">
-              <button
-                mat-icon-button
-                type="button"
-                [disabled]="groupPermCurrentPage(g.identifier) === 0"
-                (click)="groupPermPrev(g.identifier)"
-                aria-label="Previous page"
-              >
-                <mat-icon>chevron_left</mat-icon>
-              </button>
-              <span class="profile-card__pagination-label">
-                {{ groupPermCurrentPage(g.identifier) + 1 }} /
-                {{ groupPermTotalPages(g.identifier) }}
-              </span>
-              <button
-                mat-icon-button
-                type="button"
-                [disabled]="
-                  groupPermCurrentPage(g.identifier) === groupPermTotalPages(g.identifier) - 1
-                "
-                (click)="groupPermNext(g.identifier)"
-                aria-label="Next page"
-              >
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-            </div>
-          }
+          <ng-container
+            *ngTemplateOutlet="
+              permissionTableBody;
+              context: {
+                rows: groupPermRows(g.identifier),
+                emptyMessage: g.identifier + ' does not have permissions.',
+              }
+            "
+          />
+          <ng-container
+            *ngTemplateOutlet="
+              permissionPagination;
+              context: {
+                totalPages: groupPermTotalPages(g.identifier),
+                currentPage: groupPermCurrentPage(g.identifier),
+                prev: groupPermPrevHandler(g.identifier),
+                next: groupPermNextHandler(g.identifier),
+              }
+            "
+          />
         }
       </article>
     }
-
-    <article class="profile-card">
-      <div class="profile-card__section-title" role="heading" aria-level="3">
-        Administrator Permissions
-      </div>
-      @if (adminPermissionsLoading()) {
-        <p class="profile-card__text">Loading administrator permissions…</p>
-      } @else {
-        <div class="profile-card__table-wrapper">
-          <table class="profile-card__table">
-            <thead>
-              <tr>
-                <th>On</th>
-                <th>Right</th>
-                <th>Time Frame</th>
-                <th>Granted by</th>
-              </tr>
-            </thead>
-            <tbody>
-              @if (adminPermissions().length === 0) {
-                <tr>
-                  <td colspan="4" class="profile-card__table-empty">
-                    Administrators do not have any permissions.
-                  </td>
-                </tr>
-              } @else {
-                @for (permission of adminPagedRows(); track permission.on + permission.right) {
-                  <tr>
-                    <td>{{ permission.on }}</td>
-                    <td>{{ permission.right }}</td>
-                    <td>{{ permission.timeFrame }}</td>
-                    <td>{{ permission.grantedBy }}</td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
-        </div>
-        @if (adminTotalPages() > 1) {
-          <div class="profile-card__pagination">
-            <button
-              mat-icon-button
-              type="button"
-              [disabled]="adminPage() === 0"
-              (click)="adminPrev()"
-              aria-label="Previous page"
-            >
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-            <span class="profile-card__pagination-label"
-              >{{ adminPage() + 1 }} / {{ adminTotalPages() }}</span
-            >
-            <button
-              mat-icon-button
-              type="button"
-              [disabled]="adminPage() === adminTotalPages() - 1"
-              (click)="adminNext()"
-              aria-label="Next page"
-            >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </div>
-        }
-      }
-    </article>
   </div>
 </section>
+
+<ng-template #permissionTableBody let-rows="rows" let-emptyMessage="emptyMessage">
+  <div class="profile-perm-table">
+    <div class="profile-perm-table__header">
+      <div class="profile-perm-table__on-col">On</div>
+      <div class="profile-perm-table__detail-cols">
+        <div>Right</div>
+        <div>Time Frame</div>
+        <div>Granted by</div>
+      </div>
+    </div>
+
+    @if (rows.length === 0) {
+      <div class="profile-perm-table__empty">{{ emptyMessage }}</div>
+    } @else {
+      @for (
+        permission of rows;
+        track permission.on + permission.right + permission.timeFrame + permission.grantedBy
+      ) {
+        <div class="profile-perm-table__row">
+          <div class="profile-perm-table__on-col">
+            <div class="profile-perm-table__doc-title">{{ permissionDocTitle(permission.on) }}</div>
+            @if (permissionDocPath(permission.on); as docPath) {
+              <div class="profile-perm-table__doc-path">{{ docPath }}</div>
+            }
+          </div>
+          <div class="profile-perm-table__detail-cols">
+            <div>
+              <span class="profile-perm-table__right-tag">{{ permission.right }}</span>
+            </div>
+            <div>{{ permission.timeFrame }}</div>
+            <div>
+              @if (showGrantedBy(permission.grantedBy)) {
+                <span class="profile-perm-table__granted-by">
+                  <mat-icon aria-hidden="true">groups</mat-icon>
+                  <span>{{ permission.grantedBy }}</span>
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</ng-template>
+
+<ng-template
+  #permissionPagination
+  let-totalPages="totalPages"
+  let-currentPage="currentPage"
+  let-prev="prev"
+  let-next="next"
+>
+  <div class="profile-card__pagination">
+    <button
+      mat-icon-button
+      type="button"
+      [disabled]="currentPage === 0"
+      (click)="prev()"
+      aria-label="Previous page"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <span class="profile-card__pagination-label">{{ currentPage + 1 }} / {{ totalPages }}</span>
+    <button
+      mat-icon-button
+      type="button"
+      [disabled]="currentPage === totalPages - 1"
+      (click)="next()"
+      aria-label="Next page"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+  </div>
+</ng-template>

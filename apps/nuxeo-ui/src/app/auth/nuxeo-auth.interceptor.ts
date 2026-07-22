@@ -20,7 +20,10 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   if (basic) {
     headers = headers.set('Authorization', `Basic ${basic}`);
   }
-  return next(req.clone({ headers, withCredentials: true })).pipe(
+  // Password login still sends same-origin cookies; stale JSESSIONID is cleared in AuthService
+  // before login/hydration. Omit cross-site credentials where the browser honors it.
+  const withCredentials = basic ? false : true;
+  return next(req.clone({ headers, withCredentials })).pipe(
     tap((event) => {
       if (event instanceof HttpResponse && auth.isAuthenticated()) {
         sessionTimeout.recordActivity();

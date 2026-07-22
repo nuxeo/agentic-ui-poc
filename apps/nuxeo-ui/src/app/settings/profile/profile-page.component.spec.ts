@@ -65,9 +65,7 @@ describe('ProfilePageComponent', () => {
   };
 
   let userService: jasmine.SpyObj<Pick<UserService, 'getUser' | 'getGroup'>>;
-  let settingsService: jasmine.SpyObj<
-    Pick<SettingsService, 'getLocalPermissions' | 'getAdminPermissions'>
-  >;
+  let settingsService: jasmine.SpyObj<Pick<SettingsService, 'getLocalPermissions'>>;
   let permService: jasmine.SpyObj<Pick<PrincipalPermissionsService, 'listLocalPermissionRows'>>;
 
   beforeEach(async () => {
@@ -81,12 +79,8 @@ describe('ProfilePageComponent', () => {
       }),
     );
 
-    settingsService = jasmine.createSpyObj('SettingsService', [
-      'getLocalPermissions',
-      'getAdminPermissions',
-    ]);
+    settingsService = jasmine.createSpyObj('SettingsService', ['getLocalPermissions']);
     settingsService.getLocalPermissions.and.returnValue(of([]));
-    settingsService.getAdminPermissions.and.returnValue(of([]));
 
     permService = jasmine.createSpyObj('PrincipalPermissionsService', ['listLocalPermissionRows']);
     permService.listLocalPermissionRows.and.callFake((groupId: string) =>

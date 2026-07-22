@@ -9,8 +9,16 @@ import {
   NuxeoOAuth2Token,
   NuxeoOAuth2TokenList,
 } from '../models/oauth2.model';
+import { NuxeoAcl } from '../models/acl.model';
 import { NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
+
+function matchesPrincipal(aceUsername: string, logicalPrincipal: string): boolean {
+  if (aceUsername === logicalPrincipal) return true;
+  if (aceUsername === `user:${logicalPrincipal}`) return true;
+  if (aceUsername === `group:${logicalPrincipal}`) return true;
+  return aceUsername.replace(/^(user:|group:)/, '') === logicalPrincipal;
+}
 
 export interface LocalPermissionRow {
   on: string;
@@ -31,10 +39,6 @@ export class SettingsService {
 
   getLocalPermissions(username: string, pageSize = 25): Observable<LocalPermissionRow[]> {
     return this.queryPermissions(username, pageSize);
-  }
-
-  getAdminPermissions(pageSize = 25): Observable<LocalPermissionRow[]> {
-    return this.queryPermissions('administrators', pageSize);
   }
 
   private queryPermissions(principal: string, pageSize: number): Observable<LocalPermissionRow[]> {
@@ -65,21 +69,7 @@ export class SettingsService {
           const rows: LocalPermissionRow[] = [];
 
           for (const doc of res.entries ?? []) {
-            const acls = doc.contextParameters?.acls ?? [];
-            for (const acl of acls) {
-              for (const ace of acl.aces ?? []) {
-                if (ace.username !== principal || ace.status !== 'effective' || !ace.granted) {
-                  continue;
-                }
-
-                rows.push({
-                  on: doc.title || doc.path || doc.uid,
-                  right: ace.permission,
-                  timeFrame: this.formatTimeFrame(ace.begin, ace.end),
-                  grantedBy: ace.creator || 'System',
-                });
-              }
-            }
+            rows.push(...this.extractLocalPermissionRows(doc, principal));
           }
 
           return rows;
@@ -154,9 +144,13 @@ export class SettingsService {
   }
 
   private getProviders(): Observable<NuxeoOAuth2ServiceProviderList> {
-    return this.api.get<NuxeoOAuth2ServiceProviderList>('/nuxeo/api/v1/oauth2/provider/', undefined, {
-      properties: '*',
-    });
+    return this.api.get<NuxeoOAuth2ServiceProviderList>(
+      '/nuxeo/api/v1/oauth2/provider/',
+      undefined,
+      {
+        properties: '*',
+      },
+    );
   }
 
   private getProviderTokens(): Observable<NuxeoOAuth2TokenList> {
@@ -191,9 +185,39 @@ export class SettingsService {
     return this.api.put<void>('/nuxeo/api/v1/me/changepassword', { oldPassword, newPassword });
   }
 
+  /** Web UI profile: local ACL rows only (skip inherited ACLs). */
+  private extractLocalPermissionRows(
+    doc: { title?: string; path?: string; uid: string; contextParameters?: { acls?: NuxeoAcl[] } },
+    logicalPrincipal: string,
+  ): LocalPermissionRow[] {
+    const localAcl = (doc.contextParameters?.acls ?? []).find((acl) => acl.name === 'local');
+    if (!localAcl?.aces?.length) {
+      return [];
+    }
+
+    const title = doc.title || doc.uid;
+    const on = doc.path ? `${title} (${doc.path})` : title;
+    const rows: LocalPermissionRow[] = [];
+
+    for (const ace of localAcl.aces) {
+      if (!ace.granted) continue;
+      if (ace.status === 'archived') continue;
+      if (!matchesPrincipal(ace.username, logicalPrincipal)) continue;
+
+      rows.push({
+        on,
+        right: ace.permission,
+        timeFrame: this.formatTimeFrame(ace.begin, ace.end),
+        grantedBy: ace.creator || '—',
+      });
+    }
+
+    return rows;
+  }
+
   private formatTimeFrame(begin: string | null, end: string | null): string {
     if (!begin && !end) {
-      return 'Always';
+      return 'Permanent';
     }
 
     if (begin && end) {

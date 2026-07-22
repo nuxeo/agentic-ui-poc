@@ -33,6 +33,7 @@ describe('AuthService poweruser access', () => {
   it('sets isPowerUser and hasAdministrationAccess after login', () => {
     service.login('poweruser01', 'secret', false).subscribe();
 
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
     const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
     req.flush({
       id: 'poweruser01',
@@ -51,6 +52,7 @@ describe('AuthService poweruser access', () => {
   it('does not grant administration access to regular members', () => {
     service.login('member01', 'secret', false).subscribe();
 
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
     const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
     req.flush({
       id: 'member01',
@@ -87,6 +89,79 @@ describe('AuthService poweruser access', () => {
     expect(restored.hasAdministrationAccess()).toBe(true);
   });
 
+  it('preserves basic-auth username on hydration when /me matches stored user', () => {
+    sessionStorage.setItem(
+      'agentic_ui_nuxeo_session',
+      JSON.stringify({
+        kind: 'basic',
+        username: 'Administrator',
+        basic: btoa('Administrator:Administrator'),
+        isAdministrator: true,
+        groups: ['administrators'],
+      }),
+    );
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [{ provide: NUXEO_API_ORIGIN, useValue: '' }],
+    });
+    const hydrated = TestBed.inject(AuthService);
+    const mock = TestBed.inject(HttpTestingController);
+
+    hydrated.ensureHydrated().subscribe();
+    mock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
+      .flush({
+        id: 'Administrator',
+        properties: {
+          username: 'Administrator',
+          email: 'test.user@gmail.com',
+          groups: ['administrators'],
+        },
+        isAdministrator: true,
+      });
+
+    expect(hydrated.username()).toBe('Administrator');
+    mock.verify();
+  });
+
+  it('preserves basic-auth username on hydration when /me principal differs from stale cookie', () => {
+    sessionStorage.setItem(
+      'agentic_ui_nuxeo_session',
+      JSON.stringify({
+        kind: 'basic',
+        username: 'Administrator',
+        basic: btoa('Administrator:Administrator'),
+        isAdministrator: true,
+        groups: ['administrators'],
+      }),
+    );
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [{ provide: NUXEO_API_ORIGIN, useValue: '' }],
+    });
+    const hydrated = TestBed.inject(AuthService);
+    const mock = TestBed.inject(HttpTestingController);
+
+    hydrated.ensureHydrated().subscribe();
+    mock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
+      .flush({
+        id: 'test.user@gmail.com',
+        properties: { username: 'test.user@gmail.com', groups: ['members'] },
+        isAdministrator: false,
+      });
+
+    expect(hydrated.isAuthenticated()).toBe(true);
+    expect(hydrated.username()).toBe('Administrator');
+    mock.verify();
+  });
+
   it('logout clears browse selection and navigation context', () => {
     const selection = TestBed.inject(SelectionService);
     const browseContext = TestBed.inject(BrowseContextService);
@@ -104,6 +179,7 @@ describe('AuthService poweruser access', () => {
     });
 
     service.login('member01', 'secret', false).subscribe();
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
     httpMock
       .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
       .flush({

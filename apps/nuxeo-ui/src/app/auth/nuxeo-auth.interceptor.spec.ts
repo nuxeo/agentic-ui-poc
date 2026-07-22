@@ -71,6 +71,21 @@ describe('nuxeoAuthInterceptor', () => {
     expect(sessionTimeout.expireDueToServer).not.toHaveBeenCalled();
   });
 
+  it('omits browser credentials for basic-auth requests', () => {
+    auth.basicCredentials.and.returnValue(btoa('Administrator:Administrator'));
+    http.get('/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({ id: 'Administrator' });
+  });
+
+  it('sends browser credentials for cookie-based sessions', () => {
+    http.get('/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush({ id: 'sso-user' });
+  });
+
   it('ignores non-Nuxeo requests', () => {
     http.get('/assets/config.json').subscribe();
     const req = httpMock.expectOne('/assets/config.json');

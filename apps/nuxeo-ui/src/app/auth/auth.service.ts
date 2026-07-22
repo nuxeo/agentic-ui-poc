@@ -1,6 +1,16 @@
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable, Injector, computed, inject, signal } from '@angular/core';
-import { Observable, catchError, defer, map, of, shareReplay, tap, throwError } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  defer,
+  map,
+  of,
+  shareReplay,
+  switchMap,
+  tap,
+  throwError,
+} from 'rxjs';
 
 import {
   BrowseContextService,
@@ -130,6 +140,41 @@ export class AuthService {
     return `${base}${path}`;
   }
 
+  /**
+   * Clears a stale Nuxeo browser session (JSESSIONID) before password login or hydration.
+   * Same-origin `/nuxeo/**` requests always send cookies; an old cookie can override Basic auth.
+   */
+  private clearStaleNuxeoCookieSession(): Observable<void> {
+    return this.http
+      .get(this.apiUrl('/nuxeo/logout'), {
+        withCredentials: true,
+        responseType: 'text',
+      })
+      .pipe(
+        map(() => undefined),
+        catchError(() => of(undefined)),
+      );
+  }
+
+  private applyBasicSessionFromMe(existing: BasicStoredSession, me: unknown): void {
+    const flags = readSessionFlagsFromMe(me);
+    this.state.set({
+      kind: 'basic',
+      username: existing.username,
+      basic: existing.basic,
+      isAdministrator: flags.isAdministrator,
+      groups: flags.groups,
+    });
+    const remember = localStorage.getItem(STORAGE_KEY) !== null;
+    this.persist(this.state()!, remember);
+  }
+
+  private fetchMe(): Observable<unknown> {
+    return this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+      headers: { Accept: 'application/json' },
+    });
+  }
+
   private isExplicitlySignedOut(): boolean {
     return sessionStorage.getItem(SIGNED_OUT_KEY) === '1';
   }
@@ -232,45 +277,45 @@ export class AuthService {
 
     const existing = this.state();
     if (existing) {
-      return this.http
-        .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers: { Accept: 'application/json' } })
-        .pipe(
-          tap((me) => {
-            const user = readUsernameFromMe(me);
-            if (!user) {
-              this.logout();
-              return;
-            }
-            if (existing.kind === 'basic') {
-              const flags = readSessionFlagsFromMe(me);
-              this.state.set({
-                kind: 'basic',
-                username: user,
-                basic: existing.basic,
-                isAdministrator: flags.isAdministrator,
-                groups: flags.groups,
-              });
-              const remember = localStorage.getItem(STORAGE_KEY) !== null;
-              this.persist(this.state()!, remember);
-            } else {
-              const flags = readSessionFlagsFromMe(me);
-              const cookieSession: CookieStoredSession = {
-                kind: 'cookie',
-                username: user,
-                isAdministrator: flags.isAdministrator,
-                groups: flags.groups,
-              };
-              this.state.set(cookieSession);
-              this.persistCookie(cookieSession);
-            }
-          }),
+      if (existing.kind === 'basic') {
+        return this.clearStaleNuxeoCookieSession().pipe(
+          switchMap(() => this.fetchMe()),
+          tap((me) => this.applyBasicSessionFromMe(existing, me)),
           map(() => undefined),
-          catchError(() => {
-            this.state.set(null);
-            this.clearStorage();
-            return this.tryEstablishCookieSessionOnly();
+          catchError((err) => {
+            if (err instanceof HttpErrorResponse && err.status === 401) {
+              this.logout();
+            }
+            return of(undefined);
           }),
         );
+      }
+
+      return this.fetchMe().pipe(
+        tap((me) => {
+          const user = readUsernameFromMe(me);
+          if (!user) {
+            this.state.set(null);
+            this.clearStorage();
+            return;
+          }
+          const flags = readSessionFlagsFromMe(me);
+          const cookieSession: CookieStoredSession = {
+            kind: 'cookie',
+            username: user,
+            isAdministrator: flags.isAdministrator,
+            groups: flags.groups,
+          };
+          this.state.set(cookieSession);
+          this.persistCookie(cookieSession);
+        }),
+        map(() => undefined),
+        catchError(() => {
+          this.state.set(null);
+          this.clearStorage();
+          return this.tryEstablishCookieSessionOnly();
+        }),
+      );
     }
     return this.tryEstablishCookieSessionOnly();
   }
@@ -338,30 +383,34 @@ export class AuthService {
       Accept: 'application/json',
     });
 
-    return this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers }).pipe(
-      tap((me) => {
-        const flags = readSessionFlagsFromMe(me);
-        const session: BasicStoredSession = {
-          kind: 'basic',
-          username: trimmed,
-          basic,
-          isAdministrator: flags.isAdministrator,
-          groups: flags.groups,
-        };
-        this.state.set(session);
-        this.persist(session, remember);
-        this.clearSignedOut();
-        this.hydration$ = of(undefined).pipe(shareReplay(1));
-      }),
-      map(() => undefined),
-      catchError((err) =>
-        throwError(
-          () =>
-            new Error(
-              err?.status === 401 || err?.status === 403
-                ? 'Invalid username or password.'
-                : 'Could not reach Nuxeo. Check the server, proxy, and URL.',
+    return this.clearStaleNuxeoCookieSession().pipe(
+      switchMap(() =>
+        this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers }).pipe(
+          tap((me) => {
+            const flags = readSessionFlagsFromMe(me);
+            const session: BasicStoredSession = {
+              kind: 'basic',
+              username: trimmed,
+              basic,
+              isAdministrator: flags.isAdministrator,
+              groups: flags.groups,
+            };
+            this.state.set(session);
+            this.persist(session, remember);
+            this.clearSignedOut();
+            this.hydration$ = of(undefined).pipe(shareReplay(1));
+          }),
+          map(() => undefined),
+          catchError((err) =>
+            throwError(
+              () =>
+                new Error(
+                  err?.status === 401 || err?.status === 403
+                    ? 'Invalid username or password.'
+                    : 'Could not reach Nuxeo. Check the server, proxy, and URL.',
+                ),
             ),
+          ),
         ),
       ),
     );
@@ -394,45 +443,39 @@ export class AuthService {
     if (!session) {
       return of(undefined);
     }
-    return this.http
-      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers: { Accept: 'application/json' } })
-      .pipe(
-        tap((me) => {
-          const user = readUsernameFromMe(me);
-          if (!user) {
-            this.logout();
-            return;
-          }
-          if (session.kind === 'basic') {
-            const flags = readSessionFlagsFromMe(me);
-            const next: BasicStoredSession = {
-              kind: 'basic',
-              username: user,
-              basic: session.basic,
-              isAdministrator: flags.isAdministrator,
-              groups: flags.groups,
-            };
-            this.state.set(next);
-            this.persistCurrent(next);
-          } else {
-            const flags = readSessionFlagsFromMe(me);
-            const next: CookieStoredSession = {
-              kind: 'cookie',
-              username: user,
-              isAdministrator: flags.isAdministrator,
-              groups: flags.groups,
-            };
-            this.state.set(next);
-            this.persistCookie(next);
-          }
-        }),
+    if (session.kind === 'basic') {
+      return this.clearStaleNuxeoCookieSession().pipe(
+        switchMap(() => this.fetchMe()),
+        tap((me) => this.applyBasicSessionFromMe(session, me)),
         map(() => undefined),
+        catchError((err) => {
+          if (err instanceof HttpErrorResponse && err.status === 401) {
+            this.logout();
+          }
+          return of(undefined);
+        }),
       );
-  }
+    }
 
-  private persistCurrent(session: StoredSession): void {
-    const remember = localStorage.getItem(STORAGE_KEY) !== null;
-    this.persist(session, remember);
+    return this.fetchMe().pipe(
+      tap((me) => {
+        const user = readUsernameFromMe(me);
+        if (!user) {
+          this.logout();
+          return;
+        }
+        const flags = readSessionFlagsFromMe(me);
+        const next: CookieStoredSession = {
+          kind: 'cookie',
+          username: user,
+          isAdministrator: flags.isAdministrator,
+          groups: flags.groups,
+        };
+        this.state.set(next);
+        this.persistCookie(next);
+      }),
+      map(() => undefined),
+    );
   }
 
   /** Value for `Authorization: Basic …` (without the prefix). */
