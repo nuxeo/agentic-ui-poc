@@ -9,13 +9,22 @@ import org.nuxeo.ecm.core.api.impl.DocumentLocationImpl;
 import org.nuxeo.ecm.platform.url.DocumentViewImpl;
 import org.nuxeo.ecm.platform.url.api.DocumentView;
 import org.nuxeo.ecm.platform.url.service.AbstractDocumentViewCodec;
+import org.nuxeo.runtime.api.Framework;
 
 /**
  * Builds document links for permission notification emails that open the Agentic UI.
  *
- * <p>Partial URL format: {@code agentic-ui/#/doc/{uid}} (appended to {@code nuxeo.url}).
+ * <p>Registers as {@code notificationDocId} with priority 2000 so it overrides the Classic Web UI
+ * codec ({@code ui/#!/doc/{uid}}, priority 100).
+ *
+ * <p>When {@code nuxeo.agentic.ui.url} is set (e.g. {@code http://localhost:4200} for {@code ng serve}),
+ * returns {@code #/doc/{uid}} so notification {@code serverPrefix} (from {@code nuxeo.agentic.ui.url}) builds
+ * the full Agentic UI link. Otherwise returns {@code agentic-ui/#/doc/{uid}} under {@code nuxeo.url}.
  */
 public class AgenticNotificationDocumentIdCodec extends AbstractDocumentViewCodec {
+
+    /** Optional full Agentic UI origin for notification links (local dev: {@code http://localhost:4200}). */
+    public static final String AGENTIC_UI_URL_PROPERTY = "nuxeo.agentic.ui.url";
 
     static final String AGENTIC_UI_PATH = "agentic-ui";
 
@@ -31,7 +40,12 @@ public class AgenticNotificationDocumentIdCodec extends AbstractDocumentViewCode
         if (docRef == null) {
             return null;
         }
-        return String.join("/", AGENTIC_UI_PATH, DOC_ROUTE, docRef.toString());
+        String uid = docRef.toString();
+        String overrideBase = Framework.getProperty(AGENTIC_UI_URL_PROPERTY);
+        if (overrideBase != null && !overrideBase.isBlank()) {
+            return DOC_ROUTE + "/" + uid;
+        }
+        return String.join("/", AGENTIC_UI_PATH, DOC_ROUTE, uid);
     }
 
     @Override

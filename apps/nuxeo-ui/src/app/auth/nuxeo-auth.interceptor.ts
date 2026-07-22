@@ -16,9 +16,12 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
   const basic = auth.basicCredentials();
+  const shareToken = auth.shareAuthToken();
   let headers = req.headers;
   if (basic) {
     headers = headers.set('Authorization', `Basic ${basic}`);
+  } else if (shareToken) {
+    headers = headers.set('X-Authentication-Token', shareToken);
   }
   return next(req.clone({ headers, withCredentials: true })).pipe(
     tap((event) => {

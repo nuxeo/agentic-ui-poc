@@ -16,9 +16,11 @@ describe('nuxeoAuthInterceptor', () => {
     auth = jasmine.createSpyObj<AuthService>('AuthService', [
       'isAuthenticated',
       'basicCredentials',
+      'shareAuthToken',
     ]);
     auth.isAuthenticated.and.returnValue(true);
     auth.basicCredentials.and.returnValue(null);
+    auth.shareAuthToken.and.returnValue(null);
 
     sessionTimeout = jasmine.createSpyObj<SessionTimeoutService>('SessionTimeoutService', [
       'recordActivity',
@@ -76,5 +78,13 @@ describe('nuxeoAuthInterceptor', () => {
     const req = httpMock.expectOne('/assets/config.json');
     req.flush({});
     expect(sessionTimeout.recordActivity).not.toHaveBeenCalled();
+  });
+
+  it('sends X-Authentication-Token for external share sessions', () => {
+    auth.shareAuthToken.and.returnValue('share-token-abc');
+    http.get('/nuxeo/api/v1/id/doc-1').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-1');
+    expect(req.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
+    req.flush({ uid: 'doc-1' });
   });
 });

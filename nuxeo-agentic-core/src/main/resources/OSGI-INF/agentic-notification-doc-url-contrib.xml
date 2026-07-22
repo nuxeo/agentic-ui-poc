@@ -5,7 +5,7 @@
     <documentViewCodec name="notificationDocId"
                        enabled="true"
                        prefix="doc"
-                       priority="1100"
+                       priority="2000"
                        class="org.nuxeo.agentic.url.codec.AgenticNotificationDocumentIdCodec" />
   </extension>
 

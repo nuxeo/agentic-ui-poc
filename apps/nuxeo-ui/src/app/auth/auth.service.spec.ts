@@ -118,4 +118,33 @@ describe('AuthService poweruser access', () => {
     expect(browseContext.contextPath()).toBe('/');
     expect(clipboardTarget.target()).toBeNull();
   });
+
+  it('authenticates external share links via token', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    const req = httpMock.expectOne(
+      (r) => r.url.includes('/nuxeo/api/v1/me') && r.url.includes('token=share-token-abc'),
+    );
+    expect(req.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
+    expect(req.request.withCredentials).toBeTrue();
+    req.flush({
+      id: 'transient/guest@example.com',
+      properties: { username: 'transient/guest@example.com', groups: [] },
+      isAdministrator: false,
+    });
+
+    expect(service.isAuthenticated()).toBeTrue();
+    expect(service.username()).toBe('transient/guest@example.com');
+    expect(service.shareAuthToken()).toBe('share-token-abc');
+  });
+
+  it('clears share token when token authentication fails', () => {
+    service.authenticateWithShareToken('bad-token').subscribe();
+
+    const req = httpMock.expectOne((r) => r.url.includes('token=bad-token'));
+    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(service.shareAuthToken()).toBeNull();
+  });
 });
