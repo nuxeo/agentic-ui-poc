@@ -4,6 +4,7 @@ import { catchError, tap, throwError } from 'rxjs';
 
 import { AuthService } from './auth.service';
 import { SessionTimeoutService } from './session-timeout.service';
+import { AUTH_TOKEN_HEADER } from './share-token.util';
 
 /**
  * Sends cookies on `/nuxeo/**` requests (SSO after SAML) and attaches Basic when the user logged in with password.
@@ -20,8 +21,8 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   let headers = req.headers;
   if (basic) {
     headers = headers.set('Authorization', `Basic ${basic}`);
-  } else if (shareToken) {
-    headers = headers.set('X-Authentication-Token', shareToken);
+  } else if (shareToken && !auth.isAuthenticated()) {
+    headers = headers.set(AUTH_TOKEN_HEADER, shareToken);
   }
   return next(req.clone({ headers, withCredentials: true })).pipe(
     tap((event) => {

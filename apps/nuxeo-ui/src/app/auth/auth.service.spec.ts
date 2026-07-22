@@ -122,9 +122,8 @@ describe('AuthService poweruser access', () => {
   it('authenticates external share links via token', () => {
     service.authenticateWithShareToken('share-token-abc').subscribe();
 
-    const req = httpMock.expectOne(
-      (r) => r.url.includes('/nuxeo/api/v1/me') && r.url.includes('token=share-token-abc'),
-    );
+    const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
+    expect(req.request.url).not.toContain('token=');
     expect(req.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
     expect(req.request.withCredentials).toBeTrue();
     req.flush({
@@ -135,13 +134,14 @@ describe('AuthService poweruser access', () => {
 
     expect(service.isAuthenticated()).toBeTrue();
     expect(service.username()).toBe('transient/guest@example.com');
-    expect(service.shareAuthToken()).toBe('share-token-abc');
+    expect(service.shareAuthToken()).toBeNull();
   });
 
   it('clears share token when token authentication fails', () => {
     service.authenticateWithShareToken('bad-token').subscribe();
 
-    const req = httpMock.expectOne((r) => r.url.includes('token=bad-token'));
+    const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
+    expect(req.request.url).not.toContain('token=');
     req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
 
     expect(service.isAuthenticated()).toBeFalse();

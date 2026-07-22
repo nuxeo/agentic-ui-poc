@@ -5,6 +5,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { AuthService } from './auth.service';
 import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';
 import { SessionTimeoutService } from './session-timeout.service';
+import { AUTH_TOKEN_HEADER } from './share-token.util';
 
 describe('nuxeoAuthInterceptor', () => {
   let http: HttpClient;
@@ -81,10 +82,20 @@ describe('nuxeoAuthInterceptor', () => {
   });
 
   it('sends X-Authentication-Token for external share sessions', () => {
+    auth.isAuthenticated.and.returnValue(false);
     auth.shareAuthToken.and.returnValue('share-token-abc');
     http.get('/nuxeo/api/v1/id/doc-1').subscribe();
     const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-1');
-    expect(req.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
+    expect(req.request.headers.get(AUTH_TOKEN_HEADER)).toBe('share-token-abc');
+    req.flush({ uid: 'doc-1' });
+  });
+
+  it('does not send share token header after authentication is established', () => {
+    auth.isAuthenticated.and.returnValue(true);
+    auth.shareAuthToken.and.returnValue('share-token-abc');
+    http.get('/nuxeo/api/v1/id/doc-1').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-1');
+    expect(req.request.headers.has(AUTH_TOKEN_HEADER)).toBeFalse();
     req.flush({ uid: 'doc-1' });
   });
 });

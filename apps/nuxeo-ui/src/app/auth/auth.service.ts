@@ -241,7 +241,7 @@ export class AuthService {
     return this.hydration$;
   }
 
-  /** Token from an external share email link, sent on Nuxeo requests until cookie auth applies. */
+  /** Token from an external share email link, used only during TOKEN_AUTH bootstrap. */
   shareAuthToken(): string | null {
     return this.shareAuthTokenValue;
   }
@@ -356,7 +356,7 @@ export class AuthService {
 
   /**
    * Authenticates a transient external user via the Instant Share token from an email link.
-   * Nuxeo TOKEN_AUTH accepts the token as a query param, header, or cookie.
+   * Sends the token in {@link AUTH_TOKEN_HEADER} only (not the URL) to avoid log/proxy leakage.
    */
   authenticateWithShareToken(token: string): Observable<void> {
     const trimmed = token.trim();
@@ -375,7 +375,7 @@ export class AuthService {
     });
 
     return this.http
-      .get<unknown>(this.apiUrl(`/nuxeo/api/v1/me?token=${encodeURIComponent(trimmed)}`), {
+      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
         headers,
         withCredentials: true,
       })
@@ -395,6 +395,7 @@ export class AuthService {
           };
           this.state.set(session);
           this.persistCookie(session);
+          this.clearShareAuth();
         }),
         map(() => undefined),
         catchError(() => {
