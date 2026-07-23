@@ -161,7 +161,7 @@ export class DocumentViewerComponent {
       if (mime.startsWith('text/')) return 'text';
     }
 
-    if (!this.blobUrl() && !this.previewUrl()) {
+    if (!this.blobUrl() && !this.previewUrl() && this.videoSources().length === 0) {
       if (this.noteContent() !== null) return 'text';
       return 'none';
     }
@@ -282,7 +282,6 @@ export class DocumentViewerComponent {
     const video = this.videoRef()?.nativeElement;
     if (video) {
       video.currentTime = timecode;
-      video.play();
     }
     this.storyboardSeek.emit(timecode);
   }
