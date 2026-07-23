@@ -1979,34 +1979,53 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     if (entries.length === 0) {
       this.fetchMainBlob(doc, generation);
-      this.loadStoryboard(doc);
+      this.loadStoryboard(doc, generation);
       return;
     }
 
-    this.http
-      .get(this.resolveNuxeoBlobRequestUrl(entries[0].dataUrl), { responseType: 'blob' })
+    forkJoin(
+      entries.map((entry) =>
+        this.http
+          .get(this.resolveNuxeoBlobRequestUrl(entry.dataUrl), { responseType: 'blob' })
+          .pipe(
+            map((blob) => ({ entry, blob })),
+            catchError(() => of(null)),
+          ),
+      ),
+    )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (blob) => {
+        next: (results) => {
           if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
-          const rawUrl = URL.createObjectURL(blob);
-          this.videoObjectUrls.push(rawUrl);
-          this.videoSources.set([
-            {
+
+          const sources: VideoSource[] = [];
+          for (const result of results) {
+            if (!result) {
+              continue;
+            }
+            const rawUrl = URL.createObjectURL(result.blob);
+            this.videoObjectUrls.push(rawUrl);
+            sources.push({
               url: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
-              mimeType: entries[0].mimeType,
-              label: entries[0].label,
-            },
-          ]);
-          this.blobLoading.set(false);
-          this.loadStoryboard(doc, generation);
+              mimeType: result.entry.mimeType,
+              label: result.entry.label,
+            });
+          }
+
+          if (sources.length > 0) {
+            this.videoSources.set(sources);
+            this.blobLoading.set(false);
+            this.loadStoryboard(doc, generation);
+            return;
+          }
+
+          this.fetchMainBlob(doc, generation);
         },
         error: () => {
           if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
           this.fetchMainBlob(doc, generation);
         },
       });
-    this.loadStoryboard(doc, generation);
   }
 
   /**
@@ -2202,6 +2221,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private seekVideoForStoryboard(video: HTMLVideoElement, timecode: number): Promise<void> {
+    if (Math.abs(video.currentTime - timecode) < 0.01) {
+      return Promise.resolve();
+    }
+
     return new Promise((resolve) => {
       const onSeeked = (): void => {
         video.removeEventListener('seeked', onSeeked);
