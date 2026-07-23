@@ -189,6 +189,7 @@ export class BrowseComponent {
   private lastSeenClipboardPasteTick = -1;
   /** Clipboard paste results not yet visible in @children (eventual consistency on Cloud). */
   private readonly pendingPasteEntries = new Map<string, NuxeoDocument>();
+  private readonly thumbnailBlobUrls: string[] = [];
   readonly browsePath = signal('/');
   private readonly browsePath$ = new Subject<string>();
 
@@ -500,7 +501,7 @@ export class BrowseComponent {
         this.totalSize.set(totalSize + this.pendingPasteEntries.size);
         this.loading.set(false);
         this.syncClipboardTarget(folder, payload.nuxeoPath);
-        this.loadThumbnails(entries);
+        this.loadThumbnails(this.entries());
         if (folder.uid && folder.uid !== 'virtual-root') {
           this.loadActivity(folder.uid);
         }
@@ -552,6 +553,10 @@ export class BrowseComponent {
 
     this.destroyRef.onDestroy(() => {
       this.clipboardTargetService.clear();
+      for (const url of this.thumbnailBlobUrls) {
+        URL.revokeObjectURL(url);
+      }
+      this.thumbnailBlobUrls.length = 0;
     });
 
     this.tagSearch$
@@ -660,14 +665,24 @@ export class BrowseComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
-    if (reset) this.thumbnailMap.set({});
+    if (reset) {
+      for (const url of this.thumbnailBlobUrls) {
+        URL.revokeObjectURL(url);
+      }
+      this.thumbnailBlobUrls.length = 0;
+      this.thumbnailMap.set({});
+    }
     for (const doc of docs) {
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),

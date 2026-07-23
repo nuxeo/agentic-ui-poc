@@ -266,6 +266,15 @@ export class AppShellComponent implements OnDestroy {
     return readClipboardDocs().length;
   }
 
+  clipboardNavAriaLabel(item: AppNavItem): string | null {
+    if (item.path !== '/clipboard' || this.clipboardCount() <= 0) {
+      return null;
+    }
+    const count = this.clipboardCount();
+    const noun = count === 1 ? 'item' : 'items';
+    return `${item.label}, ${this.clipboardBadgeLabel()} ${noun}`;
+  }
+
   isActive(path: string): boolean {
     const activeDrawer = this.activeDrawerItem();
     if (activeDrawer && this.drawerOpen()) {

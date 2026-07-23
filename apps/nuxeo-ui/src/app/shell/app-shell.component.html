@@ -23,6 +23,7 @@
         [style.--nav-clipboard-count]="
           item.path === '/clipboard' ? clipboardBadgeCssContent() : null
         "
+        [attr.aria-label]="clipboardNavAriaLabel(item)"
       >
         <sat-platform-nav-avatar [item]="item" />
         {{ item.label }}

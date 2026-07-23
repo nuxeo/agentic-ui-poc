@@ -2,8 +2,8 @@
  * NXSAT-183 — Clipboard Move parity test (Web UI vs Satori).
  *
  * Run:
- *   $env:NUXEO_TEST_USER="Administrator"
- *   $env:NUXEO_TEST_PASSWORD="Administrator"
+ *   $env:NUXEO_TEST_USER="<username>"
+ *   $env:NUXEO_TEST_PASSWORD="<password>"
  *   node apps/nuxeo-ui/e2e/clipboard-move-scenarios.mjs
  *
  * Requires: nx serve nuxeo-ui (:4200) and Nuxeo (:8080)

@@ -17,12 +17,6 @@ sat-platform-nav-container.has-selection-topbar {
   height: calc(100% - var(--selection-topbar-height));
 }
 
-.nav-item-avatar-wrap {
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-}
-
 :host ::ng-deep sat-platform-nav-list-item.nav-item--clipboard-badge .sat-platform-nav-icon {
   position: relative;
   overflow: visible;
