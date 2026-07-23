@@ -72,15 +72,15 @@ describe('nuxeoAuthInterceptor', () => {
   });
 
   it('omits browser credentials for basic-auth requests', () => {
-    auth.basicCredentials.and.returnValue(btoa('Administrator:Administrator'));
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
     http.get('/nuxeo/api/v1/me').subscribe();
     const req = httpMock.expectOne('/nuxeo/api/v1/me');
     expect(req.request.withCredentials).toBe(false);
-    req.flush({ id: 'Administrator' });
+    req.flush({ id: 'test-user' });
   });
 
   it('sends browser credentials for basic-auth logout to clear stale cookies', () => {
-    auth.basicCredentials.and.returnValue(btoa('Administrator:Administrator'));
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
     http.get('/nuxeo/logout', { withCredentials: true }).subscribe();
     const req = httpMock.expectOne('/nuxeo/logout');
     expect(req.request.withCredentials).toBe(true);

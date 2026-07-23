@@ -94,8 +94,8 @@ describe('AuthService poweruser access', () => {
       'agentic_ui_nuxeo_session',
       JSON.stringify({
         kind: 'basic',
-        username: 'Administrator',
-        basic: btoa('Administrator:Administrator'),
+        username: 'test-user',
+        basic: btoa('test-user:test-pass'),
         isAdministrator: true,
         groups: ['administrators'],
       }),
@@ -114,16 +114,16 @@ describe('AuthService poweruser access', () => {
     mock
       .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
       .flush({
-        id: 'Administrator',
+        id: 'test-user',
         properties: {
-          username: 'Administrator',
+          username: 'test-user',
           email: 'test.user@gmail.com',
           groups: ['administrators'],
         },
         isAdministrator: true,
       });
 
-    expect(hydrated.username()).toBe('Administrator');
+    expect(hydrated.username()).toBe('test-user');
     mock.verify();
   });
 
@@ -132,8 +132,8 @@ describe('AuthService poweruser access', () => {
       'agentic_ui_nuxeo_session',
       JSON.stringify({
         kind: 'basic',
-        username: 'Administrator',
-        basic: btoa('Administrator:Administrator'),
+        username: 'test-user',
+        basic: btoa('test-user:test-pass'),
         isAdministrator: true,
         groups: ['administrators'],
       }),
@@ -158,7 +158,7 @@ describe('AuthService poweruser access', () => {
       });
 
     expect(hydrated.isAuthenticated()).toBe(true);
-    expect(hydrated.username()).toBe('Administrator');
+    expect(hydrated.username()).toBe('test-user');
     mock.verify();
   });
 

@@ -2,11 +2,11 @@
  * Profile + auth refresh verification against Web UI permission filtering reference.
  *
  * Run (requires nx serve nuxeo-ui :4200 and Nuxeo :8080):
- *   $env:NUXEO_VERIFY_USERS="Administrator:Administrator,poweruser01:poweruser01"
+ *   $env:NUXEO_VERIFY_USERS="<user>:<pass>,<user2>:<pass2>"
  *   node apps/nuxeo-ui/e2e/profile-auth-verification.mjs
  *
  * Or single user via:
- *   $env:NUXEO_TEST_USER="Administrator"; $env:NUXEO_TEST_PASSWORD="Administrator"
+ *   $env:NUXEO_TEST_USER="<username>"; $env:NUXEO_TEST_PASSWORD="<password>"
  */
 import { chromium } from 'playwright';
 

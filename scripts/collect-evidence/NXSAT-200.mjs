@@ -6,7 +6,7 @@
  *   node scripts/collect-evidence/runner.mjs NXSAT-200 scripts/collect-evidence/NXSAT-200.mjs
  *
  * Optional env:
- *   NUXEO_USER=poweruser01 NUXEO_PASS=poweruser01 node scripts/collect-evidence/runner.mjs …
+ *   NUXEO_USER=<username> NUXEO_PASS=<password> node scripts/collect-evidence/runner.mjs …
  */
 
 /** @param {import('@playwright/test').Page} page */

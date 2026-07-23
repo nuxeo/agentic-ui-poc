@@ -145,13 +145,13 @@
 </section>
 
 <ng-template #permissionTableBody let-rows="rows" let-emptyMessage="emptyMessage">
-  <div class="profile-perm-table">
-    <div class="profile-perm-table__header">
-      <div class="profile-perm-table__on-col">On</div>
+  <div class="profile-perm-table" role="table">
+    <div class="profile-perm-table__header" role="row">
+      <div class="profile-perm-table__on-col" role="columnheader">On</div>
       <div class="profile-perm-table__detail-cols">
-        <div>Right</div>
-        <div>Time Frame</div>
-        <div>Granted by</div>
+        <div role="columnheader">Right</div>
+        <div role="columnheader">Time Frame</div>
+        <div role="columnheader">Granted by</div>
       </div>
     </div>
 
@@ -162,19 +162,19 @@
         permission of rows;
         track permission.on + permission.right + permission.timeFrame + permission.grantedBy
       ) {
-        <div class="profile-perm-table__row">
-          <div class="profile-perm-table__on-col">
+        <div class="profile-perm-table__row" role="row">
+          <div class="profile-perm-table__on-col" role="cell">
             <div class="profile-perm-table__doc-title">{{ permissionDocTitle(permission.on) }}</div>
             @if (permissionDocPath(permission.on); as docPath) {
               <div class="profile-perm-table__doc-path">{{ docPath }}</div>
             }
           </div>
           <div class="profile-perm-table__detail-cols">
-            <div>
+            <div role="cell">
               <span class="profile-perm-table__right-tag">{{ permission.right }}</span>
             </div>
-            <div>{{ permission.timeFrame }}</div>
-            <div>
+            <div role="cell">{{ permission.timeFrame }}</div>
+            <div role="cell">
               @if (showGrantedBy(permission.grantedBy)) {
                 <span class="profile-perm-table__granted-by">
                   <mat-icon aria-hidden="true">groups</mat-icon>
