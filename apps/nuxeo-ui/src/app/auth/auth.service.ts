@@ -251,8 +251,7 @@ export class AuthService {
     if (shareToken) {
       stripShareTokenFromBrowserUrl();
       return this.authenticateWithShareToken(shareToken).pipe(
-        switchMap(() => this.runHydration()),
-        catchError(() => this.runHydration()),
+        switchMap(() => (this.isAuthenticated() ? of(undefined) : this.runHydration())),
       );
     }
 

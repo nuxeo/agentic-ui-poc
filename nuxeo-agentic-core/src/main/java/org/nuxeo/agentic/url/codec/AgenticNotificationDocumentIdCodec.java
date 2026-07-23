@@ -54,11 +54,15 @@ public class AgenticNotificationDocumentIdCodec extends AbstractDocumentViewCode
         if (path.startsWith("/")) {
             path = path.substring(1);
         }
-        String expectedPrefix = AGENTIC_UI_PATH + "/" + DOC_ROUTE + "/";
-        if (!path.startsWith(expectedPrefix)) {
+        String uid = null;
+        String agenticPrefix = AGENTIC_UI_PATH + "/" + DOC_ROUTE + "/";
+        if (path.startsWith(agenticPrefix)) {
+            uid = path.substring(agenticPrefix.length());
+        } else if (path.startsWith(DOC_ROUTE + "/")) {
+            uid = path.substring((DOC_ROUTE + "/").length());
+        } else {
             return null;
         }
-        String uid = path.substring(expectedPrefix.length());
         int queryIndex = uid.indexOf('?');
         if (queryIndex >= 0) {
             uid = uid.substring(0, queryIndex);
