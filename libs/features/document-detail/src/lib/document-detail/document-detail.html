@@ -1685,12 +1685,10 @@
               </label>
             }
 
-            <div class="prop-section-divider"></div>
+            @if (hasCollections()) {
+              <div class="prop-section-divider"></div>
 
-            <div class="section-title" role="heading" aria-level="4">Collections</div>
-            @if (collections().length === 0) {
-              <p class="section-empty">No collections</p>
-            } @else {
+              <div class="section-title" role="heading" aria-level="4">Collections</div>
               @for (col of collections(); track col.uid) {
                 <sat-category-tag category="blue">
                   <mat-icon>bookmark</mat-icon>

@@ -490,4 +490,74 @@ describe('DocumentDetailComponent', () => {
       });
     });
   });
+
+  describe('properties panel collections (NXSAT-191)', () => {
+    it('excludes Favorites from collections shown in the Properties panel', () => {
+      component.doc.set({
+        ...STUB_DOC,
+        contextParameters: {
+          collections: [
+            {
+              uid: 'fav-1',
+              title: 'My Favorites',
+              path: '/default-domain/UserWorkspaces/user5/Favorites',
+              type: 'Favorites',
+            },
+            {
+              uid: 'col-1',
+              title: 'Project Alpha',
+              path: '/default-domain/UserWorkspaces/user5/Collections/project-alpha',
+              type: 'Collection',
+            },
+          ],
+        },
+      });
+
+      expect(component.collections()).toEqual([
+        {
+          uid: 'col-1',
+          title: 'Project Alpha',
+          path: '/default-domain/UserWorkspaces/user5/Collections/project-alpha',
+          type: 'Collection',
+        },
+      ]);
+    });
+
+    it('returns empty when only Favorites membership exists', () => {
+      component.doc.set({
+        ...STUB_DOC,
+        contextParameters: {
+          collections: [
+            {
+              uid: 'fav-1',
+              title: 'My Favorites',
+              path: '/default-domain/UserWorkspaces/user5/Favorites',
+              type: 'Favorites',
+            },
+          ],
+        },
+      });
+
+      expect(component.collections()).toEqual([]);
+      expect(component.hasCollections()).toBe(false);
+    });
+
+    it('hasCollections is true only when a user collection remains after filtering', () => {
+      component.doc.set({
+        ...STUB_DOC,
+        contextParameters: {
+          collections: [
+            {
+              uid: 'col-1',
+              title: 'Project Alpha',
+              path: '/default-domain/UserWorkspaces/user5/Collections/project-alpha',
+              type: 'Collection',
+            },
+          ],
+        },
+      });
+
+      expect(component.hasCollections()).toBe(true);
+    });
+  });
 });
