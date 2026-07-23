@@ -2226,11 +2226,22 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     return new Promise((resolve) => {
-      const onSeeked = (): void => {
+      let settled = false;
+      const finish = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
         video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('error', onError);
         resolve();
       };
+      const onSeeked = (): void => finish();
+      const onError = (): void => finish();
+      const timeoutId = setTimeout(finish, 5000);
       video.addEventListener('seeked', onSeeked);
+      video.addEventListener('error', onError);
       video.currentTime = timecode;
     });
   }
