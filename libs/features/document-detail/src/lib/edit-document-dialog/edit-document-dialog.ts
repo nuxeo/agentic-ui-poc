@@ -431,11 +431,6 @@ export class EditDocumentDialogComponent implements OnInit {
       });
   }
 
-  natureDisplayLabel(): string {
-    if (!this.nature) return '';
-    return this.naturePillLabel(this.nature);
-  }
-
   naturePillLabel(id: string): string {
     const entry = this.natureEntries().find((item) => item.id === id);
     return entry ? directoryPickerLabel(entry) : id;
@@ -487,10 +482,6 @@ export class EditDocumentDialogComponent implements OnInit {
       .subscribe({
         next: (entries) => target.set(entries),
       });
-  }
-
-  coverageDisplayLabel(): string {
-    return formatHierarchicalL10nLabel(this.coverage, this.coverageEntries());
   }
 
   isExpiresValid(): boolean {

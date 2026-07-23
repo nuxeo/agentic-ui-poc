@@ -419,11 +419,6 @@ export class EditMetadataDialogComponent {
       });
   }
 
-  natureDisplayLabel(): string {
-    if (!this.nature) return '';
-    return this.naturePillLabel(this.nature);
-  }
-
   naturePillLabel(id: string): string {
     const entry = this.natureOptions().find((item) => item.id === id);
     return entry ? directoryPickerLabel(entry) : id;
@@ -475,10 +470,6 @@ export class EditMetadataDialogComponent {
       .subscribe({
         next: (entries) => target.set(entries),
       });
-  }
-
-  coverageDisplayLabel(): string {
-    return formatHierarchicalL10nLabel(this.coverage, this.coverageOptions());
   }
 
   isExpiresValid(): boolean {
