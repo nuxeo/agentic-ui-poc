@@ -13,9 +13,9 @@ export function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow): 
 
 /** Maps a principal permission row to the profile/settings table shape. */
 export function principalPermissionToLocalRow(row: PrincipalPermissionRow): LocalPermissionRow {
-  const pathSuffix = row.documentPath ? ` (${row.documentPath})` : '';
   return {
-    on: `${row.documentTitle}${pathSuffix}`,
+    documentTitle: row.documentTitle,
+    documentPath: row.documentPath,
     right: row.permission,
     timeFrame: principalPermissionTimeFrameLabel(row),
     grantedBy: row.grantedBy ?? '—',

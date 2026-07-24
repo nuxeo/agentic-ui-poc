@@ -15,7 +15,8 @@ import { NuxeoApiBase } from './nuxeo-api-base';
 import { matchesPrincipal } from '../utils/principal-match.utils';
 
 export interface LocalPermissionRow {
-  on: string;
+  documentTitle: string;
+  documentPath: string | null;
   right: string;
   timeFrame: string;
   grantedBy: string;
@@ -192,7 +193,7 @@ export class SettingsService {
     }
 
     const title = doc.title || doc.uid;
-    const on = doc.path ? `${title} (${doc.path})` : title;
+    const documentPath = doc.path?.trim() || null;
     const rows: LocalPermissionRow[] = [];
 
     for (const ace of localAcl.aces) {
@@ -201,7 +202,8 @@ export class SettingsService {
       if (!matchesPrincipal(ace.username, logicalPrincipal)) continue;
 
       rows.push({
-        on,
+        documentTitle: title,
+        documentPath,
         right: ace.permission,
         timeFrame: this.formatTimeFrame(ace.begin, ace.end),
         grantedBy: ace.creator || '—',

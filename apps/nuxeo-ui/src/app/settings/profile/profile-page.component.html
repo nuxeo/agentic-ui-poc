@@ -158,12 +158,16 @@
     } @else {
       @for (
         permission of rows;
-        track permission.on + permission.right + permission.timeFrame + permission.grantedBy
+        track permission.documentTitle +
+          permission.documentPath +
+          permission.right +
+          permission.timeFrame +
+          permission.grantedBy
       ) {
         <div class="profile-perm-table__row" role="row">
           <div role="cell">
-            <div class="profile-perm-table__doc-title">{{ permissionDocTitle(permission.on) }}</div>
-            @if (permissionDocPath(permission.on); as docPath) {
+            <div class="profile-perm-table__doc-title">{{ permission.documentTitle }}</div>
+            @if (permission.documentPath; as docPath) {
               <div class="profile-perm-table__doc-path">{{ docPath }}</div>
             }
           </div>

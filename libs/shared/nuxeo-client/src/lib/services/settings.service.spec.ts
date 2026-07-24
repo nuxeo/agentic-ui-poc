@@ -77,7 +77,8 @@ describe('SettingsService', () => {
     const rows = await rows$;
     expect(rows).toEqual([
       {
-        on: 'Workspace (/default-domain/workspaces)',
+        documentTitle: 'Workspace',
+        documentPath: '/default-domain/workspaces',
         right: 'Everything',
         timeFrame: 'Permanent',
         grantedBy: 'Administrator',
@@ -121,7 +122,8 @@ describe('SettingsService', () => {
     const rows = await rows$;
     expect(rows).toEqual([
       {
-        on: 'Sections (/default-domain/sections)',
+        documentTitle: 'Sections',
+        documentPath: '/default-domain/sections',
         right: 'Read',
         timeFrame: 'Permanent',
         grantedBy: '—',

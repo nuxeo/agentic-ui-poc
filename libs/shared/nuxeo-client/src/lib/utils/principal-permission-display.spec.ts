@@ -32,7 +32,8 @@ describe('principal-permission-display', () => {
         acePrincipal: 'group:members',
       }),
     ).toEqual({
-      on: 'Sections (/default-domain/sections)',
+      documentTitle: 'Sections',
+      documentPath: '/default-domain/sections',
       right: 'CanAskForPublishing',
       timeFrame: 'Permanent',
       grantedBy: '—',
