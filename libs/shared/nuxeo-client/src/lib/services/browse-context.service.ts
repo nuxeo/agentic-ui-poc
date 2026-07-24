@@ -25,7 +25,7 @@ export class BrowseContextService {
   readonly contextPath = signal('/');
   /** Incremented when the browse nav tree should reload (e.g. after domain creation). */
   readonly treeRefreshTick = signal(0);
-  /** Incremented when the browse main view should reload folder children (e.g. clipboard paste). */
+  /** Incremented when the browse main view should reload folder children (e.g. after domain creation). */
   readonly contentRefreshTick = signal(0);
   /** Incremented when clipboard copy/move completes so browse can merge API results immediately. */
   readonly clipboardPasteTick = signal(0);
@@ -37,7 +37,7 @@ export class BrowseContextService {
     this.treeRefreshTick.update((tick) => tick + 1);
   }
 
-  /** Ask the browse page to reload the current folder listing (e.g. after clipboard copy/move). */
+  /** Ask the browse page to reload the current folder listing (e.g. after domain creation). */
   requestContentRefresh(): void {
     this.contentRefreshTick.update((tick) => tick + 1);
   }

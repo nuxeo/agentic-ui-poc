@@ -661,7 +661,6 @@ export class BrowseComponent {
       const additions = pending.filter((doc) => doc.uid && !currentUids.has(doc.uid));
       return additions.length > 0 ? [...current, ...additions] : current;
     });
-    this.loadThumbnails(pending, false);
   }
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {

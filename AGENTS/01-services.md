@@ -104,7 +104,7 @@ setFromRouterUrl(routerUrl: string): void
 setFromDocument(doc: NuxeoDocument): void  // folderish → doc.path; leaf → parent folder
 setFromNuxeoPath(nuxeoPath: string): void
 requestTreeRefresh(): void  // invalidate/reload browse nav drawer tree (e.g. after domain creation)
-requestContentRefresh(): void  // reload browse main view children (e.g. after clipboard copy/move)
+requestContentRefresh(): void  // reload browse main view children (e.g. after domain creation)
 notifyClipboardPasteComplete(event: ClipboardPasteEvent): void  // optimistic listing merge + reload
 consumeClipboardPasteEvent(): ClipboardPasteEvent | null
 resetContext(): void  // restore repository root path (e.g. on sign-out)

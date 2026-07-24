@@ -452,7 +452,6 @@ export class AppShellComponent implements OnDestroy {
     const updated = [...current, ...additions];
     writeClipboardDocs(updated);
     window.dispatchEvent(new Event('clipboard-changed'));
-    this.refreshClipboardCount();
 
     this.snackBar.open(
       additions.length > 0
