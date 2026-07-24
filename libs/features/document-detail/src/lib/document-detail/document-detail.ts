@@ -1668,7 +1668,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (transcodedVideos && transcodedVideos.length > 0) {
       this.loadVideoSources(doc, transcodedVideos, generation);
       this.extractVideoInfo(doc);
-      this.scheduleMetadataRefreshIfNeeded(doc);
       return;
     }
 
@@ -1676,7 +1675,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!fc) {
       if (doc.type === 'Picture') {
         this.fetchMainBlob(doc, generation);
-        this.scheduleMetadataRefreshIfNeeded(doc);
         return;
       }
       const noPreviewTypes = [
@@ -1699,7 +1697,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     if (doc.type === 'Picture' || (picViews?.length && !mime)) {
       this.fetchMainBlob(doc, generation);
-      this.scheduleMetadataRefreshIfNeeded(doc);
       return;
     }
 
@@ -1707,7 +1704,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.fetchMainBlob(doc, generation);
       this.loadStoryboard(doc);
       this.extractVideoInfo(doc);
-      this.scheduleMetadataRefreshIfNeeded(doc);
       return;
     }
 
@@ -1966,6 +1962,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     transcodedVideos: Array<Record<string, unknown>>,
     generation: number,
   ): void {
+    const entries = this.collectTranscodedVideoEntries(transcodedVideos);
+    if (entries.length === 0) {
+      this.fetchMainBlob(doc, generation);
+      this.loadStoryboard(doc, generation);
+      return;
+    }
+
+    this.fetchPreferredVideoSource(doc, entries, generation, 0);
+  }
+
+  private collectTranscodedVideoEntries(
+    transcodedVideos: Array<Record<string, unknown>>,
+  ): Array<{ dataUrl: string; mimeType: string; label: string }> {
     const entries: Array<{ dataUrl: string; mimeType: string; label: string }> = [];
     for (const tv of transcodedVideos) {
       const content = tv['content'] as Record<string, unknown> | undefined;
@@ -1977,54 +1986,53 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (entries.length === 0) {
+    return entries.sort((left, right) => {
+      const leftScore = left.mimeType.includes('mp4') ? 0 : 1;
+      const rightScore = right.mimeType.includes('mp4') ? 0 : 1;
+      return leftScore - rightScore;
+    });
+  }
+
+  private fetchPreferredVideoSource(
+    doc: NuxeoDocument,
+    entries: Array<{ dataUrl: string; mimeType: string; label: string }>,
+    generation: number,
+    index: number,
+  ): void {
+    if (index >= entries.length) {
       this.fetchMainBlob(doc, generation);
       this.loadStoryboard(doc, generation);
       return;
     }
 
-    forkJoin(
-      entries.map((entry) =>
-        this.http
-          .get(this.resolveNuxeoBlobRequestUrl(entry.dataUrl), { responseType: 'blob' })
-          .pipe(
-            map((blob) => ({ entry, blob })),
-            catchError(() => of(null)),
-          ),
-      ),
-    )
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (results) => {
-          if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
+    const entry = entries[index];
+    this.http
+      .get(this.resolveNuxeoBlobRequestUrl(entry.dataUrl), { responseType: 'blob' })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError(() => of(null)),
+      )
+      .subscribe((blob) => {
+        if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
+          return;
+        }
 
-          const sources: VideoSource[] = [];
-          for (const result of results) {
-            if (!result) {
-              continue;
-            }
-            const rawUrl = URL.createObjectURL(result.blob);
-            this.videoObjectUrls.push(rawUrl);
-            sources.push({
-              url: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
-              mimeType: result.entry.mimeType,
-              label: result.entry.label,
-            });
-          }
+        if (!blob) {
+          this.fetchPreferredVideoSource(doc, entries, generation, index + 1);
+          return;
+        }
 
-          if (sources.length > 0) {
-            this.videoSources.set(sources);
-            this.blobLoading.set(false);
-            this.loadStoryboard(doc, generation);
-            return;
-          }
-
-          this.fetchMainBlob(doc, generation);
-        },
-        error: () => {
-          if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) return;
-          this.fetchMainBlob(doc, generation);
-        },
+        const rawUrl = URL.createObjectURL(blob);
+        this.videoObjectUrls.push(rawUrl);
+        this.videoSources.set([
+          {
+            url: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+            mimeType: entry.mimeType,
+            label: entry.label,
+          },
+        ]);
+        this.blobLoading.set(false);
+        this.loadStoryboard(doc, generation);
       });
   }
 
