@@ -54,6 +54,7 @@ describe('AuthService poweruser access', () => {
 
     httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
     const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
+    expect(req.request.withCredentials).toBeFalse();
     req.flush({
       id: 'member01',
       properties: {

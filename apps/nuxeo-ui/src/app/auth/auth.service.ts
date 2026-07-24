@@ -462,33 +462,35 @@ export class AuthService {
 
     return this.clearStaleNuxeoCookieSession().pipe(
       switchMap(() =>
-        this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers }).pipe(
-          tap((me) => {
-            const flags = readSessionFlagsFromMe(me);
-            const session: BasicStoredSession = {
-              kind: 'basic',
-              username: trimmed,
-              basic,
-              isAdministrator: flags.isAdministrator,
-              groups: flags.groups,
-            };
-            this.state.set(session);
-            this.persist(session, remember);
-            this.clearSignedOut();
-            this.hydration$ = of(undefined).pipe(shareReplay(1));
-          }),
-          map(() => undefined),
-          catchError((err) =>
-            throwError(
-              () =>
-                new Error(
-                  err?.status === 401 || err?.status === 403
-                    ? 'Invalid username or password.'
-                    : 'Could not reach Nuxeo. Check the server, proxy, and URL.',
-                ),
+        this.http
+          .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), { headers, withCredentials: false })
+          .pipe(
+            tap((me) => {
+              const flags = readSessionFlagsFromMe(me);
+              const session: BasicStoredSession = {
+                kind: 'basic',
+                username: trimmed,
+                basic,
+                isAdministrator: flags.isAdministrator,
+                groups: flags.groups,
+              };
+              this.state.set(session);
+              this.persist(session, remember);
+              this.clearSignedOut();
+              this.hydration$ = of(undefined).pipe(shareReplay(1));
+            }),
+            map(() => undefined),
+            catchError((err) =>
+              throwError(
+                () =>
+                  new Error(
+                    err?.status === 401 || err?.status === 403
+                      ? 'Invalid username or password.'
+                      : 'Could not reach Nuxeo. Check the server, proxy, and URL.',
+                  ),
+              ),
             ),
           ),
-        ),
       ),
     );
   }
