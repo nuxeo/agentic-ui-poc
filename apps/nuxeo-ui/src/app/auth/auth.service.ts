@@ -175,6 +175,10 @@ export class AuthService {
     });
   }
 
+  private isInvalidBasicAuthResponse(err: unknown): boolean {
+    return err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403);
+  }
+
   private isExplicitlySignedOut(): boolean {
     return sessionStorage.getItem(SIGNED_OUT_KEY) === '1';
   }
@@ -283,7 +287,7 @@ export class AuthService {
           tap((me) => this.applyBasicSessionFromMe(existing, me)),
           map(() => undefined),
           catchError((err) => {
-            if (err instanceof HttpErrorResponse && err.status === 401) {
+            if (this.isInvalidBasicAuthResponse(err)) {
               this.logout();
             }
             return of(undefined);
@@ -449,7 +453,7 @@ export class AuthService {
         tap((me) => this.applyBasicSessionFromMe(session, me)),
         map(() => undefined),
         catchError((err) => {
-          if (err instanceof HttpErrorResponse && err.status === 401) {
+          if (this.isInvalidBasicAuthResponse(err)) {
             this.logout();
           }
           return of(undefined);

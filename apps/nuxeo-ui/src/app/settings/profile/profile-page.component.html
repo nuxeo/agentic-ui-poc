@@ -154,7 +154,9 @@
     </div>
 
     @if (rows.length === 0) {
-      <div class="profile-perm-table__empty">{{ emptyMessage }}</div>
+      <div class="profile-perm-table__row" role="row">
+        <div class="profile-perm-table__empty" role="cell">{{ emptyMessage }}</div>
+      </div>
     } @else {
       @for (
         permission of rows;
