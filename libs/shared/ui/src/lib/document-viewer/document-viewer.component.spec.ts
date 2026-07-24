@@ -1,12 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
-import { vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentViewerComponent, type VideoSource } from './document-viewer.component';
+
 describe('DocumentViewerComponent', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let component: DocumentViewerComponent;
 
   beforeEach(async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve());
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
+
     await TestBed.configureTestingModule({
       imports: [DocumentViewerComponent],
       providers: [provideExperimentalZonelessChangeDetection()],
@@ -15,6 +20,16 @@ describe('DocumentViewerComponent', () => {
     fixture = TestBed.createComponent(DocumentViewerComponent);
     component = fixture.componentInstance;
   });
+
+  afterEach(() => {
+    fixture.destroy();
+    vi.restoreAllMocks();
+  });
+
+  /** Zoneless signal inputs update synchronously; avoid whenStable (can hang on video elements in jsdom). */
+  function render(): void {
+    fixture.detectChanges();
+  }
 
   it('uses video mode when transcoded sources exist without a blob URL (NXSAT-175)', async () => {
     const sources: VideoSource[] = [
@@ -29,7 +44,7 @@ describe('DocumentViewerComponent', () => {
     fixture.componentRef.setInput('blobUrl', null);
     fixture.componentRef.setInput('previewUrl', null);
     fixture.componentRef.setInput('videoSources', sources);
-    await fixture.whenStable();
+    render();
 
     expect(component.contentType()).toBe('video');
     expect(component.showVideoInfoCard()).toBe(false);
@@ -39,7 +54,7 @@ describe('DocumentViewerComponent', () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
     fixture.componentRef.setInput('videoInfo', { duration: 12, width: 1920, height: 1080 });
-    await fixture.whenStable();
+    render();
 
     expect(component.contentType()).toBe('video');
     expect(component.showVideoInfoCard()).toBe(true);
@@ -50,7 +65,7 @@ describe('DocumentViewerComponent', () => {
     fixture.componentRef.setInput('blobUrl', null);
     fixture.componentRef.setInput('previewUrl', null);
     fixture.componentRef.setInput('videoSources', []);
-    await fixture.whenStable();
+    render();
 
     expect(component.contentType()).toBe('none');
   });
@@ -69,7 +84,7 @@ describe('DocumentViewerComponent', () => {
         label: '2s',
       },
     ]);
-    await fixture.whenStable();
+    render();
 
     expect(component.showVideoStoryboard()).toBe(true);
   });
@@ -78,10 +93,10 @@ describe('DocumentViewerComponent', () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
     fixture.componentRef.setInput('loading', false);
-    await fixture.whenStable();
-    fixture.detectChanges();
+    render();
 
     const videoEl = fixture.nativeElement.querySelector('video') as HTMLVideoElement;
+    expect(videoEl).toBeTruthy();
     const playSpy = vi.spyOn(videoEl, 'play').mockImplementation(() => Promise.resolve());
 
     component.seekTo(42.5);
