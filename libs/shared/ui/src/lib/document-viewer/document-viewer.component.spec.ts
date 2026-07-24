@@ -37,10 +37,7 @@ describe('DocumentViewerComponent', () => {
 
   it('shows the video info card when metadata is present', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
-    fixture.componentRef.setInput(
-      'blobUrl',
-      'blob:mock-video' as DocumentViewerComponent['blobUrl'],
-    );
+    fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
     fixture.componentRef.setInput('videoInfo', { duration: 12, width: 1920, height: 1080 });
     await fixture.whenStable();
 
@@ -79,10 +76,7 @@ describe('DocumentViewerComponent', () => {
 
   it('seeks without auto-playing (Web UI parity)', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
-    fixture.componentRef.setInput(
-      'blobUrl',
-      'blob:mock-video' as DocumentViewerComponent['blobUrl'],
-    );
+    fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
     fixture.componentRef.setInput('loading', false);
     await fixture.whenStable();
     fixture.detectChanges();
