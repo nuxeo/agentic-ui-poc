@@ -62,6 +62,17 @@ export default async function collectEvidence(page, helpers, _outDir) {
     helpers.step('⚠️  More actions button not found — skipping fix6 screenshot');
   }
 
+  // ── Video storyboard (Fix 2b) ─────────────────────────────────────────────
+  helpers.step('Fix 2b: Video storyboard thumbnails below player');
+  const storyboard = page.locator('.viewer-storyboard');
+  if (await storyboard.isVisible({ timeout: 4000 }).catch(() => false)) {
+    await storyboard.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(400);
+    await helpers.screenshot('fix2b-video-storyboard', storyboard);
+  } else {
+    await helpers.screenshot('fix2b-video-storyboard-missing');
+  }
+
   // ── Properties panel — State field (Fix 1) ───────────────────────────────
   helpers.step('Fix 1: Properties panel — State row shows lifecycle state, not dc:nature');
   const propertiesPanel = page.locator('aside, .properties-panel, .detail-sidebar').first();

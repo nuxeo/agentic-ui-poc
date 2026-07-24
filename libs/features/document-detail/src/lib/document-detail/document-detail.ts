@@ -121,6 +121,7 @@ import {
   of,
   Subject,
   switchMap,
+  throwError,
   timer,
 } from 'rxjs';
 import {
@@ -287,7 +288,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly loading = signal(true);
   readonly blobLoading = signal(false);
   readonly viewerLoading = computed(
-    () => this.loading() || (this.blobLoading() && !this.blobUrl()),
+    () =>
+      this.loading() || (this.blobLoading() && !this.blobUrl() && this.videoSources().length === 0),
   );
   readonly error = signal<string | null>(null);
   readonly blobUrl = signal<SafeResourceUrl | null>(null);
@@ -312,6 +314,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly panelSubTab = signal<'properties' | 'comments' | 'activity'>('properties');
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
+  private storyboardObjectUrls: string[] = [];
   private docUid = '';
   private metadataRefreshAttempt = 0;
   private blobLoadGeneration = 0;
@@ -1424,6 +1427,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     for (const url of this.videoObjectUrls) {
       URL.revokeObjectURL(url);
     }
+    this.revokeStoryboardObjectUrls();
   }
 
   private maybeBackfillContentLakeMarker(doc: NuxeoDocument): void {
@@ -1671,7 +1675,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!fc) {
       if (doc.type === 'Picture') {
         this.fetchMainBlob(doc, generation);
-        this.scheduleMetadataRefreshIfNeeded(doc);
         return;
       }
       const noPreviewTypes = [
@@ -1694,7 +1697,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     if (doc.type === 'Picture' || (picViews?.length && !mime)) {
       this.fetchMainBlob(doc, generation);
-      this.scheduleMetadataRefreshIfNeeded(doc);
       return;
     }
 
@@ -1864,16 +1866,77 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (picViews?.length) {
       this.extractPictureMetadata(doc, picViews);
     }
-    if (!this.blobUrl()) {
+    this.extractVideoInfo(doc);
+    const transcodedVideos = doc.properties['vid:transcodedVideos'] as
+      | Array<Record<string, unknown>>
+      | undefined;
+    if (transcodedVideos?.length && this.videoSources().length === 0 && !this.blobUrl()) {
+      this.loadVideoSources(doc, transcodedVideos, this.blobLoadGeneration);
+    }
+    if (this.storyboard().length === 0) {
+      this.loadStoryboard(doc);
+    }
+    if (!this.blobUrl() && this.videoSources().length === 0) {
       this.fetchMainBlob(doc, this.blobLoadGeneration);
     }
   }
 
   private documentMetadataIncomplete(doc: NuxeoDocument): boolean {
-    if (doc.type !== 'Picture') {
+    if (doc.type === 'Picture') {
+      return this.pictureMetadataIncomplete(doc);
+    }
+    if (doc.type === 'Video') {
+      return this.videoDocumentMetadataIncomplete(doc);
+    }
+    if (this.hasVideoContent(doc)) {
+      return this.videoInfoIncomplete(doc);
+    }
+    return false;
+  }
+
+  private hasVideoContent(doc: NuxeoDocument): boolean {
+    if (doc.type === 'Video') {
+      return true;
+    }
+    const fc = doc.properties['file:content'] as Record<string, unknown> | null;
+    return this.resolveMainContentMime(fc, doc).startsWith('video/');
+  }
+
+  private videoDocumentMetadataIncomplete(doc: NuxeoDocument): boolean {
+    return this.videoInfoIncomplete(doc) || this.storyboardIncomplete(doc);
+  }
+
+  private videoInfoIncomplete(doc: NuxeoDocument): boolean {
+    if (this.videoInfo()) {
       return false;
     }
 
+    const raw = doc.properties['vid:info'] as Record<string, unknown> | undefined;
+    if (!raw) {
+      // File attachments with video MIME never receive vid:info from Nuxeo.
+      return doc.type === 'Video';
+    }
+
+    return !Object.values(raw).some(
+      (value) => value !== null && value !== undefined && String(value).trim() !== '',
+    );
+  }
+
+  private storyboardIncomplete(doc: NuxeoDocument): boolean {
+    if (this.storyboard().length > 0) {
+      return false;
+    }
+
+    // File documents with a video attachment do not get server-side storyboards.
+    if (doc.type !== 'Video') {
+      return false;
+    }
+
+    const sb = doc.properties['vid:storyboard'] as Array<Record<string, unknown>> | undefined;
+    return !sb || sb.length === 0;
+  }
+
+  private pictureMetadataIncomplete(doc: NuxeoDocument): boolean {
     const info = doc.properties['picture:info'] as Record<string, unknown> | undefined;
     const views = doc.properties['picture:views'] as Array<Record<string, unknown>> | undefined;
     if (!info || !views?.length) {
@@ -1900,42 +1963,340 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     transcodedVideos: Array<Record<string, unknown>>,
     generation: number,
   ): void {
-    const sources: VideoSource[] = [];
+    const entries = this.collectTranscodedVideoEntries(transcodedVideos);
+    if (entries.length === 0) {
+      this.fetchMainBlob(doc, generation);
+      this.loadStoryboard(doc, generation);
+      return;
+    }
+
+    this.fetchPreferredVideoSource(doc, entries, generation, 0);
+  }
+
+  private collectTranscodedVideoEntries(
+    transcodedVideos: Array<Record<string, unknown>>,
+  ): Array<{ dataUrl: string; mimeType: string; label: string }> {
+    const entries: Array<{ dataUrl: string; mimeType: string; label: string }> = [];
     for (const tv of transcodedVideos) {
       const content = tv['content'] as Record<string, unknown> | undefined;
       const dataUrl = (content?.['data'] as string) ?? '';
       const tvMime = (content?.['mime-type'] as string) ?? 'video/mp4';
       const label = (tv['name'] as string) ?? '';
       if (dataUrl && tvMime.startsWith('video/')) {
-        sources.push({
-          url: this.sanitizer.bypassSecurityTrustResourceUrl(dataUrl),
-          mimeType: tvMime,
-          label,
-        });
+        entries.push({ dataUrl, mimeType: tvMime, label });
       }
     }
-    if (sources.length > 0) {
-      this.videoSources.set(sources);
-      this.blobLoading.set(false);
-    } else {
-      this.fetchMainBlob(doc, generation);
-    }
-    this.loadStoryboard(doc);
+
+    return entries.sort((left, right) => {
+      const leftScore = left.mimeType.includes('mp4') ? 0 : 1;
+      const rightScore = right.mimeType.includes('mp4') ? 0 : 1;
+      return leftScore - rightScore;
+    });
   }
 
-  private loadStoryboard(doc: NuxeoDocument): void {
+  private fetchPreferredVideoSource(
+    doc: NuxeoDocument,
+    entries: Array<{ dataUrl: string; mimeType: string; label: string }>,
+    generation: number,
+    index: number,
+  ): void {
+    if (index >= entries.length) {
+      this.fetchMainBlob(doc, generation);
+      this.loadStoryboard(doc, generation);
+      return;
+    }
+
+    const entry = entries[index];
+    this.http
+      .get(this.resolveNuxeoBlobRequestUrl(entry.dataUrl), { responseType: 'blob' })
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError(() => of(null)),
+      )
+      .subscribe((blob) => {
+        if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
+          return;
+        }
+
+        if (!blob) {
+          this.fetchPreferredVideoSource(doc, entries, generation, index + 1);
+          return;
+        }
+
+        const rawUrl = URL.createObjectURL(blob);
+        this.videoObjectUrls.push(rawUrl);
+        this.videoSources.set([
+          {
+            url: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+            mimeType: entry.mimeType,
+            label: entry.label,
+          },
+        ]);
+        this.blobLoading.set(false);
+        this.loadStoryboard(doc, generation);
+      });
+  }
+
+  /**
+   * Nuxeo blob `data` URLs from REST responses are often absolute (e.g. :8080). Rewrite to the
+   * proxied `/nuxeo/...` path so HttpClient + the auth interceptor can fetch them.
+   */
+  private resolveNuxeoBlobRequestUrl(dataUrl: string): string {
+    if (dataUrl.startsWith('/nuxeo/')) {
+      return dataUrl;
+    }
+
+    try {
+      const url = new URL(dataUrl, window.location.origin);
+      const nuxeoIdx = url.pathname.indexOf('/nuxeo/');
+      if (nuxeoIdx >= 0) {
+        return `${url.pathname.slice(nuxeoIdx)}${url.search}`;
+      }
+    } catch {
+      // Fall through to returning the original URL.
+    }
+
+    return dataUrl;
+  }
+
+  private loadStoryboard(doc: NuxeoDocument, generation = this.blobLoadGeneration): void {
+    if (this.storyboard().length > 0) {
+      return;
+    }
+
     const sb = doc.properties['vid:storyboard'] as Array<Record<string, unknown>> | undefined;
-    if (!sb || sb.length === 0) return;
-    const items: StoryboardItem[] = sb.map((entry) => {
-      const content = entry['content'] as Record<string, unknown> | undefined;
-      const thumbUrl = (content?.['data'] as string) ?? '';
-      return {
-        timecode: Number(entry['timecode'] ?? 0),
-        thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(thumbUrl),
-        label: (entry['comment'] as string) ?? '',
+    if (sb?.length) {
+      this.loadServerStoryboard(doc, sb, generation);
+      return;
+    }
+
+    const videoObjectUrl = this.rawBlobUrl ?? this.videoObjectUrls[0] ?? null;
+    if (videoObjectUrl && this.mimeType().startsWith('video/')) {
+      void this.generateClientStoryboard(videoObjectUrl, generation);
+    }
+  }
+
+  private loadServerStoryboard(
+    doc: NuxeoDocument,
+    sb: Array<Record<string, unknown>>,
+    generation: number,
+  ): void {
+    const entries = sb.map((entry, index) => ({
+      index,
+      timecode: Number(entry['timecode'] ?? 0),
+      thumbUrl: this.resolveStoryboardThumbnailUrl(
+        entry['content'] as Record<string, unknown> | undefined,
+      ),
+      label: (entry['comment'] as string) ?? '',
+    }));
+
+    forkJoin(
+      entries.map((entry) =>
+        this.fetchStoryboardThumbnailBlob(doc.uid, entry.index, entry.thumbUrl).pipe(
+          map((blob) => ({ entry, blob })),
+          catchError(() => of(null)),
+        ),
+      ),
+    )
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((results) => {
+        if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
+          return;
+        }
+
+        const items: StoryboardItem[] = [];
+        for (const result of results) {
+          if (!result) {
+            continue;
+          }
+          const rawUrl = URL.createObjectURL(result.blob);
+          this.storyboardObjectUrls.push(rawUrl);
+          items.push({
+            timecode: result.entry.timecode,
+            thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+            label: result.entry.label,
+          });
+        }
+
+        if (items.length > 0) {
+          this.storyboard.set(items);
+          return;
+        }
+
+        const videoObjectUrl = this.rawBlobUrl ?? this.videoObjectUrls[0] ?? null;
+        if (videoObjectUrl && this.mimeType().startsWith('video/')) {
+          void this.generateClientStoryboard(videoObjectUrl, generation);
+        }
+      });
+  }
+
+  private fetchStoryboardThumbnailBlob(
+    uid: string,
+    index: number,
+    dataUrl: string,
+  ): Observable<Blob> {
+    return this.detailService.fetchBlobByXpath(uid, `vid:storyboard/${index}/content`).pipe(
+      catchError(() => {
+        if (!dataUrl) {
+          return throwError(() => new Error('Storyboard thumbnail URL missing'));
+        }
+        return this.http.get(this.resolveNuxeoBlobRequestUrl(dataUrl), { responseType: 'blob' });
+      }),
+    );
+  }
+
+  /** Generate evenly spaced preview frames when Nuxeo has no `vid:storyboard` (e.g. File + .mp4). */
+  private async generateClientStoryboard(
+    videoObjectUrl: string,
+    generation: number,
+  ): Promise<void> {
+    if (generation !== this.blobLoadGeneration || this.storyboard().length > 0) {
+      return;
+    }
+
+    const video = document.createElement('video');
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    video.src = videoObjectUrl;
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onLoaded = (): void => {
+          video.removeEventListener('loadedmetadata', onLoaded);
+          video.removeEventListener('error', onError);
+          resolve();
+        };
+        const onError = (): void => {
+          video.removeEventListener('loadedmetadata', onLoaded);
+          video.removeEventListener('error', onError);
+          reject(new Error('Failed to load video for storyboard generation'));
+        };
+        video.addEventListener('loadedmetadata', onLoaded);
+        video.addEventListener('error', onError);
+        video.load();
+      }).catch(() => undefined);
+
+      if (generation !== this.blobLoadGeneration || this.storyboard().length > 0) {
+        return;
+      }
+
+      const duration = video.duration;
+      if (!Number.isFinite(duration) || duration <= 0) {
+        return;
+      }
+
+      const frameCount = Math.min(10, Math.max(4, Math.ceil(duration)));
+      const timecodes =
+        frameCount === 1
+          ? [0]
+          : Array.from({ length: frameCount }, (_, index) => (duration * index) / (frameCount - 1));
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return;
+      }
+
+      const items: StoryboardItem[] = [];
+      for (const timecode of timecodes) {
+        if (generation !== this.blobLoadGeneration) {
+          return;
+        }
+
+        await this.seekVideoForStoryboard(video, timecode);
+        if (generation !== this.blobLoadGeneration) {
+          return;
+        }
+        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+          continue;
+        }
+
+        canvas.width = video.videoWidth || 320;
+        canvas.height = video.videoHeight || 180;
+        try {
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch {
+          continue;
+        }
+
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob((value) => resolve(value), 'image/jpeg', 0.75),
+        );
+        if (generation !== this.blobLoadGeneration) {
+          return;
+        }
+        if (!blob) {
+          continue;
+        }
+
+        const rawUrl = URL.createObjectURL(blob);
+        this.storyboardObjectUrls.push(rawUrl);
+        items.push({
+          timecode,
+          thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+          label: this.formatStoryboardTimecode(timecode),
+        });
+      }
+
+      if (generation === this.blobLoadGeneration && items.length > 0) {
+        this.storyboard.set(items);
+      }
+    } finally {
+      video.removeAttribute('src');
+      video.load();
+    }
+  }
+
+  private seekVideoForStoryboard(video: HTMLVideoElement, timecode: number): Promise<void> {
+    if (Math.abs(video.currentTime - timecode) < 0.01) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('error', onError);
+        resolve();
       };
+      const onSeeked = (): void => finish();
+      const onError = (): void => finish();
+      const timeoutId = setTimeout(finish, 5000);
+      video.addEventListener('seeked', onSeeked);
+      video.addEventListener('error', onError);
+      video.currentTime = timecode;
     });
-    this.storyboard.set(items);
+  }
+
+  private formatStoryboardTimecode(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  /** Web UI prefers `content.viewUrl`, then falls back to `content.data`. */
+  private resolveStoryboardThumbnailUrl(content: Record<string, unknown> | undefined): string {
+    if (!content) {
+      return '';
+    }
+    const viewUrl = String(content['viewUrl'] ?? '').trim();
+    if (viewUrl) {
+      return viewUrl;
+    }
+    return String(content['data'] ?? '').trim();
+  }
+
+  private revokeStoryboardObjectUrls(): void {
+    for (const url of this.storyboardObjectUrls) {
+      URL.revokeObjectURL(url);
+    }
+    this.storyboardObjectUrls = [];
   }
 
   private extractVideoInfo(doc: NuxeoDocument): void {
@@ -2010,6 +2371,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.exifData.set(null);
     this.iptcData.set(null);
     this.videoInfo.set(null);
+    this.revokeStoryboardObjectUrls();
     for (const url of this.videoObjectUrls) {
       URL.revokeObjectURL(url);
     }
@@ -2096,6 +2458,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (this.rawBlobUrl) URL.revokeObjectURL(this.rawBlobUrl);
     this.rawBlobUrl = URL.createObjectURL(blob);
     this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.rawBlobUrl));
+
+    const doc = this.doc();
+    if (doc && this.mimeType().startsWith('video/') && this.storyboard().length === 0) {
+      this.loadStoryboard(doc);
+    }
   }
 
   onTabChange(raw: number): void {
