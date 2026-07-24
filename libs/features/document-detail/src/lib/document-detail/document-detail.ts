@@ -2151,72 +2151,91 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     video.playsInline = true;
     video.src = videoObjectUrl;
 
-    await new Promise<void>((resolve, reject) => {
-      const onLoaded = (): void => {
-        video.removeEventListener('loadedmetadata', onLoaded);
-        video.removeEventListener('error', onError);
-        resolve();
-      };
-      const onError = (): void => {
-        video.removeEventListener('loadedmetadata', onLoaded);
-        video.removeEventListener('error', onError);
-        reject(new Error('Failed to load video for storyboard generation'));
-      };
-      video.addEventListener('loadedmetadata', onLoaded);
-      video.addEventListener('error', onError);
-      video.load();
-    }).catch(() => undefined);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const onLoaded = (): void => {
+          video.removeEventListener('loadedmetadata', onLoaded);
+          video.removeEventListener('error', onError);
+          resolve();
+        };
+        const onError = (): void => {
+          video.removeEventListener('loadedmetadata', onLoaded);
+          video.removeEventListener('error', onError);
+          reject(new Error('Failed to load video for storyboard generation'));
+        };
+        video.addEventListener('loadedmetadata', onLoaded);
+        video.addEventListener('error', onError);
+        video.load();
+      }).catch(() => undefined);
 
-    if (generation !== this.blobLoadGeneration || this.storyboard().length > 0) {
-      return;
-    }
-
-    const duration = video.duration;
-    if (!Number.isFinite(duration) || duration <= 0) {
-      return;
-    }
-
-    const frameCount = Math.min(10, Math.max(4, Math.ceil(duration)));
-    const timecodes =
-      frameCount === 1
-        ? [0]
-        : Array.from({ length: frameCount }, (_, index) => (duration * index) / (frameCount - 1));
-
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (!context) {
-      return;
-    }
-
-    const items: StoryboardItem[] = [];
-    for (const timecode of timecodes) {
-      if (generation !== this.blobLoadGeneration) {
+      if (generation !== this.blobLoadGeneration || this.storyboard().length > 0) {
         return;
       }
 
-      await this.seekVideoForStoryboard(video, timecode);
-      canvas.width = video.videoWidth || 320;
-      canvas.height = video.videoHeight || 180;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((value) => resolve(value), 'image/jpeg', 0.75),
-      );
-      if (!blob) {
-        continue;
+      const duration = video.duration;
+      if (!Number.isFinite(duration) || duration <= 0) {
+        return;
       }
 
-      const rawUrl = URL.createObjectURL(blob);
-      this.storyboardObjectUrls.push(rawUrl);
-      items.push({
-        timecode,
-        thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
-        label: this.formatStoryboardTimecode(timecode),
-      });
-    }
+      const frameCount = Math.min(10, Math.max(4, Math.ceil(duration)));
+      const timecodes =
+        frameCount === 1
+          ? [0]
+          : Array.from({ length: frameCount }, (_, index) => (duration * index) / (frameCount - 1));
 
-    if (generation === this.blobLoadGeneration && items.length > 0) {
-      this.storyboard.set(items);
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) {
+        return;
+      }
+
+      const items: StoryboardItem[] = [];
+      for (const timecode of timecodes) {
+        if (generation !== this.blobLoadGeneration) {
+          return;
+        }
+
+        await this.seekVideoForStoryboard(video, timecode);
+        if (generation !== this.blobLoadGeneration) {
+          return;
+        }
+        if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+          continue;
+        }
+
+        canvas.width = video.videoWidth || 320;
+        canvas.height = video.videoHeight || 180;
+        try {
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        } catch {
+          continue;
+        }
+
+        const blob = await new Promise<Blob | null>((resolve) =>
+          canvas.toBlob((value) => resolve(value), 'image/jpeg', 0.75),
+        );
+        if (generation !== this.blobLoadGeneration) {
+          return;
+        }
+        if (!blob) {
+          continue;
+        }
+
+        const rawUrl = URL.createObjectURL(blob);
+        this.storyboardObjectUrls.push(rawUrl);
+        items.push({
+          timecode,
+          thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+          label: this.formatStoryboardTimecode(timecode),
+        });
+      }
+
+      if (generation === this.blobLoadGeneration && items.length > 0) {
+        this.storyboard.set(items);
+      }
+    } finally {
+      video.removeAttribute('src');
+      video.load();
     }
   }
 
@@ -2257,7 +2276,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!content) {
       return '';
     }
-    return (content['viewUrl'] as string) ?? (content['data'] as string) ?? '';
+    const viewUrl = String(content['viewUrl'] ?? '').trim();
+    if (viewUrl) {
+      return viewUrl;
+    }
+    return String(content['data'] ?? '').trim();
   }
 
   private revokeStoryboardObjectUrls(): void {
