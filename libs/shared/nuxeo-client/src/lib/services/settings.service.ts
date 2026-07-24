@@ -46,10 +46,10 @@ export class SettingsService {
     const nxql =
       `SELECT * FROM Document WHERE ecm:mixinType != "HiddenInNavigation" ` +
       `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ` +
-      `AND (` +
-      `(ecm:acl/*1/principal = '${safePrincipal}' AND ecm:acl/*1/name = 'local') OR ` +
-      `(ecm:acl/*1/principal = 'user:${safePrincipal}' AND ecm:acl/*1/name = 'local') OR ` +
-      `(ecm:acl/*1/principal = 'group:${safePrincipal}' AND ecm:acl/*1/name = 'local')` +
+      `AND ecm:acl/*1/name = 'local' AND (` +
+      `ecm:acl/*1/principal = '${safePrincipal}' OR ` +
+      `ecm:acl/*1/principal = 'user:${safePrincipal}' OR ` +
+      `ecm:acl/*1/principal = 'group:${safePrincipal}'` +
       `)`;
 
     return this.api

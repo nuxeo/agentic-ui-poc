@@ -91,17 +91,6 @@
             }
           "
         />
-        <ng-container
-          *ngTemplateOutlet="
-            permissionPagination;
-            context: {
-              totalPages: 1,
-              currentPage: 0,
-              prev: noopHandler,
-              next: noopHandler,
-            }
-          "
-        />
       }
     </article>
 
@@ -194,25 +183,27 @@
   let-prev="prev"
   let-next="next"
 >
-  <div class="profile-card__pagination">
-    <button
-      mat-icon-button
-      type="button"
-      [disabled]="currentPage === 0"
-      (click)="prev()"
-      aria-label="Previous page"
-    >
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-    <span class="profile-card__pagination-label">{{ currentPage + 1 }} / {{ totalPages }}</span>
-    <button
-      mat-icon-button
-      type="button"
-      [disabled]="currentPage === totalPages - 1"
-      (click)="next()"
-      aria-label="Next page"
-    >
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-  </div>
+  @if (totalPages > 1) {
+    <div class="profile-card__pagination">
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="currentPage === 0"
+        (click)="prev()"
+        aria-label="Previous page"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <span class="profile-card__pagination-label">{{ currentPage + 1 }} / {{ totalPages }}</span>
+      <button
+        mat-icon-button
+        type="button"
+        [disabled]="currentPage === totalPages - 1"
+        (click)="next()"
+        aria-label="Next page"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  }
 </ng-template>
