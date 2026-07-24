@@ -641,14 +641,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       }));
   });
 
+  /** Mirrors nuxeo-web-ui `nuxeo-document-collections`: shows each entry's `title`. */
   readonly collections = computed(() => {
     const d = this.doc();
     if (!d) return [];
     const cols = d.contextParameters?.['collections'] as
-      | Array<{ uid: string; title: string; path: string }>
+      | Array<{ uid: string; title: string; path: string; type?: string }>
       | undefined;
-    return cols ?? [];
+    // Web UI uses contextParameters.favorites for the star; collections enricher
+    // also lists the Favorites folder (type Favorites) — exclude it here.
+    return (cols ?? []).filter((col) => col.type !== 'Favorites');
   });
+
+  /** Mirrors nuxeo-ui-elements FiltersBehavior.hasCollections (section hidden when false). */
+  readonly hasCollections = computed(() => this.collections().length > 0);
 
   readonly creator = computed(() => {
     const d = this.doc();
