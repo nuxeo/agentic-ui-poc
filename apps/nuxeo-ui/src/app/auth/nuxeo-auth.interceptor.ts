@@ -8,17 +8,26 @@ import { AUTH_TOKEN_HEADER } from './share-token.util';
 
 /** True when the request targets the Nuxeo REST API (relative or same-origin absolute paths). */
 function isNuxeoApiRequest(url: string): boolean {
-  if (url.startsWith('/nuxeo/')) {
-    return true;
+  const pathname = nuxeoRequestPathname(url);
+  return pathname !== null && pathname.startsWith('/nuxeo/');
+}
+
+function nuxeoRequestPathname(url: string): string | null {
+  if (url.startsWith('/')) {
+    return url.split('?')[0]?.split('#')[0] ?? url;
   }
   if (url.startsWith('http://') || url.startsWith('https://')) {
     try {
-      return new URL(url).pathname.startsWith('/nuxeo/');
+      return new URL(url).pathname;
     } catch {
-      return false;
+      return null;
     }
   }
-  return false;
+  return null;
+}
+
+function isNuxeoLogoutRequest(url: string): boolean {
+  return nuxeoRequestPathname(url) === '/nuxeo/logout';
 }
 
 /**
@@ -41,7 +50,7 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   }
   // Password login still sends same-origin cookies; stale JSESSIONID is cleared in AuthService
   // before login/hydration via /nuxeo/logout, which must keep withCredentials enabled.
-  const isLogout = req.url.includes('/nuxeo/logout');
+  const isLogout = isNuxeoLogoutRequest(req.url);
   const withCredentials = isLogout ? true : basic ? false : true;
   return next(req.clone({ headers, withCredentials })).pipe(
     tap((event) => {

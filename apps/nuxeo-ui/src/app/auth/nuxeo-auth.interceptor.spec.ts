@@ -90,6 +90,14 @@ describe('nuxeoAuthInterceptor', () => {
     req.flush('');
   });
 
+  it('does not treat /nuxeo/logout in query strings as a logout request', () => {
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('/nuxeo/api/v1/search?q=%2Fnuxeo%2Flogout').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/search?q=%2Fnuxeo%2Flogout');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({ entries: [] });
+  });
+
   it('sends browser credentials for cookie-based sessions', () => {
     http.get('/nuxeo/api/v1/me').subscribe();
     const req = httpMock.expectOne('/nuxeo/api/v1/me');

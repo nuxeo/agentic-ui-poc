@@ -146,4 +146,33 @@ describe('ProfilePageComponent', () => {
     ]);
     expect(component.groupPermRows('powerusers')).toEqual([]);
   }));
+
+  it('splits combined document title and path for display', () => {
+    const fixture = TestBed.createComponent(ProfilePageComponent);
+    const component = fixture.componentInstance;
+
+    expect(component.permissionDocTitle('Workspaces (/default-domain/workspaces)')).toBe(
+      'Workspaces',
+    );
+    expect(component.permissionDocPath('Workspaces (/default-domain/workspaces)')).toBe(
+      '/default-domain/workspaces',
+    );
+  });
+
+  it('preserves titles that contain parentheses before the path suffix', () => {
+    const fixture = TestBed.createComponent(ProfilePageComponent);
+    const component = fixture.componentInstance;
+    const on = 'Report (draft) (/default-domain/workspaces/report)';
+
+    expect(component.permissionDocTitle(on)).toBe('Report (draft)');
+    expect(component.permissionDocPath(on)).toBe('/default-domain/workspaces/report');
+  });
+
+  it('returns the original value when no path suffix is present', () => {
+    const fixture = TestBed.createComponent(ProfilePageComponent);
+    const component = fixture.componentInstance;
+
+    expect(component.permissionDocTitle('Standalone title')).toBe('Standalone title');
+    expect(component.permissionDocPath('Standalone title')).toBeNull();
+  });
 });
