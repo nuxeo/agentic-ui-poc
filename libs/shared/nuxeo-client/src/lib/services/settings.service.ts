@@ -193,8 +193,10 @@ export class SettingsService {
       return [];
     }
 
-    const title = doc.title?.trim() || doc.path?.trim() || doc.uid;
-    const documentPath = doc.path?.trim() || null;
+    const trimmedPath = doc.path?.trim() || null;
+    const trimmedTitle = doc.title?.trim();
+    const title = trimmedTitle || trimmedPath || doc.uid;
+    const documentPath = trimmedTitle ? trimmedPath : null;
     const rows: LocalPermissionRow[] = [];
 
     for (const ace of localAcl.aces) {

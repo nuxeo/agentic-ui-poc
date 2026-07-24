@@ -164,5 +164,6 @@ describe('SettingsService', () => {
 
     const rows = await rows$;
     expect(rows[0]?.documentTitle).toBe('/default-domain/workspaces');
+    expect(rows[0]?.documentPath).toBeNull();
   });
 });
