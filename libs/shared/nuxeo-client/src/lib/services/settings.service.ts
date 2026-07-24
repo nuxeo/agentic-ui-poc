@@ -193,7 +193,7 @@ export class SettingsService {
       return [];
     }
 
-    const title = doc.title || doc.uid;
+    const title = doc.title?.trim() || doc.path?.trim() || doc.uid;
     const documentPath = doc.path?.trim() || null;
     const rows: LocalPermissionRow[] = [];
 

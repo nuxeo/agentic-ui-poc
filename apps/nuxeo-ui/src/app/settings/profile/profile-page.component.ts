@@ -194,14 +194,6 @@ export class ProfilePageComponent {
     return grantedBy !== '—';
   }
 
-  groupPermPrevHandler(groupId: string): () => void {
-    return () => this.groupPermPrev(groupId);
-  }
-
-  groupPermNextHandler(groupId: string): () => void {
-    return () => this.groupPermNext(groupId);
-  }
-
   private loadGroupPermPage(groupId: string, pageIndex: number): void {
     this.groupPermLoading.update((state) => ({ ...state, [groupId]: true }));
     this.permService

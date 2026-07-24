@@ -124,8 +124,7 @@
               context: {
                 totalPages: groupPermTotalPages(g.identifier),
                 currentPage: groupPermCurrentPage(g.identifier),
-                prev: groupPermPrevHandler(g.identifier),
-                next: groupPermNextHandler(g.identifier),
+                groupId: g.identifier,
               }
             "
           />
@@ -202,8 +201,7 @@
   #permissionPagination
   let-totalPages="totalPages"
   let-currentPage="currentPage"
-  let-prev="prev"
-  let-next="next"
+  let-groupId="groupId"
 >
   @if (totalPages > 1) {
     <div class="profile-card__pagination">
@@ -211,7 +209,7 @@
         mat-icon-button
         type="button"
         [disabled]="currentPage === 0"
-        (click)="prev()"
+        (click)="groupPermPrev(groupId)"
         aria-label="Previous page"
       >
         <mat-icon>chevron_left</mat-icon>
@@ -221,7 +219,7 @@
         mat-icon-button
         type="button"
         [disabled]="currentPage === totalPages - 1"
-        (click)="next()"
+        (click)="groupPermNext(groupId)"
         aria-label="Next page"
       >
         <mat-icon>chevron_right</mat-icon>

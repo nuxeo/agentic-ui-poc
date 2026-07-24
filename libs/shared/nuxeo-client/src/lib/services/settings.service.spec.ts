@@ -130,4 +130,39 @@ describe('SettingsService', () => {
       },
     ]);
   });
+
+  it('falls back to document path when title is missing', async () => {
+    const rows$ = firstValueFrom(service.getLocalPermissions('Administrator'));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Repository.Query');
+    req.flush({
+      entries: [
+        {
+          uid: 'doc-3',
+          path: '/default-domain/workspaces',
+          contextParameters: {
+            acls: [
+              {
+                name: 'local',
+                aces: [
+                  {
+                    username: 'Administrator',
+                    permission: 'Read',
+                    granted: true,
+                    status: 'effective',
+                    creator: 'Administrator',
+                    begin: null,
+                    end: null,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    const rows = await rows$;
+    expect(rows[0]?.documentTitle).toBe('/default-domain/workspaces');
+  });
 });

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from './auth.service';
 import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';
@@ -13,7 +14,7 @@ describe('nuxeoAuthInterceptor', () => {
   let auth: jasmine.SpyObj<AuthService>;
   let sessionTimeout: jasmine.SpyObj<SessionTimeoutService>;
 
-  beforeEach(() => {
+  function configure(apiOrigin = ''): void {
     auth = jasmine.createSpyObj<AuthService>('AuthService', [
       'isAuthenticated',
       'basicCredentials',
@@ -34,11 +35,16 @@ describe('nuxeoAuthInterceptor', () => {
         provideHttpClientTesting(),
         { provide: AuthService, useValue: auth },
         { provide: SessionTimeoutService, useValue: sessionTimeout },
+        { provide: NUXEO_API_ORIGIN, useValue: apiOrigin },
       ],
     });
 
     http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
+  }
+
+  beforeEach(() => {
+    configure();
   });
 
   afterEach(() => {
@@ -120,6 +126,18 @@ describe('nuxeoAuthInterceptor', () => {
     expect(req.request.withCredentials).toBeFalse();
     req.flush({ id: 'user01' });
     expect(sessionTimeout.recordActivity).not.toHaveBeenCalled();
+  });
+
+  it('applies auth to absolute URLs matching configured NUXEO_API_ORIGIN', () => {
+    TestBed.resetTestingModule();
+    configure('https://nuxeo.example.com');
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('https://nuxeo.example.com/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('https://nuxeo.example.com/nuxeo/api/v1/me');
+    expect(req.request.headers.has('Authorization')).toBeTrue();
+    expect(req.request.withCredentials).toBeFalse();
+    req.flush({ id: 'test-user' });
+    expect(sessionTimeout.recordActivity).toHaveBeenCalled();
   });
 
   it('sends X-Authentication-Token for external share sessions', () => {
