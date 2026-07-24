@@ -4,6 +4,8 @@ import {
   directoryAdminTableLabel,
   directoryEntryDisplayLabel,
   directoryPickerLabel,
+  filterDirectoryPickerEntries,
+  formatDirectoryEntryId,
   directoryShowsParentField,
   isManagedDirectory,
   isManagedDirectoryName,
@@ -100,6 +102,51 @@ describe('directory.model', () => {
     expect(isManagedDirectory({})).toBe(true);
   });
 
+  it('filterDirectoryPickerEntries matches id or displayLabel and sorts alphabetically', () => {
+    const entries = [
+      {
+        id: 'custom-entry-alpha',
+        label: 'label.directories.nature.custom-entry-alpha',
+        displayLabel: 'Custom Entry Alpha',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+      {
+        id: 'brand-new-term',
+        label: 'label.directories.nature.brand-new-term',
+        displayLabel: 'Brand New Term',
+        ordering: 2,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ];
+
+    expect(filterDirectoryPickerEntries(entries, 'brand')).toEqual([entries[1]]);
+    expect(filterDirectoryPickerEntries(entries).map((entry) => entry.id)).toEqual([
+      'brand-new-term',
+      'custom-entry-alpha',
+    ]);
+  });
+
+  it('directoryPickerLabel formats arbitrary custom ids from any vocabulary directory', () => {
+    expect(
+      directoryPickerLabel({
+        id: 'my-new-vocab-id',
+        label: 'label.directories.country.my-new-vocab-id',
+        displayLabel: 'label.directories.country.my-new-vocab-id',
+      }),
+    ).toBe('My New Vocab Id');
+
+    expect(
+      directoryPickerLabel({
+        id: 'edited-term',
+        label: 'Renamed Label From Admin',
+        displayLabel: 'Renamed Label From Admin',
+      }),
+    ).toBe('Renamed Label From Admin');
+  });
+
   it('directoryPickerLabel prefers absoluteLabel then displayLabel then i18n fallback', () => {
     expect(
       directoryPickerLabel({
@@ -125,6 +172,53 @@ describe('directory.model', () => {
         displayLabel: 'label.directories.nature.my-custom',
       }),
     ).toBe('My Custom');
+  });
+
+  it('directoryPickerLabel resolves Publication from i18n key using entry id', () => {
+    expect(
+      directoryPickerLabel({
+        id: 'Publication',
+        label: 'label.directories.nature.Publication',
+        displayLabel: 'label.directories.nature.Publication',
+      }),
+    ).toBe('Publication');
+
+    expect(
+      directoryPickerLabel({
+        id: 'publication',
+        displayLabel: 'label.directories.nature.publication',
+      }),
+    ).toBe('Publication');
+  });
+
+  it('directoryPickerLabel ignores i18n absoluteLabel from SuggestEntries', () => {
+    expect(
+      directoryPickerLabel({
+        id: 'Publication',
+        label: 'label.directories.nature.Publication',
+        displayLabel: 'label.directories.nature.Publication',
+        absoluteLabel: 'label.directories.nature.Publication',
+      }),
+    ).toBe('Publication');
+  });
+
+  it('formatDirectoryEntryId extracts the id segment from an i18n key path', () => {
+    expect(formatDirectoryEntryId('label.directories.nature.Publication')).toBe('Publication');
+  });
+
+  it('filterDirectoryPickerEntries matches resolved picker labels', () => {
+    const entries = [
+      {
+        id: 'Publication',
+        label: 'label.directories.nature.Publication',
+        displayLabel: 'label.directories.nature.Publication',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ];
+
+    expect(filterDirectoryPickerEntries(entries, 'publ')).toEqual(entries);
   });
 
   it('includes parent column for country via catalog metadata', () => {

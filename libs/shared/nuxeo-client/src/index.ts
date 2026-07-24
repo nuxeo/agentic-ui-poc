@@ -39,6 +39,9 @@ export {
   directoryAdminTableLabel,
   directoryEntryDisplayLabel,
   directoryPickerLabel,
+  filterDirectoryPickerEntries,
+  formatDirectoryEntryId,
+  isDirectoryI18nKey,
   directoryShowsParentField,
   directoryUsesL10nLabel,
   entryPropertiesIncludeParent,
@@ -288,6 +291,11 @@ export {
   resolveNatureLabel,
 } from './lib/utils/l10n-directory.utils';
 export type { L10nOptionGroup } from './lib/utils/l10n-directory.utils';
+export {
+  isExpiresFieldValid,
+  shouldShowExpiresFieldError,
+  createExpiresErrorStateMatcher,
+} from './lib/utils/expires-date.utils';
 export {
   CONTENT_LAKE_INGEST_DOCUMENT_TYPES,
   CONTENT_LAKE_INGEST_MARKER_LEGACY_PROPERTY,

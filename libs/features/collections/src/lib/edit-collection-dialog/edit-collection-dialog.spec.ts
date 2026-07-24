@@ -100,6 +100,6 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
 
   it('renders the selected child coverage as Parent/Child', () => {
     component.coverage = 'tanzania';
-    expect(component.coverageDisplayLabel()).toBe('Africa/Tanzania');
+    expect(component.coveragePillLabel('tanzania')).toBe('Africa/Tanzania');
   });
 });

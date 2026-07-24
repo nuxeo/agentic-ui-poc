@@ -36,6 +36,8 @@ import {
   DOMAIN_CONTAINER_GUIDANCE,
   defaultNoteContent,
   docTypeIcon,
+  directoryPickerLabel,
+  filterDirectoryPickerEntries,
   isBlobHoldingDocType,
   isDomainParentType,
   isFolderishDocument,
@@ -53,6 +55,9 @@ import {
   type L10nDirectoryEntry,
   type NuxeoDocument,
   formatHierarchicalL10nLabel,
+  createExpiresErrorStateMatcher,
+  isExpiresFieldValid,
+  shouldShowExpiresFieldError,
 } from '@agentic-ui/shared/nuxeo-client';
 
 export interface CreateImportDialogData {
@@ -256,6 +261,7 @@ export class CreateImportDialogComponent implements OnInit {
   readonly loadingLocationSuggestions = signal(false);
 
   readonly natureEntries = signal<DirectoryEntry[]>([]);
+  protected readonly directoryPickerLabel = directoryPickerLabel;
   readonly subjectEntries = signal<L10nDirectoryEntry[]>([]);
   readonly coverageEntries = signal<L10nDirectoryEntry[]>([]);
   readonly directoriesLoaded = signal(false);
@@ -270,6 +276,9 @@ export class CreateImportDialogComponent implements OnInit {
   coveragePanelSearch = '';
   expires: Date | null = null;
   expiresRawText = '';
+  readonly expiresErrorMatcher = createExpiresErrorStateMatcher(() =>
+    shouldShowExpiresFieldError(this.expiresRawText, this.expires),
+  );
   noteFormat = 'text/html';
   readonly importDocType = signal('');
 
@@ -656,11 +665,11 @@ export class CreateImportDialogComponent implements OnInit {
   }
 
   isExpiresValid(): boolean {
-    const raw = this.expiresRawText.trim();
-    if (!raw) {
-      return !this.expires || !Number.isNaN(this.expires.getTime());
-    }
-    return this.isValidPartialOrCompleteDate(raw);
+    return isExpiresFieldValid(this.expiresRawText, this.expires);
+  }
+
+  showExpiresError(): boolean {
+    return shouldShowExpiresFieldError(this.expiresRawText, this.expires);
   }
 
   /** Type selected and required Dublin Core fields are valid on the current form. */
@@ -694,6 +703,7 @@ export class CreateImportDialogComponent implements OnInit {
     const ctrl = this.expiresNgModel?.control;
     if (ctrl) {
       ctrl.markAsDirty();
+      ctrl.markAsTouched();
       ctrl.updateValueAndValidity({ emitEvent: false });
     }
   }
@@ -703,34 +713,6 @@ export class CreateImportDialogComponent implements OnInit {
     if (value && !Number.isNaN(value.getTime())) {
       this.expiresRawText = '';
     }
-  }
-
-  private isValidPartialOrCompleteDate(raw: string): boolean {
-    if (!/^\d{0,2}(\/\d{0,2}(\/\d{0,4})?)?$/.test(raw)) {
-      return false;
-    }
-    if (!/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(raw)) {
-      return true;
-    }
-    return this.isValidMmDdYyyy(raw);
-  }
-
-  private isValidMmDdYyyy(raw: string): boolean {
-    const [monthPart, dayPart, yearPart] = raw.split('/');
-    const month = Number.parseInt(monthPart, 10);
-    const day = Number.parseInt(dayPart, 10);
-    let year = Number.parseInt(yearPart, 10);
-
-    if (yearPart.length === 2) {
-      year = year <= 69 ? 2000 + year : 1900 + year;
-    }
-
-    if (month < 1 || month > 12 || day < 1 || day > 31 || year < 1000 || year > 9999) {
-      return false;
-    }
-
-    const date = new Date(year, month - 1, day);
-    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
   }
 
   uploadProgressLabel(progress: ImportProgress): string {
@@ -770,7 +752,7 @@ export class CreateImportDialogComponent implements OnInit {
 
   naturePillLabel(id: string): string {
     const entry = this.natureEntries().find((e) => e.id === id);
-    return entry?.displayLabel ?? id;
+    return entry ? directoryPickerLabel(entry) : id;
   }
 
   coveragePillLabel(id: string): string {
@@ -803,30 +785,47 @@ export class CreateImportDialogComponent implements OnInit {
   onNaturePanelOpen(opened: boolean): void {
     if (opened) {
       this.naturePanelSearch = '';
+      this.loadNatureEntries();
     }
+  }
+
+  private loadNatureEntries(): void {
+    this.directoryService
+      .getEntries('nature')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => this.natureEntries.set(entries),
+      });
   }
 
   onSubjectsPanelOpen(opened: boolean): void {
     if (opened) {
       this.subjectsPanelSearch = '';
+      this.loadL10nEntries('l10nsubjects', this.subjectEntries);
     }
   }
 
   onCoveragePanelOpen(opened: boolean): void {
     if (opened) {
       this.coveragePanelSearch = '';
+      this.loadL10nEntries('l10ncoverage', this.coverageEntries);
     }
   }
 
+  private loadL10nEntries(
+    directoryName: string,
+    target: { set: (entries: L10nDirectoryEntry[]) => void },
+  ): void {
+    this.directoryService
+      .getAllL10nEntries(directoryName)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (entries) => target.set(entries),
+      });
+  }
+
   filteredNatureOptions(): DirectoryEntry[] {
-    const q = this.naturePanelSearch.trim().toLowerCase();
-    return this.natureEntries()
-      .filter((e) => {
-        if (!q) return true;
-        const label = e.displayLabel.toLowerCase();
-        return label.includes(q) || e.id.toLowerCase().includes(q);
-      })
-      .sort((a, b) => a.displayLabel.localeCompare(b.displayLabel));
+    return filterDirectoryPickerEntries(this.natureEntries(), this.naturePanelSearch);
   }
 
   groupedSubjectOptions(): { parentLabel: string; entries: L10nDirectoryEntry[] }[] {

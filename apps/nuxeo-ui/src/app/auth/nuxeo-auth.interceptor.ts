@@ -4,6 +4,22 @@ import { catchError, tap, throwError } from 'rxjs';
 
 import { AuthService } from './auth.service';
 import { SessionTimeoutService } from './session-timeout.service';
+import { AUTH_TOKEN_HEADER } from './share-token.util';
+
+/** True when the request targets the Nuxeo REST API (relative or same-origin absolute paths). */
+function isNuxeoApiRequest(url: string): boolean {
+  if (url.startsWith('/nuxeo/')) {
+    return true;
+  }
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      return new URL(url).pathname.startsWith('/nuxeo/');
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
 
 /**
  * Sends cookies on `/nuxeo/**` requests (SSO after SAML) and attaches Basic when the user logged in with password.
@@ -12,13 +28,16 @@ import { SessionTimeoutService } from './session-timeout.service';
 export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const sessionTimeout = inject(SessionTimeoutService);
-  if (!req.url.includes('/nuxeo/')) {
+  if (!isNuxeoApiRequest(req.url)) {
     return next(req);
   }
   const basic = auth.basicCredentials();
+  const shareToken = auth.shareAuthToken();
   let headers = req.headers;
   if (basic) {
     headers = headers.set('Authorization', `Basic ${basic}`);
+  } else if (shareToken && !auth.isAuthenticated()) {
+    headers = headers.set(AUTH_TOKEN_HEADER, shareToken);
   }
   return next(req.clone({ headers, withCredentials: true })).pipe(
     tap((event) => {

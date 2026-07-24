@@ -3066,6 +3066,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.browseContext.setFromDocument(updatedDoc);
         this.doc.set(updatedDoc);
         this.syncActionStates(updatedDoc);
+        this.loadVocabularies();
         this.toast('Document updated');
         this.loadDocument(this.docUid);
       });
