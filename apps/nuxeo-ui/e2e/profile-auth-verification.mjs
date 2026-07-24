@@ -114,8 +114,6 @@ function extractSatoriRows(doc, principal) {
   const rows = [];
   const localAcl = (doc.contextParameters?.acls ?? []).find((acl) => acl.name === 'local');
   if (!localAcl?.aces?.length) return rows;
-  const title = doc.title || doc.uid;
-  const on = doc.path ? `${title} (${doc.path})` : title;
   for (const ace of localAcl.aces) {
     if (!ace.granted) continue;
     if (ace.status === 'archived') continue;
