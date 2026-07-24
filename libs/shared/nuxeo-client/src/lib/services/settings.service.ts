@@ -13,6 +13,7 @@ import { NuxeoAcl } from '../models/acl.model';
 import { NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 import { matchesPrincipal } from '../utils/principal-match.utils';
+import { formatPermissionTimeFrame } from '../utils/permission-timeframe.utils';
 
 export interface LocalPermissionRow {
   documentTitle: string;
@@ -205,21 +206,11 @@ export class SettingsService {
         documentTitle: title,
         documentPath,
         right: ace.permission,
-        timeFrame: this.formatTimeFrame(ace.begin, ace.end),
+        timeFrame: formatPermissionTimeFrame(ace.begin, ace.end),
         grantedBy: ace.creator || '—',
       });
     }
 
     return rows;
-  }
-
-  private formatTimeFrame(begin: string | null, end: string | null): string {
-    if (!begin && !end) {
-      return 'Permanent';
-    }
-
-    const beginLabel = begin ? new Date(begin).toLocaleString() : '—';
-    const endLabel = end ? new Date(end).toLocaleString() : '—';
-    return `${beginLabel} – ${endLabel}`;
   }
 }
