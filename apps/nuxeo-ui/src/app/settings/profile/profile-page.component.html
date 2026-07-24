@@ -88,6 +88,7 @@
             context: {
               rows: localPermissions(),
               emptyMessage: username() + ' does not have permissions.',
+              tableLabel: 'Local permissions',
             }
           "
         />
@@ -113,6 +114,7 @@
               context: {
                 rows: groupPermRows(g.identifier),
                 emptyMessage: g.label + ' does not have permissions.',
+                tableLabel: g.label + ' permissions',
               }
             "
           />
@@ -133,8 +135,13 @@
   </div>
 </section>
 
-<ng-template #permissionTableBody let-rows="rows" let-emptyMessage="emptyMessage">
-  <div class="profile-perm-table" role="table">
+<ng-template
+  #permissionTableBody
+  let-rows="rows"
+  let-emptyMessage="emptyMessage"
+  let-tableLabel="tableLabel"
+>
+  <div class="profile-perm-table" role="table" [attr.aria-label]="tableLabel">
     <div class="profile-perm-table__header" role="row">
       <div role="columnheader">On</div>
       <div role="columnheader">Right</div>
@@ -144,7 +151,9 @@
 
     @if (rows.length === 0) {
       <div class="profile-perm-table__row" role="row">
-        <div class="profile-perm-table__empty" role="cell">{{ emptyMessage }}</div>
+        <div class="profile-perm-table__empty" role="cell" [attr.aria-colspan]="4">
+          {{ emptyMessage }}
+        </div>
       </div>
     } @else {
       @for (

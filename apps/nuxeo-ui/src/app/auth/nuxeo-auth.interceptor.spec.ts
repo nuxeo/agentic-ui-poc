@@ -74,7 +74,7 @@ describe('nuxeoAuthInterceptor', () => {
     expect(sessionTimeout.expireDueToServer).not.toHaveBeenCalled();
   });
 
-  it('omits browser credentials for basic-auth requests', () => {
+  it('sets withCredentials false for basic-auth API requests', () => {
     auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
     http.get('/nuxeo/api/v1/me').subscribe();
     const req = httpMock.expectOne('/nuxeo/api/v1/me');

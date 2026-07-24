@@ -127,6 +127,36 @@ describe('AuthService poweruser access', () => {
     mock.verify();
   });
 
+  it('clears basic-auth session when /me returns 403 during hydration', () => {
+    sessionStorage.setItem(
+      'agentic_ui_nuxeo_session',
+      JSON.stringify({
+        kind: 'basic',
+        username: 'test-user',
+        basic: btoa('test-user:test-pass'),
+        isAdministrator: false,
+        groups: ['members'],
+      }),
+    );
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [{ provide: NUXEO_API_ORIGIN, useValue: '' }],
+    });
+    const hydrated = TestBed.inject(AuthService);
+    const mock = TestBed.inject(HttpTestingController);
+
+    hydrated.ensureHydrated().subscribe();
+    mock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
+      .flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    expect(hydrated.isAuthenticated()).toBe(false);
+    mock.verify();
+  });
+
   it('preserves basic-auth username on hydration when /me principal differs from stale cookie', () => {
     sessionStorage.setItem(
       'agentic_ui_nuxeo_session',
