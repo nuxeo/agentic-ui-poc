@@ -147,7 +147,10 @@ export {
 export { TaskService } from './lib/services/task.service';
 export { CollectionService } from './lib/services/collection.service';
 export { BrowseService } from './lib/services/browse.service';
-export { BrowseContextService } from './lib/services/browse-context.service';
+export {
+  BrowseContextService,
+  type ClipboardPasteEvent,
+} from './lib/services/browse-context.service';
 export { ClipboardTargetService } from './lib/services/clipboard-target.service';
 export {
   browseTreeContextPath,

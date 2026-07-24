@@ -16,7 +16,15 @@
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
   <sat-platform-nav>
     @for (item of navItems(); track item.path) {
-      <sat-platform-nav-list-item [active]="isActive(item.path)" (click)="onNavClick(item, $event)">
+      <sat-platform-nav-list-item
+        [active]="isActive(item.path)"
+        (click)="onNavClick(item, $event)"
+        [class.nav-item--clipboard-badge]="item.path === '/clipboard' && clipboardCount() > 0"
+        [style.--nav-clipboard-count]="
+          item.path === '/clipboard' ? clipboardBadgeCssContent() : null
+        "
+        [attr.aria-label]="clipboardNavAriaLabel(item)"
+      >
         <sat-platform-nav-avatar [item]="item" />
         {{ item.label }}
       </sat-platform-nav-list-item>
