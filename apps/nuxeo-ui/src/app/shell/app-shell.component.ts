@@ -272,7 +272,7 @@ export class AppShellComponent implements OnDestroy {
     }
     const count = this.clipboardCount();
     const noun = count === 1 ? 'item' : 'items';
-    return `${item.label}, ${this.clipboardBadgeLabel()} ${noun}`;
+    return `${item.label}, ${count} ${noun}`;
   }
 
   isActive(path: string): boolean {

@@ -42,10 +42,6 @@ sat-platform-nav-container.has-selection-topbar {
   box-sizing: border-box;
 }
 
-:host ::ng-deep sat-platform-nav-list-item {
-  overflow: visible;
-}
-
 .shell-content {
   height: calc(100% - var(--selection-topbar-height));
 }
