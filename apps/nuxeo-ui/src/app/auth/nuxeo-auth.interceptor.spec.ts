@@ -88,6 +88,19 @@ describe('nuxeoAuthInterceptor', () => {
     req.flush({ id: 'test-user' });
   });
 
+  it('sets withCredentials false when request already carries Basic Authorization before session is stored', () => {
+    auth.isAuthenticated.and.returnValue(false);
+    auth.basicCredentials.and.returnValue(null);
+    http
+      .get('/nuxeo/api/v1/me', {
+        headers: { Authorization: `Basic ${btoa('test-user:test-pass')}` },
+      })
+      .subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({ id: 'test-user' });
+  });
+
   it('sends browser credentials for basic-auth logout to clear stale cookies', () => {
     auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
     http.get('/nuxeo/logout', { withCredentials: true }).subscribe();

@@ -1,4 +1,9 @@
-import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpHeaders,
+  HttpInterceptorFn,
+  HttpResponse,
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, tap, throwError } from 'rxjs';
 import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
@@ -62,6 +67,11 @@ function isNuxeoLogoutRequest(url: string, allowedOrigins: Set<string>): boolean
   return nuxeoRequestPathname(url, allowedOrigins) === '/nuxeo/logout';
 }
 
+function hasBasicAuthorizationHeader(headers: HttpHeaders): boolean {
+  const authorization = headers.get('Authorization');
+  return authorization?.startsWith('Basic ') ?? false;
+}
+
 /**
  * Sends cookies on `/nuxeo/**` requests (SSO after SAML) and attaches Basic when the user logged in with password.
  * Resets idle timeout on successful responses and logs out on HTTP 401 when the session is no longer valid.
@@ -81,10 +91,11 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   } else if (shareToken && !auth.isAuthenticated()) {
     headers = headers.set(AUTH_TOKEN_HEADER, shareToken);
   }
-  // Password login still sends same-origin cookies; stale JSESSIONID is cleared in AuthService
-  // before login/hydration via /nuxeo/logout, which must keep withCredentials enabled.
+  // Logout must send cookies to clear stale JSESSIONID. Basic-auth requests (stored or
+  // in-flight during login) omit cookies to avoid principal override.
   const isLogout = isNuxeoLogoutRequest(req.url, allowedOrigins);
-  const withCredentials = isLogout ? true : basic ? false : true;
+  const usesBasicAuth = Boolean(basic) || hasBasicAuthorizationHeader(req.headers);
+  const withCredentials = isLogout ? true : usesBasicAuth ? false : true;
   return next(req.clone({ headers, withCredentials })).pipe(
     tap((event) => {
       if (event instanceof HttpResponse && auth.isAuthenticated()) {
