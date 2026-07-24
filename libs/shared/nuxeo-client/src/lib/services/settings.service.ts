@@ -222,14 +222,8 @@ export class SettingsService {
       return 'Permanent';
     }
 
-    if (begin && end) {
-      return `${begin} → ${end}`;
-    }
-
-    if (begin) {
-      return `From ${begin}`;
-    }
-
-    return `Until ${end}`;
+    const beginLabel = begin ? new Date(begin).toLocaleString() : '—';
+    const endLabel = end ? new Date(end).toLocaleString() : '—';
+    return `${beginLabel} – ${endLabel}`;
   }
 }

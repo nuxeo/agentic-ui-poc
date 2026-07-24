@@ -70,8 +70,9 @@ async function nuxeoJson(pathname, user, pass, init = {}) {
 
 function formatTimeFrame(begin, end) {
   if (!begin && !end) return 'Permanent';
-  if (begin && end) return `${begin} – ${end}`;
-  return begin ?? end ?? 'Permanent';
+  const beginLabel = begin ? new Date(begin).toLocaleString() : '—';
+  const endLabel = end ? new Date(end).toLocaleString() : '—';
+  return `${beginLabel} – ${endLabel}`;
 }
 
 function matchesPrincipal(aceUsername, logicalPrincipal) {
@@ -128,7 +129,11 @@ async function queryPermissions(user, pass, principal, extractFn) {
   const nxql =
     `SELECT * FROM Document WHERE ecm:mixinType != "HiddenInNavigation" ` +
     `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ` +
-    `AND ecm:acl/*1/principal = '${safePrincipal}'`;
+    `AND (` +
+    `(ecm:acl/*1/principal = '${safePrincipal}' AND ecm:acl/*1/name = 'local') OR ` +
+    `(ecm:acl/*1/principal = 'user:${safePrincipal}' AND ecm:acl/*1/name = 'local') OR ` +
+    `(ecm:acl/*1/principal = 'group:${safePrincipal}' AND ecm:acl/*1/name = 'local')` +
+    `)`;
 
   const res = await nuxeoJson(
     '/api/v1/automation/Repository.Query',

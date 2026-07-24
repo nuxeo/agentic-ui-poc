@@ -147,12 +147,10 @@
 <ng-template #permissionTableBody let-rows="rows" let-emptyMessage="emptyMessage">
   <div class="profile-perm-table" role="table">
     <div class="profile-perm-table__header" role="row">
-      <div class="profile-perm-table__on-col" role="columnheader">On</div>
-      <div class="profile-perm-table__detail-cols">
-        <div role="columnheader">Right</div>
-        <div role="columnheader">Time Frame</div>
-        <div role="columnheader">Granted by</div>
-      </div>
+      <div role="columnheader">On</div>
+      <div role="columnheader">Right</div>
+      <div role="columnheader">Time Frame</div>
+      <div role="columnheader">Granted by</div>
     </div>
 
     @if (rows.length === 0) {
@@ -163,25 +161,23 @@
         track permission.on + permission.right + permission.timeFrame + permission.grantedBy
       ) {
         <div class="profile-perm-table__row" role="row">
-          <div class="profile-perm-table__on-col" role="cell">
+          <div role="cell">
             <div class="profile-perm-table__doc-title">{{ permissionDocTitle(permission.on) }}</div>
             @if (permissionDocPath(permission.on); as docPath) {
               <div class="profile-perm-table__doc-path">{{ docPath }}</div>
             }
           </div>
-          <div class="profile-perm-table__detail-cols">
-            <div role="cell">
-              <span class="profile-perm-table__right-tag">{{ permission.right }}</span>
-            </div>
-            <div role="cell">{{ permission.timeFrame }}</div>
-            <div role="cell">
-              @if (showGrantedBy(permission.grantedBy)) {
-                <span class="profile-perm-table__granted-by">
-                  <mat-icon aria-hidden="true">groups</mat-icon>
-                  <span>{{ permission.grantedBy }}</span>
-                </span>
-              }
-            </div>
+          <div role="cell">
+            <span class="profile-perm-table__right-tag">{{ permission.right }}</span>
+          </div>
+          <div role="cell">{{ permission.timeFrame }}</div>
+          <div role="cell">
+            @if (showGrantedBy(permission.grantedBy)) {
+              <span class="profile-perm-table__granted-by">
+                <mat-icon aria-hidden="true">groups</mat-icon>
+                <span>{{ permission.grantedBy }}</span>
+              </span>
+            }
           </div>
         </div>
       }
