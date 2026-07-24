@@ -186,7 +186,7 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  border: 1px solid var(--mat-sys-outline-variant, #eee);
+  border: 1px solid var(--mat-sys-outline-variant);
 }
 
 .profile-perm-table__col-on {
@@ -207,20 +207,20 @@
   min-width: 0;
   padding: 0.75rem 1rem;
   box-sizing: border-box;
-  border-bottom: 1px solid var(--mat-sys-outline-variant, #eee);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
   text-align: left;
   vertical-align: top;
 }
 
 .profile-perm-table thead th {
-  background: var(--mat-sys-surface-container-low, #fafafa);
-  border-bottom: 2px solid var(--mat-sys-outline-variant, #eee);
-  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.54));
+  background: var(--mat-sys-surface-container-low);
+  border-bottom: 2px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
   font-weight: 400;
 }
 
 .profile-perm-table tbody tr {
-  background: var(--mat-sys-surface, #fafafa);
+  background: var(--mat-sys-surface);
 }
 
 .profile-perm-table tbody tr:last-child td {
@@ -233,7 +233,7 @@
 
 .profile-perm-table__doc-path {
   margin-top: 0.15rem;
-  color: var(--mat-sys-primary, #213f7d);
+  color: var(--mat-sys-primary);
   font-size: 0.8rem;
   overflow-wrap: anywhere;
 }
@@ -242,8 +242,8 @@
   display: inline-block;
   padding: 0.06em 0.3em;
   border-radius: 3px;
-  background: var(--mat-sys-secondary, #7e90a5);
-  color: var(--mat-sys-on-secondary, #fff);
+  background: var(--mat-sys-secondary);
+  color: var(--mat-sys-on-secondary);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
@@ -259,7 +259,7 @@
   min-width: 0;
   padding: 0.15rem 0.45rem;
   border-radius: 999px;
-  background: var(--mat-sys-surface-container-high, #eef2f6);
+  background: var(--mat-sys-surface-container-high);
   color: var(--mat-sys-on-surface);
   font-size: 0.82rem;
   overflow: hidden;
@@ -281,7 +281,7 @@
 .profile-perm-table__empty {
   padding: 1.5rem 0.7rem;
   text-align: center;
-  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.54));
+  color: var(--mat-sys-on-surface-variant);
   font-weight: 300;
   opacity: 0.5;
 }
