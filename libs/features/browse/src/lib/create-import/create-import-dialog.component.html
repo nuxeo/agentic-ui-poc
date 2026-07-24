@@ -504,7 +504,7 @@
                   </div>
                   <div class="vocab-panel__list">
                     @for (entry of filteredNatureOptions(); track entry.id) {
-                      <mat-option [value]="entry.id">{{ entry.displayLabel }}</mat-option>
+                      <mat-option [value]="entry.id">{{ directoryPickerLabel(entry) }}</mat-option>
                     }
                   </div>
                 </mat-select>
@@ -621,7 +621,7 @@
                 appearance="outline"
                 subscriptSizing="dynamic"
                 class="full-width"
-                [class.expires-field-invalid]="expiresRawText.trim() && !isExpiresValid()"
+                [class.expires-field-invalid]="showExpiresError()"
               >
                 <mat-label>Expires</mat-label>
                 <input
@@ -629,6 +629,7 @@
                   name="expires"
                   [matDatepicker]="expiresPicker"
                   [ngModel]="expires"
+                  [errorStateMatcher]="expiresErrorMatcher"
                   (ngModelChange)="onExpiresChange($event)"
                   (input)="onExpiresInput($event)"
                   #expiresInput="ngModel"
@@ -636,7 +637,7 @@
                 />
                 <mat-datepicker-toggle matIconSuffix [for]="expiresPicker" />
                 <mat-datepicker #expiresPicker />
-                @if (expiresRawText.trim() && !isExpiresValid()) {
+                @if (showExpiresError()) {
                   <mat-error>Enter a valid date</mat-error>
                 }
               </mat-form-field>
@@ -734,7 +735,9 @@
                       </div>
                       <div class="vocab-panel__list">
                         @for (entry of filteredNatureOptions(); track entry.id) {
-                          <mat-option [value]="entry.id">{{ entry.displayLabel }}</mat-option>
+                          <mat-option [value]="entry.id">{{
+                            directoryPickerLabel(entry)
+                          }}</mat-option>
                         }
                       </div>
                     </mat-select>
@@ -851,7 +854,7 @@
                     appearance="outline"
                     subscriptSizing="dynamic"
                     class="full-width"
-                    [class.expires-field-invalid]="expiresRawText.trim() && !isExpiresValid()"
+                    [class.expires-field-invalid]="showExpiresError()"
                   >
                     <mat-label>Expires</mat-label>
                     <input
@@ -859,13 +862,14 @@
                       name="importExpires"
                       [matDatepicker]="importExpiresPicker"
                       [ngModel]="expires"
+                      [errorStateMatcher]="expiresErrorMatcher"
                       (ngModelChange)="onExpiresChange($event)"
                       (input)="onExpiresInput($event)"
                       placeholder="mm/dd/yyyy"
                     />
                     <mat-datepicker-toggle matIconSuffix [for]="importExpiresPicker" />
                     <mat-datepicker #importExpiresPicker />
-                    @if (expiresRawText.trim() && !isExpiresValid()) {
+                    @if (showExpiresError()) {
                       <mat-error>Enter a valid date</mat-error>
                     }
                   </mat-form-field>

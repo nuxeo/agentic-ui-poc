@@ -13,6 +13,12 @@ import {
 } from 'rxjs';
 
 import {
+  AUTH_TOKEN_HEADER,
+  readShareTokenFromBrowserUrl,
+  stripShareTokenFromBrowserUrl,
+} from './share-token.util';
+
+import {
   BrowseContextService,
   ClipboardTargetService,
   NUXEO_API_ORIGIN,
@@ -106,6 +112,8 @@ export class AuthService {
 
   private readonly state = signal<StoredSession | null>(null);
   private hydration$: Observable<void> | null = null;
+  /** In-memory token for Instant Share / external permission links (Nuxeo TOKEN_AUTH). */
+  private shareAuthTokenValue: string | null = null;
 
   readonly samlLoginOptions = computed(() => this.samlEndpoints);
 
@@ -272,7 +280,20 @@ export class AuthService {
     return this.hydration$;
   }
 
+  /** Token from an external share email link, used only during TOKEN_AUTH bootstrap. */
+  shareAuthToken(): string | null {
+    return this.shareAuthTokenValue;
+  }
+
   private runHydration(): Observable<void> {
+    const shareToken = readShareTokenFromBrowserUrl();
+    if (shareToken) {
+      stripShareTokenFromBrowserUrl();
+      return this.authenticateWithShareToken(shareToken).pipe(
+        switchMap(() => (this.isAuthenticated() ? of(undefined) : this.runHydration())),
+      );
+    }
+
     if (this.isExplicitlySignedOut()) {
       this.state.set(null);
       this.clearStorage();
@@ -372,10 +393,62 @@ export class AuthService {
   }
 
   /**
+   * Authenticates a transient external user via the Instant Share token from an email link.
+   * Sends the token in {@link AUTH_TOKEN_HEADER} only (not the URL) to avoid log/proxy leakage.
+   */
+  authenticateWithShareToken(token: string): Observable<void> {
+    const trimmed = token.trim();
+    if (!trimmed) {
+      return of(undefined);
+    }
+
+    this.clearSignedOut();
+    this.state.set(null);
+    this.clearStorage();
+    this.shareAuthTokenValue = trimmed;
+
+    const headers = new HttpHeaders({
+      Accept: 'application/json',
+      [AUTH_TOKEN_HEADER]: trimmed,
+    });
+
+    return this.http
+      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+        headers,
+        withCredentials: true,
+      })
+      .pipe(
+        tap((me) => {
+          const user = readUsernameFromMe(me);
+          if (!user) {
+            this.clearShareAuth();
+            return;
+          }
+          const flags = readSessionFlagsFromMe(me);
+          const session: CookieStoredSession = {
+            kind: 'cookie',
+            username: user,
+            isAdministrator: flags.isAdministrator,
+            groups: flags.groups,
+          };
+          this.state.set(session);
+          this.persistCookie(session);
+          this.clearShareAuth();
+        }),
+        map(() => undefined),
+        catchError(() => {
+          this.clearShareAuth();
+          return of(undefined);
+        }),
+      );
+  }
+
+  /**
    * Validates credentials against Nuxeo (`GET /nuxeo/api/v1/me`).
    */
   login(username: string, password: string, remember: boolean): Observable<void> {
     // Drop any prior session so Nuxeo requests use only the new credentials.
+    this.clearShareAuth();
     this.state.set(null);
     this.clearStorage();
     this.hydration$ = null;
@@ -425,10 +498,15 @@ export class AuthService {
    */
   logout(): void {
     this.clearUserScopedUiState();
+    this.clearShareAuth();
     this.state.set(null);
     this.clearStorage();
     this.markSignedOut();
     this.hydration$ = null;
+  }
+
+  private clearShareAuth(): void {
+    this.shareAuthTokenValue = null;
   }
 
   private clearUserScopedUiState(): void {

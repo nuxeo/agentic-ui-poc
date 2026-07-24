@@ -164,6 +164,17 @@ describe('DirectoryService', () => {
   it('getEntries queries Directory.SuggestEntries on every call (no session cache)', async () => {
     const first$ = firstValueFrom(service.getEntries('nature'));
     const req1 = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
+    expect(req1.request.body).toEqual({
+      params: {
+        directoryName: 'nature',
+        contains: true,
+        dbl10n: false,
+        localize: true,
+        lang: 'en',
+        searchTerm: '',
+      },
+      context: {},
+    });
     req1.flush([
       {
         id: 'contract',
@@ -207,6 +218,25 @@ describe('DirectoryService', () => {
     const req = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
     req.flush([
       {
+        id: 'Publication',
+        label: 'label.directories.nature.Publication',
+        displayLabel: 'label.directories.nature.Publication',
+        absoluteLabel: 'label.directories.nature.Publication',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ]);
+
+    const entries = await entries$;
+    expect(entries[0].displayLabel).toBe('Publication');
+  });
+
+  it('getEntries resolves i18n display labels for custom vocabulary entries with my-custom id', async () => {
+    const entries$ = firstValueFrom(service.getEntries('nature'));
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
+    req.flush([
+      {
         id: 'my-custom',
         label: 'label.directories.nature.my-custom',
         displayLabel: 'label.directories.nature.my-custom',
@@ -218,6 +248,43 @@ describe('DirectoryService', () => {
 
     const entries = await entries$;
     expect(entries[0].displayLabel).toBe('My Custom');
+  });
+
+  it('getEntries resolves labels for any directory and arbitrary custom entry ids', async () => {
+    const entries$ = firstValueFrom(service.getEntries('subtopic'));
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
+    expect(req.request.body.params.directoryName).toBe('subtopic');
+    req.flush([
+      {
+        id: 'arbitrary-custom-id',
+        label: 'label.directories.subtopic.arbitrary-custom-id',
+        displayLabel: 'label.directories.subtopic.arbitrary-custom-id',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'subtopic',
+      },
+    ]);
+
+    const entries = await entries$;
+    expect(entries[0].displayLabel).toBe('Arbitrary Custom Id');
+  });
+
+  it('getEntries preserves human-readable labels after admin vocabulary edits', async () => {
+    const entries$ = firstValueFrom(service.getEntries('nature'));
+    const req = httpMock.expectOne('/nuxeo/api/v1/automation/Directory.SuggestEntries');
+    req.flush([
+      {
+        id: 'edited-term',
+        label: 'Updated Friendly Label',
+        displayLabel: 'Updated Friendly Label',
+        ordering: 1,
+        obsolete: 0,
+        directoryName: 'nature',
+      },
+    ]);
+
+    const entries = await entries$;
+    expect(entries[0].displayLabel).toBe('Updated Friendly Label');
   });
 
   it('loads admin entries with pagination from REST GET /directory/{name}', async () => {
@@ -257,5 +324,36 @@ describe('DirectoryService', () => {
     expect(entries).toHaveLength(2);
     expect(entries[0].label).toBe('Alpha');
     expect(entries[1].obsolete).toBe(true);
+  });
+
+  it('getAllL10nEntries loads paginated entries for any l10n directory name', async () => {
+    const entries$ = firstValueFrom(service.getAllL10nEntries('l10nsubjects'));
+
+    const page0 = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/directory/l10nsubjects' &&
+        r.params.get('currentPageIndex') === '0',
+    );
+    page0.flush({
+      entries: [
+        {
+          id: 'new-child-topic',
+          directoryName: 'l10nsubjects',
+          properties: {
+            id: 'new-child-topic',
+            parent: 'parent-topic',
+            ordering: 1,
+            obsolete: 0,
+            label_en: 'New Child Topic',
+          },
+        },
+      ],
+      currentPageIndex: 0,
+      isNextPageAvailable: false,
+    });
+
+    const entries = await entries$;
+    expect(entries).toHaveLength(1);
+    expect(entries[0].properties.label_en).toBe('New Child Topic');
   });
 });

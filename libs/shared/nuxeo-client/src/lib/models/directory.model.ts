@@ -163,17 +163,35 @@ export function directoryAdminTableLabel(entry: Pick<ManagedDirectoryEntry, 'lab
   return entry.label;
 }
 
+/** Whether a stored directory label value is an unresolved i18n key. */
+export function isDirectoryI18nKey(value: string | undefined | null): boolean {
+  if (!value?.trim()) return false;
+  return /^label\.directories\./i.test(value.trim());
+}
+
+/** Formats a vocabulary entry id for picker display (Web UI parity). */
+export function formatDirectoryEntryId(id: string): string {
+  const trimmed = id.trim();
+  if (!trimmed) return '';
+  if (isDirectoryI18nKey(trimmed)) {
+    const segment = trimmed.split('.').pop() ?? trimmed;
+    return formatDirectoryEntryId(segment);
+  }
+  return trimmed
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 /** Human-readable label for directory entries whose label is an i18n key. */
 export function directoryEntryDisplayLabel(
   entry: Pick<ManagedDirectoryEntry, 'id' | 'label'>,
 ): string {
-  if (entry.label.startsWith('label.')) {
-    return entry.id
-      .replace(/_/g, ' ')
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, (char) => char.toUpperCase());
+  const label = entry.label?.trim() ?? '';
+  if (isDirectoryI18nKey(label)) {
+    return formatDirectoryEntryId(entry.id);
   }
-  return entry.label;
+  return label || formatDirectoryEntryId(entry.id);
 }
 
 /**
@@ -184,13 +202,30 @@ export function directoryPickerLabel(
   entry: Pick<DirectoryEntry, 'id' | 'label' | 'displayLabel'> & { absoluteLabel?: string },
 ): string {
   const absolute = entry.absoluteLabel?.trim();
-  if (absolute) return absolute;
+  if (absolute && !isDirectoryI18nKey(absolute)) return absolute;
 
   const display = entry.displayLabel?.trim();
-  if (display && !display.startsWith('label.')) return display;
+  if (display && !isDirectoryI18nKey(display)) return display;
 
-  const rawLabel = entry.label?.trim() || display || entry.id;
-  return directoryEntryDisplayLabel({ id: entry.id, label: rawLabel });
+  const label = entry.label?.trim();
+  if (label && !isDirectoryI18nKey(label)) return label;
+
+  return formatDirectoryEntryId(entry.id);
+}
+
+/** Client-side filter/sort for vocabulary picker dropdowns (Nature, etc.). */
+export function filterDirectoryPickerEntries(
+  entries: DirectoryEntry[],
+  query = '',
+): DirectoryEntry[] {
+  const q = query.trim().toLowerCase();
+  return entries
+    .filter((entry) => {
+      if (!q) return true;
+      const label = directoryPickerLabel(entry).toLowerCase();
+      return label.includes(q) || entry.id.toLowerCase().includes(q);
+    })
+    .sort((a, b) => directoryPickerLabel(a).localeCompare(directoryPickerLabel(b)));
 }
 
 export function directoryUsesL10nLabel(directoryName: string): boolean {
