@@ -12,13 +12,7 @@ import {
 import { NuxeoAcl } from '../models/acl.model';
 import { NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
-
-function matchesPrincipal(aceUsername: string, logicalPrincipal: string): boolean {
-  if (aceUsername === logicalPrincipal) return true;
-  if (aceUsername === `user:${logicalPrincipal}`) return true;
-  if (aceUsername === `group:${logicalPrincipal}`) return true;
-  return aceUsername.replace(/^(user:|group:)/, '') === logicalPrincipal;
-}
+import { matchesPrincipal } from '../utils/principal-match.utils';
 
 export interface LocalPermissionRow {
   on: string;

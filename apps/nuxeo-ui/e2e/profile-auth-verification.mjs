@@ -17,8 +17,14 @@ function parseUsers() {
   const list = process.env.NUXEO_VERIFY_USERS;
   if (list) {
     return list.split(',').map((entry) => {
-      const [username, password] = entry.trim().split(':');
-      if (!username || !password) {
+      const trimmed = entry.trim();
+      const colonIndex = trimmed.indexOf(':');
+      if (colonIndex <= 0) {
+        throw new Error(`Invalid NUXEO_VERIFY_USERS entry: ${entry}`);
+      }
+      const username = trimmed.slice(0, colonIndex);
+      const password = trimmed.slice(colonIndex + 1);
+      if (!password) {
         throw new Error(`Invalid NUXEO_VERIFY_USERS entry: ${entry}`);
       }
       return { username, password };

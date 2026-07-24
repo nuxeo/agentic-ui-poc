@@ -205,8 +205,6 @@ export class ProfilePageComponent {
     return grantedBy !== '—';
   }
 
-  readonly noopHandler = (): void => undefined;
-
   groupPermPrevHandler(groupId: string): () => void {
     return () => this.groupPermPrev(groupId);
   }
