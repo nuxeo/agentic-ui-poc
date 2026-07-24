@@ -18,7 +18,11 @@ function nuxeoRequestPathname(url: string): string | null {
   }
   if (url.startsWith('http://') || url.startsWith('https://')) {
     try {
-      return new URL(url).pathname;
+      const parsed = new URL(url);
+      if (typeof window !== 'undefined' && parsed.origin !== window.location.origin) {
+        return null;
+      }
+      return parsed.pathname;
     } catch {
       return null;
     }

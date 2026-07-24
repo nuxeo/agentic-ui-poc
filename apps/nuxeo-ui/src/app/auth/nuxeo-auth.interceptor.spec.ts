@@ -112,6 +112,16 @@ describe('nuxeoAuthInterceptor', () => {
     expect(sessionTimeout.recordActivity).not.toHaveBeenCalled();
   });
 
+  it('ignores cross-origin absolute Nuxeo URLs', () => {
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('https://other-host.example.com/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('https://other-host.example.com/nuxeo/api/v1/me');
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    expect(req.request.withCredentials).toBeFalse();
+    req.flush({ id: 'user01' });
+    expect(sessionTimeout.recordActivity).not.toHaveBeenCalled();
+  });
+
   it('sends X-Authentication-Token for external share sessions', () => {
     auth.isAuthenticated.and.returnValue(false);
     auth.shareAuthToken.and.returnValue('share-token-abc');
