@@ -17,6 +17,31 @@ sat-platform-nav-container.has-selection-topbar {
   height: calc(100% - var(--selection-topbar-height));
 }
 
+:host ::ng-deep sat-platform-nav-list-item.nav-item--clipboard-badge .sat-platform-nav-icon {
+  position: relative;
+  overflow: visible;
+}
+
+:host ::ng-deep sat-platform-nav-list-item.nav-item--clipboard-badge .sat-platform-nav-icon::after {
+  content: var(--nav-clipboard-count);
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  z-index: 2;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--mat-sys-error, #b3261e);
+  color: var(--mat-sys-on-error, #fff);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+  box-sizing: border-box;
+}
+
 .shell-content {
   height: calc(100% - var(--selection-topbar-height));
 }

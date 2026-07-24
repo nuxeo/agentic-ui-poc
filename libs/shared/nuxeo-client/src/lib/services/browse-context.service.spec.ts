@@ -35,5 +35,26 @@ describe('BrowseContextService', () => {
     expect(service.contextPath()).toBe('/');
     expect(service.treeRefreshTick()).toBe(0);
     expect(service.contentRefreshTick()).toBe(0);
+    expect(service.clipboardPasteTick()).toBe(0);
+  });
+
+  it('notifyClipboardPasteComplete increments ticks and exposes payload once', () => {
+    const doc = {
+      uid: 'file-1',
+      title: 'Report',
+      type: 'File',
+      path: '/folder/report',
+      lastModified: '',
+      properties: {},
+    };
+    service.notifyClipboardPasteComplete({
+      targetUid: 'folder-1',
+      documents: [doc],
+      action: 'copy',
+    });
+    expect(service.clipboardPasteTick()).toBe(1);
+    expect(service.contentRefreshTick()).toBe(0);
+    expect(service.consumeClipboardPasteEvent()?.documents[0]?.uid).toBe('file-1');
+    expect(service.consumeClipboardPasteEvent()).toBeNull();
   });
 });
