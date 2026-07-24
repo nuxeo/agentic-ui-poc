@@ -1913,7 +1913,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     const raw = doc.properties['vid:info'] as Record<string, unknown> | undefined;
     if (!raw) {
-      return true;
+      // File attachments with video MIME never receive vid:info from Nuxeo.
+      return doc.type === 'Video';
     }
 
     return !Object.values(raw).some(
