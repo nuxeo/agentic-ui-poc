@@ -498,7 +498,8 @@ export class BrowseComponent {
         this.browseContext.setFromNuxeoPath(folder.path);
         this.entries.set(entries);
         this.reconcilePendingPasteEntries(entries);
-        this.totalSize.set(totalSize + this.pendingPasteEntries.size);
+        const pendingCount = this.pendingPasteEntries.size;
+        this.totalSize.set(totalSize === entries.length ? totalSize + pendingCount : totalSize);
         this.loading.set(false);
         this.syncClipboardTarget(folder, payload.nuxeoPath);
         this.loadThumbnails(this.entries());
@@ -627,6 +628,8 @@ export class BrowseComponent {
 
     let added = 0;
     let additions: NuxeoDocument[] = [];
+    const previousEntryCount = this.entries().length;
+    const previousTotalSize = this.totalSize();
     this.entries.update((entries) => {
       const existingUids = new Set(entries.map((entry) => entry.uid));
       additions = documents.filter((doc) => doc.uid && !existingUids.has(doc.uid));
@@ -635,7 +638,9 @@ export class BrowseComponent {
     });
 
     if (added > 0) {
-      this.totalSize.update((count) => count + added);
+      if (previousTotalSize === previousEntryCount) {
+        this.totalSize.update((count) => count + added);
+      }
       this.loadThumbnails(additions, false);
     }
   }
