@@ -352,7 +352,7 @@ describe('BrowseComponent', () => {
       path: '/default-domain/UserWorkspaces/jdoe/Collections',
       lastModified: '',
       properties: {},
-      contextParameters: { permissions: ['Everything'] },
+      contextParameters: { permissions: ['Remove'] },
     } as NuxeoDocument);
     component.entries.set([
       {
