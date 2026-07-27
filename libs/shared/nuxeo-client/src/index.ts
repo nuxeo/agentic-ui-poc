@@ -166,6 +166,14 @@ export {
   toBrowseRouterUrl,
   isBrowseRouterUrl,
   topLevelNuxeoFolderPath,
+  isUserWorkspacePath,
+  userWorkspaceOwnerFromPath,
+  userWorkspaceRootFromPath,
+  shouldShowUserWorkspaceBreadcrumbs,
+  userWorkspaceBrowseRouterUrl,
+  postTrashBrowseRouterUrl,
+  documentNavigationUrl,
+  isCollectionDocument,
 } from './lib/utils/browse-path.utils';
 export { ContentLakeIngestService } from './lib/services/content-lake-ingest.service';
 export {

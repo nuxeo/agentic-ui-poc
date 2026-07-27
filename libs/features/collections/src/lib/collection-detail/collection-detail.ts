@@ -35,12 +35,20 @@ import {
   docTypeIcon,
   avatarColor,
   canViewDocumentAuditLog,
+  canWriteDocument,
+  canRemoveDocument,
+  PERMISSION_DENIED_MESSAGE,
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
   mailSendFailureMessage,
   readClipboardDocs,
   writeClipboardDocs,
   type ClipboardDoc,
+  CURRENT_USERNAME,
+  ADMIN_ACCESS_CHECKS,
+  shouldShowUserWorkspaceBreadcrumbs,
+  postTrashBrowseRouterUrl,
+  BrowseContextService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -114,6 +122,8 @@ export class CollectionDetailComponent {
   private readonly dialog = inject(MatDialog);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly currentUsername = inject(CURRENT_USERNAME);
+  private readonly adminAccess = inject(ADMIN_ACCESS_CHECKS);
 
   readonly collection = signal<NuxeoDocument | null>(null);
   readonly members = signal<NuxeoDocument[]>([]);
@@ -166,6 +176,11 @@ export class CollectionDetailComponent {
     this.clipboardDocs().some((d) => d.uid === this.collectionUid),
   );
 
+  readonly canEditCollection = computed(() => canWriteDocument(this.collection()));
+  readonly canDeleteCollection = computed(() => canRemoveDocument(this.collection()));
+
+  private readonly browseContext = inject(BrowseContextService);
+
   readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
     const col = this.collection();
     if (!col?.path) return [];
@@ -183,6 +198,16 @@ export class CollectionDetailComponent {
       return { label: decodeURIComponent(s), href: accumulated };
     });
     return this.breadcrumbItemsCache;
+  });
+
+  readonly showBreadcrumbs = computed(() => {
+    const col = this.collection();
+    if (!col?.path) return false;
+    return shouldShowUserWorkspaceBreadcrumbs(
+      col.path,
+      this.currentUsername(),
+      this.adminAccess.isAdministrator(),
+    );
   });
 
   onBreadcrumbClick(event: MouseEvent): void {
@@ -332,6 +357,10 @@ export class CollectionDetailComponent {
   editCollection(): void {
     const col = this.collection();
     if (!col) return;
+    if (!this.canEditCollection()) {
+      this.toast(PERMISSION_DENIED_MESSAGE);
+      return;
+    }
 
     const dialogRef = this.dialog.open(EditCollectionDialogComponent, {
       data: { document: col } satisfies EditCollectionDialogData,
@@ -341,6 +370,7 @@ export class CollectionDetailComponent {
     dialogRef.afterClosed().subscribe((updatedDoc: NuxeoDocument | undefined) => {
       if (updatedDoc) {
         this.collection.set(updatedDoc);
+        this.browseContext.requestTreeRefresh();
         this.toast('Collection updated');
       }
     });
@@ -390,7 +420,12 @@ export class CollectionDetailComponent {
   }
 
   deleteCollection(): void {
-    if (this.actionInProgress()) return;
+    if (this.actionInProgress() || !this.canDeleteCollection()) {
+      if (!this.canDeleteCollection()) {
+        this.toast(PERMISSION_DENIED_MESSAGE);
+      }
+      return;
+    }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Delete Collection',
@@ -407,7 +442,10 @@ export class CollectionDetailComponent {
         next: () => {
           this.actionInProgress.set(null);
           this.toast('Collection moved to trash');
-          void this.router.navigateByUrl('/collections');
+          this.browseContext.requestTreeRefresh();
+          const col = this.collection();
+          const redirectUrl = col?.path ? postTrashBrowseRouterUrl(col.path) : '/collections';
+          void this.router.navigateByUrl(redirectUrl);
         },
         error: () => {
           this.actionInProgress.set(null);

@@ -17,6 +17,7 @@ import { catchError } from 'rxjs/operators';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 import { resolveCreatableSubtypes } from '../utils/creatable-subtypes';
+import { isUserWorkspacePath } from '../utils/browse-path.utils';
 import { isFolderishDocument, isBrowsableNavNode } from './document-import.service';
 
 export interface NavTreeBootstrap {
@@ -270,6 +271,17 @@ export class BrowseService {
         map((list) => ({
           ...list,
           entries: (list.entries ?? []).filter((doc) => isFolderishDocument(doc)),
+        })),
+      );
+    }
+    // User workspaces expose Favorites (type Favorites) via @children; tree_children omits it
+    // once a Collections folder exists (NXSAT-204).
+    if (parent.type === 'Workspace' && isUserWorkspacePath(parent.path ?? '')) {
+      const safePath = parent.path?.replace(/\/+$/, '') ?? '';
+      return this.getChildren(safePath, pageSize).pipe(
+        map((list) => ({
+          ...list,
+          entries: (list.entries ?? []).filter((doc) => isBrowsableNavNode(doc)),
         })),
       );
     }

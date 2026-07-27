@@ -79,6 +79,7 @@ import {
   isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
+  isCollectionDocument,
   BrowseContextService,
   documentHasPersistedMainBlob,
   noteFormatLabel,
@@ -1492,7 +1493,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
-          if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
+          if (isCollectionDocument(doc)) {
+            void this.router.navigate(['/collections', uid], { replaceUrl: true });
+            return;
+          }
+          if (isFolderishDocument(doc) && doc.path) {
             this.browseContext.setFromDocument(doc);
             void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
             return;

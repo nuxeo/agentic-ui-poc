@@ -80,6 +80,11 @@ import {
   isMailSendError,
   mailSendFailureMessage,
   resolveAcePrincipal,
+  CURRENT_USERNAME,
+  ADMIN_ACCESS_CHECKS,
+  shouldShowUserWorkspaceBreadcrumbs,
+  postTrashBrowseRouterUrl,
+  isCollectionDocument,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -93,6 +98,7 @@ import {
   ExportDialogData,
   ExportType,
   ConfirmDialogComponent,
+  ConfirmDialogData,
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
 } from '@agentic-ui/shared/ui';
@@ -106,6 +112,8 @@ import {
   DeletePermissionDialogData,
   ShareExternalDialogComponent,
   ShareExternalDialogData,
+  EditCollectionDialogComponent,
+  EditCollectionDialogData,
 } from '@agentic-ui/feature-collections';
 
 import {
@@ -174,6 +182,8 @@ export class BrowseComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly currentUsername = inject(CURRENT_USERNAME);
+  private readonly adminAccess = inject(ADMIN_ACCESS_CHECKS);
 
   // Core state
   readonly entries = signal<NuxeoDocument[]>([]);
@@ -256,6 +266,24 @@ export class BrowseComponent {
     return !isDomainParentType(doc.type) && !isRestrictedImportParentPath(doc.path);
   });
   readonly canRemoveCurrentDoc = computed(() => canRemoveDocument(this.currentDoc()));
+  readonly singleSelectedEntry = computed(() => {
+    const ids = [...this.selectionService.selectedIds()];
+    if (ids.length !== 1) return null;
+    const id = ids[0];
+    return this.filteredEntries().find((doc) => doc.uid === id) ?? null;
+  });
+  readonly showHeaderEdit = computed(() => {
+    const selected = this.singleSelectedEntry();
+    if (selected && isCollectionDocument(selected)) return true;
+    return this.canWriteCurrentDoc();
+  });
+  readonly showHeaderDelete = computed(() => {
+    if (this.selectionService.selectedCount() > 0) return true;
+    return this.canRemoveCurrentDoc();
+  });
+  readonly hasCollectionEntries = computed(() =>
+    this.filteredEntries().some((doc) => isCollectionDocument(doc)),
+  );
   readonly canManageCurrentPermissions = computed(() =>
     canManageDocumentPermissions(this.currentDoc()),
   );
@@ -432,6 +460,16 @@ export class BrowseComponent {
       }
     }
     return crumbs;
+  });
+
+  readonly showBreadcrumbs = computed(() => {
+    const doc = this.currentDoc();
+    if (!doc?.path) return true;
+    return shouldShowUserWorkspaceBreadcrumbs(
+      doc.path,
+      this.currentUsername(),
+      this.adminAccess.isAdministrator(),
+    );
   });
 
   onBreadcrumbClick(event: MouseEvent): void {
@@ -1062,12 +1100,27 @@ export class BrowseComponent {
       .afterClosed()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((result) => {
-        if (result?.navigateToUid || result?.refreshed) {
+        if (result?.navigateToUid || result?.navigateToUrl || result?.refreshed) {
           this.browseContext.requestTreeRefresh();
         }
         const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
         if (browsePath && browsePath !== '/') {
           void this.router.navigateByUrl(`/browse${browsePath}`);
+          return;
+        }
+        if (result?.navigateToUrl) {
+          if (result.navigateToUrl.startsWith('/doc/')) {
+            const uid = result.navigateToUrl.slice('/doc/'.length);
+            void this.router.navigate(['/doc', uid], {
+              queryParams: { fresh: '1' },
+              state: {
+                freshBlobDocument: true,
+                freshNote: result.freshNote === true,
+              },
+            });
+          } else {
+            void this.router.navigateByUrl(result.navigateToUrl);
+          }
           return;
         }
         if (result?.navigateToUid) {
@@ -1085,6 +1138,12 @@ export class BrowseComponent {
   }
 
   openEditDialog(): void {
+    const selected = this.singleSelectedEntry();
+    if (selected && isCollectionDocument(selected)) {
+      this.openEditCollectionDialog(selected);
+      return;
+    }
+
     const doc = this.currentDoc();
     if (!doc) return;
     if (!canWriteDocument(doc)) {
@@ -1126,6 +1185,80 @@ export class BrowseComponent {
     this.loadContent();
   }
 
+  isCollectionEntry(doc: NuxeoDocument): boolean {
+    return isCollectionDocument(doc);
+  }
+
+  openEditCollectionDialog(doc: NuxeoDocument): void {
+    this.detailService
+      .getFullDocument(doc.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (fullDoc) => {
+          if (!canWriteDocument(fullDoc)) {
+            this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+            return;
+          }
+          const ref = this.dialog.open(EditCollectionDialogComponent, {
+            data: { document: fullDoc } satisfies EditCollectionDialogData,
+            width: '560px',
+          });
+          ref
+            .afterClosed()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe((updatedDoc) => {
+              if (updatedDoc) {
+                this.browseContext.requestTreeRefresh();
+                this.loadContent();
+                this.snackBar.open('Collection updated', 'OK', { duration: 3000 });
+              }
+            });
+        },
+        error: () => this.snackBar.open('Failed to load collection', 'OK', { duration: 3000 }),
+      });
+  }
+
+  deleteCollectionEntry(doc: NuxeoDocument): void {
+    this.detailService
+      .getFullDocument(doc.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (fullDoc) => {
+          if (!canRemoveDocument(fullDoc)) {
+            this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+            return;
+          }
+          const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+            data: {
+              title: 'Delete Collection',
+              message: `Are you sure you want to delete "${fullDoc.title}"?`,
+              confirmLabel: 'Delete',
+            } as ConfirmDialogData,
+          });
+          dialogRef
+            .afterClosed()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe((confirmed) => {
+              if (!confirmed) return;
+              this.detailService
+                .trashDocument(fullDoc.uid)
+                .pipe(takeUntilDestroyed(this.destroyRef))
+                .subscribe({
+                  next: () => {
+                    this.selectionService.clear();
+                    this.browseContext.requestTreeRefresh();
+                    this.loadContent();
+                    this.snackBar.open('Collection moved to trash', 'OK', { duration: 3000 });
+                  },
+                  error: () =>
+                    this.snackBar.open('Failed to delete collection', 'OK', { duration: 3000 }),
+                });
+            });
+        },
+        error: () => this.snackBar.open('Failed to load collection', 'OK', { duration: 3000 }),
+      });
+  }
+
   deleteDocument(): void {
     const selectedCount = this.selectionService.selectedCount();
     if (selectedCount > 0) {
@@ -1135,6 +1268,12 @@ export class BrowseComponent {
 
     const doc = this.currentDoc();
     if (!doc) return;
+    if (doc.type === 'Collections' && this.filteredEntries().length > 0) {
+      this.snackBar.open('Remove all collections from this folder before deleting it.', 'OK', {
+        duration: 5000,
+      });
+      return;
+    }
     if (!canRemoveDocument(doc)) {
       this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
       return;
@@ -1157,7 +1296,7 @@ export class BrowseComponent {
               this.snackBar.open('Moved to trash', 'OK', { duration: 3000 });
               this.browseContext.resetContext();
               this.browseContext.requestTreeRefresh();
-              void this.router.navigateByUrl('/browse');
+              void this.router.navigateByUrl(postTrashBrowseRouterUrl(doc.path));
             },
             error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
           });
@@ -1301,6 +1440,10 @@ export class BrowseComponent {
   }
 
   onRowClick(doc: NuxeoDocument): void {
+    if (doc.type === 'Collection') {
+      void this.router.navigateByUrl(`/collections/${doc.uid}`);
+      return;
+    }
     if (this.isFolderish(doc)) {
       this.browseContext.setFromNuxeoPath(doc.path);
       void this.router.navigateByUrl(`/browse${doc.path}`);

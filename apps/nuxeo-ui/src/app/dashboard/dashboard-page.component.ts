@@ -168,28 +168,42 @@ export class DashboardPageComponent {
         })
         .afterClosed()
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(
-          (
-            result:
-              | { refreshed?: boolean; path?: string; navigateToUid?: string; freshNote?: boolean }
-              | undefined,
-          ) => {
-            if (result?.navigateToUid) {
-              void this.router.navigate(['/doc', result.navigateToUid], {
+        .subscribe((result) => {
+          const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
+          if (browsePath && browsePath !== '/') {
+            void this.router.navigateByUrl(`/browse${browsePath}`);
+            return;
+          }
+          if (result?.navigateToUrl) {
+            if (result.navigateToUrl.startsWith('/doc/')) {
+              const uid = result.navigateToUrl.slice('/doc/'.length);
+              void this.router.navigate(['/doc', uid], {
                 queryParams: { fresh: '1' },
                 state: {
                   freshBlobDocument: true,
                   freshNote: result.freshNote === true,
                 },
               });
-              return;
+            } else {
+              void this.router.navigateByUrl(result.navigateToUrl);
             }
-            if (result?.refreshed && result.path) {
-              const parts = result.path.replace(/^\/+/, '').split('/').filter(Boolean);
-              void this.router.navigate(['/browse', ...parts]);
-            }
-          },
-        );
+            return;
+          }
+          if (result?.navigateToUid) {
+            void this.router.navigate(['/doc', result.navigateToUid], {
+              queryParams: { fresh: '1' },
+              state: {
+                freshBlobDocument: true,
+                freshNote: result.freshNote === true,
+              },
+            });
+            return;
+          }
+          if (result?.refreshed && result.path) {
+            const parts = result.path.replace(/^\/+/, '').split('/').filter(Boolean);
+            void this.router.navigate(['/browse', ...parts]);
+          }
+        });
     });
   }
 

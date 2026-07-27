@@ -222,6 +222,9 @@ export class NavDrawerComponent {
           if (item?.path === '/browse' && username) {
             this.refreshBrowseTree();
           }
+          if (item?.path === '/personal-space') {
+            this.refreshPersonalSpaceTree();
+          }
         });
       }
     });

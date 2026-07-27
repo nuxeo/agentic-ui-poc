@@ -16,6 +16,8 @@ import {
   NuxeoDocument,
   SelectionService,
   TagService,
+  CURRENT_USERNAME,
+  ADMIN_ACCESS_CHECKS,
 } from '@agentic-ui/shared/nuxeo-client';
 import { trashSelectedDocumentsConfirmData } from '@agentic-ui/shared/ui';
 
@@ -89,6 +91,15 @@ describe('BrowseComponent', () => {
         { provide: DirectoryService, useValue: mockDirectoryService },
         { provide: TagService, useValue: mockTagService },
         { provide: SelectionService, useValue: mockSelectionService },
+        { provide: CURRENT_USERNAME, useValue: () => 'jdoe' },
+        {
+          provide: ADMIN_ACCESS_CHECKS,
+          useValue: {
+            isAdministrator: () => false,
+            isPowerUser: () => false,
+            hasAdministrationAccess: () => false,
+          },
+        },
         { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
         { provide: MatDialog, useValue: { open: dialogOpenSpy } },
       ],
@@ -274,6 +285,131 @@ describe('BrowseComponent', () => {
       { label: 'Root', href: '/browse' },
       { label: 'Current Folder' },
     ]);
+  });
+
+  it('hides breadcrumbs for non-admins viewing another user personal workspace (NXSAT-204)', () => {
+    component.currentDoc.set({
+      uid: 'ws-other',
+      title: 'alice workspace',
+      type: 'Workspace',
+      path: '/default-domain/UserWorkspaces/alice',
+      lastModified: '',
+      properties: {},
+    });
+
+    expect(component.showBreadcrumbs()).toBe(false);
+  });
+
+  it('shows breadcrumbs for non-admins in their own personal workspace (NXSAT-204)', () => {
+    component.currentDoc.set({
+      uid: 'ws-self',
+      title: 'jdoe workspace',
+      type: 'Workspace',
+      path: '/default-domain/UserWorkspaces/jdoe',
+      lastModified: '',
+      properties: {},
+    });
+
+    expect(component.showBreadcrumbs()).toBe(true);
+  });
+
+  it('blocks deleting a Collections folder that still has child collections (NXSAT-204)', () => {
+    component.currentDoc.set({
+      uid: 'cols-root',
+      title: 'Collections',
+      type: 'Collections',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Everything'] },
+    } as NuxeoDocument);
+    component.entries.set([
+      {
+        uid: 'col-1',
+        title: 'My Collection',
+        type: 'Collection',
+        path: '/default-domain/UserWorkspaces/jdoe/Collections/my-collection',
+        lastModified: '',
+        properties: {},
+      },
+    ]);
+
+    component.deleteDocument();
+
+    expect(dialogOpenSpy).not.toHaveBeenCalled();
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Remove all collections from this folder before deleting it.',
+      'OK',
+      { duration: 5000 },
+    );
+  });
+
+  it('onRowClick opens collection view for Collection documents (Web UI parity)', () => {
+    const navigateSpy = vi.spyOn(component['router'], 'navigateByUrl');
+    component.onRowClick({
+      uid: 'col-1',
+      title: 'My Collection',
+      type: 'Collection',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections/my-collection',
+      lastModified: '',
+      properties: {},
+    });
+
+    expect(navigateSpy).toHaveBeenCalledWith('/collections/col-1');
+  });
+
+  it('openEditDialog opens Edit Collection dialog when a single collection is selected', () => {
+    const collection: NuxeoDocument = {
+      uid: 'col-1',
+      title: 'My Collection',
+      type: 'Collection',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections/my-collection',
+      lastModified: '',
+      properties: {},
+    };
+    mockSelectionService.selectedIds.mockReturnValue(new Set(['col-1']));
+    mockSelectionService.selectedCount.mockReturnValue(1);
+    component.entries.set([collection]);
+    mockDocumentDetailService.getFullDocument.mockReturnValue(
+      of({
+        ...collection,
+        contextParameters: { permissions: ['WriteProperties'] },
+      } as NuxeoDocument),
+    );
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(undefined) });
+
+    component.openEditDialog();
+
+    expect(mockDocumentDetailService.getFullDocument).toHaveBeenCalledWith('col-1');
+    expect(dialogOpenSpy).toHaveBeenCalled();
+  });
+
+  it('deleteCollectionEntry trashes the collection after confirmation', () => {
+    const collection: NuxeoDocument = {
+      uid: 'col-2',
+      title: 'Archive',
+      type: 'Collection',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections/archive',
+      lastModified: '',
+      properties: {},
+    };
+    mockDocumentDetailService.getFullDocument.mockReturnValue(
+      of({
+        ...collection,
+        contextParameters: { permissions: ['Remove'] },
+      } as NuxeoDocument),
+    );
+    mockDocumentDetailService.trashDocument.mockReturnValue(of({ uid: 'col-2' } as NuxeoDocument));
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(true) });
+    const refreshSpy = vi.spyOn(TestBed.inject(BrowseContextService), 'requestTreeRefresh');
+    const loadSpy = vi.spyOn(component, 'loadContent');
+
+    component.deleteCollectionEntry(collection);
+
+    expect(mockDocumentDetailService.trashDocument).toHaveBeenCalledWith('col-2');
+    expect(refreshSpy).toHaveBeenCalled();
+    expect(loadSpy).toHaveBeenCalled();
+    expect(mockSelectionService.clear).toHaveBeenCalled();
   });
 
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {

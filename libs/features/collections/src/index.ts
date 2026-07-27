@@ -10,3 +10,5 @@ export { DeletePermissionDialogComponent } from './lib/delete-permission-dialog/
 export type { DeletePermissionDialogData } from './lib/delete-permission-dialog/delete-permission-dialog';
 export { ShareExternalDialogComponent } from './lib/share-external-dialog/share-external-dialog';
 export type { ShareExternalDialogData } from './lib/share-external-dialog/share-external-dialog';
+export { EditCollectionDialogComponent } from './lib/edit-collection-dialog/edit-collection-dialog';
+export type { EditCollectionDialogData } from './lib/edit-collection-dialog/edit-collection-dialog';
