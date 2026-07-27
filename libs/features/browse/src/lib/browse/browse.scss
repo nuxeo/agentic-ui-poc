@@ -720,7 +720,9 @@ sat-breadcrumbs {
 
   &:hover .grid-card-checkbox,
   &--selected .grid-card-checkbox,
-  &:hover .grid-card-menu {
+  &:hover .grid-card-menu,
+  &:focus-within .grid-card-checkbox,
+  &:focus-within .grid-card-menu {
     opacity: 1;
     visibility: visible;
   }

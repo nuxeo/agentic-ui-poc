@@ -450,6 +450,16 @@ export class BrowseService {
     return [];
   }
 
+  /** True when the Collections folder still has at least one non-trashed child collection. */
+  hasChildCollections(collectionsFolderUid: string): Observable<boolean> {
+    const query =
+      `SELECT * FROM Document WHERE ecm:parentId = '${collectionsFolderUid}' ` +
+      `AND ecm:primaryType = 'Collection' AND ecm:isTrashed = 0 AND ecm:isVersion = 0`;
+    return this.api
+      .nxqlSearch(query, 1)
+      .pipe(map((list) => (list.entries?.length ?? 0) > 0 || (list.totalSize ?? 0) > 0));
+  }
+
   getTrashedChildren(parentUid: string, pageSize = 50): Observable<NuxeoDocumentList> {
     const query =
       `SELECT * FROM Document WHERE ecm:parentId = '${parentUid}' ` +

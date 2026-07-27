@@ -26,6 +26,7 @@ const mockBrowseService = {
   getBrowseFolderContents: vi.fn(() => throwError(() => new Error('not connected'))),
   getFolderContext: vi.fn(() => throwError(() => new Error('not connected'))),
   getChildren: vi.fn(() => throwError(() => new Error('not connected'))),
+  hasChildCollections: vi.fn(() => of(false)),
   getTrashedChildren: vi.fn(() => EMPTY),
   restoreDocument: vi.fn(() => EMPTY),
   startCsvExport: vi.fn(() => EMPTY),
@@ -399,7 +400,32 @@ describe('BrowseComponent', () => {
 
     component.deleteDocument();
 
+    expect(mockBrowseService.hasChildCollections).toHaveBeenCalledWith('cols-root');
     expect(dialogOpenSpy).toHaveBeenCalled();
+  });
+
+  it('blocks deleting a Collections folder when child collections exist only on the server (NXSAT-204)', () => {
+    mockBrowseService.hasChildCollections.mockReturnValueOnce(of(true));
+    component.currentDoc.set({
+      uid: 'cols-root',
+      title: 'Collections',
+      type: 'Collections',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Everything'] },
+    } as NuxeoDocument);
+    component.entries.set([]);
+
+    component.deleteDocument();
+
+    expect(mockBrowseService.hasChildCollections).toHaveBeenCalledWith('cols-root');
+    expect(dialogOpenSpy).not.toHaveBeenCalled();
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Remove all collections from this folder before deleting it.',
+      'OK',
+      { duration: 5000 },
+    );
   });
 
   it('onRowClick opens collection view for Collection documents (Web UI parity)', () => {

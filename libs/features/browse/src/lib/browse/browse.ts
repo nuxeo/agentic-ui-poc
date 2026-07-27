@@ -1268,12 +1268,42 @@ export class BrowseComponent {
 
     const doc = this.currentDoc();
     if (!doc) return;
-    if (doc.type === 'Collections' && this.entries().some((entry) => isCollectionDocument(entry))) {
-      this.snackBar.open('Remove all collections from this folder before deleting it.', 'OK', {
-        duration: 5000,
-      });
+    if (doc.type === 'Collections') {
+      this.guardCollectionsFolderDelete(doc);
       return;
     }
+    this.confirmTrashDocument(doc);
+  }
+
+  private guardCollectionsFolderDelete(doc: NuxeoDocument): void {
+    if (this.entries().some((entry) => isCollectionDocument(entry))) {
+      this.showCollectionsFolderDeleteBlockedMessage();
+      return;
+    }
+
+    this.browseService
+      .hasChildCollections(doc.uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (hasChildCollections) => {
+          if (hasChildCollections) {
+            this.showCollectionsFolderDeleteBlockedMessage();
+            return;
+          }
+          this.confirmTrashDocument(doc);
+        },
+        error: () =>
+          this.snackBar.open('Failed to verify folder contents', 'OK', { duration: 3000 }),
+      });
+  }
+
+  private showCollectionsFolderDeleteBlockedMessage(): void {
+    this.snackBar.open('Remove all collections from this folder before deleting it.', 'OK', {
+      duration: 5000,
+    });
+  }
+
+  private confirmTrashDocument(doc: NuxeoDocument): void {
     if (!canRemoveDocument(doc)) {
       this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
       return;

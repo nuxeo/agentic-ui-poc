@@ -840,4 +840,55 @@ describe('BrowseService', () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe('Moved');
   });
+
+  it('hasChildCollections returns true when NXQL finds a child collection', async () => {
+    const parentUid = 'cols-folder-uid';
+    const result$ = firstValueFrom(service.hasChildCollections(parentUid));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('pageSize') === '1' &&
+        (r.params.get('query') ?? '').includes(`ecm:parentId = '${parentUid}'`) &&
+        (r.params.get('query') ?? '').includes("ecm:primaryType = 'Collection'"),
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      entries: [
+        {
+          uid: 'col-1',
+          title: 'My Collection',
+          type: 'Collection',
+          path: '/collections/my-collection',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    expect(await result$).toBe(true);
+  });
+
+  it('hasChildCollections returns false when NXQL finds no child collections', async () => {
+    const result$ = firstValueFrom(service.hasChildCollections('empty-folder'));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('pageSize') === '1' &&
+        (r.params.get('query') ?? '').includes("ecm:parentId = 'empty-folder'"),
+    );
+    req.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 0,
+    });
+
+    expect(await result$).toBe(false);
+  });
 });

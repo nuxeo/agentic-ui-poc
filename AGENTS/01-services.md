@@ -82,6 +82,7 @@ updateDocument(uid: string, properties: Record<string, unknown>): Observable<Nux
 copyDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>  // Document.Copy automation
 moveDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>  // Document.Move automation
 getTrashedChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>
+hasChildCollections(collectionsFolderUid: string): Observable<boolean>  // NXQL pageSize=1 existence check
 restoreDocument(uid: string): Observable<NuxeoDocument>
 startCsvExport(parentUid: string): Observable<string>
 pollAndDownloadCsv(executionId: string): Observable<Blob>
