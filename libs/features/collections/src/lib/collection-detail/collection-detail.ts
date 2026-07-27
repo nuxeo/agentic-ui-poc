@@ -367,13 +367,16 @@ export class CollectionDetailComponent {
       width: '560px',
     });
 
-    dialogRef.afterClosed().subscribe((updatedDoc: NuxeoDocument | undefined) => {
-      if (updatedDoc) {
-        this.collection.set(updatedDoc);
-        this.browseContext.requestTreeRefresh();
-        this.toast('Collection updated');
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updatedDoc: NuxeoDocument | undefined) => {
+        if (updatedDoc) {
+          this.collection.set(updatedDoc);
+          this.browseContext.requestTreeRefresh();
+          this.toast('Collection updated');
+        }
+      });
   }
 
   toggleLock(): void {
@@ -434,25 +437,31 @@ export class CollectionDetailComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('trash');
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('trash');
 
-      this.detailService.trashDocument(this.collectionUid).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Collection moved to trash');
-          this.browseContext.requestTreeRefresh();
-          const col = this.collection();
-          const redirectUrl = col?.path ? postTrashBrowseRouterUrl(col.path) : '/collections';
-          void this.router.navigateByUrl(redirectUrl);
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to delete collection');
-        },
+        this.detailService
+          .trashDocument(this.collectionUid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Collection moved to trash');
+              this.browseContext.requestTreeRefresh();
+              const col = this.collection();
+              const redirectUrl = col?.path ? postTrashBrowseRouterUrl(col.path) : '/collections';
+              void this.router.navigateByUrl(redirectUrl);
+            },
+            error: () => {
+              this.actionInProgress.set(null);
+              this.toast('Failed to delete collection');
+            },
+          });
       });
-    });
   }
 
   toggleClipboard(): void {

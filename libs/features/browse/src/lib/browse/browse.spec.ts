@@ -344,6 +344,32 @@ describe('BrowseComponent', () => {
     );
   });
 
+  it('allows deleting a Collections folder when only non-collection children are listed', () => {
+    component.currentDoc.set({
+      uid: 'cols-root',
+      title: 'Collections',
+      type: 'Collections',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Everything'] },
+    } as NuxeoDocument);
+    component.entries.set([
+      {
+        uid: 'folder-1',
+        title: 'Notes',
+        type: 'Folder',
+        path: '/default-domain/UserWorkspaces/jdoe/Collections/notes',
+        lastModified: '',
+        properties: {},
+      },
+    ]);
+
+    component.deleteDocument();
+
+    expect(dialogOpenSpy).toHaveBeenCalled();
+  });
+
   it('onRowClick opens collection view for Collection documents (Web UI parity)', () => {
     const navigateSpy = vi.spyOn(component['router'], 'navigateByUrl');
     component.onRowClick({

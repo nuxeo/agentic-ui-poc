@@ -1268,7 +1268,10 @@ export class BrowseComponent {
 
     const doc = this.currentDoc();
     if (!doc) return;
-    if (doc.type === 'Collections' && this.filteredEntries().length > 0) {
+    if (
+      doc.type === 'Collections' &&
+      this.filteredEntries().some((entry) => isCollectionDocument(entry))
+    ) {
       this.snackBar.open('Remove all collections from this folder before deleting it.', 'OK', {
         duration: 5000,
       });
@@ -1440,7 +1443,7 @@ export class BrowseComponent {
   }
 
   onRowClick(doc: NuxeoDocument): void {
-    if (doc.type === 'Collection') {
+    if (isCollectionDocument(doc)) {
       void this.router.navigateByUrl(`/collections/${doc.uid}`);
       return;
     }
