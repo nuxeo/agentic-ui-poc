@@ -738,7 +738,7 @@ sat-breadcrumbs {
   z-index: 2;
   opacity: 0;
   visibility: hidden;
-  background: rgb(255 255 255 / 92%);
+  background: var(--mat-sys-surface-container-lowest, #fff);
 }
 
 .doc-card {
