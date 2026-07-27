@@ -1,24 +1,75 @@
-import { HttpErrorResponse, HttpInterceptorFn, HttpResponse } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpHeaders,
+  HttpInterceptorFn,
+  HttpResponse,
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, tap, throwError } from 'rxjs';
+import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from './auth.service';
 import { SessionTimeoutService } from './session-timeout.service';
 import { AUTH_TOKEN_HEADER } from './share-token.util';
 
-/** True when the request targets the Nuxeo REST API (relative or same-origin absolute paths). */
-function isNuxeoApiRequest(url: string): boolean {
-  if (url.startsWith('/nuxeo/')) {
-    return true;
+function parseHttpOrigin(value: string): string | null {
+  const trimmed = value.trim().replace(/\/$/, '');
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return null;
+  }
+  try {
+    return new URL(trimmed).origin;
+  } catch {
+    return null;
+  }
+}
+
+function allowedNuxeoOrigins(apiOrigin: string): Set<string> {
+  const origins = new Set<string>();
+  if (typeof window !== 'undefined') {
+    origins.add(window.location.origin);
+  }
+  const configured = parseHttpOrigin(apiOrigin);
+  if (configured) {
+    origins.add(configured);
+  }
+  return origins;
+}
+
+/** True when the request targets the Nuxeo REST API (relative or trusted-origin absolute paths). */
+function isNuxeoApiRequest(url: string, allowedOrigins: Set<string>): boolean {
+  const pathname = nuxeoRequestPathname(url, allowedOrigins);
+  return pathname !== null && pathname.startsWith('/nuxeo/');
+}
+
+function nuxeoRequestPathname(url: string, allowedOrigins: Set<string>): string | null {
+  if (url.startsWith('/')) {
+    return url.split('?')[0]?.split('#')[0] ?? url;
   }
   if (url.startsWith('http://') || url.startsWith('https://')) {
+    if (typeof window === 'undefined') {
+      return null;
+    }
     try {
-      return new URL(url).pathname.startsWith('/nuxeo/');
+      const parsed = new URL(url);
+      if (!allowedOrigins.has(parsed.origin)) {
+        return null;
+      }
+      return parsed.pathname;
     } catch {
-      return false;
+      return null;
     }
   }
-  return false;
+  return null;
+}
+
+function isNuxeoLogoutRequest(url: string, allowedOrigins: Set<string>): boolean {
+  return nuxeoRequestPathname(url, allowedOrigins) === '/nuxeo/logout';
+}
+
+function hasBasicAuthorizationHeader(headers: HttpHeaders): boolean {
+  const authorization = headers.get('Authorization');
+  return authorization?.startsWith('Basic ') ?? false;
 }
 
 /**
@@ -28,7 +79,8 @@ function isNuxeoApiRequest(url: string): boolean {
 export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const sessionTimeout = inject(SessionTimeoutService);
-  if (!isNuxeoApiRequest(req.url)) {
+  const allowedOrigins = allowedNuxeoOrigins(inject(NUXEO_API_ORIGIN));
+  if (!isNuxeoApiRequest(req.url, allowedOrigins)) {
     return next(req);
   }
   const basic = auth.basicCredentials();
@@ -39,7 +91,12 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   } else if (shareToken && !auth.isAuthenticated()) {
     headers = headers.set(AUTH_TOKEN_HEADER, shareToken);
   }
-  return next(req.clone({ headers, withCredentials: true })).pipe(
+  // Logout must send cookies to clear stale JSESSIONID. Basic-auth requests (stored or
+  // in-flight during login) omit cookies to avoid principal override.
+  const isLogout = isNuxeoLogoutRequest(req.url, allowedOrigins);
+  const usesBasicAuth = Boolean(basic) || hasBasicAuthorizationHeader(req.headers);
+  const withCredentials = isLogout ? true : usesBasicAuth ? false : true;
+  return next(req.clone({ headers, withCredentials })).pipe(
     tap((event) => {
       if (event instanceof HttpResponse && auth.isAuthenticated()) {
         sessionTimeout.recordActivity();

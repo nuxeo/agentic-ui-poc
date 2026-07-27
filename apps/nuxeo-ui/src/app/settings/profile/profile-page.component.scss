@@ -181,3 +181,122 @@
 .profile-card__pill-link:hover {
   background: #dbeafe;
 }
+
+.profile-perm-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  border: 1px solid var(--mat-sys-outline-variant);
+}
+
+.profile-perm-table__col-on {
+  width: 37.5%;
+}
+
+.profile-perm-table__col-right,
+.profile-perm-table__col-time {
+  width: 25%;
+}
+
+.profile-perm-table__col-granted {
+  width: 12.5%;
+}
+
+.profile-perm-table th,
+.profile-perm-table td {
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  text-align: left;
+  vertical-align: top;
+}
+
+.profile-perm-table thead th {
+  background: var(--mat-sys-surface-container-low);
+  border-bottom: 2px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font-weight: 400;
+}
+
+.profile-perm-table tbody tr {
+  background: var(--mat-sys-surface);
+}
+
+.profile-perm-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.profile-perm-table__doc-title {
+  color: var(--mat-sys-on-surface);
+}
+
+.profile-perm-table__doc-path {
+  margin-top: 0.15rem;
+  color: var(--mat-sys-primary);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.profile-perm-table__right-tag {
+  display: inline-block;
+  padding: 0.06em 0.3em;
+  border-radius: 3px;
+  background: var(--mat-sys-secondary);
+  color: var(--mat-sys-on-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.profile-perm-table__granted-by {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  font-size: 0.82rem;
+  overflow: hidden;
+}
+
+.profile-perm-table__granted-by > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-perm-table__granted-by mat-icon {
+  width: 1rem;
+  height: 1rem;
+  font-size: 1rem;
+}
+
+.profile-perm-table__empty {
+  padding: 1.5rem 0.7rem;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+  font-weight: 300;
+  opacity: 0.5;
+}
+
+.profile-card__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+}
+
+.profile-card__pagination-label {
+  min-width: 3rem;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 0.875rem;
+}

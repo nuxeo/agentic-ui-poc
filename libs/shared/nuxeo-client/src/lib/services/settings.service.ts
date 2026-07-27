@@ -9,11 +9,15 @@ import {
   NuxeoOAuth2Token,
   NuxeoOAuth2TokenList,
 } from '../models/oauth2.model';
+import { NuxeoAcl } from '../models/acl.model';
 import { NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
+import { matchesPrincipal } from '../utils/principal-match.utils';
+import { formatPermissionTimeFrame } from '../utils/permission-timeframe.utils';
 
 export interface LocalPermissionRow {
-  on: string;
+  documentTitle: string;
+  documentPath: string | null;
   right: string;
   timeFrame: string;
   grantedBy: string;
@@ -33,18 +37,16 @@ export class SettingsService {
     return this.queryPermissions(username, pageSize);
   }
 
-  getAdminPermissions(pageSize = 25): Observable<LocalPermissionRow[]> {
-    return this.queryPermissions('administrators', pageSize);
-  }
-
   private queryPermissions(principal: string, pageSize: number): Observable<LocalPermissionRow[]> {
-    // Escape single quotes in principal for safe inclusion in NXQL string literal
     const safePrincipal = principal.replace(/'/g, "''");
-
     const nxql =
       `SELECT * FROM Document WHERE ecm:mixinType != "HiddenInNavigation" ` +
       `AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0 ` +
-      `AND ecm:acl/*1/principal = '${safePrincipal}'`;
+      `AND ecm:acl/*1/name = 'local' AND (` +
+      `ecm:acl/*1/principal = '${safePrincipal}' OR ` +
+      `ecm:acl/*1/principal = 'user:${safePrincipal}' OR ` +
+      `ecm:acl/*1/principal = 'group:${safePrincipal}'` +
+      `)`;
 
     return this.api
       .post<NuxeoDocumentList>(
@@ -65,21 +67,7 @@ export class SettingsService {
           const rows: LocalPermissionRow[] = [];
 
           for (const doc of res.entries ?? []) {
-            const acls = doc.contextParameters?.acls ?? [];
-            for (const acl of acls) {
-              for (const ace of acl.aces ?? []) {
-                if (ace.username !== principal || ace.status !== 'effective' || !ace.granted) {
-                  continue;
-                }
-
-                rows.push({
-                  on: doc.title || doc.path || doc.uid,
-                  right: ace.permission,
-                  timeFrame: this.formatTimeFrame(ace.begin, ace.end),
-                  grantedBy: ace.creator || 'System',
-                });
-              }
-            }
+            rows.push(...this.extractLocalPermissionRows(doc, principal));
           }
 
           return rows;
@@ -154,9 +142,13 @@ export class SettingsService {
   }
 
   private getProviders(): Observable<NuxeoOAuth2ServiceProviderList> {
-    return this.api.get<NuxeoOAuth2ServiceProviderList>('/nuxeo/api/v1/oauth2/provider/', undefined, {
-      properties: '*',
-    });
+    return this.api.get<NuxeoOAuth2ServiceProviderList>(
+      '/nuxeo/api/v1/oauth2/provider/',
+      undefined,
+      {
+        properties: '*',
+      },
+    );
   }
 
   private getProviderTokens(): Observable<NuxeoOAuth2TokenList> {
@@ -191,19 +183,36 @@ export class SettingsService {
     return this.api.put<void>('/nuxeo/api/v1/me/changepassword', { oldPassword, newPassword });
   }
 
-  private formatTimeFrame(begin: string | null, end: string | null): string {
-    if (!begin && !end) {
-      return 'Always';
+  /** Web UI profile: local ACL rows only (skip inherited ACLs). */
+  private extractLocalPermissionRows(
+    doc: { title?: string; path?: string; uid: string; contextParameters?: { acls?: NuxeoAcl[] } },
+    logicalPrincipal: string,
+  ): LocalPermissionRow[] {
+    const localAcl = (doc.contextParameters?.acls ?? []).find((acl) => acl.name === 'local');
+    if (!localAcl?.aces?.length) {
+      return [];
     }
 
-    if (begin && end) {
-      return `${begin} → ${end}`;
+    const trimmedPath = doc.path?.trim() || null;
+    const trimmedTitle = doc.title?.trim();
+    const title = trimmedTitle || trimmedPath || doc.uid;
+    const documentPath = trimmedTitle ? trimmedPath : null;
+    const rows: LocalPermissionRow[] = [];
+
+    for (const ace of localAcl.aces) {
+      if (!ace.granted) continue;
+      if (ace.status === 'archived') continue;
+      if (!matchesPrincipal(ace.username, logicalPrincipal)) continue;
+
+      rows.push({
+        documentTitle: title,
+        documentPath,
+        right: ace.permission,
+        timeFrame: formatPermissionTimeFrame(ace.begin, ace.end),
+        grantedBy: ace.creator || '—',
+      });
     }
 
-    if (begin) {
-      return `From ${begin}`;
-    }
-
-    return `Until ${end}`;
+    return rows;
   }
 }

@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from './auth.service';
 import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';
@@ -13,7 +14,7 @@ describe('nuxeoAuthInterceptor', () => {
   let auth: jasmine.SpyObj<AuthService>;
   let sessionTimeout: jasmine.SpyObj<SessionTimeoutService>;
 
-  beforeEach(() => {
+  function configure(apiOrigin = ''): void {
     auth = jasmine.createSpyObj<AuthService>('AuthService', [
       'isAuthenticated',
       'basicCredentials',
@@ -34,11 +35,16 @@ describe('nuxeoAuthInterceptor', () => {
         provideHttpClientTesting(),
         { provide: AuthService, useValue: auth },
         { provide: SessionTimeoutService, useValue: sessionTimeout },
+        { provide: NUXEO_API_ORIGIN, useValue: apiOrigin },
       ],
     });
 
     http = TestBed.inject(HttpClient);
     httpMock = TestBed.inject(HttpTestingController);
+  }
+
+  beforeEach(() => {
+    configure();
   });
 
   afterEach(() => {
@@ -74,11 +80,77 @@ describe('nuxeoAuthInterceptor', () => {
     expect(sessionTimeout.expireDueToServer).not.toHaveBeenCalled();
   });
 
+  it('sets withCredentials false for basic-auth API requests', () => {
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({ id: 'test-user' });
+  });
+
+  it('sets withCredentials false when request already carries Basic Authorization before session is stored', () => {
+    auth.isAuthenticated.and.returnValue(false);
+    auth.basicCredentials.and.returnValue(null);
+    http
+      .get('/nuxeo/api/v1/me', {
+        headers: { Authorization: `Basic ${btoa('test-user:test-pass')}` },
+      })
+      .subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({ id: 'test-user' });
+  });
+
+  it('sends browser credentials for basic-auth logout to clear stale cookies', () => {
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('/nuxeo/logout', { withCredentials: true }).subscribe();
+    const req = httpMock.expectOne('/nuxeo/logout');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush('');
+  });
+
+  it('does not treat /nuxeo/logout in query strings as a logout request', () => {
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('/nuxeo/api/v1/search?q=%2Fnuxeo%2Flogout').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/search?q=%2Fnuxeo%2Flogout');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({ entries: [] });
+  });
+
+  it('sends browser credentials for cookie-based sessions', () => {
+    http.get('/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(true);
+    req.flush({ id: 'sso-user' });
+  });
+
   it('ignores non-Nuxeo requests', () => {
     http.get('/assets/config.json').subscribe();
     const req = httpMock.expectOne('/assets/config.json');
     req.flush({});
     expect(sessionTimeout.recordActivity).not.toHaveBeenCalled();
+  });
+
+  it('ignores cross-origin absolute Nuxeo URLs', () => {
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('https://other-host.example.com/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('https://other-host.example.com/nuxeo/api/v1/me');
+    expect(req.request.headers.has('Authorization')).toBeFalse();
+    expect(req.request.withCredentials).toBeFalse();
+    req.flush({ id: 'user01' });
+    expect(sessionTimeout.recordActivity).not.toHaveBeenCalled();
+  });
+
+  it('applies auth to absolute URLs matching configured NUXEO_API_ORIGIN', () => {
+    TestBed.resetTestingModule();
+    configure('https://nuxeo.example.com');
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http.get('https://nuxeo.example.com/nuxeo/api/v1/me').subscribe();
+    const req = httpMock.expectOne('https://nuxeo.example.com/nuxeo/api/v1/me');
+    expect(req.request.headers.has('Authorization')).toBeTrue();
+    expect(req.request.withCredentials).toBeFalse();
+    req.flush({ id: 'test-user' });
+    expect(sessionTimeout.recordActivity).toHaveBeenCalled();
   });
 
   it('sends X-Authentication-Token for external share sessions', () => {

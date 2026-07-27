@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -32,7 +33,7 @@ const GROUP_PERM_PAGE_SIZE = 25;
 
 @Component({
   standalone: true,
-  imports: [MatIconModule, MatButtonModule, GroupPermLazyLoadDirective],
+  imports: [NgTemplateOutlet, MatIconModule, MatButtonModule, GroupPermLazyLoadDirective],
   templateUrl: './profile-page.component.html',
   styleUrl: './profile-page.component.scss',
 })
@@ -56,21 +57,6 @@ export class ProfilePageComponent {
   readonly localPermissionsLoading = signal(true);
   readonly groupPermMap = signal<Record<string, PrincipalPermissionPage>>({});
   readonly groupPermLoading = signal<Record<string, boolean>>({});
-  readonly adminPermissions = signal<LocalPermissionRow[]>([]);
-  readonly adminPermissionsLoading = signal(true);
-
-  readonly pageSize = 5;
-
-  readonly adminPage = signal(0);
-  readonly adminPagedRows = computed(() =>
-    this.adminPermissions().slice(
-      this.adminPage() * this.pageSize,
-      (this.adminPage() + 1) * this.pageSize,
-    ),
-  );
-  readonly adminTotalPages = computed(() =>
-    Math.ceil(this.adminPermissions().length / this.pageSize),
-  );
 
   constructor() {
     afterNextRender(() => {
@@ -81,7 +67,6 @@ export class ProfilePageComponent {
     if (!userId) {
       this.loading.set(false);
       this.localPermissionsLoading.set(false);
-      this.adminPermissionsLoading.set(false);
       this.groupsLoading.set(false);
       this.groups.set([]);
       return;
@@ -142,19 +127,6 @@ export class ProfilePageComponent {
         },
         error: () => {
           this.localPermissionsLoading.set(false);
-        },
-      });
-
-    this.settingsService
-      .getAdminPermissions()
-      .pipe(takeUntilDestroyed())
-      .subscribe({
-        next: (rows) => {
-          this.adminPermissions.set(rows);
-          this.adminPermissionsLoading.set(false);
-        },
-        error: () => {
-          this.adminPermissionsLoading.set(false);
         },
       });
   }
@@ -218,12 +190,8 @@ export class ProfilePageComponent {
     }
   }
 
-  adminPrev(): void {
-    this.adminPage.update((p) => Math.max(0, p - 1));
-  }
-
-  adminNext(): void {
-    this.adminPage.update((p) => Math.min(this.adminTotalPages() - 1, p + 1));
+  showGrantedBy(grantedBy: string): boolean {
+    return grantedBy !== '—';
   }
 
   private loadGroupPermPage(groupId: string, pageIndex: number): void {

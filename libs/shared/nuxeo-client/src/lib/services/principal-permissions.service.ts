@@ -4,20 +4,16 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 
 import { NuxeoAcl } from '../models/acl.model';
 import { NuxeoDocument } from '../models/document.model';
-import { PrincipalPermissionPage, PrincipalPermissionRow } from '../models/principal-permissions.model';
+import {
+  PrincipalPermissionPage,
+  PrincipalPermissionRow,
+} from '../models/principal-permissions.model';
 import { AdministrationService } from './administration.service';
 import { DocumentDetailService } from './document-detail.service';
+import { matchesPrincipal } from '../utils/principal-match.utils';
 
 function escapeNxqlString(s: string): string {
   return s.replace(/'/g, "''");
-}
-
-function matchesPrincipal(aceUsername: string, logicalPrincipal: string): boolean {
-  if (aceUsername === logicalPrincipal) return true;
-  if (aceUsername === `user:${logicalPrincipal}`) return true;
-  if (aceUsername === `group:${logicalPrincipal}`) return true;
-  const stripped = aceUsername.replace(/^(user:|group:)/, '');
-  return stripped === logicalPrincipal;
 }
 
 function extractLocalRows(doc: NuxeoDocument, logicalPrincipal: string): PrincipalPermissionRow[] {
