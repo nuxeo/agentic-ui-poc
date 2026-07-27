@@ -344,6 +344,38 @@ describe('BrowseComponent', () => {
     );
   });
 
+  it('blocks deleting a Collections folder when collections exist but are filtered out of the view', () => {
+    component.currentDoc.set({
+      uid: 'cols-root',
+      title: 'Collections',
+      type: 'Collections',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Everything'] },
+    } as NuxeoDocument);
+    component.entries.set([
+      {
+        uid: 'col-1',
+        title: 'My Collection',
+        type: 'Collection',
+        path: '/default-domain/UserWorkspaces/jdoe/Collections/my-collection',
+        lastModified: '',
+        properties: {},
+      },
+    ]);
+    component.filterType.set('Folder');
+
+    component.deleteDocument();
+
+    expect(dialogOpenSpy).not.toHaveBeenCalled();
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Remove all collections from this folder before deleting it.',
+      'OK',
+      { duration: 5000 },
+    );
+  });
+
   it('allows deleting a Collections folder when only non-collection children are listed', () => {
     component.currentDoc.set({
       uid: 'cols-root',

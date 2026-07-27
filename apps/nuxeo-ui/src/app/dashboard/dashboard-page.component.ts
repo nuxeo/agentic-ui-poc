@@ -10,6 +10,7 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { WidgetContainerComponent, WidgetGridComponent } from '@agentic-ui/shared/ui';
+import type { CreateImportDialogResult } from '@agentic-ui/feature-browse';
 
 import {
   NuxeoDocument,
@@ -168,7 +169,7 @@ export class DashboardPageComponent {
         })
         .afterClosed()
         .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((result) => {
+        .subscribe((result: CreateImportDialogResult | undefined) => {
           const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
           if (browsePath && browsePath !== '/') {
             void this.router.navigateByUrl(`/browse${browsePath}`);

@@ -101,6 +101,8 @@ import {
   ConfirmDialogData,
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
+  EditCollectionDialogComponent,
+  EditCollectionDialogData,
 } from '@agentic-ui/shared/ui';
 
 import {
@@ -112,8 +114,6 @@ import {
   DeletePermissionDialogData,
   ShareExternalDialogComponent,
   ShareExternalDialogData,
-  EditCollectionDialogComponent,
-  EditCollectionDialogData,
 } from '@agentic-ui/feature-collections';
 
 import {
@@ -1268,10 +1268,7 @@ export class BrowseComponent {
 
     const doc = this.currentDoc();
     if (!doc) return;
-    if (
-      doc.type === 'Collections' &&
-      this.filteredEntries().some((entry) => isCollectionDocument(entry))
-    ) {
+    if (doc.type === 'Collections' && this.entries().some((entry) => isCollectionDocument(entry))) {
       this.snackBar.open('Remove all collections from this folder before deleting it.', 'OK', {
         duration: 5000,
       });

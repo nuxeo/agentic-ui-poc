@@ -61,11 +61,9 @@ import {
   ExportType,
   ConfirmDialogComponent,
   ConfirmDialogData,
-} from '@agentic-ui/shared/ui';
-import {
   EditCollectionDialogComponent,
   EditCollectionDialogData,
-} from '../edit-collection-dialog/edit-collection-dialog';
+} from '@agentic-ui/shared/ui';
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
