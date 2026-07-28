@@ -9,9 +9,10 @@
  *   NUXEO_DOC_UID=<note-uid> node scripts/collect-evidence/runner.mjs NXSAT-196-after  scripts/collect-evidence/NXSAT-196.mjs
  */
 
-/** @param {import('@playwright/test').Page} page */
-async function installEmptyPermissionsInterceptor(page) {
-  await page.route('**/nuxeo/api/v1/id/**', async (route) => {
+/** @param {import('@playwright/test').Page} page @param {string} docUid */
+async function installEmptyPermissionsInterceptor(page, docUid) {
+  const putPattern = `**/nuxeo/api/v1/id/${docUid}`;
+  await page.route(putPattern, async (route) => {
     const request = route.request();
     if (request.method() !== 'PUT') {
       await route.continue();
@@ -50,7 +51,7 @@ export default async function collectEvidence(page, helpers, _outDir) {
   }
 
   helpers.step('Install PUT interceptor — simulate empty permissions array from Nuxeo');
-  await installEmptyPermissionsInterceptor(page);
+  await installEmptyPermissionsInterceptor(page, docUid);
 
   await helpers.login();
 

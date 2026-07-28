@@ -3136,6 +3136,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!existing.contextParameters && !updated.contextParameters) {
       return updated;
     }
+    // mergeDocumentPermissionsContext also treats empty permissions/acls arrays as absent.
     return mergeDocumentPermissionsContext(
       { ...updated, contextParameters: existing.contextParameters },
       updated,
