@@ -124,4 +124,30 @@ describe('ace-principal', () => {
     expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'ReadSecurity']);
     expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: true });
   });
+
+  it('mergeDocumentPermissionsContext keeps existing permissions when updated returns empty array (NXSAT-196)', () => {
+    const existing: NuxeoDocument = {
+      uid: 'note-1',
+      title: 'Note',
+      type: 'Note',
+      path: '/a/note',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: { 'note:note': '<p>hello</p>' },
+      contextParameters: {
+        permissions: ['Read', 'WriteProperties'],
+        favorites: { isFavorite: false },
+      },
+    };
+    const updated: NuxeoDocument = {
+      ...existing,
+      properties: { 'note:note': '<p>updated</p>', 'note:mime_type': 'text/html' },
+      contextParameters: { permissions: [] },
+    };
+
+    const merged = mergeDocumentPermissionsContext(existing, updated);
+
+    expect(merged.properties['note:note']).toBe('<p>hello</p>');
+    expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
+    expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: false });
+  });
 });

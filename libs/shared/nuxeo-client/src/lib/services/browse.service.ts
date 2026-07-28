@@ -363,7 +363,11 @@ export class BrowseService {
     return this.api.put<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}`,
       { 'entity-type': 'document', properties },
-      { 'Content-Type': 'application/json', properties: '*' },
+      {
+        'Content-Type': 'application/json',
+        properties: '*',
+        'enrichers.document': 'permissions',
+      },
     );
   }
 

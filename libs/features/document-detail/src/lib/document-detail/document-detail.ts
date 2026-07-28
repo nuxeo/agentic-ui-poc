@@ -3136,16 +3136,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!existing.contextParameters && !updated.contextParameters) {
       return updated;
     }
-    return {
-      ...updated,
-      contextParameters: {
-        ...existing.contextParameters,
-        ...updated.contextParameters,
-        acls: updated.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
-        permissions:
-          updated.contextParameters?.['permissions'] ?? existing.contextParameters?.['permissions'],
-      },
-    };
+    return mergeDocumentPermissionsContext(
+      { ...updated, contextParameters: existing.contextParameters },
+      updated,
+    );
   }
 
   private requireWritePermission(): boolean {

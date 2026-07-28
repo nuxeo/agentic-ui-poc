@@ -25,6 +25,20 @@ export function resolveAcePrincipal(value: unknown): string {
   );
 }
 
+/**
+ * Prefer a non-empty enricher value from `updated`; fall back to `existing`.
+ * PUT responses without enrichers may return empty arrays — treat those as absent.
+ */
+export function preferEnricherValue<T>(
+  updated: T | undefined,
+  existing: T | undefined,
+): T | undefined {
+  if (Array.isArray(updated)) {
+    return updated.length > 0 ? updated : existing;
+  }
+  return updated ?? existing;
+}
+
 /** Merges ACL + permissions enrichers from a permissions fetch into an existing document. */
 export function mergeDocumentPermissionsContext(
   existing: NuxeoDocument,
@@ -35,10 +49,14 @@ export function mergeDocumentPermissionsContext(
     ...existing,
     contextParameters: {
       ...existing.contextParameters,
-      acls: normalized.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
-      permissions:
-        normalized.contextParameters?.['permissions'] ??
+      acls: preferEnricherValue(
+        normalized.contextParameters?.['acls'],
+        existing.contextParameters?.['acls'],
+      ),
+      permissions: preferEnricherValue(
+        normalized.contextParameters?.['permissions'],
         existing.contextParameters?.['permissions'],
+      ),
     },
   };
 }
