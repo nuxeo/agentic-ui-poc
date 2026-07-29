@@ -8,71 +8,53 @@
         </sat-logo>
       </a>
 
-      <form class="login-form" [formGroup]="form" (ngSubmit)="onFormSubmit()">
-        @if (step() === 'username') {
-          <mat-form-field appearance="outline" class="login-field-full">
-            <mat-label>Username or email</mat-label>
-            <input matInput formControlName="username" autocomplete="username" />
-            @if (form.controls.username.hasError('required') && form.controls.username.touched) {
-              <mat-error>Username or email is required</mat-error>
+      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+        <mat-form-field appearance="outline" class="login-field-full">
+          <mat-label>Username</mat-label>
+          <input
+            matInput
+            formControlName="username"
+            autocomplete="username"
+            (input)="onCredentialInput()"
+            (change)="onCredentialInput()"
+            (animationstart)="onAutofillAnimation($event)"
+          />
+          @if (form.controls.username.hasError('required') && form.controls.username.touched) {
+            <mat-error>Username is required</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="login-field-full">
+          <mat-label>Password</mat-label>
+          <input
+            matInput
+            type="password"
+            formControlName="password"
+            autocomplete="current-password"
+            (input)="onCredentialInput()"
+            (change)="onCredentialInput()"
+            (animationstart)="onAutofillAnimation($event)"
+          />
+          @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+            <mat-error>Password is required</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="login-actions-row login-actions-row--single">
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            class="login-submit"
+            [disabled]="submitDisabled()"
+          >
+            @if (submitting()) {
+              <mat-spinner diameter="20" />
+            } @else {
+              Log in
             }
-          </mat-form-field>
-
-          <div class="login-actions-row login-actions-row--single">
-            <button
-              mat-flat-button
-              color="primary"
-              type="submit"
-              class="login-continue"
-              [disabled]="primaryDisabled()"
-            >
-              Continue
-            </button>
-          </div>
-        } @else {
-          <div class="login-user-row">
-            <mat-icon class="login-user-icon">person</mat-icon>
-            <span class="login-user-email">{{ form.controls.username.value || '—' }}</span>
-            <button type="button" mat-button color="primary" (click)="backToUsername()">
-              Change
-            </button>
-          </div>
-
-          <mat-form-field appearance="outline" class="login-field-full">
-            <mat-label>Password</mat-label>
-            <input
-              matInput
-              type="password"
-              formControlName="password"
-              autocomplete="current-password"
-              required
-            />
-            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
-              <mat-error>Password is required</mat-error>
-            }
-          </mat-form-field>
-
-          <button type="button" mat-button color="primary" class="login-forgot">
-            Forgot Password?
           </button>
-
-          <div class="login-actions-row">
-            <mat-checkbox formControlName="remember">Remember Me</mat-checkbox>
-            <button
-              mat-flat-button
-              color="primary"
-              type="submit"
-              class="login-continue"
-              [disabled]="primaryDisabled()"
-            >
-              @if (submitting()) {
-                <mat-spinner diameter="20" />
-              } @else {
-                Continue
-              }
-            </button>
-          </div>
-        }
+        </div>
       </form>
 
       @if (samlEndpoints().length > 0) {

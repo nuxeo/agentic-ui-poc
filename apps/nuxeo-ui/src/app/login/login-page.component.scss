@@ -18,8 +18,7 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: center;
-  padding: clamp(2rem, 5vh, 3.5rem) clamp(1.5rem, 6vw, 4rem)
-    clamp(1.5rem, 4vh, 2.5rem);
+  padding: clamp(2rem, 5vh, 3.5rem) clamp(1.5rem, 6vw, 4rem) clamp(1.5rem, 4vh, 2.5rem);
   box-sizing: border-box;
   background: #fff;
 }
@@ -48,45 +47,21 @@
   gap: 0.375rem;
 }
 
-.login-user-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem 0.75rem;
-  min-height: 48px;
-  margin-bottom: 0.25rem;
-}
-
-.login-user-icon {
-  color: var(--mat-sys-on-surface-variant, #5c5f6b);
-  width: 22px;
-  height: 22px;
-  font-size: 22px;
-}
-
-.login-user-email {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 0.9375rem;
-  line-height: 1.4;
-  color: var(--mat-sys-on-surface, #1a1c1e);
-  word-break: break-all;
-}
-
-.login-user-field {
-  flex: 1 1 100%;
-  margin: 0;
-}
-
 .login-field-full {
   width: 100%;
   margin-top: 0.125rem;
 }
 
-.login-forgot {
-  align-self: flex-start;
-  margin: 0.125rem 0 0.75rem;
-  font-weight: 500;
+.login-field-full input:-webkit-autofill {
+  animation-name: login-autofill-start;
+  animation-duration: 0.01s;
+}
+
+@keyframes login-autofill-start {
+  from {
+  }
+  to {
+  }
 }
 
 .login-actions-row {
@@ -102,14 +77,14 @@
   margin-top: 0.75rem;
 }
 
-.login-continue {
+.login-submit {
   min-width: 7.5rem;
   padding-inline: 1.5rem;
   border-radius: 9999px;
   font-weight: 500;
 }
 
-.login-continue mat-spinner {
+.login-submit mat-spinner {
   display: inline-block;
   vertical-align: middle;
 }
