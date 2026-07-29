@@ -5,6 +5,7 @@ import {
   ElementRef,
   inject,
   NgZone,
+  OnDestroy,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -38,7 +39,7 @@ const LAST_USER_KEY = 'agentic_ui_last_username';
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
 })
-export class LoginPageComponent implements AfterViewInit {
+export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -47,6 +48,7 @@ export class LoginPageComponent implements AfterViewInit {
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
+  private readonly autofillSyncTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   readonly submitting = signal(false);
   /** SSO entry points from `nuxeo-sso.providers.ts` / app config. */
@@ -75,14 +77,21 @@ export class LoginPageComponent implements AfterViewInit {
     this.scheduleAutofillSync();
   }
 
+  ngOnDestroy(): void {
+    for (const timeoutId of this.autofillSyncTimeouts) {
+      clearTimeout(timeoutId);
+    }
+  }
+
   private scheduleAutofillSync(): void {
     for (const delayMs of [0, 100, 300, 800, 1500]) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         this.ngZone.run(() => {
           this.syncAutofillFromDom();
           this.cdr.markForCheck();
         });
       }, delayMs);
+      this.autofillSyncTimeouts.push(timeoutId);
     }
   }
 
@@ -185,7 +194,6 @@ export class LoginPageComponent implements AfterViewInit {
   }
 
   private hasValidCredentials(): boolean {
-    this.syncAutofillFromDom();
     const { username, password } = this.readCredentials();
     if (!username) {
       return false;

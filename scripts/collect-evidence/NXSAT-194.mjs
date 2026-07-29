@@ -2,7 +2,7 @@
  * NXSAT-194 — Login page Web UI parity + autofill-safe submit button.
  *
  * Run:
- *   npm run evidence:collect -- NXSAT-194 scripts/collect-evidence/NXSAT-194.mjs
+ *   NUXEO_USER=<user> NUXEO_PASS=<pass> npm run evidence:collect -- NXSAT-194 scripts/collect-evidence/NXSAT-194.mjs
  *
  * Requires: npx nx serve nuxeo-ui + local Nuxeo reachable for post-login screenshot.
  */
@@ -10,8 +10,11 @@
 /** @param {import('@playwright/test').Page} page */
 export default async function collectEvidence(page, helpers, _outDir) {
   const base = helpers.baseUrl;
-  const user = process.env['NUXEO_USER'] ?? 'Administrator';
-  const pass = process.env['NUXEO_PASS'] ?? 'Administrator';
+  const user = process.env['NUXEO_USER'];
+  const pass = process.env['NUXEO_PASS'];
+  if (!user || !pass) {
+    throw new Error('Set NUXEO_USER and NUXEO_PASS before collecting login evidence.');
+  }
 
   helpers.step('Open login page (clear any prior session)');
   await page.context().clearCookies();
@@ -52,7 +55,7 @@ export default async function collectEvidence(page, helpers, _outDir) {
 
   helpers.step('Submit login');
   await submit.click();
-  await page.waitForURL(/#\/(dashboard|browse)/, { timeout: 20000 }).catch(() => {});
+  await page.waitForURL(/#\/(dashboard|browse)/, { timeout: 20000 });
   await page.waitForTimeout(2000);
   await helpers.screenshot('03-after-successful-login');
 }
