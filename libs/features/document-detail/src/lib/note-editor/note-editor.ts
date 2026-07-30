@@ -29,6 +29,7 @@ import {
   inferBlobDocTypeFromFile,
   isHtmlNoteFormat,
   isMarkdownNoteFormat,
+  NUXEO_SERVER_URL,
   renderNoteMarkdown,
   sanitizeDocumentName,
   titleFromFileName,
@@ -63,6 +64,7 @@ export class NoteEditorComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly dialog = inject(MatDialog);
   private readonly documentImportService = inject(DocumentImportService);
+  private readonly nuxeoServerUrl = inject(NUXEO_SERVER_URL);
 
   readonly content = input.required<string>();
   readonly mimeType = input.required<string>();
@@ -215,7 +217,7 @@ export class NoteEditorComponent {
       .subscribe((docs: NuxeoDocument[] | undefined) => {
         if (!docs?.length || !this.quill) return;
         const urls = docs
-          .map((doc) => notePictureInsertUrl(doc))
+          .map((doc) => notePictureInsertUrl(doc, this.nuxeoServerUrl))
           .filter((url): url is string => !!url);
         if (!urls.length) return;
         queueMicrotask(() => this.insertImagesAtSelection(urls));
@@ -418,7 +420,7 @@ export class NoteEditorComponent {
       .subscribe((doc) => {
         this.imageUploading.set(false);
         if (!doc || !this.quill) return;
-        const url = notePictureInsertUrl(doc);
+        const url = notePictureInsertUrl(doc, this.nuxeoServerUrl);
         if (!url) return;
         this.insertImagesAtSelection([url]);
       });

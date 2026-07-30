@@ -178,7 +178,10 @@ export class NoteImagePickerDialogComponent implements OnInit {
     this.loading.set(true);
     this.searchService
       .searchDocumentPicker({ fulltext, pageSize: 40 })
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(
+        catchError(() => of({ entries: [], totalSize: 0, resultsCount: 0 })),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe((res) => {
         this.loading.set(false);
         const entries = res.entries ?? [];
@@ -245,7 +248,10 @@ export class NoteImagePickerDialogComponent implements OnInit {
       if (this.thumbnailMap()[doc.uid]) continue;
       this.documentDetailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);

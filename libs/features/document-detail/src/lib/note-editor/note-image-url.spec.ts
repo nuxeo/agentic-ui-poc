@@ -13,6 +13,12 @@ describe('note-image-url', () => {
     );
   });
 
+  it('buildNotePictureNxfileUrl honors configured Nuxeo server base URL', () => {
+    expect(
+      buildNotePictureNxfileUrl('abc-123', 'Beach.jpg', 'https://nuxeo.example.com/nuxeo'),
+    ).toBe('https://nuxeo.example.com/nuxeo/nxfile/default/abc-123/file:content/Beach.jpg');
+  });
+
   it('extractMainBlobFileName reads file:content name', () => {
     const doc = {
       uid: '1',
