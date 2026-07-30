@@ -14,22 +14,32 @@ import {
   viewChild,
   Injector,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { catchError, of } from 'rxjs';
 import {
+  DocumentImportService,
   formatNoteHtmlForSourceView,
+  inferBlobDocTypeFromFile,
   isHtmlNoteFormat,
   isMarkdownNoteFormat,
-  isSafeHttpUrl,
   renderNoteMarkdown,
+  sanitizeDocumentName,
+  titleFromFileName,
+  type NuxeoDocument,
 } from '@agentic-ui/shared/nuxeo-client';
 import DOMPurify from 'dompurify';
 import Quill from 'quill';
 import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-header';
+import { NoteImagePickerDialogComponent } from './note-image-picker-dialog';
+import { buildNoteImagesInsertHtml } from './note-image-insert';
+import { notePictureInsertUrl } from './note-image-url';
 
 @Component({
   selector: 'lib-note-editor',
@@ -37,6 +47,7 @@ import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-he
   imports: [
     FormsModule,
     MatButtonModule,
+    MatDialogModule,
     MatIconModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
@@ -50,9 +61,13 @@ export class NoteEditorComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly injector = inject(Injector);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly dialog = inject(MatDialog);
+  private readonly documentImportService = inject(DocumentImportService);
 
   readonly content = input.required<string>();
   readonly mimeType = input.required<string>();
+  /** Parent folder path for RTE image uploads (Web UI stores uploaded pictures in the repository). */
+  readonly uploadParentPath = input<string | null>(null);
   readonly saving = input(false);
   readonly loading = input(false);
   readonly autoFocus = input(false);
@@ -64,10 +79,12 @@ export class NoteEditorComponent {
   readonly sourceMode = signal(false);
   readonly plainTextEditMode = signal(false);
   readonly editText = signal('');
+  readonly imageUploading = signal(false);
 
   private readonly quillToolbarRef = viewChild<ElementRef<HTMLDivElement>>('quillToolbar');
   private readonly quillEditorRef = viewChild<ElementRef<HTMLDivElement>>('quillEditor');
-  private readonly hiddenImageBtnRef = viewChild<ElementRef<HTMLButtonElement>>('hiddenImageBtn');
+  private readonly imageUploadInputRef =
+    viewChild<ElementRef<HTMLInputElement>>('imageUploadInput');
   private readonly plainTextEditorRef =
     viewChild<ElementRef<HTMLTextAreaElement>>('plainTextEditor');
 
@@ -172,6 +189,39 @@ export class NoteEditorComponent {
     }
   }
 
+  onImageFileSelected(event: Event): void {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement)) return;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || !this.quill) return;
+    if (!file.type.startsWith('image/')) return;
+    this.uploadAndInsertImage(file);
+  }
+
+  insertImagesFromExistingDocuments(): void {
+    if (!this.quill || this.readOnly()) return;
+
+    this.dialog
+      .open(NoteImagePickerDialogComponent, {
+        width: '900px',
+        maxWidth: '95vw',
+        maxHeight: '90vh',
+        autoFocus: 'first-tap',
+        panelClass: 'note-image-picker-panel',
+      })
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((docs: NuxeoDocument[] | undefined) => {
+        if (!docs?.length || !this.quill) return;
+        const urls = docs
+          .map((doc) => notePictureInsertUrl(doc))
+          .filter((url): url is string => !!url);
+        if (!urls.length) return;
+        queueMicrotask(() => this.insertImagesAtSelection(urls));
+      });
+  }
+
   toggleSourceMode(): void {
     if (!this.isHtml() || this.readOnly()) return;
 
@@ -198,20 +248,42 @@ export class NoteEditorComponent {
     this.sourceMode.set(true);
   }
 
-  onImageUploadClick(event: MouseEvent): void {
-    event.preventDefault();
-    this.hiddenImageBtnRef()?.nativeElement.click();
-  }
+  /** Focus inline editing — used when the document toolbar Edit button is clicked (NXSAT-193). */
+  focusForEdit(): void {
+    if (this.readOnly() || this.loading()) return;
 
-  insertImageFromUrl(): void {
-    if (!this.quill) return;
-    const url = window.prompt('Enter image URL', 'https://');
-    if (!url?.trim()) return;
-    const trimmed = url.trim();
-    if (!isSafeHttpUrl(trimmed)) return;
-    const range = this.quill.getSelection(true);
-    this.quill.insertEmbed(range.index, 'image', trimmed, Quill.sources.USER);
-    this.quill.setSelection(range.index + 1, Quill.sources.SILENT);
+    if (this.isHtml()) {
+      if (this.sourceMode()) {
+        const html = this.editText();
+        this.sourceMode.set(false);
+        this.visualDirty = false;
+        afterNextRender(
+          () => {
+            this.destroyQuill();
+            this.tryInitQuill(html);
+            this.editText.set(html);
+            queueMicrotask(() => {
+              this.quill?.focus();
+              this.focused.emit();
+            });
+          },
+          { injector: this.injector },
+        );
+        return;
+      }
+
+      queueMicrotask(() => {
+        if (!this.quill) {
+          this.tryInitQuill();
+        }
+        this.quill?.focus();
+        this.focused.emit();
+      });
+      return;
+    }
+
+    this.enterPlainTextEdit();
+    this.focused.emit();
   }
 
   onSave(): void {
@@ -240,6 +312,46 @@ export class NoteEditorComponent {
     this.lastEmittedSave = null;
   }
 
+  private repositionVideoTooltipOnShow(toolbar: HTMLElement): void {
+    const videoButton = toolbar.querySelector('.ql-video');
+    if (!videoButton) return;
+
+    videoButton.addEventListener('click', () => {
+      requestAnimationFrame(() => this.alignVideoTooltipToCursor());
+    });
+  }
+
+  /** Place Quill's inline video prompt at the current cursor / selection. */
+  private alignVideoTooltipToCursor(): void {
+    const editorQuill = this.quill;
+    const editorEl = this.quillEditorRef()?.nativeElement;
+    if (!editorQuill || !editorEl) return;
+
+    const tooltip = editorEl.querySelector<HTMLElement>('.ql-tooltip[data-mode="video"]');
+    if (!tooltip) return;
+
+    const range = this.savedRange ?? editorQuill.getSelection(true);
+    const index = range?.index ?? Math.max(0, editorQuill.getLength() - 1);
+    const length = range?.length ?? 0;
+    const bounds = editorQuill.getBounds(index, length);
+    if (!bounds) return;
+
+    const editorWidth = editorEl.clientWidth;
+    const tooltipWidth = tooltip.offsetWidth || 320;
+    const halfTooltip = tooltipWidth / 2;
+
+    let left = bounds.left + bounds.width / 2;
+    left = Math.max(halfTooltip + 8, Math.min(left, editorWidth - halfTooltip - 8));
+
+    const top = bounds.bottom + 8;
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+    tooltip.style.right = 'auto';
+    tooltip.style.bottom = 'auto';
+    tooltip.style.transform = 'translateX(-50%)';
+  }
+
   private tryInitQuill(initialHtml?: string): void {
     if (this.readOnly() || this.sourceMode() || !this.isHtml() || this.loading() || this.quill)
       return;
@@ -265,6 +377,9 @@ export class NoteEditorComponent {
               applyHeaderFormatSelectionOnly(editorQuill, value, getSavedRange());
               clearSavedRange();
             },
+            image: () => {
+              this.imageUploadInputRef()?.nativeElement.click();
+            },
           },
         },
       },
@@ -275,11 +390,58 @@ export class NoteEditorComponent {
       this.visualDirty = true;
     });
 
+    this.repositionVideoTooltipOnShow(toolbar);
+
     const html = initialHtml ?? this.content();
     this.applyExternalContent(html, true);
     if (initialHtml === undefined) {
       this.lastParentContent = html;
     }
+  }
+
+  private uploadAndInsertImage(file: File): void {
+    const editorQuill = this.quill;
+    const parentPath = this.uploadParentPath();
+    if (!editorQuill || !parentPath || this.imageUploading()) return;
+
+    const docType = inferBlobDocTypeFromFile(file);
+    const title = titleFromFileName(file.name);
+    const name = sanitizeDocumentName(file.name);
+
+    this.imageUploading.set(true);
+    this.documentImportService
+      .createBlobHoldingDocumentReliable(parentPath, name, docType, { 'dc:title': title }, file)
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((doc) => {
+        this.imageUploading.set(false);
+        if (!doc || !this.quill) return;
+        const url = notePictureInsertUrl(doc);
+        if (!url) return;
+        this.insertImagesAtSelection([url]);
+      });
+  }
+
+  private insertImagesAtSelection(urls: string[]): void {
+    const editorQuill = this.quill;
+    if (!editorQuill || urls.length === 0) return;
+
+    const range = this.savedRange ?? editorQuill.getSelection(true);
+    const index = range?.index ?? Math.max(0, editorQuill.getLength() - 1);
+    if (range?.length) {
+      editorQuill.deleteText(index, range.length, Quill.sources.USER);
+    }
+    this.savedRange = null;
+
+    editorQuill.clipboard.dangerouslyPasteHTML(
+      index,
+      buildNoteImagesInsertHtml(urls),
+      Quill.sources.USER,
+    );
+    editorQuill.focus();
+    this.visualDirty = true;
   }
 
   private applyExternalContent(html: string, force = false): void {

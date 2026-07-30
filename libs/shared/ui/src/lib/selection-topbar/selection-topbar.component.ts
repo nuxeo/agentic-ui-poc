@@ -29,6 +29,7 @@ export class SelectionTopbarComponent {
   readonly selectedItems = input<
     Array<{ id: string; name: string; preview: SafeUrl | string | null }>
   >([]);
+  readonly clearOnly = input(false);
   readonly cleared = output<void>();
   readonly publishRequested = output<void>();
   readonly addToClipboardRequested = output<void>();

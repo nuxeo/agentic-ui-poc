@@ -7,6 +7,8 @@ import {
   signal,
   computed,
   viewChild,
+  afterNextRender,
+  Injector,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
@@ -283,6 +285,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   /** Programmatic tab switches (e.g. Publishing link). */
   private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
+  private readonly noteEditorRef = viewChild(NoteEditorComponent);
+  private readonly injector = inject(Injector);
 
   readonly doc = signal<NuxeoDocument | null>(null);
   readonly loading = signal(true);
@@ -484,6 +488,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
   readonly noteFormatDisplay = computed(() => noteFormatLabel(this.mimeType()));
   readonly noteEditorBody = computed(() => this.noteContent() ?? '');
+  /** Parent folder for note RTE image uploads (Web UI stores uploaded pictures in the repository). */
+  readonly noteImageUploadParentPath = computed(() => {
+    const path = this.doc()?.path;
+    if (!path) return null;
+    const slash = path.lastIndexOf('/');
+    return slash > 0 ? path.slice(0, slash) : '/';
+  });
 
   readonly isImage = computed(() => this.mimeType().startsWith('image/'));
   readonly isPdf = computed(() => this.mimeType() === 'application/pdf');
@@ -3076,6 +3087,35 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.toast('Document updated');
         this.loadDocument(this.docUid);
       });
+  }
+
+  /** Toolbar Edit: focus inline note editor for Note docs; metadata dialog for everything else (NXSAT-193). */
+  onEditClick(): void {
+    if (this.isNoteDocument() && this.canWriteDoc()) {
+      this.focusNoteContent();
+      return;
+    }
+    this.openEditDialog();
+  }
+
+  private goToViewTab(): void {
+    const tabGroup = this.detailTabGroup();
+    if (tabGroup) {
+      tabGroup.selectedIndex = 0;
+    }
+    this.onTabChange(0);
+  }
+
+  private focusNoteContent(): void {
+    if (!this.isNoteDocument() || !this.canWriteDoc()) return;
+
+    this.goToViewTab();
+    afterNextRender(
+      () => {
+        this.noteEditorRef()?.focusForEdit();
+      },
+      { injector: this.injector },
+    );
   }
 
   saveNote(body: string): void {

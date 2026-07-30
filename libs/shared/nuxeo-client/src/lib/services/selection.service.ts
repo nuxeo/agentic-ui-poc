@@ -15,6 +15,8 @@ export class SelectionService {
   readonly selectedLabels = signal<Map<string, string>>(new Map());
   readonly selectedPreviews = signal<Map<string, SelectionPreview>>(new Map());
   readonly selectedTypes = signal<Map<string, string>>(new Map());
+  /** When true, the app shell topbar shows only count + Clear (e.g. note image picker). */
+  readonly clearOnlyMode = signal(false);
 
   readonly selectedCount = () => this.selectedIds().size;
   readonly selectedItems = () =>
@@ -115,6 +117,10 @@ export class SelectionService {
     this.selectedLabels.set(new Map());
     this.selectedPreviews.set(new Map());
     this.selectedTypes.set(new Map());
+  }
+
+  setClearOnlyMode(enabled: boolean): void {
+    this.clearOnlyMode.set(enabled);
   }
 
   deleteSelected(): Observable<NuxeoDocument[]> {

@@ -39,44 +39,11 @@ lib-note-editor {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
-.note-quill-toolbar {
-  border: none;
-  border-bottom: 1px solid var(--mat-sys-outline-variant, #e8e8e8);
-  background: var(--mat-sys-surface-container-low, #fafafa);
-  padding: 6px 8px;
-  font-family: inherit;
-}
-
-.note-quill-hidden-image {
+.note-quill-hidden-file-input {
   display: none !important;
-}
-
-.note-quill-custom-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin: 0 1px;
-  padding: 0;
-  border: none;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--mat-sys-on-surface-variant, #444);
-  cursor: pointer;
-
-  &:hover {
-    background: color-mix(in srgb, var(--mat-sys-on-surface) 6%, transparent);
-  }
-
-  .mat-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    line-height: 18px;
-  }
 }
 
 .note-quill-editor {
@@ -85,9 +52,44 @@ lib-note-editor {
   border: none !important;
   display: flex;
   flex-direction: column;
+  position: relative;
 
   &.ql-container.ql-snow {
     border: none;
+  }
+
+  // Quill inline prompts (link, video) — readable; video position set at cursor via TS.
+  .ql-tooltip {
+    z-index: 20;
+    padding: 10px 12px;
+    border: 1px solid var(--mat-sys-outline-variant, #c4c4c4);
+    border-radius: 8px;
+    background: var(--mat-sys-surface, #fff);
+    box-shadow:
+      0 4px 16px color-mix(in srgb, var(--mat-sys-shadow, #000) 14%, transparent),
+      0 1px 4px color-mix(in srgb, var(--mat-sys-shadow, #000) 8%, transparent);
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--mat-sys-on-surface, #212121);
+    white-space: nowrap;
+
+    &::before {
+      font-weight: 600;
+    }
+
+    input[type='text'] {
+      min-width: 280px;
+      padding: 8px 10px;
+      border: 1px solid var(--mat-sys-outline-variant, #c4c4c4);
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .ql-action,
+    .ql-remove {
+      margin-left: 8px;
+      font-weight: 600;
+    }
   }
 
   .ql-editor {
@@ -97,12 +99,64 @@ lib-note-editor {
     font-size: 14px;
     line-height: 1.6;
     color: var(--mat-sys-on-surface, #212121);
+
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+
+    p:has(> img:only-child) {
+      margin: 0.5em 0;
+    }
   }
 
   .ql-editor.ql-blank::before {
     color: var(--mat-sys-on-surface-variant, #9e9e9e);
     font-style: normal;
     left: 20px;
+  }
+}
+
+.note-quill-toolbar {
+  border: none;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #e8e8e8);
+  background: var(--mat-sys-surface-container-low, #fafafa);
+  padding: 6px 8px;
+  font-family: inherit;
+
+  .note-quill-image-from-docs {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    margin: 0 1px;
+    padding: 3px 5px;
+    border: none;
+    border-radius: 2px;
+    background: transparent;
+    cursor: pointer;
+    vertical-align: middle;
+    float: left;
+
+    &:hover {
+      color: var(--mat-sys-primary, #3949ab);
+
+      .ql-stroke {
+        stroke: var(--mat-sys-primary, #3949ab);
+      }
+
+      .ql-fill {
+        fill: var(--mat-sys-primary, #3949ab);
+      }
+    }
+
+    svg {
+      display: block;
+      width: 18px;
+      height: 18px;
+    }
   }
 }
 

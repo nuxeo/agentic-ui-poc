@@ -1,9 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
 
 import { NoteEditorComponent } from './note-editor';
+import { NOTE_QUILL_TOOLBAR_CONTROLS } from './note-quill-toolbar';
 
 vi.mock('quill', () => ({
   default: Object.assign(vi.fn(), { sources: { SILENT: 'silent', USER: 'user' } }),
@@ -14,8 +17,16 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule],
-      providers: [provideExperimentalZonelessChangeDetection()],
+      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn(() => ({ afterClosed: () => ({ pipe: () => ({ subscribe: vi.fn() }) }) })),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NoteEditorComponent);
@@ -65,6 +76,38 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
     expect(editor).toBeTruthy();
     expect(editor.innerHTML).toContain('ql-align-center');
   });
+
+  it('matches Web UI toolbar icons and order for writable HTML notes (NXSAT-193)', () => {
+    fixture.componentRef.setInput('content', '<p>Hello</p>');
+    fixture.componentRef.setInput('mimeType', 'text/html');
+    fixture.componentRef.setInput('readOnly', false);
+    fixture.detectChanges();
+
+    const toolbar = fixture.nativeElement.querySelector('.note-quill-toolbar');
+    expect(toolbar).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.ql-table')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.note-quill-custom-btn')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.note-quill-image-from-docs')).toBeTruthy();
+
+    const rendered = Array.from(toolbar.querySelectorAll('button, select')) as HTMLElement[];
+    const renderedKeys = rendered.map((el) => {
+      if (el instanceof HTMLSelectElement) {
+        return `select.${el.classList.contains('ql-header') ? 'ql-header' : el.classList.contains('ql-color') ? 'ql-color' : 'ql-background'}`;
+      }
+      const noteClass = Array.from(el.classList).find((c) => c.startsWith('note-quill-'));
+      if (noteClass) {
+        return `button.${noteClass}`;
+      }
+      const qlClass = Array.from(el.classList).find((c) => c.startsWith('ql-')) ?? '';
+      const value = el.getAttribute('value');
+      return value !== null && value !== ''
+        ? `button.${qlClass}[value="${value}"]`
+        : `button.${qlClass}`;
+    });
+
+    const expectedKeys = NOTE_QUILL_TOOLBAR_CONTROLS.map((c) => c.selector);
+    expect(renderedKeys).toEqual(expectedKeys);
+  });
 });
 
 describe('NoteEditorComponent source sync (NXSAT-174)', () => {
@@ -73,8 +116,16 @@ describe('NoteEditorComponent source sync (NXSAT-174)', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent],
-      providers: [provideExperimentalZonelessChangeDetection()],
+      imports: [NoteEditorComponent, HttpClientTestingModule],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn(() => ({ afterClosed: () => ({ pipe: () => ({ subscribe: vi.fn() }) }) })),
+          },
+        },
+      ],
     })
       .overrideComponent(NoteEditorComponent, {
         set: { template: '<div></div>' },

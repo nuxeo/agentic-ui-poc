@@ -1,0 +1,121 @@
+<div class="note-image-picker">
+  <button
+    type="button"
+    class="note-image-picker__close"
+    mat-icon-button
+    mat-dialog-close
+    aria-label="Close"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <mat-dialog-content>
+    <mat-expansion-panel class="note-image-picker__filters" [expanded]="true">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Filters</mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <mat-form-field
+        appearance="outline"
+        class="note-image-picker__search"
+        subscriptSizing="dynamic"
+      >
+        <mat-label>Quick Search</mat-label>
+
+        <input
+          matInput
+          [ngModel]="searchTerm()"
+          (ngModelChange)="searchTerm.set($event)"
+          (keydown.enter)="search()"
+          autocomplete="off"
+        />
+      </mat-form-field>
+
+      <div class="note-image-picker__actions">
+        <button mat-stroked-button type="button" [disabled]="loading()" (click)="clearSearch()">
+          Clear
+        </button>
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          [disabled]="loading()"
+          (click)="search()"
+        >
+          Search
+        </button>
+      </div>
+    </mat-expansion-panel>
+
+    <div class="note-image-picker__results-header">
+      <div class="note-image-picker__results-left">
+        <mat-checkbox
+          class="note-image-picker__select-all"
+          [checked]="isAllSelected()"
+          [indeterminate]="isIndeterminate()"
+          [disabled]="loading() || results().length === 0"
+          matTooltip="Select all"
+          aria-label="Select all"
+          (click)="$event.stopPropagation()"
+          (change)="toggleSelectAll()"
+        ></mat-checkbox>
+
+        <span class="note-image-picker__results-count">{{ resultsLabel() }}</span>
+      </div>
+
+      <mat-icon class="note-image-picker__view-icon" aria-hidden="true">grid_view</mat-icon>
+    </div>
+
+    @if (loading()) {
+      <div class="note-image-picker__loading">
+        <mat-spinner diameter="32" />
+      </div>
+    } @else if (results().length === 0) {
+      <p class="note-image-picker__empty">No pictures found.</p>
+    } @else {
+      <div class="note-image-picker__grid" role="listbox" aria-label="Picture documents">
+        @for (doc of results(); track doc.uid) {
+          <button
+            type="button"
+            class="note-image-picker__item"
+            [class.note-image-picker__item--selected]="isSelected(doc.uid)"
+            role="option"
+            [attr.aria-selected]="isSelected(doc.uid)"
+            (click)="toggleSelection(doc)"
+          >
+            <div class="note-image-picker__thumb">
+              @if (isSelected(doc.uid)) {
+                <span class="note-image-picker__check" aria-hidden="true">
+                  <mat-icon>check_circle</mat-icon>
+                </span>
+              }
+
+              @if (thumbnailMap()[doc.uid]; as thumb) {
+                <img [src]="thumb" alt="" />
+              } @else {
+                <mat-icon class="note-image-picker__placeholder">image</mat-icon>
+              }
+            </div>
+
+            <span class="note-image-picker__title">{{ displayFileName(doc) }}</span>
+          </button>
+        }
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-stroked-button type="button" mat-dialog-close>Cancel</button>
+
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      [disabled]="selectionService.selectedCount() === 0"
+      (click)="confirm()"
+    >
+      Select
+    </button>
+  </mat-dialog-actions>
+</div>

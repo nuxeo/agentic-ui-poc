@@ -74,19 +74,21 @@
                 title="Code block"
                 aria-label="Code block"
               ></button>
+            </span>
+            <span class="ql-formats">
               <button
                 type="button"
-                class="ql-indent"
-                value="-1"
-                title="Decrease indent"
-                aria-label="Decrease indent"
+                class="ql-list"
+                value="bullet"
+                title="Bulleted list"
+                aria-label="Bulleted list"
               ></button>
               <button
                 type="button"
-                class="ql-indent"
-                value="+1"
-                title="Increase indent"
-                aria-label="Increase indent"
+                class="ql-list"
+                value="ordered"
+                title="Numbered list"
+                aria-label="Numbered list"
               ></button>
             </span>
             <span class="ql-formats">
@@ -146,17 +148,17 @@
             <span class="ql-formats">
               <button
                 type="button"
-                class="ql-list"
-                value="ordered"
-                title="Numbered list"
-                aria-label="Numbered list"
+                class="ql-indent"
+                value="-1"
+                title="Decrease indent"
+                aria-label="Decrease indent"
               ></button>
               <button
                 type="button"
-                class="ql-list"
-                value="bullet"
-                title="Bulleted list"
-                aria-label="Bulleted list"
+                class="ql-indent"
+                value="+1"
+                title="Increase indent"
+                aria-label="Increase indent"
               ></button>
             </span>
             <span class="ql-formats">
@@ -167,31 +169,29 @@
                 aria-label="Insert link"
               ></button>
               <button
-                #hiddenImageBtn
                 type="button"
-                class="ql-image note-quill-hidden-image"
-                title="Upload image"
-                aria-label="Upload image"
+                class="ql-image"
+                title="Insert image"
+                aria-label="Insert image"
               ></button>
               <button
                 type="button"
-                class="note-quill-custom-btn"
-                title="Upload image"
-                aria-label="Upload image"
+                class="note-quill-image-from-docs"
+                title="Insert image from existing documents"
+                aria-label="Insert image from existing documents"
                 (mousedown)="$event.preventDefault()"
-                (click)="onImageUploadClick($event)"
+                (click)="insertImagesFromExistingDocuments()"
               >
-                <mat-icon>image</mat-icon>
-              </button>
-              <button
-                type="button"
-                class="note-quill-custom-btn"
-                title="Insert image from URL"
-                aria-label="Insert image from URL"
-                (mousedown)="$event.preventDefault()"
-                (click)="insertImageFromUrl()"
-              >
-                <mat-icon>add_photo_alternate</mat-icon>
+                <svg viewBox="0 0 18 18" aria-hidden="true">
+                  <rect class="ql-stroke" height="9" width="10" x="1" y="2" />
+                  <circle class="ql-fill" cx="3.75" cy="5" r="0.85" />
+                  <polyline
+                    class="ql-even ql-fill"
+                    points="2.5 9.5 2.5 9 4.25 7.25 5.25 8.25 7.5 6 9.25 7.75 9.25 9.5 2.5 9.5"
+                  />
+                  <circle class="ql-stroke" cx="12.75" cy="12.75" r="2.75" />
+                  <line class="ql-stroke" x1="14.7" y1="14.7" x2="16.5" y2="16.5" />
+                </svg>
               </button>
               <button
                 type="button"
@@ -200,6 +200,13 @@
                 aria-label="Insert video"
               ></button>
             </span>
+            <input
+              #imageUploadInput
+              type="file"
+              accept="image/*"
+              class="note-quill-hidden-file-input"
+              (change)="onImageFileSelected($event)"
+            />
             <span class="ql-formats">
               <button
                 type="button"
