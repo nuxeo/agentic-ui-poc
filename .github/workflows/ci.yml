@@ -36,6 +36,8 @@ jobs:
           fi
           echo "@hylandsoftware:registry=https://npm.pkg.github.com" >> ~/.npmrc
           echo "//npm.pkg.github.com/:_authToken=${SATORI_GH_READONLY_TOKEN}" >> ~/.npmrc
+        env:
+          SATORI_GH_READONLY_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
 
       - name: Install dependencies
         run: npm ci
