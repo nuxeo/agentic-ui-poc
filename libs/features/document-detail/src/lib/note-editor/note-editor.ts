@@ -306,7 +306,17 @@ export class NoteEditorComponent {
   private readQuillHtml(): string {
     if (!this.quill) return '';
     const raw = this.quill.getSemanticHTML();
-    return DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });
+    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });
+    return this.enforceBlankLinkRel(clean);
+  }
+
+  /** Prevent reverse-tabnabbing for links opened in a new tab. */
+  private enforceBlankLinkRel(html: string): string {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('a[target="_blank"]').forEach((anchor) => {
+      anchor.setAttribute('rel', 'noopener noreferrer');
+    });
+    return doc.body.innerHTML;
   }
 
   private destroyQuill(): void {
