@@ -43,7 +43,7 @@
     "@angular/platform-browser": "~19.2.0",
     "@angular/platform-browser-dynamic": "~19.2.0",
     "@angular/router": "~19.2.0",
-    "@hylandsoftware/satori-ui": "0.1.5",
+    "@hylandsoftware/satori-ui": "^0.1.5",
     "@ngx-translate/core": "^17.0.0",
     "cors": "^2.8.6",
     "dompurify": "^3.4.12",
