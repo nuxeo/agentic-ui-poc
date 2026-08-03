@@ -305,7 +305,8 @@ export class NoteEditorComponent {
 
   private readQuillHtml(): string {
     if (!this.quill) return '';
-    return this.quill.getSemanticHTML();
+    const raw = this.quill.getSemanticHTML();
+    return DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });
   }
 
   private destroyQuill(): void {
