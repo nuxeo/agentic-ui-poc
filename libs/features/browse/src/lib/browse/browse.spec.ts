@@ -469,6 +469,26 @@ describe('BrowseComponent', () => {
     expect(dialogOpenSpy).toHaveBeenCalled();
   });
 
+  it('singleSelectedEntry resolves from unfiltered entries when filters hide the selection', () => {
+    const collection: NuxeoDocument = {
+      uid: 'col-hidden',
+      title: 'Hidden Collection',
+      type: 'Collection',
+      path: '/default-domain/UserWorkspaces/jdoe/Collections/hidden',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['WriteProperties'] },
+    };
+    mockSelectionService.selectedIds.mockReturnValue(new Set(['col-hidden']));
+    mockSelectionService.selectedCount.mockReturnValue(1);
+    component.entries.set([collection]);
+    component.filterText.set('does-not-match');
+
+    expect(component.filteredEntries()).toHaveLength(0);
+    expect(component.singleSelectedEntry()?.uid).toBe('col-hidden');
+    expect(component.showHeaderEdit()).toBe(true);
+  });
+
   it('deleteCollectionEntry trashes the collection after confirmation', () => {
     const collection: NuxeoDocument = {
       uid: 'col-2',

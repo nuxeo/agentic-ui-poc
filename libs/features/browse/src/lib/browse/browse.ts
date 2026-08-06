@@ -274,7 +274,7 @@ export class BrowseComponent {
     const ids = [...this.selectionService.selectedIds()];
     if (ids.length !== 1) return null;
     const id = ids[0];
-    return this.filteredEntries().find((doc) => doc.uid === id) ?? null;
+    return this.entries().find((doc) => doc.uid === id) ?? null;
   });
   readonly showHeaderEdit = computed(() => {
     const selected = this.singleSelectedEntry();
