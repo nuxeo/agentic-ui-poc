@@ -359,15 +359,22 @@ export class BrowseService {
     );
   }
 
-  updateDocument(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument> {
+  updateDocument(
+    uid: string,
+    properties: Record<string, unknown>,
+    options?: { enrichPermissions?: boolean },
+  ): Observable<NuxeoDocument> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      properties: '*',
+    };
+    if (options?.enrichPermissions) {
+      headers['enrichers.document'] = 'permissions';
+    }
     return this.api.put<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}`,
       { 'entity-type': 'document', properties },
-      {
-        'Content-Type': 'application/json',
-        properties: '*',
-        'enrichers.document': 'permissions',
-      },
+      headers,
     );
   }
 

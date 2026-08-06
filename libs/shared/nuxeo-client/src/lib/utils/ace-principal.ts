@@ -27,7 +27,9 @@ export function resolveAcePrincipal(value: unknown): string {
 
 /**
  * Prefer a non-empty enricher value from `updated`; fall back to `existing`.
- * PUT responses without enrichers may return empty arrays — treat those as absent.
+ * Empty arrays are treated as absent so a PUT without enrichers (or with
+ * `permissions: []`) does not wipe known permissions — including masking a
+ * genuine server-side revocation until the next full fetch.
  */
 export function preferEnricherValue<T>(
   updated: T | undefined,
@@ -49,6 +51,7 @@ export function mergeDocumentPermissionsContext(
     ...existing,
     contextParameters: {
       ...existing.contextParameters,
+      ...normalized.contextParameters,
       acls: preferEnricherValue(
         normalized.contextParameters?.['acls'],
         existing.contextParameters?.['acls'],

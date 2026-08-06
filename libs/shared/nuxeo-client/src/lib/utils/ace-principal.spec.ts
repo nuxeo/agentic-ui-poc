@@ -150,4 +150,36 @@ describe('ace-principal', () => {
     expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
     expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: false });
   });
+
+  it('mergeDocumentPermissionsContext preserves other enrichers from updated response', () => {
+    const existing: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Doc',
+      type: 'File',
+      path: '/a/b',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: { 'dc:title': 'Old' },
+      contextParameters: {
+        permissions: ['Read'],
+        favorites: { isFavorite: true },
+      },
+    };
+    const updated: NuxeoDocument = {
+      ...existing,
+      properties: { 'dc:title': 'New' },
+      contextParameters: {
+        permissions: ['Read', 'WriteProperties'],
+        thumbnail: { url: '/nuxeo/api/v1/id/doc-1/@rendition/thumbnail' },
+      },
+    };
+
+    const merged = mergeDocumentPermissionsContext(existing, updated);
+
+    expect(merged.properties['dc:title']).toBe('Old');
+    expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
+    expect(merged.contextParameters?.['thumbnail']).toEqual({
+      url: '/nuxeo/api/v1/id/doc-1/@rendition/thumbnail',
+    });
+    expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: true });
+  });
 });

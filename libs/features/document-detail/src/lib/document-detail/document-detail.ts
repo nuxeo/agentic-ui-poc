@@ -3085,10 +3085,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.noteSaving.set(true);
     const mime = this.mimeType();
     this.browseService
-      .updateDocument(doc.uid, {
-        'note:note': body,
-        'note:mime_type': mime,
-      })
+      .updateDocument(
+        doc.uid,
+        {
+          'note:note': body,
+          'note:mime_type': mime,
+        },
+        { enrichPermissions: true },
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {

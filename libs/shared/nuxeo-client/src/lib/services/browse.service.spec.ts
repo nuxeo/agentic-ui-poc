@@ -800,7 +800,9 @@ describe('BrowseService', () => {
 
   it('updateDocument requests permissions enricher on PUT (NXSAT-196)', async () => {
     const uid = 'note-uid-1';
-    const result$ = firstValueFrom(service.updateDocument(uid, { 'note:note': '<p>updated</p>' }));
+    const result$ = firstValueFrom(
+      service.updateDocument(uid, { 'note:note': '<p>updated</p>' }, { enrichPermissions: true }),
+    );
 
     const req = httpMock.expectOne((r) => r.url === `/nuxeo/api/v1/id/${uid}`);
     expect(req.request.method).toBe('PUT');
