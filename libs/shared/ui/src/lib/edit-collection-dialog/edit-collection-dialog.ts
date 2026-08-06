@@ -11,6 +11,7 @@ import { provideNativeDateAdapter } from '@angular/material/core';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { forkJoin } from 'rxjs';
 
 import {
@@ -27,6 +28,8 @@ import {
   isExpiresFieldValid,
   shouldShowExpiresFieldError,
   l10nEntryLabel,
+  PERMISSION_DENIED_MESSAGE,
+  isPermissionDeniedError,
 } from '@agentic-ui/shared/nuxeo-client';
 
 export interface EditCollectionDialogData {
@@ -47,6 +50,7 @@ export interface EditCollectionDialogData {
     MatProgressSpinnerModule,
     MatChipsModule,
     MatIconModule,
+    MatSnackBarModule,
   ],
   providers: [provideNativeDateAdapter()],
   templateUrl: './edit-collection-dialog.html',
@@ -58,6 +62,7 @@ export class EditCollectionDialogComponent implements OnInit {
   private readonly collectionService = inject(CollectionService);
   private readonly directoryService = inject(DirectoryService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly snackBar = inject(MatSnackBar);
 
   readonly l10nEntryLabel = l10nEntryLabel;
   protected readonly directoryPickerLabel = directoryPickerLabel;
@@ -238,8 +243,15 @@ export class EditCollectionDialogComponent implements OnInit {
           this.saving.set(false);
           this.dialogRef.close(updatedDoc);
         },
-        error: () => {
+        error: (err) => {
           this.saving.set(false);
+          this.snackBar.open(
+            isPermissionDeniedError(err)
+              ? PERMISSION_DENIED_MESSAGE
+              : 'Failed to update collection',
+            'OK',
+            { duration: 4000 },
+          );
         },
       });
   }

@@ -335,7 +335,7 @@
                           }
                           @if (hasCollectionEntries()) {
                             <td class="cell-actions">
-                              @if (isCollectionEntry(doc)) {
+                              @if (isCollectionEntry(doc) && hasCollectionEntryActions(doc)) {
                                 <button
                                   mat-icon-button
                                   type="button"
@@ -346,14 +346,18 @@
                                   <mat-icon>more_vert</mat-icon>
                                 </button>
                                 <mat-menu #collectionRowMenu="matMenu">
-                                  <button mat-menu-item (click)="openEditCollectionDialog(doc)">
-                                    <mat-icon>edit</mat-icon>
-                                    <span>Edit</span>
-                                  </button>
-                                  <button mat-menu-item (click)="deleteCollectionEntry(doc)">
-                                    <mat-icon>delete</mat-icon>
-                                    <span>Delete</span>
-                                  </button>
+                                  @if (canEditCollectionEntry(doc)) {
+                                    <button mat-menu-item (click)="openEditCollectionDialog(doc)">
+                                      <mat-icon>edit</mat-icon>
+                                      <span>Edit</span>
+                                    </button>
+                                  }
+                                  @if (canDeleteCollectionEntry(doc)) {
+                                    <button mat-menu-item (click)="deleteCollectionEntry(doc)">
+                                      <mat-icon>delete</mat-icon>
+                                      <span>Delete</span>
+                                    </button>
+                                  }
                                 </mat-menu>
                               }
                             </td>
@@ -393,7 +397,7 @@
                         <span class="card-type">{{ doc.type }}</span>
                       </div>
                     </button>
-                    @if (isCollectionEntry(doc)) {
+                    @if (isCollectionEntry(doc) && hasCollectionEntryActions(doc)) {
                       <button
                         mat-icon-button
                         type="button"
@@ -405,14 +409,18 @@
                         <mat-icon>more_vert</mat-icon>
                       </button>
                       <mat-menu #collectionCardMenu="matMenu">
-                        <button mat-menu-item (click)="openEditCollectionDialog(doc)">
-                          <mat-icon>edit</mat-icon>
-                          <span>Edit</span>
-                        </button>
-                        <button mat-menu-item (click)="deleteCollectionEntry(doc)">
-                          <mat-icon>delete</mat-icon>
-                          <span>Delete</span>
-                        </button>
+                        @if (canEditCollectionEntry(doc)) {
+                          <button mat-menu-item (click)="openEditCollectionDialog(doc)">
+                            <mat-icon>edit</mat-icon>
+                            <span>Edit</span>
+                          </button>
+                        }
+                        @if (canDeleteCollectionEntry(doc)) {
+                          <button mat-menu-item (click)="deleteCollectionEntry(doc)">
+                            <mat-icon>delete</mat-icon>
+                            <span>Delete</span>
+                          </button>
+                        }
                       </mat-menu>
                     }
                   </div>

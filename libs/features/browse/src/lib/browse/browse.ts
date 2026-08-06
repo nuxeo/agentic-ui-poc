@@ -80,6 +80,7 @@ import {
   isRepositoryRootPath,
   isRestrictedImportParentPath,
   PERMISSION_DENIED_MESSAGE,
+  isPermissionDeniedError,
   isMailSendError,
   mailSendFailureMessage,
   resolveAcePrincipal,
@@ -1196,6 +1197,18 @@ export class BrowseComponent {
     return isCollectionDocument(doc);
   }
 
+  canEditCollectionEntry(doc: NuxeoDocument): boolean {
+    return canShowWriteDocumentAction(doc);
+  }
+
+  canDeleteCollectionEntry(doc: NuxeoDocument): boolean {
+    return canShowRemoveDocumentAction(doc);
+  }
+
+  hasCollectionEntryActions(doc: NuxeoDocument): boolean {
+    return this.canEditCollectionEntry(doc) || this.canDeleteCollectionEntry(doc);
+  }
+
   openEditCollectionDialog(doc: NuxeoDocument): void {
     this.detailService
       .getFullDocument(doc.uid)
@@ -1221,7 +1234,12 @@ export class BrowseComponent {
               }
             });
         },
-        error: () => this.snackBar.open('Failed to load collection', 'OK', { duration: 3000 }),
+        error: (err) =>
+          this.snackBar.open(
+            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to load collection',
+            'OK',
+            { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
+          ),
       });
   }
 
@@ -1257,12 +1275,23 @@ export class BrowseComponent {
                     this.loadContent();
                     this.snackBar.open('Collection moved to trash', 'OK', { duration: 3000 });
                   },
-                  error: () =>
-                    this.snackBar.open('Failed to delete collection', 'OK', { duration: 3000 }),
+                  error: (err) =>
+                    this.snackBar.open(
+                      isPermissionDeniedError(err)
+                        ? PERMISSION_DENIED_MESSAGE
+                        : 'Failed to delete collection',
+                      'OK',
+                      { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
+                    ),
                 });
             });
         },
-        error: () => this.snackBar.open('Failed to load collection', 'OK', { duration: 3000 }),
+        error: (err) =>
+          this.snackBar.open(
+            isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to load collection',
+            'OK',
+            { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
+          ),
       });
   }
 

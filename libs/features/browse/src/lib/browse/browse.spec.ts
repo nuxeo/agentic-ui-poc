@@ -18,6 +18,7 @@ import {
   TagService,
   CURRENT_USERNAME,
   ADMIN_ACCESS_CHECKS,
+  PERMISSION_DENIED_MESSAGE,
 } from '@agentic-ui/shared/nuxeo-client';
 import { trashSelectedDocumentsConfirmData } from '@agentic-ui/shared/ui';
 
@@ -494,6 +495,66 @@ describe('BrowseComponent', () => {
     expect(refreshSpy).toHaveBeenCalled();
     expect(loadSpy).toHaveBeenCalled();
     expect(mockSelectionService.clear).toHaveBeenCalled();
+  });
+
+  it('hasCollectionEntryActions hides menu when permissions enricher denies both actions', () => {
+    const collection = {
+      uid: 'col-3',
+      title: 'Read-only',
+      type: 'Collection',
+      path: '/collections/read-only',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Read'] },
+    } as NuxeoDocument;
+
+    expect(component.hasCollectionEntryActions(collection)).toBe(false);
+    expect(component.canEditCollectionEntry(collection)).toBe(false);
+    expect(component.canDeleteCollectionEntry(collection)).toBe(false);
+  });
+
+  it('openEditCollectionDialog shows permission denied when collection load returns 403', () => {
+    const collection: NuxeoDocument = {
+      uid: 'col-4',
+      title: 'Locked',
+      type: 'Collection',
+      path: '/collections/locked',
+      lastModified: '',
+      properties: {},
+    };
+    mockDocumentDetailService.getFullDocument.mockReturnValue(throwError(() => ({ status: 403 })));
+
+    component.openEditCollectionDialog(collection);
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
+      duration: 4000,
+    });
+    expect(dialogOpenSpy).not.toHaveBeenCalled();
+  });
+
+  it('deleteCollectionEntry shows permission denied when trash returns 403', () => {
+    const collection: NuxeoDocument = {
+      uid: 'col-5',
+      title: 'Archive',
+      type: 'Collection',
+      path: '/collections/archive',
+      lastModified: '',
+      properties: {},
+    };
+    mockDocumentDetailService.getFullDocument.mockReturnValue(
+      of({
+        ...collection,
+        contextParameters: { permissions: ['Remove'] },
+      } as NuxeoDocument),
+    );
+    mockDocumentDetailService.trashDocument.mockReturnValue(throwError(() => ({ status: 403 })));
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(true) });
+
+    component.deleteCollectionEntry(collection);
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
+      duration: 4000,
+    });
   });
 
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {
