@@ -4,7 +4,6 @@ import {
   Component,
   ElementRef,
   inject,
-  NgZone,
   OnDestroy,
   signal,
 } from '@angular/core';
@@ -47,7 +46,6 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly snackBar = inject(MatSnackBar);
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
   private readonly autofillSyncTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   readonly submitting = signal(false);
@@ -86,10 +84,8 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private scheduleAutofillSync(): void {
     for (const delayMs of [0, 100, 300, 800, 1500]) {
       const timeoutId = setTimeout(() => {
-        this.ngZone.run(() => {
-          this.syncAutofillFromDom();
-          this.cdr.markForCheck();
-        });
+        this.syncAutofillFromDom();
+        this.cdr.markForCheck();
       }, delayMs);
       this.autofillSyncTimeouts.push(timeoutId);
     }
@@ -102,7 +98,7 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   }
 
   onAutofillAnimation(event: AnimationEvent): void {
-    if (event.animationName === 'login-autofill-start') {
+    if (event.animationName.endsWith('login-autofill-start')) {
       this.syncAutofillFromDom();
       this.cdr.markForCheck();
     }
@@ -125,7 +121,7 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   /** Browsers may paint autofill without exposing input.value to JavaScript yet. */
   private isBrowserAutofilled(input: HTMLInputElement): boolean {
     try {
-      return input.matches(':-webkit-autofill');
+      return input.matches(':-webkit-autofill') || input.matches(':autofill');
     } catch {
       return false;
     }
@@ -169,8 +165,8 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
     this.submitting.set(true);
     localStorage.setItem(LAST_USER_KEY, username);
 
-    // Web UI uses a server cookie session; persist credentials like the prior default (remember=true).
-    this.auth.login(username, password, true).subscribe({
+    // Web UI uses a server cookie session; do not persist credentials in localStorage.
+    this.auth.login(username, password, false).subscribe({
       next: () => {
         this.submitting.set(false);
         void this.router.navigateByUrl('/dashboard');

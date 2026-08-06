@@ -58,7 +58,7 @@ describe('LoginPageComponent', () => {
     component.submit();
     await Promise.resolve();
 
-    expect(auth.login).toHaveBeenCalledWith('administrator', 'Administrator', true);
+    expect(auth.login).toHaveBeenCalledWith('administrator', 'Administrator', false);
     expect(router.navigateByUrl).toHaveBeenCalledWith('/dashboard');
   });
 
@@ -120,7 +120,25 @@ describe('LoginPageComponent', () => {
     component.submit();
     await Promise.resolve();
 
-    expect(auth.login).toHaveBeenCalledWith('administrator', 'Administrator', true);
+    expect(auth.login).toHaveBeenCalledWith('administrator', 'Administrator', false);
+  });
+
+  it('reacts to scoped autofill animation names from emulated encapsulation', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
+    const passwordInput = el.querySelector('input[formcontrolname="password"]') as HTMLInputElement;
+    usernameInput.value = 'administrator';
+    passwordInput.value = 'Administrator';
+
+    component.onAutofillAnimation({
+      animationName: 'ng-c1234567890_login-autofill-start',
+    } as AnimationEvent);
+    fixture.detectChanges();
+
+    expect(component.form.getRawValue()).toEqual({
+      username: 'administrator',
+      password: 'Administrator',
+    });
   });
 
   it('resets submitting and shows snackbar on auth failure', () => {
