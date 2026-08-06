@@ -555,6 +555,56 @@ describe('BrowseComponent', () => {
     expect(mockDocumentDetailService.trashDocument).toHaveBeenCalledWith('doc-1');
   });
 
+  it('deleteSelectedDocuments reports items that could not be loaded', () => {
+    mockSelectionService.selectedCount.mockReturnValue(2);
+    mockSelectionService.selectedIds.mockReturnValue(new Set(['doc-1', 'doc-2']));
+    component.entries.set([
+      {
+        uid: 'doc-1',
+        title: 'File 1',
+        type: 'File',
+        path: '/workspaces/doc-1',
+        lastModified: '',
+        properties: {},
+        contextParameters: { permissions: ['Remove'] },
+      } as NuxeoDocument,
+    ]);
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      uid === 'doc-2' ? throwError(() => new Error('not found')) : EMPTY,
+    );
+    mockDocumentDetailService.trashDocument.mockReturnValue(of({ uid: 'doc-1' } as NuxeoDocument));
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(true) });
+
+    component.deleteDocument();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Skipped 1 item(s) that could not be loaded',
+      'OK',
+      { duration: 5000 },
+    );
+    expect(mockDocumentDetailService.trashDocument).toHaveBeenCalledWith('doc-1');
+    expect(snackBarOpenSpy).toHaveBeenCalledWith('Moved to trash', 'OK', { duration: 3000 });
+  });
+
+  it('deleteSelectedDocuments blocks when all selected documents fail to load', () => {
+    mockSelectionService.selectedCount.mockReturnValue(2);
+    mockSelectionService.selectedIds.mockReturnValue(new Set(['doc-1', 'doc-2']));
+    component.entries.set([]);
+    mockDocumentDetailService.getFullDocument.mockReturnValue(
+      throwError(() => new Error('not found')),
+    );
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(true) });
+
+    component.deleteDocument();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(
+      'Failed to load selected documents for deletion',
+      'OK',
+      { duration: 5000 },
+    );
+    expect(mockDocumentDetailService.trashDocument).not.toHaveBeenCalled();
+  });
+
   it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {
     mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
       of({ uid: 'doc-1' }),

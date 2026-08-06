@@ -1382,16 +1382,34 @@ export class BrowseComponent {
         }),
         switchMap((docs) => {
           const resolved = docs.filter((doc): doc is NuxeoDocument => !!doc);
+          const loadFailedCount = docs.length - resolved.length;
           const denied = resolved.filter((doc) => !canRemoveDocument(doc));
           const allowed = resolved.filter((doc) => canRemoveDocument(doc));
 
           if (allowed.length === 0) {
-            const message =
-              resolved.length === 0
-                ? 'Failed to load selected documents for deletion'
-                : PERMISSION_DENIED_MESSAGE;
-            this.snackBar.open(message, 'OK', { duration: 4000 });
+            if (loadFailedCount > 0) {
+              this.snackBar.open(
+                resolved.length === 0
+                  ? 'Failed to load selected documents for deletion'
+                  : `Skipped ${loadFailedCount} item(s) that could not be loaded`,
+                'OK',
+                { duration: 5000 },
+              );
+            }
+            if (resolved.length > 0) {
+              this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+            }
             return EMPTY;
+          }
+
+          if (loadFailedCount > 0) {
+            this.snackBar.open(
+              `Skipped ${loadFailedCount} item(s) that could not be loaded`,
+              'OK',
+              {
+                duration: 5000,
+              },
+            );
           }
 
           if (denied.length > 0) {
