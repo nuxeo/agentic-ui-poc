@@ -1109,11 +1109,6 @@ export class BrowseComponent {
         if (result?.navigateToUid || result?.navigateToUrl || result?.refreshed) {
           this.browseContext.requestTreeRefresh();
         }
-        const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
-        if (browsePath && browsePath !== '/') {
-          void this.router.navigateByUrl(`/browse${browsePath}`);
-          return;
-        }
         if (result?.navigateToUrl) {
           if (result.navigateToUrl.startsWith('/doc/')) {
             const uid = result.navigateToUrl.slice('/doc/'.length);
@@ -1127,6 +1122,11 @@ export class BrowseComponent {
           } else {
             void this.router.navigateByUrl(result.navigateToUrl);
           }
+          return;
+        }
+        const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
+        if (browsePath && browsePath !== '/') {
+          void this.router.navigateByUrl(`/browse${browsePath}`);
           return;
         }
         if (result?.navigateToUid) {

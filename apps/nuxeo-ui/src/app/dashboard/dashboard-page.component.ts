@@ -170,11 +170,6 @@ export class DashboardPageComponent {
         .afterClosed()
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe((result: CreateImportDialogResult | undefined) => {
-          const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
-          if (browsePath && browsePath !== '/') {
-            void this.router.navigateByUrl(`/browse${browsePath}`);
-            return;
-          }
           if (result?.navigateToUrl) {
             if (result.navigateToUrl.startsWith('/doc/')) {
               const uid = result.navigateToUrl.slice('/doc/'.length);
@@ -188,6 +183,11 @@ export class DashboardPageComponent {
             } else {
               void this.router.navigateByUrl(result.navigateToUrl);
             }
+            return;
+          }
+          const browsePath = result?.navigateToPath?.replace(/\/+$/, '');
+          if (browsePath && browsePath !== '/') {
+            void this.router.navigateByUrl(`/browse${browsePath}`);
             return;
           }
           if (result?.navigateToUid) {
