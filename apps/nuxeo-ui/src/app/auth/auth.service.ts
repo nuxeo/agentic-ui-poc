@@ -536,7 +536,7 @@ export class AuthService {
 
   private clearUserScopedUiState(): void {
     // Resolve lazily — eager inject() here would create a DI cycle via CURRENT_USERNAME.
-    this.injector.get(SelectionService).clear();
+    this.injector.get(SelectionService).resetUiState();
     this.injector.get(BrowseContextService).resetContext();
     this.injector.get(ClipboardTargetService).clear();
   }

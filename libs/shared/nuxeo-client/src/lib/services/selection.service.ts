@@ -117,6 +117,11 @@ export class SelectionService {
     this.selectedLabels.set(new Map());
     this.selectedPreviews.set(new Map());
     this.selectedTypes.set(new Map());
+  }
+
+  /** Clears selection and exits clear-only topbar mode (logout, session reset). */
+  resetUiState(): void {
+    this.clear();
     this.clearOnlyMode.set(false);
   }
 
