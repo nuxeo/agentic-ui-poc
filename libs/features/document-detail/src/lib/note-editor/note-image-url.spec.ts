@@ -1,9 +1,8 @@
-import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import { hasInsertablePictureBlob, type NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
 
 import {
   buildNotePictureNxfileUrl,
   extractMainBlobFileName,
-  isInsertableNotePicture,
   notePictureInsertUrl,
 } from './note-image-url';
 
@@ -38,10 +37,10 @@ describe('note-image-url', () => {
   it('notePictureInsertUrl returns null when blob data is missing', () => {
     const doc = { uid: '1', properties: {} } as NuxeoDocument;
     expect(notePictureInsertUrl(doc)).toBeNull();
-    expect(isInsertableNotePicture(doc)).toBe(false);
+    expect(hasInsertablePictureBlob(doc)).toBe(false);
   });
 
-  it('isInsertableNotePicture rejects non-image blobs without Picture type', () => {
+  it('hasInsertablePictureBlob rejects non-image blobs without Picture type', () => {
     const doc = {
       uid: '2',
       type: 'File',
@@ -53,6 +52,6 @@ describe('note-image-url', () => {
       },
     } as NuxeoDocument;
     expect(notePictureInsertUrl(doc)).not.toBeNull();
-    expect(isInsertableNotePicture(doc)).toBe(false);
+    expect(hasInsertablePictureBlob(doc)).toBe(false);
   });
 });

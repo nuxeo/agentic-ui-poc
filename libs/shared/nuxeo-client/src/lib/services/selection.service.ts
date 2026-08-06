@@ -117,6 +117,7 @@ export class SelectionService {
     this.selectedLabels.set(new Map());
     this.selectedPreviews.set(new Map());
     this.selectedTypes.set(new Map());
+    this.clearOnlyMode.set(false);
   }
 
   setClearOnlyMode(enabled: boolean): void {

@@ -28,6 +28,7 @@ import {
   DocumentDetailService,
   DocumentImportService,
   formatNoteHtmlForSourceView,
+  hasInsertablePictureBlob,
   inferBlobDocTypeFromFile,
   isHtmlNoteFormat,
   isMarkdownNoteFormat,
@@ -41,7 +42,7 @@ import Quill from 'quill';
 import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-header';
 import { NoteImagePickerDialogComponent } from './note-image-picker-dialog';
 import { buildNoteImagesInsertHtml } from './note-image-insert';
-import { notePictureInsertUrl, isInsertableNotePicture } from './note-image-url';
+import { notePictureInsertUrl } from './note-image-url';
 
 @Component({
   selector: 'lib-note-editor',
@@ -212,7 +213,7 @@ export class NoteEditorComponent {
         width: '900px',
         maxWidth: '95vw',
         maxHeight: '90vh',
-        autoFocus: 'first-tap',
+        autoFocus: 'dialog',
         panelClass: 'note-image-picker-panel',
       })
       .afterClosed()
@@ -220,7 +221,7 @@ export class NoteEditorComponent {
       .subscribe((docs: NuxeoDocument[] | undefined) => {
         if (!docs?.length || !this.quill) return;
         const urls = docs
-          .filter((doc) => isInsertableNotePicture(doc))
+          .filter((doc) => hasInsertablePictureBlob(doc))
           .map((doc) => notePictureInsertUrl(doc))
           .filter((url): url is string => !!url);
         if (!urls.length) {
@@ -259,7 +260,7 @@ export class NoteEditorComponent {
     this.sourceMode.set(true);
   }
 
-  /** Focus inline editing — used when the document toolbar Edit button is clicked (NXSAT-193). */
+  /** Focus inline note editing — triggered by the note-surface pencil (Web UI parity). */
   focusForEdit(): void {
     if (this.readOnly() || this.loading()) return;
 

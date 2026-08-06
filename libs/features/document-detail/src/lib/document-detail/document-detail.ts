@@ -7,8 +7,6 @@ import {
   signal,
   computed,
   viewChild,
-  afterNextRender,
-  Injector,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
@@ -285,8 +283,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   /** Programmatic tab switches (e.g. Publishing link). */
   private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
-  private readonly noteEditorRef = viewChild(NoteEditorComponent);
-  private readonly injector = inject(Injector);
 
   readonly doc = signal<NuxeoDocument | null>(null);
   readonly loading = signal(true);
@@ -3092,27 +3088,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   /** Toolbar Edit opens metadata; note-surface pencil focuses inline content (Web UI parity). */
   onEditClick(): void {
     this.openEditDialog();
-  }
-
-  private goToViewTab(): void {
-    const tabGroup = this.detailTabGroup();
-    if (tabGroup) {
-      tabGroup.selectedIndex = 0;
-      return;
-    }
-    this.onTabChange(0);
-  }
-
-  private focusNoteContent(): void {
-    if (!this.isNoteDocument() || !this.canWriteDoc()) return;
-
-    this.goToViewTab();
-    afterNextRender(
-      () => {
-        this.noteEditorRef()?.focusForEdit();
-      },
-      { injector: this.injector },
-    );
   }
 
   saveNote(body: string): void {
