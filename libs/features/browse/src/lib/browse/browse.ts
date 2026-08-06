@@ -70,6 +70,8 @@ import {
   mergeDocumentPermissionsContext,
   canWriteDocument,
   canRemoveDocument,
+  canShowRemoveDocumentAction,
+  canShowWriteDocumentAction,
   canViewDocumentAuditLog,
   auditActivityLabel,
   DOMAIN_CONTAINER_GUIDANCE,
@@ -275,13 +277,13 @@ export class BrowseComponent {
   readonly showHeaderEdit = computed(() => {
     const selected = this.singleSelectedEntry();
     if (selected && isCollectionDocument(selected)) {
-      return this.entryHasKnownWritePermission(selected) ? canWriteDocument(selected) : true;
+      return canShowWriteDocumentAction(selected);
     }
     return this.canWriteCurrentDoc();
   });
   readonly showHeaderDelete = computed(() => {
     if (this.selectionService.selectedCount() > 0) {
-      return this.selectedEntries().some((doc) => this.entryMayBeRemovable(doc));
+      return this.selectedEntries().some((doc) => canShowRemoveDocumentAction(doc));
     }
     return this.canRemoveCurrentDoc();
   });
@@ -1284,18 +1286,6 @@ export class BrowseComponent {
     return this.entries().filter((entry) => ids.has(entry.uid));
   }
 
-  private entryHasKnownWritePermission(doc: NuxeoDocument): boolean {
-    return Array.isArray(doc.contextParameters?.['permissions']);
-  }
-
-  private entryMayBeRemovable(doc: NuxeoDocument): boolean {
-    const permissions = doc.contextParameters?.['permissions'];
-    if (!Array.isArray(permissions)) {
-      return true;
-    }
-    return canRemoveDocument(doc);
-  }
-
   private guardCollectionsFolderDelete(doc: NuxeoDocument): void {
     if (this.entries().some((entry) => isCollectionDocument(entry))) {
       this.showCollectionsFolderDeleteBlockedMessage();
@@ -1391,7 +1381,11 @@ export class BrowseComponent {
           const allowed = resolved.filter((doc) => canRemoveDocument(doc));
 
           if (allowed.length === 0) {
-            this.snackBar.open(PERMISSION_DENIED_MESSAGE, 'OK', { duration: 4000 });
+            const message =
+              resolved.length === 0
+                ? 'Failed to load selected documents for deletion'
+                : PERMISSION_DENIED_MESSAGE;
+            this.snackBar.open(message, 'OK', { duration: 4000 });
             return EMPTY;
           }
 

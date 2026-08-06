@@ -235,9 +235,12 @@ export {
   canAddChildren,
   canManageDocumentPermissions,
   canRemoveDocument,
+  canShowRemoveDocumentAction,
+  canShowWriteDocumentAction,
   canViewDocumentAuditLog,
   canWriteDocument,
   hasDocumentPermission,
+  hasDocumentPermissionsEnricher,
   isPermissionDeniedError,
   READ_WRITE_DOCUMENT,
 } from './lib/utils/document-permissions';

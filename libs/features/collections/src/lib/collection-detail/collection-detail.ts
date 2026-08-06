@@ -37,6 +37,9 @@ import {
   canViewDocumentAuditLog,
   canWriteDocument,
   canRemoveDocument,
+  canShowWriteDocumentAction,
+  canShowRemoveDocumentAction,
+  hasDocumentPermissionsEnricher,
   PERMISSION_DENIED_MESSAGE,
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
@@ -174,8 +177,8 @@ export class CollectionDetailComponent {
     this.clipboardDocs().some((d) => d.uid === this.collectionUid),
   );
 
-  readonly canEditCollection = computed(() => canWriteDocument(this.collection()));
-  readonly canDeleteCollection = computed(() => canRemoveDocument(this.collection()));
+  readonly canEditCollection = computed(() => canShowWriteDocumentAction(this.collection()));
+  readonly canDeleteCollection = computed(() => canShowRemoveDocumentAction(this.collection()));
 
   private readonly browseContext = inject(BrowseContextService);
 
@@ -355,7 +358,7 @@ export class CollectionDetailComponent {
   editCollection(): void {
     const col = this.collection();
     if (!col) return;
-    if (!this.canEditCollection()) {
+    if (hasDocumentPermissionsEnricher(col) && !canWriteDocument(col)) {
       this.toast(PERMISSION_DENIED_MESSAGE);
       return;
     }
@@ -421,10 +424,10 @@ export class CollectionDetailComponent {
   }
 
   deleteCollection(): void {
-    if (this.actionInProgress() || !this.canDeleteCollection()) {
-      if (!this.canDeleteCollection()) {
-        this.toast(PERMISSION_DENIED_MESSAGE);
-      }
+    const col = this.collection();
+    if (this.actionInProgress()) return;
+    if (col && hasDocumentPermissionsEnricher(col) && !canRemoveDocument(col)) {
+      this.toast(PERMISSION_DENIED_MESSAGE);
       return;
     }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {

@@ -25,6 +25,25 @@ export function hasDocumentPermission(
   return Array.isArray(permissions) && permissions.includes(permission);
 }
 
+/** True when the document response includes the `permissions` enricher. */
+export function hasDocumentPermissionsEnricher(doc: NuxeoDocument | null | undefined): boolean {
+  return Array.isArray(doc?.contextParameters?.['permissions']);
+}
+
+/** Show write actions when permissions are unknown or Write/WriteProperties is granted. */
+export function canShowWriteDocumentAction(doc: NuxeoDocument | null | undefined): boolean {
+  if (!doc) return false;
+  if (!hasDocumentPermissionsEnricher(doc)) return true;
+  return canWriteDocument(doc);
+}
+
+/** Show remove actions when permissions are unknown or Remove is granted. */
+export function canShowRemoveDocumentAction(doc: NuxeoDocument | null | undefined): boolean {
+  if (!doc) return false;
+  if (!hasDocumentPermissionsEnricher(doc)) return true;
+  return canRemoveDocument(doc);
+}
+
 /** True when the current user can manage ACL entries on the document. */
 export function canManageDocumentPermissions(doc: NuxeoDocument | null | undefined): boolean {
   return (
