@@ -18,6 +18,7 @@ import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 import { resolveCreatableSubtypes } from '../utils/creatable-subtypes';
 import { isUserWorkspacePath } from '../utils/browse-path.utils';
+import { escapeNxqlLiteral } from '../utils/nxql.utils';
 import { isFolderishDocument, isBrowsableNavNode } from './document-import.service';
 
 export interface NavTreeBootstrap {
@@ -452,8 +453,9 @@ export class BrowseService {
 
   /** True when the Collections folder still has at least one non-trashed child collection. */
   hasChildCollections(collectionsFolderUid: string): Observable<boolean> {
+    const parentId = escapeNxqlLiteral(collectionsFolderUid);
     const query =
-      `SELECT * FROM Document WHERE ecm:parentId = '${collectionsFolderUid}' ` +
+      `SELECT * FROM Document WHERE ecm:parentId = '${parentId}' ` +
       `AND ecm:primaryType = 'Collection' AND ecm:isTrashed = 0 AND ecm:isVersion = 0`;
     return this.api
       .nxqlSearch(query, 1)

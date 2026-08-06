@@ -1,6 +1,7 @@
 import type { NuxeoDocument } from '../models/document.model';
 import { isFolderishDocument } from '../services/document-import.service';
 
+/** Decode a single URL-encoded browse path segment (e.g. `Domain%201` → `Domain 1`). */
 export function decodeNuxeoPathSegment(segment: string): string {
   try {
     return decodeURIComponent(segment);

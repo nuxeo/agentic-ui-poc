@@ -498,6 +498,18 @@ describe('BrowseComponent', () => {
 
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {
     mockSelectionService.selectedCount.mockReturnValue(3);
+    mockSelectionService.selectedIds.mockReturnValue(new Set(['doc-1', 'doc-2', 'doc-3']));
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      of({
+        uid,
+        title: uid,
+        type: 'File',
+        path: `/workspaces/${uid}`,
+        lastModified: '',
+        properties: {},
+        contextParameters: { permissions: ['Remove'] },
+      } as NuxeoDocument),
+    );
     component.currentDoc.set({
       uid: 'folder-1',
       title: 'Akshitha',

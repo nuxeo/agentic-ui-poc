@@ -295,6 +295,7 @@ export {
 } from './lib/utils/permission-notification';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
+export { escapeNxqlLiteral } from './lib/utils/nxql.utils';
 export {
   formatHierarchicalL10nLabel,
   groupL10nChildrenByParent,
