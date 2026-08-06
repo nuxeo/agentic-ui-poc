@@ -42,14 +42,14 @@ mat-dialog-actions {
 ::ng-deep .mat-mdc-select-panel.vocab-select-panel .vocab-panel__search {
   flex: 0 0 auto;
   padding: 8px 12px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #e5e7eb);
 }
 
 ::ng-deep .mat-mdc-select-panel.vocab-select-panel .vocab-panel__search input {
   width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--mat-sys-outline-variant, #d1d5db);
   border-radius: 4px;
   font: inherit;
   font-size: 0.875rem;
@@ -65,9 +65,9 @@ mat-dialog-actions {
 ::ng-deep .vocab-grouped-select-panel .mat-mdc-optgroup .mdc-list-group__subheader {
   font-weight: 700;
   font-size: 0.8125rem;
-  background: #fafafa;
+  background: var(--mat-sys-surface-container-low, #fafafa);
   padding: 10px 16px 6px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #f0f0f0);
 }
 
 ::ng-deep .vocab-field .mat-mdc-select-trigger {
