@@ -41,6 +41,7 @@ import {
   canShowRemoveDocumentAction,
   hasDocumentPermissionsEnricher,
   PERMISSION_DENIED_MESSAGE,
+  isPermissionDeniedError,
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
   mailSendFailureMessage,
@@ -457,9 +458,13 @@ export class CollectionDetailComponent {
               const redirectUrl = col?.path ? postTrashBrowseRouterUrl(col.path) : '/collections';
               void this.router.navigateByUrl(redirectUrl);
             },
-            error: () => {
+            error: (err) => {
               this.actionInProgress.set(null);
-              this.toast('Failed to delete collection');
+              this.toast(
+                isPermissionDeniedError(err)
+                  ? PERMISSION_DENIED_MESSAGE
+                  : 'Failed to delete collection',
+              );
             },
           });
       });
