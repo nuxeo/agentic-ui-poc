@@ -72,6 +72,7 @@ import {
   canRemoveDocument,
   canShowRemoveDocumentAction,
   canShowWriteDocumentAction,
+  hasDocumentPermissionsEnricher,
   canViewDocumentAuditLog,
   auditActivityLabel,
   DOMAIN_CONTAINER_GUIDANCE,
@@ -1286,6 +1287,14 @@ export class BrowseComponent {
     return this.entries().filter((entry) => ids.has(entry.uid));
   }
 
+  private resolveSelectedDocumentForDelete(uid: string) {
+    const entry = this.entries().find((doc) => doc.uid === uid);
+    if (entry && hasDocumentPermissionsEnricher(entry)) {
+      return of(entry);
+    }
+    return this.detailService.getFullDocument(uid).pipe(catchError(() => of(null)));
+  }
+
   private guardCollectionsFolderDelete(doc: NuxeoDocument): void {
     if (this.entries().some((entry) => isCollectionDocument(entry))) {
       this.showCollectionsFolderDeleteBlockedMessage();
@@ -1369,11 +1378,7 @@ export class BrowseComponent {
         takeUntilDestroyed(this.destroyRef),
         switchMap((confirmed) => {
           if (!confirmed) return EMPTY;
-          return forkJoin(
-            ids.map((uid) =>
-              this.detailService.getFullDocument(uid).pipe(catchError(() => of(null))),
-            ),
-          );
+          return forkJoin(ids.map((uid) => this.resolveSelectedDocumentForDelete(uid)));
         }),
         switchMap((docs) => {
           const resolved = docs.filter((doc): doc is NuxeoDocument => !!doc);

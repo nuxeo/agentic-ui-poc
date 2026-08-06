@@ -531,6 +531,30 @@ describe('BrowseComponent', () => {
     expect(mockDocumentDetailService.trashDocument).not.toHaveBeenCalled();
   });
 
+  it('deleteSelectedDocuments reuses listed entries that already include permissions', () => {
+    mockSelectionService.selectedCount.mockReturnValue(1);
+    mockSelectionService.selectedIds.mockReturnValue(new Set(['doc-1']));
+    component.entries.set([
+      {
+        uid: 'doc-1',
+        title: 'File',
+        type: 'File',
+        path: '/workspaces/doc-1',
+        lastModified: '',
+        properties: {},
+        contextParameters: { permissions: ['Remove'] },
+      } as NuxeoDocument,
+    ]);
+    mockDocumentDetailService.getFullDocument.mockClear();
+    mockDocumentDetailService.trashDocument.mockReturnValue(of({ uid: 'doc-1' } as NuxeoDocument));
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(true) });
+
+    component.deleteDocument();
+
+    expect(mockDocumentDetailService.getFullDocument).not.toHaveBeenCalled();
+    expect(mockDocumentDetailService.trashDocument).toHaveBeenCalledWith('doc-1');
+  });
+
   it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {
     mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
       of({ uid: 'doc-1' }),
