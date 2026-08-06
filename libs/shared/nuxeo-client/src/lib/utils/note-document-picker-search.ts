@@ -1,4 +1,4 @@
-import type { NuxeoDocumentList } from '../models/document.model';
+import type { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { resolvePaginatedListTotal, type PaginatedListMeta } from './paginated-total';
 
 /** Web UI note RTE — `nuxeo-document-picker provider="document_picker"`. */
@@ -31,6 +31,18 @@ export function buildNoteDocumentPickerNxql(fulltext: string): string {
     query += ` AND (dc:title LIKE '%${escaped}%' OR file:content/name LIKE '%${escaped}%')`;
   }
   return query;
+}
+
+/** Keep only Picture documents with a server-supplied blob URL for `<img src>`. */
+export function filterInsertablePictureDocuments(
+  entries: NuxeoDocumentList['entries'] | undefined,
+): NuxeoDocument[] {
+  return (entries ?? []).filter((doc) => {
+    const fileContent = doc.properties?.['file:content'];
+    if (!fileContent || typeof fileContent !== 'object') return false;
+    const data = (fileContent as Record<string, unknown>)['data'];
+    return typeof data === 'string' && data.length > 0;
+  });
 }
 
 export function normalizeDocumentPickerList(

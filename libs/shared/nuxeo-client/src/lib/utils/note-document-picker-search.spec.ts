@@ -2,7 +2,9 @@ import {
   NOTE_DOCUMENT_PICKER_PROVIDER,
   buildNoteDocumentPickerNxql,
   escapeNxqlLiteral,
+  filterInsertablePictureDocuments,
 } from './note-document-picker-search';
+import type { NuxeoDocument } from '../models/document.model';
 
 describe('note-document-picker-search', () => {
   it('uses document_picker provider name like Web UI', () => {
@@ -24,5 +26,18 @@ describe('note-document-picker-search', () => {
   it('escapeNxqlLiteral escapes single quotes', () => {
     expect(escapeNxqlLiteral("O'Brien")).toBe("O''Brien");
     expect(buildNoteDocumentPickerNxql("O'Brien")).toContain("O''Brien");
+  });
+
+  it('filterInsertablePictureDocuments keeps only docs with file:content.data', () => {
+    const withData = {
+      uid: '1',
+      properties: { 'file:content': { data: '/nuxeo/nxfile/default/1/file:content/a.jpg' } },
+    } as NuxeoDocument;
+    const withoutData = {
+      uid: '2',
+      properties: { 'file:content': { name: 'a.jpg' } },
+    } as NuxeoDocument;
+
+    expect(filterInsertablePictureDocuments([withData, withoutData])).toEqual([withData]);
   });
 });

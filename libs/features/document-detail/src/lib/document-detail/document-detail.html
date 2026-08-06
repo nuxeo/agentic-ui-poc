@@ -135,8 +135,8 @@
         @if (canWriteDoc()) {
           <button
             mat-icon-button
-            [matTooltip]="isNoteDocument() ? 'Edit note' : 'Edit'"
-            [attr.aria-label]="isNoteDocument() ? 'Edit note' : 'Edit'"
+            [matTooltip]="isNoteDocument() ? 'Edit properties' : 'Edit'"
+            [attr.aria-label]="isNoteDocument() ? 'Edit properties' : 'Edit'"
             (click)="onEditClick()"
           >
             <mat-icon>edit</mat-icon>

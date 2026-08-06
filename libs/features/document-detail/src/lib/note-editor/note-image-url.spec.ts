@@ -3,6 +3,7 @@ import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
 import {
   buildNotePictureNxfileUrl,
   extractMainBlobFileName,
+  isInsertableNotePicture,
   notePictureInsertUrl,
 } from './note-image-url';
 
@@ -13,12 +14,6 @@ describe('note-image-url', () => {
     );
   });
 
-  it('buildNotePictureNxfileUrl honors configured Nuxeo server base URL', () => {
-    expect(
-      buildNotePictureNxfileUrl('abc-123', 'Beach.jpg', 'https://nuxeo.example.com/nuxeo'),
-    ).toBe('https://nuxeo.example.com/nuxeo/nxfile/default/abc-123/file:content/Beach.jpg');
-  });
-
   it('extractMainBlobFileName reads file:content name', () => {
     const doc = {
       uid: '1',
@@ -27,8 +22,22 @@ describe('note-image-url', () => {
     expect(extractMainBlobFileName(doc)).toBe('photo.png');
   });
 
-  it('notePictureInsertUrl returns null when blob name is missing', () => {
+  it('notePictureInsertUrl uses server-supplied file:content.data', () => {
+    const doc = {
+      uid: '1',
+      properties: {
+        'file:content': {
+          name: 'photo.png',
+          data: '/nuxeo/nxfile/default/1/file:content/photo.png',
+        },
+      },
+    } as NuxeoDocument;
+    expect(notePictureInsertUrl(doc)).toBe('/nuxeo/nxfile/default/1/file:content/photo.png');
+  });
+
+  it('notePictureInsertUrl returns null when blob data is missing', () => {
     const doc = { uid: '1', properties: {} } as NuxeoDocument;
     expect(notePictureInsertUrl(doc)).toBeNull();
+    expect(isInsertableNotePicture(doc)).toBe(false);
   });
 });

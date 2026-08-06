@@ -71,6 +71,8 @@
       <div class="note-image-picker__loading">
         <mat-spinner diameter="32" />
       </div>
+    } @else if (searchError()) {
+      <p class="note-image-picker__empty">{{ searchError() }}</p>
     } @else if (results().length === 0) {
       <p class="note-image-picker__empty">No pictures found.</p>
     } @else {

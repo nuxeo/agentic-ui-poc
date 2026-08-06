@@ -27,6 +27,12 @@
     <div class="note-body">
       @if (isHtml() && !sourceMode()) {
         <div class="note-quill-shell">
+          @if (imageUploading()) {
+            <div class="note-image-upload-overlay" aria-live="polite">
+              <mat-spinner diameter="28" />
+              <span>Uploading image…</span>
+            </div>
+          }
           <div
             #quillToolbar
             class="note-quill-toolbar"

@@ -10,6 +10,7 @@ import {
   NOTE_DOCUMENT_PICKER_HEADERS,
   NOTE_DOCUMENT_PICKER_PROVIDER,
   buildNoteDocumentPickerNxql,
+  filterInsertablePictureDocuments,
   normalizeDocumentPickerList,
 } from '../utils/note-document-picker-search';
 
@@ -207,9 +208,19 @@ export class SearchService {
         { ...NOTE_DOCUMENT_PICKER_HEADERS },
       )
       .pipe(
-        map((res) => normalizeDocumentPickerList(res, pageSize, pageIndex)),
+        map((res) => this.normalizePicturePickerList(res, pageSize, pageIndex)),
         catchError(() => this.searchDocumentPickerNxql(fulltext, pageSize, pageIndex)),
       );
+  }
+
+  private normalizePicturePickerList(
+    res: NuxeoDocumentList,
+    pageSize: number,
+    pageIndex: number,
+  ): NuxeoDocumentList {
+    const list = normalizeDocumentPickerList(res, pageSize, pageIndex);
+    const entries = filterInsertablePictureDocuments(list.entries);
+    return { ...list, entries };
   }
 
   private searchDocumentPickerNxql(
@@ -227,7 +238,7 @@ export class SearchService {
         properties: 'dublincore,file',
         'enrichers.document': 'thumbnail',
       })
-      .pipe(map((res) => normalizeDocumentPickerList(res, pageSize, pageIndex)));
+      .pipe(map((res) => this.normalizePicturePickerList(res, pageSize, pageIndex)));
   }
 
   getSavedSearches(pageProvider = 'default_search'): Observable<SavedSearchOption[]> {

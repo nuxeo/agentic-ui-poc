@@ -19,7 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { catchError, of } from 'rxjs';
+import { catchError, from, mergeMap, of } from 'rxjs';
 
 import {
   DocumentDetailService,
@@ -68,6 +68,7 @@ export class NoteImagePickerDialogComponent implements OnInit {
 
   readonly searchTerm = signal('');
   readonly loading = signal(false);
+  readonly searchError = signal<string | null>(null);
   readonly results = signal<NuxeoDocument[]>([]);
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
@@ -176,10 +177,14 @@ export class NoteImagePickerDialogComponent implements OnInit {
 
   private runSearch(fulltext: string): void {
     this.loading.set(true);
+    this.searchError.set(null);
     this.searchService
       .searchDocumentPicker({ fulltext, pageSize: 40 })
       .pipe(
-        catchError(() => of({ entries: [], totalSize: 0, resultsCount: 0 })),
+        catchError(() => {
+          this.searchError.set('Search failed. Try again.');
+          return of({ entries: [], totalSize: 0, resultsCount: 0 });
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((res) => {
@@ -187,20 +192,8 @@ export class NoteImagePickerDialogComponent implements OnInit {
         const entries = res.entries ?? [];
         this.results.set(entries);
         this.totalSize.set(res.totalSize ?? res.resultsCount ?? entries.length);
-        this.pruneSelection(entries);
         this.loadThumbnails(entries);
       });
-  }
-
-  /** Drop selections that are no longer visible after Quick Search. */
-  private pruneSelection(entries: NuxeoDocument[]): void {
-    const visible = new Set(entries.map((doc) => doc.uid));
-    for (const uid of this.selectionService.selectedIds()) {
-      if (!visible.has(uid)) {
-        this.selectionService.toggle(uid);
-        this.forgetSelectedDoc(uid);
-      }
-    }
   }
 
   private rememberSelectedDoc(doc: NuxeoDocument): void {
@@ -244,23 +237,32 @@ export class NoteImagePickerDialogComponent implements OnInit {
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
-    for (const doc of docs) {
-      if (this.thumbnailMap()[doc.uid]) continue;
-      this.documentDetailService
-        .fetchThumbnail(doc.uid)
-        .pipe(
-          catchError(() => of(null)),
-          takeUntilDestroyed(this.destroyRef),
-        )
-        .subscribe((blob) => {
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          this.blobUrls.push(url);
-          this.thumbnailMap.update((map) => ({
-            ...map,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
-        });
-    }
+    const pending = docs.filter((doc) => !this.thumbnailMap()[doc.uid]);
+    if (pending.length === 0) return;
+
+    from(pending)
+      .pipe(
+        mergeMap(
+          (doc) =>
+            this.documentDetailService.fetchThumbnail(doc.uid).pipe(
+              catchError(() => of(null)),
+              mergeMap((blob) => {
+                if (!blob) return of(null);
+                const url = URL.createObjectURL(blob);
+                this.blobUrls.push(url);
+                return of({ uid: doc.uid, url });
+              }),
+            ),
+          4,
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((result) => {
+        if (!result) return;
+        this.thumbnailMap.update((map) => ({
+          ...map,
+          [result.uid]: this.sanitizer.bypassSecurityTrustUrl(result.url),
+        }));
+      });
   }
 }

@@ -3089,12 +3089,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  /** Toolbar Edit: focus inline note editor for Note docs; metadata dialog for everything else (NXSAT-193). */
+  /** Toolbar Edit opens metadata for all document types; note body stays inline-editable. */
   onEditClick(): void {
-    if (this.isNoteDocument() && this.canWriteDoc()) {
-      this.focusNoteContent();
-      return;
-    }
     this.openEditDialog();
   }
 
@@ -3102,6 +3098,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const tabGroup = this.detailTabGroup();
     if (tabGroup) {
       tabGroup.selectedIndex = 0;
+      return;
     }
     this.onTabChange(0);
   }

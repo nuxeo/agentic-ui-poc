@@ -42,6 +42,20 @@ lib-note-editor {
   position: relative;
 }
 
+.note-image-upload-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: color-mix(in srgb, var(--mat-sys-surface, #fff) 82%, transparent);
+  font-size: 14px;
+  color: var(--mat-sys-on-surface, #212121);
+}
+
 .note-quill-hidden-file-input {
   display: none !important;
 }

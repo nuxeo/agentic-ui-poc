@@ -1,14 +1,9 @@
 import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
 
-/** Nuxeo Web UI note RTE image URL pattern (`{nuxeoBase}/nxfile/default/{uid}/file:content/{name}`). */
-export function buildNotePictureNxfileUrl(
-  uid: string,
-  fileName: string,
-  nuxeoBase = '/nuxeo',
-): string {
+/** Relative nxfile path fallback when `file:content.data` is unavailable (tests/utilities only). */
+export function buildNotePictureNxfileUrl(uid: string, fileName: string): string {
   const encodedName = encodeURIComponent(fileName).replace(/%2F/g, '/');
-  const base = nuxeoBase.replace(/\/$/, '');
-  return `${base}/nxfile/default/${uid}/file:content/${encodedName}`;
+  return `/nuxeo/nxfile/default/${uid}/file:content/${encodedName}`;
 }
 
 export function extractMainBlobFileName(doc: NuxeoDocument): string | null {
@@ -18,8 +13,15 @@ export function extractMainBlobFileName(doc: NuxeoDocument): string | null {
   return typeof name === 'string' && name.length > 0 ? name : null;
 }
 
-export function notePictureInsertUrl(doc: NuxeoDocument, nuxeoBase = '/nuxeo'): string | null {
-  const fileName = extractMainBlobFileName(doc);
-  if (!fileName) return null;
-  return buildNotePictureNxfileUrl(doc.uid, fileName, nuxeoBase);
+/** Server-supplied blob URL from `file:content.data` (Nuxeo Web UI parity). */
+export function notePictureInsertUrl(doc: NuxeoDocument): string | null {
+  const fileContent = doc.properties?.['file:content'];
+  if (!fileContent || typeof fileContent !== 'object') return null;
+  const data = (fileContent as Record<string, unknown>)['data'];
+  return typeof data === 'string' && data.length > 0 ? data : null;
+}
+
+/** True when the document has a blob URL suitable for `<img src>`. */
+export function isInsertableNotePicture(doc: NuxeoDocument): boolean {
+  return notePictureInsertUrl(doc) !== null;
 }

@@ -21,15 +21,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { catchError, of } from 'rxjs';
+import { catchError, of, switchMap } from 'rxjs';
 import {
+  DocumentDetailService,
   DocumentImportService,
   formatNoteHtmlForSourceView,
   inferBlobDocTypeFromFile,
   isHtmlNoteFormat,
   isMarkdownNoteFormat,
-  NUXEO_SERVER_URL,
   renderNoteMarkdown,
   sanitizeDocumentName,
   titleFromFileName,
@@ -51,6 +52,7 @@ import { notePictureInsertUrl } from './note-image-url';
     MatDialogModule,
     MatIconModule,
     MatProgressSpinnerModule,
+    MatSnackBarModule,
     MatTooltipModule,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -63,8 +65,9 @@ export class NoteEditorComponent {
   private readonly injector = inject(Injector);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly dialog = inject(MatDialog);
+  private readonly snackBar = inject(MatSnackBar);
   private readonly documentImportService = inject(DocumentImportService);
-  private readonly nuxeoServerUrl = inject(NUXEO_SERVER_URL);
+  private readonly documentDetailService = inject(DocumentDetailService);
 
   readonly content = input.required<string>();
   readonly mimeType = input.required<string>();
@@ -217,9 +220,14 @@ export class NoteEditorComponent {
       .subscribe((docs: NuxeoDocument[] | undefined) => {
         if (!docs?.length || !this.quill) return;
         const urls = docs
-          .map((doc) => notePictureInsertUrl(doc, this.nuxeoServerUrl))
+          .map((doc) => notePictureInsertUrl(doc))
           .filter((url): url is string => !!url);
-        if (!urls.length) return;
+        if (!urls.length) {
+          this.snackBar.open('Selected documents have no insertable image URL', 'OK', {
+            duration: 4000,
+          });
+          return;
+        }
         queueMicrotask(() => this.insertImagesAtSelection(urls));
       });
   }
@@ -314,7 +322,10 @@ export class NoteEditorComponent {
     this.lastEmittedSave = null;
   }
 
-  private repositionVideoTooltipOnShow(toolbar: HTMLElement): void {
+  private bindVideoTooltipOnce(toolbar: HTMLElement): void {
+    if (toolbar.dataset['noteVideoTooltipBound'] === 'true') return;
+    toolbar.dataset['noteVideoTooltipBound'] = 'true';
+
     const videoButton = toolbar.querySelector('.ql-video');
     if (!videoButton) return;
 
@@ -392,7 +403,7 @@ export class NoteEditorComponent {
       this.visualDirty = true;
     });
 
-    this.repositionVideoTooltipOnShow(toolbar);
+    this.bindVideoTooltipOnce(toolbar);
 
     const html = initialHtml ?? this.content();
     this.applyExternalContent(html, true);
@@ -404,7 +415,11 @@ export class NoteEditorComponent {
   private uploadAndInsertImage(file: File): void {
     const editorQuill = this.quill;
     const parentPath = this.uploadParentPath();
-    if (!editorQuill || !parentPath || this.imageUploading()) return;
+    if (!editorQuill || this.imageUploading()) return;
+    if (!parentPath) {
+      this.snackBar.open('Cannot upload image: parent folder is unknown', 'OK', { duration: 4000 });
+      return;
+    }
 
     const docType = inferBlobDocTypeFromFile(file);
     const title = titleFromFileName(file.name);
@@ -414,14 +429,26 @@ export class NoteEditorComponent {
     this.documentImportService
       .createBlobHoldingDocumentReliable(parentPath, name, docType, { 'dc:title': title }, file)
       .pipe(
+        switchMap((doc) => {
+          if (!doc) return of(null);
+          return this.documentDetailService
+            .getFullDocument(doc.uid)
+            .pipe(catchError(() => of(doc)));
+        }),
         catchError(() => of(null)),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((doc) => {
         this.imageUploading.set(false);
-        if (!doc || !this.quill) return;
-        const url = notePictureInsertUrl(doc, this.nuxeoServerUrl);
-        if (!url) return;
+        if (!doc || !this.quill) {
+          this.snackBar.open('Failed to upload image', 'OK', { duration: 4000 });
+          return;
+        }
+        const url = notePictureInsertUrl(doc);
+        if (!url) {
+          this.snackBar.open('Uploaded image has no display URL yet', 'OK', { duration: 4000 });
+          return;
+        }
         this.insertImagesAtSelection([url]);
       });
   }

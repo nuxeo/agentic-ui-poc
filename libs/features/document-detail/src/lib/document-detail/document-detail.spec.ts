@@ -312,32 +312,22 @@ describe('DocumentDetailComponent', () => {
   });
 
   describe('onEditClick (NXSAT-193)', () => {
-    it('focuses inline note editor for Note documents', () => {
+    it('opens metadata dialog for Note documents', () => {
       component.doc.set(NOTE_DOC);
-      const focusNoteSpy = vi.spyOn(
-        component as unknown as { focusNoteContent: () => void },
-        'focusNoteContent',
-      );
-      const openEditSpy = vi.spyOn(component, 'openEditDialog');
-
-      component.onEditClick();
-
-      expect(focusNoteSpy).toHaveBeenCalled();
-      expect(openEditSpy).not.toHaveBeenCalled();
-    });
-
-    it('opens metadata dialog for non-note documents', () => {
-      component.doc.set(STUB_DOC);
-      const focusNoteSpy = vi.spyOn(
-        component as unknown as { focusNoteContent: () => void },
-        'focusNoteContent',
-      );
       const openEditSpy = vi.spyOn(component, 'openEditDialog').mockImplementation(() => undefined);
 
       component.onEditClick();
 
       expect(openEditSpy).toHaveBeenCalled();
-      expect(focusNoteSpy).not.toHaveBeenCalled();
+    });
+
+    it('opens metadata dialog for non-note documents', () => {
+      component.doc.set(STUB_DOC);
+      const openEditSpy = vi.spyOn(component, 'openEditDialog').mockImplementation(() => undefined);
+
+      component.onEditClick();
+
+      expect(openEditSpy).toHaveBeenCalled();
     });
   });
 
