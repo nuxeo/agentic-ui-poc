@@ -24,7 +24,7 @@ export function escapeNxqlLiteral(value: string): string {
 export function buildNoteDocumentPickerNxql(fulltext: string): string {
   let query =
     "SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' " +
-    "AND ecm:mixinType = 'Picture' AND ecm:isTrashed = 0";
+    "AND ecm:primaryType = 'Picture' AND ecm:isTrashed = 0";
   const term = fulltext.trim();
   if (term) {
     const escaped = escapeNxqlLiteral(term);
@@ -33,16 +33,23 @@ export function buildNoteDocumentPickerNxql(fulltext: string): string {
   return query;
 }
 
-/** Keep only Picture documents with a server-supplied blob URL for `<img src>`. */
+/** Keep only Picture/image documents with a server-supplied blob URL for `<img src>`. */
 export function filterInsertablePictureDocuments(
   entries: NuxeoDocumentList['entries'] | undefined,
 ): NuxeoDocument[] {
-  return (entries ?? []).filter((doc) => {
-    const fileContent = doc.properties?.['file:content'];
-    if (!fileContent || typeof fileContent !== 'object') return false;
-    const data = (fileContent as Record<string, unknown>)['data'];
-    return typeof data === 'string' && data.length > 0;
-  });
+  return (entries ?? []).filter(hasInsertablePictureBlob);
+}
+
+/** True when `file:content.data` exists and the blob is an image (Web UI parity). */
+export function hasInsertablePictureBlob(doc: NuxeoDocument): boolean {
+  const fileContent = doc.properties?.['file:content'];
+  if (!fileContent || typeof fileContent !== 'object') return false;
+  const record = fileContent as Record<string, unknown>;
+  const data = record['data'];
+  if (typeof data !== 'string' || data.length === 0) return false;
+  if (doc.type === 'Picture') return true;
+  const mime = record['mime-type'] ?? record['mimeType'];
+  return typeof mime === 'string' && mime.startsWith('image/');
 }
 
 export function normalizeDocumentPickerList(

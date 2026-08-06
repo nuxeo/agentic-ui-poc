@@ -3,6 +3,7 @@ import {
   buildNoteDocumentPickerNxql,
   escapeNxqlLiteral,
   filterInsertablePictureDocuments,
+  hasInsertablePictureBlob,
 } from './note-document-picker-search';
 import type { NuxeoDocument } from '../models/document.model';
 
@@ -12,7 +13,7 @@ describe('note-document-picker-search', () => {
   });
 
   it('buildNoteDocumentPickerNxql filters Picture documents', () => {
-    expect(buildNoteDocumentPickerNxql('')).toContain("ecm:mixinType = 'Picture'");
+    expect(buildNoteDocumentPickerNxql('')).toContain("ecm:primaryType = 'Picture'");
     expect(buildNoteDocumentPickerNxql('')).toContain('ecm:isTrashed = 0');
     expect(buildNoteDocumentPickerNxql('')).not.toContain('dc:title LIKE');
   });
@@ -31,13 +32,39 @@ describe('note-document-picker-search', () => {
   it('filterInsertablePictureDocuments keeps only docs with file:content.data', () => {
     const withData = {
       uid: '1',
+      type: 'Picture',
       properties: { 'file:content': { data: '/nuxeo/nxfile/default/1/file:content/a.jpg' } },
     } as NuxeoDocument;
     const withoutData = {
       uid: '2',
+      type: 'Picture',
       properties: { 'file:content': { name: 'a.jpg' } },
     } as NuxeoDocument;
+    const nonImage = {
+      uid: '3',
+      type: 'File',
+      properties: {
+        'file:content': {
+          data: '/nuxeo/nxfile/default/3/file:content/doc.pdf',
+          'mime-type': 'application/pdf',
+        },
+      },
+    } as NuxeoDocument;
 
-    expect(filterInsertablePictureDocuments([withData, withoutData])).toEqual([withData]);
+    expect(filterInsertablePictureDocuments([withData, withoutData, nonImage])).toEqual([withData]);
+  });
+
+  it('hasInsertablePictureBlob accepts image mime types on non-Picture docs', () => {
+    const doc = {
+      uid: '4',
+      type: 'File',
+      properties: {
+        'file:content': {
+          data: '/nuxeo/nxfile/default/4/file:content/scan.png',
+          'mime-type': 'image/png',
+        },
+      },
+    } as NuxeoDocument;
+    expect(hasInsertablePictureBlob(doc)).toBe(true);
   });
 });

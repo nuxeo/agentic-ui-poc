@@ -312,13 +312,18 @@ describe('DocumentDetailComponent', () => {
   });
 
   describe('onEditClick (NXSAT-193)', () => {
-    it('opens metadata dialog for Note documents', () => {
+    it('opens metadata dialog for Note documents (toolbar Edit properties)', () => {
       component.doc.set(NOTE_DOC);
       const openEditSpy = vi.spyOn(component, 'openEditDialog').mockImplementation(() => undefined);
+      const focusNoteSpy = vi.spyOn(
+        component as unknown as { focusNoteContent: () => void },
+        'focusNoteContent',
+      );
 
       component.onEditClick();
 
       expect(openEditSpy).toHaveBeenCalled();
+      expect(focusNoteSpy).not.toHaveBeenCalled();
     });
 
     it('opens metadata dialog for non-note documents', () => {

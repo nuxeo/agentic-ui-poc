@@ -33,6 +33,16 @@
               <span>Uploading image…</span>
             </div>
           }
+          <button
+            type="button"
+            mat-icon-button
+            class="note-quill-edit-btn"
+            matTooltip="Edit note"
+            aria-label="Edit note"
+            (click)="focusForEdit()"
+          >
+            <mat-icon>edit</mat-icon>
+          </button>
           <div
             #quillToolbar
             class="note-quill-toolbar"

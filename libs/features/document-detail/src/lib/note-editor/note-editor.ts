@@ -41,7 +41,7 @@ import Quill from 'quill';
 import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-header';
 import { NoteImagePickerDialogComponent } from './note-image-picker-dialog';
 import { buildNoteImagesInsertHtml } from './note-image-insert';
-import { notePictureInsertUrl } from './note-image-url';
+import { notePictureInsertUrl, isInsertableNotePicture } from './note-image-url';
 
 @Component({
   selector: 'lib-note-editor',
@@ -220,6 +220,7 @@ export class NoteEditorComponent {
       .subscribe((docs: NuxeoDocument[] | undefined) => {
         if (!docs?.length || !this.quill) return;
         const urls = docs
+          .filter((doc) => isInsertableNotePicture(doc))
           .map((doc) => notePictureInsertUrl(doc))
           .filter((url): url is string => !!url);
         if (!urls.length) {

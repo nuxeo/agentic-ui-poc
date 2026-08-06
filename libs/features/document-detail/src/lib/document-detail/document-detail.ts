@@ -3089,7 +3089,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  /** Toolbar Edit opens metadata for all document types; note body stays inline-editable. */
+  /** Toolbar Edit opens metadata; note-surface pencil focuses inline content (Web UI parity). */
   onEditClick(): void {
     this.openEditDialog();
   }

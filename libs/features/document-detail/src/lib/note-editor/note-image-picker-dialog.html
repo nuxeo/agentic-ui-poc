@@ -76,7 +76,12 @@
     } @else if (results().length === 0) {
       <p class="note-image-picker__empty">No pictures found.</p>
     } @else {
-      <div class="note-image-picker__grid" role="listbox" aria-label="Picture documents">
+      <div
+        class="note-image-picker__grid"
+        role="listbox"
+        aria-multiselectable="true"
+        aria-label="Picture documents"
+      >
         @for (doc of results(); track doc.uid) {
           <button
             type="button"

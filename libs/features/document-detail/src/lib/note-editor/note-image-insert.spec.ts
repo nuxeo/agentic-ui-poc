@@ -18,4 +18,11 @@ describe('note-image-insert', () => {
       '<p><img src="/nuxeo/nxfile/default/x/file:content/a&quot;b.jpg"></p>',
     );
   });
+
+  it('escapes angle brackets in URLs for HTML attributes', () => {
+    const url = '/nuxeo/nxfile/default/x/file:content/<img>.jpg';
+    expect(buildNoteImagesInsertHtml([url])).toBe(
+      '<p><img src="/nuxeo/nxfile/default/x/file:content/&lt;img&gt;.jpg"></p>',
+    );
+  });
 });

@@ -40,4 +40,19 @@ describe('note-image-url', () => {
     expect(notePictureInsertUrl(doc)).toBeNull();
     expect(isInsertableNotePicture(doc)).toBe(false);
   });
+
+  it('isInsertableNotePicture rejects non-image blobs without Picture type', () => {
+    const doc = {
+      uid: '2',
+      type: 'File',
+      properties: {
+        'file:content': {
+          data: '/nuxeo/nxfile/default/2/file:content/doc.pdf',
+          'mime-type': 'application/pdf',
+        },
+      },
+    } as NuxeoDocument;
+    expect(notePictureInsertUrl(doc)).not.toBeNull();
+    expect(isInsertableNotePicture(doc)).toBe(false);
+  });
 });
