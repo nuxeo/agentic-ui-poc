@@ -1494,7 +1494,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (doc) => {
           if (isCollectionDocument(doc)) {
-            void this.router.navigate(['/collections', uid], { replaceUrl: true });
+            void this.router.navigate(['/collections', doc.uid], { replaceUrl: true });
             return;
           }
           if (isFolderishDocument(doc) && doc.path) {

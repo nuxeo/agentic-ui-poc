@@ -123,6 +123,9 @@ export class EditCollectionDialogComponent implements OnInit {
           this.subjectEntries.set(subjects);
           this.coverageEntries.set(coverage);
         },
+        error: () => {
+          this.snackBar.open('Failed to load vocabulary options', 'OK', { duration: 4000 });
+        },
       });
   }
 

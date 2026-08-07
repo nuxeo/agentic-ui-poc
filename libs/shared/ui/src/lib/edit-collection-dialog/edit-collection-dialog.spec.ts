@@ -131,4 +131,35 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
     });
     expect(component.saving()).toBe(false);
   });
+
+  it('shows snackbar when vocabulary directories fail to load on init', async () => {
+    vi.clearAllMocks();
+    mockDirectoryService.getEntries.mockReturnValue(throwError(() => new Error('fail')));
+    mockDirectoryService.getAllL10nEntries.mockReturnValue(of([]));
+
+    await TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [EditCollectionDialogComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: MAT_DIALOG_DATA, useValue: { document } },
+        { provide: DirectoryService, useValue: mockDirectoryService },
+        { provide: CollectionService, useValue: mockCollectionService },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
+      ],
+    })
+      .overrideComponent(EditCollectionDialogComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
+
+    const failureFixture = TestBed.createComponent(EditCollectionDialogComponent);
+    failureFixture.detectChanges();
+    await flushAsync();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith('Failed to load vocabulary options', 'OK', {
+      duration: 4000,
+    });
+  });
 });

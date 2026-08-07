@@ -577,6 +577,27 @@ describe('BrowseComponent', () => {
     });
   });
 
+  it('deleteDocument shows permission denied when single-item trash returns 403', () => {
+    mockSelectionService.selectedCount.mockReturnValue(0);
+    component.currentDoc.set({
+      uid: 'file-1',
+      title: 'File',
+      type: 'File',
+      path: '/workspaces/file-1',
+      lastModified: '',
+      properties: {},
+      contextParameters: { permissions: ['Remove'] },
+    } as NuxeoDocument);
+    mockDocumentDetailService.trashDocument.mockReturnValue(throwError(() => ({ status: 403 })));
+    dialogOpenSpy.mockReturnValue({ afterClosed: () => of(true) });
+
+    component.deleteDocument();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
+      duration: 4000,
+    });
+  });
+
   it('deleteDocument confirms bulk trash for selected children, not the browsed folder', () => {
     mockSelectionService.selectedCount.mockReturnValue(3);
     mockSelectionService.selectedIds.mockReturnValue(new Set(['doc-1', 'doc-2', 'doc-3']));

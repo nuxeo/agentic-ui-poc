@@ -1388,7 +1388,12 @@ export class BrowseComponent {
               this.browseContext.requestTreeRefresh();
               void this.router.navigateByUrl(postTrashBrowseRouterUrl(doc.path));
             },
-            error: () => this.snackBar.open('Failed to delete', 'OK', { duration: 3000 }),
+            error: (err) =>
+              this.snackBar.open(
+                isPermissionDeniedError(err) ? PERMISSION_DENIED_MESSAGE : 'Failed to delete',
+                'OK',
+                { duration: isPermissionDeniedError(err) ? 4000 : 3000 },
+              ),
           });
       });
   }
