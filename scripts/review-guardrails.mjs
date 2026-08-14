@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 
 const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
   encoding: 'utf8',
+  maxBuffer: 1024 * 1024,
 }).trim();
 
 const args = new Map();
@@ -23,8 +24,10 @@ for (let i = 2; i < process.argv.length; i += 1) {
 const base = args.get('base') || process.env.NX_BASE || 'origin/main';
 const head = args.get('head') || process.env.NX_HEAD || 'HEAD';
 
+const GIT_MAX_BUFFER = 50 * 1024 * 1024;
+
 function git(args) {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' });
+  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8', maxBuffer: GIT_MAX_BUFFER });
 }
 
 function fileExists(path) {
