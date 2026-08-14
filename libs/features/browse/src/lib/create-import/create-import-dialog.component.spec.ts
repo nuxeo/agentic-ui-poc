@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -87,7 +87,7 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     await TestBed.configureTestingModule({
       imports: [CreateImportDialogComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: { parentPath: PARENT_PATH } },
         { provide: DocumentImportService, useValue: mockImportService },
@@ -328,7 +328,7 @@ describe('CreateImportDialogComponent import with properties (NXSAT-185)', () =>
     await TestBed.configureTestingModule({
       imports: [CreateImportDialogComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: { parentPath: PARENT_PATH } },
         { provide: DocumentImportService, useValue: mockImportService },
@@ -537,7 +537,7 @@ describe('CreateImportDialogComponent CSV', () => {
     await TestBed.configureTestingModule({
       imports: [CreateImportDialogComponent, NoopAnimationsModule],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DocumentImportService, useValue: mockImportService },
@@ -748,7 +748,7 @@ describe('CreateImportDialogComponent domain create (NXSAT-199)', () => {
     await TestBed.configureTestingModule({
       imports: [CreateImportDialogComponent, NoopAnimationsModule],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         { provide: MAT_DIALOG_DATA, useValue: {} },
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: DocumentImportService, useValue: mockImportService },

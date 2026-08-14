@@ -1,8 +1,8 @@
 # agentic-ui-poc
 
-Nx + **Angular 19** monorepo for the **Agentic AI–Built Nuxeo Angular UI** PoC. PoC charter: [README.charter.md](README.charter.md). Boundaries and aliases: [docs/architecture.md](docs/architecture.md).
+Nx + **Angular 20** monorepo for the **Agentic AI–Built Nuxeo Angular UI** PoC. PoC charter: [README.charter.md](README.charter.md). Boundaries and aliases: [docs/architecture.md](docs/architecture.md).
 
-The `nuxeo-ui` app uses a root [`angular.json`](angular.json) for `ng build` / `ng serve` / `ng test` (Karma); Nx targets in [`apps/nuxeo-ui/project.json`](apps/nuxeo-ui/project.json) delegate to the Angular CLI (`nx:run-commands`) to avoid an Nx 22 + Angular 19 application-builder schema bug (`visitor is not a function`). Libraries use **Vitest 3** and **Analog 1.14** (aligned with Angular 19).
+The `nuxeo-ui` app uses a root [`angular.json`](angular.json) for `ng build` / `ng serve` / `ng test` (Karma); Nx targets in [`apps/nuxeo-ui/project.json`](apps/nuxeo-ui/project.json) delegate to the Angular CLI (`nx:run-commands`) to avoid an Nx 22 + Angular application-builder schema bug (`visitor is not a function`). Libraries use **Vitest 3** and **Analog 1.22** (aligned with Angular 20).
 
 ## Structure
 

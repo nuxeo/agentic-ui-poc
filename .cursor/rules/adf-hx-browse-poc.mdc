@@ -1,0 +1,55 @@
+---
+description: adf-hx browse POC — use only hxp bridge components and AdfHx APIs (feature/adf-hx-browse-poc)
+globs: libs/shared/adf-hx-bridge/**/*,libs/features/browse/src/lib/browse-adf-hx-poc/**/*,apps/nuxeo-ui/src/app/**/browse-adf-hx*,apps/nuxeo-ui/src/app/shell/**/*
+alwaysApply: false
+---
+
+# adf-hx Browse POC — adf-hx Only
+
+**Branch:** `feature/adf-hx-browse-poc`  
+This rule applies to all work on the adf-hx browse POC. Do not mix production browse or generic Angular Material into this feature.
+
+**Full architecture:** [`libs/shared/adf-hx-bridge/ARCHITECTURE.md`](../../libs/shared/adf-hx-bridge/ARCHITECTURE.md)
+
+## Architecture (summary)
+
+```
+Shell (nuxeo-ui)
+  nav + drawer → BrowseAdfHxPocComponent  @  /#/browse-adf-hx?path=…
+                      ↓ hxp-* components
+                 adf-hx-bridge services (AdfHxDocumentService, …)
+                      ↓ NuxeoDocumentApi / NuxeoQueryApi
+                 nuxeo-client (BrowseService, DocumentDetailService)
+                      ↓
+                 Nuxeo REST
+```
+
+- **POC page:** `libs/features/browse/src/lib/browse-adf-hx-poc/` — wires tabs, filters, panel; no Material.
+- **Bridge:** `libs/shared/adf-hx-bridge/` — all `hxp-*` UI + AdfHx services + Nuxeo→Hx mapper.
+- **Production browse** (`/#/browse`) is unchanged; path sync and `browseReturn=adf-hx` helpers live in `browse-path.utils.ts`.
+- **Scope A:** read-only — write actions show a notice; tabs/load/export are implemented.
+
+## UI — `hxp-*` only
+
+- Use components from `@agentic-ui/shared/adf-hx-bridge` (`hxp-folder-header`, `hxp-breadcrumb`, `hxp-domain-hint`, `hxp-browse-toolbar`, `hxp-document-list`, `hxp-browse-nav-drawer`, `hxp-browse-nav-tree`, `hxp-icon`, `hxp-spinner`).
+- **Never** use Angular Material (`mat-*`, `Mat*Module`), Satori (`sat-*`), or production browse UI in the POC page or its bridge components.
+- Side nav: use **`hxp-browse-nav-tree`** (nested folder tree), not `hxp-document-tree` (legacy mat-tree).
+- Icons/spinners: **`hxp-icon`** / **`hxp-spinner`** only — no `mat-icon` / `mat-spinner`.
+- Form controls: native HTML (`input`, `select`, `button`) styled in bridge SCSS — no `mat-form-field`, `mat-datepicker`, etc.
+- CSS tokens: use **`--hxp-*`** only — never `--mat-sys-*` in bridge SCSS. Tokens are aliased from Satori in `apps/nuxeo-ui/src/styles/hxp-theme.scss` (after `@include sat.theme`).
+
+## Data — AdfHx bridge only
+
+- Feature page and nav tree must call **`AdfHxDocumentService`** (and other bridge services), not `BrowseService` or `DocumentDetailService` directly.
+- Document model: **`Document`** from `@hylandsoftware/hxcs-js-client`.
+- Routing/navigation: **`NuxeoDocumentRouterService`** + `AdfHxBrowseContextService`.
+- Providers: `ADF_HX_NUXEO_BRIDGE_PROVIDERS` on the feature page and nav drawer.
+
+## Shell integration
+
+- App shell may host `<hxp-browse-nav-drawer>` but must **not** render Material chrome (title/refresh) for adf-hx browse — the drawer component owns its header.
+- Do not import production `BrowseComponent` patterns into the POC route.
+
+## PR blocker
+
+Any new Material, Satori, direct `BrowseService` usage, or production browse component in the above paths must be removed before merge.

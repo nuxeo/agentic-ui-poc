@@ -12,15 +12,24 @@ This guide documents the coding conventions, project structure, and step-by-step
 | **npm**         | Ships with Node; used as the package manager (see `.npmrc`)                                                                 |
 | **Nuxeo**       | Running on `http://localhost:8080` for local development                                                                    |
 | **Mailpit**     | Optional — required for `User.Invite` / invitation emails locally; see [`../nuxeo-conf/README.md`](../nuxeo-conf/README.md) |
-| **Angular CLI** | Installed via `devDependencies` (`~19.2`); do not install globally                                                          |
+| **Angular CLI** | Installed via `devDependencies` (`~20.3`); do not install globally                                                          |
 | **Nx**          | Installed via `devDependencies` (`22.6`); invoked with `npx nx`                                                             |
 
 ### First-time setup
 
 ```bash
 git clone <repo-url> && cd agentic-ui-poc
+```
+
+Set a GitHub Packages read token for Hyland/Alfresco scoped packages (required for `@hylandsoftware/satori-ui`, `@hylandsoftware/hxcs-js-client`, and future `@alfresco/*` packages):
+
+```powershell
+# PowerShell
+$env:SATORI_GH_READONLY_TOKEN = "<github-packages-read-token>"
 npm install
 ```
+
+The root [`.npmrc`](../.npmrc) maps `@hylandsoftware` and `@alfresco` to `https://npm.pkg.github.com` using `SATORI_GH_READONLY_TOKEN`.
 
 ### Start the dev server
 

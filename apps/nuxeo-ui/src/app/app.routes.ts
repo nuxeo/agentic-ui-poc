@@ -24,6 +24,11 @@ export const routes: Routes = [
           import('./dashboard/dashboard-page.component').then((m) => m.DashboardPageComponent),
       },
       {
+        path: 'browse-adf-hx',
+        loadComponent: () =>
+          import('@agentic-ui/feature-browse').then((m) => m.BrowseAdfHxPocComponent),
+      },
+      {
         path: 'browse',
         loadChildren: () => import('@agentic-ui/feature-browse').then((m) => m.browseRoutes),
       },

@@ -1,7 +1,7 @@
 # CLAUDE.md — Nuxeo Agentic UI Context
 
 Read `AGENTS.md` and all files in the `AGENTS/` directory before starting any task.
-They contain the complete codebase knowledge for this Angular 19 + Nx monorepo.
+They contain the complete codebase knowledge for this Angular 20 + Nx monorepo.
 
 ## Quick start
 

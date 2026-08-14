@@ -80,13 +80,20 @@ import {
   isBlobHoldingDocType,
   isFolderishDocument,
   BrowseContextService,
+  BROWSE_RETURN_MODE_PARAM,
+  decodeNuxeoPathSegment,
   documentHasPersistedMainBlob,
   noteFormatLabel,
+  normalizeNuxeoPath,
+  parentNuxeoFolderPath,
+  parseBrowseReturnMode,
   renderNoteMarkdown,
   isMailSendError,
   mailSendFailureMessage,
   readClipboardDocs,
   writeClipboardDocs,
+  toBrowseRouterUrlForReturnMode,
+  type BrowseReturnMode,
   type ClipboardDoc,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -511,7 +518,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!d) return [];
 
     const path = d.path ?? '';
-    const cacheKey = `${path}\0${d.title}`;
+    const returnMode = this.browseReturnMode();
+    const cacheKey = `${path}\0${d.title}\0${returnMode}`;
     if (cacheKey === this.breadcrumbPathCache) {
       return this.breadcrumbItemsCache;
     }
@@ -519,13 +527,24 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const parts = path.split('/').filter(Boolean);
     parts.pop();
     this.breadcrumbPathCache = cacheKey;
-    let accumulated = '/browse';
+    let accumulated = '/';
     this.breadcrumbItemsCache = parts.map((s) => {
-      accumulated += `/${s}`;
-      return { label: decodeURIComponent(s), href: accumulated };
+      accumulated = normalizeNuxeoPath(`${accumulated}/${s}`);
+      return {
+        label: decodeNuxeoPathSegment(s),
+        href: toBrowseRouterUrlForReturnMode(returnMode, accumulated),
+      };
     });
     return this.breadcrumbItemsCache;
   });
+
+  private browseReturnMode(): BrowseReturnMode {
+    return parseBrowseReturnMode(this.route.snapshot.queryParamMap.get(BROWSE_RETURN_MODE_PARAM));
+  }
+
+  private browseUrlForPath(nuxeoPath: string): string {
+    return toBrowseRouterUrlForReturnMode(this.browseReturnMode(), nuxeoPath);
+  }
 
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
@@ -606,8 +625,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (directMime) return directMime;
 
     const pictureViews = d.properties['picture:views'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     const pictureContent = pictureViews?.[0]?.['content'] as Record<string, unknown> | undefined;
     return (pictureContent?.['mime-type'] as string) ?? '';
   });
@@ -646,8 +664,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     if (!d) return [];
     const cols = d.contextParameters?.['collections'] as
-      | Array<{ uid: string; title: string; path: string; type?: string }>
-      | undefined;
+      Array<{ uid: string; title: string; path: string; type?: string }> | undefined;
     // Web UI uses contextParameters.favorites for the star; collections enricher
     // also lists the Favorites folder (type Favorites) — exclude it here.
     return (cols ?? []).filter((col) => col.type !== 'Favorites');
@@ -826,8 +843,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshBlobNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      | { freshBlobDocument?: boolean }
-      | undefined;
+      { freshBlobDocument?: boolean } | undefined;
     if (fromCurrent?.freshBlobDocument === true) {
       return true;
     }
@@ -837,8 +853,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshNoteNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      | { freshNote?: boolean }
-      | undefined;
+      { freshNote?: boolean } | undefined;
     if (fromCurrent?.freshNote === true) {
       return true;
     }
@@ -1494,7 +1509,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         next: (doc) => {
           if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
             this.browseContext.setFromDocument(doc);
-            void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
+            void this.router.navigateByUrl(this.browseUrlForPath(doc.path), { replaceUrl: true });
             return;
           }
           this.doc.set(doc);
@@ -1669,8 +1684,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     if (transcodedVideos && transcodedVideos.length > 0) {
       this.loadVideoSources(doc, transcodedVideos, generation);
       this.extractVideoInfo(doc);
@@ -1874,8 +1888,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     this.extractVideoInfo(doc);
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     if (transcodedVideos?.length && this.videoSources().length === 0 && !this.blobUrl()) {
       this.loadVideoSources(doc, transcodedVideos, this.blobLoadGeneration);
     }
@@ -3163,10 +3176,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   goBack(): void {
     const d = this.doc();
     if (d) {
-      const parentPath = d.path.split('/').slice(0, -1).join('/') || '/';
-      void this.router.navigateByUrl(`/browse${parentPath}`);
+      void this.router.navigateByUrl(this.browseUrlForPath(parentNuxeoFolderPath(d.path)));
     } else {
-      void this.router.navigateByUrl('/browse');
+      void this.router.navigateByUrl(this.browseUrlForPath('/'));
     }
   }
 

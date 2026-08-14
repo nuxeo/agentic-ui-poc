@@ -1,4 +1,4 @@
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -48,7 +48,7 @@ describe('UpdatePermissionDialogComponent (NXSAT-159)', () => {
     await TestBed.configureTestingModule({
       imports: [UpdatePermissionDialogComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         {
           provide: MAT_DIALOG_DATA,
           useValue: { documentUid: 'doc-1', ace, isExternal: false },
@@ -155,7 +155,7 @@ describe('UpdatePermissionDialogComponent external (NXSAT-159)', () => {
     await TestBed.configureTestingModule({
       imports: [UpdatePermissionDialogComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         {
           provide: MAT_DIALOG_DATA,
           useValue: {

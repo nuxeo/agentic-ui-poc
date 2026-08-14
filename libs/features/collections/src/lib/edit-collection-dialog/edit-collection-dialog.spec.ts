@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
@@ -66,7 +66,7 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
     await TestBed.configureTestingModule({
       imports: [EditCollectionDialogComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         { provide: MatDialogRef, useValue: mockDialogRef },
         { provide: MAT_DIALOG_DATA, useValue: { document } },
         { provide: DirectoryService, useValue: mockDirectoryService },

@@ -1,0 +1,26 @@
+<div class="hxp-browse-nav-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title" role="heading" aria-level="2">{{ title() }}</div>
+    <button type="button" class="refresh-btn" title="Refresh" (click)="refreshTree()">
+      <hxp-icon name="refresh" size="sm" [decorative]="true" />
+    </button>
+  </div>
+
+  <div class="folder-tree">
+    @if (tree.rootLoading()) {
+      <div class="tree-loading">
+        <hxp-spinner [size]="24" />
+      </div>
+    } @else if (tree.rootNodes().length === 0) {
+      <div class="tree-empty">No folders found</div>
+    } @else {
+      @if (tree.showRootBack()) {
+        <button class="tree-back" type="button" (click)="navigateToRoot()">
+          <hxp-icon name="chevron-left" size="sm" [decorative]="true" />
+          Root
+        </button>
+      }
+      <hxp-browse-nav-tree (navigatePath)="onNavigate($event)" />
+    }
+  </div>
+</div>

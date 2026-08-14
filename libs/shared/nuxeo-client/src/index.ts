@@ -166,6 +166,13 @@ export {
   toBrowseRouterUrl,
   isBrowseRouterUrl,
   topLevelNuxeoFolderPath,
+  BROWSE_RETURN_MODE_PARAM,
+  parseBrowseReturnMode,
+  toAdfHxBrowseRouterUrl,
+  isAdfHxBrowseRouterUrl,
+  parseAdfHxBrowsePathFromRouterUrl,
+  toBrowseRouterUrlForReturnMode,
+  type BrowseReturnMode,
 } from './lib/utils/browse-path.utils';
 export { ContentLakeIngestService } from './lib/services/content-lake-ingest.service';
 export {

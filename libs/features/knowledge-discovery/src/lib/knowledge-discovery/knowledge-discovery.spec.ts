@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
@@ -60,7 +60,7 @@ async function createComponent(query: Record<string, string> = {}): Promise<{
   await TestBed.configureTestingModule({
     imports: [KnowledgeDiscoveryComponent],
     providers: [
-      provideExperimentalZonelessChangeDetection(),
+      provideZonelessChangeDetection(),
       { provide: KdClientService, useValue: mockKdClient },
       { provide: ActivatedRoute, useValue: activatedRouteWith(query) },
     ],

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideExperimentalZonelessChangeDetection, signal } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import {
   ActivatedRoute,
   convertToParamMap,
@@ -150,7 +150,7 @@ describe('DocumentDetailComponent', () => {
     await TestBed.configureTestingModule({
       imports: [DocumentDetailComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
         provideHttpClient(),
         provideHttpClientTesting(),

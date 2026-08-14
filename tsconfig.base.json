@@ -33,7 +33,8 @@
       "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
       "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"],
       "@agentic-ui/feature-knowledge-discovery": ["libs/features/knowledge-discovery/src/index.ts"],
-      "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"]
+      "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"],
+      "@agentic-ui/shared/adf-hx-bridge": ["libs/shared/adf-hx-bridge/src/index.ts"]
     }
   }
 }

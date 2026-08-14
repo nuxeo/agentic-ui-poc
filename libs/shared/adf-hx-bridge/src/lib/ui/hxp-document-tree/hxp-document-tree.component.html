@@ -1,0 +1,54 @@
+<mat-tree [dataSource]="dataSource" [treeControl]="treeControl">
+  <mat-tree-node
+    *matTreeNodeDef="let node"
+    matTreeNodePadding
+    (click)="onNodeClick(node, $event)"
+    [ngClass]="{
+      'hxp-tree-node--loading': node.isLoading,
+      'hxp-tree-node--active': isNodeActive(node),
+    }"
+  >
+    <button
+      mat-icon-button
+      disabled
+      type="button"
+      aria-hidden="true"
+      class="hxp-tree-toggle-spacer"
+    ></button>
+    @if (node.isLoading) {
+      <mat-spinner diameter="14" />
+    } @else {
+      <mat-icon class="hxp-tree-folder-icon">{{ iconFor(node.document) }}</mat-icon>
+    }
+    <span class="hxp-tree-node__label">{{ nodeLabel(node) }}</span>
+  </mat-tree-node>
+
+  <mat-tree-node
+    *matTreeNodeDef="let node; when: hasChild"
+    matTreeNodePadding
+    (click)="onNodeClick(node, $event)"
+    [ngClass]="{ 'hxp-tree-node--active': isNodeActive(node) }"
+  >
+    <button
+      mat-icon-button
+      matTreeNodeToggle
+      type="button"
+      class="hxp-tree-toggle"
+      [attr.aria-label]="'Toggle ' + nodeLabel(node)"
+      (click)="$event.stopPropagation()"
+    >
+      @if (node.isLoading) {
+        <mat-spinner diameter="14" />
+      } @else {
+        <mat-icon
+          class="hxp-tree-arrow"
+          [class.hxp-tree-arrow--expanded]="treeControl.isExpanded(node)"
+        >
+          chevron_right
+        </mat-icon>
+      }
+    </button>
+    <mat-icon class="hxp-tree-folder-icon">{{ iconFor(node.document) }}</mat-icon>
+    <span class="hxp-tree-node__label">{{ nodeLabel(node) }}</span>
+  </mat-tree-node>
+</mat-tree>

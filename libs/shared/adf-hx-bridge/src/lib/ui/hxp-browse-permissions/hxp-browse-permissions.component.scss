@@ -1,0 +1,124 @@
+.hxp-permissions {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 0;
+  min-height: 0;
+}
+
+.hxp-permissions__loading {
+  display: flex;
+  justify-content: center;
+  padding: 32px;
+}
+
+.hxp-permissions__section + .hxp-permissions__section {
+  margin-top: 24px;
+}
+
+.hxp-permissions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.hxp-permissions__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--hxp-on-surface);
+}
+
+.hxp-permissions__action {
+  border: none;
+  background: none;
+  color: var(--hxp-primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+.hxp-permissions__empty {
+  margin: 0;
+  padding: 12px 0;
+  color: var(--hxp-on-surface-variant);
+  font-size: 13px;
+}
+
+.hxp-permissions__info {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--hxp-surface-container-low);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--hxp-on-surface-variant);
+
+  p {
+    margin: 0;
+  }
+}
+
+.hxp-permissions__info-accent {
+  width: 3px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--hxp-primary);
+}
+
+.hxp-permissions__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th,
+  td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--hxp-outline-variant);
+  }
+
+  th {
+    font-weight: 600;
+    color: var(--hxp-on-surface-variant);
+    background: var(--hxp-surface-container-low);
+  }
+}
+
+.hxp-permissions__row-actions {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.hxp-permissions__icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--hxp-on-surface-variant);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--hxp-surface-container-low);
+    color: var(--hxp-on-surface);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}

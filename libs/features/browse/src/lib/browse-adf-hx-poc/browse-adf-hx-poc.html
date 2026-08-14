@@ -1,0 +1,142 @@
+<section class="hxp-browse-page">
+  <hxp-folder-header
+    [document]="currentDocument()"
+    [canCreate]="canCreate()"
+    [canWrite]="canWrite()"
+    [canRemove]="canRemove()"
+    [isSubscribed]="isSubscribed()"
+    (createImport)="showScopeNotice('Create / Import')"
+    (drive)="showScopeNotice('Nuxeo Drive')"
+    (edit)="showScopeNotice('Edit metadata')"
+    (deleteDoc)="showScopeNotice('Delete')"
+    (downloadAll)="downloadAll()"
+    (share)="showScopeNotice('Share')"
+    (notifyToggle)="showScopeNotice('Notify')"
+    (exportDoc)="showScopeNotice('Export')"
+  />
+
+  @if (scopeNotice(); as notice) {
+    <p class="hxp-browse-scope-notice" role="status">{{ notice }}</p>
+  }
+
+  <hxp-breadcrumb [document]="currentDocument()" />
+  <hxp-domain-hint [document]="currentDocument()" [browsePath]="browsePath()" />
+
+  <div class="hxp-browse-page__body">
+    <div class="hxp-browse-page__main">
+      <div class="hxp-browse-page__tabs-row">
+        <hxp-browse-tabs [activeTab]="activeTab()" (activeTabChange)="onTabChange($event)" />
+        <button
+          type="button"
+          class="hxp-browse-page__panel-toggle"
+          [title]="panelOpen() ? 'Hide details' : 'Show details'"
+          aria-label="Toggle details panel"
+          (click)="togglePanel()"
+        >
+          <hxp-icon [name]="panelOpen() ? 'info' : 'info-outline'" size="md" [decorative]="true" />
+        </button>
+      </div>
+
+      <div class="hxp-browse-page__tab-content">
+        @if (activeTab() === 'view') {
+          <hxp-browse-toolbar
+            [resultCount]="filteredDocuments().length"
+            [distinctTypes]="distinctTypes()"
+            [csvExporting]="csvExporting()"
+            [filterText]="filterText()"
+            (filterTextChange)="filterText.set($event)"
+            [filterType]="filterType()"
+            (filterTypeChange)="filterType.set($event)"
+            [filterModifiedFrom]="filterModifiedFrom()"
+            (filterModifiedFromChange)="filterModifiedFrom.set($event)"
+            [filterModifiedTo]="filterModifiedTo()"
+            (filterModifiedToChange)="filterModifiedTo.set($event)"
+            [filterContributor]="filterContributor()"
+            (filterContributorChange)="filterContributor.set($event)"
+            [viewMode]="viewMode()"
+            (viewModeChange)="viewMode.set($event)"
+            (exportCsv)="exportCsv()"
+          />
+          <hxp-document-list
+            [documents]="filteredDocuments()"
+            [isLoading]="loading() || listLoading()"
+            [errorMessage]="error()"
+            [viewMode]="viewMode()"
+            [thumbnails]="thumbnails()"
+            (retry)="reload()"
+          />
+        } @else if (activeTab() === 'permissions') {
+          <hxp-browse-permissions
+            [loading]="permissionsLoading()"
+            [canManage]="canManagePermissions()"
+            [localAces]="localAces()"
+            [inheritedAces]="inheritedAces()"
+            [externalAces]="externalAces()"
+            [inheritanceBlocked]="inheritanceBlocked()"
+            [actionInProgress]="actionInProgress()"
+            (addPermission)="onPermissionAction('Add permission')"
+            (editPermission)="onPermissionAction('Edit permission')"
+            (deletePermission)="onPermissionAction('Delete permission')"
+            (toggleInheritance)="onPermissionAction('Toggle inheritance')"
+            (shareExternal)="onPermissionAction('Share with external user')"
+            (editExternal)="onPermissionAction('Edit external permission')"
+            (notifyEmail)="onPermissionAction('Send notification email')"
+          />
+        } @else if (activeTab() === 'history') {
+          <hxp-browse-history
+            [loading]="auditLoading()"
+            [entries]="filteredAuditEntries()"
+            [totalSize]="auditTotalSize()"
+            [pageSize]="auditPageSize()"
+            [pageIndex]="auditPageIndex()"
+            [availableActions]="availableActions()"
+            [availableCategories]="availableCategories()"
+            [eventTypeLabelMap]="eventTypeLabelMap()"
+            [eventCategoryLabelMap]="eventCategoryLabelMap()"
+            [filterUsername]="historyFilterUsername()"
+            (filterUsernameChange)="historyFilterUsername.set($event)"
+            [filterDateFrom]="historyFilterDateFrom()"
+            (filterDateFromChange)="historyFilterDateFrom.set($event)"
+            [filterDateTo]="historyFilterDateTo()"
+            (filterDateToChange)="historyFilterDateTo.set($event)"
+            [filterAction]="historyFilterAction()"
+            (filterActionChange)="historyFilterAction.set($event)"
+            [filterCategory]="historyFilterCategory()"
+            (filterCategoryChange)="historyFilterCategory.set($event)"
+            [sortActive]="historySortActive()"
+            [sortDirection]="historySortDirection()"
+            (sortChange)="onHistorySortChange($event)"
+            (pageChange)="onHistoryPageChange($event)"
+          />
+        } @else if (activeTab() === 'trash') {
+          <hxp-browse-trash
+            [loading]="trashLoading()"
+            [documents]="trashedDocuments()"
+            [thumbnails]="trashThumbnails()"
+            (restore)="onRestoreTrash($event)"
+          />
+        }
+      </div>
+    </div>
+
+    @if (panelOpen()) {
+      <hxp-browse-details-panel
+        [document]="currentDocument()"
+        [subTab]="panelSubTab()"
+        [docState]="docState()"
+        [tags]="tags()"
+        [tagInput]="tagInput()"
+        [tagSuggestions]="tagSearchResults()"
+        [showCreateTagOption]="showCreateTagOption()"
+        [activityEntries]="activityEntries()"
+        [activityLoading]="activityLoading()"
+        [activityLabelFn]="activityLabelFn()"
+        (close)="closePanel()"
+        (subTabChange)="onPanelSubTabChange($event)"
+        (tagInputChange)="onTagInputChange($event)"
+        (tagSelect)="onTagSelect($event)"
+        (tagRemove)="onTagRemove($event)"
+      />
+    }
+  </div>
+</section>

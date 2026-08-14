@@ -1,54 +1,56 @@
 @if (activeItem(); as item) {
-  <div class="drawer-header" [class.drawer-header--tasks]="isTasksPanel">
-    <div
-      class="drawer-title"
-      [class.drawer-title--tasks]="isTasksPanel"
-      role="heading"
-      aria-level="2"
-    >
-      {{ item.label }}
+  @if (!isBrowseAdfHx) {
+    <div class="drawer-header" [class.drawer-header--tasks]="isTasksPanel">
+      <div
+        class="drawer-title"
+        [class.drawer-title--tasks]="isTasksPanel"
+        role="heading"
+        aria-level="2"
+      >
+        {{ item.label }}
+      </div>
+      @if (isTasksPanel) {
+        <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isRecentlyViewed) {
+        <button
+          mat-icon-button
+          (click)="refreshRecentlyViewed()"
+          matTooltip="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isExpiredQueue) {
+        <button mat-icon-button (click)="refreshExpired()" matTooltip="Refresh" class="refresh-btn">
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isBrowse) {
+        <button
+          mat-icon-button
+          (click)="refreshBrowseTree()"
+          matTooltip="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isPersonalSpace) {
+        <button
+          mat-icon-button
+          (click)="refreshPersonalSpaceTree()"
+          matTooltip="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
     </div>
-    @if (isTasksPanel) {
-      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isRecentlyViewed) {
-      <button
-        mat-icon-button
-        (click)="refreshRecentlyViewed()"
-        matTooltip="Refresh"
-        class="refresh-btn"
-      >
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isExpiredQueue) {
-      <button mat-icon-button (click)="refreshExpired()" matTooltip="Refresh" class="refresh-btn">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isBrowse) {
-      <button
-        mat-icon-button
-        (click)="refreshBrowseTree()"
-        matTooltip="Refresh"
-        class="refresh-btn"
-      >
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isPersonalSpace) {
-      <button
-        mat-icon-button
-        (click)="refreshPersonalSpaceTree()"
-        matTooltip="Refresh"
-        class="refresh-btn"
-      >
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-  </div>
+  }
 
   @if (isBrowse) {
     <div class="folder-tree">
@@ -72,6 +74,8 @@
         </div>
       }
     </div>
+  } @else if (isBrowseAdfHx) {
+    <hxp-browse-nav-drawer [title]="item.label" (navigatePath)="onAdfHxBrowseNavigate($event)" />
   } @else if (isPersonalSpace) {
     <div class="folder-tree">
       @if (personalSpaceLoading()) {

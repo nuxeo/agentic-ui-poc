@@ -4,7 +4,7 @@
 
 | Layer                | Technology                                                    |
 | -------------------- | ------------------------------------------------------------- |
-| Frontend framework   | Angular 19 (standalone components, signals)                   |
+| Frontend framework   | Angular 20 (standalone components, signals)                   |
 | Monorepo tool        | Nx 22                                                         |
 | UI component library | Satori (Hyland design system) + Angular Material              |
 | State management     | Angular Signals — no NgRx, no BehaviorSubject for UI state    |
@@ -76,7 +76,16 @@ libs/
     ai-client/                   ← AI feature flag service + AI backend HTTP client
     kd-client/                   ← Knowledge Discovery client via Nuxeo CIC automation
     ke-client/                   ← Knowledge Enrichment client via Nuxeo CIC automation
+    adf-hx-bridge/               ← HxPR bridge + hxp-* UI for adf-hx browse POC (see ARCHITECTURE.md)
 ```
+
+---
+
+## adf-hx Browse POC
+
+Parallel browse at `/#/browse-adf-hx?path=…` using `@agentic-ui/shared/adf-hx-bridge`. Does **not** replace production `/#/browse`. Feature page: `libs/features/browse/src/lib/browse-adf-hx-poc/`.
+
+→ Full detail: `libs/shared/adf-hx-bridge/ARCHITECTURE.md` · Agent rule: `.cursor/rules/adf-hx-browse-poc.mdc`
 
 ---
 
@@ -89,6 +98,7 @@ All routes use `HashLocationStrategy` (`/#/path`). This ensures Nuxeo/Tomcat ser
 | `/#/login`          | LoginPageComponent           | Public     |
 | `/#/dashboard`      | DashboardPageComponent       | Required   |
 | `/#/browse`         | BrowseComponent              | Required   |
+| `/#/browse-adf-hx`  | BrowseAdfHxPocComponent      | Required   |
 | `/#/search`         | SearchComponent              | Required   |
 | `/#/doc/:uid`       | DocumentDetailComponent      | Required   |
 | `/#/documents`      | AssetSearchResultsComponent  | Required   |

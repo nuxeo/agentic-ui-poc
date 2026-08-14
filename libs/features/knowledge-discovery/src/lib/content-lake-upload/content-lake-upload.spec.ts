@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
@@ -91,7 +91,7 @@ async function createComponent(): Promise<{
   await TestBed.configureTestingModule({
     imports: [ContentLakeUploadComponent],
     providers: [
-      provideExperimentalZonelessChangeDetection(),
+      provideZonelessChangeDetection(),
       { provide: DocumentImportService, useValue: mockImportService },
       { provide: BrowseService, useValue: mockBrowseService },
       { provide: ContentLakeIngestService, useValue: mockIngestService },

@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { vi } from 'vitest';
 
@@ -15,7 +15,7 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [NoteEditorComponent, NoopAnimationsModule],
-      providers: [provideExperimentalZonelessChangeDetection()],
+      providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NoteEditorComponent);
@@ -74,7 +74,7 @@ describe('NoteEditorComponent source sync (NXSAT-174)', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [NoteEditorComponent],
-      providers: [provideExperimentalZonelessChangeDetection()],
+      providers: [provideZonelessChangeDetection()],
     })
       .overrideComponent(NoteEditorComponent, {
         set: { template: '<div></div>' },

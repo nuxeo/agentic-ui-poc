@@ -46,9 +46,18 @@ import {
   SelectionService,
   readClipboardDocs,
   writeClipboardDocs,
+  isAdfHxBrowseRouterUrl,
+  isBrowseRouterUrl,
+  parseAdfHxBrowsePathFromRouterUrl,
+  parseBrowseNuxeoPathFromRouterUrl,
+  toBrowseRouterUrl,
   type GlobalSearchSuggestion,
   docTypeIcon,
 } from '@agentic-ui/shared/nuxeo-client';
+import {
+  AdfHxBrowseContextService,
+  toAdfHxBrowseRouterUrl,
+} from '@agentic-ui/shared/adf-hx-bridge';
 import {
   SelectionTopbarComponent,
   ConfirmDialogComponent,
@@ -108,6 +117,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly detailService = inject(DocumentDetailService);
   private readonly searchService = inject(SearchService);
   private readonly browseContext = inject(BrowseContextService);
+  private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
   private readonly destroyRef = inject(DestroyRef);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
@@ -309,6 +319,10 @@ export class AppShellComponent implements OnDestroy {
           void this.router.navigateByUrl(target);
         } else if (item.path === '/personal-space') {
           void this.router.navigateByUrl('/personal-space');
+        } else if (item.path === '/browse') {
+          this.navigateToProductionBrowse();
+        } else if (item.path === '/browse-adf-hx') {
+          this.navigateToAdfHxBrowse();
         }
       }
     } else {
@@ -323,6 +337,9 @@ export class AppShellComponent implements OnDestroy {
     const base = path.split('?')[0];
     if (base === '/browse' || base.startsWith('/browse/')) {
       this.browseContext.setFromRouterUrl(path);
+    }
+    if (base === '/browse-adf-hx') {
+      this.adfHxBrowseContext.setFromRouterUrl(path);
     }
     const keepTasksDrawer = /^\/tasks\/[^/]+$/.test(base);
     if (!keepTasksDrawer) {
@@ -352,6 +369,9 @@ export class AppShellComponent implements OnDestroy {
     const base = path.split('?')[0];
     if (base === '/browse' || base.startsWith('/browse/')) {
       this.browseContext.setFromRouterUrl(path);
+    }
+    if (base === '/browse-adf-hx') {
+      this.adfHxBrowseContext.setFromRouterUrl(path);
     }
     void this.router.navigateByUrl(path, { onSameUrlNavigation: 'reload' });
   }
@@ -730,5 +750,43 @@ export class AppShellComponent implements OnDestroy {
 
   docTypeIcon(type: string): string {
     return docTypeIcon(type);
+  }
+
+  /** Open production browse at the path the user was viewing in adf-hx (or current browse context). */
+  private navigateToProductionBrowse(): void {
+    const nuxeoPath = this.resolveBrowsePathForProductionSwitch();
+    this.browseContext.setFromNuxeoPath(nuxeoPath);
+    void this.router.navigateByUrl(toBrowseRouterUrl(nuxeoPath));
+  }
+
+  /** Open adf-hx browse at the path the user was viewing in production browse (or current adf-hx context). */
+  private navigateToAdfHxBrowse(): void {
+    const nuxeoPath = this.resolveBrowsePathForAdfHxSwitch();
+    this.adfHxBrowseContext.setFromNuxeoPath(nuxeoPath);
+    void this.router.navigateByUrl(toAdfHxBrowseRouterUrl(nuxeoPath));
+  }
+
+  /** Prefer the live router URL when switching from adf-hx browse to production browse. */
+  private resolveBrowsePathForProductionSwitch(): string {
+    const url = this.router.url;
+    if (isAdfHxBrowseRouterUrl(url)) {
+      return parseAdfHxBrowsePathFromRouterUrl(url);
+    }
+    if (isBrowseRouterUrl(url)) {
+      return parseBrowseNuxeoPathFromRouterUrl(url);
+    }
+    return this.adfHxBrowseContext.contextPath() || this.browseContext.contextPath();
+  }
+
+  /** Prefer the live router URL when switching from production browse to adf-hx browse. */
+  private resolveBrowsePathForAdfHxSwitch(): string {
+    const url = this.router.url;
+    if (isBrowseRouterUrl(url)) {
+      return parseBrowseNuxeoPathFromRouterUrl(url);
+    }
+    if (isAdfHxBrowseRouterUrl(url)) {
+      return parseAdfHxBrowsePathFromRouterUrl(url);
+    }
+    return this.browseContext.contextPath() || this.adfHxBrowseContext.contextPath();
   }
 }

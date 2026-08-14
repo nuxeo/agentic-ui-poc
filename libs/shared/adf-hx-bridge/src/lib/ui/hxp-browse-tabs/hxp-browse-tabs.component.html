@@ -1,0 +1,14 @@
+<div class="hxp-browse-tabs" role="tablist" aria-label="Browse folder tabs">
+  @for (tab of tabs; track tab.id) {
+    <button
+      type="button"
+      class="hxp-browse-tabs__tab"
+      role="tab"
+      [class.hxp-browse-tabs__tab--active]="activeTab() === tab.id"
+      [attr.aria-selected]="activeTab() === tab.id"
+      (click)="selectTab(tab.id)"
+    >
+      {{ tab.label }}
+    </button>
+  }
+</div>

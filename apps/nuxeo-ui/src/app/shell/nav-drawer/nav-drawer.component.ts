@@ -53,6 +53,10 @@ import {
   writeClipboardDocs,
   type ClipboardDoc,
 } from '@agentic-ui/shared/nuxeo-client';
+import {
+  HxpBrowseNavDrawerComponent,
+  toAdfHxBrowseRouterUrl,
+} from '@agentic-ui/shared/adf-hx-bridge';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
@@ -86,6 +90,7 @@ export interface FolderNode {
     MatTooltipModule,
     MatSnackBarModule,
     DynamicDrawerComponent,
+    HxpBrowseNavDrawerComponent,
   ],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
@@ -383,6 +388,14 @@ export class NavDrawerComponent {
 
   get isBrowse(): boolean {
     return this.activeItem()?.path === '/browse';
+  }
+
+  get isBrowseAdfHx(): boolean {
+    return this.activeItem()?.path === '/browse-adf-hx';
+  }
+
+  onAdfHxBrowseNavigate(nuxeoPath: string): void {
+    this.navigateKeepDrawer.emit(toAdfHxBrowseRouterUrl(nuxeoPath));
   }
 
   get isPersonalSpace(): boolean {

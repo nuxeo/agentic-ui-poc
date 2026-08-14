@@ -1,0 +1,17 @@
+@if (breadcrumbElements().length > 0) {
+  <nav class="hxp-breadcrumb__trail" aria-label="Breadcrumb">
+    <ol class="hxp-breadcrumb__list">
+      @for (item of breadcrumbElements(); track $index; let last = $last) {
+        <li class="hxp-breadcrumb__item" [class.hxp-breadcrumb__item--active]="last">
+          @if (item.href) {
+            <a class="hxp-breadcrumb__link" [href]="item.href" (click)="onItemClick($event, item)">
+              {{ item.label }}
+            </a>
+          } @else {
+            <span class="hxp-breadcrumb__current" aria-current="page">{{ item.label }}</span>
+          }
+        </li>
+      }
+    </ol>
+  </nav>
+}
