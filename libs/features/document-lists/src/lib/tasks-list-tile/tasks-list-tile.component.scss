@@ -53,7 +53,7 @@
   &:hover {
     background: var(--mat-sys-surface-container);
     border-color: var(--mat-sys-outline);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px color-mix(in srgb, var(--mat-sys-shadow, #000) 10%, transparent);
   }
 }
 

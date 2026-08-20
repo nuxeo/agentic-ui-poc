@@ -1,5 +1,4 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
@@ -315,14 +314,8 @@ export class SavedPageService {
    * @returns Observable completing on success
    */
   addPagePermission(pageId: string, username: string, permission: string): Observable<unknown> {
-    // Import DocumentDetailService locally to avoid circular dependency
-    const docService = inject({} as any);
-    // TODO: Inject DocumentDetailService properly - this is a placeholder
-    // The actual implementation should be:
-    // private readonly docService = inject(DocumentDetailService);
-    // return this.docService.addPermission(pageId, { username, permission });
-
-    // For now, make the ACL call directly via the API
+    // TODO: delegate to DocumentDetailService.addPermission once the page doctype is
+    // settled. Until then the ACL operation is called directly.
     return this.api.post<unknown>(
       `/nuxeo/api/v1/id/${encodeURIComponent(pageId)}/@op/Document.AddPermission`,
       {

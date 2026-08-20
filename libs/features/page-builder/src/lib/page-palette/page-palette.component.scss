@@ -40,7 +40,7 @@
     transform 0.1s ease;
 
   &:hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 8px color-mix(in srgb, var(--mat-sys-shadow, #000) 20%, transparent);
     transform: translateY(-2px);
   }
 
@@ -51,7 +51,7 @@
 
   // CDK drag preview
   &.cdk-drag-preview {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 16px color-mix(in srgb, var(--mat-sys-shadow, #000) 30%, transparent);
     opacity: 0.9;
   }
 

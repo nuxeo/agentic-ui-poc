@@ -177,6 +177,38 @@ saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown>
 
 ---
 
+## SavedPageService (`saved-page.service.ts`)
+
+Persistence for the pages authored in the page builder. Follows the saved-search pattern
+from `SearchService` above: a page is a Nuxeo document whose `page:config` property holds
+the `PageConfig` JSON, so sharing rides on ordinary document ACLs rather than a mechanism
+of its own.
+
+```typescript
+getSavedPages(): Observable<SavedPageListEntry[]>
+  // GET /nuxeo/api/v1/saved-pages; sorted by modified descending, [] on error
+getSavedPageById(id: string): Observable<SavedPageDocument>
+  // Same path + /:id with the acls enricher — the shape the builder and viewer read
+saveSavedPage(request: SaveSavedPageRequest): Observable<{ id: string }>
+updateSavedPage(id: string, request: SaveSavedPageRequest): Observable<unknown>
+deleteSavedPage(id: string): Observable<unknown>
+addPagePermission(pageId: string, username: string, permission: string): Observable<unknown>
+  // POST Document.AddPermission against the page document
+removePagePermission(pageId: string, aceId: string): Observable<unknown>
+  // POST Document.RemovePermission; aceId comes from the permissions array of getSavedPageById
+```
+
+**`/nuxeo/api/v1/saved-pages` is an assumed endpoint.** It mirrors the saved-search
+precedent, but no server contribution for a `SavedPage` doctype ships in this repo, and the
+storage decision is still open — see the class comment before relying on any of this
+against a real server.
+
+The two permission methods are a page-scoped shorthand. `DocumentDetailService.addPermission`
+remains the richer entry point everywhere else, and is the one to reach for when a grant
+needs dates, a comment, notification or inheritance blocking.
+
+---
+
 ## KdClientService (`kd-client.service.ts`)
 
 Frontend client for Knowledge Discovery. Talks to the Hyland Content

@@ -56,8 +56,15 @@ export class RecentlyEditedTileComponent {
   readonly error = signal<string | null>(null);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
+  private readonly thumbnailUrls: string[] = [];
+
   constructor() {
     this.loadDocuments();
+
+    this.destroyRef.onDestroy(() => {
+      this.thumbnailUrls.forEach((url) => URL.revokeObjectURL(url));
+      this.thumbnailUrls.length = 0;
+    });
   }
 
   private loadDocuments(): void {
@@ -87,10 +94,14 @@ export class RecentlyEditedTileComponent {
       if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),

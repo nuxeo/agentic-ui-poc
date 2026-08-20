@@ -18,7 +18,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  color: #667085;
+  color: var(--mat-sys-on-surface-variant, #667085);
 }
 
 mat-dialog-content {
@@ -38,19 +38,19 @@ mat-dialog-content {
 
 .loading-container p {
   margin-top: 16px;
-  color: #667085;
+  color: var(--mat-sys-on-surface-variant, #667085);
   font-size: 14px;
 }
 
 .permissions-section {
-  border: 1px solid #eaecf0;
+  border: 1px solid var(--mat-sys-outline-variant, #eaecf0);
   border-radius: 10px;
   padding: 16px;
   margin-bottom: 16px;
 }
 
 .muted-section {
-  background: #fcfcfd;
+  background: var(--mat-sys-surface-container-lowest, #fcfcfd);
 }
 
 .table-header-row {
@@ -66,7 +66,7 @@ mat-dialog-content {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #101828;
+  color: var(--mat-sys-on-surface, #101828);
   flex: 1;
   min-width: 0;
 }
@@ -74,9 +74,9 @@ mat-dialog-content {
 .section-note {
   margin: 0 0 12px;
   padding: 10px 12px;
-  border-left: 4px solid #f97066;
-  color: #667085;
-  background: #fff;
+  border-left: 4px solid var(--mat-sys-error, #f97066);
+  color: var(--mat-sys-on-surface-variant, #667085);
+  background: var(--mat-sys-surface, #fff);
   line-height: 1.4;
   font-size: 13px;
 }
@@ -97,17 +97,17 @@ mat-dialog-content {
   text-align: left;
   padding: 10px 8px;
   font-weight: 600;
-  color: #344054;
-  border-bottom: 2px solid #e4e7ec;
+  color: var(--mat-sys-on-surface, #344054);
+  border-bottom: 2px solid var(--mat-sys-outline-variant, #e4e7ec);
   white-space: normal;
   word-break: break-word;
 }
 
 .permissions-table td {
   padding: 8px;
-  border-bottom: 1px solid #f2f4f7;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #f2f4f7);
   vertical-align: middle;
-  color: #475467;
+  color: var(--mat-sys-on-surface-variant, #475467);
   word-break: break-word;
   overflow-wrap: break-word;
 }
@@ -139,18 +139,18 @@ mat-dialog-content {
 }
 
 .edit-btn {
-  color: #175cd3;
+  color: var(--mat-sys-primary, #175cd3);
   min-width: 32px;
 }
 
 .delete-btn {
-  color: #f04438;
+  color: var(--mat-sys-error, #f04438);
   min-width: 32px;
 }
 
 .empty-row {
   text-align: center;
-  color: #667085;
+  color: var(--mat-sys-on-surface-variant, #667085);
   padding: 24px 8px !important;
   font-style: italic;
 }
@@ -165,7 +165,7 @@ mat-dialog-content {
 }
 
 .link-action-btn {
-  color: #175cd3;
+  color: var(--mat-sys-primary, #175cd3);
   font-weight: 600;
   flex-shrink: 0;
   white-space: nowrap;

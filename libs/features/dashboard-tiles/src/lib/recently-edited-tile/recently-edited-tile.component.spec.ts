@@ -1,6 +1,6 @@
 import { TestBed, fakeAsync, tick, ComponentFixture } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { RecentlyEditedTileComponent } from './recently-edited-tile.component';
@@ -16,6 +16,22 @@ describe('RecentlyEditedTileComponent', () => {
   let mockDocService: { getRecentlyEdited: ReturnType<typeof vi.fn> };
   let mockDetailService: { fetchThumbnail: ReturnType<typeof vi.fn> };
   let mockRouter: { navigate: ReturnType<typeof vi.fn> };
+  let createObjectURL: ReturnType<typeof vi.fn>;
+  let revokeObjectURL: ReturnType<typeof vi.fn>;
+
+  // jsdom ships no object-URL implementation and the component revokes on destroy, so both
+  // halves are stubbed for the whole suite.
+  beforeAll(() => {
+    createObjectURL = vi.fn(() => 'blob:recently-edited');
+    revokeObjectURL = vi.fn();
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true });
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, configurable: true });
+  });
+
+  afterAll(() => {
+    delete (URL as unknown as Record<string, unknown>)['createObjectURL'];
+    delete (URL as unknown as Record<string, unknown>)['revokeObjectURL'];
+  });
 
   const mockDoc: NuxeoDocument = {
     uid: 'doc-1',
@@ -139,5 +155,45 @@ describe('RecentlyEditedTileComponent', () => {
     const icon = component.docIcon(mockDoc);
     expect(icon).toBeTruthy();
     expect(typeof icon).toBe('string');
+  });
+
+  describe('thumbnail lifecycle', () => {
+    it('revokes every thumbnail URL on destroy', fakeAsync(() => {
+      const secondDoc: NuxeoDocument = { ...mockDoc, uid: 'doc-2' };
+      mockDocService.getRecentlyEdited.mockReturnValue(of({ entries: [mockDoc, secondDoc] }));
+      mockDetailService.fetchThumbnail.mockReturnValue(of(new Blob(['x'])));
+
+      const thumbFixture = TestBed.createComponent(RecentlyEditedTileComponent);
+      thumbFixture.componentRef.setInput('title', 'Recently Edited');
+      thumbFixture.componentRef.setInput('limit', 10);
+      tick();
+
+      expect(Object.keys(thumbFixture.componentInstance.thumbnailMap())).toEqual([
+        'doc-1',
+        'doc-2',
+      ]);
+
+      revokeObjectURL.mockClear();
+      thumbFixture.destroy();
+
+      expect(revokeObjectURL).toHaveBeenCalledTimes(2);
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:recently-edited');
+    }));
+
+    it('does not create a thumbnail URL for a response that arrives after destroy', () => {
+      const thumbnail$ = new Subject<Blob>();
+      mockDocService.getRecentlyEdited.mockReturnValue(of({ entries: [mockDoc] }));
+      mockDetailService.fetchThumbnail.mockReturnValue(thumbnail$);
+
+      const lateFixture = TestBed.createComponent(RecentlyEditedTileComponent);
+      lateFixture.componentRef.setInput('title', 'Recently Edited');
+      lateFixture.componentRef.setInput('limit', 10);
+
+      createObjectURL.mockClear();
+      lateFixture.destroy();
+      thumbnail$.next(new Blob(['late']));
+
+      expect(createObjectURL).not.toHaveBeenCalled();
+    });
   });
 });

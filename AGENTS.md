@@ -50,6 +50,7 @@ All in `libs/shared/nuxeo-client/src/lib/services/` · Import: `@agentic-ui/shar
 | `BrowseService`            | Folder navigation, update doc, copy/move, CSV export                         |
 | `SearchAggregationService` | Search state (signals only, no HTTP)                                         |
 | `SearchService`            | Search execution, suggestions, saved searches, user collections              |
+| `SavedPageService`         | Page-builder pages: list, read, save, update, delete + ACL sharing           |
 | `CollectionService`        | Read collections and their members, list favorites, update properties        |
 | `TaskService`              | Workflow tasks                                                               |
 | `UserService`              | User/group search and management                                             |
