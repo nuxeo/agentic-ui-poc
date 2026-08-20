@@ -61,20 +61,6 @@
   margin-top: 2px;
 }
 
-sat-breadcrumbs {
-  ::ng-deep .sat-breadcrumbs-chevron {
-    display: none;
-  }
-
-  ::ng-deep .sat-breadcrumbs-list li:not(:last-child)::after {
-    content: '›';
-    margin-left: 4px;
-    color: currentColor;
-    opacity: 0.75;
-    line-height: 1;
-  }
-}
-
 .header-actions {
   display: flex;
   align-items: center;

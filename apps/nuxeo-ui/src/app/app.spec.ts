@@ -1,20 +1,20 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { App } from './app';
+import { AppComponent } from './app';
 import { appConfig } from './app.config';
 import { AuthService } from './auth/auth.service';
 
-describe('App', () => {
+describe('AppComponent', () => {
   const authMock = {
     isAuthenticated: signal(true),
     username: signal('test.user'),
     basicCredentials: () => 'dGVzdA==',
-    logout: () => {},
+    logout: jasmine.createSpy('logout'),
   } as unknown as AuthService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [App],
+      imports: [AppComponent],
       providers: appConfig.providers,
     })
       .overrideProvider(AuthService, { useValue: authMock })
@@ -22,12 +22,12 @@ describe('App', () => {
   });
 
   it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(AppComponent);
     expect(fixture.componentInstance).toBeTruthy();
   });
 
   it('should render the root router outlet', () => {
-    const fixture = TestBed.createComponent(App);
+    const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('router-outlet')).toBeTruthy();
   });

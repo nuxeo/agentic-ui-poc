@@ -1,0 +1,8 @@
+<!-- No notice element. A form that cannot be mounted reports `unavailable` and
+     the panel draws the approval card in its place, so there is an affordance
+     for the decision rather than a sentence explaining that there is not. -->
+@if (loading()) {
+  <div class="ai-form-state">Loading the form…</div>
+}
+
+<ng-container #formOutlet />

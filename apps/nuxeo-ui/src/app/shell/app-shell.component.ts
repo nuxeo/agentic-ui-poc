@@ -5,13 +5,15 @@ import {
   HostListener,
   OnDestroy,
   ViewChild,
+  afterRenderEffect,
   computed,
   inject,
   signal,
+  untracked,
+  viewChild,
 } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormsModule } from '@angular/forms';
 import {
   Subject,
   catchError,
@@ -29,8 +31,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatSidenavModule } from '@angular/material/sidenav';
-import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSidenavModule, type MatSidenavContainer } from '@angular/material/sidenav';
 import { SatAppHeaderModule } from '@hylandsoftware/satori-ui/app-header';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 import {
@@ -55,13 +56,40 @@ import {
   openDocumentCompareDialog,
   trashSelectedDocumentsConfirmData,
 } from '@agentic-ui/shared/ui';
-import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import {
+  AiChatService,
+  AiFeatureFlagService,
+  aiPanelMaxWidth,
+  clampAiPanelWidth,
+  AI_PANEL_MIN_WIDTH,
+} from '@agentic-ui/shared/ai-client';
 
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
 import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
-import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
+import { AiChatPanelComponent } from './ai-chat-panel/ai-chat-panel.component';
+import { PanelResizeHandleComponent } from './panel-resize-handle/panel-resize-handle.component';
+
+/**
+ * Drawer items whose click should also navigate to the page behind them.
+ *
+ * Most `hasDrawer` items deliberately do not: for Browse, Search, Tasks, Assets,
+ * Collections and Trash the drawer *is* the way into the feature, because its entries
+ * choose which page or which folder to open, and navigating on the nav click as well would
+ * pick one for the user. These four are the exceptions. Their drawers are previews whose
+ * entries jump straight to a document, so nothing in them ever reaches the list page —
+ * without this, `/recently-viewed`, `/expired-queue` and `/favorites` are reachable only by
+ * typing the URL. Personal Space has behaved this way since before those pages existed, and
+ * Administration does too (with a role-dependent target), so this is the existing
+ * convention rather than a new one.
+ */
+const DRAWER_ITEMS_WITH_PAGE: ReadonlySet<string> = new Set([
+  '/personal-space',
+  '/recently-viewed',
+  '/expired-queue',
+  '/favorites',
+]);
 
 @Component({
   selector: 'app-shell',
@@ -77,11 +105,10 @@ import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
     MatIconModule,
     MatSnackBarModule,
     MatSidenavModule,
-    MatTooltipModule,
     NavDrawerComponent,
     SelectionTopbarComponent,
-    FormsModule,
-    AiMarkdownPipe,
+    AiChatPanelComponent,
+    PanelResizeHandleComponent,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -113,8 +140,53 @@ export class AppShellComponent implements OnDestroy {
   readonly featureFlags = inject(AiFeatureFlagService);
 
   readonly aiChatOpen = this.aiChat.panelOpen;
-  readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
+
+  /**
+   * The sidenav container, needed only so a resize can tell it to re-measure.
+   *
+   * `MatSidenavContainer` writes the content's `margin-right` from the drawer's measured
+   * width and recomputes it on toggle, mode and position changes — none of which a drag
+   * is. Without this the panel widens and the page behind it keeps the old margin, so
+   * the two overlap by however far the pointer travelled.
+   */
+  private readonly sidenavContainer = viewChild<MatSidenavContainer>('shellSidenavContainer');
+
+  /**
+   * Window width, tracked because the panel's own maximum depends on it.
+   *
+   * A resize listener rather than a container query: the value is needed in TypeScript,
+   * to clamp the width the grip reports, not only in CSS.
+   */
+  private readonly viewportWidth = signal(window.innerWidth);
+
+  /**
+   * How wide the panel may currently be dragged, leaving the page behind it usable.
+   *
+   * The grip's `max`, and the reason a narrow window makes the grip inert rather than
+   * letting the panel eat the page.
+   */
+  readonly aiChatMaxWidth = computed(() => aiPanelMaxWidth(this.viewportWidth()));
+  readonly aiChatMinWidth = AI_PANEL_MIN_WIDTH;
+
+  /**
+   * True while the grip is being dragged, which turns off the drawer's width transition
+   * and the content margin's. Both are 400ms eases, and neither can follow a pointer.
+   */
+  readonly aiChatResizing = signal(false);
+
+  /**
+   * The width the drawer is actually given.
+   *
+   * The stored preference narrowed to what this window can afford. Narrowing here rather
+   * than in the service is what lets a width chosen on a wide monitor survive a spell in
+   * a small window instead of being permanently trimmed by it.
+   */
+  readonly aiChatWidth = computed(() =>
+    clampAiPanelWidth(this.aiChat.panelWidth(), this.viewportWidth()),
+  );
+
+  private viewportListener = () => this.viewportWidth.set(window.innerWidth);
 
   /** Hides Administration unless the user is an administrator or poweruser. */
   protected readonly navItems = computed(() => {
@@ -211,7 +283,20 @@ export class AppShellComponent implements OnDestroy {
     window.addEventListener('storage', this.storageListener);
     window.addEventListener('clipboard-changed', this.clipboardChangedListener);
     window.addEventListener('favorites-changed', this.favoritesChangedListener);
+    window.addEventListener('resize', this.viewportListener);
     this.refreshFavoritesCount();
+
+    // Re-measure whenever the width the drawer is given changes.
+    //
+    // `afterRenderEffect` rather than `effect`, because `updateContentMargins` reads
+    // `offsetWidth`: an effect would run before the template had written the new width
+    // and would measure the old one, leaving the content margin one drag behind. The
+    // effect reads the width and nothing else — `untracked` around the container keeps a
+    // view-query result arriving later from re-running this for a width that has not moved.
+    afterRenderEffect(() => {
+      this.aiChatWidth();
+      untracked(() => this.sidenavContainer()?.updateContentMargins());
+    });
 
     this.searchInput$
       .pipe(
@@ -246,6 +331,7 @@ export class AppShellComponent implements OnDestroy {
     window.removeEventListener('storage', this.storageListener);
     window.removeEventListener('clipboard-changed', this.clipboardChangedListener);
     window.removeEventListener('favorites-changed', this.favoritesChangedListener);
+    window.removeEventListener('resize', this.viewportListener);
     this.revokeThumbnails();
   }
 
@@ -302,20 +388,27 @@ export class AppShellComponent implements OnDestroy {
       } else {
         this.activeDrawerItem.set(item);
         this.drawerOpen.set(true);
-        if (item.path === '/administration') {
-          const target = this.auth.isAdministrator()
-            ? '/administration/analytics'
-            : '/administration/users-groups';
-          void this.router.navigateByUrl(target);
-        } else if (item.path === '/personal-space') {
-          void this.router.navigateByUrl('/personal-space');
-        }
+        const page = this.pageForDrawerItem(item);
+        if (page) void this.router.navigateByUrl(page);
       }
     } else {
       this.drawerOpen.set(false);
       this.activeDrawerItem.set(null);
       void this.router.navigateByUrl(item.path);
     }
+  }
+
+  /**
+   * The page a drawer item should open alongside its drawer, or null when the drawer is the
+   * whole feature. Administration is role-dependent: a poweruser has no analytics page.
+   */
+  private pageForDrawerItem(item: AppNavItem): string | null {
+    if (item.path === '/administration') {
+      return this.auth.isAdministrator()
+        ? '/administration/analytics'
+        : '/administration/users-groups';
+    }
+    return DRAWER_ITEMS_WITH_PAGE.has(item.path) ? item.path : null;
   }
 
   onDrawerItemSelected(path: string): void {
@@ -706,26 +799,30 @@ export class AppShellComponent implements OnDestroy {
     });
   }
 
-  sendAiMessage(): void {
-    const msg = this.aiChatInput().trim();
-    if (!msg) return;
-    this.aiChat.send(msg);
-    this.aiChatInput.set('');
+  /**
+   * The grip is being dragged. Move the panel, but do not write the preference yet.
+   */
+  onAiChatResize(width: number): void {
+    this.aiChat.setPanelWidth(width, false);
   }
 
-  clearAiChat(): void {
-    this.aiChat.clear();
+  /** The drag ended, or a key moved the grip. This is the width worth remembering. */
+  onAiChatResizeCommitted(width: number): void {
+    this.aiChat.setPanelWidth(width);
   }
 
-  openAiSource(uid: string, type?: string, path?: string): void {
-    this.aiChatOpen.set(false);
-    if (type === 'Collection') {
-      void this.router.navigate(['/collections', uid]);
-    } else if ((type === 'Folder' || type === 'OrderedFolder' || type === 'Workspace') && path) {
-      void this.router.navigateByUrl(`/browse${path}`);
-    } else {
-      void this.router.navigate(['/doc', uid]);
-    }
+  onAiChatResizingChanged(dragging: boolean): void {
+    this.aiChatResizing.set(dragging);
+  }
+
+  /**
+   * Double-clicking the grip restores the default width.
+   *
+   * The conventional escape hatch for a split pane, and the only way back to 400px once
+   * the panel has been dragged, short of dragging it back by eye.
+   */
+  resetAiChatWidth(): void {
+    this.aiChat.resetPanelWidth();
   }
 
   docTypeIcon(type: string): string {

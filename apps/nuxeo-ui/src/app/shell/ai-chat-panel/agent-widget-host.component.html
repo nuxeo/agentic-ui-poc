@@ -1,0 +1,14 @@
+@if (loading()) {
+  <div class="ai-widget-state">
+    <mat-spinner diameter="20"></mat-spinner>
+  </div>
+}
+
+@if (notice(); as message) {
+  <p class="ai-widget-notice">
+    <mat-icon>block</mat-icon>
+    {{ message }}
+  </p>
+}
+
+<ng-container #widgetOutlet />

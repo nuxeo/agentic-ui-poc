@@ -3,20 +3,19 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/shared/util/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:shared", "type:util"],
   "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/libs/shared/util",
         "main": "libs/shared/util/src/index.ts",
         "tsConfig": "libs/shared/util/tsconfig.lib.json",
-        "assets": [
-          "libs/shared/util/*.md"
-        ]
+        "assets": ["libs/shared/util/*.md"]
       }
     }
   }

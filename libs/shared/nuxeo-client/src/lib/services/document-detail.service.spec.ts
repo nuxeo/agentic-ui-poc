@@ -5,7 +5,10 @@ import { firstValueFrom } from 'rxjs';
 
 import { CURRENT_USERNAME } from '../current-user.token';
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
-import { DocumentDetailService } from './document-detail.service';
+import {
+  DocumentDetailService,
+  REMOVE_PERMISSION_ACE_ID_REQUIRED,
+} from './document-detail.service';
 
 describe('DocumentDetailService permissions', () => {
   let service: DocumentDetailService;
@@ -328,6 +331,46 @@ describe('DocumentDetailService permissions', () => {
       notificationSent: false,
       notificationError: expect.stringContaining('SMTP'),
     });
+  });
+
+  // NXSAT-159 regression: removePermission used to forward a `permission` param, which
+  // Document.RemovePermission does not accept. Automation ignored it and matched on `user`
+  // alone, so revoking one right silently removed every ACE that principal held on the ACL.
+  it('removePermission identifies the ACE by id and never by principal', async () => {
+    const doc$ = firstValueFrom(service.removePermission('doc-uid', { aceId: 'ace-42' }));
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-uid/@op/Document.RemovePermission');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      params: { acl: 'local', id: 'ace-42' },
+      context: {},
+    });
+    expect(req.request.body.params).not.toHaveProperty('user');
+    expect(req.request.body.params).not.toHaveProperty('permission');
+    req.flush({ uid: 'doc-uid' });
+
+    await expect(doc$).resolves.toEqual({ uid: 'doc-uid' });
+  });
+
+  it('removePermission honours a non-local acl', async () => {
+    const doc$ = firstValueFrom(
+      service.removePermission('doc-uid', { aceId: 'ace-42', acl: 'inherited' }),
+    );
+
+    const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-uid/@op/Document.RemovePermission');
+    expect(req.request.body.params).toEqual({ acl: 'inherited', id: 'ace-42' });
+    req.flush({ uid: 'doc-uid' });
+
+    await doc$;
+  });
+
+  it('removePermission refuses without an ACE id instead of revoking by principal', async () => {
+    await expect(
+      firstValueFrom(service.removePermission('doc-uid', { aceId: '  ' })),
+    ).rejects.toThrow(REMOVE_PERMISSION_ACE_ID_REQUIRED);
+
+    // The refusal must happen before any request: an over-broad revoke is not recoverable.
+    httpMock.expectNone('/nuxeo/api/v1/id/doc-uid/@op/Document.RemovePermission');
   });
 
   it('removeMainFile clears file:content via PUT', async () => {

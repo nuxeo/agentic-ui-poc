@@ -4,6 +4,17 @@
 > **Audience:** Product and leadership
 > **Companion:** [Nuxeo Satori Agentic Beta — Engineering Plan](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4230974026) (child page), mirrored in this repository at `docs/beta-engineering-plan.md`
 
+> **Changed 7 August 2026 — generative UI.** Two investigations costed the generative-UI work
+> properly for the first time and found that the version described here was both the wrong shape
+> and roughly three times the size implied. Four things on this page changed as a result: the
+> generative-UI bullet in 3.6 now describes the application's own components rendered in the chat
+> rather than an agent composing a dashboard; the status table in 3.7 splits accordingly; ad-hoc
+> reporting moves from "delivered in Beta without needing a recipe" to post-Beta; and the Level 4
+> custom-widgets extension point is scoped to read-only widgets. The compliance-officer scenario
+> in section 4 is reworded for the same reason. Nothing was deleted — each item is still on the
+> page, marked with where it now lands. This is recorded rather than silently applied because
+> leadership has read the earlier scope.
+
 ---
 
 ## 1. What this is
@@ -27,7 +38,7 @@ Describing the legacy Polymer Web UI world on the left, and where Nuxeo Satori i
 - **From** navigating deep folder trees and taxonomies — **to** describing what you want in plain language
 - **From** AI as a set of buttons — **to** AI that proposes and acts, with the human approving
 
-Note that the first bullet is **not a migration path**. Nuxeo Satori does not and will not integrate with cloud Studio Designer for layouts — see section 6.1.
+Two qualifications, because this section is direction of travel and the rest of the page is commitment. The first bullet is **not a migration path**: Nuxeo Satori does not and will not integrate with cloud Studio Designer for layouts — see section 6.1. And the second bullet describes where the product is heading, not what Beta ships. What Beta ships against it is described in 3.6: the application's own components rendered in the conversation, chosen by the question. A workspace that lays itself out differently per role is beyond Beta.
 
 ## 3. What the product includes
 
@@ -55,27 +66,31 @@ Served by the standalone `nuxeo-ai-package` marketplace bundle: natural-language
 
 - **Streaming assistant.** Responses appear token by token, with visible intermediate steps instead of a spinner, and can be cancelled mid-run.
 - **Multi-step tool use.** The agent searches, reads documents, inspects tasks, applies tags, classifies, and queries Knowledge Discovery as a chain of steps toward a goal — not one call per button press.
-- **Human in the loop.** Anything that mutates content surfaces an approval card first. The agent proposes; the user approves, edits, or rejects.
-- **Adaptive / generative UI.** The agent can assemble a purpose-built view from a catalogue of approved widgets — a compliance dashboard, a review queue, a comparison — rather than everyone getting the same static layout.
+- **Human in the loop.** Anything that mutates content surfaces an approval card first. The agent proposes; the user approves, edits, or rejects. **This is enforced by the server, not by the model.** A live test on 6 August found that a model instructed to skip confirmation performed five unapproved writes, because the gate had depended on the model choosing to ask. Approval is now a property of the tool, checked by the gateway at the moment of execution. A write is never executed in the turn it is requested; the run stops and returns one approval request per write, each naming its own target. Approval comes back on a channel only the browser can write to, so no model output, claimed prior authorisation, or user instruction can produce one — and a tool that fails to declare itself read-only is treated as a write by default. Approving one write does not carry to the next. The distinction matters — a gate that relies on model cooperation holds most of the time, which means it passes rehearsal and fails in production.
+- **Generative UI — the application's own components, rendered in the chat.** An answer can render the product's own interface inline in the conversation instead of describing it in prose: ask what is in a folder and a document list appears; ask about a document and its metadata card appears. The agent chooses which component by choosing which tool it calls, from a closed registry the application owns, validates and mounts. In Beta these components are read-only, plus one editable form — metadata edit — whose submission answers the same server-side approval gate as any other write rather than opening a second, ungated write path.
+
+  **Deferred to post-Beta, and named here rather than left to be discovered:** the agent composing a layout of its own from a catalogue of widgets, which is what "adaptive layout" has previously meant on this page. The reason is evidence, not caution. The closest existing implementation of this idea inside Hyland was taken apart in detail in August 2026: every functional surface in their demonstration — upload form, document list, metadata form, delete dialog — came from a fixed tool-to-component mapping or a developer-authored composition, none was composed by the model, their own system prompt tells the model to avoid the composed path, and their evaluation suite does not exercise it. Building the tier that carried the demo and deferring the tier that did not is the largest scope reduction in the Beta plan and the best supported. Chat-rendered upload, delete confirmation and permission editing are also out of Beta scope; the engineering plan names each one.
+
 - **Persistent, shareable threads.** Conversations survive reload and are stored as Nuxeo documents in the user's workspace, so they inherit existing permissions and retention and are shared through the same permissions dialog as any other document.
-- **Agent-driven navigation and filtering.** The agent can drive the app's own state — set search facets, build a selection — with the app validating every change.
+- **Agent-driven navigation and selection.** The agent can drive the app's own state — move the user to a filtered view, build a selection that later turns can act on — with the app validating every change. This works on the current build.
 
 ### 3.7 Status summary
 
-| Capability area                           | Today                         | After Beta                      |
-| ----------------------------------------- | ----------------------------- | ------------------------------- |
-| Core ECM, DAM, admin, workflow            | Complete                      | Hardened, gaps closed           |
-| CIC: KD, KE, Content Lake                 | Complete                      | Feedback persistence fixed      |
-| AI assists (single-shot)                  | Complete                      | Retained as fallback            |
-| Streaming agent runtime                   | None                          | New                             |
-| Human-in-the-loop approvals               | None                          | New                             |
-| Adaptive / generative UI                  | None                          | New                             |
-| Durable conversation threads              | None                          | New                             |
-| Recipes                                   | None                          | Framework plus 3 recipes        |
-| Admin control of AI/agent capability      | Per-browser user opt-out only | Server-side admin control       |
-| Reusable component library                | None                          | New                             |
-| Independent designer (Studio alternative) | None                          | Not currently planned — see 6.1 |
-| Quality gates (test, E2E, a11y, SAST)     | Partial                       | Beta bar                        |
+| Capability area                           | Today                         | After Beta                                 |
+| ----------------------------------------- | ----------------------------- | ------------------------------------------ |
+| Core ECM, DAM, admin, workflow            | Complete                      | Hardened, gaps closed                      |
+| CIC: KD, KE, Content Lake                 | Complete                      | Feedback persistence fixed                 |
+| AI assists (single-shot)                  | Complete                      | Retained as fallback                       |
+| Streaming agent runtime                   | None                          | New                                        |
+| Human-in-the-loop approvals               | None                          | New                                        |
+| Generative UI: app components in chat     | None                          | Read-only, plus one editable metadata form |
+| Model-composed views / ad-hoc reporting   | None                          | Post-Beta — see 3.6                        |
+| Durable conversation threads              | None                          | New                                        |
+| Recipes                                   | None                          | Framework plus 3 recipes                   |
+| Admin control of AI/agent capability      | Per-browser user opt-out only | Server-side admin control                  |
+| Reusable component library                | None                          | New                                        |
+| Independent designer (Studio alternative) | None                          | Not currently planned — see 6.1            |
+| Quality gates (test, E2E, a11y, SAST)     | Partial                       | Beta bar                                   |
 
 Four navigation entries — recently viewed, expired queue, favourites, clipboard — currently render "Coming soon". They will be implemented or removed before any beta user sees the product.
 
@@ -85,7 +100,7 @@ Four navigation entries — recently viewed, expired queue, favourites, clipboar
 
 **The DAM and marketing user** searches assets descriptively, assembles a collection for a campaign, and exports it. Enrichment has already classified and tagged incoming assets, so search works before anyone has manually catalogued anything.
 
-**The compliance and records officer** asks who can access a sensitive folder and gets an answer grounded in actual ACLs, runs an anomaly sweep over the audit log, and reviews flagged events in a view the agent assembles for the question asked.
+**The compliance and records officer** asks who can access a sensitive folder and gets an answer grounded in actual ACLs, runs an anomaly sweep over the audit log, and reviews the flagged events in a review list rendered in the conversation. That view is defined by the access-review recipe rather than composed on the fly by the model — the distinction is section 3.6, and it is the difference between something Beta ships and something Beta defers.
 
 **The administrator** manages users, groups, vocabularies and cloud connections in the UI, and reviews agent activity through the standard Nuxeo audit trail — because every agent action is performed as the requesting user, not a service account. New in Beta, they also get server-side control over which AI and agent capabilities are enabled, which recipes are offered, and which write tools the agent may use at all. Today that control is only a per-browser user opt-out, which is not sufficient once an agent can change content.
 
@@ -106,15 +121,15 @@ The expensive part is the framework, not the individual recipe. So Beta funds th
 ### Delivered in Beta without needing a recipe
 
 - **Grounded Q&A** — already shipping today through Knowledge Discovery, with citations back to source documents
-- **Ad-hoc reporting** — falls directly out of the generative UI work, which lets the agent compose a dashboard from approved widgets
 
 ### Deferred to post-Beta
 
 - **Bulk metadata cleanup** — propose corrections across a selection, approve or reject in bulk
 - **Contract and records review** — surface documents due for review or expiry, assemble a review queue
 - **Task triage** — summarise pending workflow tasks, propose an order of attack, act on approval
+- **Ad-hoc reporting** — compose a view for the question just asked. **Moved here on 7 August 2026.** It was previously listed as falling directly out of the generative-UI work. It does not: it needs the agent to compose a layout of its own, and section 3.6 defers that tier to post-Beta. Beta delivers the components such a view would be assembled from, and the fixed views the three shipping recipes render — not composition on demand.
 
-These three are deferred on schedule grounds, not feasibility: the tool layer built in Beta already covers them, so each is a configuration exercise once the framework exists. Product can swap any deferred recipe for a shipping one at no net cost, but the count of three should hold.
+The first three are deferred on schedule grounds, not feasibility: the tool layer built in Beta already covers them, so each is a configuration exercise once the framework exists. Product can swap any of those three for a shipping recipe at no net cost, and the count of three shipping recipes should hold. Ad-hoc reporting is deferred on a different basis and cannot be swapped in the same way — what it waits on is a capability, not a configuration.
 
 ## 6. Can customers customise it?
 
@@ -146,6 +161,8 @@ A caveat on this level: navigation entries are **not** runtime-configurable toda
 
 **Level 4 — Extension points, code.** Register custom agent tools, contribute custom widgets to the generative-UI registry, and theme via Satori design tokens. Both the tool registry and the widget registry ship as documented public extension points rather than internal details.
 
+The widget extension point carries one scope statement in Beta, because it is a security property rather than a limitation we intend to lift casually. A contributed widget is **read-only**: it is handed identifiers — document ids, a column set — and re-fetches its own data through the ordinary services under the signed-in user's session. It is never handed content to display. That is what makes it impossible for a widget to show a row the user is not entitled to see, or a link the agent invented. A widget that needs to change something does it by registering a tool, so the write inherits the server-side approval gate rather than going around it.
+
 The content-service interfaces are _shaped_ so a non-Nuxeo backend is possible later, but no such adapter is built or supported in Beta — see below.
 
 ### Not customisable in Beta
@@ -172,7 +189,8 @@ Stating this plainly, because it is easy to over-read a demo:
 - Not a `satori-content` implementation — it is the placeholder that de-risks and informs it
 - Not feature-parity with Polymer Web UI
 - Not a Studio Designer replacement, and not a path that carries existing Studio layouts across
-- Not all eight recipes — three ship, three are explicitly post-Beta, two are covered without a recipe
+- Not all eight recipes — three ship, four are explicitly post-Beta, and grounded Q&A is covered without a recipe
+- Not an agent that designs its own screens. Components rendered in the chat come from a registry the application owns and validates; model-composed layout is post-Beta, and chat-rendered upload, delete confirmation and permission editing are out of scope
 - Targeted at a small set of validation customers, with The Church as first adopter
 
 ## 9. Open decisions for review
@@ -189,9 +207,9 @@ Stating this plainly, because it is easy to over-read a demo:
 
 Every capability on this page is either verified working in the code today or maps to a specific funded task in the companion engineering plan, which carries the mapping explicitly in its traceability section. Nothing here is aspirational.
 
-Two things are named on this page but deliberately not committed, and both are called out where they appear rather than buried: the three post-Beta recipes in section 5, and the independent designer in section 6.1, which is open decision 6.
+Three things are named on this page but deliberately not committed, and each is called out where it appears rather than buried: the post-Beta recipes in section 5, including ad-hoc reporting; the model-composed generative UI in section 3.6; and the independent designer in section 6.1, which is open decision 6.
 
-If a capability is added to this page later, it needs a task in the engineering plan first. The Studio and recipe gaps found in review both came from claims written ahead of the work.
+If a capability is added to this page later, it needs a task in the engineering plan first. The Studio and recipe gaps found in review both came from claims written ahead of the work. The generative-UI change of 7 August is the rule working in the other direction: a task was costed, the claim it supported turned out to be larger than the task, and the claim moved rather than the task being stretched to cover it. That is the trade this page exists to make, and it is cheaper to make it now than in a Beta review.
 
 ---
 

@@ -1,0 +1,53 @@
+<div class="recently-edited-tile">
+  <div class="tile-header">
+    <h3 class="tile-title">{{ title() }}</h3>
+  </div>
+
+  @if (loading()) {
+    <div class="tile-loading">
+      <mat-spinner diameter="28" />
+    </div>
+  } @else if (error()) {
+    <div class="tile-error">{{ error() }}</div>
+  } @else if (documents().length === 0) {
+    <div class="tile-empty">No recent edits</div>
+  } @else {
+    <table class="tile-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Modified</th>
+          <th>Last Contributor</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (doc of documents(); track doc.uid) {
+          <tr class="tile-row" (click)="navigateToDoc(doc)">
+            <td class="doc-title-cell">
+              <div class="doc-thumb">
+                @if (thumbnailMap()[doc.uid]; as thumb) {
+                  <img [src]="thumb" alt="" class="doc-thumb-img" />
+                } @else {
+                  <mat-icon class="doc-thumb-icon">{{ docIcon(doc) }}</mat-icon>
+                }
+              </div>
+              <span class="doc-title">{{ doc.title }}</span>
+            </td>
+            <td class="doc-date">{{ doc.lastModified | date: 'mediumDate' }}</td>
+            <td class="doc-contributor">
+              <span class="contributor-cell">
+                <sat-avatar
+                  [initials]="lastContributor(doc)"
+                  [category]="avatarColor(lastContributor(doc))"
+                  size="24"
+                  [borderless]="true"
+                />
+                {{ lastContributor(doc) }}
+              </span>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+</div>

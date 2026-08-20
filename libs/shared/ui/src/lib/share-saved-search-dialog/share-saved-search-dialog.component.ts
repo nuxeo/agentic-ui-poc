@@ -1,5 +1,10 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
@@ -20,6 +25,11 @@ import { ShareSavedSearchExternalDialogComponent } from '../share-saved-search-e
 
 export interface PermissionEntry {
   id: string;
+  /**
+   * ACE id from the `acls` enricher. Distinct from `id`, which is only a row key: revoking
+   * needs the real ACE id, and is refused when the enricher did not supply one.
+   */
+  aceId?: string;
   userGroup: string;
   right: string;
   timeFrame: string;
@@ -35,6 +45,8 @@ interface PermissionSummary {
 
 interface ExternalPermissionEntry extends PermissionSummary {
   id: string;
+  /** See {@link PermissionEntry.aceId} — `id` falls back to a row index, this does not. */
+  aceId?: string;
   email: string;
   begin?: string | null;
   end?: string | null;
@@ -59,7 +71,13 @@ export interface ShareSavedSearchDialogData {
 @Component({
   selector: 'lib-share-saved-search-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, MatSelectModule, MatProgressSpinnerModule],
+  imports: [
+    MatDialogModule,
+    MatButtonModule,
+    MatIconModule,
+    MatSelectModule,
+    MatProgressSpinnerModule,
+  ],
   templateUrl: './share-saved-search-dialog.component.html',
   styleUrl: './share-saved-search-dialog.component.scss',
 })
@@ -118,17 +136,19 @@ export class ShareSavedSearchDialogComponent implements OnInit {
     const localRows: PermissionEntry[] = localAces
       .filter((ace) => !ace.externalUser)
       .map((ace, index: number) => ({
-      id: String(index),
-      userGroup: ace.username || ace.email || 'Unknown',
-      right: ace.permission || 'Read',
-      timeFrame: this.toTimeFrameLabel(ace.begin, ace.end),
-      grantedBy: ace.creator || 'System',
+        id: String(index),
+        aceId: ace.id,
+        userGroup: ace.username || ace.email || 'Unknown',
+        right: ace.permission || 'Read',
+        timeFrame: this.toTimeFrameLabel(ace.begin, ace.end),
+        grantedBy: ace.creator || 'System',
       }));
 
     const externalRows: ExternalPermissionEntry[] = localAces
       .filter((ace) => !!ace.externalUser)
       .map((ace, index) => ({
         id: ace.id || `external-${index}`,
+        aceId: ace.id,
         email: ace.email || ace.username || '',
         userGroup: ace.email || ace.username || 'Unknown',
         right: ace.permission || 'Read',
@@ -234,11 +254,7 @@ export class ShareSavedSearchDialogComponent implements OnInit {
 
     this.saving.set(true);
     this.detailService
-      .removePermission(this.data.id, {
-        user: row.email || row.userGroup,
-        permission: this.normalizePermissionForApi({ right: row.right } as PermissionEntry).right,
-        acl: 'local',
-      })
+      .removePermission(this.data.id, { aceId: row.aceId ?? '', acl: 'local' })
       .pipe(
         catchError((error) => {
           console.error('Error removing external permission:', error);
@@ -371,11 +387,13 @@ export class ShareSavedSearchDialogComponent implements OnInit {
         });
 
         forkJoin(requests)
-          .pipe(catchError((error) => {
-            console.error('Error adding permissions:', error);
-            this.saving.set(false);
-            return of(null);
-          }))
+          .pipe(
+            catchError((error) => {
+              console.error('Error adding permissions:', error);
+              this.saving.set(false);
+              return of(null);
+            }),
+          )
           .subscribe(() => {
             this.saving.set(false);
             // Refresh permissions from API after adding
@@ -392,22 +410,16 @@ export class ShareSavedSearchDialogComponent implements OnInit {
     this.permissions.update((rows) => rows.filter((r) => r.id !== id));
 
     // Call API to delete the permission
-    const username = row.userGroup;
-    const permission = this.normalizePermissionForApi({ right: row.right } as PermissionEntry)
-      .right;
-
     this.detailService
-      .removePermission(this.data.id, {
-        user: username,
-        permission: permission,
-        acl: 'local',
-      })
-      .pipe(catchError((error) => {
-        console.error('Error removing permission:', error);
-        // Revert the removal on error
-        this.permissions.update((rows) => [...rows, row]);
-        return of(null);
-      }))
+      .removePermission(this.data.id, { aceId: row.aceId ?? '', acl: 'local' })
+      .pipe(
+        catchError((error) => {
+          console.error('Error removing permission:', error);
+          // Revert the removal on error
+          this.permissions.update((rows) => [...rows, row]);
+          return of(null);
+        }),
+      )
       .subscribe();
   }
 
@@ -477,11 +489,13 @@ export class ShareSavedSearchDialogComponent implements OnInit {
     });
 
     forkJoin(requests)
-      .pipe(catchError((error) => {
-        console.error('Error saving permissions:', error);
-        this.saving.set(false);
-        return of(null);
-      }))
+      .pipe(
+        catchError((error) => {
+          console.error('Error saving permissions:', error);
+          this.saving.set(false);
+          return of(null);
+        }),
+      )
       .subscribe(() => {
         this.saving.set(false);
         // Refresh permissions from API after save
@@ -492,10 +506,10 @@ export class ShareSavedSearchDialogComponent implements OnInit {
   private normalizePermissionForApi(perm: PermissionEntry): { right: string; timeFrame: string } {
     // Normalize right values to API format
     const rightMap: Record<string, string> = {
-      'Read': 'Read',
-      'Write': 'ReadWrite',
-      'Edit': 'ReadWrite',
-      'Manage': 'Everything',
+      Read: 'Read',
+      Write: 'ReadWrite',
+      Edit: 'ReadWrite',
+      Manage: 'Everything',
       'Manage everything': 'Everything',
       'Can collect': 'ReadCanCollect',
     };
@@ -529,7 +543,10 @@ export class ShareSavedSearchDialogComponent implements OnInit {
     return [null, null];
   }
 
-  private toTimeFrameLabel(begin: string | null | undefined, end: string | null | undefined): string {
+  private toTimeFrameLabel(
+    begin: string | null | undefined,
+    end: string | null | undefined,
+  ): string {
     if (!begin && !end) return 'Permanent';
     if (!begin && end) return `Until ${end}`;
     if (begin && !end) return `From ${begin}`;

@@ -170,6 +170,7 @@ export {
 export { ContentLakeIngestService } from './lib/services/content-lake-ingest.service';
 export {
   DocumentDetailService,
+  REMOVE_PERMISSION_ACE_ID_REQUIRED,
   type UserGroupSuggestion,
   type NuxeoComment,
   type NuxeoCommentList,
@@ -177,6 +178,12 @@ export {
 export { DirectoryService } from './lib/services/directory.service';
 export { SearchService } from './lib/services/search.service';
 export { SearchAggregationService } from './lib/services/search-aggregation.service';
+export {
+  SavedPageService,
+  type SavedPageListEntry,
+  type SavedPageDocument,
+  type SaveSavedPageRequest,
+} from './lib/services/saved-page.service';
 export { SelectionService } from './lib/services/selection.service';
 export { WorkflowService } from './lib/services/workflow.service';
 export { UserService } from './lib/services/user.service';

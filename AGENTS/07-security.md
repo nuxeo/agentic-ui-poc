@@ -106,10 +106,22 @@ this.blobUrl.set(URL.createObjectURL(blob)); // never revoked
 
 ---
 
-## AI Backend Security (`apps/ai-backend`)
+## AI Security
 
-- HAIP API key loaded from `process.env['HAIP_API_KEY']` — validated at startup
-- Nuxeo auth loaded from `process.env['NUXEO_AUTH']` — validated at startup
-- No credentials in `config.ts` source file
-- All user inputs to AI endpoints are passed as content, not as system prompts (prompt injection mitigation)
-- Rate limiting should be applied to all `/ai/*` routes in production
+There is no AI server in this repository. AI runs as Automation operations provided by the
+standalone [`nuxeo-ai-package`](https://github.com/nuxeo/nuxeo-ai-package) bundle on the Nuxeo
+server, so the security properties come from that boundary:
+
+- **No model credentials in this repo.** The HAIP key lives in the Nuxeo server's configuration,
+  never in Angular source, `environment.ts`, or the browser bundle. If you find one here, treat it
+  as a leaked secret and rotate it.
+- **AI calls are ordinary Nuxeo calls.** `AiGatewayService` posts to
+  `/nuxeo/api/v1/automation/<OperationId>` through `HttpClient`, so `nuxeoAuthInterceptor` supplies
+  auth and the operation executes as the signed-in user. Never bypass it with `fetch()` and never
+  attach an `Authorization` header by hand — the rules above apply unchanged to AI endpoints.
+- **ACLs are enforced server-side.** Because the operation runs as the caller, an AI feature cannot
+  read documents the user cannot read. Any future server-side agent runtime must preserve this by
+  forwarding the caller's identity rather than using a service account.
+- **Prompt injection is a server-side concern.** User input is passed as operation parameters, not
+  assembled into system prompts in the browser. Do not build prompt text client-side.
+- **Rate limiting and quota handling belong to `nuxeo-ai-package`**, not to this UI.

@@ -1,0 +1,284 @@
+// =============================================================================
+// Satori overrides — the ONLY place the app is allowed to reach into
+// @hylandsoftware/satori-ui internals.
+//
+// Pinned against: @hylandsoftware/satori-ui 0.1.5
+//
+// Everything in here is a liability. Each block therefore records:
+//   Depends on — the exact Satori internal (class name, DOM shape, or CSS rule)
+//   Breaks if  — the observable symptom when that internal moves
+//   Bump check — what to look at when Satori is upgraded
+//
+// Rules of the file:
+//  1. Prefer a real `--sat-*` token. Verify the token exists in
+//     node_modules/@hylandsoftware/satori-ui/**/_*.theme.scss before using it —
+//     `var(--sat-does-not-exist, 56px)` fails silently and forever.
+//  2. Prefer a public API selector — the directive attributes `[satAppHeaderLogo]`,
+//     `[satAppHeaderActions]`, `[satAppHeaderTitle]`, `[satAppHeaderNavigation]` are
+//     documented API. The `.sat-app-header-*` classes those directives emit are not.
+//  3. Every selector is prefixed with `html`. Satori components use
+//     ViewEncapsulation.None and Angular appends their <style> tags to <head> after
+//     the global stylesheet, so a specificity tie loses. The extra type selector
+//     buys the one point needed to win without reaching for `!important`.
+//  4. No hard-coded colours — `scripts/review-guardrails.mjs` fails the build.
+//  5. Never fight a Satori inline `[style.*]` binding. Beating one costs `!important`,
+//     and `!important` cannot be scoped to the one case you meant, so it silently
+//     overrides every variant of that component. That is exactly how all 15 tag
+//     colours ended up flattened to a single grey (block 6). If a value is bound
+//     inline, Satori is asserting ownership of it — take the value or file an
+//     upstream request, do not out-shout it.
+//
+// There are currently zero `!important` declarations in this file. Keep it that way.
+//
+// If you add a block here, add the three annotations. If you can delete a block,
+// delete it.
+// =============================================================================
+
+// -----------------------------------------------------------------------------
+// 1. Platform nav — scrollable item list
+//
+// Satori only enables vertical scrolling on :hover, so nav items below the fold
+// are unreachable without a pointer (touch, keyboard-only).
+//
+// Depends on — `.sat-platform-nav-list` on the <nav> inside <sat-platform-nav>.
+// Breaks if  — the class is renamed: nav items below the fold silently become
+//              unreachable on touch devices. No visual clue on desktop.
+// Bump check — search the platform-nav bundle for `overflow-y` and confirm the
+//              `:hover` gate is still there; if Satori fixes it, delete this block.
+// -----------------------------------------------------------------------------
+html sat-platform-nav .sat-platform-nav-list,
+html sat-platform-nav .sat-platform-nav-list:hover {
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 2. Platform nav — clipboard count badge
+//
+// Satori's nav item has no badge slot, so the count is painted as an ::after on
+// the icon wrapper, fed by the `--nav-clipboard-count` custom property that
+// AppShellComponent sets per item.
+//
+// Depends on — `.sat-platform-nav-icon` inside <sat-platform-nav-list-item>, and
+//              that element having no ::after of its own.
+// Breaks if  — the class is renamed: the badge disappears (count still correct in
+//              the aria-label, so screen readers are unaffected).
+//              If Satori starts using ::after on that element the badge and
+//              Satori's own pseudo-element fight; ours wins and theirs vanishes.
+// Bump check — clipboard nav item with >0 items shows a red count bubble.
+// Upstream   — asked for a real badge/indicator input on nav items (see report).
+// -----------------------------------------------------------------------------
+html sat-platform-nav-list-item.nav-item--clipboard-badge .sat-platform-nav-icon {
+  position: relative;
+  overflow: visible;
+}
+
+html sat-platform-nav-list-item.nav-item--clipboard-badge .sat-platform-nav-icon::after {
+  content: var(--nav-clipboard-count);
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  z-index: 2;
+  box-sizing: border-box;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--mat-sys-error, #b3261e);
+  color: var(--mat-sys-on-error, #fff);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+  pointer-events: none;
+}
+
+// -----------------------------------------------------------------------------
+// 3. App header — let a long page title shrink instead of squeezing the right side
+//
+// Satori's `.sat-app-header-content` is a nowrap flex row. Flex items default to
+// `min-width: auto`, so a long title pushes the search box, word mark and action
+// buttons off the right edge instead of ellipsising itself.
+//
+// Depends on — `.sat-app-header-leading-container` / `.sat-app-header-trailing-container`
+//              being the two flex children of `.sat-app-header-content`.
+// Breaks if  — either class is renamed: long document titles clip the header's
+//              right-hand cluster (search + logo + settings) off screen.
+// Bump check — open a document with a very long title; the title must ellipsise
+//              and the settings button must stay visible.
+// Upstream   — Satori should ship `min-width: 0` on both containers itself; there is
+//              no input or token for it (see report).
+// -----------------------------------------------------------------------------
+html sat-app-header .sat-app-header-leading-container {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+html sat-app-header .sat-app-header-trailing-container {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+// The title is a <div satAppHeaderTitle>; the attribute is public API, the
+// `.sat-app-header-title` class it emits is not — so select on the attribute.
+//
+// Depends on — the `[satAppHeaderTitle]` directive selector only.
+// Breaks if  — the directive is renamed (a compile error, not a silent layout bug).
+// Bump check — nothing; this is as safe as a Satori override gets.
+html sat-app-header [satAppHeaderTitle] {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// -----------------------------------------------------------------------------
+// 4. App header — trailing slot order and sizing
+//
+// Global search lives in the actions slot (see app-shell.component.html). Satori
+// projects the logo slot before the actions slot, which would put the Hyland word
+// mark between the page title and the search box. Reordering keeps the word mark
+// at the far right where the design puts it.
+//
+// Both selectors are the directives' public attribute selectors, not the internal
+// classes, so a Satori class rename cannot reach them.
+//
+// Depends on — `.sat-app-header-trailing-container` being `display: flex`.
+// Breaks if  — Satori stops using flex there: `order` becomes inert and the
+//              cluster falls back to DOM order (logo, search, actions). Degraded,
+//              not broken.
+// Bump check — header right-hand order reads: search, AI, settings, HYLAND.
+// -----------------------------------------------------------------------------
+html sat-app-header [satAppHeaderActions] {
+  order: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+html sat-app-header [satAppHeaderLogo] {
+  order: 1;
+  flex: 0 0 auto;
+}
+
+// A defensive `overflow: visible` on sat-app-header / header /
+// .sat-app-header-content-container / .sat-app-header-content used to live here, to
+// stop the global search dropdown being clipped. Deleted: measured against Satori
+// 0.1.5 and it was a no-op. Every one of those four already computes to `visible`
+// without it, the dropdown's box is identical either way, and the only clipping rule
+// Satori ships anywhere near the header is `.sat-platform-nav-main-content
+// { overflow: auto }`, which the block never targeted and which sits far enough out
+// that the dropdown never reaches its edge. If a future Satori does start clipping,
+// the symptom is obvious (suggestions cut off at the header's bottom border) — put it
+// back then rather than carrying it speculatively.
+
+// -----------------------------------------------------------------------------
+// 5. Breadcrumbs — chevron glyph
+//
+// The design calls for a "›" text separator. Satori hard-codes a `chevron_right`
+// <mat-icon>, with no separator input and no token for it, so the icon is hidden
+// and a pseudo-element takes its place. Previously duplicated verbatim in browse,
+// collections, document-detail and tasks.
+//
+// Depends on — `.sat-breadcrumbs-chevron` on the <mat-icon>, and `.sat-breadcrumbs-list`
+//              on the <ol> with one <li> per crumb.
+// Breaks if  — `.sat-breadcrumbs-chevron` is renamed: both separators render, so
+//              crumbs read "Home ›› Docs". Loud enough to catch in review.
+//              If `.sat-breadcrumbs-list` is renamed the "›" disappears and crumbs
+//              run together — quieter, watch for it.
+// Bump check — breadcrumbs on /browse show "›" once between crumbs, none trailing.
+// Upstream   — asked for a `separator` input or `--sat-breadcrumbs-separator`
+//              content token (see report).
+// -----------------------------------------------------------------------------
+html sat-breadcrumbs .sat-breadcrumbs-chevron {
+  display: none;
+}
+
+html sat-breadcrumbs .sat-breadcrumbs-list li:not(:last-child)::after {
+  content: '›';
+  margin-left: 4px;
+  color: currentcolor;
+  opacity: 0.75;
+  line-height: 1;
+}
+
+// -----------------------------------------------------------------------------
+// 6. Tags — the app's pill shape, Satori's semantic colour
+//
+// The app's own badges (`.state-badge`, `.asset-type-pill`, … in styles.scss) are
+// uniform grey pills. Satori's tags are NOT: `status="important-loud"` is red,
+// `success` is green, each `category` has its own hue. Those are two different
+// concerns and this block only owns the first one.
+//
+// Shape and label typography are house style and go through real Satori tokens.
+// Colour is entirely Satori's — SatCategoryTagComponent and SatStatusTagComponent
+// bind `[style.backgroundColor]` and `[style.color]` inline on the <sat-tag> host,
+// so nothing needs to be written here for the semantic palette to win. Deliberately
+// no `background` or `color` declaration below: an earlier version forced both with
+// `!important` (collateral from listing `.sat-tag` alongside the app's own pill
+// classes) which flattened all 15 variants to the same grey.
+//
+// Contrast verified against Satori 0.1.5: all 6 statuses and 9 categories clear
+// WCAG AA (4.5:1) for an 11px/600 label in both the light and dark schemes. The
+// tightest are teal 4.53, orange 4.54 and important-loud 4.64 in the light scheme
+// — re-run the check on a bump, there is not much headroom.
+//
+// The colour itself is tripwired: checkSatoriTagVariants() in
+// scripts/review-guardrails.mjs asserts every member of Satori's SatTagStatus and
+// SatTagCategory unions still has a `--sat-tag-*-container` token, because the
+// components build those names by string interpolation at runtime and no compiler
+// checks them.
+//
+// Depends on — `.sat-tag` host class and `.sat-tag-label`.
+// Breaks if  — `.sat-tag` is renamed: tags revert to Satori's 24px chip with a
+//              label-large label and extra-small corner. Bigger and squarer, but
+//              still legible and still correctly coloured.
+// Bump check — of the five variants the app actually uses: document type is pale
+//              blue (`category="blue"`), the same in Trash is grey
+//              (`category="gray"`), lifecycle state is pale blue (`status="info"`),
+//              a published version number is grey (`status="neutral"`) and a running
+//              workflow is pale red (`status="important"`). All five sit at the same
+//              height as a `.state-badge` beside them.
+// -----------------------------------------------------------------------------
+html {
+  --sat-tag-corner: 999px;
+  --sat-tag-label-size: 11px;
+  --sat-tag-label-weight: 600;
+  --sat-tag-label-line-height: 1;
+}
+
+html .sat-tag {
+  max-width: 120px;
+  min-height: auto;
+
+  // The app's own pills carry a 1px border, so without one here a Satori tag sits
+  // 2px shorter than a `.state-badge` next to it. Transparent keeps the box model
+  // identical without painting over the semantic background.
+  border: 1px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+// Satori already ships `:host { display: inline-flex }` on both wrappers; only the
+// inline-layout alignment against surrounding text is missing.
+html sat-category-tag,
+html sat-status-tag {
+  vertical-align: middle;
+}
+
+html .sat-tag .sat-tag-icon,
+html .sat-tag .sat-tag-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}

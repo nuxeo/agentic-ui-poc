@@ -2,14 +2,14 @@ import { DestroyRef, Directive, ElementRef, inject, input, OnInit, output } from
 
 /** Emits once when the host element enters the viewport so permissions can be lazy-loaded. */
 @Directive({
-  selector: '[libGroupPermLazyLoad]',
+  selector: '[appGroupPermLazyLoad]',
   standalone: true,
 })
 export class GroupPermLazyLoadDirective implements OnInit {
   private readonly el = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly groupId = input.required<string>({ alias: 'libGroupPermLazyLoad' });
+  readonly groupId = input.required<string>({ alias: 'appGroupPermLazyLoad' });
   readonly visible = output<string>();
 
   private observer?: IntersectionObserver;

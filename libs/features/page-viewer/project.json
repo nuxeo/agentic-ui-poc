@@ -1,0 +1,20 @@
+{
+  "name": "feature-page-viewer",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/features/page-viewer/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:features", "type:feature"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/features/page-viewer"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

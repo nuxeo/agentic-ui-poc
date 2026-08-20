@@ -62,3 +62,9 @@ apps/ai-backend/.env
 # Nuxeo server configuration (secrets, bind-mounted into the container)
 /nuxeo-conf/*.conf
 !/nuxeo-conf/*.sample.conf
+# Local-only dev proxy override (machine-specific Nuxeo port)
+apps/nuxeo-ui/proxy.conf.local.json
+
+# Playwright output
+test-results/
+playwright-report/

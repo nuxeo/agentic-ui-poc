@@ -8,15 +8,15 @@
 
 ## Agenda
 
-| #   | Topic                                      | Time   |
-| --- | ------------------------------------------ | ------ |
-| 1   | Repository & tooling overview              | 5 min  |
-| 2   | Application architecture & layer model     | 10 min |
-| 3   | Angular application — shell, routing, auth | 10 min |
-| 4   | Feature modules — deep dive on one feature | 10 min |
-| 5   | Shared libraries — Nuxeo API client        | 10 min |
-| 6   | AI backend — Express service & AI features | 10 min |
-| 7   | Deployment — Nuxeo Marketplace package     | 5 min  |
+| #   | Topic                                       | Time   |
+| --- | ------------------------------------------- | ------ |
+| 1   | Repository & tooling overview               | 5 min  |
+| 2   | Application architecture & layer model      | 10 min |
+| 3   | Angular application — shell, routing, auth  | 10 min |
+| 4   | Feature modules — deep dive on one feature  | 10 min |
+| 5   | Shared libraries — Nuxeo API client         | 10 min |
+| 6   | AI features via Nuxeo Automation operations | 10 min |
+| 7   | Deployment — Nuxeo Marketplace package      | 5 min  |
 
 ---
 
@@ -27,23 +27,23 @@
 ```
 agentic-ui-poc/
 ├── apps/
-│   ├── nuxeo-ui/          ← Angular 19 SPA (the main UI)
-│   └── ai-backend/        ← Express + TypeScript AI API server
+│   └── nuxeo-ui/          ← Angular 19 SPA (the main UI; the only app)
 ├── libs/
-│   ├── features/          ← 8 lazy-loaded feature modules
+│   ├── features/          ← 10 lazy-loaded feature modules
 │   │   ├── browse/
 │   │   ├── search/
 │   │   ├── document-detail/
+│   │   ├── document-lists/ ← recently viewed, expired queue, favorites
 │   │   ├── collections/
+│   │   ├── knowledge-discovery/
 │   │   ├── tasks/
 │   │   ├── administration/
 │   │   ├── assets/
 │   │   └── trash/
-│   └── shared/            ← 4 shared libraries
+│   └── shared/            ← 3 shared libraries
 │       ├── nuxeo-client/  ← All Nuxeo HTTP services + models
 │       ├── ui/            ← Reusable UI components
-│       ├── ai-client/     ← Angular AI gateway services
-│       └── drawers/       ← Shared drawer components
+│       └── ai-client/     ← Angular AI gateway services
 ├── nuxeo-agentic-core/        ← OSGi bundle (auth, startup page, notification URL codec)
 ├── nuxeo-agentic-ui-package/  ← Maven / Nuxeo Marketplace package assembly
 ├── docs/                  ← Architecture, AI features, API registry
@@ -63,18 +63,18 @@ agentic-ui-poc/
 
 **Tech stack:**
 
-| Layer               | Technology                                           | Version  |
-| ------------------- | ---------------------------------------------------- | -------- |
-| Frontend framework  | Angular                                              | 19.2     |
-| UI design system    | Hyland Satori UI (`@hylandsoftware/satori-ui`)       | 0.1.5    |
-| Material components | Angular Material                                     | 19.2     |
-| State management    | Angular Signals (`signal`, `computed`, `effect`)     | built-in |
-| HTTP                | Angular `HttpClient` with functional interceptors    | built-in |
-| Monorepo tooling    | Nx                                                   | 22.6     |
-| AI backend          | Express 5 + TypeScript                               | —        |
-| AI model            | OpenAI GPT-4o / GPT-4o-mini                          | via SDK  |
-| Packaging           | Maven + Nuxeo Marketplace                            | —        |
-| CI                  | GitHub Actions (lint, build, CodeQL, Copilot review) | —        |
+| Layer               | Technology                                            | Version  |
+| ------------------- | ----------------------------------------------------- | -------- |
+| Frontend framework  | Angular                                               | 19.2     |
+| UI design system    | Hyland Satori UI (`@hylandsoftware/satori-ui`)        | 0.1.5    |
+| Material components | Angular Material                                      | 19.2     |
+| State management    | Angular Signals (`signal`, `computed`, `effect`)      | built-in |
+| HTTP                | Angular `HttpClient` with functional interceptors     | built-in |
+| Monorepo tooling    | Nx                                                    | 22.6     |
+| AI backend          | `nuxeo-ai-package` — separate Java marketplace bundle | —        |
+| AI model            | Chosen server-side by `nuxeo-ai-package` via HAIP     | —        |
+| Packaging           | Maven + Nuxeo Marketplace                             | —        |
+| CI                  | GitHub Actions (lint, build, CodeQL, Copilot review)  | —        |
 
 ---
 
@@ -101,7 +101,6 @@ The codebase follows a **strict 4-layer architecture** enforced by Nx boundary r
 │  nuxeo-client  ← all Nuxeo API services & models         │
 │  ui            ← document viewer, dialogs, widgets       │
 │  ai-client     ← AI gateway services                     │
-│  drawers       ← search/asset drawer re-exports          │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -328,78 +327,61 @@ The `HttpClient` interceptor transparently adds `Authorization` — services don
 
 ---
 
-## 6. AI Backend — Express Service & AI Features
+## 6. AI Features via Nuxeo Automation Operations
 
-**App:** `apps/ai-backend/` — Express 5 + TypeScript, runs separately on port 3000.
+**There is no AI service in this repository.** An earlier revision of the PoC had an
+`apps/ai-backend` Express server on port 3000; it was removed. AI capability now ships as
+[`nuxeo-ai-package`](https://github.com/nuxeo/nuxeo-ai-package), a standalone Java marketplace
+bundle installed on the Nuxeo server.
 
 ### Architecture
 
 ```
-Angular UI  ──POST /ai/insights──►  Express Backend  ──►  OpenAI API
-                                          │
-                                          └──►  Nuxeo API (server-to-server)
+Angular UI  ──POST /nuxeo/api/v1/automation/AI.Insights──►  Nuxeo Server        ──►  HAIP Gateway
+             { "params": { "userId": "…" } }                + nuxeo-ai-package
 ```
 
-The Angular dev server proxies `/ai/*` → `localhost:3000`, so from the browser's perspective it's same-origin. In production, the backend is deployed as a Docker container alongside Nuxeo.
+Because AI calls are ordinary `/nuxeo/*` requests, they ride the existing dev proxy and the
+existing `nuxeoAuthInterceptor` — no second process to start, no `/ai/*` proxy rule, no CORS
+configuration. The operation runs on the server as the signed-in user, so repository ACLs apply
+to AI results for free.
 
-### Routes & capabilities
+### Operations & capabilities
 
-| Route                     | What it does                                                      |
-| ------------------------- | ----------------------------------------------------------------- |
-| `GET /ai/health`          | Health check                                                      |
-| `POST /ai/nl-to-nxql`     | Natural language → NXQL query (GPT-4o-mini)                       |
-| `POST /ai/summarize`      | Summarize document content (GPT-4o)                               |
-| `POST /ai/suggest-tags`   | Suggest tags from content (GPT-4o-mini)                           |
-| `POST /ai/classify`       | Classify document type, nature, subjects (GPT-4o)                 |
-| `POST /ai/similar`        | Find similar documents (generates a NXQL query)                   |
-| `POST /ai/anomalies`      | Detect anomalous documents in a folder                            |
-| `POST /ai/sentiment`      | Sentiment analysis on document content                            |
-| `POST /ai/insights`       | Dashboard KPI cards — aggregates user's pending tasks and actions |
-| `POST /ai/chat`           | RAG-based chat with streaming (SSE)                               |
-| `POST /ai/nl-permissions` | Natural language → ACL actions                                    |
-| `POST /ai/audit-ai`       | AI analysis of document audit trail                               |
+Called by `AiGatewayService` (`libs/shared/ai-client/src/lib/ai-gateway.service.ts`):
+
+| Operation                               | What it does                                                    |
+| --------------------------------------- | --------------------------------------------------------------- |
+| `AI.NlToNxql`                           | Natural language → NXQL query, and search autocomplete          |
+| `AI.Summarize`                          | Summarize document content                                      |
+| `AI.SuggestTags`                        | Suggest tags with confidence scores                             |
+| `AI.Classify`                           | Classify document type, nature, subjects, suggested workflow    |
+| `AI.Similar`                            | Find related documents with relevance scores                    |
+| `AI.Anomalies`                          | Detect anomalies in the audit trail                             |
+| `AI.Sentiment`                          | Sentiment across a comment thread, plus a thread summary        |
+| `AI.Insights`                           | Dashboard KPI cards from pending tasks and recent activity      |
+| `AI.Chat`                               | Assistant reply with source citations — single response, no SSE |
+| `AI.AuditNlFilter`, `AI.AuditSummarize` | Natural language audit filtering and summary                    |
+| `AI.NlPermissions`                      | Natural language ACL query — client method exists, no UI caller |
 
 ### How the NL → NXQL feature works
 
 1. User types "show me contracts modified last week" in the search bar
-2. Angular sends `POST /ai/nl-to-nxql` with the text
-3. Backend calls GPT-4o-mini with a carefully engineered system prompt that knows NXQL syntax rules, valid field names, date literal format, etc.
-4. GPT returns structured JSON: `{ "nxql": "SELECT * FROM Document WHERE ...", "explanation": "..." }`
-5. Angular displays the explanation to the user and executes the NXQL against Nuxeo
+2. Angular posts to `/nuxeo/api/v1/automation/AI.NlToNxql` with `{ "params": { "query": "…", "suggestions": false } }`
+3. The operation prompts the model through HAIP, applying the Nuxeo-specific NXQL constraints it
+   encodes server-side (date literal format, queryable document types, the mandatory
+   `ecm:isTrashed = 0` style predicates)
+4. It returns `{ "nxql": "SELECT * FROM Document WHERE …", "explanation": "…" }`
+5. Angular displays the explanation and executes the NXQL against Nuxeo
 
-### How the RAG Chat works
+Prompt engineering lives in `nuxeo-ai-package`, not here. Changing prompt behaviour is a change to
+that repository.
 
-```
-User message
-    │
-    ▼
-Generate embedding (text-embedding-3-small)
-    │
-    ▼
-Cosine-similarity search against indexed Nuxeo docs  ← RagService (in-memory)
-    │
-    ▼
-Top-K relevant document chunks injected into GPT-4o context
-    │
-    ▼
-Streaming response (Server-Sent Events) → Angular UI
-```
+### What the chat path does not do
 
-### System prompt engineering
-
-The backend has carefully crafted system prompts for each feature. Example (NL→NXQL):
-
-```
-"You are a Nuxeo NXQL query generator. Convert the user's natural language query into a valid NXQL query.
-Always include: ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 AND ecm:isVersion = 0 AND ecm:isTrashed = 0
-NXQL syntax rules:
-- Date literals: DATE 'yyyy-MM-dd' — there is NO CURRENT_DATE or INTERVAL keyword
-- Valid document types: Document, File, Note, Picture, Video, Audio, Folder, Workspace, Collection
-  Do NOT use Task, User, or Group — those are not NXQL queryable
-..."
-```
-
-This level of domain-specific instruction was key to getting reliable output — the prompts encode Nuxeo-specific constraints that GPT wouldn't know otherwise.
+`AI.Chat` is a single `HttpClient.post` returning a complete reply. There is no token streaming,
+no tool loop, no human-in-the-loop approval, and conversation history is an in-memory signal wiped
+on reload. Adding those is the agent-runtime workstream, not a change to this path.
 
 ### AI feature flag
 
@@ -464,9 +446,9 @@ mvn package -pl nuxeo-agentic-ui-package -am  (triggered by GitHub Actions on ma
 
 > The OSGi `deployment-fragment.xml` tells Nuxeo to apply `NuxeoAuthenticationFilter` to the `/agentic-ui/*` path. When a user visits the UI, Nuxeo handles SSO/SAML transparently before Angular loads. The Angular interceptor then sends `withCredentials: true` so Nuxeo session cookies are included on every API call.
 
-**Q: How was the AI backend secured?**
+**Q: How is AI secured?**
 
-> The AI backend is a separate service. In development, the Angular proxy (`proxy.conf.json`) routes `/ai/*` to `localhost:3000`. In production, it runs as a Docker container in the same network as Nuxeo, not exposed publicly. CORS is locked to allowed origins via `AI_BACKEND_ALLOWED_ORIGINS` env var. Credentials are in `.env` (never committed).
+> There is no AI service to secure in this repo. AI runs as Automation operations inside Nuxeo, provided by the `nuxeo-ai-package` bundle, so the model credentials sit in Nuxeo's server-side configuration and never reach the browser. Calls go out as ordinary authenticated `/nuxeo/*` requests and execute as the signed-in user, which means repository ACLs constrain what an AI feature can read without the UI enforcing anything itself.
 
 **Q: What was the hardest technical challenge?**
 
@@ -476,28 +458,28 @@ mvn package -pl nuxeo-agentic-ui-package -am  (triggered by GitHub Actions on ma
 
 ## 9. Repository Navigation — Where to Look
 
-| You want to see...          | Look here                                                                  |
-| --------------------------- | -------------------------------------------------------------------------- |
-| App bootstrap & providers   | `apps/nuxeo-ui/src/app/app.config.ts`                                      |
-| All routes                  | `apps/nuxeo-ui/src/app/app.routes.ts`                                      |
-| Auth interceptor            | `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`                     |
-| Dashboard widgets           | `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts`              |
-| Browse feature (full)       | `libs/features/browse/src/lib/browse/browse.ts`                            |
-| Document detail (tabs)      | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
-| Search with aggregations    | `libs/features/search/src/lib/search/search.ts`                            |
-| Nuxeo API base client       | `libs/shared/nuxeo-client/src/lib/services/nuxeo-api-base.ts`              |
-| Document service            | `libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`     |
-| Document viewer (PDF/video) | `libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts`      |
-| AI backend entry point      | `apps/ai-backend/src/main.ts`                                              |
-| AI system prompts           | `apps/ai-backend/src/context/system-prompts.ts`                            |
-| RAG chat service            | `apps/ai-backend/src/services/rag.service.ts`                              |
-| Marketplace config          | `nuxeo-agentic-ui-package/src/main/resources/package.xml`                  |
-| OSGi bundle module          | `nuxeo-agentic-core/`                                                      |
-| Nuxeo OSGi auth config      | `nuxeo-agentic-core/src/main/resources/OSGI-INF/deployment-fragment.xml`   |
-| Notification doc URL codec  | `nuxeo-agentic-core/src/main/java/org/nuxeo/agentic/url/codec/`            |
-| CI pipeline                 | `.github/workflows/ci.yml`                                                 |
-| Marketplace CI              | `.github/workflows/build-marketplace.yml`                                  |
-| Dependency graph            | `npx nx graph` (run locally)                                               |
+| You want to see...          | Look here                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------- |
+| App bootstrap & providers   | `apps/nuxeo-ui/src/app/app.config.ts`                                           |
+| All routes                  | `apps/nuxeo-ui/src/app/app.routes.ts`                                           |
+| Auth interceptor            | `apps/nuxeo-ui/src/app/auth/nuxeo-auth.interceptor.ts`                          |
+| Dashboard widgets           | `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts`                   |
+| Browse feature (full)       | `libs/features/browse/src/lib/browse/browse.ts`                                 |
+| Document detail (tabs)      | `libs/features/document-detail/src/lib/document-detail/document-detail.ts`      |
+| Search with aggregations    | `libs/features/search/src/lib/search/search.ts`                                 |
+| Nuxeo API base client       | `libs/shared/nuxeo-client/src/lib/services/nuxeo-api-base.ts`                   |
+| Document service            | `libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`          |
+| Document viewer (PDF/video) | `libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts`           |
+| AI Automation client        | `libs/shared/ai-client/src/lib/ai-gateway.service.ts`                           |
+| AI chat state               | `libs/shared/ai-client/src/lib/ai-chat.service.ts`                              |
+| AI operations & prompts     | [`nuxeo-ai-package`](https://github.com/nuxeo/nuxeo-ai-package) — separate repo |
+| Marketplace config          | `nuxeo-agentic-ui-package/src/main/resources/package.xml`                       |
+| OSGi bundle module          | `nuxeo-agentic-core/`                                                           |
+| Nuxeo OSGi auth config      | `nuxeo-agentic-core/src/main/resources/OSGI-INF/deployment-fragment.xml`        |
+| Notification doc URL codec  | `nuxeo-agentic-core/src/main/java/org/nuxeo/agentic/url/codec/`                 |
+| CI pipeline                 | `.github/workflows/ci.yml`                                                      |
+| Marketplace CI              | `.github/workflows/build-marketplace.yml`                                       |
+| Dependency graph            | `npx nx graph` (run locally)                                                    |
 
 ---
 

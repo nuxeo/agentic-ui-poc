@@ -95,9 +95,6 @@ import {
   ConfirmDialogComponent,
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
-} from '@agentic-ui/shared/ui';
-
-import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
   UpdatePermissionDialogComponent,
@@ -106,7 +103,7 @@ import {
   DeletePermissionDialogData,
   ShareExternalDialogComponent,
   ShareExternalDialogData,
-} from '@agentic-ui/feature-collections';
+} from '@agentic-ui/shared/ui';
 
 import {
   BrowseDriveDialogComponent,

@@ -1,0 +1,60 @@
+:host {
+  // Positioned by the panel that owns it, which knows which edge it is on.
+  display: block;
+  height: 100%;
+  // Above the panel's own content so the grip stays grabbable over a scrollbar or a
+  // mounted widget, but below Material's overlay layer so a dialog or a menu still wins.
+  z-index: 5;
+}
+
+.panel-resize-grip {
+  height: 100%;
+  // Wider than it looks. The visible line is 1px; this is the target, and 8px is about
+  // the narrowest a pointer hits reliably on the first try.
+  width: 8px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  // The grip is dragged, not scrolled or selected. Without this a drag on a touch
+  // device pans the page instead, and a drag with a mouse selects the text behind it.
+  touch-action: none;
+  user-select: none;
+
+  &[aria-disabled='true'] {
+    cursor: default;
+  }
+}
+
+.panel-resize-grip-line {
+  width: 1px;
+  height: 100%;
+  background: var(--mat-sys-outline-variant, #e8eaef);
+  transition: background-color 0.15s ease;
+}
+
+// Widen on hover and while dragging, so the affordance is discoverable without a
+// permanently visible bar down the middle of the layout.
+.panel-resize-grip:hover:not([aria-disabled='true']) .panel-resize-grip-line,
+:host(.dragging) .panel-resize-grip-line {
+  width: 3px;
+  background: var(--mat-sys-primary, #7c4dff);
+}
+
+// The line is the widget, so the focus ring goes on the line rather than on the 8px
+// target — a ring around the target reads as a stray box between the panel and the page.
+.panel-resize-grip:focus-visible {
+  outline: none;
+
+  .panel-resize-grip-line {
+    width: 3px;
+    background: var(--mat-sys-primary, #7c4dff);
+    box-shadow: 0 0 0 1px var(--mat-sys-primary, #7c4dff);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-resize-grip-line {
+    transition: none;
+  }
+}

@@ -38,6 +38,7 @@ describe('ProfilePageComponent', () => {
         end: null,
         grantedBy: null,
         acePrincipal: 'group:members',
+        aceId: 'ace-1',
       },
       {
         documentUid: 'workspaces-uid',
@@ -48,6 +49,7 @@ describe('ProfilePageComponent', () => {
         end: null,
         grantedBy: null,
         acePrincipal: 'group:members',
+        aceId: 'ace-1',
       },
     ],
     totalDocuments: 2,

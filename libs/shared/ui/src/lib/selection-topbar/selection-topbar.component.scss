@@ -7,7 +7,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px 0 calc(var(--sat-platform-nav-width, 56px) + 16px);
+  /* `--sat-platform-nav-width` does not exist in Satori — it always fell through to
+     the literal 56px. The real token is `--sat-platform-nav-collapsed-width`. */
+  padding: 0 16px 0 calc(var(--sat-platform-nav-collapsed-width, 56px) + 16px);
   height: 48px;
   background: var(--mat-sys-primary, #1a73e8);
   color: #fff;

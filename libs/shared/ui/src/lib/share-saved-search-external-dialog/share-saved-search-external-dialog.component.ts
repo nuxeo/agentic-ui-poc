@@ -46,8 +46,9 @@ const RIGHT_OPTIONS = [
   styleUrl: './share-saved-search-external-dialog.component.scss',
 })
 export class ShareSavedSearchExternalDialogComponent {
-  private readonly dialogRef =
-    inject(MatDialogRef<ShareSavedSearchExternalDialogComponent, boolean>);
+  private readonly dialogRef = inject(
+    MatDialogRef<ShareSavedSearchExternalDialogComponent, boolean>,
+  );
   private readonly data = inject<ShareSavedSearchExternalDialogData>(MAT_DIALOG_DATA);
   private readonly detailService = inject(DocumentDetailService);
 
@@ -124,9 +125,7 @@ export class ShareSavedSearchExternalDialogComponent {
   }
 
   isValid(): boolean {
-    const hasEmail = this.isEditMode
-      ? true
-      : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim());
+    const hasEmail = this.isEditMode ? true : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim());
     const hasToDate = !!this.endDate;
     return hasEmail && hasToDate;
   }

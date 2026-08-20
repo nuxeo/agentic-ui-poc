@@ -1,0 +1,222 @@
+<div class="dialog-header">
+  <h2 mat-dialog-title>Share Saved Page</h2>
+  <button
+    mat-icon-button
+    class="close-btn"
+    type="button"
+    aria-label="Close dialog"
+    (click)="dialogRef.close(null)"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<mat-dialog-content>
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading permissions...</p>
+    </div>
+  } @else {
+    <section class="permissions-section">
+      <div class="table-header-row">
+        <h3 class="table-title">Permissions defined locally</h3>
+        <button
+          mat-stroked-button
+          type="button"
+          class="add-btn"
+          (click)="openAddPermissionDialog()"
+          [disabled]="saving()"
+        >
+          <mat-icon>add</mat-icon> New
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="permissions-table">
+          <thead>
+            <tr>
+              <th>User / Group</th>
+              <th>Right</th>
+              <th>Time Frame</th>
+              <th>Granted By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of permissions(); track row.id) {
+              <tr>
+                <td>{{ row.userGroup }}</td>
+                <td>{{ row.right }}</td>
+                <td>{{ row.timeFrame }}</td>
+                <td>{{ row.grantedBy || '-' }}</td>
+                <td class="actions-cell">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="edit-btn"
+                    aria-label="Edit permission"
+                    (click)="editRow(row.id)"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="delete-btn"
+                    aria-label="Remove permission"
+                    (click)="removeRow(row.id)"
+                  >
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="empty-row">
+                  No permissions defined. Click "Add" to create one.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="permissions-section muted-section">
+      <div class="table-header-row">
+        <h3 class="table-title">Permissions inherited from upper levels</h3>
+        <button
+          mat-button
+          type="button"
+          class="link-action-btn"
+          [disabled]="saving()"
+          (click)="togglePermissionInheritance()"
+        >
+          {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+        </button>
+      </div>
+      @if (!isInheritanceBlocked()) {
+        <p class="section-note">
+          If you want to explicitly control access to this saved page, block permission inheritance.
+          Any change made on parent level permissions will not affect this saved page.
+        </p>
+      } @else {
+        <p class="empty-row">
+          Only local permissions are applied. Unblock to restore the permissions inheritance from
+          upper levels.
+        </p>
+      }
+
+      @if (!isInheritanceBlocked()) {
+        <div class="table-wrap">
+          <table class="permissions-table readonly-table">
+            <thead>
+              <tr>
+                <th>User / Group</th>
+                <th>Right</th>
+                <th>Time Frame</th>
+                <th>Granted By</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of inheritedPermissions(); track $index) {
+                <tr>
+                  <td>{{ row.userGroup }}</td>
+                  <td>{{ row.right }}</td>
+                  <td>{{ row.timeFrame }}</td>
+                  <td>{{ row.grantedBy || '-' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    <section class="permissions-section muted-section">
+      <div class="table-header-row">
+        <h3 class="table-title">Permissions Assigned to External Users</h3>
+        <button
+          mat-button
+          type="button"
+          class="link-action-btn"
+          [disabled]="saving()"
+          (click)="openExternalPermissionDialog()"
+        >
+          New
+        </button>
+      </div>
+      <p class="section-note">
+        Sharing with external users does not create new user accounts. External users are provided a
+        link to access this saved page.
+      </p>
+
+      <div class="table-wrap">
+        <table class="permissions-table readonly-table">
+          <thead>
+            <tr>
+              <th>User / Group</th>
+              <th>Right</th>
+              <th>Time Frame</th>
+              <th>Granted By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of externalPermissions(); track row.id) {
+              <tr>
+                <td>{{ row.userGroup }}</td>
+                <td>{{ row.right }}</td>
+                <td>{{ row.timeFrame }}</td>
+                <td>{{ row.grantedBy || '-' }}</td>
+                <td class="actions-cell">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Edit external permission"
+                    [disabled]="saving()"
+                    (click)="editExternalPermission(row)"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    aria-label="Send notification"
+                    [disabled]="saving()"
+                    (click)="sendExternalNotification(row)"
+                  >
+                    <mat-icon>send</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="delete-btn"
+                    aria-label="Remove external permission"
+                    [disabled]="saving()"
+                    (click)="removeExternalPermission(row)"
+                  >
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="empty-row">
+                  The saved page is not shared with any external user.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="start">
+  <button mat-stroked-button type="button" (click)="dialogRef.close(null)" [disabled]="saving()">
+    Close
+  </button>
+</mat-dialog-actions>

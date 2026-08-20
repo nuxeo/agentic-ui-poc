@@ -53,27 +53,19 @@ import {
   ExportType,
   ConfirmDialogComponent,
   ConfirmDialogData,
+  AddPermissionDialogComponent,
+  AddPermissionDialogData,
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
+  DeletePermissionDialogComponent,
+  DeletePermissionDialogData,
+  ShareExternalDialogComponent,
+  ShareExternalDialogData,
 } from '@agentic-ui/shared/ui';
 import {
   EditCollectionDialogComponent,
   EditCollectionDialogData,
 } from '../edit-collection-dialog/edit-collection-dialog';
-import {
-  AddPermissionDialogComponent,
-  AddPermissionDialogData,
-} from '../add-permission-dialog/add-permission-dialog';
-import {
-  UpdatePermissionDialogComponent,
-  UpdatePermissionDialogData,
-} from '../update-permission-dialog/update-permission-dialog';
-import {
-  DeletePermissionDialogComponent,
-  DeletePermissionDialogData,
-} from '../delete-permission-dialog/delete-permission-dialog';
-import {
-  ShareExternalDialogComponent,
-  ShareExternalDialogData,
-} from '../share-external-dialog/share-external-dialog';
 
 @Component({
   selector: 'lib-collection-detail',

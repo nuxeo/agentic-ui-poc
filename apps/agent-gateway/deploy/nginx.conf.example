@@ -1,0 +1,87 @@
+# Worked reverse-proxy configuration for the agent gateway.
+#
+# The browser must see ONE origin serving the Angular app, Nuxeo and the
+# gateway. `HttpAgent` in @ag-ui/client 0.0.57 passes no `credentials` option to
+# fetch, so the default of `same-origin` applies: a gateway on another origin
+# never receives the Nuxeo session cookie, /me returns 401, and the agent stops
+# working. Do not try to fix that with CORS and `credentials: 'include'` — it
+# would weaken the cookie's SameSite protection and reintroduce CSRF surface on
+# an endpoint that mutates documents.
+#
+# Same origin is necessary and NOT sufficient, and getting that wrong cost us a
+# live outage. Nuxeo runs in Tomcat under the `/nuxeo` context path, so it sets
+# `JSESSIONID` with `Path=/nuxeo`, and a cookie is sent only to request paths
+# inside its `Path`. A gateway published at `/agent/` is same-origin and still
+# receives no cookie at all — the browser withholds it — so every run is
+# unauthenticated even though the user is signed in and everything else works.
+# The browser therefore calls `/nuxeo/agent/*`, and this file strips the
+# `/nuxeo` prefix again before forwarding so the gateway's own routes stay
+# `/agent/*`. Publish the gateway anywhere outside `/nuxeo/` and the agent
+# breaks with a "connection" error against a gateway that is up.
+
+upstream nuxeo_backend {
+    server nuxeo:8080;
+}
+
+upstream agent_gateway {
+    server agent-gateway:3100;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name content.example.com;
+
+    # ssl_certificate     /etc/nginx/tls/fullchain.pem;
+    # ssl_certificate_key /etc/nginx/tls/privkey.pem;
+
+    # --- The agent gateway -------------------------------------------------
+    #
+    # MUST stay inside /nuxeo/ so the Nuxeo session cookie reaches it. nginx
+    # picks the longest matching prefix, so this wins over the `location /`
+    # below wherever it is written — but a proxy that matches in declaration
+    # order instead, which the Angular dev proxy does, needs this entry first or
+    # every agent request goes to Nuxeo and 404s.
+    #
+    # This block is the one that goes wrong. Its failure mode is the nastiest
+    # kind: everything works, the answers are correct, they just all arrive at
+    # once at the end instead of streaming. Support should reach for the
+    # `curl -N` reproduction in apps/agent-gateway/README.md first.
+    location /nuxeo/agent/ {
+        # Strip the context path the cookie scope forced on us: the gateway
+        # itself serves /agent/run, /agent/capabilities and /agent/health.
+        rewrite ^/nuxeo(/agent/.*)$ $1 break;
+
+        proxy_pass http://agent_gateway;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection        "";
+
+        # Server-sent events: nothing may buffer, chunk, or compress the stream.
+        proxy_buffering    off;
+        proxy_cache        off;
+        gzip               off;
+        chunked_transfer_encoding on;
+
+        # An agent run can outlast a REST call by minutes. Raise this above the
+        # longest run you expect, and keep it above AGENT_RUN_TIMEOUT_MS.
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
+    # --- Everything else is Nuxeo, including the SPA at /agentic-ui/ -------
+    location / {
+        proxy_pass http://nuxeo_backend;
+
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        client_max_body_size 0;
+    }
+}

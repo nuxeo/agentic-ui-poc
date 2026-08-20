@@ -3,9 +3,11 @@
 > **Status:** Draft for review — pre-decision.
 > **Audience:** Product, leadership and architecture review
 > **Siblings:** [Nuxeo Satori Agentic Beta — Engineering Plan](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4230974026) · **Parent:** [Nuxeo Satori Beta — Product Overview](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4231594134)
-> **Children:** [ADF HX for Beta — Practical Feasibility Analysis](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4231594491) · [A Greenfield Nuxeo ECM + DAM Application on ADF HX](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4230974594)
+> **Children:** [ADF HX for Beta — Practical Feasibility Analysis](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4231594491) · [A Greenfield Nuxeo ECM + DAM Application on ADF HX](https://hyland.atlassian.net/wiki/spaces/~71202090f2a61ef96d4f57a5104efe296c1f5b/pages/4230974594) · [CSX-447 content ports — consumer report from the Nuxeo Satori team](csx-447-port-gaps.md)
 
-> **Revised twice on 6 August 2026.** Version 1 stated that the abstraction layer and the Nuxeo adapter did not exist, and that a minor Angular bump was the only version friction. Both were wrong. Version 3 adds three further corrections: ADF HX has **no DAM surface at all**, which is a first-order finding for an ECM _and DAM_ product; the abstraction branches are not merely parked but **conflicting and decaying**; and the RFC is **being actively edited**, so no artifact authoritatively states the port contract. The recommendation is unchanged throughout, but the reasoning is now much stronger.
+> **Revised three times on 6 August 2026.** Version 1 stated that the abstraction layer and the Nuxeo adapter did not exist, and that a minor Angular bump was the only version friction. Both were wrong. Version 3 added three further corrections: ADF HX has **no DAM surface at all**, which is a first-order finding for an ECM _and DAM_ product; the abstraction branches are not merely parked but **conflicting and decaying**; and the RFC is **being actively edited**, so no artifact authoritatively states the port contract. **Version 4 is the first written after building the thing.** The port contract and a Nuxeo adapter now exist in this repository, pinned to their commit, and §1.1 records what that measurement produced — including one finding, on `AuthPort`, that materially qualifies the RFC's central validation claim. The recommendation is unchanged throughout, but for the first time it rests on code rather than on reading.
+
+> **Version 5 — 7 August 2026, one correction, recommendation unchanged.** The Angular 20.3 / Material 20.2 / Satori 0.2.0 figures in §2 were stated as properties of "the library". They are properties of the **`develop`** branch, and the HFA branch carrying the generative-UI PoC is on Angular 19.2.20 / Material 19.2.19. §2 now draws that distinction. **The conclusion those figures support — that we cannot consume their component library without a major Angular upgrade — is unaffected and stands.** Source: [CSX Generative UI PoC — Teardown](csx-generative-ui-teardown.md) §6.
 
 ---
 
@@ -28,6 +30,31 @@ These are separate paths and must not be blended:
 
 Where any of the three disagree on a fact, the more recent page cites its source and wins.
 
+### 1.1 What we learned by building it
+
+Since version 3 we have stopped reading the port contract and built it. Two Nx projects now exist in this repository: `content-ports`, a shape-for-shape copy of their five ports pinned to commit `61eb45bf0e94df3fd3a62e8efd21af8ec535451e`, and `content-adapter-nuxeo`, a working implementation of all five against our production Nuxeo services. That produced three findings that belong at the top of this page rather than in an appendix.
+
+**About 12% of our content surface can sit behind the shared contract.** The five ports declare **26 methods** in total. `libs/shared/nuxeo-client` is **26 services exposing 217 public methods** across 135 REST paths and 25 Automation operations. That is **12.0%**, and it is now the sharpest available answer to the question this whole document exists to inform: how much of this product could a shared content abstraction actually serve?
+
+The honest reading is slightly narrower still. Four of the 26 are `capabilities()` descriptors rather than content operations, `getAccessToken` is unimplementable here (see below) and `getWithRendition` is unimplementable over Nuxeo at all — so **20 methods, about 9%, do real work**. We use 12% as the headline because it is the like-for-like comparison of declared surface against declared surface.
+
+**This does not contradict the "quarter to a third" figure in §4, and the two must not be blended.** They measure different things in different units, and both are still true:
+
+- **12% is a data-layer measurement**, counting API methods. It answers "how much of our Nuxeo access can be expressed in their neutral vocabulary?"
+- **A quarter to a third is a UI measurement**, counting lines of code in `libs/features`. It answers "how much of our component code could their components replace?"
+
+The UI figure is larger because a single port method backs a lot of UI. `DocumentPort.listChildren` plus `SearchPort.runNamedQuery` is two methods, and between them they underpin the entire browse experience — tree, list, breadcrumb, pagination — which is a large fraction of `libs/features/browse` by line count. Conversely, the long tail of our data layer (tags, tasks, workflow, vocabularies, audit, Drive, ARender, Content Lake) is many methods each backing comparatively little UI. So the same architecture is simultaneously **well matched to the core ECM browse surface** and **unable to reach most of our API surface**. Both statements are load-bearing, and quoting either one alone misleads.
+
+**Their `AuthPort` cannot represent how this product authenticates, and their own Nuxeo adapter does not use it.** `AuthPort` is `getAccessToken(): Promise<string>` — the application hands the adapter a bearer token per request. We are same-origin with Nuxeo, authenticated by a SAML session cookie in production and by a Basic-auth interceptor in development. There is no token to hand over.
+
+We checked their reference adapter before drawing a conclusion, and the finding survived the check in a stronger form than we expected. Their `NuxeoAuthAdapter` returns a complete `Authorization` header value — `Basic` plus base64 of the `Administrator`/`Administrator` credentials in `DEFAULT_NUXEO_CONFIG` — from a method named `getAccessToken`, and **nothing in their adapter calls it**. Its own comment says the transport builds its own header and "does not depend on this method"; we grepped the package at the pinned commit and confirmed there is no caller. Their POC ran cross-origin against `localhost:8080` with static Basic credentials and Nuxeo's CORS filter opened by hand.
+
+That matters because the RFC's central validation claim is that the ports were proven at N = 2 by building a Nuxeo adapter. For four of the five ports that claim holds up well, and the Nuxeo adapter genuinely did shape the permissions model. For `AuthPort` it does not: the port was never exercised, and the one auth topology Nuxeo actually ships in production — same-origin, cookie-session, credentials attached outside the client library — has no representation in the contract. RFC §5.2's statement that the "Nuxeo adapter wires its own client to the same `AuthPort`" is not true at the pinned commit.
+
+This is a fixable contract gap, not a reason to walk away. But it is the clearest evidence yet that being the second backend in a design is not the same as being designed for, which is the argument for seeking review status on the RFC rather than waiting to consume its output.
+
+**Seven further gaps, and eight in total, are catalogued in [CSX-447 content ports — consumer report from the Nuxeo Satori team](csx-447-port-gaps.md)**, written to be sent to CSX. The largest by product impact is that `SearchResultPage<T>` cannot carry aggregation buckets, which keeps our entire faceted-search and DAM surface off `SearchPort`.
+
 ## 2. What ADF HX Content Services is today
 
 `@alfresco/adf-hx-content-services`, version **0.0.8**, lives in the private `Alfresco/hxp-frontend-apps` monorepo (HFA) and is published through their internal packager.
@@ -41,11 +68,21 @@ It is a substantial, real library:
 
 ### Version compatibility is worse than the manifest suggests
 
-Its declared peer range is Angular `>=19.2.9`, but that range is misleading. The HFA monorepo builds and tests it against **Angular 20.3.25, Material 20.2.14, Satori UI 0.2.0 and TypeScript 5.8.3**, while we are on Angular 19.2, Material 19.2, Satori 0.1.5 and TypeScript 5.6.
+Its declared peer range is Angular `>=19.2.9`, but that range is misleading. **On the HFA `develop` branch, observed 7 August 2026,** the monorepo builds and tests it against **Angular 20.3.25, Material 20.2.14, Satori UI 0.2.0 and TypeScript 5.8.3**, while we are on Angular 19.2.20, Material 19.2, Satori 0.1.5 and TypeScript 5.6.
 
-npm would install the package without complaint, because our 19.2.20 satisfies `>=19.2.9` literally. But the compiled Angular partial-declaration format, the Material 20 theming API and Satori 0.2.0's component surface are all Angular-20-era. **Consuming it implies a major Angular upgrade on our side, not a patch bump.**
+npm would install the package without complaint, because our 19.2.20 satisfies `>=19.2.9` literally. But the compiled Angular partial-declaration format, the Material 20 theming API and Satori 0.2.0's component surface are all Angular-20-era. **Consuming the published library implies a major Angular upgrade on our side, not a patch bump.** That conclusion is unchanged and remains the operative one for any adoption decision.
 
 Note that this particular blocker is specific to _our_ codebase. A new application would simply start on Angular 20 and be better aligned than we could ever be — see the greenfield page.
+
+#### The figures above are `develop`'s, and one HFA branch does not share them
+
+> **Correction, 7 August 2026.** Earlier versions of this section stated the Angular 20.3 / Material 20.2 / Satori 0.2.0 figures as a property of "the library" without naming a branch. They are a property of **`develop` as of 7 August 2026** and are correct for it. They are **not** true of every HFA branch, and the exception matters to a decision now in front of us.
+>
+> The generative-UI PoC branch `feature/CSX-592-genUI` (head `c02c4e60`, 3 June 2026) sits on **Angular 19.2.20 and Material 19.2.19** — the same Angular minor we are on. Its merge base `a4378855` is dated 29 May 2026 and predates HFA's Angular 20 upgrade; `develop` has moved 933 commits ahead since.
+>
+> **What this changes and what it does not.** It does **not** weaken the conclusion above: we still cannot consume `@alfresco/adf-hx-content-services` as published from `develop` without an Angular 19 → 20 upgrade, and every adoption cost in this document stands. What it removes is a different and narrower barrier — the Angular gap is **not** a reason we cannot _read and port the genUI design_, which is source we would reimplement against our own components rather than a package we would install. Being 933 commits behind makes that branch readable as a design document and unusable as a base to build on, which is a staleness constraint rather than a version one.
+>
+> The two must not be conflated. "We cannot consume their component library" is true. "The Angular gap blocks us learning from their generative-UI work" is not, and was never the claim this document made. Full evidence: [CSX Generative UI PoC (CSX-588 / CSX-592) — Teardown](csx-generative-ui-teardown.md) §6.
 
 ### The central fact: it is an HxPR library
 
@@ -83,7 +120,7 @@ The [ADF HX Content Services Library Assessment](https://hyland.atlassian.net/wi
 - Exactly 12 API tokens must be configured before use
 - Components are predominantly "smart", communicating through shared services rather than explicit bindings
 
-The assessment also judges agent-driven composition of their components "feasible in controlled scenarios today". **Read that as a property of their library, not as something our agentic layer depends on.** The AG-UI agent runtime in Track A is a separate concern, unaffected by which content component library we adopt.
+The assessment also judges agent-driven composition of their components "feasible in controlled scenarios today". **Read that as a property of their library, not as something our agentic layer depends on.** The AG-UI agent runtime in Track A is a separate concern, unaffected by which content component library we adopt. Their own generative-UI PoC reinforces this rather than qualifying it: examined 7 August 2026, it uses `@ag-ui/*` on the client only, at `^0.0.53` with a caret, and its Node agent service has no `@ag-ui/*` dependency at all — **so it validates none of the AG-UI features Track A depends on.** See [the teardown](csx-generative-ui-teardown.md) §6.
 
 [CSX-494](https://hyland.atlassian.net/wiki/spaces/~61a51e0ad5986c006a1ec880/pages/4002718819) puts moving upload into the library at **7-10 weeks**, with an unresolved question about whether `HxpUploadService` can move at all. [CSX-495](https://hyland.atlassian.net/wiki/spaces/~61a51e0ad5986c006a1ec880/pages/4002718871) scopes the search orchestrator as feasible but Large.
 
@@ -103,7 +140,7 @@ The design defines a neutral `ContentNode` domain model and a port surface of `C
 
 That eight-port surface is the RFC's proposal, not the built artifact — read the drift note below before designing against it.
 
-Critically for us, **the design was validated against Nuxeo**. A POC built both HxPR and Nuxeo adapters, mounted one component on two routes differing only by adapter provider, and met every acceptance criterion including no SDK type appearing outside adapter packages. The POC even found that Nuxeo's wider permission model drove the port design rather than being forced into an HxPR shape.
+Critically for us, **the design was validated against Nuxeo**. A POC built both HxPR and Nuxeo adapters, mounted one component on two routes differing only by adapter provider, and met every acceptance criterion including no SDK type appearing outside adapter packages. The POC even found that Nuxeo's wider permission model drove the port design rather than being forced into an HxPR shape. §1.1 qualifies this: it holds for four of the five ports and not for `AuthPort`.
 
 ### It is built — but unmerged, conflicting, and decaying
 
@@ -126,7 +163,7 @@ What remains accurate is the governance position: all nine ADRs are status Propo
 
 ## 4. Where we stand
 
-Our codebase is 9 feature libraries and 7 shared libraries: 79 components, 34 injectables, and a Nuxeo access layer of 26 services exposing 208 public methods across 135 REST paths and 25 Automation operations.
+Our codebase is 9 feature libraries and 7 shared libraries: 79 components, 34 injectables, and a Nuxeo access layer of **26 services exposing 217 public methods** across 135 REST paths and 25 Automation operations. (Earlier versions of this page said 208; 217 is the count verified against the code on 6 August.)
 
 The overlap with ADF HX is narrower than it first appears.
 
@@ -134,7 +171,47 @@ The overlap with ADF HX is narrower than it first appears.
 
 **Not covered by them at all** — the entire DAM surface (asset grid, thumbnails, picture views, video transcodes and storyboard, EXIF/IPTC, ARender, bulk ZIP download, collections-as-lightboxes, faceted asset search), Knowledge Discovery, Knowledge Enrichment, Content Lake ingestion, the AI assists, the proposed agentic layer, administration, trash lifecycle, collections, workflow, vocabularies and Nuxeo Drive.
 
-Measured by lines of code, their components could plausibly replace **a quarter to a third** of `libs/features`, concentrated in `browse`, with partial coverage of `document-detail` and `search`. **It would not touch the part that makes the product interesting.**
+Measured by lines of code, their components could plausibly replace **a quarter to a third** of `libs/features`, concentrated in `browse`, with partial coverage of `document-detail` and `search`. **It would not touch the part that makes the product interesting.** See §1.1 for why that figure and the 12% data-layer figure differ, and why quoting either alone is misleading.
+
+### What actually sits behind a port
+
+Now that the ports are built, this is no longer an estimate. Four of the five carry real traffic:
+
+| Port              | Backed by                                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DocumentPort`    | `BrowseService` (path, root, update, move, copy), `NuxeoApiBase` (id, children, create, delete), `DocumentDetailService.getDocumentPermissions` |
+| `SearchPort`      | `NuxeoApiBase.nxqlSearch` — NXQL only, no page providers                                                                                        |
+| `PermissionsPort` | `DocumentDetailService` add/remove permission                                                                                                   |
+| `UploadPort`      | `DocumentImportService` batch upload, one file at a time                                                                                        |
+| `AuthPort`        | nothing — see §1.1                                                                                                                              |
+
+### What stays direct Nuxeo access, and why
+
+The other ~88% is not a backlog. Each of these is Nuxeo-specific for a structural reason, and no amount of adapter work moves it behind the current contract:
+
+| Area                                                                                                       | Why it cannot sit behind the port                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Faceted search and aggregations** — the search page, saved searches, DAM asset search                    | `SearchResultPage<T>` has no bucket field, so a mapping would silently drop the facet counts the UI exists to render. Gap 2.                 |
+| **The whole DAM surface** — asset grid, `picture:views`, `vid:transcodedVideos`, EXIF/IPTC, contact sheets | No representation in the neutral domain model, and ADF HX has no DAM concepts to map onto.                                                   |
+| **Blobs and renditions** — thumbnails, PDF previews, `fetchBlob`                                           | `RenditionRef.url` assumes a directly-fetchable URL; Nuxeo renditions need the session's auth headers. Both reference adapters throw. Gap 4. |
+| **Versioning**                                                                                             | No port concept. `versions-of-document` exists as a named query but check-in, check-out and restore do not.                                  |
+| **Locking**                                                                                                | No port concept.                                                                                                                             |
+| **Publication**                                                                                            | No port concept.                                                                                                                             |
+| **Comments, subscriptions, favourites**                                                                    | No port concept.                                                                                                                             |
+| **Collections**                                                                                            | Outside the five ports. We declare a local `nuxeo:collection-members` named query for reads; membership writes stay direct. Gap 3.           |
+| **Tags**                                                                                                   | Outside the five ports.                                                                                                                      |
+| **Tasks and workflow**                                                                                     | Outside the five ports entirely — no process concept exists in the contract.                                                                 |
+| **Directories and vocabularies**                                                                           | Outside the five ports.                                                                                                                      |
+| **Users and groups**                                                                                       | `PrincipalPort` is in the RFC and has no code at the pinned commit.                                                                          |
+| **Trash lifecycle**                                                                                        | We declare a local `nuxeo:trashed-children-of-folder` named query; untrash, purge and trash filters stay direct.                             |
+| **Audit**                                                                                                  | No port concept.                                                                                                                             |
+| **Administration**                                                                                         | Nuxeo-platform surface with no neutral equivalent.                                                                                           |
+| **Nuxeo Drive**                                                                                            | Nuxeo-platform integration.                                                                                                                  |
+| **ARender**                                                                                                | Third-party viewer integration.                                                                                                              |
+| **Content Lake ingest**                                                                                    | Hyland Content Intelligence surface, outside content management altogether.                                                                  |
+| **CSV and bulk import, bulk download and export**                                                          | `UploadPort` models a single file; there is no bulk or job concept. Gap 7 is the single-file case; bulk has no port at all.                  |
+
+Three of these — faceted search, renditions and bulk — are gaps we are asking CSX to close. The rest are genuinely outside the scope of a neutral content contract and we would not expect them to move.
 
 ## 5. Options
 
@@ -164,11 +241,13 @@ Do Option B for Beta. Simultaneously open the adapter-ownership question and the
 
 **Option D.** Adopt their contracts now, defer their components to a gate.
 
-The direction is right and we should not build against a shape we know will be superseded. But Option C's blockers are structural rather than schedule-driven: SDK-typed component inputs until Wave 3, an Angular 20 gap, and no DAM capability at all. None is fixed by working harder, and the last is not fixable by them at all if DAM is outside their scope.
+The direction is right and we should not build against a shape we know will be superseded. But Option C's blockers are structural rather than schedule-driven: SDK-typed component inputs until Wave 3, an Angular 20 gap against the `develop` branch we would consume from (§2), and no DAM capability at all. None is fixed by working harder, and the last is not fixable by them at all if DAM is outside their scope.
 
-Option B costs essentially nothing beyond work Track B had already committed to, and it converts a future migration from a rewrite into an adapter swap. The important refinement is **where the contracts come from**: pin to the port library on the branch, not to either RFC.
+Option B costs essentially nothing beyond work Track B had already committed to, and it converts a future migration from a rewrite into an adapter swap. The important refinement is **where the contracts come from**: pin to the port library on the branch, not to either RFC. Building it (§1.1) confirmed the cost estimate and strengthened the case: alignment was cheap, and it bought us a precise, evidenced set of contract asks we would otherwise not have.
 
-There is also a case for actively pursuing the adapter rather than waiting. Their POC used Nuxeo specifically to prove the port surface was not accidentally HxPR-shaped, and the resulting adapter is real working source with tests. Their architecture's central validation claim depends on a second adapter nobody is maintaining. We are the only team who can make that claim durable, and that is leverage.
+There is also a case for actively pursuing the adapter rather than waiting, and §1.1 has made it stronger. Their POC used Nuxeo specifically to prove the port surface was not accidentally HxPR-shaped, and the resulting adapter is real working source with tests. But we have now built the same adapter against a real deployment and found eight places where the shape does not carry Nuxeo — including one, `AuthPort`, where the POC's conclusion does not hold because the POC did not exercise the port.
+
+Their architecture's central validation claim depends on a second adapter nobody is maintaining, and on that adapter having been tested against a deployment that resembles a customer's. We are the only team who can supply either. **That is the leverage, and the [gaps report](csx-447-port-gaps.md) is how we spend it**: we are prepared to own the Nuxeo adapter, and those eight contract changes are what would make it viable rather than a collection of documented divergences.
 
 ## 7. Owning the Nuxeo adapter
 
@@ -176,7 +255,7 @@ We treat it as settled that if ADF HX is to serve Nuxeo, we own the adapter. The
 
 For the **migration case**, 20-26 engineer-weeks to production grade. For a **greenfield application**, 33-54 — roughly double, because a migration can adopt the adapter for core ECM and keep its own DAM data layer, whereas a greenfield app has the adapter as its entire data layer on the critical path from day one.
 
-Their existing adapter is around 1,300 lines with 975 lines of specs, and **every Nuxeo call it makes is one our services already make** — 23 of 28 substantive port methods are satisfiable from existing service methods. This is re-homing and hardening, not a green-field build.
+Their existing adapter is around 1,300 lines with 975 lines of specs, and **every Nuxeo call it makes is one our services already make**. We have since confirmed that by building our own: of the 22 substantive port methods (26 less the four `capabilities()` descriptors), **20 are satisfied from existing service methods**. The two that are not are `getAccessToken`, which has no meaning on a cookie-session deployment, and `getWithRendition`, which no Nuxeo adapter can implement as the contract defines it. This is re-homing and hardening, not a green-field build.
 
 The critical framing: **the adapter is not the expensive part of adoption.** Wave 3 and the Angular 20 upgrade are. Building the adapter before Wave 3 exists produces a component with no consumer.
 
@@ -188,8 +267,9 @@ Open sub-questions: does it live in HFA (their monorepo, their release train, re
 - **ADF HX has no DAM surface and its owners are not building one.** For an ECM _and DAM_ product this is a permanent gap, not a timing one, and it caps the value of any adoption.
 - **The abstraction is not just stalled, it is decaying.** Both PRs are static since 13 July, now conflicting, and nearly 400 `develop` commits behind. All nine ADRs remain at Proposed.
 - **There is no authoritative statement of the port contract.** The Confluence RFC is actively edited (v88, 3 August) and has moved ahead of the code; the in-repo RFC disagrees with it; the ledger claims to supersede both. Whatever we align to must be a pinned commit, not a document.
+- **The "proven at N = 2" claim is weaker than it reads.** `AuthPort` was never exercised by the Nuxeo POC, and RFC §5.2 describes wiring that does not exist at the pinned commit (§1.1). Four of the five ports do hold up. But the claim should be treated as evidence, not as a guarantee that a port will fit a real Nuxeo deployment, and any further alignment should be verified against code the way §1.1 was.
 - **Two unreconciled roadmaps** mean the library's near-term API is genuinely unpredictable.
-- **The Angular 20 gap is a project in its own right**, and if it is not funded, component adoption is decided by default.
+- **The Angular 20 gap is a project in its own right**, and if it is not funded, component adoption is decided by default. The gap is against `develop`, which is what we would install from; it does not constrain reading other HFA branches (§2).
 - **Adopting the components means adopting** `@alfresco/adf-core` wholesale. The largest hidden cost in any adoption estimate.
 - **Their release train is not ours.** A v0.0.8 library in a private monorepo becomes a hard external dependency on our critical path.
 - **CSX bandwidth.** Of the forty most recently merged HFA PRs, the overwhelming majority are unrelated product work; two are CSX-tagged.
@@ -199,9 +279,10 @@ Open sub-questions: does it live in HFA (their monorepo, their release train, re
 
 One existing task changes and two are added. Nothing is removed, and the critical path does not move.
 
-- **B1 is re-specified.** Define interfaces matching the port library on #18189 at a pinned commit — `DocumentPort`, `SearchPort`, `PermissionsPort`, `UploadPort`, `AuthPort` — over their neutral domain model, with Nuxeo REST access confined behind them and Nx lint tags enforcing the boundary. Pin to the branch, not either RFC. Same effort, better target. Re-check the pin when the task starts: the branch may have been rebased, merged or abandoned.
-- **B2 gains a constraint.** Keep ports and adapter in separate entry points, so a future swap is a dependency change rather than a refactor.
-- **New B4: adapter ownership engagement.** Confirm package installability from GitHub Packages, open the ownership and funding question with CSX and architecture, and record the reassessment gate.
+- **B1 is re-specified — and is now done.** Define interfaces matching the port library on #18189 at a pinned commit — `DocumentPort`, `SearchPort`, `PermissionsPort`, `UploadPort`, `AuthPort` — over their neutral domain model, with Nuxeo REST access confined behind them. Pin to the branch, not either RFC. This shipped as `libs/shared/nuxeo-client/content-ports` and `…/content-adapter-nuxeo`, pinned to `61eb45bf`. Re-check the pin before any further alignment work: the branch may since have been rebased, merged or abandoned.
+- **B2 gains a constraint — also done.** Ports and adapter are separate Nx projects with separate entry points, so a future swap is a dependency change rather than a refactor.
+- **The boundary is now genuinely enforced, which it previously was not.** Earlier versions of this page and of `AGENTS/00-architecture.md` described the layer boundary as enforced by Nx lint tags. That was aspirational: `@nx/enforce-module-boundaries` carried a single permissive `'*' → ['*']` rule, which constrains nothing. Real `depConstraints` are now in place — `type:port-contract` may depend on no workspace library, `type:content-adapter` may depend only on the contract and the data-access layer, and `scope:features`, `type:ui` and `type:data-access` may not depend on the adapter at all, so only the untagged application composition root can name a backend. Both directions have been verified to fail lint. Note this covers the content-adapter boundary only; the feature-isolation rule is still convention checked in review, not lint.
+- **New B4: adapter ownership engagement.** Confirm package installability from GitHub Packages, open the ownership and funding question with CSX and architecture, and record the reassessment gate. The [gaps report](csx-447-port-gaps.md) is the opening artifact for that conversation.
 
 ## 10. Open questions for leadership
 
@@ -212,7 +293,7 @@ Detailed engineering questions are in the two child pages. The ones needing a le
 3. **What happens to the two conflicting PRs, and is Wave 3 funded?** Without Wave 3 the components stay SDK-typed and cannot render Nuxeo data without the SDK emulation ADR-001 rejects.
 4. **Who funds the adapter — 20-26 weeks for migration, 33-54 for greenfield — and where does it live?**
 5. **Do we accept a cross-repo dependency on HFA's release train** for a product shipped as a Nuxeo marketplace package to OnPrem customers?
-6. **Should we seek review or approver status on RFC CSX-447?** We are the second backend it is designed against and are not currently listed.
+6. **Should we seek review or approver status on RFC CSX-447?** We are the second backend it is designed against and are not currently listed. §1.1 is the argument for saying yes: the `AuthPort` gap was invisible from the RFC and from the POC, and only appeared when someone built the adapter against a deployment that authenticates the way customers do. That is the review capacity we would be contributing.
 7. **What is the gate for reassessing component adoption** — abstraction merged, Wave 3 funded, ADRs accepted, roadmaps reconciled, adapter owned? Any date-based gate without those conditions will be met with "not yet".
 8. **Is there an expectation from CIC leadership** that Nuxeo Satori converges on the Satori content surface within a stated timeframe? That would change the recommendation from Option D toward Option C.
 9. **If a Nuxeo product needs DAM and ADF HX will not serve it, where should a Hyland DAM component library live?** Building one inside their library and building one outside it are both defensible; drifting into the second by accident is not.
@@ -228,6 +309,8 @@ Detailed engineering questions are in the two child pages. The ones needing a le
 - [ADR-001 Adopt Hexagonal Ports & Adapters](https://hyland.atlassian.net/wiki/spaces/CSX/pages/4192112470)
 - [Towards a backend agnostic satori-content library](https://hyland.atlassian.net/wiki/spaces/CSX/pages/4040786492)
 - [Value Proposition: satori-content Library](https://hyland.atlassian.net/wiki/spaces/~rpaterson/pages/4211639817)
+- [CSX-447 content ports — consumer report from the Nuxeo Satori team](csx-447-port-gaps.md) — the eight gaps found by building the adapter
+- [CSX Generative UI PoC (CSX-588 / CSX-592) — Teardown](csx-generative-ui-teardown.md) — source for the §2 branch-version correction of 7 August 2026
 - [PR #18189 — CSX-447 CSX abstraction layer](https://github.com/Alfresco/hxp-frontend-apps/pull/18189) (draft, conflicting, static since 13 Jul 2026)
 - [PR #18232 — CSX-447 abstraction-layer research and POC](https://github.com/Alfresco/hxp-frontend-apps/pull/18232) (draft, conflicting, static since 13 Jul 2026)
 - `Alfresco/hxp-frontend-apps`, `libs/adf/enterprise/adf-hx-content-services` (private)

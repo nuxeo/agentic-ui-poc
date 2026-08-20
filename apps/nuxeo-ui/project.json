@@ -2,6 +2,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "name": "nuxeo-ui",
   "projectType": "application",
+  "tags": ["scope:app", "type:app"],
   "generators": {
     "@schematics/angular:component": {
       "style": "scss"
@@ -50,6 +51,9 @@
         "cwd": "{workspaceRoot}",
         "command": "ng test nuxeo-ui --no-watch --browsers=ChromeHeadless"
       }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
     }
   }
 }

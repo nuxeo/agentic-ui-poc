@@ -1,0 +1,20 @@
+{
+  "name": "content-ports",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/nuxeo-client/content-ports/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:port-contract"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/shared/nuxeo-client/content-ports"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

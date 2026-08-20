@@ -1,0 +1,59 @@
+{
+  "name": "agent-gateway",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/agent-gateway/src",
+  "projectType": "application",
+  "tags": ["scope:agent-gateway", "type:app"],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/agent-gateway",
+        "main": "apps/agent-gateway/src/main.ts",
+        "tsConfig": "apps/agent-gateway/tsconfig.app.json",
+        "assets": ["apps/agent-gateway/*.md", "apps/agent-gateway/deploy/**/*"],
+        "generatePackageJson": false,
+        "clean": true
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node dist/apps/agent-gateway/src/main.js"
+      },
+      "dependsOn": ["build"]
+    },
+    "build-demo": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/agent-gateway-demo",
+        "main": "apps/agent-gateway/src/main.demo.ts",
+        "tsConfig": "apps/agent-gateway/tsconfig.demo.json",
+        "generatePackageJson": false,
+        "clean": true
+      }
+    },
+    "serve-demo": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "node dist/apps/agent-gateway-demo/src/main.demo.js",
+        "env": {
+          "AGENT_DEMO_MODE": "scripted"
+        }
+      },
+      "dependsOn": ["build-demo"]
+    },
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/apps/agent-gateway"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

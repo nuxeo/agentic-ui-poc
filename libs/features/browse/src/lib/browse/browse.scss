@@ -73,18 +73,6 @@
 sat-breadcrumbs {
   padding-bottom: 12px;
   flex-shrink: 0;
-
-  ::ng-deep .sat-breadcrumbs-chevron {
-    display: none;
-  }
-
-  ::ng-deep .sat-breadcrumbs-list li:not(:last-child)::after {
-    content: '›';
-    margin-left: 4px;
-    color: currentColor;
-    opacity: 0.75;
-    line-height: 1;
-  }
 }
 
 // ── Two-column body layout ──

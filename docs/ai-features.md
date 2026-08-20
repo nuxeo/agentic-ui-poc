@@ -1,63 +1,70 @@
 # AI Features
 
 This document describes the AI capabilities integrated into the Nuxeo Angular UI.
-Most AI features are powered by OpenAI's GPT-4o / GPT-4o-mini models through a
-dedicated Express backend that acts as a secure proxy.
 
-Knowledge Enrichment is the exception: it runs through the Nuxeo server and the
-Hyland Content Intelligence Connector (CIC), not through `apps/ai-backend`.
+**There is no AI backend in this repository.** The `apps/ai-backend` Express service described by
+earlier revisions of this document was removed. AI now ships as
+[`nuxeo-ai-package`](https://github.com/nuxeo/nuxeo-ai-package), a standalone Java marketplace
+bundle installed on the Nuxeo server, which calls the Hyland AI Platform (HAIP) Model Gateway.
+The Angular app reaches it through the Nuxeo Automation API.
+
+Knowledge Enrichment follows the same pattern against a different bundle: the Hyland Content
+Intelligence Connector (CIC).
 
 ## Architecture
 
 ```
-OpenAI-backed features
-Browser (Angular)          AI Backend (Express)         External
-┌──────────────┐          ┌──────────────────┐        ┌──────────┐
-│  nuxeo-ui    │──/ai/*──▶│  apps/ai-backend  │──────▶│  OpenAI  │
-│  :4200       │          │  :3000            │        │  API     │
-│  libs/shared │          │  services/        │       └──────────┘
-│  /ai-client  │          │  nuxeo.service.ts │
-└──────────────┘          └────────┬──────────┘
-                                   │
-                          ┌────────▼──────────┐
-                          │  Nuxeo Server     │
-                          │  :8080            │
-                          └───────────────────┘
+AI features
+┌──────────────┐                          ┌──────────────────────┐        ┌──────────┐
+│  nuxeo-ui    │  POST /nuxeo/api/v1/     │  Nuxeo Server        │───────▶│  HAIP    │
+│  :4200       │  automation/AI.*         │  + nuxeo-ai-package  │        │  Gateway │
+│  libs/shared │─────────────────────────▶│  :8080               │        └──────────┘
+│  /ai-client  │  { "params": { … } }     └──────────────────────┘
+└──────────────┘
 
 Knowledge Enrichment
-┌──────────────┐          ┌──────────────────┐        ┌───────────────┐
-│  nuxeo-ui    │─────────▶│  Nuxeo Server     │──────▶│  CIC / Context │
-│  libs/shared │ multipart│  automation ops   │       │  API           │
-│  /ke-client  │ blob     │  HylandKE.*       │       └───────────────┘
+┌──────────────┐          ┌──────────────────┐        ┌────────────────┐
+│  nuxeo-ui    │─────────▶│  Nuxeo Server    │───────▶│  CIC / Context │
+│  libs/shared │ multipart│  automation ops  │        │  API           │
+│  /ke-client  │ blob     │  HylandKE.*      │        └────────────────┘
 └──────────────┘          └──────────────────┘
 ```
 
 **Key design decisions:**
 
-- The OpenAI API key never reaches the browser. All LLM calls go through `apps/ai-backend`.
-- The Angular dev server proxies `/ai/*` to `localhost:3000` via `proxy.conf.json`.
-- The backend also makes server-side Nuxeo REST API calls (document content, metadata, audit logs) to build context for the LLM.
-- Knowledge Enrichment uses a separate path: browser -> Nuxeo automation ->
-  CIC -> Hyland Context API.
+- **No model credentials in the browser or in this repo.** The HAIP key is configured on the Nuxeo
+  server as part of `nuxeo-ai-package`.
+- **AI requests are ordinary Nuxeo requests.** They go through `HttpClient`, so
+  `nuxeoAuthInterceptor` attaches auth and the same `/nuxeo` dev-proxy entry serves them. There is
+  no `/ai/*` proxy rule and no second process to start.
+- **Operations execute as the signed-in user**, so repository ACLs apply to AI results without the
+  UI doing anything.
+- **Nothing streams.** `AI.Chat` is a single request/response call. Streaming, tool loops and
+  durable threads are the subject of the agent-runtime work, not this path.
 
 ## Quick Start
 
 ```bash
-# 1. Set your OpenAI API key in apps/ai-backend/.env
-#    OPENAI_API_KEY=sk-proj-...
-#    NUXEO_URL=http://localhost:8080
-#    NUXEO_AUTH=Administrator:Administrator
-#    PORT=3000
-
-# 2. Start both Angular app and AI backend in one command
-npm run dev
-
-# 3. Or start them separately
-npx nx serve ai-backend    # http://localhost:3000
 npx nx serve nuxeo-ui      # http://localhost:4200
 ```
 
-Verify the backend is running: `curl http://localhost:3000/ai/health`
+That is the whole setup. The dev proxy (`apps/nuxeo-ui/proxy.conf.json`) forwards `/nuxeo` to
+`http://localhost:8080`; `proxy.conf.beta.json` targets the shared beta cloud instance. AI features
+work as soon as the target Nuxeo server has `nuxeo-ai-package` installed and HAIP configured.
+
+To check that the package is present on a server, list the operation:
+
+```bash
+curl -u <user>:<pass> http://localhost:8080/nuxeo/api/v1/automation/AI.Chat
+```
+
+## Client Reference
+
+All calls are made by `AiGatewayService`
+(`libs/shared/ai-client/src/lib/ai-gateway.service.ts`), which builds
+`POST <AI_BACKEND_URL>/api/v1/automation/<OperationId>` with a `{ "params": { … } }` body.
+`AI_BACKEND_URL` is provided as `'/nuxeo'` in `apps/nuxeo-ui/src/app/app.config.ts` — the token
+name is a leftover from the Express era and holds a Nuxeo origin, not an AI service URL.
 
 ## Features
 
@@ -70,23 +77,24 @@ Converts plain English queries into valid NXQL and executes them against Nuxeo.
 - Type a query like "PDFs uploaded last week by Administrator"
 - The system generates and displays the NXQL query
 - Results appear in the standard grid/table/list views
-- Autocomplete suggestions appear as you type (debounced, uses gpt-4o-mini)
+- Autocomplete suggestions appear as you type (400 ms debounce, minimum 3 characters)
 
 **Also available in:** Admin > NXQL Search page as a "Generate NXQL" input that populates the query editor.
 
-| Component           | File                                                           |
-| ------------------- | -------------------------------------------------------------- |
-| Search UI           | `libs/features/search/src/lib/search/search.ts`                |
-| Admin NXQL          | `libs/features/administration/src/lib/admin-nxql-search-page/` |
-| Backend route       | `apps/ai-backend/src/routes/nl-to-nxql.route.ts`               |
-| NXQL schema context | `apps/ai-backend/src/context/nxql-schema.ts`                   |
+| Component  | File                                                           |
+| ---------- | -------------------------------------------------------------- |
+| Search UI  | `libs/features/search/src/lib/search/search.ts`                |
+| Admin NXQL | `libs/features/administration/src/lib/admin-nxql-search-page/` |
 
-**API:** `POST /ai/nl-to-nxql`
+**Operation:** `AI.NlToNxql`
 
 ```json
-{ "query": "all PDFs modified this month", "suggestions": false }
+POST /nuxeo/api/v1/automation/AI.NlToNxql
+{ "params": { "query": "all PDFs modified this month", "suggestions": false } }
 → { "nxql": "SELECT * FROM Document WHERE ...", "explanation": "..." }
 ```
+
+With `"suggestions": true` the same operation returns `{ "suggestions": string[] }` for autocomplete.
 
 ---
 
@@ -94,21 +102,16 @@ Converts plain English queries into valid NXQL and executes them against Nuxeo.
 
 **Location:** Document Detail > AI Insights tab > Document Summary
 
-Generates a structured summary of any document by reading its blob content and metadata.
-
-- Click "Generate" to create a summary
-- Returns a paragraph summary + bullet-point key points
-- Handles text and JSON blobs; reports binary content gracefully
+Generates a structured summary of a document from its blob content and metadata.
 
 | Component          | File                                                                       |
 | ------------------ | -------------------------------------------------------------------------- |
 | Document Detail UI | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
-| Backend route      | `apps/ai-backend/src/routes/summarize.route.ts`                            |
 
-**API:** `POST /ai/summarize`
+**Operation:** `AI.Summarize`
 
 ```json
-{ "docId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" }
+{ "params": { "docId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" } }
 → { "summary": "...", "keyPoints": ["...", "..."], "wordCount": 1234 }
 ```
 
@@ -118,21 +121,17 @@ Generates a structured summary of any document by reading its blob content and m
 
 **Location:** Document Detail > AI Insights tab > Suggested Tags
 
-Analyzes document content and metadata to recommend relevant tags with confidence scores.
-
-- Click "Suggest Tags" to generate recommendations
-- Each tag shows a confidence percentage
-- Click a tag chip to apply it to the document immediately (uses `TagService.addTag`)
+Recommends tags with confidence scores. Clicking a tag chip applies it immediately via
+`TagService.addTag`.
 
 | Component          | File                                                                       |
 | ------------------ | -------------------------------------------------------------------------- |
 | Document Detail UI | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
-| Backend route      | `apps/ai-backend/src/routes/suggest-tags.route.ts`                         |
 
-**API:** `POST /ai/suggest-tags`
+**Operation:** `AI.SuggestTags`
 
 ```json
-{ "docId": "..." }
+{ "params": { "docId": "..." } }
 → { "tags": [{ "label": "contract", "confidence": 0.95 }, ...] }
 ```
 
@@ -142,20 +141,16 @@ Analyzes document content and metadata to recommend relevant tags with confidenc
 
 **Location:** Document Detail > AI Insights tab > Classification & Metadata
 
-Classifies document content and suggests metadata values including description, nature, subjects, and workflow recommendation.
-
-- Click "Classify" to analyze
-- Displays suggested description, nature category, subjects, and recommended workflow with reasoning
+Suggests description, nature category, subjects, and a recommended workflow with reasoning.
 
 | Component          | File                                                                       |
 | ------------------ | -------------------------------------------------------------------------- |
 | Document Detail UI | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
-| Backend route      | `apps/ai-backend/src/routes/classify.route.ts`                             |
 
-**API:** `POST /ai/classify`
+**Operation:** `AI.Classify`
 
 ```json
-{ "docId": "..." }
+{ "params": { "docId": "..." } }
 → { "description": "...", "nature": "report", "subjects": ["finance"],
     "suggestedType": "File", "confidence": 0.85,
     "suggestedWorkflow": "SerialDocumentReview", "workflowReason": "..." }
@@ -167,21 +162,17 @@ Classifies document content and suggests metadata values including description, 
 
 **Location:** Document Detail > AI Insights tab > Related Documents
 
-Finds documents related to the current one using a combination of LLM-generated search queries and OpenAI text embeddings with cosine similarity scoring.
-
-- Click "Find Similar" to discover related documents
-- Results show title, path, and relevance score
-- Click any result to navigate to that document
+Finds documents related to the current one, scored by relevance. Results show title, path and
+score, and navigate to the document on click.
 
 | Component          | File                                                                       |
 | ------------------ | -------------------------------------------------------------------------- |
 | Document Detail UI | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
-| Backend route      | `apps/ai-backend/src/routes/similar.route.ts`                              |
 
-**API:** `POST /ai/similar`
+**Operation:** `AI.Similar`
 
 ```json
-{ "docId": "...", "limit": 5 }
+{ "params": { "docId": "...", "limit": 5 } }
 → { "documents": [{ "uid": "...", "title": "...", "path": "...", "type": "File", "score": 0.87 }] }
 ```
 
@@ -191,28 +182,28 @@ Finds documents related to the current one using a combination of LLM-generated 
 
 **Location:** App header sparkle icon (top-right) opens a chat drawer
 
-A context-aware conversational assistant that can answer questions about documents, search the repository, and provide workflow guidance.
+A context-aware assistant that answers questions about documents, searches the repository, and
+provides workflow guidance. It knows which document or page you are viewing and shows source
+document citations as clickable chips.
 
-- Uses RAG (Retrieval-Augmented Generation): detects search intent, queries Nuxeo, and includes results as context
-- Context-aware: knows which document/page you are currently viewing
-- Shows source document citations as clickable chips
-- Welcome screen with starter suggestion prompts
+The reply arrives in one response — there is no token streaming. Conversation history lives in an
+in-memory signal and is lost on reload.
 
 | Component          | File                                                 |
 | ------------------ | ---------------------------------------------------- |
 | Chat drawer UI     | `apps/nuxeo-ui/src/app/shell/app-shell.component.ts` |
 | Chat state service | `libs/shared/ai-client/src/lib/ai-chat.service.ts`   |
-| Backend route      | `apps/ai-backend/src/routes/chat.route.ts`           |
-| RAG pipeline       | `apps/ai-backend/src/services/rag.service.ts`        |
 
-**API:** `POST /ai/chat`
+**Operation:** `AI.Chat`
 
 ```json
-{ "message": "What documents were modified today?",
-  "history": [...],
-  "context": { "docId": "...", "page": "/search" } }
+{ "params": { "message": "What documents were modified today?",
+              "historyJson": "[{\"role\":\"user\",\"content\":\"...\"}]",
+              "docId": "", "page": "/search" } }
 → { "reply": "...", "sources": [{ "uid": "...", "title": "...", "path": "..." }] }
 ```
+
+`history` is JSON-stringified into `historyJson` because Automation parameters are scalars.
 
 ---
 
@@ -220,21 +211,18 @@ A context-aware conversational assistant that can answer questions about documen
 
 **Location:** Dashboard page > AI Insights widget
 
-Generates personalized, actionable insights based on the user's pending tasks, recent documents, and repository activity.
+Generates personalized, actionable insights from the user's pending tasks, recent documents and
+repository activity. Loads automatically when the dashboard opens. Each insight has an icon, a
+priority level (high / medium / low) and a link.
 
-- Loads automatically when the dashboard opens
-- Each insight has an icon, priority level, and a link to the relevant page
-- Priority levels: high (red), medium (orange), low (green)
+| Component    | File                                                          |
+| ------------ | ------------------------------------------------------------- |
+| Dashboard UI | `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts` |
 
-| Component     | File                                                          |
-| ------------- | ------------------------------------------------------------- |
-| Dashboard UI  | `apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts` |
-| Backend route | `apps/ai-backend/src/routes/insights.route.ts`                |
-
-**API:** `POST /ai/insights`
+**Operation:** `AI.Insights`
 
 ```json
-{ "userId": "Administrator" }
+{ "params": { "userId": "Administrator" } }
 → { "insights": [{ "text": "...", "icon": "task", "link": "/tasks", "priority": "high" }] }
 ```
 
@@ -242,81 +230,90 @@ Generates personalized, actionable insights based on the user's pending tasks, r
 
 ### 8. Audit Anomaly Detection
 
-**Location:** Admin > Analytics > AI Audit Anomalies tab
+**Location:** Admin > Analytics > AI Audit Anomalies tab, and Admin > Audit
 
-Analyzes recent audit events using AI to detect unusual patterns such as bulk deletions, permission escalations, or mass downloads.
+Analyzes recent audit events for unusual patterns such as bulk deletions, permission escalations
+or mass downloads. Select a time range, scan, and read the summary plus per-anomaly severity cards.
 
-- Select a time range (24h, 7d, 30d)
-- Click "Scan for Anomalies"
-- Displays a summary assessment and individual anomaly cards with severity levels
+| Component    | File                                                         |
+| ------------ | ------------------------------------------------------------ |
+| Analytics UI | `libs/features/administration/src/lib/admin-analytics-page/` |
+| Audit UI     | `libs/features/administration/src/lib/admin-audit-page/`     |
 
-| Component     | File                                                         |
-| ------------- | ------------------------------------------------------------ |
-| Analytics UI  | `libs/features/administration/src/lib/admin-analytics-page/` |
-| Backend route | `apps/ai-backend/src/routes/anomalies.route.ts`              |
-
-**API:** `POST /ai/anomalies`
+**Operation:** `AI.Anomalies`
 
 ```json
-{ "timeRange": "24h" }
+{ "params": { "timeRange": "24h" } }
 → { "anomalies": [{ "description": "...", "severity": "high", "events": [...], "timestamp": "..." }],
     "summary": "..." }
 ```
 
 ---
 
-### 9. Comment Sentiment Analysis
+### 9. Natural Language Audit Filtering and Summary
 
-**Location:** Available via API (UI integration pending)
+**Location:** Admin > Audit
 
-Analyzes comment threads on documents to determine sentiment and provide a discussion summary.
+Two further operations back the audit page: a natural language filter over audit entries, and a
+summary of the entries currently in view.
 
-| Component     | File                                            |
-| ------------- | ----------------------------------------------- |
-| Backend route | `apps/ai-backend/src/routes/sentiment.route.ts` |
+| Component | File                                                     |
+| --------- | -------------------------------------------------------- |
+| Audit UI  | `libs/features/administration/src/lib/admin-audit-page/` |
 
-**API:** `POST /ai/sentiment`
+**Operations:** `AI.AuditNlFilter`, `AI.AuditSummarize`
 
 ```json
-{ "comments": [{ "id": "c1", "text": "Looks great!" }] }
+{ "params": { "query": "deletions by admins last week", "today": "2026-08-06" } }
+{ "params": { "entriesJson": "[ … audit entries … ]" } }
+```
+
+---
+
+### 10. Comment Sentiment Analysis
+
+**Location:** Document Detail > comment thread > "Analyze sentiment"
+
+Classifies the sentiment of each comment and produces a thread summary. Sentiment is rendered
+inline on each comment.
+
+| Component          | File                                                                       |
+| ------------------ | -------------------------------------------------------------------------- |
+| Document Detail UI | `libs/features/document-detail/src/lib/document-detail/document-detail.ts` |
+
+**Operation:** `AI.Sentiment`
+
+```json
+{ "params": { "commentsJson": "[{\"id\":\"c1\",\"text\":\"Looks great!\"}]" } }
 → { "sentiments": [{ "id": "c1", "sentiment": "positive", "summary": "..." }],
     "threadSummary": "..." }
 ```
 
 ---
 
-### 10. Natural Language Permission Queries
+### 11. Natural Language Permission Queries — client only, no UI
 
-**Location:** Available via API (UI integration pending)
+`AiGatewayService.queryPermissions()` exists and calls `AI.NlPermissions`, but nothing in the
+application calls it. Treat it as an unwired capability rather than a shipped feature.
 
-Answers natural language questions about document permissions by querying Nuxeo ACLs.
-
-| Component     | File                                                 |
-| ------------- | ---------------------------------------------------- |
-| Backend route | `apps/ai-backend/src/routes/nl-permissions.route.ts` |
-
-**API:** `POST /ai/nl-permissions`
+**Operation:** `AI.NlPermissions`
 
 ```json
-{ "query": "Who can edit documents in /default-domain/workspaces/Legal?" }
+{ "params": { "query": "Who can edit documents in /default-domain/workspaces/Legal?" } }
 → { "answer": "...", "results": [{ "principal": "jdoe", "permission": "ReadWrite", "path": "/..." }] }
 ```
 
 ---
 
-### 11. Knowledge Enrichment
+### 12. Knowledge Enrichment
 
 **Location:** Document Detail > document preview header (top-right KE action buttons)
 
-Knowledge Enrichment runs through the Hyland Content Intelligence Connector
-installed on Nuxeo. It does not use the OpenAI backend in this repo.
+Knowledge Enrichment runs through the Hyland Content Intelligence Connector installed on Nuxeo. It
+is a separate bundle from `nuxeo-ai-package`.
 
-- PDF actions:
-  - classify document
-  - extract named entities
-  - summarize document
-- Image action:
-  - describe image and extract image entities
+- PDF actions: classify document, extract named entities, summarize document
+- Image action: describe image and extract image entities
 - Results are persisted back into Nuxeo metadata and refreshed in the properties panel
 
 | Component / Service   | File                                                                       |
@@ -328,8 +325,7 @@ installed on Nuxeo. It does not use the OpenAI backend in this repo.
 
 **API:** `POST /nuxeo/site/automation/HylandKnowledgeEnrichment.Enrich`
 
-The client first downloads the current blob from Nuxeo, then posts a multipart
-automation request:
+The client first downloads the current blob from Nuxeo, then posts a multipart automation request:
 
 ```json
 {
@@ -365,44 +361,18 @@ The normalized result contains Context API outputs such as:
 
 ## Project Structure
 
-```
-apps/ai-backend/                    # Express.js AI backend
-  src/
-    main.ts                         # Server entry point, mounts all routes under /ai
-    config.ts                       # Environment config + OpenAI client singleton
-    middleware/
-      error-handler.ts              # Global error handler (rate limits, quotas)
-    services/
-      openai.service.ts             # Chat completions, streaming, embeddings wrapper
-      nuxeo.service.ts              # Server-side Nuxeo REST client (fetch + Basic Auth)
-      rag.service.ts                # RAG pipeline: intent detection + context retrieval + generation
-    context/
-      nxql-schema.ts                # Nuxeo document types, fields, and NXQL grammar reference
-      system-prompts.ts             # Tuned system prompts for each feature
-    routes/
-      health.route.ts               # GET  /ai/health
-      nl-to-nxql.route.ts           # POST /ai/nl-to-nxql
-      summarize.route.ts            # POST /ai/summarize
-      chat.route.ts                 # POST /ai/chat
-      suggest-tags.route.ts         # POST /ai/suggest-tags
-      classify.route.ts             # POST /ai/classify
-      similar.route.ts              # POST /ai/similar
-      anomalies.route.ts            # POST /ai/anomalies
-      sentiment.route.ts            # POST /ai/sentiment
-      insights.route.ts             # POST /ai/insights
-      nl-permissions.route.ts       # POST /ai/nl-permissions
-  .env                              # Environment variables (not committed)
-  project.json                      # Nx project config
-  tsconfig.json
+Everything AI-related in this repository is client-side:
 
+```
 libs/shared/ai-client/              # Angular library for AI integration
   src/
     index.ts                        # Public API barrel
     lib/
-      ai.config.ts                  # AI_BACKEND_URL InjectionToken
-      ai-gateway.service.ts         # HTTP service with methods for all AI endpoints
+      ai.config.ts                  # AI_BACKEND_URL InjectionToken (holds a Nuxeo origin)
+      ai-gateway.service.ts         # Automation operation client for every AI.* operation
       ai-chat.service.ts            # Signal-based chat conversation state
-      ai.models.ts                  # TypeScript interfaces for all request/response types
+      ai-feature-flag.service.ts    # localStorage-backed on/off flag, default on
+      ai.models.ts                  # Request/response interfaces
 libs/shared/ke-client/              # Angular library for KE via Nuxeo CIC
   src/
     index.ts                        # Public API barrel
@@ -412,37 +382,29 @@ libs/shared/ke-client/              # Angular library for KE via Nuxeo CIC
       ke.models.ts                  # Context API request/response models
 ```
 
+The operations themselves live in the
+[`nuxeo-ai-package`](https://github.com/nuxeo/nuxeo-ai-package) repository.
+
 ## Models Used
 
-| Feature            | Model                                | Reason                                              |
-| ------------------ | ------------------------------------ | --------------------------------------------------- |
-| NL-to-NXQL         | gpt-4o                               | Needs strong reasoning for query generation         |
-| Search suggestions | gpt-4o-mini                          | Fast autocomplete, low cost                         |
-| Summarization      | gpt-4o                               | Long-context document handling                      |
-| Tag suggestions    | gpt-4o-mini                          | Simple classification task                          |
-| Classification     | gpt-4o-mini                          | Metadata suggestion                                 |
-| Similar documents  | text-embedding-3-small + gpt-4o-mini | Embeddings for similarity, LLM for query generation |
-| Chat (RAG)         | gpt-4o                               | Complex multi-step reasoning                        |
-| Sentiment          | gpt-4o-mini                          | Simple sentiment classification                     |
-| Insights           | gpt-4o-mini                          | Lightweight summary generation                      |
-| Anomaly detection  | gpt-4o                               | Security analysis needs strong reasoning            |
-| NL permissions     | gpt-4o                               | Complex ACL interpretation                          |
+Model selection is made inside `nuxeo-ai-package` and is not visible from this repository. Do not
+document model names here — they will drift silently. Check the AI package's configuration for the
+server you are targeting.
 
-## Environment Variables
+## Configuration
 
-| Variable         | Default                       | Description                                  |
-| ---------------- | ----------------------------- | -------------------------------------------- |
-| `OPENAI_API_KEY` | (required)                    | Your OpenAI API key                          |
-| `NUXEO_URL`      | `http://localhost:8080`       | Nuxeo server URL                             |
-| `NUXEO_AUTH`     | `Administrator:Administrator` | Nuxeo Basic Auth credentials (user:password) |
-| `PORT`           | `3000`                        | AI backend port                              |
+This repository configures exactly one AI-related value:
 
-## Cloud Deployment
+| Value            | Where                                 | Default    |
+| ---------------- | ------------------------------------- | ---------- |
+| `AI_BACKEND_URL` | `apps/nuxeo-ui/src/app/app.config.ts` | `'/nuxeo'` |
 
-In production, the Angular dev server proxy does not exist. You need one of:
+HAIP credentials, prompts, model choice and rate limiting are all server-side configuration of
+`nuxeo-ai-package`.
 
-1. **Reverse proxy** (Nginx, ALB, Cloud LB) that routes `/ai/*` to the Node.js backend and `/*` to the static Angular build.
-2. **Single container** where the Express backend also serves the Angular static files from `dist/nuxeo-ui/`.
-3. **Separate origins** with `AI_BACKEND_URL` set to the backend's public URL and CORS enabled (already configured).
+## Deployment
 
-The `OPENAI_API_KEY` should be injected via your cloud's secrets management (AWS Secrets Manager, GCP Secret Manager, etc.) rather than a `.env` file.
+Nothing extra to deploy. The Angular app is served same-origin with Nuxeo in production, so
+`/nuxeo/api/v1/automation/AI.*` resolves without a reverse-proxy rule, a container, or CORS
+configuration. The only deployment requirement is that `nuxeo-ai-package` is installed on the
+target Nuxeo server; where it is not, AI calls fail and each feature surfaces its own error state.

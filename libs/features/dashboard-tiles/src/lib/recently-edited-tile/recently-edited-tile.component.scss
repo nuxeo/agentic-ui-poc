@@ -1,0 +1,144 @@
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.recently-edited-tile {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #ffffff;
+}
+
+.tile-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e8eaef;
+}
+
+.tile-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #344054;
+}
+
+.tile-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  flex: 1;
+}
+
+.tile-error {
+  text-align: center;
+  color: var(--mat-sys-error);
+  padding: 32px 20px;
+  font-size: 13px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-empty {
+  text-align: center;
+  color: #aaa;
+  padding: 32px 20px;
+  font-size: 13px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tile-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+
+  th {
+    text-align: left;
+    padding: 10px 20px;
+    font-weight: 600;
+    color: #667085;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid #e8eaef;
+    position: sticky;
+    top: 0;
+    background: #ffffff;
+    z-index: 1;
+  }
+
+  td {
+    padding: 10px 20px;
+    color: #344054;
+    border-bottom: 1px solid #f2f4f7;
+    vertical-align: middle;
+  }
+}
+
+.tile-row {
+  cursor: pointer;
+
+  &:hover {
+    background: #f9fafb;
+  }
+}
+
+.doc-title-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-thumb {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: 1px solid #e8e8e8;
+}
+
+.doc-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.doc-thumb-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #9e9e9e;
+}
+
+.doc-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.doc-date {
+  white-space: nowrap;
+  color: #666;
+  font-size: 12px;
+}
+
+.contributor-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #344054;
+  white-space: nowrap;
+}

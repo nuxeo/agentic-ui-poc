@@ -141,6 +141,11 @@
 }
 
 .selection-bar-clear {
+  border: none;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
   font-size: 13px;
   text-decoration: underline;
   cursor: pointer;

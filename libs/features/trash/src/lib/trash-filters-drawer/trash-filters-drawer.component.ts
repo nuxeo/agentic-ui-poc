@@ -12,7 +12,6 @@ import { catchError } from 'rxjs/operators';
 import {
   TrashFilterService,
   TrashService,
-  DocumentDetailService,
   docTypeIcon,
   type NuxeoDocument,
   type UserGroupSuggestion,
@@ -58,7 +57,6 @@ export class TrashFiltersDrawerComponent implements OnInit {
   private readonly router = inject(Router);
   readonly trashFilterService = inject(TrashFilterService);
   private readonly trashService = inject(TrashService);
-  private readonly detailService = inject(DocumentDetailService);
 
   readonly sizeOptions = signal<SizeOption[]>([]);
   readonly authorOptions = signal<AuthorOption[]>([]);
@@ -257,17 +255,13 @@ export class TrashFiltersDrawerComponent implements OnInit {
     for (const prefix of ['', 'defaults:']) {
       const val = params[`${prefix}${key}`];
       if (Array.isArray(val)) {
-        return val
-          .map((item) => String(item ?? '').trim())
-          .filter(Boolean);
+        return val.map((item) => String(item ?? '').trim()).filter(Boolean);
       }
       if (typeof val === 'string' && val.trim()) {
         try {
           const parsed = JSON.parse(val);
           if (Array.isArray(parsed)) {
-            return parsed
-              .map((item) => String(item ?? '').trim())
-              .filter(Boolean);
+            return parsed.map((item) => String(item ?? '').trim()).filter(Boolean);
           }
         } catch {
           return val

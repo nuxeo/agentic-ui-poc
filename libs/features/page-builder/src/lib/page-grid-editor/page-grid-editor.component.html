@@ -1,0 +1,111 @@
+<div class="page-grid-editor">
+  <!-- Grid container with column and row guides -->
+  <div
+    class="grid-container"
+    cdkDropList
+    [cdkDropListData]="tiles()"
+    (cdkDropListDropped)="onDrop($event)"
+    (cdkDropListEntered)="onDragEnter($event)"
+    (cdkDropListExited)="onDragExit()"
+  >
+    <!-- Grid lines (visual guides) -->
+    <div class="grid-lines">
+      <!-- Column markers -->
+      @for (col of columnNumbers; track col) {
+        <div class="column-marker" [style.grid-column]="col"></div>
+      }
+
+      <!-- Row markers -->
+      @for (row of rowNumbers(); track row) {
+        <div class="row-marker" [style.grid-row]="row"></div>
+      }
+    </div>
+
+    <!-- Drop target indicator -->
+    @if (dropTarget(); as target) {
+      <div
+        class="drop-indicator"
+        [style.grid-area]="getTileGridArea({ tileName: '', config: {}, placement: target })"
+      ></div>
+    }
+
+    <!-- Tiles in the grid -->
+    @for (tile of tiles(); track trackByTileName($index, tile); let idx = $index) {
+      <div
+        class="grid-tile"
+        cdkDrag
+        [cdkDragData]="tile"
+        [style.grid-area]="getTileGridArea(tile)"
+        (cdkDragMoved)="onDragMove($event)"
+      >
+        <!-- Tile content (simplified for editor) -->
+        <div class="tile-content">
+          <div class="tile-header">
+            <span class="tile-name">{{ tile.tileName }}</span>
+            <div class="tile-actions">
+              @if (canResize(tile)) {
+                <button
+                  mat-icon-button
+                  class="tile-action-btn"
+                  [matTooltip]="getResizeTooltip(tile)"
+                  (click)="resizeTile(idx)"
+                >
+                  <mat-icon>{{ getResizeIcon(tile) }}</mat-icon>
+                </button>
+              }
+              <button
+                mat-icon-button
+                class="tile-action-btn"
+                matTooltip="Remove tile"
+                (click)="removeTile(idx)"
+              >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="tile-body">
+            <div class="tile-placeholder">
+              <mat-icon>dashboard</mat-icon>
+              <p>Tile Preview</p>
+              <small
+                >{{ tile.placement.width === 12 ? 'Full' : 'Half' }} width • Row
+                {{ tile.placement.row }}</small
+              >
+            </div>
+          </div>
+
+          <!-- Drag handle -->
+          <div class="drag-handle" cdkDragHandle>
+            <mat-icon>drag_indicator</mat-icon>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Empty state -->
+    @if (tiles().length === 0) {
+      <div class="empty-state">
+        <mat-icon>grid_on</mat-icon>
+        <h3>Empty Grid</h3>
+        <p>Drag tiles from the palette to add them to your page.</p>
+      </div>
+    }
+  </div>
+
+  <!-- Grid info panel -->
+  <div class="grid-info">
+    <div class="info-item">
+      <mat-icon>view_column</mat-icon>
+      <span>{{ layout.columns }} columns</span>
+    </div>
+    <div class="info-item">
+      <mat-icon>dashboard</mat-icon>
+      <span>{{ tiles().length }} tile{{ tiles().length === 1 ? '' : 's' }}</span>
+    </div>
+    <div class="info-item">
+      <mat-icon>layers</mat-icon>
+      <span>{{ totalRows() }} rows</span>
+    </div>
+  </div>
+</div>

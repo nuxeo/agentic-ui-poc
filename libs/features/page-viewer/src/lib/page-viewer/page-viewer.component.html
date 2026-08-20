@@ -1,0 +1,36 @@
+<!-- Loading state -->
+@if (loading()) {
+  <div class="page-loading">
+    <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+    <p>Loading page...</p>
+  </div>
+}
+
+<!-- Error state -->
+@else if (error()) {
+  <div class="page-error">
+    <mat-icon>error_outline</mat-icon>
+    <h2>Failed to load page</h2>
+    <p>{{ error() }}</p>
+  </div>
+}
+
+<!-- Empty state (no tiles) -->
+@else if (mountRequests().length === 0) {
+  <div class="page-empty">
+    <mat-icon>dashboard</mat-icon>
+    <h2>Empty page</h2>
+    <p>This page has no tiles yet. Add some tiles to get started.</p>
+  </div>
+}
+
+<!-- Grid layout with tiles -->
+@else {
+  <div class="page-grid">
+    @for (request of mountRequests(); track request.mountId; let i = $index) {
+      <div class="tile-container" [ngStyle]="tileStyles()[i]">
+        <lib-page-tile-host [request]="request" />
+      </div>
+    }
+  </div>
+}

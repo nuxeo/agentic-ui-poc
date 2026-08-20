@@ -212,8 +212,7 @@ export class AdminGroupDetailsPageComponent implements OnInit {
   removePermission(row: PrincipalPermissionRow): void {
     this.documentDetail
       .removePermission(row.documentUid, {
-        user: row.acePrincipal,
-        permission: row.permission,
+        aceId: row.aceId,
         acl: 'local',
       })
       .subscribe({

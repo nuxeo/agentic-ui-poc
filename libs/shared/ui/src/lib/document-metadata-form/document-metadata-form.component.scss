@@ -1,0 +1,260 @@
+:host {
+  display: block;
+  // A container query rather than a media query, for the reason the read-only
+  // card uses one: the form is mounted inside a 400px panel on a 1440px
+  // viewport, so viewport width says nothing about the room it actually has.
+  container-type: inline-size;
+}
+
+/**
+ * Sized for the 400px chat panel first.
+ *
+ * The narrow-column pass for this component is its own line item and nothing
+ * from the card's transferred, which is what stage 1 found and stage 3 repeated.
+ * Two things drove the layout: a label above its control rather than beside it,
+ * because a 88px label track plus a text input is unusable at panel width; and
+ * the two actions on one row that collapses to stacked full-width buttons below
+ * 300px, because "Save changes" and "Cancel" side by side truncate first.
+ */
+.metadata-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface);
+  box-sizing: border-box;
+}
+
+.metadata-form__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.metadata-form__icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--mat-sys-primary);
+}
+
+.metadata-form__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+}
+
+.metadata-form__target {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  min-width: 0;
+}
+
+.metadata-form__target-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// The uid stays on screen beside the title, because the title is a lookup and
+// the uid is what the write actually carries.
+.metadata-form__target-uid,
+.metadata-form__target-path {
+  font-size: 10px;
+  color: var(--mat-sys-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metadata-form__proposed-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--mat-sys-surface-variant);
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 11px;
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    flex: none;
+  }
+}
+
+.metadata-form__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metadata-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.metadata-form__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.metadata-form__required {
+  color: var(--mat-sys-error);
+}
+
+// Says the value came from the model, next to the value rather than only in the
+// note above: the user is editing a suggestion, and per-field is where that
+// matters when only some fields carry one.
+.metadata-form__badge {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.metadata-form__control {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--mat-sys-outline);
+  border-radius: 6px;
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  font-size: 12px;
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: -1px;
+  }
+
+  &[aria-invalid='true'] {
+    border-color: var(--mat-sys-error);
+  }
+
+  &:disabled {
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+textarea.metadata-form__control {
+  resize: vertical;
+}
+
+.metadata-form__checkbox {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--mat-sys-primary);
+}
+
+.metadata-form__problem {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font-size: 11px;
+}
+
+.metadata-form__readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.metadata-form__readonly-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+
+  dt {
+    margin: 0;
+    font-size: 11px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 0;
+    min-width: 0;
+    font-size: 11px;
+    color: var(--mat-sys-on-surface);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.metadata-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.metadata-form__cancel,
+.metadata-form__submit {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+.metadata-form__cancel {
+  border: 1px solid var(--mat-sys-outline);
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+}
+
+.metadata-form__submit {
+  border: 1px solid transparent;
+  background: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+}
+
+// Below this the two buttons truncate before anything else does, so they stack
+// and take the full width instead.
+@container (max-width: 300px) {
+  .metadata-form__actions {
+    flex-direction: column-reverse;
+  }
+
+  .metadata-form__cancel,
+  .metadata-form__submit {
+    width: 100%;
+  }
+
+  .metadata-form__readonly-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

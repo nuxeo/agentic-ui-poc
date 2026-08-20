@@ -612,12 +612,16 @@ export class TasksPageComponent implements OnInit {
     if (!data || data['error']) return [];
     const nodes = (data['nodes'] ?? data['elements'] ?? []) as Record<string, unknown>[];
     const currentNode = this.selectedTask()?.nodeName;
-    return nodes.map((n) => ({
-      id: (n['id'] as string) ?? '',
-      title: (n['title'] as string) ?? (n['id'] as string) ?? '',
-      state: (n['state'] as string) ?? '',
-      isCurrent: (n['id'] as string) === currentNode,
-    }));
+    return nodes.map((n) => {
+      const id = (n['id'] as string) ?? '';
+      return {
+        id,
+        title: (n['title'] as string) ?? id,
+        state: (n['state'] as string) ?? '',
+        // Both sides must be present: an id-less node must not match an absent nodeName.
+        isCurrent: !!currentNode && id === currentNode,
+      };
+    });
   }
 
   /* ════════════════════════════════════════════════════════

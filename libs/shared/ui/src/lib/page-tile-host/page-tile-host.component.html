@@ -1,0 +1,20 @@
+@if (loading()) {
+  <div class="page-tile-loading">
+    <mat-spinner diameter="24"></mat-spinner>
+    <span class="loading-text">Loading tile...</span>
+  </div>
+}
+
+@if (notice(); as message) {
+  <div class="page-tile-error">
+    <div class="error-header">
+      <mat-icon>error_outline</mat-icon>
+      @if (tileName()) {
+        <span class="tile-name">{{ tileName() }}</span>
+      }
+    </div>
+    <p class="error-message">{{ message }}</p>
+  </div>
+}
+
+<ng-container #tileOutlet />

@@ -12,6 +12,11 @@ Knowledge Enrichment uses the dedicated shared client in `libs/shared/ke-client/
 and is imported from `@agentic-ui/shared/ke-client`. It posts multipart blob requests to
 Nuxeo automation operations exposed by the same CIC bundle.
 
+Every section heading, method name and method return type below is **machine-checked** against the
+real class by `checkServiceMapDocs` in `scripts/review-guardrails.mjs`, and every `@Injectable`
+service in those three directories must have a section here. Run `npm run review:guardrails` after
+changing a service; see `AGENTS/05-test-standards.md` for the limits of that check.
+
 ---
 
 ## DocumentDetailService (`document-detail.service.ts`)
@@ -33,8 +38,8 @@ unpublishDocument(proxyUid: string): Observable<unknown>
 republishDocument(sourceUid: string, targetSectionId: string): Observable<NuxeoDocument>
 lockDocument(uid: string): Observable<NuxeoDocument>
 unlockDocument(uid: string): Observable<NuxeoDocument>
-addToFavorites(uid: string): Observable<NuxeoDocument>
-removeFromFavorites(uid: string): Observable<NuxeoDocument>
+addToFavorites(uid: string): Observable<NuxeoDocument>     // toggles one document only
+removeFromFavorites(uid: string): Observable<NuxeoDocument> // to LIST favorites use CollectionService.getFavorites
 trashDocument(uid: string): Observable<NuxeoDocument>
 trashDocuments(uids: string[]): Observable<NuxeoDocument[]>
 restoreFromTrash(uid: string): Observable<NuxeoDocument>
@@ -56,11 +61,20 @@ replacePermissionWithNotification(uid, params): Observable<PermissionWithNotific
 addExternalPermissionWithNotification(uid, params): Observable<PermissionWithNotificationResult>  // saves with notify:false, then optional separate notification
 addExternalPermission(uid: string, params: { email, permission, notify?, comment?, begin?, end?, creator? }): Observable<NuxeoDocument>  // delegates to addPermission; notify defaults false; creator defaults to CURRENT_USERNAME
 replacePermission(uid: string, params: { id?, username?, email?, permission, notify?, comment?, begin?, end? }): Observable<NuxeoDocument>
-removePermission(uid: string, params: { user, permission, acl? }): Observable<NuxeoDocument>
+removePermission(uid: string, params: { aceId, acl? }): Observable<NuxeoDocument>  // by ACE id only — see below
 blockPermissionInheritance(uid: string): Observable<NuxeoDocument>
 unblockPermissionInheritance(uid: string): Observable<NuxeoDocument>
 sendNotificationEmailForPermission(uid: string, aceId: string): Observable<NuxeoDocument>
 ```
+
+`removePermission` takes an ACE id and nothing else that identifies the entry.
+`Document.RemovePermission` accepts only `acl`, `id` and `user`: it has no `permission`
+parameter, and identifying the ACE by `user` removes **every** ACE that principal holds on
+the ACL. Carry the `id` the `acls` enricher reports (`NuxeoAce.id`,
+`PrincipalPermissionRow.aceId`) through to the revoke. When no id is available the call
+rejects with `REMOVE_PERMISSION_ACE_ID_REQUIRED` rather than revoking something wider than
+was asked for. Until 6 August 2026 this entry read `{ user, permission, acl? }`, which was
+the shape of the bug.
 
 ---
 
@@ -130,7 +144,7 @@ clear(): void
 
 ## SearchAggregationService (`search-aggregation.service.ts`)
 
-Shared state service for search. Holds aggregation results and saved search state as signals.
+Shared **state** service for search, and nothing else: signals only, no HTTP.
 
 ```typescript
 readonly aggregations: Signal<SearchAggregations>
@@ -141,6 +155,19 @@ readonly selectedSavedSearchTitle: Signal<string>
 readonly savedSearchVersion: Signal<number>
 
 markSavedSearchDirty(): void
+```
+
+Until 6 August 2026 this section also listed `suggest`, `getUserCollections`,
+`getSavedSearches`, `getSavedSearchById` and `saveSavedSearch`. None of them are on this
+class — they are on `SearchService` below.
+
+---
+
+## SearchService (`search.service.ts`)
+
+Full-text and page-provider search, suggestions, and saved searches.
+
+```typescript
 suggest(searchTerm: string, pageSize?: number): Observable<GlobalSearchSuggestion[]>
 getUserCollections(): Observable<SearchCollectionOption[]>
 getSavedSearches(pageProvider?: string): Observable<SavedSearchOption[]>
@@ -227,6 +254,11 @@ getCollectionMembers(collectionUid: string, pageSize?: number): Observable<Nuxeo
 updateProperties(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument>
 bulkDownload(collectionUid: string, filename?: string): Observable<Blob>
 ```
+
+**Favorites live here.** Nuxeo models the favorites list as a collection, so reading it is
+`CollectionService.getFavorites(userId, pageSize)`. `DocumentDetailService` only toggles a
+single document in and out of it (`addToFavorites` / `removeFromFavorites`) and cannot list
+them.
 
 ---
 
@@ -378,10 +410,13 @@ getEventCategories(): Observable<DirectoryEntry[]>
 
 ## PrincipalPermissionsService (`principal-permissions.service.ts`)
 
-ACL management for documents.
+Reads the local ACL rows a user or group holds across the repository, for the administration
+and profile permission tables. It only reads: granting, replacing and revoking permissions are
+`DocumentDetailService.addPermission` / `replacePermission` / `removePermission`.
 
 ```typescript
-// Methods for adding/blocking permissions — see file for full API
+listLocalPermissionRows(logicalPrincipal: string, pageSize: number, currentPageIndex: number): Observable<PrincipalPermissionPage>
+  // paging applies to the NXQL document set; one document can contribute several ACE rows
 ```
 
 ---
@@ -397,36 +432,121 @@ openDriveUrl(url: string): void
 
 ---
 
+## AssetService (`asset.service.ts`)
+
+Runs the DAM assets page search through the `assets_search` page provider. Aggregation facets
+(type, mime type, width, height, colour profile, colour depth, video duration) are passed as
+JSON-encoded aggregate parameters.
+
+```typescript
+searchAssets(params?: AssetSearchParams): Observable<AssetSearchResult>
+```
+
+---
+
 ## AssetAggregationService (`asset-aggregation.service.ts`)
 
-Same pattern as `SearchAggregationService` but for the DAM assets page.
+Shared **state** for the DAM assets page: signals only, no HTTP. Same pattern as
+`SearchAggregationService` — for the search itself use `AssetService`.
+
+```typescript
+readonly aggregations: Signal<AssetAggregations>
+readonly items: Signal<AssetQueueItem[]>
+readonly selectedSavedSearchId: Signal<string>
+readonly selectedSavedSearchTitle: Signal<string>
+readonly savedSearchVersion: Signal<number>
+
+markSavedSearchDirty(): void
+```
+
+---
+
+## TrashService (`trash.service.ts`)
+
+Trash listing, restore, permanent delete and the trash saved searches
+(`default_trash_search` page provider).
+
+```typescript
+searchTrash(params?: TrashSearchParams): Observable<NuxeoDocumentList>
+getPathSuggestions(parentPath: string): Observable<NuxeoDocumentList>
+restoreDocument(uid: string): Observable<NuxeoDocument>  // Document.Untrash
+permanentlyDelete(uid: string): Observable<void>
+saveSearch(title: string, params: Record<string, unknown>): Observable<SavedSearch>
+updateSearch(uid: string, title: string, params: Record<string, unknown>): Observable<SavedSearch>
+getSavedSearches(): Observable<SavedSearch[]>
+```
+
+`BrowseService` and `DocumentDetailService` also expose restore/delete for a single document
+in a browse or document-detail context; this service is the trash page's own client.
 
 ---
 
 ## TrashFilterService (`trash-filter.service.ts`)
 
-Shared state for trash filters. Uses signals.
+Shared **state** for the trash page filters and results: signals only, no HTTP.
+
+```typescript
+readonly filters: Signal<TrashFilters>
+readonly layoutMode: Signal<TrashLayoutMode>
+readonly results: Signal<TrashResultItem[]>
+readonly resultThumbnails: Signal<Record<string, SafeUrl>>
+readonly totalResults: Signal<number>
+readonly resultsLoading: Signal<boolean>
+readonly savedSearchVersion: Signal<number>
+readonly activeSavedFilterUid: Signal<string | null>
+readonly activeSavedFilterTitle: Signal<string | null>
+readonly hasSavedFilter: Signal<boolean>
+
+reset(): void
+toggleLayout(): void
+markSavedSearchDirty(): void
+```
 
 ---
 
 ## SettingsService (`settings.service.ts`)
 
-User preferences and cloud service connections.
+The current user's own settings page: local permissions, connected cloud accounts, authorized
+OAuth2 applications, Drive synchronization roots and password change.
+
+```typescript
+getLocalPermissions(username: string, pageSize?: number): Observable<LocalPermissionRow[]>
+getConnectedAccounts(): Observable<ConnectedAccount[]>
+getAuthorizedApplications(): Observable<AuthorizedApplication[]>
+getSynchronizationRoots(): Observable<SynchronizationRootRow[]>
+setSynchronizationRoot(rootId: string, enable: boolean): Observable<unknown>
+changePassword(oldPassword: string, newPassword: string): Observable<void>
+```
 
 ---
 
 ## AdministrationService (`administration.service.ts`)
 
-Admin console operations (users, groups, system info).
+Admin console queries: raw NXQL paging, repository-wide audit, OAuth2 providers and directory
+names. User and group management is `UserService`, not this service.
+
+```typescript
+nxqlSearch(query: string, pageSize: number, currentPageIndex?: number, headers?: Record<string, string>): Observable<NuxeoDocumentList>
+getNxqlTotalSize(query: string): Observable<number>
+searchAuditLogs(params: { pageSize, currentPageIndex, principalName?, from?, to?, eventIds?, category? }): Observable<AuditLogList>
+listOAuth2Providers(): Observable<NuxeoOAuth2Provider[]>
+listDirectoryNames(): Observable<string[]>
+getDefaultDomainPath(): Observable<string>
+```
 
 ---
 
-## ArenderService (`arender.service.ts`)
+## ARenderService (`arender.service.ts`)
 
 ```typescript
-getViewerUrl(blobUrl: string): string
-isAvailable(): Promise<boolean>
+getPreviewerUrl(docUid: string, blobXPath?: string): Observable<string>
+getDiffUrl(leftDocUid: string, rightDocUid: string): Observable<string>
+isAvailable(): Observable<boolean>
 ```
+
+Until 6 August 2026 this section named the class `ArenderService` and listed a
+`getViewerUrl(blobUrl): string` that does not exist, with `isAvailable` returning a
+`Promise`. All three URLs are Observables because the viewer URL needs the session.
 
 ---
 

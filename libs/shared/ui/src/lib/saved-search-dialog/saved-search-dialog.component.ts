@@ -1,5 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
-import { MAT_DIALOG_DATA, MatDialogConfig, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialogConfig,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 
 export interface SavedSearchDialogData {
@@ -26,14 +31,22 @@ export const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig> = {
         [attr.aria-label]="data.title || 'Saved Search'"
         [value]="name()"
         [placeholder]="data.placeholder || 'Enter a name for your saved search'"
-        (input)="onInput(($any($event.target).value))"
+        (input)="onInput($any($event.target).value)"
         (keydown.enter)="save()"
       />
     </mat-dialog-content>
 
     <mat-dialog-actions align="end">
       <button mat-stroked-button type="button" (click)="dialogRef.close()">Cancel</button>
-      <button mat-flat-button color="primary" type="button" [disabled]="!canSave()" (click)="save()">Save</button>
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="!canSave()"
+        (click)="save()"
+      >
+        Save
+      </button>
     </mat-dialog-actions>
   `,
   styles: [

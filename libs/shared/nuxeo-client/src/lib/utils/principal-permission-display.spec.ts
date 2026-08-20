@@ -15,6 +15,7 @@ describe('principal-permission-display', () => {
         end: null,
         grantedBy: null,
         acePrincipal: 'group:members',
+        aceId: 'ace-1',
       }),
     ).toBe('Permanent');
   });
@@ -30,6 +31,7 @@ describe('principal-permission-display', () => {
         end: null,
         grantedBy: null,
         acePrincipal: 'group:members',
+        aceId: 'ace-1',
       }),
     ).toEqual({
       documentTitle: 'Sections',

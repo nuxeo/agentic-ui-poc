@@ -1,0 +1,137 @@
+<mat-card class="tile-config-form">
+  <mat-card-header>
+    <mat-card-title>
+      <mat-icon class="tile-icon">{{ tile().icon }}</mat-icon>
+      Configure {{ tile().displayName }}
+    </mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form()" class="config-form">
+      @for (field of fields(); track trackByKey($index, field)) {
+        @switch (field.type) {
+          <!-- String field -->
+          @case ('string') {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ field.key | titlecase }}</mat-label>
+              <input
+                matInput
+                [formControlName]="field.key"
+                [maxlength]="field.maxLength ?? 1000"
+                [required]="field.required"
+              />
+              @if (field.description) {
+                <mat-hint>{{ field.description }}</mat-hint>
+              }
+              @if (getFieldError(field.key); as error) {
+                <mat-error>{{ error }}</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          <!-- Integer/Number field -->
+          @case ('integer') {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ field.key | titlecase }}</mat-label>
+              <input
+                matInput
+                type="number"
+                [formControlName]="field.key"
+                [min]="field.min ?? null"
+                [max]="field.max ?? null"
+                [required]="field.required"
+              />
+              @if (field.description) {
+                <mat-hint>{{ field.description }}</mat-hint>
+              }
+              @if (getFieldError(field.key); as error) {
+                <mat-error>{{ error }}</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          @case ('number') {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ field.key | titlecase }}</mat-label>
+              <input
+                matInput
+                type="number"
+                [formControlName]="field.key"
+                [min]="field.min ?? null"
+                [max]="field.max ?? null"
+                [required]="field.required"
+                step="any"
+              />
+              @if (field.description) {
+                <mat-hint>{{ field.description }}</mat-hint>
+              }
+              @if (getFieldError(field.key); as error) {
+                <mat-error>{{ error }}</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          <!-- Enum field -->
+          @case ('enum') {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>{{ field.key | titlecase }}</mat-label>
+              <mat-select [formControlName]="field.key" [required]="field.required">
+                @for (value of field.enumValues; track trackByValue($index, value)) {
+                  <mat-option [value]="value">{{ value }}</mat-option>
+                }
+              </mat-select>
+              @if (field.description) {
+                <mat-hint>{{ field.description }}</mat-hint>
+              }
+              @if (getFieldError(field.key); as error) {
+                <mat-error>{{ error }}</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          <!-- Boolean field -->
+          @case ('boolean') {
+            <div class="checkbox-field">
+              <mat-checkbox [formControlName]="field.key">
+                {{ field.key | titlecase }}
+              </mat-checkbox>
+              @if (field.description) {
+                <div class="checkbox-hint">{{ field.description }}</div>
+              }
+            </div>
+          }
+
+          <!-- Object field (one level deep) -->
+          @case ('object') {
+            <div class="nested-object">
+              <h4 class="nested-label">{{ field.key | titlecase }}</h4>
+              @if (field.description) {
+                <p class="nested-hint">{{ field.description }}</p>
+              }
+              <div class="nested-fields">
+                <!-- TODO: Implement nested object fields if needed -->
+                <p class="text-muted">Nested object configuration not yet supported</p>
+              </div>
+            </div>
+          }
+
+          <!-- Unknown field type -->
+          @default {
+            <div class="unknown-field">
+              <mat-icon>warning</mat-icon>
+              <span>Unsupported field type for: {{ field.key }}</span>
+            </div>
+          }
+        }
+      }
+
+      <!-- Parser validation error -->
+      @if (parserError()) {
+        <div class="parser-error">
+          <mat-icon>error</mat-icon>
+          <span>{{ parserError() }}</span>
+        </div>
+      }
+    </form>
+  </mat-card-content>
+</mat-card>

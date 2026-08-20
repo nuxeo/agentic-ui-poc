@@ -16,7 +16,13 @@ import { of, finalize, filter, switchMap, map } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
-import { ConfirmDialogComponent, SavedSearchDialogComponent, SAVED_SEARCH_DIALOG_OPTIONS, ShareSavedSearchDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+import {
+  ConfirmDialogComponent,
+  SavedSearchDialogComponent,
+  SAVED_SEARCH_DIALOG_OPTIONS,
+  ShareSavedSearchDialogComponent,
+  type ConfirmDialogData,
+} from '@agentic-ui/shared/ui';
 
 import {
   TrashService,
@@ -130,16 +136,21 @@ export class TrashComponent {
   readonly saving = signal(false);
   readonly deletingSavedSearch = signal(false);
 
+  /** Thumbnail object URLs, revoked on destroy so navigating away does not leak blobs. */
+  private readonly thumbnailUrls: string[] = [];
+
   constructor() {
-    effect(
-      () => {
-        this.trashFilterService.filters();
-        this.sortBy();
-        this.sortDir();
-        untracked(() => this.search());
-      },
-      { allowSignalWrites: true },
-    );
+    effect(() => {
+      this.trashFilterService.filters();
+      this.sortBy();
+      this.sortDir();
+      untracked(() => this.search());
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.thumbnailUrls.forEach((url) => URL.revokeObjectURL(url));
+      this.thumbnailUrls.length = 0;
+    });
   }
 
   search(): void {
@@ -345,14 +356,14 @@ export class TrashComponent {
     this.viewMode.set(mode);
   }
 
+  // The constructor effect tracks sortBy/sortDir, so these setters must not also call
+  // search() — doing so fired the NXQL query twice for every sort interaction.
   setSortBy(value: string): void {
     this.sortBy.set(value);
-    this.search();
   }
 
   toggleSortDir(): void {
     this.sortDir.update((d) => (d === 'asc' ? 'desc' : 'asc'));
-    this.search();
   }
 
   sortByColumn(key: string): void {
@@ -362,7 +373,6 @@ export class TrashComponent {
     } else {
       this.sortBy.set(key);
       this.sortDir.set('asc');
-      this.search();
     }
   }
 
@@ -463,7 +473,7 @@ export class TrashComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
 
       const inProgress = new Set(this.actionInProgress());
@@ -528,7 +538,7 @@ export class TrashComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.markInProgress(uid, true);
       this.trashService
@@ -620,10 +630,14 @@ export class TrashComponent {
       if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailUrls.push(url);
           const safeUrl = this.sanitizer.bypassSecurityTrustUrl(url);
           this.thumbnailMap.update((m) => ({ ...m, [doc.uid]: safeUrl }));
           this.trashFilterService.resultThumbnails.update((m) => ({ ...m, [doc.uid]: safeUrl }));

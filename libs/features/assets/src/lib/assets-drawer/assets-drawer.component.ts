@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal, untracked } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -81,6 +81,7 @@ function toMimeType(value: string): string {
   styleUrl: './assets-drawer.component.scss',
 })
 export class AssetsDrawerComponent {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
@@ -90,7 +91,7 @@ export class AssetsDrawerComponent {
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   readonly dynamicGroups = DYNAMIC_GROUPS;
-  readonly viewMode = signal<DrawerViewMode>(this.loadViewModeFromStorage());
+  readonly viewMode = signal<DrawerViewMode>('filter');
   readonly selectedDocumentId = signal('');
   readonly filterSearchInput = signal('');
   readonly savedSearchFilter = signal('');
@@ -293,10 +294,6 @@ export class AssetsDrawerComponent {
         }),
       );
     });
-
-    effect(() => {
-      localStorage.setItem('assets_drawer_view_mode', this.viewMode());
-    });
   }
 
   switchToQueueView(): void {
@@ -350,11 +347,14 @@ export class AssetsDrawerComponent {
     this.aggregationService.selectedSavedSearchId.set(option.value);
     this.aggregationService.selectedSavedSearchTitle.set(option.label);
 
-    this.searchService.getSavedSearchById(option.value).subscribe({
-      next: (params) => {
-        this.applySavedSearchParams(params);
-      },
-    });
+    this.searchService
+      .getSavedSearchById(option.value)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (params) => {
+          this.applySavedSearchParams(params);
+        },
+      });
   }
 
   onSecondarySearchInput(value: string): void {
@@ -385,6 +385,7 @@ export class AssetsDrawerComponent {
         },
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((title) => {
         const trimmedTitle = title?.trim();
         if (!trimmedTitle) return;
@@ -395,6 +396,7 @@ export class AssetsDrawerComponent {
             params: this.buildSavedSearchParams(),
             pageProviderName: 'assets_search',
           })
+          .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: () => {
               this.savedSearchesLoaded.set(false);
@@ -550,24 +552,23 @@ export class AssetsDrawerComponent {
     this.selectedDocumentId.set('');
   }
 
-  private loadViewModeFromStorage(): DrawerViewMode {
-    return 'filter';
-  }
-
   private loadSavedSearchesFromApi(): void {
     if (this.savedSearchesLoaded() || this.savedSearchesLoading()) return;
 
     this.savedSearchesLoading.set(true);
-    this.searchService.getSavedSearches('assets_search').subscribe({
-      next: (items) => {
-        this.availableSavedSearches.set(items.map((item) => this.toSavedSearchOption(item)));
-        this.savedSearchesLoaded.set(true);
-        this.savedSearchesLoading.set(false);
-      },
-      error: () => {
-        this.savedSearchesLoading.set(false);
-      },
-    });
+    this.searchService
+      .getSavedSearches('assets_search')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (items) => {
+          this.availableSavedSearches.set(items.map((item) => this.toSavedSearchOption(item)));
+          this.savedSearchesLoaded.set(true);
+          this.savedSearchesLoading.set(false);
+        },
+        error: () => {
+          this.savedSearchesLoading.set(false);
+        },
+      });
   }
 
   private toSavedSearchOption(item: SavedSearchOption): SavedSearchSelectOption {

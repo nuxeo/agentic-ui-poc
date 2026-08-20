@@ -27,15 +27,17 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     }
     <ng-container #drawerContainer />
   `,
-  styles: [`
-    .drawer-loading {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      width: 100%;
-    }
-  `],
+  styles: [
+    `
+      .drawer-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+      }
+    `,
+  ],
 })
 export class DynamicDrawerComponent implements OnDestroy {
   readonly drawerComponent = input<Type<unknown> | null>(null);

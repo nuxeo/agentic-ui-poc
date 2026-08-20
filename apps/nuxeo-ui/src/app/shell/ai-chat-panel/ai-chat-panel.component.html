@@ -1,0 +1,382 @@
+<div class="ai-chat-panel">
+  <div class="ai-chat-header">
+    <mat-icon class="ai-chat-header-icon">auto_awesome</mat-icon>
+    <span class="ai-chat-header-title">AI Assistant</span>
+    @if (agentMode()) {
+      <span class="ai-chat-mode" matTooltip="Streaming agent runtime is available">Agent</span>
+    } @else {
+      <span
+        class="ai-chat-mode ai-chat-mode--fallback"
+        matTooltip="No agent gateway detected — using the standard AI assistant"
+      >
+        Standard
+      </span>
+    }
+    <button mat-icon-button class="ai-chat-clear" (click)="clear()" aria-label="Clear chat">
+      <mat-icon>delete_sweep</mat-icon>
+    </button>
+    <button mat-icon-button (click)="close()" aria-label="Close chat">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="ai-chat-messages" #messageList (scroll)="onMessagesScroll()">
+    @if (showWelcome()) {
+      <div class="ai-chat-welcome">
+        <mat-icon class="ai-chat-welcome-icon">auto_awesome</mat-icon>
+        <h3>Nuxeo AI Assistant</h3>
+        <p>
+          Ask me about your documents, search the repository, or get insights about workflows and
+          tasks.
+        </p>
+        <div class="ai-chat-suggestions">
+          @for (suggestion of suggestions; track suggestion) {
+            <button type="button" class="ai-chat-suggestion" (click)="sendSuggestion(suggestion)">
+              {{ suggestion }}
+            </button>
+          }
+        </div>
+      </div>
+    }
+
+    @if (agentMode()) {
+      @for (entry of timeline(); track entry.id) {
+        @if (entry.message; as msg) {
+          <div
+            class="ai-chat-msg"
+            [class.user]="msg.role === 'user'"
+            [class.assistant]="msg.role === 'assistant'"
+          >
+            @if (msg.role === 'assistant') {
+              <div class="ai-msg-avatar-wrap">
+                <mat-icon class="ai-msg-avatar">auto_awesome</mat-icon>
+              </div>
+            }
+            <div class="ai-msg-bubble">
+              @if (msg.role === 'assistant') {
+                <div class="ai-msg-content" [innerHTML]="msg.content | aiMarkdown"></div>
+              } @else {
+                <div class="ai-msg-content">{{ msg.content }}</div>
+              }
+              @if (msg.citations?.length) {
+                <div class="ai-msg-sources">
+                  <div class="ai-sources-label">
+                    <mat-icon>link</mat-icon>
+                    Sources
+                  </div>
+                  @for (citation of msg.citations!; track citation.uid) {
+                    <button type="button" class="ai-source-card" (click)="openCitation(citation)">
+                      <mat-icon class="ai-source-card-icon">{{ citationIcon(citation) }}</mat-icon>
+                      <span class="ai-source-card-info">
+                        <span class="ai-source-card-title">{{ citation.title }}</span>
+                        <span class="ai-source-card-path">{{
+                          citation.excerpt || citation.path
+                        }}</span>
+                      </span>
+                      <mat-icon class="ai-source-card-arrow">open_in_new</mat-icon>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        } @else {
+          @if (entry.call; as call) {
+            <div class="ai-tool-card" [attr.data-status]="call.status">
+              <mat-icon class="ai-tool-card-icon">{{ toolCallIcon(call) }}</mat-icon>
+              <span class="ai-tool-card-body">
+                <span class="ai-tool-card-name">{{ call.name }}</span>
+                @if (formatArgs(call.args); as args) {
+                  <span class="ai-tool-card-args">{{ args }}</span>
+                }
+                @if (formatResult(call.result); as result) {
+                  <span class="ai-tool-card-result" [class.is-failure]="result.failed">{{
+                    result.summary
+                  }}</span>
+                  @if (result.details) {
+                    <button
+                      type="button"
+                      class="ai-tool-card-raw-toggle"
+                      [attr.aria-expanded]="showsResultDetails(call.id)"
+                      (click)="toggleResultDetails(call.id)"
+                    >
+                      {{ showsResultDetails(call.id) ? 'Hide raw result' : 'Show raw result' }}
+                    </button>
+                    @if (showsResultDetails(call.id)) {
+                      <pre class="ai-tool-card-raw">{{ result.details }}</pre>
+                    }
+                  }
+                }
+              </span>
+            </div>
+            @if (widgetFor(call.id); as widget) {
+              <app-agent-widget-host class="ai-chat-widget" [request]="widget" />
+            }
+          }
+        }
+      }
+
+      @if (approvalBatch(); as batch) {
+        <section
+          class="ai-approval"
+          [class.ai-approval--single]="batch.total === 1"
+          role="group"
+          [attr.aria-label]="
+            batch.total === 1
+              ? 'Approval required: ' + batch.rows[0].toolName
+              : 'Approval required for ' + batch.total + ' changes'
+          "
+        >
+          <div class="ai-approval-head">
+            <mat-icon>pan_tool</mat-icon>
+            <span class="ai-approval-title">Approval required</span>
+            @if (batch.total > 1) {
+              <span class="ai-approval-progress">{{ batch.answered }} of {{ batch.total }}</span>
+            } @else {
+              <span class="ai-approval-tool">{{ batch.rows[0].toolName }}</span>
+            }
+          </div>
+
+          @if (batch.total > 1) {
+            <p class="ai-approval-intro">
+              The assistant wants to make {{ batch.total }} changes in Nuxeo. Nothing is written
+              unless you approve it, and each change is approved on its own.
+            </p>
+          }
+
+          <ol class="ai-approval-rows">
+            @for (row of batch.rows; track row.id) {
+              <li
+                class="ai-approval-row"
+                role="group"
+                [attr.data-verdict]="row.verdict ?? 'pending'"
+                [attr.aria-label]="row.label"
+              >
+                @if (batch.total > 1) {
+                  <span class="ai-approval-row-index" aria-hidden="true">{{ $index + 1 }}</span>
+                }
+                <div class="ai-approval-row-body">
+                  @if (row.segments.length > 0) {
+                    <p class="ai-approval-row-action">
+                      @for (segment of row.segments; track $index) {
+                        @switch (segment.kind) {
+                          @case ('document') {
+                            <!-- The uid when the lookup gave nothing back: a name the
+                                 panel could not substantiate is worse than none. -->
+                            <span class="ai-approval-row-doc"
+                              >{{ segment.title || segment.uid }}&ngsp;</span
+                            >
+                          }
+                          @case ('value') {
+                            <span class="ai-approval-row-value">{{ segment.text }}&ngsp;</span>
+                          }
+                          @default {
+                            <span class="ai-approval-row-verb">{{ segment.text }}&ngsp;</span>
+                          }
+                        }
+                      }
+                    </p>
+                    @for (uid of row.uids; track uid) {
+                      <p class="ai-approval-row-uid">{{ uid }}</p>
+                    }
+                  } @else {
+                    <p class="ai-approval-summary">{{ row.summary }}</p>
+                  }
+
+                  @if (row.detail) {
+                    <p class="ai-approval-args">{{ row.detail }}</p>
+                  }
+                  @if (batch.total > 1) {
+                    <p class="ai-approval-row-tool">{{ row.toolName }}</p>
+                  }
+
+                  @if (row.verdict) {
+                    <p class="ai-approval-row-answer" [attr.data-verdict]="row.verdict">
+                      <mat-icon>{{ row.verdict === 'approved' ? 'check' : 'block' }}</mat-icon>
+                      {{ row.verdict === 'approved' ? 'Approved' : 'Declined' }}
+                    </p>
+                  } @else {
+                    <!-- The form answers this row's interrupt in place of the two
+                         buttons. The action line above stays: it says what the
+                         write does and to what, and a form is a better way to
+                         answer that than a reason to stop asking it. A form that
+                         cannot be mounted reports `unavailable`, which drops it
+                         from the row so the buttons come back — the decision has
+                         to stay answerable. -->
+                    @if (row.form; as form) {
+                      <app-agent-form-host
+                        class="ai-approval-form"
+                        [request]="form"
+                        (submitted)="submitApprovalForm(row, $event)"
+                        (cancelled)="decline(row)"
+                        (unavailable)="formUnavailable(row)"
+                      />
+                    } @else {
+                      <div class="ai-approval-actions">
+                        <button
+                          type="button"
+                          class="ai-approval-decline"
+                          [attr.aria-label]="'Decline: ' + row.label"
+                          (click)="decline(row)"
+                        >
+                          Decline
+                        </button>
+                        <button
+                          type="button"
+                          class="ai-approval-approve"
+                          [attr.aria-label]="'Approve: ' + row.label"
+                          (click)="approve(row)"
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    }
+                  }
+                </div>
+              </li>
+            }
+          </ol>
+
+          @if (batch.total > 1) {
+            <div class="ai-approval-foot">
+              <span class="ai-approval-remaining">
+                @if (batch.remaining > 0) {
+                  {{ batch.remaining }} still to decide
+                } @else {
+                  All {{ batch.total }} answered — applying your decisions
+                }
+              </span>
+              @if (batch.remaining > 1) {
+                <button
+                  type="button"
+                  class="ai-approval-decline-all"
+                  (click)="declineAllRemaining()"
+                >
+                  Decline the remaining {{ batch.remaining }}
+                </button>
+              }
+            </div>
+          }
+        </section>
+      }
+
+      @if (activeThinkingSteps().length > 0) {
+        <ul class="ai-thinking">
+          @for (step of activeThinkingSteps(); track step.id) {
+            <li class="ai-thinking-step" [class.done]="step.status === 'done'">
+              <mat-icon>{{ step.status === 'done' ? 'check' : 'more_horiz' }}</mat-icon>
+              <span class="ai-thinking-label">{{ step.label }}</span>
+              @if (step.detail) {
+                <span class="ai-thinking-detail">{{ step.detail }}</span>
+              }
+            </li>
+          }
+        </ul>
+      }
+    } @else {
+      @for (msg of aiChat.messages(); track msg.timestamp) {
+        <div
+          class="ai-chat-msg"
+          [class.user]="msg.role === 'user'"
+          [class.assistant]="msg.role === 'assistant'"
+        >
+          @if (msg.role === 'assistant') {
+            <div class="ai-msg-avatar-wrap">
+              <mat-icon class="ai-msg-avatar">auto_awesome</mat-icon>
+            </div>
+          }
+          <div class="ai-msg-bubble">
+            @if (msg.role === 'assistant') {
+              <div class="ai-msg-content" [innerHTML]="msg.content | aiMarkdown"></div>
+            } @else {
+              <div class="ai-msg-content">{{ msg.content }}</div>
+            }
+            @if (msg.sources?.length) {
+              <div class="ai-msg-sources">
+                <div class="ai-sources-label">
+                  <mat-icon>link</mat-icon>
+                  Sources
+                </div>
+                @for (source of msg.sources!; track source.uid) {
+                  <button
+                    type="button"
+                    class="ai-source-card"
+                    (click)="
+                      openCitation({
+                        uid: source.uid,
+                        title: source.title,
+                        path: source.path,
+                        type: source.type,
+                      })
+                    "
+                  >
+                    <mat-icon class="ai-source-card-icon">{{
+                      citationIcon({ uid: source.uid, title: source.title, type: source.type })
+                    }}</mat-icon>
+                    <span class="ai-source-card-info">
+                      <span class="ai-source-card-title">{{ source.title }}</span>
+                      <span class="ai-source-card-path">{{ source.path }}</span>
+                    </span>
+                    <mat-icon class="ai-source-card-arrow">open_in_new</mat-icon>
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+
+    @if (showTyping()) {
+      <div class="ai-chat-msg assistant">
+        <mat-icon class="ai-msg-avatar">auto_awesome</mat-icon>
+        <div class="ai-msg-bubble ai-msg-typing">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+      </div>
+    }
+
+    @if (errorMessage(); as message) {
+      <div class="ai-chat-error">
+        <mat-icon>error_outline</mat-icon>
+        {{ message }}
+      </div>
+    }
+  </div>
+
+  <div class="ai-chat-input-bar">
+    <input
+      class="ai-chat-input"
+      type="text"
+      placeholder="Ask anything about your documents..."
+      aria-label="Message the AI assistant"
+      [ngModel]="input()"
+      (ngModelChange)="input.set($event)"
+      (keydown.enter)="send()"
+      [disabled]="busy()"
+    />
+    @if (agentMode() && agent.running()) {
+      <button
+        mat-icon-button
+        class="ai-chat-cancel"
+        (click)="cancel()"
+        aria-label="Stop the assistant"
+        matTooltip="Stop"
+      >
+        <mat-icon>stop_circle</mat-icon>
+      </button>
+    } @else {
+      <button
+        mat-icon-button
+        class="ai-chat-send"
+        (click)="send()"
+        aria-label="Send message"
+        [disabled]="!input().trim() || busy()"
+      >
+        <mat-icon>send</mat-icon>
+      </button>
+    }
+  </div>
+</div>

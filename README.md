@@ -6,28 +6,31 @@ The `nuxeo-ui` app uses a root [`angular.json`](angular.json) for `ng build` / `
 
 ## Structure
 
-| Path                            | Nx project         | Role                                                         |
-| ------------------------------- | ------------------ | ------------------------------------------------------------ |
-| `apps/nuxeo-ui`                 | `nuxeo-ui`         | Application shell, top-level routes                          |
-| `apps/ai-backend`               | `ai-backend`       | Express AI backend (OpenAI proxy + Nuxeo server-side client) |
-| `libs/core`                     | `core`             | Nuxeo API, auth, interceptors (to be implemented)            |
-| `libs/shared/ui`                | `ui`               | Shared presentational / Satori-oriented UI                   |
-| `libs/shared/util`              | `shared-util`      | Pure TypeScript utilities                                    |
-| `libs/features/browse`          | `browse`           | Browse feature (lazy route)                                  |
-| `libs/features/search`          | `search`           | Search feature (lazy route)                                  |
-| `libs/features/document-detail` | `document-detail`  | Document detail feature (lazy route)                         |
-| `libs/shared/ai-client`         | `shared-ai-client` | Angular AI gateway service + chat state + models             |
+| Path                            | Nx project         | Role                                              |
+| ------------------------------- | ------------------ | ------------------------------------------------- |
+| `apps/nuxeo-ui`                 | `nuxeo-ui`         | Application shell, top-level routes               |
+| `libs/core`                     | `core`             | Nuxeo API, auth, interceptors (to be implemented) |
+| `libs/shared/ui`                | `ui`               | Shared presentational / Satori-oriented UI        |
+| `libs/shared/util`              | `shared-util`      | Pure TypeScript utilities                         |
+| `libs/features/browse`          | `browse`           | Browse feature (lazy route)                       |
+| `libs/features/search`          | `search`           | Search feature (lazy route)                       |
+| `libs/features/document-detail` | `document-detail`  | Document detail feature (lazy route)              |
+| `libs/shared/ai-client`         | `shared-ai-client` | Angular AI gateway service + chat state + models  |
+
+AI features are served by [`nuxeo-ai-package`](https://github.com/nuxeo/nuxeo-ai-package), a
+separate Java marketplace bundle on the Nuxeo server, through the Automation API — there is no AI
+service in this repository. See [docs/ai-features.md](docs/ai-features.md).
 
 ## Commands
 
 ```bash
 npm install
-npm run dev                   # starts Angular + AI backend in parallel
-npx nx serve nuxeo-ui         # http://localhost:4200 (Angular only)
-npx nx serve ai-backend       # http://localhost:3000 (AI backend only)
+npm run dev                   # http://localhost:4200
 npx nx build nuxeo-ui
 npx nx graph                  # dependency graph
 npx nx test <project>         # e.g. core, nuxeo-ui, browse
+npm run test:coverage         # enforce the per-project coverage floors
+npm run review:preflight      # guardrails + affected lint, build and test
 ```
 
 ## Docs

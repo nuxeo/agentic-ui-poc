@@ -1,0 +1,102 @@
+<section class="list-page" [class.list-page--compact]="isCompact()">
+  <header class="list-header">
+    <h1 class="list-title">{{ definition().title }}</h1>
+    <button
+      mat-stroked-button
+      type="button"
+      class="refresh-button"
+      [disabled]="loading()"
+      (click)="reload()"
+    >
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="list-state">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+  } @else if (error()) {
+    <div class="list-state list-state--error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="list-state">
+      <mat-icon>inbox</mat-icon>
+      <p>{{ definition().emptyMessage }}</p>
+    </div>
+  } @else {
+    @if (selectable() && proposedCount() > 0) {
+      <p class="list-proposal-hint">
+        <mat-icon>auto_awesome</mat-icon>
+        <span>The assistant suggests {{ proposedCount() }} of these. Tick a row to select it.</span>
+      </p>
+    }
+
+    <div class="list-table" role="table">
+      <div class="list-row list-row--head" role="row" [class.list-row--selectable]="selectable()">
+        @if (selectable()) {
+          <span class="cell cell--select" role="columnheader"></span>
+        }
+        <span class="cell cell--preview" role="columnheader"></span>
+        <span class="cell cell--title" role="columnheader">Title</span>
+        <span class="cell cell--type" role="columnheader">Type</span>
+        <span class="cell cell--contributor" role="columnheader">Last contributor</span>
+        <span class="cell cell--date" role="columnheader">{{ definition().dateLabel }}</span>
+        <span class="cell cell--actions" role="columnheader"></span>
+      </div>
+
+      @for (row of rows(); track row.uid) {
+        <div
+          class="list-row"
+          role="row"
+          [class.list-row--selectable]="selectable()"
+          [class.list-row--selected]="selectable() && isSelected(row.uid)"
+          [class.list-row--proposed]="selectable() && isProposed(row.uid)"
+        >
+          @if (selectable()) {
+            <span class="cell cell--select" role="cell">
+              <mat-checkbox
+                [checked]="isSelected(row.uid)"
+                [indeterminate]="isProposed(row.uid)"
+                [aria-label]="selectLabelFor(row)"
+                (change)="toggleSelected(row)"
+              ></mat-checkbox>
+            </span>
+          }
+          <span class="cell cell--preview" role="cell">
+            @if (thumbnailFor(row.uid)) {
+              <img class="preview" [src]="thumbnailFor(row.uid)" alt="" />
+            } @else {
+              <mat-icon class="preview-icon">{{ row.icon }}</mat-icon>
+            }
+          </span>
+          <span class="cell cell--title" role="cell">
+            <button type="button" class="title-link" (click)="openDocument(row)">
+              {{ row.title }}
+            </button>
+            <span class="row-path">{{ row.path }}</span>
+          </span>
+          <span class="cell cell--type" role="cell">{{ row.type }}</span>
+          <span class="cell cell--contributor" role="cell">{{ row.lastContributor || '—' }}</span>
+          <span class="cell cell--date" role="cell">{{ row.date || '—' }}</span>
+          <span class="cell cell--actions" role="cell">
+            @if (definition().removable) {
+              <button
+                mat-icon-button
+                type="button"
+                matTooltip="Remove from favorites"
+                aria-label="Remove from favorites"
+                (click)="removeFromFavorites(row)"
+              >
+                <mat-icon>star</mat-icon>
+              </button>
+            }
+          </span>
+        </div>
+      }
+    </div>
+  }
+</section>

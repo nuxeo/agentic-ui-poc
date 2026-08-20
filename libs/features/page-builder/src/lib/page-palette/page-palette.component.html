@@ -1,0 +1,58 @@
+<div class="page-palette">
+  <!-- Search filter -->
+  <div class="palette-search">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search tiles</mat-label>
+      <input
+        matInput
+        type="text"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        placeholder="Filter by name or description"
+      />
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <!-- Empty state: no tiles registered -->
+  @if (!hasTiles()) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">dashboard</mat-icon>
+      <p class="empty-text">No page tiles are available.</p>
+      <p class="empty-hint">
+        Tiles must be registered via <code>providePageTiles()</code> in the application
+        configuration.
+      </p>
+    </div>
+  }
+
+  <!-- Empty state: no search results -->
+  @else if (noResults()) {
+    <div class="empty-state">
+      <mat-icon class="empty-icon">search_off</mat-icon>
+      <p class="empty-text">No tiles match your search.</p>
+      <p class="empty-hint">Try a different search term.</p>
+    </div>
+  }
+
+  <!-- Tile grid -->
+  @else {
+    <div class="tile-grid">
+      @for (tile of filteredTiles(); track trackByName($index, tile)) {
+        <mat-card class="tile-card" cdkDrag [cdkDragData]="tile" (click)="selectTile(tile)">
+          <mat-card-header>
+            <mat-icon mat-card-avatar class="tile-icon">{{ tile.icon }}</mat-icon>
+            <mat-card-title class="tile-title">{{ tile.displayName }}</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <p class="tile-description">{{ tile.description }}</p>
+            <div class="drag-hint">
+              <mat-icon class="drag-icon">drag_indicator</mat-icon>
+              <span>Drag to canvas</span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </div>
+  }
+</div>

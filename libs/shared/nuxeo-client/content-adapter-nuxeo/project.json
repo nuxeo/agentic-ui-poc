@@ -1,0 +1,20 @@
+{
+  "name": "content-adapter-nuxeo",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/nuxeo-client/content-adapter-nuxeo/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:content-adapter"],
+  "targets": {
+    "test": {
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
+      "options": {
+        "reportsDirectory": "coverage/libs/shared/nuxeo-client/content-adapter-nuxeo"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

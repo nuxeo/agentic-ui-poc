@@ -230,23 +230,9 @@ Access them in templates by calling them as functions: `{{ title() }}`, `{{ icon
 
 ### External templates and styles
 
-Use **separate `.html` and `.scss` files** for all non-trivial components. Inline `template` and `styles` are acceptable only for minimal placeholders:
-
-```typescript
-// Acceptable for a placeholder
-@Component({
-  standalone: true,
-  template: `<div class="placeholder"><p>Coming soon</p></div>`,
-  styles: [
-    `
-      .placeholder {
-        padding: 1.5rem;
-      }
-    `,
-  ],
-})
-export class PlaceholderPageComponent {}
-```
+Use **separate `.html` and `.scss` files** for all components. Inline `template` and `styles` are
+acceptable only in specs, where `overrideComponent` swaps in a stub template to keep Material's
+zone-tracked handles out of the runner.
 
 ### RxJS subscriptions and cleanup
 
@@ -410,14 +396,9 @@ The app uses a **single shell route** (`AppShellComponent`) that wraps all authe
 
 - **Feature libraries** with child routes: use `loadChildren` pointing to the feature's `*Routes` array.
 - **Standalone pages** without child routes: use `loadComponent`.
-- **Placeholder routes** (not yet implemented): share the `placeholder` factory:
-
-```typescript
-const placeholder = () =>
-  import('./placeholder-page.component').then((m) => m.PlaceholderPageComponent);
-
-{ path: 'tasks', loadComponent: placeholder },
-```
+- **Unknown paths**: the shell's last child route is `{ path: '**', redirectTo: 'dashboard' }`, so a
+  stale bookmark lands on the dashboard rather than an unmatched-route error. There are no
+  "Coming soon" placeholder routes left — a nav entry either has a page or is drawer-only.
 
 ### Route guards
 

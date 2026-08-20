@@ -1,0 +1,268 @@
+:host {
+  display: block;
+  height: 100%;
+}
+
+.list-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px 24px;
+  box-sizing: border-box;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+
+.list-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+}
+
+.refresh-button mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.list-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  color: var(--mat-sys-on-surface-variant);
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+.list-state--error {
+  color: var(--mat-sys-error);
+}
+
+.list-table {
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 4px;
+  background: var(--mat-sys-surface);
+}
+
+.list-row {
+  display: grid;
+  grid-template-columns: 48px minmax(240px, 1fr) 120px 180px 140px 48px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.list-row--selectable {
+  grid-template-columns: 40px 48px minmax(240px, 1fr) 120px 180px 140px 48px;
+}
+
+.list-row--selected {
+  background: var(--mat-sys-secondary-container);
+}
+
+/**
+ * A suggestion the user has not accepted.
+ *
+ * Deliberately not the selected style. The agent proposing a row and the user
+ * choosing it are different facts, and a surface that renders them identically
+ * invites someone to read a list of the model's own suggestions back to it as
+ * the user's decision — which is the thing the provenance rule exists to stop.
+ */
+.list-row--proposed {
+  background: var(--mat-sys-surface-container-high);
+  box-shadow: inset 2px 0 0 var(--mat-sys-primary);
+}
+
+.list-proposal-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--mat-sys-on-surface-variant);
+  font-size: 12px;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--mat-sys-primary);
+  }
+}
+
+.cell--select {
+  display: flex;
+  align-items: center;
+}
+
+.list-row--head {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface-container-low);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.cell {
+  font-size: 13px;
+  color: var(--mat-sys-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell--title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cell--preview,
+.cell--actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview {
+  width: 32px;
+  height: 32px;
+  object-fit: cover;
+  border-radius: 2px;
+}
+
+.preview-icon {
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.title-link {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: var(--mat-sys-primary);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.row-path {
+  font-size: 11px;
+  color: var(--mat-sys-on-surface-variant);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/**
+ * The 400px column, for a list mounted somewhere other than its own page — the
+ * AI chat panel today.
+ *
+ * A modifier class rather than a media query, deliberately. The constraint is the
+ * width of the container this instance was put in, not the width of the viewport,
+ * and the page and the panel can be on screen at the same time. A `@media` rule
+ * would narrow both or neither.
+ *
+ * The columns dropped here are dropped rather than wrapped: the grid's own floor
+ * is 776px, and four columns reflowed into a 340px content box is a list nobody
+ * can scan. What survives is the icon, the title with its path, and the date.
+ */
+.list-page--compact {
+  height: auto;
+  padding: 0;
+
+  .list-header {
+    // The tool card immediately above already names the call and its result.
+    display: none;
+  }
+
+  .list-state {
+    min-height: 88px;
+    padding: 12px;
+  }
+
+  .list-table {
+    max-height: 320px;
+    background: var(--mat-sys-surface-container-lowest);
+  }
+
+  .list-row {
+    // 74px is the rendered width of an ISO date at 11px. Anything less
+    // truncates every row to `2026-08-…`, which is worse than no date at all.
+    grid-template-columns: 28px minmax(0, 1fr) 74px;
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  // A checkbox costs the date its column. At 400px there is room for a tick, an
+  // icon, a title and a path, and adding a fifth thing takes the title below the
+  // width at which two documents in the same folder can be told apart. The date
+  // is the one of those with a home elsewhere — it is on the document itself,
+  // one click away — so it is what goes.
+  .list-row--selectable {
+    grid-template-columns: 26px 28px minmax(0, 1fr);
+
+    .cell--date {
+      display: none;
+    }
+  }
+
+  .list-row--head,
+  .cell--type,
+  .cell--contributor,
+  .cell--actions {
+    display: none;
+  }
+
+  .cell {
+    font-size: 12px;
+  }
+
+  .cell--date {
+    font-size: 11px;
+    color: var(--mat-sys-on-surface-variant);
+    text-align: right;
+  }
+
+  .preview {
+    width: 24px;
+    height: 24px;
+  }
+
+  .preview-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+}

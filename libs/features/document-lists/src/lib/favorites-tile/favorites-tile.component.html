@@ -1,0 +1,63 @@
+<div class="favorites-tile">
+  <header class="tile-header">
+    <h2 class="tile-title">{{ title() }}</h2>
+    <button
+      mat-icon-button
+      type="button"
+      class="refresh-button"
+      matTooltip="Refresh"
+      [disabled]="loading()"
+      (click)="reload()"
+    >
+      <mat-icon>refresh</mat-icon>
+    </button>
+  </header>
+
+  @if (loading()) {
+    <div class="tile-state">
+      <mat-spinner diameter="32"></mat-spinner>
+    </div>
+  } @else if (error()) {
+    <div class="tile-state tile-state--error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (isEmpty()) {
+    <div class="tile-state">
+      <mat-icon>star_outline</mat-icon>
+      <p>Use the star icon on a document to add it to your favorites.</p>
+    </div>
+  } @else {
+    <div class="favorites-list">
+      @for (row of rows(); track row.uid) {
+        <div class="favorite-row">
+          <div class="favorite-preview">
+            @if (thumbnailFor(row.uid)) {
+              <img class="preview-img" [src]="thumbnailFor(row.uid)" alt="" />
+            } @else {
+              <mat-icon class="preview-icon">{{ row.icon }}</mat-icon>
+            }
+          </div>
+          <button type="button" class="favorite-details" (click)="openDocument(row)">
+            <div class="favorite-title">{{ row.title }}</div>
+            <div class="favorite-meta">
+              <span class="favorite-type">{{ row.type }}</span>
+              <span class="favorite-separator">•</span>
+              <span class="favorite-date">{{ row.modified }}</span>
+            </div>
+          </button>
+          <button
+            mat-icon-button
+            type="button"
+            class="unfavorite-button"
+            matTooltip="Remove from favorites"
+            aria-label="Remove from favorites"
+            (click)="removeFromFavorites(row)"
+          >
+            <mat-icon>star</mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+  }
+</div>

@@ -10,11 +10,17 @@
     "paths": {
       "@agentic-ui/core": ["libs/core/src/index.ts"],
       "@agentic-ui/shared/ui": ["libs/shared/ui/src/index.ts"],
+      "@agentic-ui/shared/ui/agent-widgets": ["libs/shared/ui/src/agent-widgets.ts"],
+      "@agentic-ui/shared/ui/agent-forms": ["libs/shared/ui/src/agent-forms.ts"],
+      "@agentic-ui/shared/ui/page-tiles": ["libs/shared/ui/src/page-tiles.ts"],
       "@agentic-ui/shared/util": ["libs/shared/util/src/index.ts"],
       "@agentic-ui/shared/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
+      "@agentic-ui/shared/content-ports": ["libs/shared/nuxeo-client/content-ports/src/index.ts"],
+      "@agentic-ui/shared/content-adapter-nuxeo": [
+        "libs/shared/nuxeo-client/content-adapter-nuxeo/src/index.ts"
+      ],
       "@agentic-ui/shared/kd-client": ["libs/shared/kd-client/src/index.ts"],
       "@agentic-ui/shared/ke-client": ["libs/shared/ke-client/src/index.ts"],
-      "@agentic-ui/shared/drawers": ["libs/shared/drawers/src/index.ts"],
       "@agentic-ui/feature-browse": ["libs/features/browse/src/index.ts"],
       "@agentic-ui/feature-search": ["libs/features/search/src/index.ts"],
       "@agentic-ui/feature-assets": ["libs/features/assets/src/index.ts"],
@@ -27,13 +33,18 @@
       "@agentic-ui/feature-search/search-filters-drawer": [
         "libs/features/search/src/lib/search-filters-drawer/search-filters-drawer.component.ts"
       ],
+      "@agentic-ui/feature-document-lists": ["libs/features/document-lists/src/index.ts"],
       "@agentic-ui/feature-document-detail": ["libs/features/document-detail/src/index.ts"],
       "@agentic-ui/feature-collections": ["libs/features/collections/src/index.ts"],
       "@agentic-ui/feature-tasks": ["libs/features/tasks/src/index.ts"],
       "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
       "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"],
       "@agentic-ui/feature-knowledge-discovery": ["libs/features/knowledge-discovery/src/index.ts"],
-      "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"]
+      "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"],
+      "@agentic-ui/shared/agent-client": ["libs/shared/agent-client/src/index.ts"],
+      "@agentic-ui/feature-dashboard-tiles": ["libs/features/dashboard-tiles/src/index.ts"],
+      "@agentic-ui/feature-page-builder": ["libs/features/page-builder/src/index.ts"],
+      "@agentic-ui/feature-page-viewer": ["libs/features/page-viewer/src/index.ts"]
     }
   }
 }

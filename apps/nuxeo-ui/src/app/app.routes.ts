@@ -3,9 +3,6 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './auth/admin.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
 
-const placeholder = () =>
-  import('./placeholder-page.component').then((m) => m.PlaceholderPageComponent);
-
 export const routes: Routes = [
   {
     path: 'login',
@@ -29,7 +26,8 @@ export const routes: Routes = [
       },
       {
         path: 'recently-viewed',
-        loadComponent: placeholder,
+        loadChildren: () =>
+          import('@agentic-ui/feature-document-lists').then((m) => m.recentlyViewedRoutes),
       },
       {
         path: 'search',
@@ -42,7 +40,8 @@ export const routes: Routes = [
       },
       {
         path: 'expired-queue',
-        loadComponent: placeholder,
+        loadChildren: () =>
+          import('@agentic-ui/feature-document-lists').then((m) => m.expiredQueueRoutes),
       },
       {
         path: 'doc',
@@ -62,7 +61,8 @@ export const routes: Routes = [
       },
       {
         path: 'favorites',
-        loadComponent: placeholder,
+        loadChildren: () =>
+          import('@agentic-ui/feature-document-lists').then((m) => m.favoritesRoutes),
       },
       {
         path: 'collections',
@@ -75,10 +75,6 @@ export const routes: Routes = [
           import('./personal-space/personal-space-page.component').then(
             (m) => m.PersonalSpacePageComponent,
           ),
-      },
-      {
-        path: 'clipboard',
-        loadComponent: placeholder,
       },
       {
         path: 'trash',
@@ -121,6 +117,19 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./settings/themes/themes-page.component').then((m) => m.ThemesPageComponent),
       },
+      {
+        path: 'page',
+        loadChildren: () =>
+          import('@agentic-ui/feature-page-viewer').then((m) => m.pageViewerRoutes),
+      },
+      {
+        path: 'page-builder',
+        loadChildren: () =>
+          import('@agentic-ui/feature-page-builder').then((m) => m.pageBuilderRoutes),
+      },
+      // The clipboard is drawer-only — it has no page and no server-side state — so a
+      // bookmarked /clipboard, like any other unknown path, lands on the dashboard.
+      { path: '**', redirectTo: 'dashboard' },
     ],
   },
 ];

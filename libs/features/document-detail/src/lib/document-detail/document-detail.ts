@@ -140,6 +140,14 @@ import {
   type ExifData,
   type IptcData,
   type VideoInfo,
+  AddPermissionDialogComponent,
+  AddPermissionDialogData,
+  DeletePermissionDialogComponent,
+  DeletePermissionDialogData,
+  ShareExternalDialogComponent,
+  ShareExternalDialogData,
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
 } from '@agentic-ui/shared/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
@@ -153,17 +161,6 @@ import { ReplaceAttachmentDialogComponent } from '../replace-attachment-dialog/r
 import { RemoveAttachmentDialogComponent } from '../remove-attachment-dialog/remove-attachment-dialog';
 import { EditDocumentDialogComponent } from '../edit-document-dialog/edit-document-dialog';
 import { NoteEditorComponent } from '../note-editor/note-editor';
-import {
-  AddPermissionDialogComponent,
-  AddPermissionDialogData,
-  DeletePermissionDialogComponent,
-  DeletePermissionDialogData,
-  ShareExternalDialogComponent,
-  ShareExternalDialogData,
-  UpdatePermissionDialogComponent,
-  UpdatePermissionDialogData,
-} from '@agentic-ui/feature-collections';
-
 export interface SectionNode {
   doc: NuxeoDocument;
   children: SectionNode[];

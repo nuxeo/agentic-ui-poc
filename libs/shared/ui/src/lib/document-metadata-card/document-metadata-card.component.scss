@@ -1,0 +1,125 @@
+:host {
+  display: block;
+  // A container query rather than a media query: the card is mounted inside a
+  // 400px panel on a 1440px viewport, so the viewport width says nothing useful
+  // about the room it actually has.
+  container-type: inline-size;
+}
+
+/**
+ * Sized for the 400px chat panel first.
+ *
+ * The card has no minimum width and no fixed columns: the label/value pairs are
+ * a two-column grid that collapses to one below 260px, and every value truncates
+ * rather than wrapping to three lines. That is the whole of the narrow-column
+ * pass for this widget, and it is cheap because the card was drawn for the panel
+ * instead of being retrofitted to it.
+ */
+.metadata-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  background: var(--mat-sys-surface);
+  box-sizing: border-box;
+}
+
+.metadata-card__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--mat-sys-on-surface-variant);
+
+  p {
+    margin: 0;
+    font-size: 12px;
+  }
+}
+
+.metadata-card__state--error {
+  color: var(--mat-sys-error);
+}
+
+.metadata-card__header {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+}
+
+.metadata-card__icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.metadata-card__title {
+  margin: 0;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metadata-card__open {
+  // The state layer, not width/height, is what sizes an icon button's ripple:
+  // left at its 40px default it spills out of a 28px grid track at panel width.
+  // The 48px touch target overhangs too, but it is absolutely positioned and
+  // invisible, so it is left alone rather than clipped away from tap input.
+  --mdc-icon-button-state-layer-size: 28px;
+  --mdc-icon-button-icon-size: 16px;
+
+  width: 28px;
+  height: 28px;
+  min-width: 0;
+  padding: 0;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.metadata-card__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+}
+
+.metadata-card__field {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+
+  dt {
+    margin: 0;
+    font-size: 11px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  dd {
+    margin: 0;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--mat-sys-on-surface);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@container (max-width: 260px) {
+  .metadata-card__field {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}

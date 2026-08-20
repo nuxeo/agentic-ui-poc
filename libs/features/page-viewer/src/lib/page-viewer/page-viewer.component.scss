@@ -1,0 +1,151 @@
+/**
+ * Page Viewer: 12-column CSS Grid layout for page tiles
+ *
+ * ## Grid system
+ * - 12 columns on desktop/tablet (≥768px)
+ * - Stacks vertically on mobile (<768px)
+ * - Gap: 16px between tiles
+ * - Tiles use explicit grid placement from PageConfig
+ *
+ * ## Container queries
+ * Each tile-container uses container-type: inline-size so tiles can
+ * adapt to their actual width (half vs full) rather than viewport width.
+ *
+ * ## Responsive behavior
+ * - Desktop/tablet: Full 12-column grid, tiles at configured positions
+ * - Mobile: Tiles stack vertically, one per row, maintaining order
+ */
+
+:host {
+  display: block;
+  padding: 24px;
+  container-type: inline-size;
+}
+
+// Loading state
+.page-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 400px;
+  color: var(--md-sys-color-on-surface-variant);
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+
+// Error state
+.page-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 400px;
+  text-align: center;
+  color: var(--md-sys-color-error);
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 500;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+}
+
+// Empty state
+.page-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 400px;
+  text-align: center;
+  color: var(--md-sys-color-on-surface-variant);
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    opacity: 0.5;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+  }
+}
+
+// Grid layout
+.page-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 1600px; // Prevent grid from becoming too wide on large screens
+  margin: 0 auto;
+
+  // Auto-generate rows as needed
+  grid-auto-rows: minmax(200px, auto);
+
+  // Mobile: Stack tiles vertically
+  @media (max-width: 767px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+// Tile container
+.tile-container {
+  // Enable container queries so tiles can adapt to their actual width
+  container-type: inline-size;
+  container-name: tile;
+
+  // Ensure tiles don't overflow their grid area
+  min-width: 0;
+  min-height: 0;
+
+  // On mobile, override grid placement and show tiles in order
+  @media (max-width: 767px) {
+    grid-column: 1 !important;
+    grid-row: auto !important;
+  }
+
+  // Tiles should fill their container
+  lib-page-tile-host {
+    display: block;
+    height: 100%;
+  }
+}
+
+// Container query breakpoints for tiles
+// Tiles can use these to adapt their internal layout based on actual width:
+//
+// @container tile (max-width: 400px) { /* compact layout */ }
+// @container tile (min-width: 600px) { /* spacious layout */ }
+//
+// Half-width tiles are ~400-600px depending on screen size
+// Full-width tiles are ~800-1600px depending on screen size

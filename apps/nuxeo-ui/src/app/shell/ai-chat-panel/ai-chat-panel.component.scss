@@ -1,0 +1,959 @@
+// Palette is expressed as component-scoped custom properties bound to the Material
+// system tokens, so the panel follows the app theme instead of pinning its own colours.
+:host {
+  --ai-accent: var(--mat-sys-primary, #7c4dff);
+  --ai-accent-soft: var(--mat-sys-primary-container, #ede7ff);
+  --ai-on-accent: var(--mat-sys-on-primary, #fff);
+  --ai-surface: var(--mat-sys-surface-container-low, #fafbfe);
+  --ai-surface-raised: var(--mat-sys-surface, #fff);
+  --ai-border: var(--mat-sys-outline-variant, #e8eaef);
+  --ai-text: var(--mat-sys-on-surface, #1a1c1e);
+  --ai-text-secondary: var(--mat-sys-on-surface-variant, #5f6368);
+  --ai-error: var(--mat-sys-error, #dc2626);
+  --ai-error-surface: var(--mat-sys-error-container, #fef2f2);
+  // Tint for code spans, code blocks and table headers, derived from the theme's own text
+  // colour so it stays legible in either light or dark surroundings.
+  --ai-code-surface: color-mix(in srgb, var(--ai-text-secondary) 10%, transparent);
+  --ai-shadow: var(--mat-sys-shadow, #000);
+
+  display: block;
+  height: 100%;
+}
+
+.ai-chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--ai-surface);
+}
+
+.ai-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--ai-surface-raised);
+  border-bottom: 1px solid var(--ai-border);
+  flex-shrink: 0;
+}
+
+.ai-chat-header-icon {
+  color: var(--ai-accent);
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.ai-chat-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ai-text);
+  flex: 1;
+  min-width: 0;
+  letter-spacing: -0.01em;
+}
+
+.ai-chat-mode {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--ai-accent-soft);
+  color: var(--ai-accent);
+  flex-shrink: 0;
+
+  &--fallback {
+    background: var(--ai-border);
+    color: var(--ai-text-secondary);
+  }
+}
+
+.ai-chat-clear {
+  color: var(--ai-text-secondary);
+}
+
+.ai-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+.ai-chat-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 20px 24px;
+  gap: 8px;
+  animation: ai-fade-in 0.4s ease;
+
+  h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--ai-text);
+    letter-spacing: -0.02em;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--ai-text-secondary);
+    line-height: 1.6;
+    max-width: 280px;
+  }
+}
+
+.ai-chat-welcome-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: var(--ai-accent);
+}
+
+.ai-chat-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  width: 100%;
+}
+
+.ai-chat-suggestion {
+  padding: 11px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface-raised);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ai-text);
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--ai-accent);
+    background: var(--ai-accent-soft);
+    transform: translateY(-1px);
+  }
+}
+
+.ai-chat-msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: ai-fade-up 0.3s ease;
+
+  &.user {
+    justify-content: flex-end;
+
+    .ai-msg-bubble {
+      background: var(--ai-accent);
+      color: var(--ai-on-accent);
+      border-radius: 18px 18px 4px 18px;
+    }
+  }
+
+  &.assistant {
+    .ai-msg-bubble {
+      background: var(--ai-surface-raised);
+      color: var(--ai-text);
+      border-radius: 18px 18px 18px 4px;
+      border: 1px solid var(--ai-border);
+    }
+  }
+}
+
+.ai-msg-avatar-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--ai-accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ai-msg-avatar {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+  color: var(--ai-accent);
+}
+
+.ai-msg-bubble {
+  max-width: 85%;
+  // Without this the bubble is a flex item with `min-width: auto`, so its min-content width
+  // wins over `max-width` and a table or a code block pushes the bubble out past the panel.
+  min-width: 0;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+// A live model writes tables, fenced code and bare URLs, none of which wrap. The bubble is
+// about 280px wide inside a 400px panel, so each of them scrolls or breaks inside its own
+// box rather than widening the transcript and putting a horizontal scrollbar on the panel.
+.ai-msg-content {
+  word-break: break-word;
+  min-width: 0;
+  max-width: 100%;
+
+  ::ng-deep {
+    > :first-child {
+      margin-top: 0;
+    }
+
+    > :last-child {
+      margin-bottom: 0;
+    }
+
+    p {
+      margin: 0 0 8px;
+    }
+
+    strong {
+      font-weight: 600;
+      color: inherit;
+    }
+
+    ul,
+    ol {
+      margin: 6px 0;
+      padding-left: 20px;
+
+      li {
+        margin-bottom: 4px;
+        padding-left: 2px;
+      }
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      margin: 12px 0 4px;
+      font-weight: 600;
+      line-height: 1.35;
+      letter-spacing: -0.01em;
+    }
+
+    h1 {
+      font-size: 15.5px;
+    }
+
+    h2 {
+      font-size: 14.5px;
+    }
+
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-size: 13.5px;
+    }
+
+    hr {
+      margin: 12px 0;
+      border: none;
+      border-top: 1px solid var(--ai-border);
+    }
+
+    blockquote {
+      margin: 8px 0;
+      padding: 2px 0 2px 10px;
+      border-left: 2px solid var(--ai-accent);
+      color: var(--ai-text-secondary);
+    }
+
+    a {
+      color: var(--ai-accent);
+      // A citation URL is routinely longer than the bubble and has no spaces to break at.
+      overflow-wrap: anywhere;
+    }
+
+    code {
+      font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+      font-size: 12px;
+      padding: 1px 4px;
+      border-radius: 4px;
+      background: var(--ai-code-surface);
+    }
+
+    pre {
+      margin: 8px 0;
+      padding: 10px;
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--ai-border);
+      border-radius: 8px;
+      background: var(--ai-code-surface);
+
+      code {
+        padding: 0;
+        background: none;
+        white-space: pre;
+      }
+    }
+
+    table {
+      // `display: block` is what makes `overflow-x` apply to a table at all; `max-content`
+      // then keeps the columns at their natural width inside that scrolling box instead of
+      // crushing them into one character per line.
+      display: block;
+      width: max-content;
+      max-width: 100%;
+      overflow-x: auto;
+      margin: 8px 0;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    th,
+    td {
+      padding: 4px 8px;
+      border: 1px solid var(--ai-border);
+      text-align: left;
+      vertical-align: top;
+      // The bubble breaks long words to avoid overflowing; a table must not, or a four
+      // column answer arrives as "Retent / ion class". It scrolls sideways instead.
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+
+    th {
+      font-weight: 600;
+      background: var(--ai-code-surface);
+    }
+
+    .ai-md-task {
+      color: var(--ai-text-secondary);
+    }
+  }
+}
+
+// Tool-call cards
+.ai-tool-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface-raised);
+  animation: ai-fade-up 0.3s ease;
+
+  &[data-status='failed'],
+  &[data-status='rejected'] {
+    border-color: var(--ai-error);
+  }
+}
+
+.ai-tool-card-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: var(--ai-accent);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.ai-tool-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-tool-card-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ai-text);
+}
+
+.ai-tool-card-args,
+.ai-tool-card-result {
+  font-size: 11.5px;
+  color: var(--ai-text-secondary);
+  word-break: break-word;
+}
+
+// A payload that reported an error reads as a failure even when the call itself ran.
+.ai-tool-card-result.is-failure {
+  color: var(--ai-error);
+}
+
+.ai-tool-card-raw-toggle {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 11px;
+  color: var(--ai-accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+// The payload verbatim, for someone debugging a tool. Capped in height and scrolled in
+// both directions so reaching it can never give the panel back its 866px blob.
+.ai-tool-card-raw {
+  margin: 4px 0 0;
+  padding: 8px;
+  max-height: 200px;
+  max-width: 100%;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--ai-code-surface);
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ai-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+// A generative-UI widget, mounted under the tool card that asked for it.
+//
+// The negative top margin pulls it against that card so the two read as one unit:
+// the call, and what the call produced. Nothing here sizes the widget itself —
+// that is the mounted component's own `compact` density, because the 400px
+// problem belongs to the component that has to survive it and not to the panel.
+.ai-chat-widget {
+  margin-top: -4px;
+  padding-left: 8px;
+  animation: ai-fade-up 0.3s ease;
+}
+
+// Human-in-the-loop approval.
+//
+// One card per batch of decisions, one row per write. Five writes used to be five copies
+// of this card — about 1,100px of stacked prose in a 670px viewport, all carrying the same
+// sentence — so everything below is sized to keep a row scannable and a ten-row batch
+// scrollable rather than endless. Nothing here widens the panel: every line either wraps
+// or ellipsises inside its 400px column.
+.ai-approval {
+  border: 1px solid var(--ai-accent);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--ai-accent-soft);
+  animation: ai-fade-up 0.3s ease;
+  min-width: 0;
+}
+
+.ai-approval-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ai-accent);
+
+  mat-icon {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.ai-approval-tool {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ai-text-secondary);
+}
+
+// How many are done, always visible, so a batch has a visible end.
+.ai-approval-progress {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ai-surface-raised);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ai-accent);
+}
+
+// Said once for the batch, instead of once per row as the stack of cards said it.
+.ai-approval-intro {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ai-text);
+}
+
+.ai-approval-rows {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+// One write needs no enumeration, no index and no surface of its own — the card already
+// is the row. This keeps the single-decision case looking exactly as it did before the
+// batch layout existed, which is also the path the demo exercises.
+.ai-approval--single .ai-approval-row {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.ai-approval-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface-raised);
+
+  // An answered row stays on screen so the batch keeps its shape, but recedes: what is
+  // left to decide has to be the thing the eye lands on.
+  &[data-verdict='approved'],
+  &[data-verdict='declined'] {
+    opacity: 0.72;
+    background: var(--ai-surface);
+  }
+}
+
+.ai-approval-row-index {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--ai-accent-soft);
+  color: var(--ai-accent);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.ai-approval-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-approval-row-action {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ai-text);
+  word-break: break-word;
+}
+
+.ai-approval-row-verb {
+  color: var(--ai-text-secondary);
+}
+
+.ai-approval-row-doc,
+.ai-approval-row-value {
+  font-weight: 600;
+  color: var(--ai-text);
+}
+
+// The identifier stays on screen under the name, because the name is a lookup and the
+// identifier is the thing the write actually carries.
+.ai-approval-row-uid {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  color: var(--ai-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-approval-row-tool {
+  margin: 3px 0 0;
+  font-size: 10.5px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  color: var(--ai-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-approval-row-answer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ai-text-secondary);
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+  }
+
+  &[data-verdict='approved'] {
+    color: var(--ai-accent);
+  }
+
+  &[data-verdict='declined'] {
+    color: var(--ai-error);
+  }
+}
+
+.ai-approval-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ai-approval-remaining {
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--ai-text-secondary);
+}
+
+// The only batch control on the card, and only on the side that cannot write anything.
+.ai-approval-decline-all {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ai-error);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.ai-approval-summary {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ai-text);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.ai-approval-args {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--ai-text-secondary);
+  word-break: break-word;
+}
+
+.ai-approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+// The form that answers a row, in place of the two buttons. It brings its own
+// border and padding, so this only positions it.
+.ai-approval-form {
+  display: block;
+  margin-top: 10px;
+}
+
+.ai-approval-approve,
+.ai-approval-decline {
+  border-radius: 999px;
+  padding: 7px 16px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--ai-accent);
+}
+
+.ai-approval-approve {
+  background: var(--ai-accent);
+  color: var(--ai-on-accent);
+}
+
+.ai-approval-decline {
+  background: transparent;
+  color: var(--ai-accent);
+}
+
+// Thinking steps
+.ai-thinking {
+  list-style: none;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px dashed var(--ai-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-thinking-step {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ai-text-secondary);
+
+  &.done {
+    opacity: 0.6;
+  }
+
+  mat-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: var(--ai-accent);
+  }
+}
+
+.ai-thinking-label {
+  font-weight: 600;
+}
+
+.ai-thinking-detail {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Citations
+.ai-msg-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ai-border);
+}
+
+.ai-sources-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ai-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+
+  mat-icon {
+    font-size: 13px;
+    width: 13px;
+    height: 13px;
+  }
+}
+
+.ai-source-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ai-border);
+  background: var(--ai-surface);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+
+  &:hover {
+    border-color: var(--ai-accent);
+    background: var(--ai-accent-soft);
+
+    .ai-source-card-arrow {
+      opacity: 1;
+      color: var(--ai-accent);
+    }
+  }
+}
+
+.ai-source-card-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--ai-accent);
+  flex-shrink: 0;
+}
+
+.ai-source-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-source-card-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ai-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-source-card-path {
+  font-size: 11px;
+  color: var(--ai-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-source-card-arrow {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+  color: var(--ai-text-secondary);
+  flex-shrink: 0;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+// Typing indicator
+.ai-msg-typing {
+  display: flex;
+  gap: 5px;
+  padding: 14px 18px;
+}
+
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ai-accent);
+  animation: typing-bounce 1.4s infinite ease-in-out;
+
+  &:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  &:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+}
+
+@keyframes typing-bounce {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.3;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.ai-chat-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--ai-error-surface);
+  border: 1px solid var(--ai-error);
+  color: var(--ai-error);
+  font-size: 12.5px;
+  animation: ai-fade-in 0.3s ease;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+}
+
+.ai-chat-input-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--ai-surface-raised);
+  border-top: 1px solid var(--ai-border);
+  flex-shrink: 0;
+}
+
+.ai-chat-input {
+  flex: 1;
+  min-width: 0;
+  border: 1.5px solid var(--ai-border);
+  border-radius: 22px;
+  padding: 10px 16px;
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  background: var(--ai-surface);
+  color: var(--ai-text);
+  transition: all 0.2s ease;
+
+  &:focus {
+    border-color: var(--ai-accent);
+    background: var(--ai-surface-raised);
+  }
+
+  &::placeholder {
+    color: var(--ai-text-secondary);
+  }
+}
+
+.ai-chat-send,
+.ai-chat-cancel {
+  color: var(--ai-accent);
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+
+  &:hover:not(:disabled) {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes ai-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ai-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

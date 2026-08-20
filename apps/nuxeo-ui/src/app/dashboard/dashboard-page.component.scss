@@ -164,6 +164,12 @@
 }
 
 .task-card {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
   padding: 14px 20px;
   border-bottom: 1px solid #f0f0f0;
   line-height: 1.5;

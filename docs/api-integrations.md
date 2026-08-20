@@ -1061,6 +1061,11 @@ Documents are added/removed via document detail, collection detail, or the selec
 
 **Request body:** `{ params: { target: "<folder-uid>" }, context: {}, input: "docs:<uid1>,<uid2>" }` (single doc: `doc:<uid>`).
 
+**Also used by:** the agent runtime's `nuxeo.moveDocuments` tool, with this exact
+operation and envelope. The Phase 1 plan listed document move as the one agent
+capability with no existing service method; that was wrong — `Document.Move` has
+been mapped here since the clipboard work, and no new endpoint was added for it.
+
 **Target folder:** `ClipboardTargetService` — updated by `BrowseComponent` while browsing. User must browse to a folderish container before Copy/Move are enabled.
 
 **After success:** `BrowseContextService.notifyClipboardPasteComplete()` optimistically merges pasted documents into the current folder listing and schedules a delayed server reload; `requestTreeRefresh()` updates the browse nav tree when needed.
@@ -1406,6 +1411,67 @@ prefers `dc:source` (rarely auto-filled) and falls back to `dc:rights` when
 **Request body:** Merged document entity from `@emptyWithDefault` with user overrides applied (`mergeCreateDocumentBody`). Null/empty optional Dublin Core fields are omitted so server defaults (e.g. Domain schema fields) are preserved.
 
 **Usage:** Dashboard Add Content (+) → Create tab → Domain at repository root `/` (`CreateImportDialogComponent` → `createChildDocument`).
+
+---
+
+## 28. Agent gateway — Bulk metadata update (`setProperties`)
+
+| Field           | Value                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| **Service**     | `nuxeo.bulkUpdateMetadata` tool (`apps/agent-gateway/src/tools/nuxeo-document-tools.ts`) |
+| **HTTP Method** | `POST`                                                                                   |
+| **Endpoint**    | `/nuxeo/api/v1/automation/Bulk.RunAction`                                                |
+
+The one Nuxeo call the agent runtime makes that no Angular service makes. Every
+other agent tool reuses an endpoint an existing service already calls, so the
+gateway and the SPA cannot drift onto two different Nuxeo contracts; this is the
+exception, because nothing in the SPA updates metadata across a result set.
+
+The envelope is the same `Bulk.RunAction` one as §26 (`ingest`) and CSV export
+(`BrowseService.startCsvExport`); only the action name and its `parameters`
+payload are new. Note the double encoding — `params.parameters` is a **JSON
+string**, not an object, which is what the bulk framework expects:
+
+```json
+{
+  "params": {
+    "action": "setProperties",
+    "query": "SELECT * FROM Document WHERE ecm:parentId = 'folder-uuid'",
+    "parameters": "{\"dc:coverage\":\"emea\"}"
+  },
+  "context": {}
+}
+```
+
+**This call is asynchronous, which is a materially different contract from every
+synchronous operation around it.** It returns a bulk command id immediately and
+the documents are updated later by a server-side worker, so a `200` here means
+"accepted", not "applied":
+
+```json
+{
+  "entity-type": "bulkStatus",
+  "value": { "entity-type": "bulkStatus", "commandId": "command-uuid", "state": "SCHEDULED" }
+}
+```
+
+Consequences that matter to a caller:
+
+- Reading a document back immediately after the call can legitimately return the
+  old values. There is no read-your-writes guarantee.
+- Completion and per-document failures are only visible by polling
+  `GET /nuxeo/api/v1/bulk/{commandId}` until `state` is `COMPLETED` or `ABORTED`,
+  then checking `error` / `errorCount` — the same status entity as §26.
+- ACLs are enforced per document by the worker, so a partial application is a
+  normal outcome for a user who can edit some of the matched set. `errorCount`
+  is the signal; the command still reports `COMPLETED`.
+
+The tool returns the `commandId` and state to the model rather than pretending
+the write finished, so the assistant tells the user the update was queued.
+
+**Identity:** as with every agent tool, the request carries the caller's own
+Nuxeo session — the gateway holds no credential of its own — so the worker
+applies that user's ACLs. See `apps/agent-gateway/README.md`.
 
 ---
 

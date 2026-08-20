@@ -1,0 +1,21 @@
+<!-- A separator with a value: the role that makes arrow keys mean "resize me". `div`
+     rather than `button` so Enter and Space stay unbound, since there is nothing here
+     to activate. -->
+<div
+  class="panel-resize-grip"
+  role="separator"
+  aria-orientation="vertical"
+  [attr.aria-label]="label()"
+  [attr.aria-valuenow]="width()"
+  [attr.aria-valuemin]="min()"
+  [attr.aria-valuemax]="max()"
+  [attr.aria-disabled]="disabled() ? 'true' : null"
+  [attr.tabindex]="disabled() ? -1 : 0"
+  (pointerdown)="onPointerDown($event)"
+  (pointermove)="onPointerMove($event)"
+  (pointerup)="onPointerUp($event)"
+  (pointercancel)="onPointerCancel($event)"
+  (keydown)="onKeydown($event)"
+>
+  <span class="panel-resize-grip-line" aria-hidden="true"></span>
+</div>

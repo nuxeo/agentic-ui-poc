@@ -1,0 +1,35 @@
+<section class="metadata-card">
+  @if (loading()) {
+    <div class="metadata-card__state">
+      <mat-spinner diameter="20"></mat-spinner>
+    </div>
+  } @else if (error()) {
+    <div class="metadata-card__state metadata-card__state--error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ error() }}</p>
+    </div>
+  } @else if (document()) {
+    <header class="metadata-card__header">
+      <mat-icon class="metadata-card__icon">{{ icon() }}</mat-icon>
+      <h3 class="metadata-card__title" [title]="title()">{{ title() }}</h3>
+      <button
+        mat-icon-button
+        class="metadata-card__open"
+        type="button"
+        aria-label="Open document"
+        (click)="open()"
+      >
+        <mat-icon>open_in_new</mat-icon>
+      </button>
+    </header>
+
+    <dl class="metadata-card__fields">
+      @for (entry of entries(); track entry.label) {
+        <div class="metadata-card__field">
+          <dt>{{ entry.label }}</dt>
+          <dd [title]="entry.value">{{ entry.value }}</dd>
+        </div>
+      }
+    </dl>
+  }
+</section>

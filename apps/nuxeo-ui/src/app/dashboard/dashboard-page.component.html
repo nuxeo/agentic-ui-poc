@@ -128,7 +128,7 @@
       } @else {
         <div class="task-list">
           @for (task of tasks(); track task.id) {
-            <div class="task-card" (click)="goToTask(task)">
+            <button type="button" class="task-card" (click)="goToTask(task)">
               <div class="task-action">{{ taskLabel(task) }}</div>
               @if (taskDocTitle(task)) {
                 <div class="task-doc-title">{{ taskDocTitle(task) }}</div>
@@ -137,7 +137,7 @@
                 Due <span class="task-due-value">{{ relativeTime(task.dueDate) }}</span>
               </div>
               <div class="task-workflow">{{ taskWorkflow(task) }}</div>
-            </div>
+            </button>
           }
         </div>
       }

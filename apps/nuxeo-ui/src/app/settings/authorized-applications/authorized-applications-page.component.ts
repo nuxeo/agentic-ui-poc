@@ -1,10 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
-import {
-  SettingsService,
-  type AuthorizedApplication,
-} from '@agentic-ui/shared/nuxeo-client';
+import { SettingsService, type AuthorizedApplication } from '@agentic-ui/shared/nuxeo-client';
 
 @Component({
   standalone: true,

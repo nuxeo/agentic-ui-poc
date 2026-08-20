@@ -12,7 +12,8 @@
     "lint": "nx run-many -t lint",
     "lint:affected": "nx affected -t lint",
     "review:guardrails": "node scripts/review-guardrails.mjs",
-    "review:preflight": "npm run review:guardrails && npx nx affected -t lint && npx nx affected -t test",
+    "review:preflight": "npm run review:guardrails && npx nx affected -t lint && npx nx affected -t build && npx nx affected -t test",
+    "test:coverage": "node scripts/check-coverage.mjs",
     "evidence:collect": "node scripts/collect-evidence/runner.mjs"
   },
   "lint-staged": {
@@ -32,7 +33,14 @@
   },
   "private": true,
   "packageManager": "npm@11.6.2",
+  "overrides": {
+    "@angular-devkit/architect": "0.1902.23",
+    "rxjs": "$rxjs"
+  },
   "dependencies": {
+    "@ag-ui/client": "0.0.57",
+    "@ag-ui/core": "0.0.57",
+    "@ag-ui/encoder": "0.0.57",
     "@angular/animations": "~19.2.0",
     "@angular/cdk": "~19.2.0",
     "@angular/common": "~19.2.0",
@@ -45,18 +53,12 @@
     "@angular/router": "~19.2.0",
     "@hylandsoftware/satori-ui": "^0.1.5",
     "@ngx-translate/core": "^17.0.0",
-    "cors": "^2.8.6",
     "dompurify": "^3.3.3",
-    "dotenv": "^17.4.1",
-    "express": "^5.2.1",
-    "openai": "^6.33.0",
+    "marked": "18.0.9",
     "quill": "^2.0.3",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
-  },
-  "overrides": {
-    "@angular-devkit/architect": "0.1902.23"
   },
   "devDependencies": {
     "@analogjs/vite-plugin-angular": "~1.14.1",
@@ -67,6 +69,7 @@
     "@angular/build": "~19.2.0",
     "@angular/cli": "~19.2.0",
     "@angular/compiler-cli": "~19.2.0",
+    "@axe-core/playwright": "^4.12.1",
     "@eslint/js": "^9.8.0",
     "@nx/angular": "22.6.3",
     "@nx/eslint": "22.6.3",
@@ -76,13 +79,12 @@
     "@nx/vitest": "22.6.3",
     "@nx/workspace": "22.6.3",
     "@oxc-project/runtime": "^0.115.0",
+    "@playwright/test": "^1.62.1",
     "@schematics/angular": "~19.2.0",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
-    "@types/cors": "^2.8.19",
     "@types/dompurify": "^3.0.5",
-    "@types/express": "^5.0.6",
     "@types/jasmine": "^6.0.0",
     "@types/node": "20.19.9",
     "@typescript-eslint/utils": "^8.40.0",

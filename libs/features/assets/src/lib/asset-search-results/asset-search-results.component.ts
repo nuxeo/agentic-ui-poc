@@ -22,7 +22,12 @@ import {
   type NuxeoDocument,
   type AssetAggregations,
 } from '@agentic-ui/shared/nuxeo-client';
-import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent, ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+import {
+  SavedSearchDialogComponent,
+  ShareSavedSearchDialogComponent,
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '@agentic-ui/shared/ui';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -45,7 +50,6 @@ const ALL_COLUMNS: ColumnDef[] = [
   { key: 'nature', label: 'Nature', width: '140px' },
   { key: 'coverage', label: 'Coverage', width: '140px' },
   { key: 'subjects', label: 'Subjects', width: '200px' },
-  { key: 'flags', label: 'Flags', width: '120px' },
 ];
 
 export interface AssetResult {
@@ -67,7 +71,6 @@ export interface AssetResult {
   nature?: string;
   coverage?: string;
   subjects?: string;
-  flags?: string;
 }
 
 const GRID_SORT_TO_API_FIELD: Record<string, string> = {
@@ -149,7 +152,16 @@ function mapToAssetResult(doc: NuxeoDocument): AssetResult {
     nature: (props['dc:nature'] as string) ?? undefined,
     coverage: (props['dc:coverage'] as string) ?? undefined,
     subjects: ((props['dc:subjects'] as string[]) ?? []).join(', ') || undefined,
+    state: doc.state || undefined,
+    version: formatVersion(props),
   };
+}
+
+/** `major.minor` as the browse grid renders it; undefined when the doc carries no version. */
+function formatVersion(props: Record<string, unknown>): string | undefined {
+  const major = props['uid:major_version'];
+  if (major === undefined || major === null) return undefined;
+  return `${major}.${props['uid:minor_version'] ?? 0}`;
 }
 
 const DIMENSION_BUCKET_KEYS = [
@@ -304,6 +316,14 @@ export class AssetSearchResultsComponent {
   readonly selectionService = inject(SelectionService);
 
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+
+  /**
+   * Thumbnail object URLs, revoked on destroy so navigating away does not leak blobs.
+   * Declared ahead of `assets$` because that stream subscribes during field initialisation
+   * and reaches `loadThumbnails` synchronously.
+   */
+  private readonly thumbnailUrls: string[] = [];
+
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   readonly loading = signal(true);
@@ -363,6 +383,11 @@ export class AssetSearchResultsComponent {
       this.gridGroupBy.set(uiSortBy);
       this.gridSortOrder.set(sortOrder);
     });
+
+    this.destroyRef.onDestroy(() => {
+      this.thumbnailUrls.forEach((url) => URL.revokeObjectURL(url));
+      this.thumbnailUrls.length = 0;
+    });
   }
 
   readonly visibleColumns = computed(() =>
@@ -399,8 +424,6 @@ export class AssetSearchResultsComponent {
         return asset.coverage ?? '—';
       case 'subjects':
         return asset.subjects ?? '—';
-      case 'flags':
-        return asset.flags ?? '—';
       default:
         return '';
     }
@@ -421,7 +444,7 @@ export class AssetSearchResultsComponent {
     } else {
       const assets = this.filteredAssets();
       const labels: Record<string, string> = {};
-      const previews: Record<string, any> = {};
+      const previews: Record<string, SafeUrl | null> = {};
       assets.forEach((asset) => {
         labels[asset.id] = asset.name;
         previews[asset.id] = this.thumbnailMap()[asset.id] ?? null;
@@ -677,7 +700,6 @@ export class AssetSearchResultsComponent {
       'Nature',
       'Coverage',
       'Subjects',
-      'Flags',
     ];
     const escape = (value: string): string => `"${value.replaceAll('"', '""')}"`;
     const rows = this.filteredAssets().map((a) => [
@@ -692,7 +714,6 @@ export class AssetSearchResultsComponent {
       a.nature ?? '',
       a.coverage ?? '',
       a.subjects ?? '',
-      a.flags ?? '',
     ]);
     const csv = [headers, ...rows]
       .map((r) => r.map((cell) => escape(cell ?? '')).join(','))
@@ -715,6 +736,7 @@ export class AssetSearchResultsComponent {
         },
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((title) => {
         const trimmedTitle = title?.trim();
         if (!trimmedTitle) return;
@@ -725,6 +747,7 @@ export class AssetSearchResultsComponent {
             params: this.buildSavedSearchParamsFromQuery(),
             pageProviderName: 'assets_search',
           })
+          .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: (saved) => {
               this.aggregationService.selectedSavedSearchId.set(this.readSavedSearchId(saved));
@@ -760,6 +783,7 @@ export class AssetSearchResultsComponent {
         params: this.buildSavedSearchParamsFromQuery(),
         pageProviderName: 'assets_search',
       })
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: () => {
           this.aggregationService.selectedSavedSearchTitle.set(currentTitle);
@@ -785,6 +809,7 @@ export class AssetSearchResultsComponent {
         },
       })
       .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((title) => {
         const trimmedTitle = title?.trim();
         if (!trimmedTitle) return;
@@ -795,6 +820,7 @@ export class AssetSearchResultsComponent {
             params: this.buildSavedSearchParamsFromQuery(),
             pageProviderName: 'assets_search',
           })
+          .pipe(takeUntilDestroyed(this.destroyRef))
           .subscribe({
             next: () => {
               this.aggregationService.selectedSavedSearchTitle.set(trimmedTitle);
@@ -915,10 +941,14 @@ export class AssetSearchResultsComponent {
       if (this.thumbnailMap()[asset.id]) continue;
       this.documentDetailService
         .fetchThumbnail(asset.id)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [asset.id]: this.sanitizer.bypassSecurityTrustUrl(url),

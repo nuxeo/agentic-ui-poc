@@ -1,9 +1,5 @@
 <div class="drawer-header">
-  <div
-    class="saved-filters-dropdown"
-    tabindex="-1"
-    (focusout)="onSavedFilterFocusOut($event)"
-  >
+  <div class="saved-filters-dropdown" tabindex="-1" (focusout)="onSavedFilterFocusOut($event)">
     <button class="saved-filters-trigger" type="button" (click)="toggleSavedFilterDropdown()">
       <span class="saved-filters-label">{{
         trashFilterService.activeSavedFilterTitle() ?? 'Search Filters'

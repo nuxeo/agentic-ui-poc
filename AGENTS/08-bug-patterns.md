@@ -397,6 +397,59 @@ guarantee. See `libs/features/document-detail/src/lib/document-detail/ke-action-
 
 ---
 
+## 16. Styling `position` on a `mat-sidenav` (drawer renders as empty space)
+
+A component-scoped class compiles to `.foo[_ngcontent-xxx]` — a class **and** an
+attribute. Material's own drawer rule is the single class `.mat-drawer`. So
+anything declared in a rule for a class you put on a `<mat-sidenav>` wins,
+including properties you did not mean to take over.
+
+`.mat-drawer` is `position: absolute; top: 0; bottom: 0`. That is not decoration:
+it is what gives the drawer its **height**. Override the positioning and the
+drawer drops into normal flow, its height collapses to `auto`, any child sized
+`height: 100%` resolves against zero, and the drawer renders as a
+correctly-positioned area of **empty space**.
+
+```scss
+/* BAD ❌ — "position: relative so my absolutely-positioned child has an anchor".
+   The panel inside this drawer vanishes. */
+.ai-chat-sidenav {
+  width: var(--ai-chat-width, 400px);
+  position: relative;
+}
+
+/* GOOD ✅ — `.mat-drawer` is ALREADY `position: absolute`, so it is already the
+   containing block an absolutely-positioned child needs. Declare nothing. */
+.ai-chat-sidenav {
+  width: var(--ai-chat-width, 400px);
+}
+```
+
+`width` is the property that makes this trap convincing: overriding it is
+intended, works, and is how a drawer gets an app-specific size. Having watched
+`width` win, `position` looks equally safe.
+
+What makes this expensive is the failure mode, not the fix. There is **no console
+error**, **no failing unit test** and nothing in the diff that looks wrong — a
+TestBed spec asserting a component's inputs and outputs passes perfectly while
+the drawer is a blank rectangle on screen. This one shipped past a 249-test
+suite and a green four-phase preflight, and was found by a person looking at
+the screen.
+
+Guardrail: `scripts/review-guardrails.mjs` → `checkDrawerLayoutOverrides()`
+fails the build if a stylesheet sets `position`, `top` or `bottom` on a class
+its sibling template puts on a `<mat-sidenav>` or `<mat-drawer>`. It only
+matches classes actually used on a drawer, so a container that happens to be
+named `*-sidenav` is not flagged.
+
+Generalises past sidenav: whenever you override a Material component's styles
+through a class of your own, you are outranking **every** property in that
+component's rule, not only the one you wrote. Check what else the rule declares
+before adding a layout property — especially `position`, `display`, `overflow`
+and `height`.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.

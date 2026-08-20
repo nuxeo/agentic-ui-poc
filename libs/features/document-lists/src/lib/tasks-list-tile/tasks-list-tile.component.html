@@ -1,0 +1,34 @@
+<div class="tasks-list-tile">
+  @if (loading()) {
+    <div class="tile-loading">
+      <mat-spinner diameter="28" />
+    </div>
+  } @else if (error()) {
+    <div class="tile-error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  } @else if (tasks().length === 0) {
+    <div class="tile-empty">
+      <mat-icon>task_alt</mat-icon>
+      <span>No pending tasks</span>
+    </div>
+  } @else {
+    <div class="task-list">
+      @for (task of tasks(); track task.id) {
+        <button type="button" class="task-card" (click)="goToTask(task)">
+          <div class="task-header">
+            <mat-icon class="task-icon">assignment</mat-icon>
+            <span class="task-action">{{ taskLabel(task) }}</span>
+          </div>
+          @if (taskDocTitle(task)) {
+            <div class="task-doc-title">{{ taskDocTitle(task) }}</div>
+          }
+          <div class="task-due" [class.task-overdue]="isOverdue(task)">
+            Due <span class="task-due-value">{{ relativeTime(task.dueDate) }}</span>
+          </div>
+        </button>
+      }
+    </div>
+  }
+</div>

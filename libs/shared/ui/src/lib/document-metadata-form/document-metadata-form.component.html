@@ -1,0 +1,158 @@
+<form class="metadata-form" (ngSubmit)="submit()" [attr.aria-label]="title()">
+  <header class="metadata-form__header">
+    <mat-icon class="metadata-form__icon">edit_note</mat-icon>
+    <h3 class="metadata-form__title">{{ title() }}</h3>
+  </header>
+
+  <!-- The target. An unresolved uid is shown as itself: `title` is present only
+       when Nuxeo answered for this caller, so its absence means the document
+       could not be read, and a name the panel could not substantiate is worse
+       than none on the affordance that authorises a write to it. -->
+  <p class="metadata-form__target">
+    <span class="metadata-form__target-label" [title]="targetLabel()">{{ targetLabel() }}</span>
+    @if (targetResolved()) {
+      <span class="metadata-form__target-uid">{{ target().uid }}</span>
+    }
+    @if (target().path) {
+      <span class="metadata-form__target-path" [title]="target().path">{{ target().path }}</span>
+    }
+  </p>
+
+  <!-- Two sentences, because "check them before saving" points at the editable
+       controls and there is a second case it does not cover: a proposed value on a
+       display-only row is not something the user can save or change, it is a value
+       the assistant wrote where a reader expects the document's own. -->
+  @if (hasProposedValues()) {
+    <p class="metadata-form__proposed-note">
+      <mat-icon>auto_awesome</mat-icon>
+      <span>
+        The assistant filled some of these in. Check them before saving.
+        @if (hasProposedReadOnlyValues()) {
+          Values marked <em>suggested</em> below are the assistant's, not the document's.
+        }
+      </span>
+    </p>
+  }
+
+  <div class="metadata-form__fields">
+    @for (row of editableRows(); track row.field.name) {
+      <div class="metadata-form__field">
+        <label class="metadata-form__label" [attr.for]="'field-' + row.field.name">
+          {{ row.field.label }}
+          @if (row.field.required) {
+            <span class="metadata-form__required" aria-hidden="true">*</span>
+          }
+          @if (row.field.source === 'proposed') {
+            <span class="metadata-form__badge" title="Suggested by the assistant">suggested</span>
+          }
+        </label>
+
+        @switch (row.field.type) {
+          @case ('multiline') {
+            <textarea
+              class="metadata-form__control"
+              [id]="'field-' + row.field.name"
+              rows="3"
+              [required]="!!row.field.required"
+              [attr.maxlength]="row.field.maxLength ?? null"
+              [attr.aria-invalid]="row.problem ? 'true' : null"
+              [attr.aria-describedby]="row.problem ? 'problem-' + row.field.name : null"
+              [disabled]="sent()"
+              [ngModel]="row.text"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="edit(row.field.name, $event)"
+            ></textarea>
+          }
+          @case ('boolean') {
+            <input
+              class="metadata-form__checkbox"
+              type="checkbox"
+              [id]="'field-' + row.field.name"
+              [disabled]="sent()"
+              [ngModel]="row.checked"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="editBoolean(row.field.name, $event)"
+            />
+          }
+          @default {
+            <input
+              class="metadata-form__control"
+              [id]="'field-' + row.field.name"
+              [type]="
+                row.field.type === 'number' ? 'number' : row.field.type === 'date' ? 'date' : 'text'
+              "
+              [required]="!!row.field.required"
+              [attr.maxlength]="row.field.maxLength ?? null"
+              [attr.aria-invalid]="row.problem ? 'true' : null"
+              [attr.aria-describedby]="row.problem ? 'problem-' + row.field.name : null"
+              [disabled]="sent()"
+              [ngModel]="row.text"
+              [ngModelOptions]="{ standalone: true }"
+              (ngModelChange)="edit(row.field.name, $event)"
+            />
+          }
+        }
+
+        @if (row.problem) {
+          <p class="metadata-form__problem" [id]="'problem-' + row.field.name" role="alert">
+            {{ row.problem }}
+          </p>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Display-only fields. They are what makes the form reviewable — who created
+       this, when, who touched it last — and submitting one changes nothing,
+       because the gateway builds the write from the editable subset alone.
+
+       A proposed value is badged here too, and this is the row where it matters
+       most. `source` is set from whether the model's arguments mentioned the field
+       at all, regardless of whether it is editable, so a model that names
+       `dc:creator` in a write has its own string shown in the block a reader trusts
+       as the document's current state. An editable row's value can be checked by
+       looking at the control; these are the rows that cannot. Nothing is written
+       either way — the overlay drops non-editable fields server-side — so this is
+       display honesty rather than a write path. -->
+  @if (readOnlyRows().length > 0) {
+    <dl class="metadata-form__readonly">
+      @for (row of readOnlyRows(); track row.field.name) {
+        @if (row.text) {
+          <div class="metadata-form__readonly-row">
+            <dt>
+              {{ row.field.label }}
+              @if (row.field.source === 'proposed') {
+                <span
+                  class="metadata-form__badge"
+                  title="Suggested by the assistant — not the document's stored value"
+                  >suggested</span
+                >
+              }
+            </dt>
+            <dd [title]="row.text">{{ row.text }}</dd>
+          </div>
+        }
+      }
+    </dl>
+  }
+
+  <div class="metadata-form__actions">
+    <button
+      type="button"
+      class="metadata-form__cancel"
+      [disabled]="sent()"
+      [attr.aria-label]="'Cancel: ' + title() + ' on ' + targetLabel()"
+      (click)="cancel()"
+    >
+      Cancel
+    </button>
+    <button
+      type="submit"
+      class="metadata-form__submit"
+      [disabled]="sent()"
+      [attr.aria-label]="submitLabel() + ': ' + targetLabel()"
+    >
+      {{ submitLabel() }}
+    </button>
+  </div>
+</form>

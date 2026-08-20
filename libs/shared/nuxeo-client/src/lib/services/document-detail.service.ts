@@ -18,6 +18,13 @@ import { NuxeoApiBase } from './nuxeo-api-base';
 import { normalizeDocumentAcls } from '../utils/ace-principal';
 import { BLOB_CLIENT_REASON_PARAM, type FetchBlobOptions } from '../utils/blob-client-reason';
 
+/**
+ * Rejection message for {@link DocumentDetailService.removePermission} without an ACE id.
+ * Exported so callers can show it and so a regression test can pin the refusal.
+ */
+export const REMOVE_PERMISSION_ACE_ID_REQUIRED =
+  'Cannot remove this permission: the permission entry id is missing. Refresh the page and try again.';
+
 @Injectable({ providedIn: 'root' })
 export class DocumentDetailService {
   private readonly api = inject(NuxeoApiBase);
@@ -612,13 +619,27 @@ export class DocumentDetailService {
     );
   }
 
+  /**
+   * Revokes exactly one ACE, identified by the ACE id the `acls` enricher reports.
+   *
+   * `Document.RemovePermission` takes `acl`, `id` and `user` — there is no `permission`
+   * parameter. Passing one is silently ignored by Automation, and identifying the ACE by
+   * `user` alone removes **every** ACE for that principal on the ACL. So the id is the
+   * only safe handle, and a caller that cannot produce one is refused rather than served
+   * an over-broad revoke: removing grants an administrator did not ask to remove is worse
+   * than failing.
+   */
   removePermission(
     uid: string,
-    params: { user: string; permission: string; acl?: string },
+    params: { aceId: string; acl?: string },
   ): Observable<NuxeoDocument> {
+    const aceId = params.aceId?.trim();
+    if (!aceId) {
+      return throwError(() => new Error(REMOVE_PERMISSION_ACE_ID_REQUIRED));
+    }
     return this.api.post<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}/@op/Document.RemovePermission`,
-      { params: { ...params, acl: params.acl ?? 'local' }, context: {} },
+      { params: { acl: params.acl ?? 'local', id: aceId }, context: {} },
       { 'Content-Type': 'application/json' },
     );
   }

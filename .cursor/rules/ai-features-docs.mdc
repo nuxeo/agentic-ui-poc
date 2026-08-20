@@ -1,38 +1,50 @@
 ---
 description: Keep AI features documentation in sync with code changes
 globs:
-  - apps/ai-backend/src/**/*.ts
   - libs/shared/ai-client/src/**/*.ts
   - libs/features/search/src/lib/search/search.ts
   - libs/features/document-detail/src/lib/document-detail/document-detail.ts
   - apps/nuxeo-ui/src/app/shell/app-shell.component.ts
   - apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts
   - libs/features/administration/src/lib/admin-analytics-page/*.ts
+  - libs/features/administration/src/lib/admin-audit-page/*.ts
   - libs/features/administration/src/lib/admin-nxql-search-page/*.ts
 alwaysApply: false
 ---
 
 # AI Features Documentation Rule
 
-The application includes the following AI features (all powered by OpenAI via `apps/ai-backend`):
+There is **no AI backend in this repository**. `apps/ai-backend` was removed. AI is served by the
+standalone [`nuxeo-ai-package`](https://github.com/nuxeo/nuxeo-ai-package) Java marketplace bundle
+on the Nuxeo server, called through the Automation API:
 
-1. **Natural Language Search** — Convert plain English to NXQL queries (Search page + Admin NXQL page)
-2. **Document Summarization** — AI-generated summary with key points (Document Detail > AI Insights tab)
-3. **AI Tag Suggestions** — Recommend tags with confidence scores, one-click apply (Document Detail > AI Insights tab)
-4. **Document Classification** — Suggest description, nature, subjects, workflow (Document Detail > AI Insights tab)
-5. **Similar Documents** — Find related documents via embeddings + cosine similarity (Document Detail > AI Insights tab)
-6. **AI Chat Assistant** — RAG-powered conversational assistant with context awareness (App header drawer)
-7. **Dashboard AI Insights** — Personalized actionable insights based on tasks and activity (Dashboard widget)
-8. **Audit Anomaly Detection** — AI analysis of audit events for security anomalies (Admin > Analytics tab)
-9. **Comment Sentiment Analysis** — Classify comment sentiment and summarize threads (API ready)
-10. **Natural Language Permission Queries** — Answer "who can access what" questions via ACL analysis (API ready)
+`POST /nuxeo/api/v1/automation/<OperationId>` with body `{ "params": { … } }`
 
-When modifying any AI-related code (backend routes, Angular AI components, AI client services), you MUST also update `docs/ai-features.md` to reflect the changes.
+The client is `AiGatewayService` (`libs/shared/ai-client/src/lib/ai-gateway.service.ts`); the base
+URL is the `AI_BACKEND_URL` token, provided as `'/nuxeo'` in `apps/nuxeo-ui/src/app/app.config.ts`.
+Do not look for `/ai/*` routes, an Express server, or port 3000 — none exist.
 
-Specifically:
-- If you add, remove, or rename an API endpoint, update the corresponding feature section and the Project Structure listing.
-- If you change request/response shapes, update the API examples in the relevant feature section.
-- If you add a new AI feature, add a new numbered section following the existing format (heading, location, description, table of files, API example).
-- If you change which OpenAI model a feature uses, update the Models Used table.
-- If you add new environment variables, update the Environment Variables table.
-- If you modify the project structure (new files/folders), update the Project Structure tree.
+## Shipped AI features and the operations behind them
+
+1. **Natural Language Search** — `AI.NlToNxql` (Search page + Admin NXQL page; `suggestions: true` drives autocomplete)
+2. **Document Summarization** — `AI.Summarize` (Document Detail > AI Insights)
+3. **AI Tag Suggestions** — `AI.SuggestTags` (Document Detail > AI Insights)
+4. **Document Classification** — `AI.Classify` (Document Detail > AI Insights)
+5. **Similar Documents** — `AI.Similar` (Document Detail > AI Insights)
+6. **AI Chat Assistant** — `AI.Chat` (app header drawer; single request/response, not streaming)
+7. **Dashboard AI Insights** — `AI.Insights` (Dashboard widget)
+8. **Audit Anomaly Detection** — `AI.Anomalies` (Admin > Analytics, Admin > Audit)
+9. **Audit NL Filter and Summary** — `AI.AuditNlFilter`, `AI.AuditSummarize` (Admin > Audit)
+10. **Comment Sentiment Analysis** — `AI.Sentiment` (Document Detail comment thread)
+11. **NL Permission Queries** — `AI.NlPermissions` (client method exists, no UI caller)
+
+## When you change AI code
+
+You MUST also update `docs/ai-features.md`, and `AGENTS.md` section 5 plus
+`AGENTS/10-ai-features.md` if the operation list changes.
+
+- Adding, removing or renaming an operation → update the feature section, the operation table and the Project Structure listing.
+- Changing request/response shapes → update the examples in the relevant feature section and `ai.models.ts`.
+- Adding a new AI feature → add a numbered section following the existing format.
+- Never document model names here: model selection lives in `nuxeo-ai-package` and will drift.
+- Never add a HAIP or model API key to this repo — see `AGENTS/07-security.md`.

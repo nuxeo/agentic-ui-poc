@@ -98,7 +98,7 @@
     @for (g of groups(); track g.identifier) {
       <article
         class="profile-card"
-        [libGroupPermLazyLoad]="g.identifier"
+        [appGroupPermLazyLoad]="g.identifier"
         (visible)="onGroupPermSectionVisible($event)"
       >
         <div class="profile-card__section-title" role="heading" aria-level="3">

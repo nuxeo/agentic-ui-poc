@@ -17,6 +17,7 @@ export interface DrawerLinkItem {
 export const PLATFORM_NAV_ITEMS: AppNavItem[] = [
   { label: 'Knowledge Discovery', path: '/knowledge-discovery', icon: 'star' },
   { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
+  { label: 'Page Builder', path: '/page-builder', icon: 'dashboard_customize' },
   { label: 'Browse', path: '/browse', icon: 'folder', hasDrawer: true },
   { label: 'Recently viewed', path: '/recently-viewed', icon: 'clock', hasDrawer: true },
   { label: 'Search filters', path: '/search', icon: 'search', hasDrawer: true },

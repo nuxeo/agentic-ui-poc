@@ -1,0 +1,194 @@
+<!-- List view: show saved pages -->
+@if (viewMode() === 'list') {
+  <div class="page-list-container">
+    <mat-toolbar color="primary">
+      <span>Saved Pages</span>
+      <span class="spacer"></span>
+      <button
+        mat-raised-button
+        color="accent"
+        (click)="newPage()"
+        [routerLink]="['/page-builder', 'new']"
+      >
+        <mat-icon>add</mat-icon>
+        New Page
+      </button>
+    </mat-toolbar>
+
+    @if (loading()) {
+      <div class="loading-container">
+        <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+        <p>Loading saved pages...</p>
+      </div>
+    } @else if (error()) {
+      <div class="error-container">
+        <mat-icon>error</mat-icon>
+        <p>{{ error() }}</p>
+        <button mat-button (click)="loadSavedPagesList()">Retry</button>
+      </div>
+    } @else if (savedPages().length === 0) {
+      <div class="empty-state">
+        <mat-icon>dashboard</mat-icon>
+        <h2>No saved pages</h2>
+        <p>Create your first page to get started.</p>
+        <button mat-raised-button color="primary" [routerLink]="['/page-builder', 'new']">
+          <mat-icon>add</mat-icon>
+          Create Page
+        </button>
+      </div>
+    } @else {
+      <mat-list>
+        @for (page of savedPages(); track page.id) {
+          <mat-list-item (click)="loadSavedPage(page)" class="page-list-item">
+            <mat-icon matListItemIcon>dashboard</mat-icon>
+            <div matListItemTitle>{{ page.title }}</div>
+            <div matListItemLine>
+              {{ page.tileCount }} tiles • Last modified: {{ page.modified | date: 'short' }} • By:
+              {{ page.creator }}
+            </div>
+          </mat-list-item>
+        }
+      </mat-list>
+    }
+  </div>
+}
+
+<!-- Editor view: three-panel layout -->
+@if (viewMode() === 'editor') {
+  <div class="page-builder-shell">
+    <!-- Toolbar -->
+    <mat-toolbar color="primary" class="page-toolbar">
+      <button mat-icon-button [routerLink]="['/page-builder']" matTooltip="Back to list">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+
+      <span class="toolbar-title">
+        @if (currentPage()) {
+          Edit Page
+        } @else {
+          New Page
+        }
+      </span>
+
+      <span class="spacer"></span>
+
+      @if (dirty()) {
+        <span class="unsaved-indicator">Unsaved changes</span>
+      }
+
+      <button
+        mat-icon-button
+        (click)="newPage()"
+        matTooltip="New page (unsaved changes will be lost)"
+      >
+        <mat-icon>add</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        (click)="save()"
+        [disabled]="saving()"
+        matTooltip="Save (Ctrl+S)"
+        class="save-button"
+      >
+        <mat-icon>save</mat-icon>
+      </button>
+
+      <button mat-icon-button (click)="share()" [disabled]="!currentPage()" matTooltip="Share">
+        <mat-icon>share</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        (click)="deletePage()"
+        [disabled]="!currentPage()"
+        matTooltip="Delete page"
+      >
+        <mat-icon>delete</mat-icon>
+      </button>
+
+      <button mat-icon-button (click)="preview()" matTooltip="Preview (Ctrl+P)">
+        <mat-icon>visibility</mat-icon>
+      </button>
+    </mat-toolbar>
+
+    <!-- Page metadata form -->
+    <div class="metadata-form">
+      <form [formGroup]="metadataForm">
+        <mat-form-field appearance="outline" class="title-field">
+          <mat-label>Page Title</mat-label>
+          <input matInput formControlName="title" required maxlength="128" />
+          @if (
+            metadataForm.get('title')?.hasError('required') && metadataForm.get('title')?.touched
+          ) {
+            <mat-error>Title is required</mat-error>
+          }
+          @if (metadataForm.get('title')?.hasError('maxlength')) {
+            <mat-error>Maximum 128 characters</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="description-field">
+          <mat-label>Description (optional)</mat-label>
+          <textarea matInput formControlName="description" maxlength="500" rows="2"></textarea>
+          @if (metadataForm.get('description')?.hasError('maxlength')) {
+            <mat-error>Maximum 500 characters</mat-error>
+          }
+        </mat-form-field>
+      </form>
+    </div>
+
+    @if (error()) {
+      <div class="error-banner">
+        <mat-icon>error</mat-icon>
+        <span>{{ error() }}</span>
+        <button mat-icon-button (click)="error.set(null)">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    }
+
+    <!-- Three-panel layout -->
+    <div class="three-panel-layout" cdkDropListGroup>
+      <!-- Left: Palette -->
+      <div class="left-panel">
+        <h3>Tile Palette</h3>
+        <lib-page-palette (tileSelected)="onTileSelectedFromPalette($event)"> </lib-page-palette>
+      </div>
+
+      <!-- Center: Editor -->
+      <div class="center-panel">
+        <h3>Page Canvas</h3>
+        @if (loading()) {
+          <div class="loading-container">
+            <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+          </div>
+        } @else {
+          <lib-page-grid-editor
+            [initialConfig]="currentConfig()"
+            (configChanged)="onConfigChanged($event)"
+          >
+          </lib-page-grid-editor>
+        }
+      </div>
+
+      <!-- Right: Config form -->
+      <div class="right-panel">
+        <h3>Tile Configuration</h3>
+        @if (selectedTileDef() && selectedTile()) {
+          <lib-tile-config-form
+            [tile]="selectedTileDef()!"
+            [existingConfig]="selectedTile()!.config"
+            (configChange)="onTileConfigChanged($event)"
+          >
+          </lib-tile-config-form>
+        } @else {
+          <div class="empty-config">
+            <mat-icon>info</mat-icon>
+            <p>Select a tile from the canvas to configure it</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
