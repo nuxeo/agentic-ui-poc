@@ -127,7 +127,10 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 
 ## Already done
 
-- Phase 0 verification: dependencies install, gates run, build passes (1.66 MB initial bundle).
+- Phase 1 core: `libs/shared/app-config`, the non-overwriting installer path, eleven tokens
+  repointed, config-driven theming and activated i18n. Quality gate 4/4, evidence 36/36.
+- Phase 0 verification: dependencies install, gates run, build passes (1.66 MB initial bundle;
+  1.69 MB after Phase 1).
 - Much of Phase 5: [`scripts/beta-harness/`](../scripts/beta-harness/) (phase evidence runner with
   per-step assertions, verification gate, annotated comparison generator),
   [`AGENTS/11-beta-program.md`](../AGENTS/11-beta-program.md), the `beta-program` rule, and six SDLC
@@ -155,20 +158,36 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
    the surface grows once adf-core arrives.
 6. Delete the unused Material `hxp-document-tree` and open a draft PR so CI runs at all.
 
-## Phase 1 — Layer 0: upgrade-safe configuration (12-18 d, unblocked)
+## Phase 1 — Layer 0: upgrade-safe configuration (**core delivered**, remainder 4-7 d)
 
-- Add the non-overwriting config path to `install.xml`, and a bootstrap config fetched by an
-  `APP_INITIALIZER` in [`apps/nuxeo-ui/src/app/app.config.ts`](../apps/nuxeo-ui/src/app/app.config.ts).
-  Repoint the existing 12+ `InjectionToken` factories (`nuxeo-api.config.ts`, `ai.config.ts`,
-  `kd.config.ts`, `adf-hx-bridge.tokens.ts`) at it — the token pattern is already the intended
-  override idiom, so this converts the set in one move.
-- Load the runtime manifest from the Nuxeo config document, with packaged fallback and tolerant
-  failure.
-- **Theming:** replace the four hardcoded `html[data-app-theme=...]` blocks in
-  [`apps/nuxeo-ui/src/styles.scss`](../apps/nuxeo-ui/src/styles.scss) with config-driven CSS custom
-  properties, and delete the `!important` override block that would otherwise fight customer CSS.
-- **i18n:** activate the inert `TranslateModule` and extract strings **for the slice only**.
-  Full-repo extraction is an 8-12 d task and is not Beta-critical.
+Gates: quality gate **PASS** (4/4 green) · evidence gate **PASS** (36/36 checks, exit 0).
+
+Delivered:
+
+- `libs/shared/app-config` loads a **bootstrap file** pre-auth and a **runtime manifest** from the
+  Nuxeo document at `/default-domain/config/agentic-ui` post-auth, both tolerant of absence, denial
+  and malformed JSON. Installed by a second `install.xml` copy with `overwrite="false"` into
+  `nxserver/web/nuxeo.war/agentic-ui-config`, a **sibling** of the bundle and therefore outside the
+  destructive copy — which is what makes customer edits survive an upgrade.
+- **Eleven `InjectionToken` factories** repointed at the loaded configuration: the Nuxeo API origin
+  and server URL, the AI backend prefix, the ARender endpoints, both Content Intelligence operation
+  maps, the three SSO tokens and the session timeout. `nuxeo-sso.providers.ts` and its two hardcoded
+  SAML registration IDs are deleted.
+- **Theming:** `AppThemeId` is no longer a closed four-member union — the theme set comes from
+  configuration, each theme carries a CSS-custom-property `tokens` map applied inline to `<html>`,
+  and the global override block is token-driven.
+- **i18n:** `TranslateModule` was registered but inert; it now loads a real catalogue and layers the
+  manifest's `labels` over it, so relabelling is a configuration edit. Extraction covers the slice's
+  chrome only.
+
+Remaining, deliberately not attempted:
+
+- Extend extraction across the rest of the Beta slice's templates (browse, search, document detail,
+  metadata, permissions, versions, upload/CRUD body copy). Full-repo extraction stays out of scope.
+- An in-app editor for the configuration document; today it is edited as a Nuxeo Note.
+- Residual `!important` on `.sat-tag` and the dialog title, where Satori's and Material's own
+  stylesheets genuinely outrank ours. Removing it regresses the current appearance, so it needs a
+  decision rather than a blind deletion.
 
 ## Phase 2 — Layer 1: extension registry (15-22 d, unblocked)
 
@@ -288,7 +307,7 @@ customer-authored code.
 | R4  | `@alfresco/js-api` and the wider adf-core peer set (including `pdfjs-dist`, `@mat-datetimepicker/core`) ship inside a Nuxeo product.                                                                                                                          | Medium   | SCA, licensing and product-optics review before Phase 3 commits.                            |
 | R5  | **9 high-severity audit findings already**, before adf-core arrives. NXENG-615 requires none.                                                                                                                                                                 | Medium   | Triage in Phase 0.                                                                          |
 | R6  | This branch carries the monorepo Angular 20 upgrade while `main` is on 19.                                                                                                                                                                                    | Medium   | Land the upgrade as its own PR first.                                                       |
-| R7  | Manifest-as-Nuxeo-document and the non-overwriting installer change need packaging sign-off; neither is prototyped.                                                                                                                                           | Medium   | Spike in Phase 1; fall back to a static path outside `nxserver/web`.                        |
+| R7  | ~~Manifest-as-Nuxeo-document and the non-overwriting installer change need packaging sign-off; neither is prototyped.~~ **Both prototyped in Phase 1**, evidenced end to end. Only packaging sign-off is left.                                                | Low      | Get packaging sign-off on the second `install.xml` copy step. No fallback needed.           |
 | R8  | Too few addressable IDs in Layer 1 caps customisation and pushes work into Layer 2, undermining the maintenance economics.                                                                                                                                    | Medium   | Fix the addressable surface before Phase 2 starts, informed by real customer requests.      |
 | R9  | Selection state is shared with production browse, so the Satori bulk topbar overlays the POC route.                                                                                                                                                           | Low      | Decide whether Beta keeps one shell or forks it.                                            |
 | R10 | The `@nuxeo-satori` npm scope is proposed but ownership is unconfirmed.                                                                                                                                                                                       | Low      | Confirm or choose an owned scope in Phase 4.                                                |

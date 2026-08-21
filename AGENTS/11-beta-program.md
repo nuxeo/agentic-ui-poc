@@ -63,6 +63,22 @@ Treat them as settled; if you contradict one, prove it first.
 - The POC's bridge tokens (`DOCUMENT_API_TOKEN`, `QUERY_API_TOKEN`,
   `ROOT_DOCUMENT`, `DEFAULT_REPOSITORY_ID`) are local clones of published
   exports. Migration is to import upstream's and delete the clones.
+- **The non-overwriting installer path works and is no longer a risk.** A second
+  `install.xml` copy step with `overwrite="false"`, targeting
+  `nxserver/web/nuxeo.war/agentic-ui-config` — a _sibling_ of the bundle, outside
+  the destructive copy's source tree — carries customer configuration across an
+  upgrade. Established in Phase 1; this closes half of risk R7.
+- **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
+  static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
+  at `/default-domain/config/agentic-ui` post-auth. Eleven `InjectionToken`
+  factories resolve from it. Both loads are tolerant: a missing file, absent
+  document, 403 or malformed JSON falls back to the packaged defaults, and the
+  packaged defaults reproduce the pre-Phase-1 compiled values exactly.
+- **Angular's hash routing hides configuration reloads from evidence captures.**
+  `withHashLocation()` makes route changes same-document, so `page.goto('/#/x')`
+  does not re-run `APP_INITIALIZER`. Any capture that changes configuration must
+  force a full reload, and route interception must send `Cache-Control: no-store`
+  or the browser answers from cache and the interception is never seen.
 
 ---
 
@@ -74,7 +90,7 @@ completion is not completion; see section 6.
 | Phase              | Deliverable                                                                      | Evidence steps file          |
 | ------------------ | -------------------------------------------------------------------------------- | ---------------------------- |
 | `phase-0-baseline` | Dependencies install, gates run, CI validates the branch                         | `steps/phase-0-baseline.mjs` |
-| `phase-1-config`   | Runtime configuration that survives upgrade, runtime theming, i18n for the slice | to be added                  |
+| `phase-1-config`   | Runtime configuration that survives upgrade, runtime theming, i18n for the slice | `steps/phase-1-config.mjs`   |
 | `phase-2-registry` | Extension registry, rules, nav and routes from manifest, action registry         | to be added                  |
 | `phase-3-adf-hx`   | ~10 of 12 Nuxeo-backed API ports, component swap, encapsulation gate             | to be added                  |
 | `phase-4-platform` | Publishable libraries, public API, semver, template and starter                  | to be added                  |
