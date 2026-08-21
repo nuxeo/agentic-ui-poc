@@ -28,7 +28,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/latest",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/latest:phase-3-all-ports"
+        "regate": "gates/latest:phase-3-mapping-fidelity"
       },
       "deviations": [],
       "notCovered": [
@@ -43,7 +43,7 @@
       "evidence": {
         "manifest": "phase-1-config/latest",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/latest:phase-3-all-ports"
+        "regate": "gates/latest:phase-3-mapping-fidelity"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -60,7 +60,7 @@
       "evidence": {
         "manifest": "phase-2-registry/latest",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/latest:phase-3-all-ports"
+        "regate": "gates/latest:phase-3-mapping-fidelity"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -83,7 +83,7 @@
       "status": "in-progress",
       "evidence": {
         "manifest": "phase-3-adf-hx/latest",
-        "regate": "gates/latest:phase-3-all-ports"
+        "regate": "gates/latest:phase-3-mapping-fidelity"
       },
       "deviations": [],
       "notCovered": [
@@ -93,7 +93,7 @@
         "RENDITIONS getRenditions returns a fixed servable set (thumbnail, pdf); Nuxeo exposes no rendition-enumeration endpoint through this bridge, so it is not a discovery call.",
         "bridge defects: 1 of 5 verified still open (hardcoded sys_effectivePermissions)",
         "Initial bundle 1.70 -> 3.15 MB, accepted; leadership not yet informed",
-        "lastContributor has no HxPR Document equivalent, so that column renders empty in the real DataTable"
+        "Contributor and creator columns show a Nuxeo username, not a display name. Nuxeo carries only the username on the document; a display name needs a /user/{id} lookup per distinct contributor. Open question for the team."
       ],
       "delivered": [
         "Secondary entry point @agentic-ui/shared/adf-hx-bridge/providers, so the app shell no longer reaches adf-hx through the bridge barrel. Measured: ports via the barrel put the initial bundle at 2.65 MB; via the entry point, 1.71 MB.",
@@ -104,7 +104,8 @@
         "Layer 1 field -> HxPR property translation added: DataTable reads row.obj[key], so the browse view-model keys rendered correct headers over empty rows until mapped. packaged-columns.ts had predicted exactly this.",
         "Rehomed the three capabilities upstream does not have, then deleted the hand-written hxp-document-list: column picker (hxp-column-picker, driven by the Layer 1 descriptors, so Reset returns to the manifest rather than a packaged const), card view with thumbnails (hxp-document-cards), and the empty state. Error/retry moved to the host template earlier. Evidence: 12 of 14.",
         "Fixed bridge defect 5 of 5 by construction: hxp-browse-columns.utils.ts wrote browse_column_settings — the SAME localStorage key production browse uses — so choosing columns on either surface overwrote the other. Those utils are deleted with the hand-written list and the POC now namespaces its own key.",
-        "ALL TWELVE API ports now bound to upstream tokens. Added USER and GROUP (over the existing UserService, mapping Nuxeo nested properties to HxPR flat User, and grouplabel->name / groupname->id), RENDITIONS (over the @rendition adapter, serving thumbnail and pdf), and UPLOAD and MODEL as refusing ports. UPLOAD and MODEL are bound rather than left unbound deliberately: eleven upstream services inject their tokens at construction, so an unbound token stops those services constructing at all, whereas a refusing port lets a component construct and fail at the point of use with a message naming the operation."
+        "ALL TWELVE API ports now bound to upstream tokens. Added USER and GROUP (over the existing UserService, mapping Nuxeo nested properties to HxPR flat User, and grouplabel->name / groupname->id), RENDITIONS (over the @rendition adapter, serving thumbnail and pdf), and UPLOAD and MODEL as refusing ports. UPLOAD and MODEL are bound rather than left unbound deliberately: eleven upstream services inject their tokens at construction, so an unbound token stops those services constructing at all, whereas a refusing port lets a component construct and fail at the point of use with a message naming the operation.",
+        "Mapping fidelity: sys_lastContributor, sys_creator and sys_lifecycleState were being dropped in favour of custom hx:* keys no adf-hx component reads, which is why the real DataTable rendered a blank Last Contributor column. All three now map to the standard HxPR fields, and date columns render via adf-core type:date rather than as raw ISO strings."
       ],
       "blockedOn": [
         "Local dev server predates the adf-core asset glob, so it 404s /assets/adf-core/i18n/en.json and one accessibility label renders as a raw key. The BUILD ships the file — verified in dist/. The two failing checks of 14 have this single cause; a dev-server restart confirms 14/14."

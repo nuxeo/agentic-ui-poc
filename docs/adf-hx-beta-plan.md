@@ -145,12 +145,13 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 
 1. ~~Obtain a `read:packages` token.~~ Done. **Provision it as a long-lived CI secret** — CI still
    cannot install without it.
-2. ~~Resolve the scope conflict in [`.npmrc`](../.npmrc).~~ **Resolved in Phase 2, in one
-   direction only.** `@alfresco` now routes to public npm, which is what `adf-extensions` and
-   `js-api` need. npm has no per-package registry, so **Phase 3 still has to solve it** before it can
-   add `adf-hx-content-services` from GitHub Packages: a CI-side `.npmrc` swap, a private proxy
-   fronting both registries, or a committed tarball reference. This is a real blocker on Phase 3, not
-   a tidy-up.
+2. ~~Resolve the scope conflict in [`.npmrc`](../.npmrc).~~ **Closed — there was no conflict.**
+   GitHub Packages serves every `@alfresco` package we need, verified twice by downloading each
+   tarball with only that one mapping present. `adf-extensions`, `adf-core` and `js-api` are
+   published to public npm _as well_, which is what made a two-registry split look necessary;
+   `adf-hx-content-services` is the only GitHub-Packages-exclusive one. Phase 2 briefly repointed the
+   scope at public npm and recorded the consequence as a blocker on Phase 3; both the mapping and the
+   claim were reverted in `c6a47b2`. **Phase 3 is not blocked on this.**
 3. Fix the harness authentication defect: `helpers.login()` injects a session that satisfies the
    route guard but does not reliably authenticate XHRs, producing intermittent `403`s on
    `/nuxeo/api` paths. Use Playwright `httpCredentials`, as

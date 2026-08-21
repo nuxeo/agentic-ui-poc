@@ -1,4 +1,4 @@
-import type { Document } from '@hylandsoftware/hxcs-js-client';
+import type { Document, User } from '@hylandsoftware/hxcs-js-client';
 import { isFolderishDocument, type NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
 import { DEFAULT_REPOSITORY_ID } from '../tokens/adf-hx-bridge.tokens';
 
@@ -39,6 +39,23 @@ function minimalEffectivePermissions(): string[] {
   return ['Browse', 'Read', 'ReadWrite', 'Everything'];
 }
 
+/**
+ * A Nuxeo username as an HxPR `User`.
+ *
+ * Nuxeo's `dc:lastContributor` and `dc:creator` are **usernames**, not user records, so this
+ * is all the information the document itself carries. `firstName`, `lastName` and `email`
+ * are deliberately left unset rather than guessed: filling them would need a `/user/{id}`
+ * call per distinct contributor on every page, and a fabricated display name is worse than
+ * an honest username.
+ *
+ * If a full display name is ever wanted, the `USER` API port already resolves one — see
+ * `NuxeoUserApi` — and the right place to add it is a cached batch lookup in the consumer,
+ * not here in a synchronous mapper.
+ */
+function userFromNuxeoUsername(value: unknown): User | undefined {
+  return typeof value === 'string' && value ? { id: value, username: value } : undefined;
+}
+
 /** Maps a Nuxeo document into the HxPR Document shape expected by adf-hx browse components. */
 export function mapNuxeoDocumentToHx(
   doc: NuxeoDocument,
@@ -65,6 +82,16 @@ export function mapNuxeoDocumentToHx(
     sys_effectivePermissions: minimalEffectivePermissions(),
     sys_contentType: typeof content?.['mime-type'] === 'string' ? content['mime-type'] : undefined,
     sys_typeLabel: doc.type,
+    // The **standard** HxPR fields, not just our `hx:` custom ones below.
+    //
+    // These three were being dropped, which is why upstream's DataTable rendered a blank
+    // Last Contributor column: the value was mapped only to `hx:lastContributor`, a key
+    // adf-hx components have never heard of. Anything upstream that reads
+    // `sys_lastContributor`, `sys_creator` or `sys_lifecycleState` now works without a
+    // per-component translation.
+    sys_lastContributor: userFromNuxeoUsername(props['dc:lastContributor']),
+    sys_creator: userFromNuxeoUsername(props['dc:creator']),
+    sys_lifecycleState: doc.state,
     'hx:lastContributor': (props['dc:lastContributor'] as string | undefined) ?? '',
     'hx:creator': (props['dc:creator'] as string | undefined) ?? '',
     'hx:nature': (props['dc:nature'] as string | undefined) ?? '',

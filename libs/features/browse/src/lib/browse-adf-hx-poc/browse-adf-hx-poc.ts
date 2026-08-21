@@ -81,8 +81,22 @@ const HXP_FIELD_BY_COLUMN: Readonly<Record<string, string>> = {
   type: 'sys_typeLabel',
   modified: 'sys_modified',
   created: 'sys_created',
-  state: 'sys_primaryType',
+  // adf-core's `ObjectUtils.getValue` resolves a dotted path, so a nested `User` is
+  // addressable. Nuxeo carries only the username, so that is what shows — see
+  // `userFromNuxeoUsername` in the mapper for why no name is invented.
+  lastContributor: 'sys_lastContributor.username',
+  author: 'sys_creator.username',
+  state: 'sys_lifecycleState',
 };
+
+/**
+ * Columns adf-core should render as dates rather than raw strings.
+ *
+ * Without this the DataTable prints `2026-07-03T08:33:42.275Z`, where the hand-written list
+ * showed `Jul 3, 2026`. A visible regression from the swap, and cheap to close: adf-core's
+ * `DataColumn` already takes a `type` and a `format`.
+ */
+const DATE_COLUMNS = new Set(['modified', 'created']);
 
 @Component({
   selector: 'lib-browse-adf-hx-poc',
@@ -192,6 +206,9 @@ export class BrowseAdfHxPocComponent {
       this.pickableColumns()
         .filter((column) => column.visible)
         .map((column) => ({
+          ...(DATE_COLUMNS.has(column.key)
+            ? { type: 'date' as const, format: 'mediumDate' }
+            : { type: 'text' as const }),
           // adf-core's DataTable reads `row.obj[key]`, so `key` has to be an HxPR
           // `Document` property. `ExtensionColumnDescriptor.field` holds the browse
           // view-model key instead — `title`, `modified` — which is what
@@ -199,7 +216,6 @@ export class BrowseAdfHxPocComponent {
           // property paths is Phase 3's job. Without this translation the table renders
           // the right headers over empty rows, which is exactly what it did.
           key: HXP_FIELD_BY_COLUMN[column.key] ?? column.key,
-          type: 'text',
           title: column.label,
           sortable: true,
         })) as DataColumn[],

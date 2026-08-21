@@ -232,8 +232,14 @@ nine dependencies. `eval()` occurrences in the shipped bundle: **0** (was 2 befo
 
 Nothing here is a surprise later.
 
-1. **`lastContributor` has no HxPR equivalent**, so that column renders empty in the real
-   DataTable. Needs either a mapper addition or dropping from the default set.
+1. ~~**`lastContributor` has no HxPR equivalent.**~~ **Wrong, and fixed** — see §7. It is
+   `sys_lastContributor`, a `User`; our mapper simply never populated it. Three standard
+   fields were being dropped and are now mapped: `sys_lastContributor`, `sys_creator`,
+   `sys_lifecycleState`. The residual limitation is narrow: Nuxeo carries a **username**
+   only, so the column shows `jdoe` rather than `Jane Doe`. A display name would need a
+   `/user/{id}` call per distinct contributor; the `USER` port can do it, and the right place
+   is a cached batch lookup in the consumer, not a synchronous mapper. **Open question for
+   the team** — is a username acceptable, or is a display name required?
 2. **`sys_effectivePermissions` is hardcoded** to a minimal set for every document — the last
    of five recorded bridge defects. The other four are closed, most recently the
    `browse_column_settings` localStorage key that the POC and production browse shared, so
