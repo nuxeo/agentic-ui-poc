@@ -86,6 +86,28 @@ if (!existsSync(distDir)) {
  */
 const UPSTREAM_MARKERS = ['adf-datatable', 'adf-enterprise-adf-hx'];
 
+/**
+ * Files that must be **present** in the build, not merely absent from it.
+ *
+ * adf-core fetches its own strings at runtime from `assets/adf-core/i18n/<lang>.json`, and
+ * they are copied in by an asset glob in `angular.json`. Without them every adf-hx
+ * component renders raw keys like `ADF-DATATABLE.ACCESSIBILITY.SELECT_ALL` to screen
+ * readers — visible to a user, invisible to a compiler, and easy to lose to a stray edit of
+ * the glob.
+ *
+ * Asserted here because this gate already reads the built output, and because the built
+ * output is what a customer receives. A local dev server can disagree with it — one
+ * started before the glob was added keeps 404ing the file — and the build is the
+ * authority.
+ */
+const REQUIRED_FILES = [
+  {
+    path: 'assets/adf-core/i18n/en.json',
+    why: "adf-core's own translation catalogue; without it adf-hx components render raw keys.",
+    fix: 'Check the asset glob for node_modules/@alfresco/adf-core/bundles/assets/adf-core in angular.json.',
+  },
+];
+
 /** @type {{ pattern: string, file: string, count: number, why: string, fix: string }[]} */
 const hits = [];
 let filesScanned = 0;
@@ -117,6 +139,12 @@ for await (const file of walk(distDir)) {
   }
 }
 
+/** @type {string[]} */
+const missingFiles = [];
+for (const required of REQUIRED_FILES) {
+  if (!existsSync(resolve(distDir, required.path))) missingFiles.push(required.path);
+}
+
 if (filesScanned === 0) {
   console.error(`no-test-libs-in-bundle: ${distDir} contains no .js files. Nothing was checked.`);
   process.exit(1);
@@ -127,8 +155,16 @@ console.log(
     `${(bytesScanned / 1048576).toFixed(2)} MB\n`,
 );
 
-if (hits.length === 0) {
+for (const required of REQUIRED_FILES) {
+  if (!missingFiles.includes(required.path)) continue;
+  console.log(`  [FAIL] missing ${required.path}`);
+  console.log(`         ${required.why}`);
+  console.log(`         ${required.fix}`);
+}
+
+if (hits.length === 0 && missingFiles.length === 0) {
   console.log(`no-test-libs-in-bundle: pass — none of ${BANNED.map((b) => b.id).join(', ')} reached the bundle.`);
+  console.log(`  ${REQUIRED_FILES.length} required asset(s) present.`);
   // A green here means nothing unless adf-hx is actually in the bundle: the banned
   // symbols arrive *through* it. Until an adoption lands, this passes trivially, and
   // saying so is the difference between a gate and a decoration.
@@ -148,7 +184,10 @@ for (const hit of hits) {
   console.log(`         ${hit.why}`);
   console.log(`         ${hit.fix}`);
 }
-console.log(`\nno-test-libs-in-bundle: FAIL — ${hits.length} banned symbol occurrence group(s) in the bundle.`);
+console.log(
+  `\nno-test-libs-in-bundle: FAIL — ${hits.length} banned symbol occurrence group(s) and ` +
+    `${missingFiles.length} missing required file(s).`,
+);
 process.exit(1);
 
 async function* walk(dir) {

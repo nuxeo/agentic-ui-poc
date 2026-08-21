@@ -36,4 +36,7 @@ export * from './lib/api/nuxeo-version-api';
 export * from './lib/api/nuxeo-copy-move-api';
 export * from './lib/api/nuxeo-checkin-api';
 export * from './lib/api/nuxeo-download-api';
+export * from './lib/api/nuxeo-user-group-api';
+export * from './lib/api/nuxeo-renditions-api';
+export * from './lib/api/nuxeo-unmapped-api';
 export * from './lib/providers/provide-adf-hx-nuxeo-bridge';
