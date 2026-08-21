@@ -8,9 +8,17 @@
  * The method matters. The customised passes do not edit a file and rebuild —
  * a single route handler answers the exact URL the running application fetches,
  * and the body it serves is swapped between passes. The JavaScript bundle is
- * asserted identical across the default and customised loads, so a difference in
- * the rendered UI can only have come from configuration. That is stronger than
- * editing a source file, which would leave "did the dev server rebuild it?" open.
+ * fetched and hashed on both the default and customised loads and asserted
+ * byte-identical, so a difference in the rendered UI can only have come from
+ * configuration. That is stronger than editing a source file, which would leave
+ * "did the dev server rebuild it?" open.
+ *
+ * Not every check here is load-bearing. Roughly a third are negative or fallback
+ * assertions — `data-app-theme` is non-null, no inline token overrides on the
+ * default pass, the default title is unchanged, and both tolerant-failure steps —
+ * which would still pass if configuration loading were entirely dead. They are
+ * worth keeping as regression guards, but the claim of the phase rests on
+ * steps 5-8, where a swapped configuration body has to change observable state.
  *
  * Two things learned while first running this, both encoded below:
  *
@@ -50,6 +58,7 @@
  *   npm run beta:evidence -- phase-1-config
  */
 
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -83,6 +92,95 @@ const PACKAGED_BOOTSTRAP = readFileSync(
   resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json'),
   'utf8',
 );
+
+const INSTALL_XML = readFileSync(
+  resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/resources/install.xml'),
+  'utf8',
+);
+const ASSEMBLY_XML = readFileSync(
+  resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/assemble/assembly.xml'),
+  'utf8',
+);
+
+/**
+ * Deployment facts about the target server, established by first-hand inspection
+ * of the running `nuxeo` container rather than assumed:
+ *
+ *   $ docker exec nuxeo grep docBase /opt/nuxeo/server/conf/Catalina/localhost/nuxeo.xml
+ *     <Context ... docBase="../nxserver/nuxeo.war" ...>
+ *   $ docker exec nuxeo ls /opt/nuxeo/server/nxserver/web
+ *     root.war
+ *
+ * So the `/nuxeo` context is served out of `nxserver/nuxeo.war`, and
+ * `nxserver/web` is not a docBase at all — a file installed there is never
+ * reachable over HTTP. Phase 1 originally installed the bootstrap file into
+ * `nxserver/web/nuxeo.war/agentic-ui-config` and it would have 404'd in every
+ * real deployment. The checks below exist so that regression cannot recur
+ * silently.
+ */
+const SERVER_HOME = '${env.server.home}';
+const TOMCAT_DOC_BASE = `${SERVER_HOME}/nxserver/nuxeo.war`;
+/** Production base href of the packaged application. */
+const PRODUCTION_BASE_HREF = 'https://server.example/nuxeo/agentic-ui/';
+/** Web context path the docBase above is mounted at. */
+const CONTEXT_PATH = '/nuxeo';
+
+/**
+ * The `todir` of the `install.xml` copy step that installs `${package.root}/config`.
+ *
+ * @returns {string | null}
+ */
+function installedConfigDir() {
+  const match = INSTALL_XML.match(
+    /<copy\s+dir="\$\{package\.root\}\/config"\s+todir="([^"]+)"/,
+  );
+  return match ? match[1] : null;
+}
+
+/**
+ * The `todir` of the destructive `overwrite="true"` copy, and the assembly
+ * output directories staged beneath its source (`${package.root}/web`).
+ */
+function destructiveCopy() {
+  const match = INSTALL_XML.match(
+    /<copy\s+dir="\$\{package\.root\}\/web"\s+todir="([^"]+)"\s+overwrite="true"/,
+  );
+  const stagedUnderWeb = [...ASSEMBLY_XML.matchAll(/<outputDirectory>([^<]+)<\/outputDirectory>/g)]
+    .map((m) => m[1])
+    .filter((dir) => dir === '/web' || dir.startsWith('/web/'));
+  return { todir: match ? match[1] : null, stagedUnderWeb };
+}
+
+/**
+ * SHA-256 over the bytes of every `<script src>` the page actually loaded, plus
+ * their URLs.
+ *
+ * The earlier version of this check compared the `src` *attributes*, which in a
+ * dev build are the single unhashed `main.js` — so it compared `"main.js"` with
+ * `"main.js"` and would have passed after a full rebuild with entirely different
+ * bytes. Fetching and hashing the content is what actually makes "no rebuild
+ * took place" falsifiable. `page.request` bypasses page routes, so this reads
+ * the real bundle rather than an interception fixture.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function bundleFingerprint(page) {
+  const sources = await page.evaluate(() =>
+    [...document.querySelectorAll('script[src]')]
+      .map((s) => new URL(s.getAttribute('src') ?? '', document.baseURI).href)
+      .sort(),
+  );
+  const digest = createHash('sha256');
+  let bytes = 0;
+  for (const src of sources) {
+    const response = await page.request.get(src, { headers: { 'cache-control': 'no-cache' } });
+    const body = await response.body();
+    bytes += body.length;
+    digest.update(src);
+    digest.update(body);
+  }
+  return { count: sources.length, bytes, digest: digest.digest('hex') };
+}
 
 /** Values a customer could plausibly want, chosen so each is visible in the UI. */
 const CUSTOMISED_BOOTSTRAP = {
@@ -132,10 +230,6 @@ function readConfiguredState(page) {
       computedPrimary: getComputedStyle(root).getPropertyValue('--mat-sys-primary').trim(),
       pillRadius: root.style.getPropertyValue('--agentic-pill-radius').trim(),
       documentTitle: document.title,
-      scriptSet: [...document.querySelectorAll('script[src]')]
-        .map((s) => s.getAttribute('src'))
-        .sort()
-        .join(','),
     };
   });
 }
@@ -197,11 +291,35 @@ export default async function run(page, h) {
     served.status() === 200,
     `HTTP ${served.status()} for ${BOOTSTRAP_PATH}`,
   );
-  const baseHref = await page.evaluate(() => document.baseURI);
+  // The application resolves the configuration URL relative to its own base
+  // href. Under production packaging that is `/nuxeo/agentic-ui/`, so the URL is
+  // `/nuxeo/agentic-ui-config/bootstrap.json`. Strip the context path and what is
+  // left is the path Tomcat looks up under its docBase.
+  const productionUrl = new URL('../agentic-ui-config/bootstrap.json', PRODUCTION_BASE_HREF)
+    .pathname;
+  const servedFrom = `${TOMCAT_DOC_BASE}${productionUrl.slice(CONTEXT_PATH.length)}`;
+  const configDir = installedConfigDir();
   h.check(
-    'the configured path is a sibling of the bundle, not a child of it',
-    new URL('../agentic-ui-config/bootstrap.json', baseHref).pathname === BOOTSTRAP_PATH,
-    `resolved ${new URL('../agentic-ui-config/bootstrap.json', baseHref).pathname} from ${baseHref}`,
+    'the installer targets the directory the /nuxeo context is actually served from',
+    configDir !== null && `${configDir}/bootstrap.json` === servedFrom,
+    `install.xml installs into "${configDir}", but ${productionUrl} is served from "${servedFrom}"`,
+  );
+
+  const { todir: webCopyTodir, stagedUnderWeb } = destructiveCopy();
+  const overwrittenDirs = stagedUnderWeb.map((dir) => `${webCopyTodir}${dir.slice('/web'.length)}`);
+  h.check(
+    'the installed configuration directory is outside the destructive copy',
+    configDir !== null &&
+      overwrittenDirs.length > 0 &&
+      !overwrittenDirs.some((dir) => configDir === dir || configDir.startsWith(`${dir}/`)),
+    `overwrite="true" replaces ${overwrittenDirs.join(', ')}; config installs into "${configDir}"`,
+  );
+
+  const defaultBundle = await bundleFingerprint(page);
+  h.check(
+    'the running bundle could be fingerprinted',
+    defaultBundle.count > 0 && defaultBundle.bytes > 0,
+    `${defaultBundle.count} scripts, ${defaultBundle.bytes} bytes`,
   );
 
   const defaults = await readConfiguredState(page);
@@ -269,10 +387,13 @@ export default async function run(page, h) {
   await reloadApp(page);
 
   const customised = await readConfiguredState(page);
+  const customisedBundle = await bundleFingerprint(page);
   h.check(
-    'the JavaScript bundle is unchanged — no rebuild took place',
-    customised.scriptSet === defaults.scriptSet && customised.scriptSet !== '',
-    `script set differed:\n  before ${defaults.scriptSet}\n  after  ${customised.scriptSet}`,
+    'the JavaScript bundle bytes are unchanged — no rebuild took place',
+    customisedBundle.count > 0 && customisedBundle.digest === defaultBundle.digest,
+    `bundle content hash differed:\n` +
+      `  before ${defaultBundle.digest} (${defaultBundle.count} scripts, ${defaultBundle.bytes} bytes)\n` +
+      `  after  ${customisedBundle.digest} (${customisedBundle.count} scripts, ${customisedBundle.bytes} bytes)`,
   );
   h.check(
     'configured branding reaches the browser title',
