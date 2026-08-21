@@ -20,6 +20,7 @@ import type { ExtensionRuleContext } from './extension-rules';
 export class ExtensionRuleContextService {
   readonly document = signal<NuxeoDocument | null>(null);
   readonly selection = signal<readonly NuxeoDocument[]>([]);
+  readonly selectionCount = signal(0);
   readonly username = signal<string | null>(null);
   readonly isAdministrator = signal(false);
   readonly url = signal('');
@@ -27,6 +28,7 @@ export class ExtensionRuleContextService {
   readonly context = computed<ExtensionRuleContext>(() => ({
     document: this.document(),
     selection: this.selection(),
+    selectionCount: this.selectionCount(),
     user: { username: this.username(), isAdministrator: this.isAdministrator() },
     url: this.url(),
   }));

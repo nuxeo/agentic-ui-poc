@@ -6,7 +6,7 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:data-access"],
   "targets": {
-    "build": {
+    "typecheck": {
       "executor": "nx:run-commands",
       "cache": true,
       "inputs": ["default", "^default"],

@@ -20,12 +20,11 @@ import {
   distinctUntilChanged,
   filter,
   finalize,
-  forkJoin,
   of,
   switchMap,
   Subscription,
 } from 'rxjs';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -42,11 +41,9 @@ import {
   CollectionService,
   DocumentDetailService,
   BrowseContextService,
-  NuxeoDocument,
   SearchService,
   SelectionService,
   readClipboardDocs,
-  writeClipboardDocs,
   isAdfHxBrowseRouterUrl,
   isBrowseRouterUrl,
   parseAdfHxBrowsePathFromRouterUrl,
@@ -59,12 +56,7 @@ import {
   AdfHxBrowseContextService,
   toAdfHxBrowseRouterUrl,
 } from '@agentic-ui/shared/adf-hx-bridge';
-import {
-  SelectionTopbarComponent,
-  ConfirmDialogComponent,
-  openDocumentCompareDialog,
-  trashSelectedDocumentsConfirmData,
-} from '@agentic-ui/shared/ui';
+import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 import { AppConfigService } from '@agentic-ui/shared/app-config';
 import { APP_NAV_ITEMS } from '@agentic-ui/shared/extensions';
@@ -117,7 +109,6 @@ export class AppShellComponent implements OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly sessionTimeout = inject(SessionTimeoutService);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly dialog = inject(MatDialog);
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
@@ -400,170 +391,6 @@ export class AppShellComponent implements OnDestroy {
     this.refreshClipboardCount();
   }
 
-  onDeleteSelected(): void {
-    const count = this.selectionService.selectedCount();
-    if (count === 0) return;
-
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: trashSelectedDocumentsConfirmData(count),
-    });
-
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (!confirmed) {
-          this.selectionService.clear();
-          return;
-        }
-
-        this.selectionService
-          .deleteSelected()
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: () => {
-              this.browseContext.requestTreeRefresh();
-            },
-            error: (err) => {
-              console.error('Failed to delete selected documents', err);
-              const message = this.getDeleteErrorMessage(err);
-              this.snackBar.open(message, 'Dismiss', { duration: 5000 });
-              this.selectionService.clear();
-            },
-          });
-      });
-  }
-
-  onPublishSelected(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    const first = selected[0];
-    if (selected.length > 1) {
-      this.snackBar.open('Opening publish dialog for the first selected item.', 'Dismiss', {
-        duration: 3000,
-      });
-    }
-
-    const openDialog = async (versions: NuxeoDocument[]) => {
-      const { PublishDialogComponent } = await import('@agentic-ui/feature-document-detail');
-      const data = {
-        documentUid: first.id,
-        documentTitle: first.name,
-        versionLabel: 'Current',
-        renditions: [
-          { name: 'thumbnail', label: 'Thumbnail' },
-          { name: 'pdf', label: 'PDF' },
-          { name: 'zipExport', label: 'ZIP Export' },
-          { name: 'xmlExport', label: 'XML Export' },
-        ],
-        versions,
-      };
-
-      this.dialog.open(PublishDialogComponent, {
-        width: '620px',
-        panelClass: 'publish-dialog-panel',
-        data,
-      });
-    };
-
-    this.detailService.getVersions(first.id).subscribe({
-      next: (res) => openDialog(res.entries ?? []),
-      error: () => openDialog([]),
-    });
-  }
-
-  onAddSelectedToClipboard(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    const current = readClipboardDocs();
-    const existing = new Set(current.map((item) => item.uid));
-    const additions = selected
-      .filter((item) => !existing.has(item.id))
-      .map((item) => ({
-        uid: item.id,
-        title: item.name,
-        ...(item.type ? { type: item.type } : {}),
-      }));
-
-    const updated = [...current, ...additions];
-    writeClipboardDocs(updated);
-    window.dispatchEvent(new Event('clipboard-changed'));
-
-    this.snackBar.open(
-      additions.length > 0
-        ? `Added ${additions.length} item(s) to clipboard.`
-        : 'Selected items are already in clipboard.',
-      'Dismiss',
-      { duration: 3000 },
-    );
-  }
-
-  onAddSelectedToCollection(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    import('@agentic-ui/feature-document-detail').then(({ AddToCollectionDialogComponent }) => {
-      const ref = this.dialog.open(AddToCollectionDialogComponent, {
-        width: '440px',
-        autoFocus: false,
-      });
-
-      ref.afterClosed().subscribe((collectionId: string | undefined) => {
-        if (!collectionId) return;
-
-        forkJoin(
-          selected.map((item) =>
-            this.detailService
-              .addToCollection(item.id, collectionId)
-              .pipe(catchError(() => of(null))),
-          ),
-        ).subscribe((results) => {
-          const success = results.filter((r) => !!r).length;
-          this.snackBar.open(`Added ${success} item(s) to collection.`, 'Dismiss', {
-            duration: 3000,
-          });
-        });
-      });
-    });
-  }
-
-  onDownloadSelectedAsZip(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    const ids = selected.map((item) => item.id);
-    const zipFileName = `selected-documents-${Date.now()}.zip`;
-    this.detailService.bulkDownload(ids, zipFileName).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = zipFileName;
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-      error: () => {
-        this.snackBar.open('Failed to download selected documents as ZIP.', 'Dismiss', {
-          duration: 4000,
-        });
-      },
-    });
-  }
-
-  onCompareSelected(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length < 2) {
-      this.snackBar.open('Select at least two documents to compare.', 'Dismiss', {
-        duration: 3000,
-      });
-      return;
-    }
-
-    openDocumentCompareDialog(this.dialog, selected);
-  }
-
   onGlobalSearchInput(value: string): void {
     this.globalSearchTerm.set(value);
     const hasEnoughChars = value.trim().length >= 2;
@@ -694,20 +521,6 @@ export class AppShellComponent implements OnDestroy {
     }
 
     return this.highlightText(this.userGroupSubtext(result));
-  }
-
-  private getDeleteErrorMessage(err: unknown): string {
-    if (typeof err === 'string' && err.trim().length > 0) return err;
-
-    const maybeObj = err as { error?: { message?: string }; message?: string } | null;
-    const apiMessage = maybeObj?.error?.message;
-    if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) return apiMessage;
-
-    const defaultMessage = maybeObj?.message;
-    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0)
-      return defaultMessage;
-
-    return 'Failed to delete selected documents. Please try again.';
   }
 
   refreshClipboardCount(): void {

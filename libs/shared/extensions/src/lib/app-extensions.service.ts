@@ -12,6 +12,7 @@ import { DOCUMENT_RULE_EVALUATORS } from './document-rules';
 import {
   EMPTY_EXTENSION_RULE_CONTEXT,
   ExtensionRuleRegistry,
+  type ExtensionRule,
   type ExtensionRuleContext,
   type ExtensionRuleEvaluator,
 } from './extension-rules';
@@ -87,7 +88,7 @@ export class AppExtensionsService {
   }
 
   /** Evaluate a rule reference directly, for a template that gates one control. */
-  evaluateRule(rule: string | null | undefined, context: ExtensionRuleContext): boolean {
+  evaluateRule(rule: ExtensionRule | null | undefined, context: ExtensionRuleContext): boolean {
     return this.rules.evaluate(rule, context);
   }
 

@@ -7,6 +7,7 @@ export {
   CORE_RULE_EVALUATORS,
   EMPTY_EXTENSION_RULE_CONTEXT,
   ExtensionRuleRegistry,
+  SECURITY_RELEVANT_RULE_IDS,
   type ExtensionRule,
   type ExtensionRuleContext,
   type ExtensionRuleEvaluator,
@@ -28,6 +29,14 @@ export {
   type ResolvedExtensionConfig,
 } from './lib/extension-config';
 export { DOCUMENT_RULE_EVALUATORS } from './lib/document-rules';
+export {
+  ExtensionActionRegistry,
+  type ExtensionActionDescriptor,
+  type ExtensionActionHandler,
+  type ExtensionColumnDescriptor,
+  type ExtensionTabDescriptor,
+} from './lib/extension-actions';
+export { PACKAGED_BULK_ACTIONS } from './lib/packaged-actions';
 export { ExtensionRuleContextService } from './lib/extension-rule-context.service';
 export {
   ExtensionComponentRegistry,

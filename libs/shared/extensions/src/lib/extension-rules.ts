@@ -20,8 +20,24 @@ import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
 export interface ExtensionRuleContext {
   /** The document in focus, e.g. on document detail. */
   readonly document: NuxeoDocument | null;
-  /** The current multi-selection, for bulk actions. */
+  /**
+   * The current multi-selection as **documents**, for permission rules.
+   *
+   * Still empty in Beta: `SelectionService` tracks ids, labels and previews, not
+   * documents, so nothing can populate this without an extra fetch per selected
+   * row. `app.rules.canWriteSelection` and `app.rules.canRemoveSelection` read
+   * it and therefore still answer `false`; see `docs/extension-reference.md`.
+   */
   readonly selection: readonly NuxeoDocument[];
+  /**
+   * How many documents are selected.
+   *
+   * Separate from `selection.length` precisely because the count is knowable
+   * without the documents. Collapsing the two would either make the cardinality
+   * rules dead alongside the permission ones, or make the permission ones look
+   * live when they are not.
+   */
+  readonly selectionCount: number;
   readonly user: {
     readonly username: string | null;
     readonly isAdministrator: boolean;
@@ -34,6 +50,7 @@ export interface ExtensionRuleContext {
 export const EMPTY_EXTENSION_RULE_CONTEXT: ExtensionRuleContext = {
   document: null,
   selection: [],
+  selectionCount: 0,
   user: { username: null, isAdministrator: false },
   url: '',
 };

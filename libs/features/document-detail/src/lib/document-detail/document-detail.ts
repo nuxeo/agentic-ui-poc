@@ -6,9 +6,11 @@ import {
   inject,
   signal,
   computed,
+  effect,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ExtensionRuleContextService } from '@agentic-ui/shared/extensions';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -265,6 +267,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly extensionRuleContext = inject(ExtensionRuleContextService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -292,6 +295,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
 
   readonly doc = signal<NuxeoDocument | null>(null);
+
+  /**
+   * Publish the focused document to the extension rule context.
+   *
+   * `app.rules.canWrite`, `canRemove`, `canAddChildren`, `canManagePermissions`,
+   * `hasDocument` and the two trash rules all read
+   * `ExtensionRuleContext.document`. Nothing populated it before, so every one
+   * of them answered `false` while the reference doc described them as working.
+   * This page is the only surface with a single document in focus, so it is the
+   * one that owns the write; `ngOnDestroy` clears it again.
+   */
+  private readonly publishDocumentToRuleContext = effect(() =>
+    this.extensionRuleContext.document.set(this.doc()),
+  );
   readonly loading = signal(true);
   readonly blobLoading = signal(false);
   readonly viewerLoading = computed(
@@ -1442,6 +1459,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Leaving the last viewed document in the context would let a rule on
+    // another page answer about a document the user is no longer looking at.
+    this.extensionRuleContext.document.set(null);
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
     }

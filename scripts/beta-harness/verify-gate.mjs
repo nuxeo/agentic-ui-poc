@@ -12,7 +12,7 @@
  *
  * Options:
  *   --phase <id>     label the report, e.g. phase-3-document-list
- *   --gates <list>   comma separated subset of: lockfile,guardrails,lint,test,build
+ *   --gates <list>   comma separated subset of: lockfile,guardrails,lint,test,build,typecheck
  *   --base <ref>     git base for affected calculation (default origin/main)
  *   --tail <n>       lines of failing output to show (default 40)
  *
@@ -60,6 +60,12 @@ const ALL_GATES = [
   { id: 'lint', label: 'Affected lint', cmd: 'npx', argv: ['nx', 'affected', '-t', 'lint', `--base=${base}`] },
   { id: 'test', label: 'Affected tests', cmd: 'npx', argv: ['nx', 'affected', '-t', 'test', `--base=${base}`] },
   { id: 'build', label: 'Affected build', cmd: 'npx', argv: ['nx', 'affected', '-t', 'build', `--base=${base}`] },
+  // Libraries have no `build` target — Nx's module-boundary rule forbids a
+  // buildable library from importing a non-buildable one, and nothing in
+  // `libs/` is buildable until Phase 4 gives them ng-packagr. `typecheck` runs
+  // the Angular compiler over a library on its own, so a change confined to one
+  // is checked directly rather than only wherever `nuxeo-ui` happens to use it.
+  { id: 'typecheck', label: 'Affected typecheck', cmd: 'npx', argv: ['nx', 'affected', '-t', 'typecheck', `--base=${base}`] },
 ];
 
 const requested = args.get('gates');

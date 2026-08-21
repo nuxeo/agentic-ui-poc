@@ -8,79 +8,22 @@
   </div>
 
   <div class="topbar-actions">
-    <button
-      mat-icon-button
-      type="button"
-      class="topbar-icon-btn"
-      matTooltip="Download All as Zip"
-      matTooltipPosition="below"
-      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-      aria-label="Download All as Zip"
-      (click)="downloadZipRequested.emit()"
-    >
-      <mat-icon>download</mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      type="button"
-      class="topbar-icon-btn"
-      matTooltip="Add to Collection"
-      matTooltipPosition="below"
-      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-      aria-label="Add to Collection"
-      (click)="addToCollectionRequested.emit()"
-    >
-      <mat-icon>library_add</mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      type="button"
-      class="topbar-icon-btn"
-      matTooltip="Compare"
-      matTooltipPosition="below"
-      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-      aria-label="Compare"
-      [disabled]="selectedCount() < 2"
-      (click)="compareRequested.emit()"
-    >
-      <mat-icon>compare</mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      type="button"
-      class="topbar-icon-btn"
-      matTooltip="Add to Clipboard"
-      matTooltipPosition="below"
-      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-      aria-label="Add to Clipboard"
-      (click)="addToClipboardRequested.emit()"
-    >
-      <mat-icon>content_paste</mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      type="button"
-      class="topbar-icon-btn"
-      matTooltip="Publish Document"
-      matTooltipPosition="below"
-      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-      aria-label="Publish Document"
-      (click)="publishRequested.emit()"
-    >
-      <mat-icon>publish</mat-icon>
-    </button>
-    <button
-      mat-icon-button
-      matTooltip="Delete selected"
-      matTooltipPosition="below"
-      matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-      type="button"
-      class="topbar-icon-btn"
-      aria-label="Delete selected"
-      (click)="deleted.emit()"
-    >
-      <mat-icon>delete</mat-icon>
-    </button>
+    @for (action of bulkActions(); track action.id) {
+      <button
+        mat-icon-button
+        type="button"
+        class="topbar-icon-btn"
+        [attr.data-action-id]="action.id"
+        [matTooltip]="action.tooltip ?? action.label"
+        matTooltipPosition="below"
+        matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
+        [attr.aria-label]="action.label"
+        [disabled]="!isEnabled(action)"
+        (click)="run(action)"
+      >
+        <mat-icon>{{ action.icon }}</mat-icon>
+      </button>
+    }
   </div>
 </div>
 
