@@ -12,7 +12,7 @@
  *
  * Options:
  *   --phase <id>     label the report, e.g. phase-3-document-list
- *   --gates <list>   comma separated subset of: guardrails,lint,test,build
+ *   --gates <list>   comma separated subset of: lockfile,guardrails,lint,test,build
  *   --base <ref>     git base for affected calculation (default origin/main)
  *   --tail <n>       lines of failing output to show (default 40)
  *
@@ -47,6 +47,15 @@ const tail = Number(args.get('tail') ?? 40);
  * full set on a known-broken tree wastes minutes per iteration.
  */
 const ALL_GATES = [
+  // First because it is the cheapest and because Phase 2 proved it is the one
+  // failure the other four cannot see: nothing downstream reads the lockfile,
+  // so a lock that `npm ci` will refuse on Linux leaves every local gate green.
+  {
+    id: 'lockfile',
+    label: 'Lockfile integrity',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/lockfile-integrity.mjs'],
+  },
   { id: 'guardrails', label: 'Review guardrails', cmd: 'node', argv: ['scripts/review-guardrails.mjs', '--base', base] },
   { id: 'lint', label: 'Affected lint', cmd: 'npx', argv: ['nx', 'affected', '-t', 'lint', `--base=${base}`] },
   { id: 'test', label: 'Affected tests', cmd: 'npx', argv: ['nx', 'affected', '-t', 'test', `--base=${base}`] },
