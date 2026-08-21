@@ -7,8 +7,12 @@
  * `ng-mocks` — a test-mocking library — from its **shipped** `/ui` runtime bundle, so
  * ng-mocks' implementation landed in a 1.6 MB customer-facing chunk carrying two
  * `eval()` calls. For an on-premises enterprise product that fails CSP and every SAST
- * review. `tools/stubs/ng-mocks/` replaces it; this is the check that the replacement
- * is actually working.
+ * review. `tools/stubs/ng-mocks/` replaces it, permanently — upstream will not be
+ * changing this — and this is the check that the replacement is actually working.
+ *
+ * Because the stub is indefinite, this gate is too. A future adf-hx release could import
+ * a different test helper, which shows up here as a new fingerprint going red rather
+ * than as a silent regression.
  *
  * It reads the built bytes rather than `package.json`, because the question is not
  * what we declared, it is what a customer receives. A stub that stops working, an

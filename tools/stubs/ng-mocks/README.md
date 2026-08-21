@@ -49,9 +49,23 @@ into a mystery at runtime.
 if `ngMocks` or an `eval(` from it reaches `dist/`. Deleting this stub without fixing
 the underlying cause therefore cannot pass unnoticed.
 
+## This is permanent, not a stopgap
+
+Upstream is **not** going to change this. That was decided rather than assumed, so treat
+the stub as an owned, indefinite part of the build rather than something waiting on a
+fix. Two consequences:
+
+- It must survive every adf-hx version bump. `npm ci` restores it from the lockfile, and
+  the `bundle` gate fails if the real library reappears — but a new adf-hx release could
+  import a _different_ test helper, in which case the gate goes red on a new fingerprint
+  and this stub needs a matching export rather than replacing.
+- The five throwing functions below are the whole contract. Add to them only when a real
+  build failure names a missing export; guessing at upstream's future usage would make
+  this file a second implementation of `ng-mocks` rather than a stub.
+
 ## Removing it
 
-When upstream stops importing a test library from shipped code:
+Only relevant if upstream ever does change, which is not expected. If it does:
 
 1. Replace `"ng-mocks": "file:tools/stubs/ng-mocks"` in the root `package.json` with
    the real version, or drop the dependency entirely if the import is gone.
@@ -61,7 +75,8 @@ When upstream stops importing a test library from shipped code:
 If a real test ever needs genuine `ng-mocks`, this alias will break it — the stub is
 repo-wide. Nothing in the repo used `ng-mocks` when the stub was introduced.
 
-## Reported upstream
+## Upstream
 
-This is an upstream packaging defect and should be fixed there. Track it alongside
-the other adf-hx findings in `AGENTS/11-beta-program.md` section 3.
+It is an upstream packaging defect, and upstream will not be fixing it. This stub is
+therefore the resolution, not a workaround pending one. Recorded alongside the other
+adf-hx findings in `AGENTS/11-beta-program.md` section 3.

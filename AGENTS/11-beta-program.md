@@ -237,6 +237,18 @@ DocumentService`. The chain, read from the published bundle:
   app.** Two real `TS` errors in `app.config.ts`-adjacent app code passed
   `nx affected -t typecheck` and were caught only by `build`. This is the same trap as
   the `test` gate, one layer over.
+- **Decisions taken, do not re-open without new information:**
+  - **`ng-mocks` stays stubbed, indefinitely.** Upstream will not be changing the shipped
+    `/ui` bundle, so `tools/stubs/ng-mocks/` is the resolution rather than a workaround
+    awaiting one. It must survive every adf-hx bump; the `bundle` gate goes red if the
+    real library returns, and a future release importing a _different_ test helper shows
+    up as a new fingerprint rather than as a silent regression.
+  - **`angular-oauth2-oidc` and `cropperjs` are kept**, unused, on the basis that they
+    cause no issue today — `pdfjs-dist` tree-shakes out entirely, these two do not. Not
+    a blocker; revisit only if something breaks or the SCA position changes.
+  - **The initial-bundle budget stays as configured** for now. It is already 202 kB over
+    the 1.50 MB warning at baseline and adf-hx will add to that permanently. Treated as
+    a later decision, not a blocker.
 - **THE CURRENT PHASE 3 BLOCKER IS A BUNDLE-BOUNDARY PROBLEM, NOT A PORT PROBLEM.**
   `apps/nuxeo-ui/src/app/shell/app-shell.component.ts` and `nav-drawer.component.ts`
   both import `@agentic-ui/shared/adf-hx-bridge`, whose single barrel re-exports
