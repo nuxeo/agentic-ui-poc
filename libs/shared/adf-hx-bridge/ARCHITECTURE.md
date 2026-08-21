@@ -95,7 +95,9 @@ All POC UI lives in `libs/shared/adf-hx-bridge/src/lib/ui/`. No `mat-*`, no `sat
 | `hxp-browse-nav-tree`      | Side nav folder tree                                                      |
 | `hxp-icon` / `hxp-spinner` | Icons and loading                                                         |
 
-Legacy `hxp-document-tree` (Material mat-tree) is **not** used in the POC.
+The legacy `hxp-document-tree` (a Material `mat-tree`) and its `AdfHxDocumentTreeDatabaseService`
+data source were **deleted in Phase 0**. They were unused, and they were the last thing keeping
+`@angular/material` in this library's dependency graph and public surface.
 
 ---
 

@@ -5,7 +5,6 @@ import { NuxeoQueryApi } from '../api/nuxeo-query-api';
 import { AdfHxBrowseFolderService } from '../services/adf-hx-browse-folder.service';
 import { AdfHxBrowseMediaService } from '../services/adf-hx-browse-media.service';
 import { AdfHxDocumentService } from '../services/adf-hx-document.service';
-import { AdfHxDocumentTreeDatabaseService } from '../services/adf-hx-document-tree-database.service';
 import { NuxeoDocumentRouterService } from '../services/nuxeo-document-router.service';
 
 /** Provider array for component-level registration. */
@@ -17,7 +16,6 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   AdfHxDocumentService,
   AdfHxBrowseMediaService,
   AdfHxBrowseFolderService,
-  AdfHxDocumentTreeDatabaseService,
   NuxeoDocumentRouterService,
 ];
 

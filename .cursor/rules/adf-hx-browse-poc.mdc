@@ -33,7 +33,7 @@ Shell (nuxeo-ui)
 
 - Use components from `@agentic-ui/shared/adf-hx-bridge` (`hxp-folder-header`, `hxp-breadcrumb`, `hxp-domain-hint`, `hxp-browse-toolbar`, `hxp-document-list`, `hxp-browse-nav-drawer`, `hxp-browse-nav-tree`, `hxp-icon`, `hxp-spinner`).
 - **Never** use Angular Material (`mat-*`, `Mat*Module`), Satori (`sat-*`), or production browse UI in the POC page or its bridge components.
-- Side nav: use **`hxp-browse-nav-tree`** (nested folder tree), not `hxp-document-tree` (legacy mat-tree).
+- Side nav: use **`hxp-browse-nav-tree`** (nested folder tree). The legacy Material `hxp-document-tree` was deleted in Phase 0.
 - Icons/spinners: **`hxp-icon`** / **`hxp-spinner`** only — no `mat-icon` / `mat-spinner`.
 - Form controls: native HTML (`input`, `select`, `button`) styled in bridge SCSS — no `mat-form-field`, `mat-datepicker`, etc.
 - CSS tokens: use **`--hxp-*`** only — never `--mat-sys-*` in bridge SCSS. Tokens are aliased from Satori in `apps/nuxeo-ui/src/styles/hxp-theme.scss` (after `@include sat.theme`).

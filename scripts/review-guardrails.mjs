@@ -122,9 +122,27 @@ function checkDocsNumbering() {
   for (const file of docFiles) {
     if (!fileExists(file)) continue;
     const numbers = new Map();
+    // Track fenced code blocks: several docs embed whole other documents (AGENTS.md,
+    // rule files) inside ```` fences, and those inner headings are illustrative content,
+    // not this document's structure. A closing fence must be at least as long as the
+    // one that opened the block, so nested ``` inside ```` does not end it.
+    let openFence = 0;
     read(file)
       .split('\n')
       .forEach((line, index) => {
+        const fence = line.match(/^\s*(`{3,}|~{3,})/);
+        if (fence) {
+          const length = fence[1].length;
+          if (openFence === 0) {
+            openFence = length;
+            return;
+          }
+          if (length >= openFence && !line.trim().slice(length).trim()) {
+            openFence = 0;
+          }
+          return;
+        }
+        if (openFence > 0) return;
         const match = line.match(/^##\s+(\d+)\./);
         if (!match) return;
         const section = match[1];
