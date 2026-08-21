@@ -504,24 +504,49 @@ export default async function run(page, h) {
   // XHRs are unchanged. It therefore tests the Layer 1 gate, which is the thing
   // Phase 2 changed, and says nothing about server-side authorisation, which
   // Phase 2 did not touch and which Nuxeo enforces regardless.
+  // Two things force administrator back on and both have to be defeated:
+  // `AuthService` re-hydrates from `/nuxeo/api/v1/me` on every load, and it
+  // treats the built-in `Administrator` username as administrator even when the
+  // API omits the flag. So the session is injected under a different username
+  // and `/me` is intercepted to answer as an ordinary member.
   manifestBody = null;
+  await page.route('**/api/v1/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: { 'cache-control': 'no-store' },
+      body: JSON.stringify({
+        'entity-type': 'user',
+        id: 'jdoe',
+        properties: { username: 'jdoe', groups: ['members'] },
+        isAdministrator: false,
+        extendedGroups: [{ name: 'members', label: 'Members' }],
+      }),
+    }),
+  );
   await page.evaluate(() => {
     const key = 'agentic_ui_nuxeo_session';
     const raw = sessionStorage.getItem(key);
     if (!raw) return;
     sessionStorage.setItem(
       key,
-      JSON.stringify({ ...JSON.parse(raw), isAdministrator: false, groups: ['members'] }),
+      JSON.stringify({
+        ...JSON.parse(raw),
+        username: 'jdoe',
+        isAdministrator: false,
+        groups: ['members'],
+      }),
     );
   });
   await reloadApp(page);
   const asMember = await readNav(page);
   h.check(
-    'the session really is a non-administrator one',
-    await page.evaluate(
-      () => JSON.parse(sessionStorage.getItem('agentic_ui_nuxeo_session') ?? '{}').isAdministrator === false,
-    ),
-    'the injected session still claims administrator',
+    'the running application really believes it is a non-administrator',
+    await page.evaluate(() => {
+      const session = JSON.parse(sessionStorage.getItem('agentic_ui_nuxeo_session') ?? '{}');
+      return session.isAdministrator === false && session.username === 'jdoe';
+    }),
+    'the session was re-hydrated back to an administrator',
   );
   h.check(
     'Administration is absent for a user without access',
@@ -537,6 +562,7 @@ export default async function run(page, h) {
   await h.screenshot('non-admin-has-no-administration-entry');
 
   // Back to the configured user for the remaining steps.
+  await page.unroute('**/api/v1/me');
   await h.login();
   await page.waitForTimeout(500);
 
