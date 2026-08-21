@@ -4,11 +4,10 @@ import { BehaviorSubject, from, Observable, of, Subject } from 'rxjs';
 import { map } from 'rxjs/operators';
 import {
   DEFAULT_REPOSITORY_ID,
-  DOCUMENT_API_TOKEN,
   isHxRootDocument,
-  QUERY_API_TOKEN,
   ROOT_DOCUMENT,
 } from '../tokens/adf-hx-bridge.tokens';
+import { DOCUMENT_API_TOKEN, QUERY_API_TOKEN } from '@alfresco/adf-hx-content-services/api';
 
 export interface DocumentFetchOptions {
   limit?: number;

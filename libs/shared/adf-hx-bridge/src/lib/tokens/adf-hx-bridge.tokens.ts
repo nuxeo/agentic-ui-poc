@@ -1,8 +1,8 @@
-import { InjectionToken } from '@angular/core';
-import type { DocumentApi, QueryApi } from '@hylandsoftware/hxcs-js-client';
-
-export const DOCUMENT_API_TOKEN = new InjectionToken<DocumentApi>('DocumentApi');
-export const QUERY_API_TOKEN = new InjectionToken<QueryApi>('QueryApi');
+// The `DOCUMENT_API_TOKEN` and `QUERY_API_TOKEN` clones that used to live here are gone.
+// They carried the same description strings as upstream's but different identities, and
+// Angular resolves by identity — so they satisfied our own services while being invisible
+// to every adf-hx component. Import the real ones from
+// `@alfresco/adf-hx-content-services/api`; `provide-adf-hx-nuxeo-bridge.ts` binds them.
 
 export const DEFAULT_REPOSITORY_ID = 'default';
 

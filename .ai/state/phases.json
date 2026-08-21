@@ -28,7 +28,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/latest",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/latest:phase-3-ports-findings"
+        "regate": "gates/latest:phase-3-swap-final"
       },
       "deviations": [],
       "notCovered": [
@@ -43,7 +43,7 @@
       "evidence": {
         "manifest": "phase-1-config/latest",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/latest:phase-3-ports-findings"
+        "regate": "gates/latest:phase-3-swap-final"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -60,7 +60,7 @@
       "evidence": {
         "manifest": "phase-2-registry/latest",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/latest:phase-3-ports-findings"
+        "regate": "gates/latest:phase-3-swap-final"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -83,28 +83,27 @@
       "status": "in-progress",
       "evidence": {
         "manifest": "phase-3-adf-hx/latest",
-        "regate": "gates/latest:phase-3-ports-findings"
+        "regate": "gates/latest:phase-3-swap-final"
       },
       "deviations": [],
       "notCovered": [
-        "The document-list swap: it runs, and is blocked only by the bundle boundary above.",
+        "Column picker not rehomed: the hand-written list had one, upstream has none. Layer 1 still sets columns via manifest; a user can no longer choose them at runtime.",
+        "Card view and thumbnails not rehomed.",
         "breadcrumb, document-tree, metadata-sidebar, permissions, manage-versions, document-viewer, search",
+        "GROUP, MODEL, RENDITIONS, UPLOAD, USER — the remaining five ports",
         "bridge defects: 2 of 5 verified still open",
-        "angular-oauth2-oidc and cropperjs reach the bundle unused; pdfjs-dist tree-shakes out",
-        "GROUP, MODEL, RENDITIONS, UPLOAD, USER ports — the remaining five of twelve"
+        "Initial bundle 1.70 -> 3.00 MB, accepted; leadership not yet informed"
       ],
       "delivered": [
-        "Dependency pin set: 9 packages, all exact. adf-core declares all 16 peers as unbounded >=, so two had to be corrected against its suggestion (@mat-datetimepicker/core 16.0.1 for the Angular 20 line, pdfjs-dist 6.2.108 to avoid a native downgrade). Resolves with no --legacy-peer-deps; npm ci verified on Linux in CI.",
-        "ng-mocks stubbed via tools/stubs/ng-mocks (file: dependency). adf-hx imports this test library from its shipped /ui runtime bundle; with the real library installed it reached a 1.6 MB customer chunk carrying two eval() calls. Both eliminated.",
-        "bundle gate (9th): reads the built bytes and fails on test-library or eval() presence. Reports VACUOUS while adf-hx is not yet in the bundle.",
-        "Before-capture of the hand-written document list: phase-3-adf-hx, 9/9 against live Nuxeo.",
-        "Adoption chain measured end to end by attempting the swap: it compiles and typechecks, then fails NG0201 on upstream DocumentService.",
-        "API-port chain walked to the end and all six implemented in a working tree: VERSION, COPY, MOVE, CHECKIN, DOWNLOAD written over existing nuxeo-client methods (only CHECKIN needed a new one), DOCUMENT and QUERY rebound to upstream tokens with the clones deleted. The real HxpDocumentListComponent rendered Title/Modified/Last Contributor over live Nuxeo, with its [schema] fed from PACKAGED_BROWSE_COLUMNS — Phase 2 Layer 1 driving the real adf-core DataTable. Reverted, because it cannot be committed: see blockedOn."
+        "Secondary entry point @agentic-ui/shared/adf-hx-bridge/providers, so the app shell no longer reaches adf-hx through the bridge barrel. Measured: ports via the barrel put the initial bundle at 2.65 MB; via the entry point, 1.71 MB.",
+        "Seven of twelve API ports bound to UPSTREAM tokens with the clones deleted: DOCUMENT, QUERY, VERSION, COPY, MOVE, CHECKIN, DOWNLOAD. Six were thin over existing nuxeo-client methods; only CHECKIN needed a new one (Document.CheckIn).",
+        "AppTranslateLoader implements adf-core TranslationService five undocumented loader methods without importing adf-core, so Layer 0 manifest-labels relabelling survives and adf-core does not join the initial bundle through app.config.ts.",
+        "adf-core own i18n catalogue added to the build asset globs.",
+        "THE SWAP RUNS: upstream HxpDocumentListComponent renders on /#/browse-adf-hx over live Nuxeo — document list present, column headers matching the packaged set in order, real Nuxeo children listed, multiselect checkboxes per row. Its [schema] is fed from PACKAGED_BROWSE_COLUMNS, so Phase 2 Layer 1 drives the real adf-core DataTable.",
+        "Layer 1 field -> HxPR property translation added: DataTable reads row.obj[key], so the browse view-model keys rendered correct headers over empty rows until mapped. packaged-columns.ts had predicted exactly this."
       ],
       "blockedOn": [
-        "BUNDLE BOUNDARY: app-shell and nav-drawer import the @agentic-ui/shared/adf-hx-bridge barrel, which re-exports provide-adf-hx-nuxeo-bridge.ts. Any adf-hx import there makes adf-core reachable from the shell and eager. Initial bundle 1.70 MB -> 2.65 MB with the ports alone, -> 2.86 MB with the swap, against a 2.00 MB maximumError. Needs a secondary entry point in the bridge library, or the shell must stop importing the barrel. Architectural, not incremental.",
-        "Column picker not rehomed: the hand-written list had one, upstream has none. Layer 1 can still set columns via manifest, but a user cannot choose them at runtime.",
-        "Card view and thumbnails not rehomed."
+        "Local dev server was started before the adf-core asset glob was added, so it 404s /assets/adf-core/i18n/en.json and one accessibility label renders as a raw key. The BUILD ships the file — verified in dist/. Needs a dev-server restart to confirm 9/9; the two failing checks in the newest capture have this single cause."
       ]
     },
     {

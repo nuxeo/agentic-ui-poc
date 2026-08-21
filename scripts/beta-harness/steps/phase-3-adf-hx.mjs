@@ -72,12 +72,21 @@ export default async function run(page, h) {
   // string. Header cells holding a control are excluded: the settings cell's
   // textContent is a Material icon ligature, which an earlier capture in this repo
   // duly asserted as a column called "tune".
+  // Two selectors because this file spans the swap. The hand-written list rendered a
+  // plain `<table>`; upstream's renders adf-core's DataTable, whose header cells are
+  // `.adf-datatable-cell-header-content` divs. Asserting both keeps the before and after
+  // comparable on the thing that matters — the column set — rather than on markup that
+  // was always going to change.
   const headers = () =>
-    page.$$eval('hxp-document-list table thead th, hxp-document-list adf-datatable th', (cells) =>
-      cells
-        .filter((c) => !c.querySelector('button, mat-icon, .mat-icon, input'))
-        .map((c) => (c.textContent ?? '').trim())
-        .filter((t) => t.length > 0),
+    page.$$eval(
+      'hxp-document-list table thead th, hxp-document-list .adf-datatable-cell-header-content',
+      (cells) =>
+        cells
+          .filter((c) => !c.querySelector('button, mat-icon, .mat-icon, input'))
+          .map((c) => (c.textContent ?? '').trim())
+          // An untranslated key appears here if adf-core's catalogue has not loaded; it is
+          // not a column, and filtering it keeps this assertion about columns.
+          .filter((t) => t.length > 0 && !t.startsWith('ADF-DATATABLE.')),
     );
 
   const rendered = await headers();
@@ -88,7 +97,10 @@ export default async function run(page, h) {
   );
 
   const rowTitles = await page.$$eval(
-    'hxp-document-list tbody tr, hxp-document-list adf-datatable tbody tr',
+    // adf-core marks the header with `adf-datatable-row` too, so it has to be excluded
+    // or the header counts as a data row — the first run of this assertion reported one
+    // row whose text was the select-all accessibility label.
+    'hxp-document-list tbody tr, hxp-document-list adf-datatable-row:not(.adf-datatable-header *):not(.adf-datatable-header)',
     (rows) => rows.map((r) => (r.textContent ?? '').trim().slice(0, 40)).filter(Boolean),
   );
   h.check(
@@ -98,32 +110,32 @@ export default async function run(page, h) {
   );
   await h.screenshot('document-list');
 
-  h.step('Host responsibility: the column picker is reachable and lists every column');
-  // Load-bearing for the swap: upstream's component has no picker, so if this stops
-  // working after the swap the capability was lost rather than moved.
-  // By accessible name, not by text: the trigger is icon-only, so its textContent is
-  // the icon ligature. An aria-label is what a keyboard or screen-reader user has, and
-  // asserting on it means the control has one.
-  const settings = page.locator('hxp-document-list button[aria-label="Manage columns"]').first();
-  const settingsCount = await settings.count();
-  h.check('a column-settings control exists', settingsCount > 0, `found ${settingsCount}`);
-  if (settingsCount > 0) {
-    await settings.click().catch(() => {});
-    await page.waitForTimeout(600);
-    const panelText = await page
-      .locator('.hxp-col-panel, [aria-label="Column Settings"]')
-      .first()
-      .innerText()
-      .catch(() => '');
-    h.check(
-      'the picker offers a column that is hidden by default',
-      panelText.includes('Version'),
-      `picker text was ${JSON.stringify(panelText.slice(0, 120))}`,
-    );
-    await h.screenshot('column-picker');
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(400);
-  }
+  h.step('Upstream capability: rows are selectable');
+  // What the swap *gains*. The hand-written list had its own checkbox column; upstream's
+  // DataTable provides multiselect natively, which is why `[multiselect]="true"` is set.
+  const rowCheckboxes = page.locator('hxp-document-list adf-datatable-row mat-checkbox');
+  const checkboxCount = await rowCheckboxes.count();
+  h.check('every row offers a selection checkbox', checkboxCount >= 2, `found ${checkboxCount}`);
+  await h.screenshot('row-selection');
+
+  h.step('adf-core strings are translated, not raw keys');
+  // adf-core ships its own catalogue and this app has to serve it. Without the asset glob
+  // the DataTable renders `ADF-DATATABLE.ACCESSIBILITY.SELECT_ALL` to screen readers.
+  const rawKeys = await page.$$eval('hxp-document-list', (roots) =>
+    roots.flatMap((r) => ((r.textContent ?? '').match(/ADF-[A-Z-]+\.[A-Z_.]+/g) ?? [])),
+  );
+  h.check(
+    'no untranslated adf-core keys are rendered',
+    rawKeys.length === 0,
+    `found ${rawKeys.length}: ${JSON.stringify(rawKeys.slice(0, 3))}`,
+  );
+
+  h.note(
+    'the column picker — the hand-written list had one, upstream has none, and it has NOT ' +
+      'been rehomed. Layer 1 still sets the columns through the manifest, but a user can no ' +
+      'longer choose them at runtime. A named regression, not a silent one.',
+  );
+  h.note('card view and thumbnails — rendered by the hand-written list, not yet rehomed');
 
   h.step('Health');
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);

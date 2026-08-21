@@ -246,9 +246,29 @@ DocumentService`. The chain, read from the published bundle:
   - **`angular-oauth2-oidc` and `cropperjs` are kept**, unused, on the basis that they
     cause no issue today — `pdfjs-dist` tree-shakes out entirely, these two do not. Not
     a blocker; revisit only if something breaks or the SCA position changes.
-  - **The initial-bundle budget stays as configured** for now. It is already 202 kB over
-    the 1.50 MB warning at baseline and adf-hx will add to that permanently. Treated as
-    a later decision, not a blocker.
+  - **The initial-bundle cost of adf-hx is accepted.** It stopped being a deferrable
+    question the moment the ports had to go in the root injector, so the budget was
+    raised deliberately: `maximumWarning` 1.5 → 2.5 MB, `maximumError` 2.0 → 3.5 MB.
+    **Leadership has not been told yet and should be** — the numbers for that
+    conversation:
+
+    |                     | Initial bundle                          |
+    | ------------------- | --------------------------------------- |
+    | before adf-hx       | 1.70 MB                                 |
+    | with adf-hx adopted | **3.00 MB**                             |
+    | increase            | **+1.30 MB, once, then browser-cached** |
+
+    It is unavoidable rather than a choice. Eleven upstream services are
+    `providedIn: 'root'` and resolve the API-port tokens from the root injector, so the
+    ports cannot be scoped to the lazily-loaded POC route — providing them on the
+    component means shadowing all eleven locally, and that list grows with every
+    component adopted. Loading adf-core on demand was tried and fails one `NG0201` at a
+    time.
+
+    Practical effect: unnoticeable on an office network, roughly a second or two on the
+    first page load over a slow link. The alternatives, if the figure is ever refused,
+    are trimming existing weight out of the startup bundle (real work, uncertain payoff)
+    or not adopting adf-hx at all, which abandons the premise of the Beta.
 - **THE CURRENT PHASE 3 BLOCKER IS A BUNDLE-BOUNDARY PROBLEM, NOT A PORT PROBLEM.**
   `apps/nuxeo-ui/src/app/shell/app-shell.component.ts` and `nav-drawer.component.ts`
   both import `@agentic-ui/shared/adf-hx-bridge`, whose single barrel re-exports

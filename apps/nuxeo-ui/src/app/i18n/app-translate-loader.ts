@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { AppConfigService } from '@agentic-ui/shared/app-config';
 import { TranslateLoader } from '@ngx-translate/core';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 
 import { EN_FALLBACK_TRANSLATIONS } from './en-fallback';
 
@@ -32,25 +32,119 @@ export function flattenCatalogue(
   return target;
 }
 
+/** A translation folder in adf-core's sense: a name and a path under the base href. */
+interface TranslationFolder {
+  readonly name: string;
+  path: string;
+}
+
 /**
- * Loads the shipped translation catalogue and layers the manifest's `labels`
- * over it.
+ * adf-core ships its component strings here, and its own loader seeds this folder in its
+ * constructor. Seeded for the same reason: without it every adf-hx component renders raw
+ * keys such as `ADF-DATATABLE.ACCESSIBILITY.SELECT_ALL`. The files are copied in by an
+ * asset glob in `angular.json`.
+ */
+const ADF_CORE_FOLDER: TranslationFolder = { name: 'adf-core', path: 'assets/adf-core' };
+
+/**
+ * Loads the shipped translation catalogue and layers the manifest's `labels` over it.
  *
- * That second step is the Layer 0 point of this class: relabelling the product
- * for a customer is a manifest edit, not a rebuild. The English catalogue is
- * also compiled in as a fallback, so a failed fetch degrades to English rather
- * than to raw translation keys.
+ * That second step is the Layer 0 point of this class: relabelling the product for a
+ * customer is a manifest edit, not a rebuild. The English catalogue is also compiled in
+ * as a fallback, so a failed fetch degrades to English rather than to raw keys.
+ *
+ * ## Why it implements five methods that are not on `TranslateLoader`
+ *
+ * adf-core's `TranslationService` does not treat the ngx-translate loader as a
+ * `TranslateLoader`. It takes `translate.currentLoader` and calls `setDefaultLang`,
+ * `providerRegistered`, `registerProvider`, `getFullTranslationJSON` and `init` on it.
+ * With a plain `TranslateLoader` in place, every adf-hx component dies with
+ * `TypeError: this.customLoader.setDefaultLang is not a function`.
+ *
+ * There are three ways to satisfy that, and only one works here:
+ *
+ * - Replace this class with adf-core's `TranslateLoaderService`. Deletes the
+ *   manifest-labels layering, which is a shipped Layer 0 capability.
+ * - Extend adf-core's `TranslateLoaderService`. Works, and puts `@alfresco/adf-core` on
+ *   an import chain from `app.config.ts`, moving adf-core into the **initial** bundle —
+ *   measured at 1.71 MB → 2.86 MB, past the 2 MB budget error.
+ * - Implement the contract here, importing nothing from adf-core. Costs the forty lines
+ *   below and keeps adf-core in the lazily-loaded POC chunk.
+ *
+ * This is the third. It is a duck-typed implementation of an **undocumented** contract,
+ * so an adf-core upgrade could add a method and break it — which surfaces as the same
+ * `TypeError` on a different name rather than as a silent failure.
+ *
+ * Precedence, lowest to highest: registered folders, this app's catalogue, the manifest's
+ * `labels`. A customer's relabelling wins over both, which is the point of Layer 0.
  */
 @Injectable({ providedIn: 'root' })
 export class AppTranslateLoader implements TranslateLoader {
   private readonly http = inject(HttpClient);
   private readonly config = inject(AppConfigService);
 
+  private defaultLang = 'en';
+  private readonly folders: TranslationFolder[] = [{ ...ADF_CORE_FOLDER }];
+  /** Last merged folder catalogue per language, for the synchronous read below. */
+  private readonly folderCache = new Map<string, Record<string, string>>();
+
   getTranslation(lang: string): Observable<Record<string, string>> {
-    return this.http.get<unknown>(translationUrl(lang, document.baseURI)).pipe(
-      map((catalogue) => flattenCatalogue(catalogue)),
-      catchError(() => of(EN_FALLBACK_TRANSLATIONS)),
-      map((catalogue) => ({ ...catalogue, ...this.config.manifest().labels })),
+    const folders$ = this.folders.map((folder) =>
+      this.http
+        .get<unknown>(`${folder.path}/${TRANSLATION_DIRECTORY}/${encodeURIComponent(lang)}.json`)
+        .pipe(catchError(() => of({}))),
     );
+    const app$ = this.http
+      .get<unknown>(translationUrl(lang, document.baseURI))
+      .pipe(catchError(() => of(EN_FALLBACK_TRANSLATIONS)));
+
+    return forkJoin([...folders$, app$]).pipe(
+      map((catalogues) => {
+        const app = catalogues.pop();
+        const folders = catalogues.reduce<Record<string, string>>(
+          (acc, catalogue) => ({ ...acc, ...flattenCatalogue(catalogue) }),
+          {},
+        );
+        this.folderCache.set(lang, folders);
+        return { ...folders, ...flattenCatalogue(app), ...this.config.manifest().labels };
+      }),
+    );
+  }
+
+  /* ---- the adf-core loader contract ---- */
+
+  setDefaultLang(value: string): void {
+    this.defaultLang = value || 'en';
+  }
+
+  providerRegistered(name: string): boolean {
+    return this.folders.some((folder) => folder.name === name);
+  }
+
+  registerProvider(name: string, path: string): void {
+    const existing = this.folders.find((folder) => folder.name === name);
+    if (existing) existing.path = path;
+    else this.folders.push({ name, path });
+  }
+
+  /**
+   * adf-core reads translations synchronously here. It returns whatever the last
+   * `getTranslation` cached rather than fetching: a synchronous method cannot honestly
+   * perform a network request, and an empty object is the correct answer for a language
+   * that has not loaded — a fabricated one would render wrong strings.
+   */
+  getFullTranslationJSON(lang: string): Record<string, string> {
+    return this.folderCache.get(lang) ?? this.folderCache.get(this.defaultLang) ?? {};
+  }
+
+  /**
+   * A no-op on purpose. adf-core's loader uses `init` to prime a fetch queue; here
+   * `getTranslation` loads every registered folder in one pass, so there is nothing to
+   * queue. A folder registered *after* the current language has loaded is picked up on
+   * the next language load rather than immediately — acceptable because the only
+   * registrations happen at bootstrap.
+   */
+  init(_lang: string): void {
+    /* nothing to prime */
   }
 }

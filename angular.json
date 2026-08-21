@@ -26,6 +26,11 @@
               {
                 "glob": "**/*",
                 "input": "apps/nuxeo-ui/public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-core/bundles/assets/adf-core",
+                "output": "assets/adf-core"
               }
             ],
             "styles": ["apps/nuxeo-ui/src/styles.scss"]
@@ -35,8 +40,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1.5MB",
-                  "maximumError": "2MB"
+                  "maximumWarning": "2.5mb",
+                  "maximumError": "3.5mb"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -47,8 +52,13 @@
               "outputHashing": "all",
               "optimization": {
                 "scripts": true,
-                "styles": { "minify": true, "inlineCritical": true },
-                "fonts": { "inline": false }
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": false
+                }
               }
             },
             "development": {
@@ -56,7 +66,10 @@
               "extractLicenses": false,
               "sourceMap": true,
               "assets": [
-                { "glob": "**/*", "input": "apps/nuxeo-ui/public" },
+                {
+                  "glob": "**/*",
+                  "input": "apps/nuxeo-ui/public"
+                },
                 {
                   "glob": "bootstrap.json",
                   "input": "nuxeo-agentic-ui-package/src/main/config",

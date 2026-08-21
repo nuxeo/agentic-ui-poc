@@ -708,6 +708,21 @@ export class DocumentDetailService {
     );
   }
 
+  /**
+   * Create a version of a live document — Nuxeo's `Document.CheckIn`.
+   *
+   * Added for the adf-hx `CHECKIN` API port, which upstream's
+   * `CreateDocumentVersionService` requires. Nuxeo takes the increment as
+   * `'minor' | 'major'`; adf-hx expresses it as a `minor` boolean.
+   */
+  checkInDocument(uid: string, minor = true): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${uid}/@op/Document.CheckIn`,
+      { params: { version: minor ? 'minor' : 'major' }, context: {} },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
   restoreVersion(versionUid: string): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
       `/nuxeo/api/v1/id/${versionUid}/@op/Document.RestoreVersion`,

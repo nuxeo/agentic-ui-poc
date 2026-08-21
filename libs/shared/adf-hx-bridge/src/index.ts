@@ -1,3 +1,12 @@
+// Deliberately does NOT export anything that imports `@alfresco/adf-hx-*`.
+//
+// The app shell imports this barrel for the `hxp-*` components and the path utilities.
+// A barrel is one module, so anything re-exported here that reaches adf-hx puts adf-core
+// into the **initial** bundle — measured at +0.95 MB, past the 2 MB budget error. The
+// API ports and `provideAdfHxNuxeoBridge` therefore live in
+// `@agentic-ui/shared/adf-hx-bridge/providers`, which only the lazily-loaded POC route
+// imports. See `src/providers.ts`.
+
 export * from './lib/tokens/adf-hx-bridge.tokens';
 export * from './lib/mapping/nuxeo-to-hx-document.mapper';
 export * from './lib/api/nuxeo-document-api';
@@ -5,7 +14,6 @@ export * from './lib/api/nuxeo-query-api';
 export * from './lib/services/adf-hx-document.service';
 export * from './lib/services/adf-hx-browse-context.service';
 export * from './lib/services/nuxeo-document-router.service';
-export * from './lib/providers/provide-adf-hx-nuxeo-bridge';
 export * from './lib/utils/adf-hx-browse-path.utils';
 export * from './lib/utils/hxp-browse-cell.utils';
 export * from './lib/utils/hxp-browse-columns.utils';

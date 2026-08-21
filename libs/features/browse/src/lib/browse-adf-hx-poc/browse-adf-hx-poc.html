@@ -57,14 +57,23 @@
             (viewModeChange)="viewMode.set($event)"
             (exportCsv)="exportCsv()"
           />
-          <hxp-document-list
-            [documents]="filteredDocuments()"
-            [isLoading]="loading() || listLoading()"
-            [errorMessage]="error()"
-            [viewMode]="viewMode()"
-            [thumbnails]="thumbnails()"
-            (retry)="reload()"
-          />
+          <!-- The error path is a host responsibility now: upstream's document list has
+               no error state, so it is rehomed here rather than lost. -->
+          @if (error()) {
+            <div class="hxp-poc-error">
+              <p role="alert">{{ error() }}</p>
+              <button type="button" (click)="reload()">Retry</button>
+            </div>
+          } @else {
+            <hxp-document-list
+              [documents]="filteredDocuments()"
+              [isLoading]="loading() || listLoading()"
+              [schema]="schema()"
+              [multiselect]="true"
+              [contextMenuActions]="false"
+              (rowClicked)="onUpstreamRowClicked($event)"
+            />
+          }
         } @else if (activeTab() === 'permissions') {
           <hxp-browse-permissions
             [loading]="permissionsLoading()"

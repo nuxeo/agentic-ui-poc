@@ -24,7 +24,6 @@ import {
   AdfHxBrowseFolderService,
   AdfHxBrowseMediaService,
   AdfHxDocumentService,
-  ADF_HX_NUXEO_BRIDGE_PROVIDERS,
   HxpBrowseDetailsPanelComponent,
   type HxpDetailsSubTab,
   HxpBrowseHistoryComponent,
@@ -33,6 +32,7 @@ import {
   type HxpBrowseTabId,
   HxpBrowseToolbarComponent,
   type HxpBrowseViewMode,
+  NuxeoDocumentRouterService,
   HxpBreadcrumbComponent,
   HxpDocumentListComponent,
   HxpDomainHintComponent,
@@ -49,6 +49,39 @@ import {
   hxpLocalAces,
 } from '@agentic-ui/shared/adf-hx-bridge';
 
+// The narrow entry point, deliberately. It is the only thing in this bridge that reaches
+// `@alfresco/adf-hx-*`, and this route is lazily loaded — importing it from the main
+// barrel instead would put adf-core in the initial bundle. See `src/providers.ts`.
+import { ADF_HX_NUXEO_BRIDGE_PROVIDERS } from '@agentic-ui/shared/adf-hx-bridge/providers';
+import { HxpDocumentListComponent as UpstreamDocumentListComponent } from '@alfresco/adf-hx-content-services/ui';
+import type { DataColumn } from '@alfresco/adf-core';
+
+import {
+  AppExtensionsService,
+  EXTENSION_SLOTS,
+  type ExtensionColumnDescriptor,
+} from '@agentic-ui/shared/extensions';
+
+/**
+ * Layer 1 column `field` -> HxPR `Document` property.
+ *
+ * Only the columns the packaged set switches on by default are mapped, because those are
+ * the ones with a known HxPR equivalent. An unmapped field passes through unchanged, which
+ * renders an empty column rather than throwing — visibly wrong at a glance, and better
+ * than inventing a property name that silently resolves to nothing.
+ *
+ * The gaps are real: HxPR has no `lastContributor`, so it maps to `sys_name` as the
+ * nearest honest stand-in is **not** available and the column would otherwise be blank.
+ * Left unmapped deliberately — see the note in the phase-3 evidence.
+ */
+const HXP_FIELD_BY_COLUMN: Readonly<Record<string, string>> = {
+  title: 'sys_title',
+  type: 'sys_typeLabel',
+  modified: 'sys_modified',
+  created: 'sys_created',
+  state: 'sys_primaryType',
+};
+
 @Component({
   selector: 'lib-browse-adf-hx-poc',
   standalone: true,
@@ -60,7 +93,7 @@ import {
     HxpDomainHintComponent,
     HxpBrowseTabsComponent,
     HxpBrowseToolbarComponent,
-    HxpDocumentListComponent,
+    UpstreamDocumentListComponent,
     HxpBrowsePermissionsComponent,
     HxpBrowseHistoryComponent,
     HxpBrowseTrashComponent,
@@ -71,11 +104,42 @@ import {
   providers: [...ADF_HX_NUXEO_BRIDGE_PROVIDERS],
 })
 export class BrowseAdfHxPocComponent {
+  /**
+   * Upstream's `[schema]`, derived from the same Layer 1 descriptors that drive
+   * production browse's columns. This is the payoff from Phase 2: a customer's manifest
+   * edit reaches the real adf-core DataTable without a second column list.
+   */
+  protected readonly schema = computed<DataColumn[]>(
+    () =>
+      this.extensions
+        .resolve<ExtensionColumnDescriptor>(EXTENSION_SLOTS.documentList)
+        .filter((column) => !column.hiddenByDefault)
+        .map((column) => ({
+          // adf-core's DataTable reads `row.obj[key]`, so `key` has to be an HxPR
+          // `Document` property. `ExtensionColumnDescriptor.field` holds the browse
+          // view-model key instead — `title`, `modified` — which is what
+          // `packaged-columns.ts` says it holds and why it warns that migrating to real
+          // property paths is Phase 3's job. Without this translation the table renders
+          // the right headers over empty rows, which is exactly what it did.
+          key: HXP_FIELD_BY_COLUMN[column.field] ?? column.field,
+          type: 'text',
+          title: column.label,
+          sortable: column.sortable ?? false,
+        })) as DataColumn[],
+  );
+
+  /** Row click, previously the local component's own `onRowClick`. */
+  protected onUpstreamRowClicked(document: Document): void {
+    this.documentRouter.navigateTo(document);
+  }
+
   private readonly route = inject(ActivatedRoute);
   private readonly documentService = inject(AdfHxDocumentService);
   private readonly folderService = inject(AdfHxBrowseFolderService);
   private readonly mediaService = inject(AdfHxBrowseMediaService);
   private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
+  private readonly extensions = inject(AppExtensionsService);
+  private readonly documentRouter = inject(NuxeoDocumentRouterService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tagSearch$ = new Subject<string>();
 

@@ -9,34 +9,35 @@
     "baseUrl": ".",
     "paths": {
       "@agentic-ui/core": ["libs/core/src/index.ts"],
-      "@agentic-ui/shared/ui": ["libs/shared/ui/src/index.ts"],
-      "@agentic-ui/shared/util": ["libs/shared/util/src/index.ts"],
-      "@agentic-ui/shared/app-config": ["libs/shared/app-config/src/index.ts"],
-      "@agentic-ui/shared/extensions": ["libs/shared/extensions/src/index.ts"],
-      "@agentic-ui/shared/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
-      "@agentic-ui/shared/kd-client": ["libs/shared/kd-client/src/index.ts"],
-      "@agentic-ui/shared/ke-client": ["libs/shared/ke-client/src/index.ts"],
-      "@agentic-ui/shared/drawers": ["libs/shared/drawers/src/index.ts"],
-      "@agentic-ui/feature-browse": ["libs/features/browse/src/index.ts"],
-      "@agentic-ui/feature-search": ["libs/features/search/src/index.ts"],
+      "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
       "@agentic-ui/feature-assets": ["libs/features/assets/src/index.ts"],
-      "@agentic-ui/feature-assets/assets-drawer": [
-        "libs/features/assets/src/lib/assets-drawer/assets-drawer.component.ts"
-      ],
       "@agentic-ui/feature-assets/asset-search-results": [
         "libs/features/assets/src/lib/asset-search-results/asset-search-results.component.ts"
       ],
+      "@agentic-ui/feature-assets/assets-drawer": [
+        "libs/features/assets/src/lib/assets-drawer/assets-drawer.component.ts"
+      ],
+      "@agentic-ui/feature-browse": ["libs/features/browse/src/index.ts"],
+      "@agentic-ui/feature-collections": ["libs/features/collections/src/index.ts"],
+      "@agentic-ui/feature-document-detail": ["libs/features/document-detail/src/index.ts"],
+      "@agentic-ui/feature-knowledge-discovery": ["libs/features/knowledge-discovery/src/index.ts"],
+      "@agentic-ui/feature-search": ["libs/features/search/src/index.ts"],
       "@agentic-ui/feature-search/search-filters-drawer": [
         "libs/features/search/src/lib/search-filters-drawer/search-filters-drawer.component.ts"
       ],
-      "@agentic-ui/feature-document-detail": ["libs/features/document-detail/src/index.ts"],
-      "@agentic-ui/feature-collections": ["libs/features/collections/src/index.ts"],
       "@agentic-ui/feature-tasks": ["libs/features/tasks/src/index.ts"],
-      "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
       "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"],
-      "@agentic-ui/feature-knowledge-discovery": ["libs/features/knowledge-discovery/src/index.ts"],
+      "@agentic-ui/shared/adf-hx-bridge": ["libs/shared/adf-hx-bridge/src/index.ts"],
+      "@agentic-ui/shared/adf-hx-bridge/providers": ["libs/shared/adf-hx-bridge/src/providers.ts"],
       "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"],
-      "@agentic-ui/shared/adf-hx-bridge": ["libs/shared/adf-hx-bridge/src/index.ts"]
+      "@agentic-ui/shared/app-config": ["libs/shared/app-config/src/index.ts"],
+      "@agentic-ui/shared/drawers": ["libs/shared/drawers/src/index.ts"],
+      "@agentic-ui/shared/extensions": ["libs/shared/extensions/src/index.ts"],
+      "@agentic-ui/shared/kd-client": ["libs/shared/kd-client/src/index.ts"],
+      "@agentic-ui/shared/ke-client": ["libs/shared/ke-client/src/index.ts"],
+      "@agentic-ui/shared/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
+      "@agentic-ui/shared/ui": ["libs/shared/ui/src/index.ts"],
+      "@agentic-ui/shared/util": ["libs/shared/util/src/index.ts"]
     }
   }
 }
