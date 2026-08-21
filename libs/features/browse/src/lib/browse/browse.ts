@@ -109,6 +109,13 @@ import {
 } from '@agentic-ui/feature-collections';
 
 import {
+  AppExtensionsService,
+  EXTENSION_SLOTS,
+  ExtensionRuleContextService,
+  type ExtensionColumnDescriptor,
+} from '@agentic-ui/shared/extensions';
+
+import {
   BrowseDriveDialogComponent,
   type BrowseDriveDialogData,
 } from '../drive-dialog/drive-dialog';
@@ -116,7 +123,7 @@ import {
 import {
   ALL_COLUMNS,
   ColumnDef,
-  loadColumnSettings,
+  loadColumnVisibility,
   saveColumnSettings,
 } from '../column-settings-dialog/column-settings-dialog';
 import {
@@ -124,6 +131,21 @@ import {
   EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
+
+/**
+ * The packaged column set as descriptors, for an injector where Layer 1
+ * registration has not run. Derived from `ALL_COLUMNS` rather than restated, so
+ * there is one list to keep in step instead of two.
+ */
+const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_COLUMNS.map(
+  (col, index) => ({
+    id: `app.documentList.${col.key}`,
+    label: col.label,
+    field: col.key,
+    order: (index + 1) * 10,
+    ...(col.visible ? {} : { hiddenByDefault: true }),
+  }),
+);
 
 @Component({
   selector: 'lib-browse',
@@ -172,6 +194,8 @@ export class BrowseComponent {
   private readonly tagService = inject(TagService);
   readonly selectionService = inject(SelectionService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly extensions = inject(AppExtensionsService);
+  private readonly ruleContext = inject(ExtensionRuleContextService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -325,8 +349,42 @@ export class BrowseComponent {
   readonly browseSortKey = signal<string>('');
   readonly browseSortDir = signal<'asc' | 'desc'>('asc');
 
-  // Column settings
-  readonly columns = signal<ColumnDef[]>(loadColumnSettings());
+  // ── Column settings ──
+  //
+  // Three layers, narrowest last: packaged descriptors registered into the
+  // `documentList` slot, then the manifest's hide/reorder/relabel by id, then the
+  // user's own picker. `columns` is computed rather than a signal so a manifest
+  // change reflows without a reload; the user's choice is the only mutable part.
+
+  /** Keys the user switched on, or `null` if they have never chosen. */
+  private readonly userVisibleKeys = signal<readonly string[] | null>(loadColumnVisibility());
+
+  /**
+   * Descriptors resolved through Layer 1, falling back to the packaged list.
+   *
+   * The fallback matters: a bare `TestBed` has no `APP_INITIALIZER`, so the slot
+   * is empty there, and rendering a document list with no columns at all would be
+   * a worse failure than using the defaults. This mirrors how `app-config` treats
+   * an absent manifest — tolerant, with the packaged values reproducing the
+   * pre-Layer-1 behaviour exactly.
+   */
+  private readonly columnDescriptors = computed<readonly ExtensionColumnDescriptor[]>(() => {
+    const resolved = this.extensions.resolve<ExtensionColumnDescriptor>(
+      EXTENSION_SLOTS.documentList,
+      this.ruleContext.context(),
+    );
+    return resolved.length > 0 ? resolved : FALLBACK_COLUMN_DESCRIPTORS;
+  });
+
+  readonly columns = computed<ColumnDef[]>(() => {
+    const chosen = this.userVisibleKeys();
+    return this.columnDescriptors().map((descriptor) => ({
+      key: descriptor.field,
+      label: descriptor.label,
+      visible: chosen ? chosen.includes(descriptor.field) : !descriptor.hiddenByDefault,
+    }));
+  });
+
   readonly visibleColumns = computed(() => this.columns().filter((c) => c.visible));
   readonly columnPanelOpen = signal(false);
   readonly pendingColumns = signal<ColumnDef[]>([]);
@@ -929,13 +987,28 @@ export class BrowseComponent {
     );
   }
 
+  /**
+   * Back to the *descriptors'* defaults, not the packaged const.
+   *
+   * Reset previously read `ALL_COLUMNS`, which meant a customer who hid a column
+   * in the manifest saw it reappear the moment a user pressed Reset — the
+   * manifest silently lost. Resetting through the descriptors keeps Layer 1
+   * authoritative and only discards the user's own layer, which is what "reset"
+   * should mean.
+   */
   resetColumns(): void {
-    this.pendingColumns.set(ALL_COLUMNS.map((c) => ({ ...c })));
+    this.pendingColumns.set(
+      this.columnDescriptors().map((d) => ({
+        key: d.field,
+        label: d.label,
+        visible: !d.hiddenByDefault,
+      })),
+    );
   }
 
   applyColumns(): void {
     const updated = this.pendingColumns();
-    this.columns.set(updated);
+    this.userVisibleKeys.set(updated.filter((c) => c.visible).map((c) => c.key));
     saveColumnSettings(updated);
     this.columnPanelOpen.set(false);
   }

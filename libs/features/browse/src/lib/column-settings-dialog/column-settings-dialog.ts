@@ -10,6 +10,18 @@ export interface ColumnDef {
   visible: boolean;
 }
 
+/**
+ * The packaged column set, kept only as the **fallback** for an injector where
+ * Layer 1 registration has not run.
+ *
+ * `PACKAGED_BROWSE_COLUMNS` in `@agentic-ui/shared/extensions` is now the source
+ * of truth, and `provide-app-extensions.ts` registers it into the `documentList`
+ * slot. This list must mirror it. It survives because a component spec that
+ * builds a bare `TestBed` has no `APP_INITIALIZER`, and resolving an empty slot
+ * would render a document list with no columns — a silent regression far worse
+ * than a stale duplicate. `packaged-columns.spec.ts` asserts the two agree, so
+ * the duplication cannot drift unnoticed.
+ */
 export const ALL_COLUMNS: ColumnDef[] = [
   { key: 'title', label: 'Title', visible: true },
   { key: 'type', label: 'Type', visible: false },
@@ -27,16 +39,28 @@ export const ALL_COLUMNS: ColumnDef[] = [
 
 const STORAGE_KEY = 'browse_column_settings';
 
-export function loadColumnSettings(): ColumnDef[] {
+/**
+ * The keys the user has switched on, or `null` when they have never chosen.
+ *
+ * `null` and `[]` are different: never-chosen means "use whatever the descriptors
+ * default to", whereas an empty array means the user switched everything off.
+ * Returning `[]` for both would silently override a manifest's `hiddenByDefault`
+ * decisions with the packaged defaults on a fresh browser.
+ */
+export function loadColumnVisibility(): readonly string[] | null {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const keys = JSON.parse(stored) as string[];
-      return ALL_COLUMNS.map((col) => ({ ...col, visible: keys.includes(col.key) }));
-    }
+    if (stored === null) return null;
+    const parsed: unknown = JSON.parse(stored);
+    return Array.isArray(parsed) ? parsed.filter((k): k is string => typeof k === 'string') : null;
   } catch {
-    /* use defaults */
+    return null;
   }
+}
+
+export function loadColumnSettings(): ColumnDef[] {
+  const keys = loadColumnVisibility();
+  if (keys) return ALL_COLUMNS.map((col) => ({ ...col, visible: keys.includes(col.key) }));
   return ALL_COLUMNS.map((col) => ({ ...col }));
 }
 

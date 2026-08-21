@@ -55,6 +55,17 @@ export interface ExtensionColumnDescriptor extends ExtensionElement {
   readonly field: string;
   readonly sortable?: boolean;
   readonly rule?: ExtensionRule;
+  /**
+   * Not shown until the user turns it on, but still offered in the column picker.
+   *
+   * Deliberately **not** `disabled`, which the registry drops from the resolved
+   * list entirely. The two are different affordances and browse already uses both:
+   * eight of its twelve columns ship switched off yet selectable, whereas a column
+   * a customer has genuinely removed should not appear in the picker at all.
+   * Collapsing them would make "hide by default" indistinguishable from "delete",
+   * and a manifest could then only ever remove a column, never pre-fold one.
+   */
+  readonly hiddenByDefault?: boolean;
 }
 
 /** A document-detail tab. Content is compiled in and keyed by `id`. */

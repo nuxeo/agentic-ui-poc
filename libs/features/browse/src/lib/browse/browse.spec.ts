@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { AppConfigService } from '@agentic-ui/shared/app-config';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -68,6 +69,14 @@ const mockSelectionService = {
   deleteSelected: vi.fn(() => of([])),
 };
 
+/**
+ * Stubs `AppConfigService` so `AppExtensionsService` — which browse now injects to
+ * resolve its `documentList` columns — does not drag `HttpClient` into every spec
+ * in this file. Same shape as `selection-topbar.component.spec.ts`, the other slot
+ * consumer, and it doubles as the handle a test uses to drive the manifest.
+ */
+const manifest = signal<{ extensions?: unknown }>({});
+
 describe('BrowseComponent', () => {
   let component: BrowseComponent;
   let fixture: ComponentFixture<BrowseComponent>;
@@ -91,6 +100,7 @@ describe('BrowseComponent', () => {
         { provide: SelectionService, useValue: mockSelectionService },
         { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
         { provide: MatDialog, useValue: { open: dialogOpenSpy } },
+        { provide: AppConfigService, useValue: { manifest } },
       ],
     })
       // Shallow-render: replace the complex Material/Satori template with a stub.

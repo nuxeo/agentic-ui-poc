@@ -37,6 +37,7 @@ export {
   type ExtensionTabDescriptor,
 } from './lib/extension-actions';
 export { PACKAGED_BULK_ACTIONS } from './lib/packaged-actions';
+export { PACKAGED_BROWSE_COLUMNS } from './lib/packaged-columns';
 export { ExtensionRuleContextService } from './lib/extension-rule-context.service';
 export {
   ExtensionComponentRegistry,

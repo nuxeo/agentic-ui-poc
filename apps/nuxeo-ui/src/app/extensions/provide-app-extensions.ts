@@ -17,6 +17,7 @@ import {
   ExtensionActionRegistry,
   ExtensionComponentRegistry,
   ExtensionRuleContextService,
+  PACKAGED_BROWSE_COLUMNS,
   PACKAGED_BULK_ACTIONS,
   type ExtensionActionHandler,
 } from '@agentic-ui/shared/extensions';
@@ -97,6 +98,12 @@ export function provideAppExtensions(): Provider[] {
         // what. Adding a seventh action is these two registrations and nothing
         // else — no output on the topbar, no method on the shell.
         extensions.register(EXTENSION_SLOTS['bulk-actions'], PACKAGED_BULK_ACTIONS);
+
+        // Browse document-list columns. Registered here rather than in the browse
+        // library for the same reason as the bulk actions: eagerly, before any
+        // component resolves the slot, so a manifest override is in force on the
+        // first render instead of after a reflow.
+        extensions.register(EXTENSION_SLOTS.documentList, PACKAGED_BROWSE_COLUMNS);
         actions.register({
           'app.bulkActions.downloadZip': bulkHandler(injector, 'BulkDownloadZipActionService'),
           'app.bulkActions.addToCollection': bulkHandler(
