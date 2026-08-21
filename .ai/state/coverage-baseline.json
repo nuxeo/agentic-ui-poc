@@ -1,0 +1,114 @@
+{
+  "$comment": [
+    "Coverage ratchet baseline. `npm run beta:coverage` fails if a project drops below",
+    "its entry here by more than 0.5pp. Raise these by writing tests, never by editing",
+    "the file to match a regression.",
+    "Beta target is 90% (docs/adf-hx-beta-plan.md, Phase 6)."
+  ],
+  "target": 90,
+  "tolerance": 0.5,
+  "projects": {
+    "adf-hx-bridge": {
+      "lines": 65.61,
+      "statements": 65.61,
+      "branches": 83.95,
+      "functions": 75.38
+    },
+    "administration": {
+      "lines": 62.08,
+      "statements": 62.08,
+      "branches": 67.16,
+      "functions": 61.22
+    },
+    "assets": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100
+    },
+    "browse": {
+      "lines": 56.72,
+      "statements": 56.72,
+      "branches": 67.44,
+      "functions": 40.52
+    },
+    "collections": {
+      "lines": 81.67,
+      "statements": 81.67,
+      "branches": 63.44,
+      "functions": 62.07
+    },
+    "core": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100
+    },
+    "document-detail": {
+      "lines": 29.8,
+      "statements": 29.8,
+      "branches": 57.14,
+      "functions": 16.25
+    },
+    "drawers": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100
+    },
+    "knowledge-discovery": {
+      "lines": 64.77,
+      "statements": 64.77,
+      "branches": 60,
+      "functions": 68.83
+    },
+    "nuxeo-client": {
+      "lines": 78.39,
+      "statements": 78.39,
+      "branches": 76.34,
+      "functions": 78.41
+    },
+    "search": {
+      "lines": 22.76,
+      "statements": 22.76,
+      "branches": 100,
+      "functions": 9.8
+    },
+    "shared-app-config": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 90.27,
+      "functions": 97.06
+    },
+    "shared-extensions": {
+      "lines": 96.04,
+      "statements": 96.04,
+      "branches": 97.39,
+      "functions": 78.79
+    },
+    "shared-kd-client": {
+      "lines": 88.1,
+      "statements": 88.1,
+      "branches": 72.18,
+      "functions": 93.65
+    },
+    "shared-ke-client": {
+      "lines": 70.85,
+      "statements": 70.85,
+      "branches": 66.67,
+      "functions": 90.48
+    },
+    "tasks": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100
+    },
+    "ui": {
+      "lines": 68.2,
+      "statements": 68.2,
+      "branches": 73.47,
+      "functions": 68.97
+    }
+  }
+}

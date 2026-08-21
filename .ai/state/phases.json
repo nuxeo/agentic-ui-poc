@@ -1,0 +1,117 @@
+{
+  "$comment": [
+    "Machine-readable mirror of AGENTS/11-beta-program.md section 4. That file is",
+    "authoritative prose; this is the checkable form. `npm run beta:state` verifies",
+    "every claim here against the evidence actually on disk and fails if a phase",
+    "claims `complete` without a manifest that says `pass`.",
+    "",
+    "Rule: a phase may only be `complete` if evidence.manifest resolves to a real",
+    "manifest.json whose verdict is `pass`. Anything else is `in-progress`,",
+    "`blocked`, or `not-started`. Phase 1 was once recorded complete while its",
+    "install path would have 404'd on every install; this file exists so that",
+    "cannot be asserted without an artifact behind it.",
+    "",
+    "evidence.regate cites a later run against the CURRENT gate set. All three completed",
+    "phases cite the SAME run, deliberately: the gate verifies the working tree against",
+    "origin/main (21 affected projects), not one phase in isolation. Running it three",
+    "times under three labels would be theatre, not three verifications. The original",
+    "evidence.gate citation is kept because it is the historical fact of what was",
+    "actually run at sign-off."
+  ],
+  "schemaVersion": 1,
+  "evidenceRoot": "$AGENTIC_UI_EVIDENCE_DIR/beta",
+  "phases": [
+    {
+      "id": "phase-0-unblock",
+      "title": "Unblock and verify",
+      "status": "complete",
+      "evidence": {
+        "manifest": "phase-0-baseline/latest",
+        "gate": "gates/latest:phase-0-committed",
+        "regate": "gates/latest:regate-8-gates-nocache"
+      },
+      "deviations": [],
+      "notCovered": [
+        "CI has never run on this branch — no pull request exists, so no workflow has been triggered",
+        "SATORI_GH_READONLY_TOKEN is not a GitHub Actions secret; provisioning needs repo admin"
+      ]
+    },
+    {
+      "id": "phase-1-config",
+      "title": "Layer 0 — upgrade-safe configuration",
+      "status": "complete",
+      "evidence": {
+        "manifest": "phase-1-config/latest",
+        "gate": "gates/latest:phase-1-remediation",
+        "regate": "gates/latest:regate-8-gates-nocache"
+      },
+      "deviations": [
+        "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
+      ],
+      "notCovered": [
+        "The marketplace package has never been installed on a real Nuxeo server, so R7 (upgrade-safe config survives install) stays Medium",
+        "i18n extraction covers the core slice only"
+      ]
+    },
+    {
+      "id": "phase-2-registry",
+      "title": "Layer 1 — extension registry",
+      "status": "complete",
+      "evidence": {
+        "manifest": "phase-2-registry/latest",
+        "gate": "gates/latest:phase-2-closure",
+        "regate": "gates/latest:regate-8-gates-nocache"
+      },
+      "deviations": [
+        "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
+      ],
+      "notCovered": [
+        "document-detail toolbar: 11 controls, 8 with dynamic state, still markup rather than descriptors",
+        "the 7-item overflow menu",
+        "the 5 hardcoded mat-tab children in document-detail.html",
+        "route contributions",
+        "multi-model adversarial review gate: never run for this phase or Phase 1",
+        "browse contextMenu contributions — documentList is now live (see delivered below); contextMenu is still reserved and unread"
+      ],
+      "delivered": [
+        "documentList slot wired end to end for browse columns: PACKAGED_BROWSE_COLUMNS registered, BrowseComponent resolves them, manifest can hide/reorder/relabel/switch-on by id. Evidence: pilot-documentlist-columns (12/12, 6 unique screenshots)."
+      ]
+    },
+    {
+      "id": "phase-3-adfhx",
+      "title": "adf-hx component adoption",
+      "status": "blocked",
+      "blockedOn": [
+        "@alfresco/adf-hx-content-services is not installed; it is GitHub Packages only and needs a read:packages token",
+        "@alfresco/adf-core is not installed"
+      ],
+      "evidence": null,
+      "deviations": [],
+      "notCovered": ["everything"]
+    },
+    {
+      "id": "phase-4-platform",
+      "title": "Layer 2 — publishable platform",
+      "status": "not-started",
+      "evidence": null,
+      "deviations": [],
+      "notCovered": ["everything"]
+    },
+    {
+      "id": "phase-5-harness",
+      "title": "Layer 3 — agent harness",
+      "status": "not-started",
+      "evidence": null,
+      "deviations": [],
+      "notCovered": ["everything"]
+    },
+    {
+      "id": "phase-6-quality",
+      "title": "Beta quality bar and proof",
+      "status": "not-started",
+      "evidence": null,
+      "deviations": [],
+      "notCovered": ["everything"]
+    }
+  ]
+}
