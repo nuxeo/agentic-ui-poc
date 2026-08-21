@@ -12,7 +12,7 @@
  *
  * Options:
  *   --phase <id>     label the report, e.g. phase-3-document-list
- *   --gates <list>   comma separated subset of: lockfile,guardrails,lint,test,build,typecheck
+ *   --gates <list>   comma separated subset of: node,lockfile,guardrails,lint,test,build,typecheck
  *   --base <ref>     git base for affected calculation (default origin/main)
  *   --tail <n>       lines of failing output to show (default 40)
  *
@@ -47,8 +47,20 @@ const tail = Number(args.get('tail') ?? 40);
  * full set on a known-broken tree wastes minutes per iteration.
  */
 const ALL_GATES = [
-  // First because it is the cheapest and because Phase 2 proved it is the one
-  // failure the other four cannot see: nothing downstream reads the lockfile,
+  // Gate zero, and the cheapest of all: is this runtime one whose results mean
+  // anything? An agent on the wrong Node major gets a red that is indistinguishable
+  // from a code defect, and the obvious response — edit the failing spec — damages
+  // working code. That happened. This gate makes it impossible to happen silently.
+  {
+    id: 'node',
+    label: 'Node runtime preflight',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/node-version.mjs'],
+    // The warning text is the whole point, so surface it even when the gate passes.
+    echoOnPass: true,
+  },
+  // Next because it is the next cheapest and because Phase 2 proved it is the one
+  // failure none of the others can see: nothing downstream reads the lockfile,
   // so a lock that `npm ci` will refuse on Linux leaves every local gate green.
   {
     id: 'lockfile',
@@ -57,6 +69,18 @@ const ALL_GATES = [
     argv: ['scripts/beta-harness/lockfile-integrity.mjs'],
   },
   { id: 'guardrails', label: 'Review guardrails', cmd: 'node', argv: ['scripts/review-guardrails.mjs', '--base', base] },
+  // Static, so it belongs with the cheap gates — and it guards the one thing the
+  // other six structurally cannot. Lint, test, build and typecheck all check the
+  // *application*; nothing checked whether the *evidence* was capable of failing.
+  // Phase 1 shipped a defect past two checks that "certified properties they could
+  // not observe", one of which was tautological and missed the very failure it
+  // appeared to guard.
+  {
+    id: 'assertions',
+    label: 'Evidence assertion audit',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/assertion-audit.mjs'],
+  },
   { id: 'lint', label: 'Affected lint', cmd: 'npx', argv: ['nx', 'affected', '-t', 'lint', `--base=${base}`] },
   { id: 'test', label: 'Affected tests', cmd: 'npx', argv: ['nx', 'affected', '-t', 'test', `--base=${base}`] },
   { id: 'build', label: 'Affected build', cmd: 'npx', argv: ['nx', 'affected', '-t', 'build', `--base=${base}`] },
@@ -84,9 +108,15 @@ const selected =
         })
     : ALL_GATES;
 
+const notRequested = ALL_GATES.filter((g) => !selected.includes(g)).map((g) => g.id);
+
 console.log(`\nBeta verification gate — ${phase}`);
 console.log(`  base   ${base}`);
-console.log(`  gates  ${selected.map((g) => g.id).join(' -> ')}\n`);
+console.log(`  gates  ${selected.map((g) => g.id).join(' -> ')}  (${selected.length} of ${ALL_GATES.length})`);
+if (notRequested.length) {
+  console.log(`  NOT REQUESTED  ${notRequested.join(', ')} — this run cannot speak for them`);
+}
+console.log('');
 
 const results = [];
 let firstFailure = null;
@@ -110,6 +140,11 @@ for (const gate of selected) {
 
   console.log(`${passed ? 'pass' : 'FAIL'} (${(ms / 1000).toFixed(1)}s)`);
 
+  if (passed && gate.echoOnPass && output.trim()) {
+    for (const line of output.trimEnd().split('\n')) console.log(`       ${line}`);
+    console.log('');
+  }
+
   results.push({
     id: gate.id,
     label: gate.label,
@@ -128,12 +163,35 @@ for (const gate of selected) {
 
 const allPassed = results.every((r) => r.passed);
 const skipped = selected.slice(results.length).map((g) => g.id);
+const full = notRequested.length === 0;
+
+/**
+ * `pass` and `pass-partial` are deliberately different strings.
+ *
+ * Two reports in the evidence corpus read `"verdict": "pass"` while having run a
+ * single gate — `skipped` was empty because the other five were never *selected*,
+ * not skipped — so nothing distinguished them from a full green except counting
+ * `results` by hand. The skills tell an agent to quote the verdict line verbatim;
+ * making the verdict itself carry the coverage means a partial run cannot be
+ * quoted as if it were complete.
+ */
+const verdict = !allPassed ? 'fail' : full ? 'pass' : 'pass-partial';
 
 const report = {
   phase,
-  verdict: allPassed ? 'pass' : 'fail',
+  verdict,
   base,
   ranAt: new Date().toISOString(),
+  gates: {
+    available: ALL_GATES.map((g) => g.id),
+    requested: selected.map((g) => g.id),
+    ran: results.map((r) => r.id),
+    // Selected but never reached, because an earlier gate failed.
+    skipped,
+    // Never asked for. This run says nothing at all about these.
+    notRequested,
+    coverage: full ? 'full' : 'partial',
+  },
   results,
   skipped,
 };
@@ -145,8 +203,12 @@ const reportPath = resolve(outDir, `${stamp}-${phase}.json`);
 await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8');
 
 console.log('');
-if (allPassed) {
-  console.log(`verdict  PASS — ${results.length} gate(s) green`);
+if (allPassed && full) {
+  console.log(`verdict  PASS — all ${ALL_GATES.length} gates green`);
+} else if (allPassed) {
+  console.log(`verdict  PASS (PARTIAL) — ${results.length} of ${ALL_GATES.length} gates green`);
+  console.log(`         NOT RUN: ${notRequested.join(', ')}`);
+  console.log('         A partial run is a fast inner loop, not a phase gate. Do not sign off on this.');
 } else {
   console.log(`verdict  FAIL — first failing gate: ${firstFailure.id}`);
   if (skipped.length) {
