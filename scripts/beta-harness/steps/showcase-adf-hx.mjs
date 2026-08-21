@@ -9,7 +9,17 @@
  *   npm run beta:evidence -- showcase-adf-hx
  */
 
-const ENVIRONMENTAL_ERRORS = [/automation\/AI\./, '/nuxeo/logout'];
+/**
+ * The last entry is Phase 1's tolerant path working as designed: an
+ * unconfigured instance has no configuration document, and the browser logs the
+ * 404 regardless of the application handling it. `phase-1-config.mjs` asserts the
+ * present and absent cases separately.
+ */
+const ENVIRONMENTAL_ERRORS = [
+  /automation\/AI\./,
+  '/nuxeo/logout',
+  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
+];
 
 /**
  * Click a tab in the adf-hx tab strip by visible label.
@@ -22,6 +32,29 @@ async function openTab(page, label) {
   await tab.click();
   await page.waitForTimeout(2500);
   return true;
+}
+
+/**
+ * Open a tab and assert its panel rendered.
+ *
+ * Both checks are recorded unconditionally. Guarding the panel assertion behind
+ * the tab-opened result would let a missing tab record one failure where two
+ * expectations went unmet, understating the damage.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
+ * @param {string} label tab label to click
+ * @param {string} name human name used in check titles
+ * @param {string} panel selector for the panel the tab should render
+ */
+async function openTabAndAssert(page, h, label, name, panel) {
+  const opened = await openTab(page, label);
+  h.check(`${name} tab opened`, opened);
+  const rendered = await page.locator(panel).first().isVisible().catch(() => false);
+  h.check(`${name} panel rendered`, rendered, `${panel} was not visible`);
+  if (rendered) {
+    await h.screenshot(`adf-hx-${name}`);
+  }
 }
 
 /**
@@ -44,13 +77,20 @@ export default async function run(page, h) {
   await h.screenshot('adf-hx-browse-list');
 
   h.step('adf-hx card view');
-  const cardToggle = page.locator('hxp-browse-toolbar button').last();
-  if (await cardToggle.count()) {
-    await cardToggle.click();
-    await page.waitForTimeout(2000);
-    await h.screenshot('adf-hx-card-view');
-    h.check('card view toggled', true);
-  }
+  const cardToggle = page.locator('hxp-browse-toolbar button[aria-label="Card view"]');
+  h.check('the card-view toggle is present in the toolbar', (await cardToggle.count()) === 1);
+  const rowsBefore = await page.locator('hxp-document-list .hxp-browse-table tbody tr').count();
+  await cardToggle.click();
+  await page.waitForTimeout(2000);
+  const rowsAfter = await page.locator('hxp-document-list .hxp-browse-table tbody tr').count();
+  const cards = await page.locator('hxp-document-list .hxp-card-grid .hxp-doc-card-wrapper').count();
+  h.check(
+    'the toggle really switches the list from a table to a card grid',
+    rowsBefore > 0 && rowsAfter === 0 && cards === rowsBefore,
+    `table rows ${rowsBefore} before / ${rowsAfter} after, ${cards} cards rendered`,
+  );
+  await h.expectText('the same folder content is still listed', 'hxp-document-list', 'Workspaces');
+  await h.screenshot('adf-hx-card-view');
 
   h.step('adf-hx folder header and toolbar');
   await h.goTo('/#/browse-adf-hx?path=%2Fdefault-domain');
@@ -76,28 +116,13 @@ export default async function run(page, h) {
   await h.screenshot('adf-hx-tabs', page.locator('hxp-browse-tabs'));
 
   h.step('Permissions tab reads real Nuxeo ACLs');
-  const perms = await openTab(page, 'Permission');
-  h.check('permissions tab opened', perms);
-  if (perms) {
-    await h.expectVisible('permissions panel rendered', 'hxp-browse-permissions');
-    await h.screenshot('adf-hx-permissions');
-  }
+  await openTabAndAssert(page, h, 'Permission', 'permissions', 'hxp-browse-permissions');
 
   h.step('History tab reads the real Nuxeo audit log');
-  const hist = await openTab(page, 'History');
-  h.check('history tab opened', hist);
-  if (hist) {
-    await h.expectVisible('history panel rendered', 'hxp-browse-history');
-    await h.screenshot('adf-hx-history');
-  }
+  await openTabAndAssert(page, h, 'History', 'history', 'hxp-browse-history');
 
   h.step('Trash tab queries trashed children');
-  const trash = await openTab(page, 'Trash');
-  h.check('trash tab opened', trash);
-  if (trash) {
-    await h.expectVisible('trash panel rendered', 'hxp-browse-trash');
-    await h.screenshot('adf-hx-trash');
-  }
+  await openTabAndAssert(page, h, 'Trash', 'trash', 'hxp-browse-trash');
 
   h.step('Health');
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);
