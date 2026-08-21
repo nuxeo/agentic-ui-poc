@@ -47,6 +47,18 @@ export interface AppRuntimeManifest {
    * This is how a customer relabels the product without touching a bundle.
    */
   readonly labels: Readonly<Record<string, string>>;
+  /**
+   * The Layer 1 extension config — slot contributions, per-id overrides and
+   * `$references` layering.
+   *
+   * Held **opaquely** on purpose. Its schema belongs to
+   * `@agentic-ui/shared/extensions`, which parses it with
+   * `readExtensionConfig()`; keeping the type out of this library is what stops
+   * the configuration loader depending on the registry it configures. This
+   * whole subtree is passed through unvalidated by design — the registry
+   * validates it, and it must tolerate whatever a customer saved.
+   */
+  readonly extensions: Readonly<Record<string, unknown>>;
 }
 
 /** An empty manifest: no overrides, so the packaged behaviour stands unchanged. */
@@ -58,6 +70,7 @@ export const DEFAULT_APP_RUNTIME_MANIFEST: AppRuntimeManifest = {
   presets: {},
   featureToggles: {},
   labels: {},
+  extensions: {},
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -148,6 +161,11 @@ export function mergeRuntimeManifest(base: AppRuntimeManifest, patch: unknown): 
       ...readBooleanMap(patch['featureToggles']),
     },
     labels: { ...base.labels, ...readStringMap(patch['labels']) },
+    // Passed through whole rather than deep-merged here. The `$references`
+    // layering inside this subtree has its own semantics, implemented once in
+    // `@agentic-ui/shared/extensions`; a second, shallower merge at this level
+    // would silently disagree with it.
+    extensions: isRecord(patch['extensions']) ? patch['extensions'] : base.extensions,
   };
 }
 

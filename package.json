@@ -38,6 +38,7 @@
     "node": "20.x"
   },
   "dependencies": {
+    "@alfresco/adf-extensions": "9.0.0",
     "@angular/animations": "~20.3.0",
     "@angular/cdk": "~20.2.0",
     "@angular/common": "~20.3.0",
@@ -62,6 +63,7 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
+    "@alfresco/js-api": "10.0.0",
     "@analogjs/vite-plugin-angular": "~1.22.5",
     "@analogjs/vitest-angular": "~1.22.5",
     "@angular-devkit/build-angular": "~20.3.0",

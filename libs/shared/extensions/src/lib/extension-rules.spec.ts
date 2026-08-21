@@ -1,0 +1,147 @@
+import { TestBed } from '@angular/core/testing';
+
+import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+
+import { DOCUMENT_RULE_EVALUATORS } from './document-rules';
+import {
+  EMPTY_EXTENSION_RULE_CONTEXT,
+  ExtensionRuleRegistry,
+  type ExtensionRuleContext,
+} from './extension-rules';
+
+function doc(permissions: string[]): NuxeoDocument {
+  return {
+    uid: 'uid-1',
+    title: 'Doc',
+    type: 'File',
+    path: '/default-domain/doc',
+    properties: {},
+    contextParameters: { permissions },
+  } as unknown as NuxeoDocument;
+}
+
+function context(patch: Partial<ExtensionRuleContext>): ExtensionRuleContext {
+  return { ...EMPTY_EXTENSION_RULE_CONTEXT, ...patch };
+}
+
+describe('ExtensionRuleRegistry', () => {
+  let registry: ExtensionRuleRegistry;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+    registry = TestBed.inject(ExtensionRuleRegistry);
+    registry.registerRules(DOCUMENT_RULE_EVALUATORS);
+  });
+
+  it('registers the packaged document predicates under their published ids', () => {
+    expect(registry.registeredRuleIds()).toEqual(
+      expect.arrayContaining([
+        'app.rules.canAddChildren',
+        'app.rules.canManagePermissions',
+        'app.rules.canRemove',
+        'app.rules.canWrite',
+      ]),
+    );
+  });
+
+  it('delegates to the existing permission predicate rather than reimplementing it', () => {
+    expect(registry.evaluate('app.rules.canWrite', context({ document: doc(['Write']) }))).toBe(
+      true,
+    );
+    expect(registry.evaluate('app.rules.canWrite', context({ document: doc(['Read']) }))).toBe(
+      false,
+    );
+    expect(registry.evaluate('app.rules.canRemove', context({ document: doc(['Remove']) }))).toBe(
+      true,
+    );
+  });
+
+  it('gates bulk rules on every document in the selection, not just the first', () => {
+    const mixed = context({ selection: [doc(['Write']), doc(['Read'])] });
+    expect(registry.evaluate('app.rules.canWriteSelection', mixed)).toBe(false);
+
+    const allWritable = context({ selection: [doc(['Write']), doc(['WriteProperties'])] });
+    expect(registry.evaluate('app.rules.canWriteSelection', allWritable)).toBe(true);
+  });
+
+  it('treats an empty selection as failing the bulk rules', () => {
+    expect(registry.evaluate('app.rules.canWriteSelection', EMPTY_EXTENSION_RULE_CONTEXT)).toBe(
+      false,
+    );
+    expect(registry.evaluate('app.rules.hasSelection', EMPTY_EXTENSION_RULE_CONTEXT)).toBe(false);
+  });
+
+  describe('composites', () => {
+    it('evaluates core.every, core.some and core.not over nested references', () => {
+      const writable = context({ document: doc(['Write', 'Remove']) });
+      expect(
+        registry.evaluate(
+          { type: 'core.every', parameters: ['app.rules.canWrite', 'app.rules.canRemove'] },
+          writable,
+        ),
+      ).toBe(true);
+
+      const readOnly = context({ document: doc(['Read']) });
+      expect(
+        registry.evaluate(
+          { type: 'core.some', parameters: ['app.rules.canWrite', 'app.rules.canRemove'] },
+          readOnly,
+        ),
+      ).toBe(false);
+      expect(
+        registry.evaluate({ type: 'core.not', parameters: ['app.rules.canWrite'] }, readOnly),
+      ).toBe(true);
+    });
+
+    it('uses the identity element for an empty parameter list', () => {
+      expect(registry.evaluate({ type: 'core.every' }, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
+      expect(registry.evaluate({ type: 'core.some' }, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(false);
+    });
+
+    it('ignores parameters that are not rule references', () => {
+      expect(
+        registry.evaluate(
+          { type: 'core.every', parameters: [42, null, 'app.rules.hasDocument'] },
+          context({ document: doc([]) }),
+        ),
+      ).toBe(true);
+    });
+  });
+
+  describe('error paths', () => {
+    it('fails open on an unregistered rule id, so a typo cannot strip the UI', () => {
+      expect(registry.has('app.rules.definitelyNotRegistered')).toBe(false);
+      expect(
+        registry.evaluate('app.rules.definitelyNotRegistered', EMPTY_EXTENSION_RULE_CONTEXT),
+      ).toBe(true);
+    });
+
+    it('treats an absent rule as no gate at all', () => {
+      expect(registry.evaluate(null, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
+      expect(registry.evaluate(undefined, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
+    });
+
+    it('breaks a self-referential composite instead of overflowing the stack', () => {
+      registry.registerRules({
+        'test.recursive': (_ctx, _params, resolve) => resolve('test.recursive'),
+      });
+      expect(() => registry.evaluate('test.recursive', EMPTY_EXTENSION_RULE_CONTEXT)).not.toThrow();
+      expect(registry.evaluate('test.recursive', EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
+    });
+
+    it('breaks a mutually recursive pair of composites', () => {
+      registry.registerRules({
+        'test.ping': (_ctx, _params, resolve) => resolve('test.pong'),
+        'test.pong': (_ctx, _params, resolve) => resolve('test.ping'),
+      });
+      expect(() => registry.evaluate('test.ping', EMPTY_EXTENSION_RULE_CONTEXT)).not.toThrow();
+    });
+
+    it('lets a later registration replace an id, which is how Layer 2 overrides ours', () => {
+      registry.registerRules({ 'app.rules.canWrite': () => false });
+      expect(registry.evaluate('app.rules.canWrite', context({ document: doc(['Write']) }))).toBe(
+        false,
+      );
+    });
+  });
+});
