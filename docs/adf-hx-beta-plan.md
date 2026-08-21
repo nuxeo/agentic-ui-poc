@@ -145,9 +145,12 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 
 1. ~~Obtain a `read:packages` token.~~ Done. **Provision it as a long-lived CI secret** — CI still
    cannot install without it.
-2. Resolve the scope conflict in [`.npmrc`](../.npmrc): all of `@alfresco` routes to
-   `npm.pkg.github.com`, but adf-core and adf-extensions come from public npm while adf-hx comes
-   from GitHub Packages. npm resolves per scope, not per package.
+2. ~~Resolve the scope conflict in [`.npmrc`](../.npmrc).~~ **Resolved in Phase 2, in one
+   direction only.** `@alfresco` now routes to public npm, which is what `adf-extensions` and
+   `js-api` need. npm has no per-package registry, so **Phase 3 still has to solve it** before it can
+   add `adf-hx-content-services` from GitHub Packages: a CI-side `.npmrc` swap, a private proxy
+   fronting both registries, or a committed tarball reference. This is a real blocker on Phase 3, not
+   a tidy-up.
 3. Fix the harness authentication defect: `helpers.login()` injects a session that satisfies the
    route guard but does not reliably authenticate XHRs, producing intermittent `403`s on
    `/nuxeo/api` paths. Use Playwright `httpCredentials`, as
@@ -234,28 +237,56 @@ Two properties worth stating explicitly:
 Phase 6 should test the ACL-denied path: a user without Read must still get a working application on
 the default configuration.
 
-## Phase 2 — Layer 1: extension registry (15-22 d, unblocked)
+## Phase 2 — Layer 1: extension registry (**registry, rules, nav and outlet delivered**; actions remain, 8-12 d)
 
-Add `libs/shared/extensions` wrapping `@alfresco/adf-extensions`.
+Gates: quality gate **PASS** (4/4 green) · evidence gate **PASS** (40/40 checks, exit 0).
+Reference doc: [`docs/extension-reference.md`](extension-reference.md).
 
-- **Rules:** register the pure predicates in
-  [`libs/shared/nuxeo-client/src/lib/utils/document-permissions.ts`](../libs/shared/nuxeo-client/src/lib/utils/document-permissions.ts)
-  (`canWriteDocument`, `canRemoveDocument`, `canAddChildren`, `canManageDocumentPermissions`) as
-  named evaluators. They are already the right shape, just called inline from templates.
-- **Navbar, sidebar and routes:** convert `PLATFORM_NAV_ITEMS` in
-  [`apps/nuxeo-ui/src/app/platform-nav-items.ts`](../apps/nuxeo-ui/src/app/platform-nav-items.ts)
-  from a compiled `const` to a manifest-fed token, and remove the ~15 hardcoded path getters in
-  [`nav-drawer.component.ts`](../apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts)
-  that currently make a manifest-added nav item render an empty drawer. Feature libs already export
-  `Routes` arrays, so route injection is one indirection.
-- **Actions:** the largest refactor. Convert the hardcoded toolbar, the seven-item overflow menu and
-  the five hardcoded `mat-tab` children in `document-detail.html` (2,000+ lines), plus the six fixed
-  `@Output()` buttons in `selection-topbar.component.html`, into declarative action descriptors
-  resolved through the registry. Reuse adf-hx's `*-action.service` pattern rather than inventing one.
-- Generalise and export the working `DynamicDrawerComponent` (`Type<unknown>` to
-  `createComponent()`) as the shared component-resolution primitive that route, tab, viewer and
-  drawer extensions all need.
-- Implement `$references` merge so customer JSON layers over ours.
+> **What the evidence proves, stated precisely.** It proves that a manifest edit hides, adds,
+> reorders, relabels and rule-gates navigation, and that a customer layer wins through
+> `$references`, all with a **byte-identical JavaScript bundle** — the script bytes are fetched and
+> hashed on every pass, not the `src` attributes. It proves the packaged default reproduces the
+> pre-Phase-2 navigation by ordered equality against the ids and labels transcribed from the deleted
+> `const`, not by a count. It proves a manifest-added nav item now resolves a registered `sidebar`
+> component instead of a placeholder. It does **not** prove anything about toolbar, tab, context-menu,
+> bulk or column extensibility, because nothing is registered into those slots yet.
+
+Delivered:
+
+- **`libs/shared/extensions`**, wrapping `@alfresco/adf-extensions@9.0.0` for its domain-neutral
+  parts — `mergeObjects` (so `$references` layering has ACA's exact semantics, including merge-by-id
+  and `.$replace`), `filterEnabled` and `sortByOrder`.
+- **Slots are additive by construction.** Keyed by opaque string, with no enum, union or `switch` on
+  slot identity, so a tenth slot needs no change to the nine. A spec registers a slot the library has
+  never heard of and asserts the nine unchanged. This downgrades **R8 from Medium to Low**: the
+  addressable ceiling is now ordinary backlog rather than an irreversible decision.
+- **Rules:** the four document-permission predicates registered as `app.rules.*` with no change to
+  the predicates. Plus `core.every`/`core.some`/`core.not` as ordinary registered evaluators rather
+  than special cases. An **unregistered rule id fails open**, so a manifest typo cannot strip working
+  actions out of the UI — safe precisely because Layer 1 visibility is not an authorisation boundary.
+- **Navbar and sidebar:** `PLATFORM_NAV_ITEMS` is deleted. The same fifteen entries are
+  `PACKAGED_NAV_ITEMS` registered into the `navbar` slot behind a signal-backed `APP_NAV_ITEMS`
+  token — a signal, not a const, because the manifest arrives asynchronously and nav rules depend on
+  the signed-in user. The ~15 path getters in `nav-drawer.component.ts` now key on the nav item id,
+  and the shell's hardcoded `path === '/administration'` filter is replaced by a manifest-visible
+  `app.rules.hasAdministrationAccess` rule.
+- **`ExtensionOutletComponent`**, generalising `DynamicDrawerComponent` via `createComponent()`:
+  resolution by registered id, lazy component loaders and input binding. It replaces nav-drawer's
+  ad-hoc `Promise.all` of dynamic imports and gives the drawer's fallback branch real content.
+- **`$references` merge**, with `$ignoreReferenceList`, `.$replace` and unresolvable layers reported
+  rather than swallowed.
+
+Not attempted, and deliberately left as its own phase:
+
+- **Actions — the largest refactor.** The document-detail toolbar, its seven-item overflow menu and
+  its five hardcoded `mat-tab` children in `document-detail.html` (2,000+ lines), the six fixed
+  `@Output()` buttons in `selection-topbar.component.html`, `documentList` columns and browse row
+  `contextMenu`. The slots exist and resolve; nothing is registered into them. Reuse adf-hx's
+  `*-action.service` pattern, since Phase 3 adopts those components.
+- **Route contributions.** `app.routes.ts` still imports feature `Routes` arrays directly.
+- **The selection rules are declared but inert.** `SelectionService` tracks ids, not documents, so
+  `app.rules.canWriteSelection` and `app.rules.canRemoveSelection` evaluate against an empty
+  selection and answer `false`. They become live with the action registry.
 
 ## Phase 3 — adf-hx adoption (30-45 d)
 
@@ -344,18 +375,19 @@ customer-authored code.
 
 ## Risks
 
-| #   | Risk                                                                                                                                                                                                                                                                                                                                                                                                       | Severity | Mitigation                                                                                                                       |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| R1  | **No stable adf-hx release in twelve months.** `latest` is a prerelease; the last stable is a year old on an Angular 15 baseline. We would ship an enterprise product on a prerelease channel.                                                                                                                                                                                                             | High     | Pin an exact prerelease. Open a supported-release conversation with CSX.                                                         |
-| R2  | **Dependency contract under-declared** — 1 peer declared against 13 imported — and test artifacts ship in the bundle. Incompatibilities surface at build or runtime, not install time.                                                                                                                                                                                                                     | High     | Own pin manifest, contract tests on all twelve ports, raise the packaging defects upstream.                                      |
-| R3  | **Render fidelity unproven.** Provider substitution is verified; that real components render correctly against Nuxeo-mapped documents is not. Mapper approximations (hardcoded permissions, `sys_name` as title, state from `dc:nature`) may surface visibly.                                                                                                                                              | High     | `document-list` is a go/no-go spike before committing to the rest.                                                               |
-| R4  | `@alfresco/js-api` and the wider adf-core peer set (including `pdfjs-dist`, `@mat-datetimepicker/core`) ship inside a Nuxeo product.                                                                                                                                                                                                                                                                       | Medium   | SCA, licensing and product-optics review before Phase 3 commits.                                                                 |
-| R5  | **9 high-severity audit findings already**, before adf-core arrives. NXENG-615 requires none.                                                                                                                                                                                                                                                                                                              | Medium   | Triage in Phase 0.                                                                                                               |
-| R6  | This branch carries the monorepo Angular 20 upgrade while `main` is on 19.                                                                                                                                                                                                                                                                                                                                 | Medium   | Land the upgrade as its own PR first.                                                                                            |
-| R7  | **The upgrade-safe installer path is prototyped but not rehearsed.** Phase 1 first installed the bootstrap file into `nxserver/web/…`, which nothing serves — it would have 404'd in every deployment. The path is corrected and the corrected destination is confirmed served, but no package has been built, installed and upgraded on a real server. Manifest-as-Nuxeo-document is genuinely evidenced. | Medium   | Packaging sign-off on the second `install.xml` copy step, then the Phase 6 upgrade rehearsal. Only that rehearsal justifies Low. |
-| R8  | Too few addressable IDs in Layer 1 caps customisation and pushes work into Layer 2, undermining the maintenance economics.                                                                                                                                                                                                                                                                                 | Medium   | Fix the addressable surface before Phase 2 starts, informed by real customer requests.                                           |
-| R9  | Selection state is shared with production browse, so the Satori bulk topbar overlays the POC route.                                                                                                                                                                                                                                                                                                        | Low      | Decide whether Beta keeps one shell or forks it.                                                                                 |
-| R10 | The `@nuxeo-satori` npm scope is proposed but ownership is unconfirmed.                                                                                                                                                                                                                                                                                                                                    | Low      | Confirm or choose an owned scope in Phase 4.                                                                                     |
+| #   | Risk                                                                                                                                                                                                                                                                                                                                                                                                       | Severity           | Mitigation                                                                                                                                                                                                                                                                                   |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | **No stable adf-hx release in twelve months.** `latest` is a prerelease; the last stable is a year old on an Angular 15 baseline. We would ship an enterprise product on a prerelease channel.                                                                                                                                                                                                             | High               | Pin an exact prerelease. Open a supported-release conversation with CSX.                                                                                                                                                                                                                     |
+| R2  | **Dependency contract under-declared** — 1 peer declared against 13 imported — and test artifacts ship in the bundle. Incompatibilities surface at build or runtime, not install time.                                                                                                                                                                                                                     | High               | Own pin manifest, contract tests on all twelve ports, raise the packaging defects upstream.                                                                                                                                                                                                  |
+| R3  | **Render fidelity unproven.** Provider substitution is verified; that real components render correctly against Nuxeo-mapped documents is not. Mapper approximations (hardcoded permissions, `sys_name` as title, state from `dc:nature`) may surface visibly.                                                                                                                                              | High               | `document-list` is a go/no-go spike before committing to the rest.                                                                                                                                                                                                                           |
+| R4  | `@alfresco/js-api` and the wider adf-core peer set (including `pdfjs-dist`, `@mat-datetimepicker/core`) ship inside a Nuxeo product.                                                                                                                                                                                                                                                                       | Medium             | SCA, licensing and product-optics review before Phase 3 commits.                                                                                                                                                                                                                             |
+| R5  | **9 high-severity audit findings already**, before adf-core arrives. NXENG-615 requires none.                                                                                                                                                                                                                                                                                                              | Medium             | Triage in Phase 0.                                                                                                                                                                                                                                                                           |
+| R6  | This branch carries the monorepo Angular 20 upgrade while `main` is on 19.                                                                                                                                                                                                                                                                                                                                 | Medium             | Land the upgrade as its own PR first.                                                                                                                                                                                                                                                        |
+| R7  | **The upgrade-safe installer path is prototyped but not rehearsed.** Phase 1 first installed the bootstrap file into `nxserver/web/…`, which nothing serves — it would have 404'd in every deployment. The path is corrected and the corrected destination is confirmed served, but no package has been built, installed and upgraded on a real server. Manifest-as-Nuxeo-document is genuinely evidenced. | Medium             | Packaging sign-off on the second `install.xml` copy step, then the Phase 6 upgrade rehearsal. Only that rehearsal justifies Low.                                                                                                                                                             |
+| R8  | Too few addressable IDs in Layer 1 caps customisation and pushes work into Layer 2, undermining the maintenance economics.                                                                                                                                                                                                                                                                                 | ~~Medium~~ **Low** | **Mitigated in Phase 2.** Slots are keyed by opaque string with no central dispatch, proven by a spec that registers an unknown slot, so a tenth slot is backlog rather than a retrofit. The ceiling that remains is _which_ surfaces are populated, and that is schedule, not architecture. |
+| R9  | Selection state is shared with production browse, so the Satori bulk topbar overlays the POC route.                                                                                                                                                                                                                                                                                                        | Low                | Decide whether Beta keeps one shell or forks it.                                                                                                                                                                                                                                             |
+| R11 | **`@alfresco` spans two registries and npm resolves per scope, not per package.** Phase 2 pointed the scope at public npm for `adf-extensions`; Phase 3 needs `adf-hx-content-services` from GitHub Packages and cannot have both from one `.npmrc`.                                                                                                                                                       | High               | Decide the mechanism before Phase 3 starts: CI-side `.npmrc` swap, a private proxy fronting both, or a committed tarball reference.                                                                                                                                                          |
+| R10 | The `@nuxeo-satori` npm scope is proposed but ownership is unconfirmed.                                                                                                                                                                                                                                                                                                                                    | Low                | Confirm or choose an owned scope in Phase 4.                                                                                                                                                                                                                                                 |
 
 ## Still open
 
@@ -365,6 +397,8 @@ customer-authored code.
 - Does Beta ship as a marketplace package, an npm library set, or both? Phase 4 assumes both.
 - Do we keep `/#/browse-adf-hx` as a parallel route through Beta, or cut over `/#/browse` once
   parity is reached?
-- How much of the app becomes addressable by ID in Layer 1? That sets the ceiling on what any
-  manifest can ever express, and retrofitting it means redoing the action registry.
+- ~~How much of the app becomes addressable by ID in Layer 1?~~ **Answered in Phase 2, and the
+  question turned out to be less consequential than it looked.** Nine slots are implemented; five are
+  deferred to GA. Because slot registration and resolution are per-slot with no central dispatch,
+  adding a slot later is additive, so this is no longer a decision that has to be right first time.
 - What is the supported Nuxeo LTS matrix for Beta, which determines the contract-test grid?

@@ -57,7 +57,40 @@ Treat them as settled; if you contradict one, prove it first.
   (`@angular/core`) against thirteen actually imported. We maintain the true pin
   set ourselves.
 - `@alfresco/adf-extensions@9.0.0` is on **public npm**, runtime dependency
-  `tslib` only. Layers 0 and 1 need no privileged access.
+  `tslib` only, and is **installed and in use** as of Phase 2. Layers 0 and 1 need
+  no privileged access. Three corrections established by installing it:
+  - It declares three peers but its public `.d.ts` also imports
+    `@angular/material/menu` and `@angular/router`, so it is **under-declared in
+    the same way adf-hx is**. A second data point for R2, not a one-off.
+  - Its shipped `index.d.ts` does **not** typecheck under `skipLibCheck: false` —
+    six intrinsic `TS2411` index-signature errors, independent of missing peers.
+    Consuming it requires `skipLibCheck: true`, which this repo already sets.
+  - `@alfresco/js-api` is a mandatory peer but a **types-only** import: the
+    runtime `.mjs` never references it. It is therefore a devDependency here, so
+    a 7 MB Alfresco Content Services REST client does not ship inside a Nuxeo
+    product to satisfy a compile-time constraint.
+- **adf-extensions' `RuleContext` is Alfresco-domain-shaped** (`NodeEntry`,
+  `SiteEntry`, `RepositoryInfo`), describing a repository we do not talk to. Our
+  rule context is our own, in upstream's _shape_ but not its types; reusing
+  upstream's would put ACS types in the signature every customer rule is written
+  against. Its domain-neutral parts — `mergeObjects`, `mergeArrays`,
+  `filterEnabled`, `sortByOrder`, `getValue` — are used directly.
+- **`@alfresco` spans two registries and npm resolves per scope, not per
+  package.** Phase 2 pointed the scope at public npm. **Phase 3 cannot simply add
+  adf-hx from GitHub Packages** — it needs a CI-side `.npmrc` swap, a proxy
+  fronting both, or a committed tarball reference.
+- **Layer 1 slots are additive by construction.** `ExtensionSlotRegistry` keys
+  slots by opaque string with no enum, union or `switch` on slot identity, so a
+  tenth slot requires no change to the nine. Do not introduce a central slot
+  dispatch; it would undo the property the Beta addressable-surface decision
+  rests on.
+- **An unregistered rule id fails open.** A manifest naming a rule this build does
+  not have leaves the entry visible. That is deliberate: Layer 1 visibility is not
+  an authorisation boundary, and failing closed would let a typo strip working
+  actions out of the UI.
+- **The `test` gate does not typecheck.** Vitest transpiles through esbuild, so two
+  real type errors in Phase 2 code passed 46 green unit tests and were caught only
+  by `build`. Never treat a green `test` gate as evidence that types are sound.
 - The marketplace installer copies the web directory with `overwrite="true"`, so
   **configuration inside the bundle is destroyed on upgrade**.
 - The POC's bridge tokens (`DOCUMENT_API_TOKEN`, `QUERY_API_TOKEN`,
@@ -97,7 +130,7 @@ completion is not completion; see section 6.
 | ------------------ | -------------------------------------------------------------------------------- | ---------------------------- |
 | `phase-0-baseline` | Dependencies install, gates run, CI validates the branch                         | `steps/phase-0-baseline.mjs` |
 | `phase-1-config`   | Runtime configuration that survives upgrade, runtime theming, i18n for the slice | `steps/phase-1-config.mjs`   |
-| `phase-2-registry` | Extension registry, rules, nav and routes from manifest, action registry         | to be added                  |
+| `phase-2-registry` | Extension registry, rules, nav and routes from manifest, action registry         | `steps/phase-2-registry.mjs` |
 | `phase-3-adf-hx`   | ~10 of 12 Nuxeo-backed API ports, component swap, encapsulation gate             | to be added                  |
 | `phase-4-platform` | Publishable libraries, public API, semver, template and starter                  | to be added                  |
 | `phase-5-harness`  | Customer knowledge base, generators, runnable guardrails                         | to be added                  |
@@ -189,4 +222,6 @@ Beyond the standing rules in `AGENTS.md`:
 | Gate reports            | `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`                  |
 | Bridge (adf-hx wrapper) | `libs/shared/adf-hx-bridge/`                            |
 | Action plan             | `docs/adf-hx-poc-action-plan.md`                        |
+| Extension reference     | `docs/extension-reference.md`                           |
+| Extension registry      | `libs/shared/extensions/`                               |
 | Orchestrating skill     | `.cursor/skills/beta-phase/SKILL.md`                    |
