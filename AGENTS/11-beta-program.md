@@ -75,10 +75,16 @@ Treat them as settled; if you contradict one, prove it first.
   upstream's would put ACS types in the signature every customer rule is written
   against. Its domain-neutral parts — `mergeObjects`, `mergeArrays`,
   `filterEnabled`, `sortByOrder`, `getValue` — are used directly.
-- **`@alfresco` spans two registries and npm resolves per scope, not per
-  package.** Phase 2 pointed the scope at public npm. **Phase 3 cannot simply add
-  adf-hx from GitHub Packages** — it needs a CI-side `.npmrc` swap, a proxy
-  fronting both, or a committed tarball reference.
+- **One registry serves every `@alfresco` package we need.** `@alfresco:registry`
+  points at GitHub Packages, and all four — `adf-extensions`, `js-api`,
+  `adf-core` and `adf-hx-content-services` — download from it. Verified twice by
+  fetching the tarballs with only that mapping present. adf-extensions, adf-core
+  and js-api are _also_ on public npm, which makes a two-registry split look
+  necessary; it is not. **Do not repoint this scope at public npm** — adf-hx is
+  GitHub-Packages-exclusive and Phase 3 would break.
+- Because `@alfresco/adf-extensions` is now a production dependency, CI requires
+  `SATORI_GH_READONLY_TOKEN` to carry `read:packages` for the **Alfresco** org,
+  not only `@hylandsoftware`.
 - **Layer 1 slots are additive by construction.** `ExtensionSlotRegistry` keys
   slots by opaque string with no enum, union or `switch` on slot identity, so a
   tenth slot requires no change to the nine. Do not introduce a central slot
