@@ -25,6 +25,21 @@
  * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
  */
 export default async function run(page, h) {
+  // Checked FIRST, and aborting, because this file's assertions are only meaningful
+  // when it holds. The 2026-08-20T23-55-38 run recorded 9 of 13 checks failed with
+  // Nuxeo up: one precondition mismatch dressed as nine defects.
+  h.step('Precondition: no Nuxeo backend is reachable');
+  // `page.request` deliberately bypasses the page, so this works before the app has
+  // loaded and cannot be affected by any route interception a step might add later.
+  const probe = await page.request.get(`${h.baseUrl}/nuxeo/api/v1/me`, { failOnStatusCode: false }).catch(() => null);
+  h.requirePrecondition(
+    'Nuxeo API is unreachable through the dev proxy',
+    probe?.status() !== 200,
+    `/nuxeo/api/v1/me returned ${probe?.status() ?? 'no response'} — a backend IS available here, ` +
+      'so this steps file does not apply. Run `npm run beta:evidence -- phase-0-baseline` instead.',
+  );
+  h.note('authenticated, data-bearing surfaces — covered by phase-0-baseline, which needs a backend');
+
   h.step('Dev server serves the built application');
   const response = await page.goto(`${h.baseUrl}/`, { waitUntil: 'networkidle' });
   h.check('root responds 200', response?.status() === 200, `status was ${response?.status()}`);
@@ -59,9 +74,10 @@ export default async function run(page, h) {
   h.check('browse route requires auth', page.url().includes('/#/login'), page.url());
   await h.screenshot('browse-route-guarded');
 
-  h.step('Environment precondition: Nuxeo backend is not reachable');
-  // Recorded as an explicit assertion so the report states why no authenticated
-  // evidence exists, instead of leaving a reviewer to infer it from absence.
+  h.step('The backend is still unreachable from inside the loaded app');
+  // Re-checked from the page, not just via `page.request`, because the app reaches
+  // Nuxeo through the dev proxy from browser context — a different path from the
+  // precondition probe, and the one that actually matters to the assertions above.
   const apiStatus = await page.evaluate(async () => {
     try {
       const r = await fetch('/nuxeo/api/v1/me', { headers: { Accept: 'application/json' } });
@@ -71,13 +87,12 @@ export default async function run(page, h) {
     }
   });
   h.check(
-    'Nuxeo API unreachable through the dev proxy',
+    'Nuxeo API unreachable from browser context too',
     apiStatus !== 200,
-    `/nuxeo/api/v1/me returned ${apiStatus}; a backend appears to be available, so run phase-0-baseline instead`,
+    `/nuxeo/api/v1/me returned ${apiStatus} from the page although the precondition probe found no backend`,
   );
-  h.check(
-    'authenticated surfaces are therefore NOT covered by this run',
-    true,
-    'see phase-0-baseline.mjs for the authenticated baseline',
-  );
+  // Deliberately a note, not a check. `check(name, true)` cannot fail, so it
+  // certifies nothing while inflating the total — the exact pattern the Phase 1
+  // review called out.
+  h.note('any data-bearing screen: unverifiable without a backend, by construction');
 }

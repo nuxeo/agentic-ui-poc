@@ -29,8 +29,24 @@
  * Errors this environment always produces, unrelated to the browse surfaces.
  * `AI.*` operations come from a marketplace package that is not installed on a
  * plain local Nuxeo, and the app probes `/nuxeo/logout` on boot.
+ *
+ * The third entry was added later than the other two, and the reason matters: it
+ * is a *Phase 1* behaviour appearing in a *Phase 0* baseline. Phase 1 made the
+ * runtime manifest a Nuxeo document, and a plain local instance has no
+ * `/default-domain/config/agentic-ui`, so the fetch 404s and the app falls back to
+ * the packaged default by design. This file was written before that existed and
+ * failed on it when re-run — a stale baseline, not a regression.
+ *
+ * Suppressing it is only safe because this run separately proves the fallback
+ * worked: "platform nav offers the adf-hx entry" below is fed by the manifest, so
+ * if the packaged default had not loaded, that check would fail rather than pass
+ * quietly. `phase-1-config` asserts the fallback path directly.
  */
-const ENVIRONMENTAL_ERRORS = [/automation\/AI\./, '/nuxeo/logout'];
+const ENVIRONMENTAL_ERRORS = [
+  /automation\/AI\./,
+  '/nuxeo/logout',
+  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
+];
 
 /**
  * @param {import('@playwright/test').Page} page

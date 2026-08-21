@@ -15,11 +15,22 @@
  *    photograph it — reviewers ask about those first.
  * 4. Finish with `h.expectNoConsoleErrors()` so runtime breakage cannot hide
  *    behind a screenshot that looks correct.
+ * 5. Never use `h.check(name, true)` to record a limitation — it cannot fail, so it
+ *    certifies nothing while inflating the total. Use `h.note(text)`. And if the
+ *    file only applies in a particular environment, open with
+ *    `h.requirePrecondition(...)` so a mismatch aborts instead of producing a page
+ *    of reds that look like defects.
+ * 6. Name each screenshot for what it actually shows. The runner hashes them and
+ *    reports how many distinct images the run produced; a shot called
+ *    `manifest-relabels-nav` that is byte-identical to the default one claims an
+ *    observation it cannot support. Change what is on screen, or rename the shot.
  *
  * Helper reference: see `scripts/beta-harness/helpers.mjs`.
  *   h.step(label)                        open a named step
  *   h.screenshot(name, locator?)         capture into the phase folder
  *   h.check(name, condition, detail?)    record an arbitrary assertion
+ *   h.note(text)                         record what this run does NOT cover
+ *   h.requirePrecondition(n, cond, d)    abort if the environment does not apply
  *   h.expectVisible(name, selector)      assert a selector becomes visible
  *   h.expectText(name, selector, text)   assert a selector contains text
  *   h.expectNoConsoleErrors(name?)       assert a clean browser console
