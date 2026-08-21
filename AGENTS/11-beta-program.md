@@ -63,11 +63,17 @@ Treat them as settled; if you contradict one, prove it first.
 - The POC's bridge tokens (`DOCUMENT_API_TOKEN`, `QUERY_API_TOKEN`,
   `ROOT_DOCUMENT`, `DEFAULT_REPOSITORY_ID`) are local clones of published
   exports. Migration is to import upstream's and delete the clones.
-- **The non-overwriting installer path works and is no longer a risk.** A second
-  `install.xml` copy step with `overwrite="false"`, targeting
-  `nxserver/web/nuxeo.war/agentic-ui-config` — a _sibling_ of the bundle, outside
-  the destructive copy's source tree — carries customer configuration across an
-  upgrade. Established in Phase 1; this closes half of risk R7.
+- **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
+  A second `install.xml` copy step with `overwrite="false"` puts customer
+  configuration in a _sibling_ of the bundle, outside the destructive copy's
+  source tree, so it survives an upgrade. **The destination must be under
+  `nxserver/nuxeo.war`** — that is the Tomcat docBase for the `/nuxeo` context
+  (`docBase="../nxserver/nuxeo.war"`). `nxserver/web` holds only `root.war`, is
+  not a docBase, and anything installed there is never served. Phase 1 shipped the
+  `nxserver/web/…` variant and it would have 404'd in every deployment; the
+  corrected path is verified served on the local container. **Risk R7 is still
+  Medium:** no package has been built, installed and upgraded on a real server.
+  That is the Phase 6 upgrade rehearsal.
 - **Configuration is loaded, not compiled.** `libs/shared/app-config` reads a
   static bootstrap file pre-auth and a runtime manifest from the Nuxeo document
   at `/default-domain/config/agentic-ui` post-auth. Eleven `InjectionToken`

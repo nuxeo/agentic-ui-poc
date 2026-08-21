@@ -128,7 +128,7 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 ## Already done
 
 - Phase 1 core: `libs/shared/app-config`, the non-overwriting installer path, eleven tokens
-  repointed, config-driven theming and activated i18n. Quality gate 4/4, evidence 36/36.
+  repointed, config-driven theming and activated i18n. Quality gate 4/4, evidence 38/38.
 - Phase 0 verification: dependencies install, gates run, build passes (1.66 MB initial bundle;
   1.69 MB after Phase 1).
 - Much of Phase 5: [`scripts/beta-harness/`](../scripts/beta-harness/) (phase evidence runner with
@@ -160,15 +160,27 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 
 ## Phase 1 — Layer 0: upgrade-safe configuration (**core delivered**, remainder 4-7 d)
 
-Gates: quality gate **PASS** (4/4 green) · evidence gate **PASS** (36/36 checks, exit 0).
+Gates: quality gate **PASS** (4/4 green) · evidence gate **PASS** (38/38 checks, exit 0), after the
+remediation below.
+
+> **What the evidence proves, stated precisely.** It proves that configuration alone changes the
+> running application's behaviour with a byte-identical bundle, and that absent, denied and
+> malformed configuration all leave a working application. It does **not** prove upgrade safety.
+> The first cut of the installer targeted `nxserver/web/…`, which is not a docBase and which
+> nothing serves; the configuration would have 404'd in every real deployment and the tolerant
+> fallback would have hidden it. The path is corrected, and the corrected destination is confirmed
+> to be the directory the `/nuxeo` context is served from, but no package has been built,
+> installed and upgraded on a real server. That is the Phase 6 upgrade rehearsal. See
+> `PHASE-1-REMEDIATION-ADDENDUM.md` in the phase evidence directory.
 
 Delivered:
 
 - `libs/shared/app-config` loads a **bootstrap file** pre-auth and a **runtime manifest** from the
   Nuxeo document at `/default-domain/config/agentic-ui` post-auth, both tolerant of absence, denial
   and malformed JSON. Installed by a second `install.xml` copy with `overwrite="false"` into
-  `nxserver/web/nuxeo.war/agentic-ui-config`, a **sibling** of the bundle and therefore outside the
-  destructive copy — which is what makes customer edits survive an upgrade.
+  `nxserver/nuxeo.war/agentic-ui-config`, a **sibling** of the bundle and therefore outside the
+  destructive copy — which is what makes customer edits survive an upgrade. `nuxeo.war` is the
+  Tomcat docBase for the `/nuxeo` context; `nxserver/web` holds only `root.war` and is not served.
 - **Eleven `InjectionToken` factories** repointed at the loaded configuration: the Nuxeo API origin
   and server URL, the AI backend prefix, the ARender endpoints, both Content Intelligence operation
   maps, the three SSO tokens and the session timeout. `nuxeo-sso.providers.ts` and its two hardcoded
@@ -180,14 +192,47 @@ Delivered:
   manifest's `labels` over it, so relabelling is a configuration edit. Extraction covers the slice's
   chrome only.
 
+### Decisions taken 21 August 2026
+
+- **Translations are descoped from Beta.** No further i18n extraction before Beta. The _mechanism_
+  stays, because the manifest's `labels` map layers over the catalogue and that is a Layer 0
+  capability — a customer relabels without a rebuild. Extraction beyond the slice chrome moves to GA.
+- **Remove the residual `!important`.** ~~An appearance change is accepted.~~ **Done, and nothing
+  changed visually.** `.sat-tag.sat-tag` beats Satori's component styles on specificity; Satori's
+  inline palette is redirected through its own `--sat-tag-*` custom properties; and the dialog
+  title needed a 0-3-1 rule to outrank Material's `.mat-typography h2` typography hierarchy.
+  Measured before and after by `scripts/beta-harness/steps/phase-1-tag-styles.mjs`.
+
 Remaining, deliberately not attempted:
 
-- Extend extraction across the rest of the Beta slice's templates (browse, search, document detail,
-  metadata, permissions, versions, upload/CRUD body copy). Full-repo extraction stays out of scope.
 - An in-app editor for the configuration document; today it is edited as a Nuxeo Note.
-- Residual `!important` on `.sat-tag` and the dialog title, where Satori's and Material's own
-  stylesheets genuinely outrank ours. Removing it regresses the current appearance, so it needs a
-  decision rather than a blind deletion.
+
+### Configuration document ACLs — the model to apply
+
+The runtime manifest is a Nuxeo document, fetched by `AppConfigService.loadManifest()` as
+`GET /nuxeo/api/v1/path{manifestDocumentPath}` **using the signed-in user's own session**. Nuxeo's
+permission model therefore governs it, with three consequences:
+
+- **Read permission decides who gets the customisation.** A user without Read triggers the tolerant
+  fallback and silently sees the _packaged default_ UI. Grant Read to the broadest set of application
+  users (typically `members`) or accept an inconsistent UI between users.
+- **Write permission is an administrative capability.** Anyone with Write can change navigation,
+  hide actions, relabel and flip feature toggles for everyone. Restrict it to `administrators` or a
+  dedicated group.
+- **Block inheritance on the config folder.** A document under `/default-domain/config/` inherits
+  ACLs by default, so a broad Write grant higher up silently confers the ability to reconfigure the
+  application.
+
+Two properties worth stating explicitly:
+
+- Storing config as a document gives **versioning and audit for free** — every change is attributable
+  and revertible, which a file on disk does not offer.
+- **Hiding an action in the manifest is not a security control.** Layer 1 can only reference already
+  registered IDs, and the server-side Nuxeo permission still decides whether an operation succeeds.
+  Customers must not treat manifest visibility as authorisation.
+
+Phase 6 should test the ACL-denied path: a user without Read must still get a working application on
+the default configuration.
 
 ## Phase 2 — Layer 1: extension registry (15-22 d, unblocked)
 
@@ -299,18 +344,18 @@ customer-authored code.
 
 ## Risks
 
-| #   | Risk                                                                                                                                                                                                                                                          | Severity | Mitigation                                                                                  |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------- |
-| R1  | **No stable adf-hx release in twelve months.** `latest` is a prerelease; the last stable is a year old on an Angular 15 baseline. We would ship an enterprise product on a prerelease channel.                                                                | High     | Pin an exact prerelease. Open a supported-release conversation with CSX.                    |
-| R2  | **Dependency contract under-declared** — 1 peer declared against 13 imported — and test artifacts ship in the bundle. Incompatibilities surface at build or runtime, not install time.                                                                        | High     | Own pin manifest, contract tests on all twelve ports, raise the packaging defects upstream. |
-| R3  | **Render fidelity unproven.** Provider substitution is verified; that real components render correctly against Nuxeo-mapped documents is not. Mapper approximations (hardcoded permissions, `sys_name` as title, state from `dc:nature`) may surface visibly. | High     | `document-list` is a go/no-go spike before committing to the rest.                          |
-| R4  | `@alfresco/js-api` and the wider adf-core peer set (including `pdfjs-dist`, `@mat-datetimepicker/core`) ship inside a Nuxeo product.                                                                                                                          | Medium   | SCA, licensing and product-optics review before Phase 3 commits.                            |
-| R5  | **9 high-severity audit findings already**, before adf-core arrives. NXENG-615 requires none.                                                                                                                                                                 | Medium   | Triage in Phase 0.                                                                          |
-| R6  | This branch carries the monorepo Angular 20 upgrade while `main` is on 19.                                                                                                                                                                                    | Medium   | Land the upgrade as its own PR first.                                                       |
-| R7  | ~~Manifest-as-Nuxeo-document and the non-overwriting installer change need packaging sign-off; neither is prototyped.~~ **Both prototyped in Phase 1**, evidenced end to end. Only packaging sign-off is left.                                                | Low      | Get packaging sign-off on the second `install.xml` copy step. No fallback needed.           |
-| R8  | Too few addressable IDs in Layer 1 caps customisation and pushes work into Layer 2, undermining the maintenance economics.                                                                                                                                    | Medium   | Fix the addressable surface before Phase 2 starts, informed by real customer requests.      |
-| R9  | Selection state is shared with production browse, so the Satori bulk topbar overlays the POC route.                                                                                                                                                           | Low      | Decide whether Beta keeps one shell or forks it.                                            |
-| R10 | The `@nuxeo-satori` npm scope is proposed but ownership is unconfirmed.                                                                                                                                                                                       | Low      | Confirm or choose an owned scope in Phase 4.                                                |
+| #   | Risk                                                                                                                                                                                                                                                                                                                                                                                                       | Severity | Mitigation                                                                                                                       |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | **No stable adf-hx release in twelve months.** `latest` is a prerelease; the last stable is a year old on an Angular 15 baseline. We would ship an enterprise product on a prerelease channel.                                                                                                                                                                                                             | High     | Pin an exact prerelease. Open a supported-release conversation with CSX.                                                         |
+| R2  | **Dependency contract under-declared** — 1 peer declared against 13 imported — and test artifacts ship in the bundle. Incompatibilities surface at build or runtime, not install time.                                                                                                                                                                                                                     | High     | Own pin manifest, contract tests on all twelve ports, raise the packaging defects upstream.                                      |
+| R3  | **Render fidelity unproven.** Provider substitution is verified; that real components render correctly against Nuxeo-mapped documents is not. Mapper approximations (hardcoded permissions, `sys_name` as title, state from `dc:nature`) may surface visibly.                                                                                                                                              | High     | `document-list` is a go/no-go spike before committing to the rest.                                                               |
+| R4  | `@alfresco/js-api` and the wider adf-core peer set (including `pdfjs-dist`, `@mat-datetimepicker/core`) ship inside a Nuxeo product.                                                                                                                                                                                                                                                                       | Medium   | SCA, licensing and product-optics review before Phase 3 commits.                                                                 |
+| R5  | **9 high-severity audit findings already**, before adf-core arrives. NXENG-615 requires none.                                                                                                                                                                                                                                                                                                              | Medium   | Triage in Phase 0.                                                                                                               |
+| R6  | This branch carries the monorepo Angular 20 upgrade while `main` is on 19.                                                                                                                                                                                                                                                                                                                                 | Medium   | Land the upgrade as its own PR first.                                                                                            |
+| R7  | **The upgrade-safe installer path is prototyped but not rehearsed.** Phase 1 first installed the bootstrap file into `nxserver/web/…`, which nothing serves — it would have 404'd in every deployment. The path is corrected and the corrected destination is confirmed served, but no package has been built, installed and upgraded on a real server. Manifest-as-Nuxeo-document is genuinely evidenced. | Medium   | Packaging sign-off on the second `install.xml` copy step, then the Phase 6 upgrade rehearsal. Only that rehearsal justifies Low. |
+| R8  | Too few addressable IDs in Layer 1 caps customisation and pushes work into Layer 2, undermining the maintenance economics.                                                                                                                                                                                                                                                                                 | Medium   | Fix the addressable surface before Phase 2 starts, informed by real customer requests.                                           |
+| R9  | Selection state is shared with production browse, so the Satori bulk topbar overlays the POC route.                                                                                                                                                                                                                                                                                                        | Low      | Decide whether Beta keeps one shell or forks it.                                                                                 |
+| R10 | The `@nuxeo-satori` npm scope is proposed but ownership is unconfirmed.                                                                                                                                                                                                                                                                                                                                    | Low      | Confirm or choose an owned scope in Phase 4.                                                                                     |
 
 ## Still open
 
