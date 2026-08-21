@@ -54,7 +54,15 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "assets": [
+                { "glob": "**/*", "input": "apps/nuxeo-ui/public" },
+                {
+                  "glob": "bootstrap.json",
+                  "input": "nuxeo-agentic-ui-package/src/main/config",
+                  "output": "agentic-ui-config"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"

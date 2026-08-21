@@ -1,0 +1,26 @@
+{
+  "$schema": "Layer 0 bootstrap configuration. Every key is optional; anything omitted falls back to the value compiled into the application, so an untouched file behaves exactly like no file at all.",
+  "$upgrade": "This file is installed with overwrite=\"false\" into nxserver/web/nuxeo.war/agentic-ui-config, which is outside the directory the installer replaces. Edits made here survive a marketplace package upgrade. Do not move it into the agentic-ui bundle directory.",
+
+  "$nuxeoApiOrigin": "Origin for Nuxeo REST calls. Leave empty for same-origin deployments.",
+  "nuxeoApiOrigin": "",
+
+  "$nuxeoServerUrl": "Nuxeo as seen by external clients such as Nuxeo Drive. null derives it from the browser location.",
+  "nuxeoServerUrl": null,
+
+  "$manifestDocumentPath": "Repository path of the Nuxeo document holding the runtime manifest. Absent is fine: the application falls back to its packaged defaults.",
+  "manifestDocumentPath": "/default-domain/config/agentic-ui",
+  "manifestDocumentProperty": "note:note",
+
+  "branding": {
+    "applicationTitle": "Hyland Nuxeo",
+    "documentTitle": "Nuxeo Platform"
+  },
+
+  "$themes": "Merged over the packaged themes by id. 'tokens' are CSS custom properties applied to <html> while the theme is active, so a rebrand needs no rebuild. Add an entry with a new id to add a whole theme.",
+  "defaultThemeId": "nuxeo",
+  "themes": [],
+
+  "defaultLanguage": "en",
+  "availableLanguages": ["en"]
+}
