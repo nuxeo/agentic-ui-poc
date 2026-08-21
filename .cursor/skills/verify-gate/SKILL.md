@@ -24,12 +24,12 @@ Seconds, not minutes. Run it after every meaningful edit.
 npm run beta:gate -- --phase <phase-id>
 ```
 
-Seven gates, cheapest first: `node`, `lockfile`, `guardrails`, then affected
-`lint`, `test`, `build`, `typecheck`. Stops at the first failure and prints only
+Eight gates, cheapest first: `node`, `lockfile`, `guardrails`, `assertions`, then
+affected `lint`, `test`, `build`, `typecheck`. Stops at the first failure and prints only
 its output tail. Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
 
 Only a run with **no** `--gates` filter can be cited for a phase. A filtered run
-reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 7`, because two
+reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 8`, because two
 reports in the evidence corpus read `"verdict": "pass"` having run one gate.
 
 For non-Beta work the equivalent is `npm run review:preflight` followed by

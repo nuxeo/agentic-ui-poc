@@ -256,8 +256,8 @@ Run it alone before any bare `nx` command: `node scripts/beta-harness/node-versi
 were never asked for and the verdict carries the coverage:
 
 ```text
-verdict  PASS (PARTIAL) — 2 of 7 gates green
-         NOT RUN: lockfile, lint, test, build, typecheck
+verdict  PASS (PARTIAL) — 2 of 8 gates green
+         NOT RUN: lockfile, assertions, lint, test, build, typecheck
 ```
 
 The JSON records `verdict: "pass-partial"` plus a `gates` object with
