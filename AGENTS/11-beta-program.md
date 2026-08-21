@@ -85,6 +85,17 @@ Treat them as settled; if you contradict one, prove it first.
 - Because `@alfresco/adf-extensions` is now a production dependency, CI requires
   `SATORI_GH_READONLY_TOKEN` to carry `read:packages` for the **Alfresco** org,
   not only `@hylandsoftware`.
+- **`.npmrc` alone does not decide where CI fetches from — `package-lock.json`
+  does.** `npm ci` installs from each entry's `resolved` URL and ignores the
+  registry mapping. After changing a scope's registry you must regenerate the
+  lock, or CI will keep fetching from the old host and any claim about token
+  scope is untested.
+- **Never run a bare `npm install` on macOS and commit the lockfile.** It prunes
+  optional platform entries that Linux needs — `@oxc-resolver/binding-wasm32-wasi`'s
+  nested `@emnapi/core` and `@emnapi/runtime` at 1.11.2 — and `npm ci` on the
+  Linux runner then refuses the whole tree. This broke CI for the length of
+  Phase 2. `--os`/`--cpu` do not restore them; recover by restoring a known-good
+  lock and merging only the new entries in.
 - **Layer 1 slots are additive by construction.** `ExtensionSlotRegistry` keys
   slots by opaque string with no enum, union or `switch` on slot identity, so a
   tenth slot requires no change to the nine. Do not introduce a central slot
