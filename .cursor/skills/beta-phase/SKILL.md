@@ -142,6 +142,16 @@ before debugging code.
 - Mark the phase's gates in `AGENTS/11-beta-program.md` section 4.
 - If a verified fact changed, update section 3 **and** the RFC's evidence
   appendix. Never leave the two disagreeing.
+- Update `.ai/state/phases.json` and run `npm run beta:state`. It refuses a
+  `complete` that has no passing manifest behind it.
+- **Update `docs/beta-delivery-record.md`.** That file is what gets presented, and
+  it is the only place the narrative lives — what changed, why, with the numbers
+  and the evidence reference. A phase closed without a line there is a phase
+  nobody outside this repo can account for. Add rows rather than rewriting
+  sections; the history is the point.
+  - A number moved? Update section 5.
+  - A gap opened or closed? Section 6.
+  - A claim turned out wrong? Section 7. Do not delete the original claim.
 - Add the phase's steps file to the table if it was new.
 - Report: what shipped, what the evidence proves, what is still open.
 
