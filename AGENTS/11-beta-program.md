@@ -42,6 +42,20 @@ be faked in configuration.
 These were established by first-hand inspection of the published artifact.
 Treat them as settled; if you contradict one, prove it first.
 
+- **CI runs on this branch and passes.** `ci.yml` triggers on `push` as well as on
+  `pull_request`, so a long-lived feature branch is validated without a PR. Run
+  32480243192 is `completed success` on Node 20. Two phase reviews disagreed about
+  this — one claimed "CI has still never run against it" — and the claim that it had
+  run was the correct one. No pull request has been opened, so only the PR-triggered
+  path is unexercised.
+- **`SATORI_GH_READONLY_TOKEN` is set as a repository secret**, since 2026-08-03,
+  and `read:packages` resolves both `@alfresco` and `@hylandsoftware`. The plan's
+  open `token-request` item is closed for CI. Statements that the secret was never
+  provisioned are stale.
+- **Only a CI run is authoritative.** Local gates here run on Node 25 with a
+  `--no-experimental-webstorage` workaround; the repo pins Node 20 and CI uses it.
+  A local green is necessary, not sufficient.
+
 - `@alfresco/adf-hx-content-services` **is installable** with a `read:packages`
   token. 648 published versions. `latest` = `7.20.0-automate.292`,
   `beta` = `7.21.0-automate.86`.

@@ -32,9 +32,9 @@
       },
       "deviations": [],
       "notCovered": [
-        "CI has never run on this branch — no pull request exists, so no workflow has been triggered",
-        "SATORI_GH_READONLY_TOKEN is not a GitHub Actions secret; provisioning needs repo admin"
-      ]
+        "No pull request has been opened, so the PR-triggered path of every workflow is unexercised; CI has only ever run via the push trigger."
+      ],
+      "verifiedOnCi": "CI run 32480243192, completed success on Node 20, 2026-08-21 — the authoritative verification. Local gates run on Node 25 with a webstorage workaround and are not authoritative."
     },
     {
       "id": "phase-1-config",
