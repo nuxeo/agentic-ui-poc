@@ -216,10 +216,11 @@ readonly step = signal<LoginStep>('username');
 // Derived state
 readonly pageTitle = computed(() => {
   const url = this.currentUrl();
-  const match = PLATFORM_NAV_ITEMS.find(
+  // navItems() resolves the `navbar` extension slot — see docs/extension-reference.md.
+  const match = this.navItems().find(
     (item) => url === item.path || url.startsWith(item.path + '/'),
   );
-  return match?.label ?? 'Hyland Nuxeo';
+  return match?.label ?? this.appConfig.bootstrap().branding.applicationTitle;
 });
 ```
 
