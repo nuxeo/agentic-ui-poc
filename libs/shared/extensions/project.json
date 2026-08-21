@@ -6,6 +6,15 @@
   "projectType": "library",
   "tags": ["scope:shared", "type:data-access"],
   "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{workspaceRoot}/dist/out-tsc/libs/shared/extensions"],
+      "options": {
+        "command": "ngc -p libs/shared/extensions/tsconfig.lib.json --outDir dist/out-tsc/libs/shared/extensions"
+      }
+    },
     "test": {
       "executor": "@nx/vitest:test",
       "outputs": ["{options.reportsDirectory}"],
