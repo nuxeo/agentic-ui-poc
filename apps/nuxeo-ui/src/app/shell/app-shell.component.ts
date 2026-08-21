@@ -59,7 +59,7 @@ import {
 import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 import { AppConfigService } from '@agentic-ui/shared/app-config';
-import { APP_NAV_ITEMS } from '@agentic-ui/shared/extensions';
+import { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from '@agentic-ui/shared/extensions';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthService } from '../auth/auth.service';
@@ -181,9 +181,18 @@ export class AppShellComponent implements OnDestroy {
       };
       return titles[seg] ?? 'Administration';
     }
-    const match = [...this.navItems(), ...SETTINGS_DRAWER_ITEMS].find(
-      (item) => url === item.path || url.startsWith(item.path + '/'),
-    );
+    // Resolved entries first so a manifest relabel wins, then the packaged list
+    // as a fallback. Matching only against `navItems()` — which is filtered —
+    // meant hiding an entry by manifest or rule also stripped its page title,
+    // and a user who reached the route directly saw the brand name instead of
+    // "Trash". Hiding an entry is a navigation decision, not a route decision:
+    // the route still exists and is still reachable.
+    const candidates = [
+      ...this.navItems(),
+      ...PACKAGED_NAV_ITEMS.map(toAppNavItem),
+      ...SETTINGS_DRAWER_ITEMS,
+    ];
+    const match = candidates.find((item) => url === item.path || url.startsWith(item.path + '/'));
     // Layer 0: the product name on an unmatched route is branding, not a literal.
     return match?.label ?? this.appConfig.bootstrap().branding.applicationTitle;
   });
