@@ -3,8 +3,11 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  # Long-lived feature branches are validated on push as well as on PR, so work in
+  # progress is never only "green on my machine". nx-set-shas falls back to comparing
+  # against the default branch when a push has no previous successful run to diff from.
   push:
-    branches: [main]
+    branches: [main, 'feature/**', 'fix/**']
 
 concurrency:
   group: ci-${{ github.ref }}

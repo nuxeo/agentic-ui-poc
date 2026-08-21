@@ -55,9 +55,12 @@ Thumbs.db
 
 vitest.config.*.timestamp*
 
+# Playwright output from local evidence runs
+test-results/
+playwright-report/
+
 # Environment files
 .env
-apps/ai-backend/.env
 
 # Nuxeo server configuration (secrets, bind-mounted into the container)
 /nuxeo-conf/*.conf
