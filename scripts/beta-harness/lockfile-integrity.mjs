@@ -23,9 +23,20 @@
  *
  * For every package entry in the lock, each of its non-optional `dependencies`
  * must be resolvable within the lock by Node's own lookup — walk up the
- * `node_modules` chain from the dependent's own path to the root. That is
- * exactly what `npm ci` verifies before it installs, and exactly what the
- * pruning broke.
+ * `node_modules` chain from the dependent's own path to the root — **and the
+ * entry found must actually satisfy the declared version**.
+ *
+ * The version half is not decoration; it is the whole failure. Name resolution
+ * alone passes on the very lock that broke CI: pruning
+ * `binding-wasm32-wasi/node_modules/@emnapi/core@1.11.2` leaves the top-level
+ * `@emnapi/core@1.11.3` to satisfy the walk by name, while the dependent pins
+ * `1.11.2` exactly and `npm ci` refuses with "Missing: @emnapi/core@1.11.2".
+ *
+ * Version checking is deliberately conservative, because a gate that cries wolf
+ * gets switched off: exact pins are compared directly, ranges are checked only
+ * when `semver` is resolvable, and anything that is not a plain version or range
+ * — `npm:` aliases, `file:`, `git+`, `workspace:`, URLs, dist-tags — is left to
+ * the name check alone.
  *
  * `optionalDependencies` are deliberately not required: npm legitimately omits
  * an optional package that no platform in the tree needs, and demanding them
@@ -64,15 +75,53 @@ const entries = lock.packages;
 const problems = [];
 let checked = 0;
 
+/** `semver` ships with npm's own tree; use it when present, never require it. */
+let semver = null;
+try {
+  semver = (await import('semver')).default ?? (await import('semver'));
+} catch {
+  /* range checking degrades to exact-pin comparison */
+}
+
 for (const [path, entry] of Object.entries(entries)) {
   // A `link` entry is a workspace symlink; its real content lives at `resolved`.
   if (entry.link) continue;
-  for (const name of Object.keys(entry.dependencies ?? {})) {
+  for (const [name, spec] of Object.entries(entry.dependencies ?? {})) {
     checked += 1;
-    if (!resolveFrom(path, name)) {
-      problems.push({ dependent: path || '<root>', missing: name });
+    const found = resolveFrom(path, name);
+    if (!found) {
+      problems.push({ dependent: path || '<root>', missing: name, spec, reason: 'absent from the lock' });
+      continue;
+    }
+    const actual = entries[found].version;
+    if (actual && !satisfiesSpec(actual, spec)) {
+      problems.push({
+        dependent: path || '<root>',
+        missing: name,
+        spec,
+        reason: `resolves to ${found} at ${actual}, which does not satisfy "${spec}"`,
+      });
     }
   }
+}
+
+/**
+ * True unless the version demonstrably fails the spec. Unknown spec forms return
+ * true so the gate never fails on something it does not understand.
+ *
+ * @param {string} version
+ * @param {string} spec
+ */
+function satisfiesSpec(version, spec) {
+  if (typeof spec !== 'string' || spec === '' || spec === '*' || spec === 'latest') return true;
+  // Aliases, filesystem, git, workspace protocols and URLs are out of scope.
+  if (/^(npm:|file:|link:|git|https?:|workspace:)/.test(spec)) return true;
+  if (semver) {
+    if (!semver.validRange(spec)) return true;
+    return semver.satisfies(version, spec, { includePrerelease: true });
+  }
+  // Without semver, only an exact pin can be judged safely.
+  return /^\d+\.\d+\.\d+/.test(spec) ? version === spec : true;
 }
 
 /**
@@ -86,8 +135,8 @@ function resolveFrom(dependentPath, name) {
   let scope = dependentPath;
   for (;;) {
     const candidate = scope === '' ? `node_modules/${name}` : `${scope}/node_modules/${name}`;
-    if (entries[candidate]) return true;
-    if (scope === '') return false;
+    if (entries[candidate]) return candidate;
+    if (scope === '') return null;
     scope = enclosingPackagePath(scope);
   }
 }
@@ -120,8 +169,8 @@ console.error(
     '`npm install` on macOS does to optional platform subtrees. Do not "fix" it with\n' +
     'another bare install — restore a known-good lock and merge the new entries in.\n',
 );
-for (const { dependent, missing } of problems.slice(0, 25)) {
-  console.error(`  ${dependent}\n    requires ${missing}, which is absent from the lock`);
+for (const { dependent, missing, spec, reason } of problems.slice(0, 25)) {
+  console.error(`  ${dependent}\n    requires ${missing}@${spec} — ${reason}`);
 }
 if (problems.length > 25) console.error(`  ... and ${problems.length - 25} more`);
 process.exit(1);
