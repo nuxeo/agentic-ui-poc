@@ -24,9 +24,13 @@ Seconds, not minutes. Run it after every meaningful edit.
 npm run beta:gate -- --phase <phase-id>
 ```
 
-Runs guardrails, affected lint, affected test, affected build — cheapest first,
-stopping at the first failure and printing only its output tail. Reports land in
-`$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
+Seven gates, cheapest first: `node`, `lockfile`, `guardrails`, then affected
+`lint`, `test`, `build`, `typecheck`. Stops at the first failure and prints only
+its output tail. Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
+
+Only a run with **no** `--gates` filter can be cited for a phase. A filtered run
+reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 7`, because two
+reports in the evidence corpus read `"verdict": "pass"` having run one gate.
 
 For non-Beta work the equivalent is `npm run review:preflight` followed by
 `npx nx affected -t build`.
@@ -48,10 +52,27 @@ behind a right one. Re-run, then move to the next.
 
 Continuing past three is how agents burn an hour producing a worse diff.
 
+## Before you diagnose anything: check the runtime
+
+```bash
+node scripts/beta-harness/node-version.mjs
+```
+
+This is gate zero of `beta:gate`, but a **bare `nx` command does not run it and
+does not get its workarounds.** On Node 25, `npx nx run nuxeo-client:test` fails
+with `SecurityError: Cannot initialize local storage without a
+--localstorage-file path` on entirely correct code, because Node 25's global
+`localStorage` throws and shadows jsdom's. An agent has already misread that as a
+product defect. If the preflight says `PASS WITH WARNING`, route every
+verification through `npm run beta:gate` and treat any red from a bare `nx`
+command as uninterpretable until you have reproduced it inside the gate.
+
 ## Reading failures
 
 | Symptom                                                         | Usual cause                                                                                                          |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `SecurityError: Cannot initialize local storage`                | Wrong Node major, not a code defect. Run the preflight above. Never "fix" the spec.                                  |
+| Nx reports a task **flaky**                                     | Often one task hash run under two Node majors, not genuine flakiness. Check the preflight first.                     |
 | `Cannot find module '@hylandsoftware/...'` or `'@alfresco/...'` | Registry token missing. Check `SATORI_GH_READONLY_TOKEN` before touching code.                                       |
 | `__decorate is not defined` in a spec                           | `tsconfig.spec.json` missing `importHelpers: false` — compare against `libs/shared/nuxeo-client/tsconfig.spec.json`. |
 | Test passes alone, fails in the suite                           | Shared state. Check for un-reset signals or a missing `takeUntilDestroyed()`.                                        |
@@ -67,6 +88,11 @@ Continuing past three is how agents burn an hour producing a worse diff.
 - Delete a failing assertion because the new behaviour "looks right".
 - Report success while a gate is red, or while gates were skipped because an
   earlier one failed. The report lists `skipped` for exactly this reason — read it.
+- Cite a `pass-partial` report as a phase gate, or quote its check count as if the
+  filtered-out gates had run. Read `gates.notRequested` before quoting anything.
+- Change application code to satisfy a failing test before you have classified the
+  failure. Product defect, test defect, environment, configuration, dependency —
+  decide which, in writing, first.
 
 ## Stop and ask a human when
 
@@ -80,7 +106,8 @@ Continuing past three is how agents burn an hour producing a worse diff.
 
 A step is complete when, and only when:
 
-1. The full gate exits 0 with no skipped gates, **and**
+1. The full gate exits 0 with `verdict: "pass"` — not `pass-partial` — and nothing
+   in `gates.skipped` or `gates.notRequested`, **and**
 2. the phase evidence run exits 0 — see [`capture-phase-evidence`](../capture-phase-evidence/SKILL.md).
 
 Reasoning about correctness is not a substitute for either. Quote the gate

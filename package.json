@@ -15,6 +15,10 @@
     "review:preflight": "npm run review:guardrails && npx nx affected -t lint && npx nx affected -t test",
     "evidence:collect": "node scripts/collect-evidence/runner.mjs",
     "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",
+    "beta:backend": "node scripts/beta-harness/backend-preflight.mjs",
+    "beta:audit": "node scripts/beta-harness/assertion-audit.mjs",
+    "beta:state": "node scripts/beta-harness/state-check.mjs",
+    "beta:coverage": "node scripts/beta-harness/coverage-gate.mjs",
     "beta:gate": "node scripts/beta-harness/verify-gate.mjs"
   },
   "lint-staged": {

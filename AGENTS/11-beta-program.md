@@ -54,8 +54,15 @@ Treat them as settled; if you contradict one, prove it first.
   `ADF_HX_CONTENT_SERVICES_API_PROVIDERS`. This is the substitution point the
   whole plan rests on.
 - Its **dependency contract is under-declared**: one peer declared
-  (`@angular/core`) against thirteen actually imported. We maintain the true pin
-  set ourselves.
+  (`@angular/core >=19.2.9`) and one runtime dependency (`tslib`) against thirteen
+  packages actually imported. We maintain the true pin set ourselves. Counted from
+  the `7.20.0-automate.292` tarball, the load-bearing ones by import count are
+  `@hylandsoftware/hxcs-js-client` (151), `@alfresco/adf-core` (66), `@ngx-translate/core`
+  (48), `@alfresco/adf-extensions` (13) and `@alfresco/js-api` (2), plus seven
+  `@angular/material` entry points and `@angular/cdk/collections`. **`npm install`
+  brings none of them and warns about none of them** — a missing pin surfaces as a
+  build error, not a dependency error, so budget Phase 3's spike for resolving the
+  set by hand.
 - `@alfresco/adf-extensions@9.0.0` is on **public npm**, runtime dependency
   `tslib` only, and is **installed and in use** as of Phase 2. Layers 0 and 1 need
   no privileged access. Three corrections established by installing it:
@@ -189,15 +196,23 @@ completion is not completion; see section 6.
 | `phase-5-harness`  | Customer knowledge base, generators, runnable guardrails                         | to be added                  |
 | `phase-6-quality`  | Coverage, E2E, accessibility, security scans, upgrade rehearsal                  | to be added                  |
 
-### The three gates
+### The gates
 
-1. **Quality gate** — `npm run beta:gate -- --phase <id>` is green
-   (lockfile, guardrails, affected lint, affected test, affected build,
-   affected typecheck).
+1. **Quality gate** — `npm run beta:gate -- --phase <id>` is green with
+   `verdict: "pass"`, **not** `pass-partial` (node, lockfile, guardrails,
+   assertions, affected lint, test, build, typecheck).
 2. **Evidence gate** — `npm run beta:evidence -- <id>` exits 0, meaning every
-   step recorded at least one check and every check passed.
-3. **Review gate** — the phase's `INDEX.md` is attached to the PR, and a
+   step recorded at least one check and every check passed. Exit 2 is
+   `precondition-not-met`: fix the environment, do not iterate.
+3. **Independent validation** — the evidence auditor and acceptance validator in
+   `AGENTS/12-review-agents.md` have both run, neither on its own author's work.
+   `npm run beta:audit` and `npm run beta:state` are their mechanical half.
+4. **Review gate** — the phase's `INDEX.md` is attached to the PR, and a
    multi-model adversarial review has run over the diff.
+
+Gate 3 is new because gates 1, 2 and 4 all passed on Phase 1 while its config path
+would have 404'd on every install. It is the only gate that has ever caught that
+class of defect here, and it has **never been run** for Phase 1 or Phase 2.
 
 ---
 
@@ -267,16 +282,24 @@ Beyond the standing rules in `AGENTS.md`:
 
 ## 8. Where things live
 
-| Artifact                | Location                                                |
-| ----------------------- | ------------------------------------------------------- |
-| Phase evidence runner   | `scripts/beta-harness/phase-runner.mjs`                 |
-| Verification gate       | `scripts/beta-harness/verify-gate.mjs`                  |
-| Lockfile integrity gate | `scripts/beta-harness/lockfile-integrity.mjs`           |
-| Phase steps files       | `scripts/beta-harness/steps/<phase-id>.mjs`             |
-| Evidence output         | `$AGENTIC_UI_EVIDENCE_DIR/beta/<phase-id>/<timestamp>/` |
-| Gate reports            | `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`                  |
-| Bridge (adf-hx wrapper) | `libs/shared/adf-hx-bridge/`                            |
-| Action plan             | `docs/adf-hx-poc-action-plan.md`                        |
-| Extension reference     | `docs/extension-reference.md`                           |
-| Extension registry      | `libs/shared/extensions/`                               |
-| Orchestrating skill     | `.cursor/skills/beta-phase/SKILL.md`                    |
+| Artifact                | Location                                                    |
+| ----------------------- | ----------------------------------------------------------- |
+| Phase evidence runner   | `scripts/beta-harness/phase-runner.mjs`                     |
+| Verification gate       | `scripts/beta-harness/verify-gate.mjs`                      |
+| Node runtime preflight  | `scripts/beta-harness/node-version.mjs`                     |
+| Lockfile integrity gate | `scripts/beta-harness/lockfile-integrity.mjs`               |
+| Assertion audit         | `scripts/beta-harness/assertion-audit.mjs`                  |
+| Coverage ratchet        | `scripts/beta-harness/coverage-gate.mjs`                    |
+| Phase state check       | `scripts/beta-harness/state-check.mjs`                      |
+| Backend preflight       | `scripts/beta-harness/backend-preflight.mjs`                |
+| Machine-readable state  | `.ai/state/phases.json`, `.ai/state/coverage-baseline.json` |
+| Review role spec        | `AGENTS/12-review-agents.md`                                |
+| Review adapters         | `.cursor/skills/audit-evidence/`, `.claude/agents/`         |
+| Phase steps files       | `scripts/beta-harness/steps/<phase-id>.mjs`                 |
+| Evidence output         | `$AGENTIC_UI_EVIDENCE_DIR/beta/<phase-id>/<timestamp>/`     |
+| Gate reports            | `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`                      |
+| Bridge (adf-hx wrapper) | `libs/shared/adf-hx-bridge/`                                |
+| Action plan             | `docs/adf-hx-poc-action-plan.md`                            |
+| Extension reference     | `docs/extension-reference.md`                               |
+| Extension registry      | `libs/shared/extensions/`                                   |
+| Orchestrating skill     | `.cursor/skills/beta-phase/SKILL.md`                        |
