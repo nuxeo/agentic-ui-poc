@@ -2,41 +2,63 @@
 
 ## Overview
 
-AI features are powered by a Node.js/Express backend at `apps/ai-backend/` which calls
-the Hyland AI Platform (HAIP) Model Gateway — an OpenAI-compatible API.
+AI features are served by **Nuxeo Automation operations**, provided by a Java marketplace
+package deployed into the Nuxeo server. That package calls the Hyland AI Platform (HAIP)
+Model Gateway, an OpenAI-compatible API.
 
-In development, the backend runs on port 3000. In production, it is deployed as a Docker
-container alongside the Nuxeo server.
+**The AI backend does not live in this repository.** An earlier iteration used a Node.js
+Express service at `apps/ai-backend/`; that has been moved to its own repository and now
+ships as a Nuxeo marketplace package. This repo contains only the Angular client.
+
+Consequences to keep in mind:
+
+- There is nothing to start locally. If the marketplace package is not installed on the
+  Nuxeo instance you are pointed at, every AI call returns **HTTP 500** and the AI panels
+  fail. That is expected, not a client defect.
+- There is no `/ai/*` HTTP surface any more, and no port 3000.
+- HAIP credentials are configured on the Nuxeo server, never in this repo.
 
 ---
 
-## AI Backend Routes
+## How calls are made
 
-All routes: `POST /ai/<endpoint>` (except health check)
+The client posts to the Nuxeo Automation API on the same origin as Nuxeo:
 
-| Route                     | Purpose                                | Notes                                                |
-| ------------------------- | -------------------------------------- | ---------------------------------------------------- |
-| `POST /ai/nl-to-nxql`     | Convert natural language to NXQL query | Input: `{ query: string }`                           |
-| `POST /ai/summarize`      | Generate document summary              | Input: `{ content: string, title: string }`          |
-| `POST /ai/suggest-tags`   | Suggest tags for a document            | Input: `{ content: string, existingTags: string[] }` |
-| `POST /ai/classify`       | Classify document type/category        | Input: `{ content: string, title: string }`          |
-| `POST /ai/similar`        | Find similar documents (NXQL)          | Input: `{ docUid: string }`                          |
-| `POST /ai/chat`           | RAG streaming chat                     | Input: `{ messages: ChatMessage[], docUid: string }` |
-| `POST /ai/insights`       | Dashboard KPI cards                    | Input: `{ recentDocs: NuxeoDocument[] }`             |
-| `POST /ai/anomalies`      | Audit log anomaly detection            | Input: `{ auditEvents: AuditEvent[] }`               |
-| `POST /ai/sentiment`      | Document sentiment analysis            | Input: `{ content: string }`                         |
-| `POST /ai/nl-permissions` | Natural language ACL query             | Input: `{ query: string, docUid: string }`           |
-| `GET /ai/health`          | Health check                           | Returns `{ status: 'ok' }`                           |
+```
+POST {AI_BACKEND_URL}/api/v1/automation/{OperationId}
+Body: { "params": { ... } }
+```
+
+`AI_BACKEND_URL` is an `InjectionToken` (`libs/shared/ai-client/src/lib/ai.config.ts`),
+provided as `'/nuxeo'` in `apps/nuxeo-ui/src/app/app.config.ts`. URL construction lives in
+`AiGatewayService.op()` (`libs/shared/ai-client/src/lib/ai-gateway.service.ts`).
+
+## Automation operations
+
+| Operation           | Purpose                                |
+| ------------------- | -------------------------------------- |
+| `AI.NlToNxql`       | Convert natural language to NXQL       |
+| `AI.Summarize`      | Generate a document summary            |
+| `AI.SuggestTags`    | Suggest tags for a document            |
+| `AI.Classify`       | Classify document type and category    |
+| `AI.Similar`        | Find similar documents                 |
+| `AI.Chat`           | RAG conversational assistant           |
+| `AI.Insights`       | Dashboard insight cards                |
+| `AI.Anomalies`      | Audit log anomaly detection            |
+| `AI.Sentiment`      | Comment and document sentiment         |
+| `AI.NlPermissions`  | Natural language ACL queries           |
+| `AI.AuditSummarize` | Summarise a set of audit events        |
+| `AI.AuditNlFilter`  | Natural language filter over the audit |
 
 ---
 
 ## Feature Flag System
 
-AI features are gated behind a feature flag that is **on by default** for the Agentic UI PoC.
-Users can explicitly disable AI features from the UI; that opt-out is persisted locally.
+AI features are gated behind a feature flag that is **on by default**. Users can explicitly
+disable AI features from the UI; that opt-out is persisted in `localStorage`.
 
-Default-on relies on valid HAIP configuration in Nuxeo/cloud secrets. Keep the UI gate in place, never
-hardcode HAIP credentials, and route all model calls through the configured AI backend/Nuxeo operations.
+Default-on relies on the marketplace package being installed and HAIP being configured
+server-side. Keep the UI gate in place and never hardcode HAIP credentials.
 
 ```typescript
 // Service: libs/shared/ai-client/src/lib/ai-feature-flag.service.ts
@@ -48,7 +70,7 @@ readonly aiEnabled = signal(this.readFromStorage()); // DEFAULT: on
 }
 ```
 
-The flag is toggled in the app header menu (Settings → AI Features).
+Toggled in the app header menu (Settings → AI Features).
 
 ---
 
@@ -68,47 +90,34 @@ detectAnomalies(auditEvents: AuditEvent[]): Observable<AiAnomaly[]>
 
 ---
 
-## HAIP Configuration (`apps/ai-backend/src/config.ts`)
+## Adding a New AI Feature
 
-```typescript
-export const config = {
-  haipApiKey: process.env['HAIP_API_KEY'] ?? '',
-  haipBaseUrl: process.env['HAIP_BASE_URL'] ?? '',
-  haipEnvironmentId: process.env['HAIP_ENVIRONMENT_ID'] ?? '',
-  haipUserId: process.env['HAIP_USER_ID'] ?? '',
-  nuxeoAuth: process.env['NUXEO_AUTH'] ?? '',
-  nuxeoBaseUrl: process.env['NUXEO_BASE_URL'] ?? 'http://localhost:8080',
-  aiBackendPort: parseInt(process.env['PORT'] ?? '3000', 10),
-};
-```
+The operation itself is implemented in the separate AI package repository, not here. On this
+side:
 
-All values validated at startup — if required values are missing, the process exits with a clear error message.
+1. Add a method to `AiGatewayService` calling `this.op('AI.<NewOperation>')`.
+2. Add the typed response model in `libs/shared/ai-client/src/lib/models/`.
+3. Expose it through `libs/shared/ai-client/src/lib/ai.service.ts`.
+4. Gate the UI behind `@if (aiFeatureFlag.aiEnabled())`.
+5. Handle the failure path — assume the operation may be absent on a given server.
+6. Update this file and `docs/ai-features.md`.
 
 ---
 
-## Adding a New AI Endpoint
+## Local Development
 
-1. Create `apps/ai-backend/src/routes/<name>.route.ts`
-2. Register in `apps/ai-backend/src/main.ts`
-3. Add a method to `libs/shared/ai-client/src/lib/ai.service.ts`
-4. Gate the UI behind `@if (aiFeatureFlag.aiEnabled())`
-5. Update this file (`AGENTS/10-ai-features.md`) and `docs/ai-features.md`
-
----
-
-## Local Development Setup
+Nothing to start. Point the app at a Nuxeo instance that has the AI marketplace package
+installed:
 
 ```bash
-# 1. Copy the example env file
-cp apps/ai-backend/.env.example apps/ai-backend/.env
-
-# 2. Fill in real values (HAIP_API_KEY, NUXEO_AUTH, etc.)
-
-# 3. Run the AI backend
-npx nx serve ai-backend
-
-# 4. Run the Angular app (separate terminal)
 npx nx serve nuxeo-ui
 ```
 
-The Angular dev proxy forwards `/ai/*` requests to `http://localhost:3000`.
+If your local Nuxeo does not have the package, AI calls return 500 and the rest of the
+application is unaffected. Verify with:
+
+```bash
+curl -u Administrator:Administrator -X POST \
+  -H "Content-Type: application/json" -d '{"params":{}}' \
+  http://localhost:8080/nuxeo/api/v1/automation/AI.Insights
+```

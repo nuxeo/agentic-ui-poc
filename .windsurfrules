@@ -21,7 +21,7 @@ Features never import from other features (Nx boundary rule enforced by lint).
 - New service method → libs/shared/nuxeo-client/src/lib/services/<domain>.service.ts
 - New shared component → libs/shared/ui/src/lib/<name>/
 - New feature page → libs/features/<feature>/src/lib/<feature>/<feature>.ts
-- New AI endpoint → apps/ai-backend/src/routes/<name>.route.ts
+- New AI call → libs/shared/ai-client/src/lib/ai-gateway.service.ts (operation lives in the separate AI package repo)
 - Routing → apps/nuxeo-ui/src/app/app.routes.ts
 - Auth → apps/nuxeo-ui/src/app/auth/
 

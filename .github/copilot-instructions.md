@@ -62,6 +62,6 @@ When reviewing pull requests in this Angular 19 + Nx monorepo, enforce the follo
 ## AI Features
 
 - All new UI that calls AI must be gated behind `@if (aiFeatureFlagService.aiEnabled())`.
-- No direct calls from Angular components to the HAIP API — all AI calls go through `apps/ai-backend`.
+- No direct calls from Angular components to the HAIP API — all AI calls go through `AiGatewayService`, which posts to Nuxeo Automation operations (`/nuxeo/api/v1/automation/AI.*`) provided by a separate marketplace package.
 - The feature flag defaults to `true`; users can still explicitly disable AI features from the UI.
 - Default-on is acceptable for the Agentic UI PoC because HAIP is configured through Nuxeo/cloud secrets; keep clear opt-out UX and do not hardcode credentials or call HAIP directly.

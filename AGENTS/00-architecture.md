@@ -2,17 +2,17 @@
 
 ## Stack
 
-| Layer                | Technology                                                    |
-| -------------------- | ------------------------------------------------------------- |
-| Frontend framework   | Angular 20 (standalone components, signals)                   |
-| Monorepo tool        | Nx 22                                                         |
-| UI component library | Satori (Hyland design system) + Angular Material              |
-| State management     | Angular Signals — no NgRx, no BehaviorSubject for UI state    |
-| HTTP                 | Angular HttpClient via `NuxeoApiBase` wrapper                 |
-| Auth                 | SAML SSO in production; Basic Auth interceptor in development |
-| Backend (AI)         | Node.js / Express — `apps/ai-backend`                         |
-| AI provider          | Hyland HAIP Model Gateway (OpenAI-compatible API)             |
-| Document platform    | Nuxeo Content Services Platform                               |
+| Layer                | Technology                                                      |
+| -------------------- | --------------------------------------------------------------- |
+| Frontend framework   | Angular 20 (standalone components, signals)                     |
+| Monorepo tool        | Nx 22                                                           |
+| UI component library | Satori (Hyland design system) + Angular Material                |
+| State management     | Angular Signals — no NgRx, no BehaviorSubject for UI state      |
+| HTTP                 | Angular HttpClient via `NuxeoApiBase` wrapper                   |
+| Auth                 | SAML SSO in production; Basic Auth interceptor in development   |
+| Backend (AI)         | Nuxeo Automation operations from a separate marketplace package |
+| AI provider          | Hyland HAIP Model Gateway (OpenAI-compatible API)               |
+| Document platform    | Nuxeo Content Services Platform                                 |
 
 ---
 
@@ -51,11 +51,7 @@ apps/
       settings/                  ← Profile, Nuxeo Drive, Cloud Services pages
       app.config.ts              ← Providers, router config
       app.routes.ts              ← Top-level lazy routes
-  ai-backend/                    ← Node.js Express AI server
-    src/
-      routes/                    ← One file per AI endpoint
-      services/                  ← openai.service.ts (HAIP client)
-      config.ts                  ← Environment config + validation
+  (no ai-backend — AI operations ship as a separate Nuxeo marketplace package)
 
 libs/
   features/

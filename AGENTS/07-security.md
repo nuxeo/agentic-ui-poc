@@ -106,10 +106,18 @@ this.blobUrl.set(URL.createObjectURL(blob)); // never revoked
 
 ---
 
-## AI Backend Security (`apps/ai-backend`)
+## AI Security
 
-- HAIP API key loaded from `process.env['HAIP_API_KEY']` — validated at startup
-- Nuxeo auth loaded from `process.env['NUXEO_AUTH']` — validated at startup
-- No credentials in `config.ts` source file
-- All user inputs to AI endpoints are passed as content, not as system prompts (prompt injection mitigation)
-- Rate limiting should be applied to all `/ai/*` routes in production
+The AI backend is **not in this repository** — AI features are Nuxeo Automation operations
+provided by a separate marketplace package. HAIP credentials, prompt construction and rate
+limiting are that package's responsibility and are configured on the Nuxeo server.
+
+What this repo is responsible for:
+
+- Never hardcode or proxy HAIP credentials. The client only calls
+  `/nuxeo/api/v1/automation/AI.*` and relies on the existing auth interceptor.
+- Never send credentials, tokens or session data as AI operation parameters.
+- Treat AI responses as untrusted content: render through Angular template binding, never
+  `innerHTML`, and never `bypassSecurityTrust*`.
+- Handle the operation-absent case. If the package is not installed the call returns 500;
+  fail closed and show a normal error rather than retrying or degrading silently.

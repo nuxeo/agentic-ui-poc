@@ -1,7 +1,7 @@
 # AGENTS.md — Nuxeo Agentic UI: Complete Codebase Context
 
 **Read this file at the start of every AI session.**
-Full knowledge base: `AGENTS/00-architecture.md` through `AGENTS/10-ai-features.md`
+Full knowledge base: `AGENTS/00-architecture.md` through `AGENTS/11-beta-program.md`
 
 ---
 
@@ -82,20 +82,24 @@ All in `libs/shared/nuxeo-client/src/lib/services/` · Import: `@agentic-ui/shar
 
 ---
 
-## 5. AI Backend Routes
+## 5. AI Operations
 
-Backend: `apps/ai-backend/` (Express on port 3000 in dev)
+Served by **Nuxeo Automation operations** from a Java marketplace package deployed on the
+Nuxeo server. The backend is **not in this repository** — it lives in its own repo. This
+repo holds only the Angular client, which posts to
+`/nuxeo/api/v1/automation/AI.<Operation>`. If the package is absent on the target server,
+AI calls return 500; that is expected, not a client defect.
 Feature flag: **on by default** — gated by `AiFeatureFlagService`, with an explicit user opt-out
 
-| Route                   | Purpose                 |
-| ----------------------- | ----------------------- |
-| `POST /ai/nl-to-nxql`   | Natural language → NXQL |
-| `POST /ai/summarize`    | Document summary        |
-| `POST /ai/suggest-tags` | Tag suggestions         |
-| `POST /ai/classify`     | Document classification |
-| `POST /ai/chat`         | RAG streaming chat      |
-| `POST /ai/insights`     | Dashboard KPI cards     |
-| `POST /ai/anomalies`    | Audit anomaly detection |
+| Automation operation | Purpose                 |
+| -------------------- | ----------------------- |
+| `AI.NlToNxql`        | Natural language → NXQL |
+| `AI.Summarize`       | Document summary        |
+| `AI.SuggestTags`     | Tag suggestions         |
+| `AI.Classify`        | Document classification |
+| `AI.Chat`            | RAG conversational chat |
+| `AI.Insights`        | Dashboard insight cards |
+| `AI.Anomalies`       | Audit anomaly detection |
 
 → Full detail: `AGENTS/10-ai-features.md`
 
@@ -103,17 +107,17 @@ Feature flag: **on by default** — gated by `AiFeatureFlagService`, with an exp
 
 ## 6. Where Things Live
 
-| I need to...           | Location                                                        |
-| ---------------------- | --------------------------------------------------------------- |
-| Add a Nuxeo API call   | `libs/shared/nuxeo-client/src/lib/services/<domain>.service.ts` |
-| Add a shared dialog    | `libs/shared/ui/src/lib/<dialog-name>/`                         |
-| Add a feature page     | `libs/features/<feature>/src/lib/<feature>/<feature>.ts`        |
-| Change routing         | `apps/nuxeo-ui/src/app/app.routes.ts`                           |
-| Change navigation      | `apps/nuxeo-ui/src/app/platform-nav-items.ts`                   |
-| Add an AI endpoint     | `apps/ai-backend/src/routes/<name>.route.ts`                    |
-| Change auth behavior   | `apps/nuxeo-ui/src/app/auth/`                                   |
-| Add a data model       | `libs/shared/nuxeo-client/src/lib/models/`                      |
-| Add a shared component | `libs/shared/ui/src/lib/`                                       |
+| I need to...            | Location                                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------------------------- |
+| Add a Nuxeo API call    | `libs/shared/nuxeo-client/src/lib/services/<domain>.service.ts`                                |
+| Add a shared dialog     | `libs/shared/ui/src/lib/<dialog-name>/`                                                        |
+| Add a feature page      | `libs/features/<feature>/src/lib/<feature>/<feature>.ts`                                       |
+| Change routing          | `apps/nuxeo-ui/src/app/app.routes.ts`                                                          |
+| Change navigation       | `apps/nuxeo-ui/src/app/platform-nav-items.ts`                                                  |
+| Call a new AI operation | `libs/shared/ai-client/src/lib/ai-gateway.service.ts` (operation lives in the AI package repo) |
+| Change auth behavior    | `apps/nuxeo-ui/src/app/auth/`                                                                  |
+| Add a data model        | `libs/shared/nuxeo-client/src/lib/models/`                                                     |
+| Add a shared component  | `libs/shared/ui/src/lib/`                                                                      |
 
 ---
 
@@ -146,6 +150,7 @@ Feature flag: **on by default** — gated by `AiFeatureFlagService`, with an exp
 | `AGENTS/08-bug-patterns.md`        | 10 known anti-patterns with BAD/GOOD examples                 |
 | `AGENTS/09-pr-feedback.md`         | How to fetch and resolve GitHub PR review comments            |
 | `AGENTS/10-ai-features.md`         | AI backend routes, HAIP config, feature flag system           |
+| `AGENTS/11-beta-program.md`        | Beta program: extensibility layers, phase gates, agent roster |
 
 ---
 

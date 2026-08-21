@@ -28,7 +28,7 @@
 agentic-ui-poc/
 ├── apps/
 │   ├── nuxeo-ui/          ← Angular 19 SPA (the main UI)
-│   └── ai-backend/        ← Express + TypeScript AI API server
+│                          (no ai-backend — AI ships as a separate marketplace package)
 ├── libs/
 │   ├── features/          ← 8 lazy-loaded feature modules
 │   │   ├── browse/
@@ -328,42 +328,50 @@ The `HttpClient` interceptor transparently adds `Authorization` — services don
 
 ---
 
-## 6. AI Backend — Express Service & AI Features
+## 6. AI Features — Nuxeo Automation Operations
 
-**App:** `apps/ai-backend/` — Express 5 + TypeScript, runs separately on port 3000.
+**Not in this repository.** AI features are served by `AI.*` Automation operations from a
+separate Nuxeo marketplace package. This repo contains only the client,
+`libs/shared/ai-client`. An earlier iteration ran an Express service at `apps/ai-backend/`
+on port 3000; that has moved to its own repo.
 
 ### Architecture
 
 ```
-Angular UI  ──POST /ai/insights──►  Express Backend  ──►  OpenAI API
-                                          │
-                                          └──►  Nuxeo API (server-to-server)
+Angular UI  ──POST /nuxeo/api/v1/automation/AI.Insights──►  Nuxeo Server  ──►  HAIP
+                                                            (AI marketplace
+                                                             package)
 ```
 
-The Angular dev server proxies `/ai/*` → `localhost:3000`, so from the browser's perspective it's same-origin. In production, the backend is deployed as a Docker container alongside Nuxeo.
+Calls are same-origin Nuxeo Automation requests, so they reuse the existing auth interceptor.
+There is no `/ai/*` surface, no separate port, and no CORS configuration. If the package is
+not installed on the target server, AI calls return HTTP 500 and the rest of the application
+is unaffected.
 
 ### Routes & capabilities
 
-| Route                     | What it does                                                      |
-| ------------------------- | ----------------------------------------------------------------- |
-| `GET /ai/health`          | Health check                                                      |
-| `POST /ai/nl-to-nxql`     | Natural language → NXQL query (GPT-4o-mini)                       |
-| `POST /ai/summarize`      | Summarize document content (GPT-4o)                               |
-| `POST /ai/suggest-tags`   | Suggest tags from content (GPT-4o-mini)                           |
-| `POST /ai/classify`       | Classify document type, nature, subjects (GPT-4o)                 |
-| `POST /ai/similar`        | Find similar documents (generates a NXQL query)                   |
-| `POST /ai/anomalies`      | Detect anomalous documents in a folder                            |
-| `POST /ai/sentiment`      | Sentiment analysis on document content                            |
-| `POST /ai/insights`       | Dashboard KPI cards — aggregates user's pending tasks and actions |
-| `POST /ai/chat`           | RAG-based chat with streaming (SSE)                               |
-| `POST /ai/nl-permissions` | Natural language → ACL actions                                    |
-| `POST /ai/audit-ai`       | AI analysis of document audit trail                               |
+All called as `POST /nuxeo/api/v1/automation/<Operation>`.
+
+| Operation           | What it does                                                |
+| ------------------- | ----------------------------------------------------------- |
+| `AI.NlToNxql`       | Natural language → NXQL query                               |
+| `AI.Summarize`      | Summarize document content                                  |
+| `AI.SuggestTags`    | Suggest tags from content                                   |
+| `AI.Classify`       | Classify document type, nature, subjects                    |
+| `AI.Similar`        | Find similar documents                                      |
+| `AI.Anomalies`      | Detect anomalies in audit events                            |
+| `AI.Sentiment`      | Sentiment analysis on comments and content                  |
+| `AI.Insights`       | Dashboard insight cards — pending tasks and recent activity |
+| `AI.Chat`           | RAG-based conversational assistant                          |
+| `AI.NlPermissions`  | Natural language → ACL answers                              |
+| `AI.AuditSummarize` | Summarize a set of audit events                             |
+| `AI.AuditNlFilter`  | Natural language filter over the audit trail                |
 
 ### How the NL → NXQL feature works
 
 1. User types "show me contracts modified last week" in the search bar
-2. Angular sends `POST /ai/nl-to-nxql` with the text
-3. Backend calls GPT-4o-mini with a carefully engineered system prompt that knows NXQL syntax rules, valid field names, date literal format, etc.
+2. Angular posts to `/nuxeo/api/v1/automation/AI.NlToNxql` with the text
+3. The server-side operation calls HAIP with a system prompt that knows NXQL syntax rules, valid field names, date literal format, etc.
 4. GPT returns structured JSON: `{ "nxql": "SELECT * FROM Document WHERE ...", "explanation": "..." }`
 5. Angular displays the explanation to the user and executes the NXQL against Nuxeo
 
@@ -466,7 +474,11 @@ mvn package -pl nuxeo-agentic-ui-package -am  (triggered by GitHub Actions on ma
 
 **Q: How was the AI backend secured?**
 
-> The AI backend is a separate service. In development, the Angular proxy (`proxy.conf.json`) routes `/ai/*` to `localhost:3000`. In production, it runs as a Docker container in the same network as Nuxeo, not exposed publicly. CORS is locked to allowed origins via `AI_BACKEND_ALLOWED_ORIGINS` env var. Credentials are in `.env` (never committed).
+> By removing it as a separate attack surface. AI features are now Nuxeo Automation
+> operations from a marketplace package, so calls are same-origin and authenticated by
+> Nuxeo itself through the existing interceptor. There is no public AI endpoint, no CORS
+> policy to maintain, and no model credentials anywhere in this repository — HAIP settings
+> live in Nuxeo server configuration.
 
 **Q: What was the hardest technical challenge?**
 
@@ -488,9 +500,9 @@ mvn package -pl nuxeo-agentic-ui-package -am  (triggered by GitHub Actions on ma
 | Nuxeo API base client       | `libs/shared/nuxeo-client/src/lib/services/nuxeo-api-base.ts`              |
 | Document service            | `libs/shared/nuxeo-client/src/lib/services/document-detail.service.ts`     |
 | Document viewer (PDF/video) | `libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts`      |
-| AI backend entry point      | `apps/ai-backend/src/main.ts`                                              |
-| AI system prompts           | `apps/ai-backend/src/context/system-prompts.ts`                            |
-| RAG chat service            | `apps/ai-backend/src/services/rag.service.ts`                              |
+| AI client gateway           | `libs/shared/ai-client/src/lib/ai-gateway.service.ts`                      |
+| AI chat state               | `libs/shared/ai-client/src/lib/ai-chat.service.ts`                         |
+| AI operations and prompts   | separate AI marketplace package repository                                 |
 | Marketplace config          | `nuxeo-agentic-ui-package/src/main/resources/package.xml`                  |
 | OSGi bundle module          | `nuxeo-agentic-core/`                                                      |
 | Nuxeo OSGi auth config      | `nuxeo-agentic-core/src/main/resources/OSGI-INF/deployment-fragment.xml`   |
