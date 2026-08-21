@@ -90,6 +90,18 @@ const ALL_GATES = [
   // the Angular compiler over a library on its own, so a change confined to one
   // is checked directly rather than only wherever `nuxeo-ui` happens to use it.
   { id: 'typecheck', label: 'Affected typecheck', cmd: 'npx', argv: ['nx', 'affected', '-t', 'typecheck', `--base=${base}`] },
+  // Last, because it reads the artifact `build` produces. It asks the only question
+  // the other gates cannot: what does a customer actually receive? Phase 3's spike
+  // found adf-hx importing a test library from its shipped runtime bundle, which put
+  // ng-mocks' implementation and two `eval()` calls into a customer-facing chunk.
+  {
+    id: 'bundle',
+    label: 'Bundle contents',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/no-test-libs-in-bundle.mjs'],
+    // It reports VACUOUS when adf-hx is not in the bundle; that has to be visible.
+    echoOnPass: true,
+  },
 ];
 
 const requested = args.get('gates');
