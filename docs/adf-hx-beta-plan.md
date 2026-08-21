@@ -237,19 +237,27 @@ Two properties worth stating explicitly:
 Phase 6 should test the ACL-denied path: a user without Read must still get a working application on
 the default configuration.
 
-## Phase 2 — Layer 1: extension registry (**registry, rules, nav and outlet delivered**; actions remain, 8-12 d)
+## Phase 2 — Layer 1: extension registry (**closed**; toolbar/tabs/columns carried to Phase 3)
 
-Gates: quality gate **PASS** (4/4 green) · evidence gate **PASS** (40/40 checks, exit 0).
+Gates: quality gate **PASS** (6/6 green, including the new lockfile and typecheck gates) ·
+evidence gate **PASS**.
 Reference doc: [`docs/extension-reference.md`](extension-reference.md).
 
 > **What the evidence proves, stated precisely.** It proves that a manifest edit hides, adds,
 > reorders, relabels and rule-gates navigation, and that a customer layer wins through
-> `$references`, all with a **byte-identical JavaScript bundle** — the script bytes are fetched and
-> hashed on every pass, not the `src` attributes. It proves the packaged default reproduces the
-> pre-Phase-2 navigation by ordered equality against the ids and labels transcribed from the deleted
-> `const`, not by a count. It proves a manifest-added nav item now resolves a registered `sidebar`
-> component instead of a placeholder. It does **not** prove anything about toolbar, tab, context-menu,
-> bulk or column extensibility, because nothing is registered into those slots yet.
+> `$references`. It proves the packaged default reproduces the pre-Phase-2 navigation by ordered
+> equality against the ids and labels transcribed from the deleted `const`, not by a count. It
+> proves a manifest-added nav item now resolves a registered `sidebar` component instead of a
+> placeholder, that a non-administrator is not offered Administration, and that a manifest hides and
+> adds a bulk action. It does **not** prove anything about toolbar, tab, context-menu or column
+> extensibility, because nothing reads those slots.
+>
+> **The bundle digests are weaker than first claimed.** Nine steps hash the script bytes on every
+> pass, and an earlier version of this section said they would fail "if configuration were dead".
+> They would not: the dev server does not rebuild between reloads, so they pass regardless. They rule
+> out one alternative explanation — that a rebuild rather than the manifest produced the change — and
+> they read `script[src]` only, so a lazy chunk pulled in by dynamic `import()` is outside them. The
+> DOM assertions are the load-bearing part.
 
 Delivered:
 
@@ -263,7 +271,9 @@ Delivered:
 - **Rules:** the four document-permission predicates registered as `app.rules.*` with no change to
   the predicates. Plus `core.every`/`core.some`/`core.not` as ordinary registered evaluators rather
   than special cases. An **unregistered rule id fails open**, so a manifest typo cannot strip working
-  actions out of the UI — safe precisely because Layer 1 visibility is not an authorisation boundary.
+  actions out of the UI — safe precisely because Layer 1 visibility is not an authorisation boundary
+  — **except** for the three user rules, which fail closed so that an unregistered
+  `app.rules.hasAdministrationAccess` cannot offer Administration to everyone during startup.
 - **Navbar and sidebar:** `PLATFORM_NAV_ITEMS` is deleted. The same fifteen entries are
   `PACKAGED_NAV_ITEMS` registered into the `navbar` slot behind a signal-backed `APP_NAV_ITEMS`
   token — a signal, not a const, because the manifest arrives asynchronously and nav rules depend on
@@ -276,17 +286,42 @@ Delivered:
 - **`$references` merge**, with `$ignoreReferenceList`, `.$replace` and unresolvable layers reported
   rather than swallowed.
 
-Not attempted, and deliberately left as its own phase:
+Delivered at closure (21 August 2026):
 
-- **Actions — the largest refactor.** The document-detail toolbar, its seven-item overflow menu and
-  its five hardcoded `mat-tab` children in `document-detail.html` (2,000+ lines), the six fixed
-  `@Output()` buttons in `selection-topbar.component.html`, `documentList` columns and browse row
-  `contextMenu`. The slots exist and resolve; nothing is registered into them. Reuse adf-hx's
-  `*-action.service` pattern, since Phase 3 adopts those components.
+- **The action registry.** `ExtensionActionDescriptor` in a slot says where and when;
+  an `ExtensionActionHandler` registered by id says what. The handler shape is adf-hx's
+  `*-action.service` shape, so Phase 3 can substitute an upstream service under the same
+  descriptor id. `enabledRule` disables rather than hides, which today's UI needs.
+- **`bulk-actions` converted.** The six fixed `@Output()` buttons in
+  `selection-topbar.component.html` are now `PACKAGED_BULK_ACTIONS` plus six action
+  services. Adding a seventh was a button, an output and a shell handler — three files
+  across two projects; it is now two registrations. Proven by an ordered-equality spec
+  against the ids the markup rendered, and by an evidence step that hides one and adds
+  one from a manifest.
+- **The document rule context is populated.** Document detail publishes the focused
+  document, so `canWrite`, `canRemove`, `canAddChildren`, `canManagePermissions` and
+  `hasDocument` work there; `isTrashed`/`isNotTrashed` are added. Selection cardinality
+  moves to its own `selectionCount` field so the cardinality rules go live while the
+  permission ones stay honestly inert.
+- **Fail-closed for security-relevant rules**, a lockfile-integrity gate, a direct
+  typecheck target for the library, and `core.not` corrected to upstream's NOR.
+
+Not attempted, and carried into the phase that adopts the components:
+
+- **The document-detail toolbar, its seven-item overflow menu and its five `mat-tab`
+  children**, and browse's row `contextMenu` and `documentList` columns. Those five slot
+  ids are reserved and **nothing reads them** — `docs/extension-reference.md` says so
+  rather than implying an extension point exists. The toolbar was designed as descriptors
+  and then not shipped: eight of its eleven controls carry per-action dynamic state
+  (`isLocked`, `isFavorite`, `isSubscribed`, `isInClipboard`, `actionInProgress`,
+  `hasVersion`) that the descriptor shape does not yet express, and inventing those fields
+  under time pressure risked a visible regression in the most-used page. Phase 3 replaces
+  much of that markup with adf-hx components anyway, so the fields should be designed
+  against the upstream shape rather than against ours.
 - **Route contributions.** `app.routes.ts` still imports feature `Routes` arrays directly.
-- **The selection rules are declared but inert.** `SelectionService` tracks ids, not documents, so
-  `app.rules.canWriteSelection` and `app.rules.canRemoveSelection` evaluate against an empty
-  selection and answer `false`. They become live with the action registry.
+- **The two selection permission rules remain inert.** `SelectionService` tracks ids, not
+  documents, so `app.rules.canWriteSelection` and `app.rules.canRemoveSelection` still
+  answer `false`. Making them live costs a fetch per selected row.
 
 ## Phase 3 — adf-hx adoption (30-45 d)
 

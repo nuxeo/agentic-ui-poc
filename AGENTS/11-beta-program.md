@@ -98,13 +98,49 @@ Treat them as settled; if you contradict one, prove it first.
   lock and merging only the new entries in.
 - **Layer 1 slots are additive by construction.** `ExtensionSlotRegistry` keys
   slots by opaque string with no enum, union or `switch` on slot identity, so a
-  tenth slot requires no change to the nine. Do not introduce a central slot
+  ninth slot requires no change to the eight. Do not introduce a central slot
   dispatch; it would undo the property the Beta addressable-surface decision
-  rests on.
-- **An unregistered rule id fails open.** A manifest naming a rule this build does
-  not have leaves the entry visible. That is deliberate: Layer 1 visibility is not
-  an authorisation boundary, and failing closed would let a typo strip working
-  actions out of the UI.
+  rests on. `rules` was removed from `EXTENSION_SLOTS`: rules are not descriptors
+  and live in `ExtensionRuleRegistry`, so `slots.rules` was silently inert.
+- **A slot id existing does not mean anything reads it.** Of the eight, only
+  `navbar` and `bulk-actions` have packaged descriptors and a host that renders
+  them; `sidebar` is resolved but has none; `routes`, `toolbar`, `contextMenu`,
+  `tabs` and `documentList` are reserved and **nothing reads them**. Do not
+  describe a reserved id as an extension point.
+- **An unregistered rule id fails open, except for a declared list.** A manifest
+  naming a rule this build does not have leaves the entry visible; Layer 1
+  visibility is not an authorisation boundary, and failing closed would let a
+  typo strip working actions out of the UI. `SECURITY_RELEVANT_RULE_IDS` — the
+  three user rules, including `app.rules.hasAdministrationAccess` — fail
+  **closed** instead. The list is declared rather than attached at registration,
+  because the unsafe window is exactly the one before registration happens: that
+  rule is contributed by the shell's `APP_INITIALIZER`, so any consumer resolving
+  the navbar earlier saw an unknown id and got `true`, which would have offered
+  Administration to every user. `rule: null` still ungates deliberately.
+- **`core.not` is NOR, not NAND.** Upstream is `args.every(arg => !evaluator(...))`.
+  Phase 2 shipped `!args.every(evaluator)`, which agrees for one argument and
+  diverges from two upwards while the file claimed ACA parity. Corrected, with a
+  multi-argument test.
+- **The rule context has three independently populated halves.** `document` is
+  written by document detail alone and cleared on destroy, so the seven document
+  rules answer `false` on every other surface. `selectionCount` is populated from
+  `SelectionService`, so the cardinality rules are live. `selection` — the
+  documents — is **still empty**, because `SelectionService` tracks ids, so
+  `canWriteSelection` and `canRemoveSelection` still answer `false`. Do not
+  collapse `selectionCount` into `selection.length`; that is what keeps the
+  distinction honest.
+- **No library under `libs/` has a `build` target, and adding one to a single
+  library fails lint.** `@nx/enforce-module-boundaries` forbids a buildable
+  library importing a non-buildable one, so the first `build` target cascades
+  through the whole dependency chain. Direct typechecking is a `typecheck`
+  target instead, and the gate runs it. Real build targets are Phase 4's
+  ng-packagr work.
+- **`npm ci` is not what catches a macOS-pruned lockfile.** `npm ci --dry-run`
+  only demands the entries the current platform resolves, so on macOS it never
+  looks at the pruned Linux subtree and passes. The `lockfile` gate checks the
+  invariant directly: every non-optional dependency edge in the lock must resolve
+  within the lock. It is the first gate because it is the failure the other five
+  structurally cannot see.
 - **The `test` gate does not typecheck.** Vitest transpiles through esbuild, so two
   real type errors in Phase 2 code passed 46 green unit tests and were caught only
   by `build`. Never treat a green `test` gate as evidence that types are sound.
@@ -156,7 +192,8 @@ completion is not completion; see section 6.
 ### The three gates
 
 1. **Quality gate** — `npm run beta:gate -- --phase <id>` is green
-   (guardrails, affected lint, affected test, affected build).
+   (lockfile, guardrails, affected lint, affected test, affected build,
+   affected typecheck).
 2. **Evidence gate** — `npm run beta:evidence -- <id>` exits 0, meaning every
    step recorded at least one check and every check passed.
 3. **Review gate** — the phase's `INDEX.md` is attached to the PR, and a
@@ -234,6 +271,7 @@ Beyond the standing rules in `AGENTS.md`:
 | ----------------------- | ------------------------------------------------------- |
 | Phase evidence runner   | `scripts/beta-harness/phase-runner.mjs`                 |
 | Verification gate       | `scripts/beta-harness/verify-gate.mjs`                  |
+| Lockfile integrity gate | `scripts/beta-harness/lockfile-integrity.mjs`           |
 | Phase steps files       | `scripts/beta-harness/steps/<phase-id>.mjs`             |
 | Evidence output         | `$AGENTIC_UI_EVIDENCE_DIR/beta/<phase-id>/<timestamp>/` |
 | Gate reports            | `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`                  |
