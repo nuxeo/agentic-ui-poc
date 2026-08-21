@@ -74,12 +74,12 @@ function asRuleRef(rule: ExtensionRule): ExtensionRuleRef {
 /** Rule refs nested inside a composite's `parameters`, ignoring anything else. */
 function nestedRules(parameters: readonly unknown[]): ExtensionRule[] {
   return parameters.filter(
-    (parameter): ExtensionRule =>
+    (parameter): parameter is ExtensionRule =>
       typeof parameter === 'string' ||
       (typeof parameter === 'object' &&
         parameter !== null &&
         typeof (parameter as { type?: unknown }).type === 'string'),
-  ) as ExtensionRule[];
+  );
 }
 
 /**

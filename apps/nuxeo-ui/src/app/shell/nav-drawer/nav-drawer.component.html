@@ -206,11 +206,11 @@
       }
     </div>
   } @else if (isAssets) {
-    <app-dynamic-drawer [drawerComponent]="assetsDrawerComponent()" />
+    <lib-extension-outlet componentId="app.sidebar.assets" />
   } @else if (isSearchFilters) {
-    <app-dynamic-drawer [drawerComponent]="searchFiltersDrawerComponent()" />
+    <lib-extension-outlet componentId="app.sidebar.searchFilters" />
   } @else if (isTrash) {
-    <app-dynamic-drawer [drawerComponent]="trashDrawerComponent()" />
+    <lib-extension-outlet componentId="app.sidebar.trashFilters" />
   } @else if (isTasksPanel) {
     <div class="tasks-panel-wrap">
       @if (tasksLoading()) {
@@ -409,6 +409,14 @@
         </button>
       }
     </div>
+  } @else if (sidebarComponentId(); as sidebarId) {
+    <!--
+      A nav entry with no packaged drawer renders whatever the `sidebar` slot
+      registers for its id. Before Phase 2 this branch could only show the
+      placeholder below, so a manifest-added nav item was guaranteed an empty
+      drawer and the nav array was decorative.
+    -->
+    <lib-extension-outlet [componentId]="sidebarId" />
   } @else {
     <div class="drawer-empty">
       <p>Content for "{{ item.label }}" will appear here.</p>

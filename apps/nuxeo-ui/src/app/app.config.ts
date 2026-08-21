@@ -10,6 +10,7 @@ import { CURRENT_USERNAME, ADMIN_ACCESS_CHECKS } from '@agentic-ui/shared/nuxeo-
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
 import { provideAppConfig } from './config/provide-app-config';
+import { provideAppExtensions } from './extensions/provide-app-extensions';
 import { routes } from './app.routes';
 import { AppTranslateLoader } from './i18n/app-translate-loader';
 import { AppThemeService } from './theme/app-theme.service';
@@ -24,6 +25,9 @@ export const appConfig: ApplicationConfig = {
     // Must come before anything that reads configuration: this registers the
     // Layer 0 loader and repoints every configuration token at its result.
     ...provideAppConfig(),
+    // Layer 1: registers the application's slot, rule and component IDs. Must
+    // follow `provideAppConfig()`, which loads the manifest they are merged with.
+    ...provideAppExtensions(),
     {
       provide: APP_INITIALIZER,
       useFactory: initializeAppTheme,

@@ -29,5 +29,10 @@ export {
 } from './lib/extension-config';
 export { DOCUMENT_RULE_EVALUATORS } from './lib/document-rules';
 export { ExtensionRuleContextService } from './lib/extension-rule-context.service';
+export {
+  ExtensionComponentRegistry,
+  type ExtensionComponentSource,
+} from './lib/extension-component-registry.service';
+export { ExtensionOutletComponent } from './lib/extension-outlet.component';
 export { AppExtensionsService } from './lib/app-extensions.service';
 export { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS, type NavItemDescriptor } from './lib/nav-items';

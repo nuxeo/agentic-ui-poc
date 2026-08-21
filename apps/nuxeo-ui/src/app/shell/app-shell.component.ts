@@ -67,11 +67,12 @@ import {
 } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 import { AppConfigService } from '@agentic-ui/shared/app-config';
+import { APP_NAV_ITEMS } from '@agentic-ui/shared/extensions';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
-import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
+import { AppNavItem, SETTINGS_DRAWER_ITEMS, toAppNavItem } from '../platform-nav-items';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
 
@@ -104,6 +105,7 @@ export class AppShellComponent implements OnDestroy {
   private globalSearchContainer?: ElementRef<HTMLElement>;
 
   private readonly settingsDrawerItem: AppNavItem = {
+    id: 'app.navbar.settings',
     label: 'Settings',
     path: '/settings',
     icon: 'settings',
@@ -131,13 +133,16 @@ export class AppShellComponent implements OnDestroy {
   readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
-  /** Hides Administration unless the user is an administrator or poweruser. */
-  protected readonly navItems = computed(() => {
-    return PLATFORM_NAV_ITEMS.filter((item) => {
-      if (item.path === '/administration' && !this.auth.hasAdministrationAccess()) return false;
-      return true;
-    });
-  });
+  /**
+   * The navigation, resolved from the extension registry.
+   *
+   * Nothing is filtered here any more. Administration is hidden by the
+   * `app.rules.hasAdministrationAccess` rule on its descriptor, which a manifest
+   * can see, override or replace — the previous hardcoded `path === '/administration'`
+   * test could do none of those.
+   */
+  private readonly navDescriptors = inject(APP_NAV_ITEMS);
+  protected readonly navItems = computed(() => this.navDescriptors().map(toAppNavItem));
 
   readonly displayName = computed(() => this.auth.username() ?? 'User');
   readonly drawerOpen = signal(false);
@@ -185,7 +190,7 @@ export class AppShellComponent implements OnDestroy {
       };
       return titles[seg] ?? 'Administration';
     }
-    const match = [...PLATFORM_NAV_ITEMS, ...SETTINGS_DRAWER_ITEMS].find(
+    const match = [...this.navItems(), ...SETTINGS_DRAWER_ITEMS].find(
       (item) => url === item.path || url.startsWith(item.path + '/'),
     );
     // Layer 0: the product name on an unmatched route is branding, not a literal.

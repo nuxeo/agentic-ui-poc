@@ -156,6 +156,10 @@ export const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[] = [
     icon: 'settings',
     order: 150,
     hasDrawer: true,
+    // The only packaged entry carrying a rule. Before Phase 2 this was a
+    // hardcoded `item.path === '/administration'` filter in the shell, which a
+    // manifest could neither see nor relax.
+    rule: 'app.rules.hasAdministrationAccess',
   },
 ];
 

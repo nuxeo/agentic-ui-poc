@@ -91,7 +91,9 @@ export class ExtensionSlotRegistry {
     overrides: ExtensionSlotOverrides = NO_EXTENSION_SLOT_OVERRIDES,
     context: ExtensionRuleContext = EMPTY_EXTENSION_RULE_CONTEXT,
   ): readonly T[] {
-    const packaged = (this.slots.get(slot) ?? []) as readonly T[];
+    // The registry stores descriptors as the `ExtensionElement` base type it
+    // shares across slots; the caller knows the concrete shape it registered.
+    const packaged = (this.slots.get(slot) ?? []) as readonly unknown[] as readonly T[];
     const added = (overrides.additions[slot] ?? []) as readonly T[];
 
     const merged: T[] = [...packaged];
