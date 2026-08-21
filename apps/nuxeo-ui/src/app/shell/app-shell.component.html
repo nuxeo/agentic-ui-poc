@@ -44,7 +44,7 @@
         mat-icon-button
         satAppHeaderPlatformNavMobileTrigger
         (click)="togglePlatformNav()"
-        aria-label="Toggle navigation menu"
+        [attr.aria-label]="'app.nav.toggle' | translate"
       >
         <mat-icon>menu</mat-icon>
       </button>

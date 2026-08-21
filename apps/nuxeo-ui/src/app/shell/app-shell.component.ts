@@ -65,6 +65,8 @@ import {
   trashSelectedDocumentsConfirmData,
 } from '@agentic-ui/shared/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import { AppConfigService } from '@agentic-ui/shared/app-config';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
@@ -91,6 +93,7 @@ import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
     SelectionTopbarComponent,
     FormsModule,
     AiMarkdownPipe,
+    TranslatePipe,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -119,6 +122,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly browseContext = inject(BrowseContextService);
   private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly appConfig = inject(AppConfigService);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
@@ -183,7 +187,8 @@ export class AppShellComponent implements OnDestroy {
     const match = [...PLATFORM_NAV_ITEMS, ...SETTINGS_DRAWER_ITEMS].find(
       (item) => url === item.path || url.startsWith(item.path + '/'),
     );
-    return match?.label ?? 'Hyland Nuxeo';
+    // Layer 0: the product name on an unmatched route is branding, not a literal.
+    return match?.label ?? this.appConfig.bootstrap().branding.applicationTitle;
   });
 
   private storageListener = (e: StorageEvent) => {
