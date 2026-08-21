@@ -28,7 +28,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/latest",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/latest:phase-3-swap-final"
+        "regate": "gates/latest:phase-3-rehomed"
       },
       "deviations": [],
       "notCovered": [
@@ -43,7 +43,7 @@
       "evidence": {
         "manifest": "phase-1-config/latest",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/latest:phase-3-swap-final"
+        "regate": "gates/latest:phase-3-rehomed"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -60,7 +60,7 @@
       "evidence": {
         "manifest": "phase-2-registry/latest",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/latest:phase-3-swap-final"
+        "regate": "gates/latest:phase-3-rehomed"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -83,16 +83,15 @@
       "status": "in-progress",
       "evidence": {
         "manifest": "phase-3-adf-hx/latest",
-        "regate": "gates/latest:phase-3-swap-final"
+        "regate": "gates/latest:phase-3-rehomed"
       },
       "deviations": [],
       "notCovered": [
-        "Column picker not rehomed: the hand-written list had one, upstream has none. Layer 1 still sets columns via manifest; a user can no longer choose them at runtime.",
-        "Card view and thumbnails not rehomed.",
         "breadcrumb, document-tree, metadata-sidebar, permissions, manage-versions, document-viewer, search",
-        "GROUP, MODEL, RENDITIONS, UPLOAD, USER — the remaining five ports",
-        "bridge defects: 2 of 5 verified still open",
-        "Initial bundle 1.70 -> 3.00 MB, accepted; leadership not yet informed"
+        "GROUP, MODEL, RENDITIONS, UPLOAD, USER — the remaining five of twelve ports",
+        "bridge defects: 1 of 5 verified still open (hardcoded sys_effectivePermissions)",
+        "Initial bundle 1.70 -> 3.15 MB, accepted; leadership not yet informed",
+        "lastContributor has no HxPR Document equivalent, so that column renders empty in the real DataTable"
       ],
       "delivered": [
         "Secondary entry point @agentic-ui/shared/adf-hx-bridge/providers, so the app shell no longer reaches adf-hx through the bridge barrel. Measured: ports via the barrel put the initial bundle at 2.65 MB; via the entry point, 1.71 MB.",
@@ -100,10 +99,12 @@
         "AppTranslateLoader implements adf-core TranslationService five undocumented loader methods without importing adf-core, so Layer 0 manifest-labels relabelling survives and adf-core does not join the initial bundle through app.config.ts.",
         "adf-core own i18n catalogue added to the build asset globs.",
         "THE SWAP RUNS: upstream HxpDocumentListComponent renders on /#/browse-adf-hx over live Nuxeo — document list present, column headers matching the packaged set in order, real Nuxeo children listed, multiselect checkboxes per row. Its [schema] is fed from PACKAGED_BROWSE_COLUMNS, so Phase 2 Layer 1 drives the real adf-core DataTable.",
-        "Layer 1 field -> HxPR property translation added: DataTable reads row.obj[key], so the browse view-model keys rendered correct headers over empty rows until mapped. packaged-columns.ts had predicted exactly this."
+        "Layer 1 field -> HxPR property translation added: DataTable reads row.obj[key], so the browse view-model keys rendered correct headers over empty rows until mapped. packaged-columns.ts had predicted exactly this.",
+        "Rehomed the three capabilities upstream does not have, then deleted the hand-written hxp-document-list: column picker (hxp-column-picker, driven by the Layer 1 descriptors, so Reset returns to the manifest rather than a packaged const), card view with thumbnails (hxp-document-cards), and the empty state. Error/retry moved to the host template earlier. Evidence: 12 of 14.",
+        "Fixed bridge defect 5 of 5 by construction: hxp-browse-columns.utils.ts wrote browse_column_settings — the SAME localStorage key production browse uses — so choosing columns on either surface overwrote the other. Those utils are deleted with the hand-written list and the POC now namespaces its own key."
       ],
       "blockedOn": [
-        "Local dev server was started before the adf-core asset glob was added, so it 404s /assets/adf-core/i18n/en.json and one accessibility label renders as a raw key. The BUILD ships the file — verified in dist/. Needs a dev-server restart to confirm 9/9; the two failing checks in the newest capture have this single cause."
+        "Local dev server predates the adf-core asset glob, so it 404s /assets/adf-core/i18n/en.json and one accessibility label renders as a raw key. The BUILD ships the file — verified in dist/. The two failing checks of 14 have this single cause; a dev-server restart confirms 14/14."
       ]
     },
     {

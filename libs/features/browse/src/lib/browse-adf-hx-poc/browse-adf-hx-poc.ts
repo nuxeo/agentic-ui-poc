@@ -32,9 +32,11 @@ import {
   type HxpBrowseTabId,
   HxpBrowseToolbarComponent,
   type HxpBrowseViewMode,
+  HxpDocumentCardsComponent,
+  HxpColumnPickerComponent,
+  type HxpPickableColumn,
   NuxeoDocumentRouterService,
   HxpBreadcrumbComponent,
-  HxpDocumentListComponent,
   HxpDomainHintComponent,
   HxpFolderHeaderComponent,
   HxpBrowseTrashComponent,
@@ -94,6 +96,8 @@ const HXP_FIELD_BY_COLUMN: Readonly<Record<string, string>> = {
     HxpBrowseTabsComponent,
     HxpBrowseToolbarComponent,
     UpstreamDocumentListComponent,
+    HxpDocumentCardsComponent,
+    HxpColumnPickerComponent,
     HxpBrowsePermissionsComponent,
     HxpBrowseHistoryComponent,
     HxpBrowseTrashComponent,
@@ -109,11 +113,84 @@ export class BrowseAdfHxPocComponent {
    * production browse's columns. This is the payoff from Phase 2: a customer's manifest
    * edit reaches the real adf-core DataTable without a second column list.
    */
+  // ── Columns ──
+  //
+  // Three layers, narrowest last: the Layer 1 descriptors, then the user's own choice.
+  // Upstream's DataTable has no picker, so the host owns one — see `hxp-column-picker`.
+
+  /**
+   * A storage key of this route's own.
+   *
+   * `hxp-browse-columns.utils.ts` used `browse_column_settings`, the *same* key production
+   * browse writes, so choosing columns on either surface silently overwrote the other.
+   * That was one of the five recorded bridge defects; deleting those utils with the
+   * hand-written list and namespacing the key here fixes it by construction.
+   */
+  private static readonly COLUMN_STORAGE_KEY = 'adf_hx_poc_column_settings';
+
+  /** Keys the user switched on, or `null` if they never chose. */
+  private readonly userColumnKeys = signal<readonly string[] | null>(
+    BrowseAdfHxPocComponent.loadColumnKeys(),
+  );
+
+  protected readonly columnPickerOpen = signal(false);
+
+  private readonly columnDescriptors = computed<readonly ExtensionColumnDescriptor[]>(() =>
+    this.extensions.resolve<ExtensionColumnDescriptor>(EXTENSION_SLOTS.documentList),
+  );
+
+  /** Every column the picker offers, with its current state. */
+  protected readonly pickableColumns = computed<readonly HxpPickableColumn[]>(() => {
+    const chosen = this.userColumnKeys();
+    return this.columnDescriptors().map((column) => ({
+      key: column.field,
+      label: column.label,
+      visible: chosen ? chosen.includes(column.field) : !column.hiddenByDefault,
+    }));
+  });
+
+  /** What `Reset` returns to: the descriptors' defaults, so a manifest is not discarded. */
+  protected readonly defaultColumnKeys = computed<readonly string[]>(() =>
+    this.columnDescriptors()
+      .filter((c) => !c.hiddenByDefault)
+      .map((c) => c.field),
+  );
+
+  protected openColumnPicker(): void {
+    this.columnPickerOpen.set(true);
+  }
+
+  protected closeColumnPicker(): void {
+    this.columnPickerOpen.set(false);
+  }
+
+  protected applyColumns(keys: readonly string[]): void {
+    this.userColumnKeys.set([...keys]);
+    try {
+      localStorage.setItem(BrowseAdfHxPocComponent.COLUMN_STORAGE_KEY, JSON.stringify([...keys]));
+    } catch {
+      /* a full or blocked storage must not break the picker */
+    }
+    this.columnPickerOpen.set(false);
+  }
+
+  private static loadColumnKeys(): readonly string[] | null {
+    try {
+      const stored = localStorage.getItem(BrowseAdfHxPocComponent.COLUMN_STORAGE_KEY);
+      if (stored === null) return null;
+      const parsed: unknown = JSON.parse(stored);
+      return Array.isArray(parsed)
+        ? parsed.filter((k): k is string => typeof k === 'string')
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
   protected readonly schema = computed<DataColumn[]>(
     () =>
-      this.extensions
-        .resolve<ExtensionColumnDescriptor>(EXTENSION_SLOTS.documentList)
-        .filter((column) => !column.hiddenByDefault)
+      this.pickableColumns()
+        .filter((column) => column.visible)
         .map((column) => ({
           // adf-core's DataTable reads `row.obj[key]`, so `key` has to be an HxPR
           // `Document` property. `ExtensionColumnDescriptor.field` holds the browse
@@ -121,10 +198,10 @@ export class BrowseAdfHxPocComponent {
           // `packaged-columns.ts` says it holds and why it warns that migrating to real
           // property paths is Phase 3's job. Without this translation the table renders
           // the right headers over empty rows, which is exactly what it did.
-          key: HXP_FIELD_BY_COLUMN[column.field] ?? column.field,
+          key: HXP_FIELD_BY_COLUMN[column.key] ?? column.key,
           type: 'text',
           title: column.label,
-          sortable: column.sortable ?? false,
+          sortable: true,
         })) as DataColumn[],
   );
 

@@ -130,12 +130,43 @@ export default async function run(page, h) {
     `found ${rawKeys.length}: ${JSON.stringify(rawKeys.slice(0, 3))}`,
   );
 
-  h.note(
-    'the column picker — the hand-written list had one, upstream has none, and it has NOT ' +
-      'been rehomed. Layer 1 still sets the columns through the manifest, but a user can no ' +
-      'longer choose them at runtime. A named regression, not a silent one.',
+  h.step('Rehomed: the column picker is back, and driven by Layer 1');
+  // Upstream's DataTable has no picker. Losing it would have been a silent regression, so
+  // it moved to the host. Asserting it here is what makes "rehomed" a fact.
+  const columnsBtn = page.locator('button[aria-label="Manage columns"]').first();
+  h.check('a column-settings control exists', (await columnsBtn.count()) > 0);
+  await columnsBtn.click().catch(() => {});
+  await page.waitForTimeout(600);
+  const pickerText = await page
+    .locator('hxp-column-picker [aria-label="Column Settings"]')
+    .first()
+    .innerText()
+    .catch(() => '');
+  h.check(
+    'the picker offers a column that ships hidden',
+    pickerText.includes('Version'),
+    `picker text was ${JSON.stringify(pickerText.slice(0, 140))}`,
   );
-  h.note('card view and thumbnails — rendered by the hand-written list, not yet rehomed');
+  h.check(
+    'the picker lists every packaged column, not just the visible ones',
+    pickerText.includes('Coverage') && pickerText.includes('Subjects'),
+    `picker text was ${JSON.stringify(pickerText.slice(0, 200))}`,
+  );
+  await h.screenshot('column-picker');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(400);
+
+  h.step('Rehomed: the card view renders with thumbnails');
+  // By accessible name. The toggle is icon-only, so filtering on text finds nothing —
+  // the first draft of this step did exactly that and reported zero cards.
+  const cardToggle = page.locator('button[aria-label="Card view"]').first();
+  h.check('a card-view toggle exists', (await cardToggle.count()) > 0);
+  await cardToggle.click().catch(() => {});
+  await page.waitForTimeout(1500);
+  const cards = page.locator('hxp-document-cards .hxp-doc-card');
+  const cardCount = await cards.count();
+  h.check('card view renders a card per document', cardCount >= 1, `found ${cardCount}`);
+  await h.screenshot('card-view');
 
   h.step('Health');
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);

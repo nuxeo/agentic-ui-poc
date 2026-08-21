@@ -59,19 +59,51 @@
           />
           <!-- The error path is a host responsibility now: upstream's document list has
                no error state, so it is rehomed here rather than lost. -->
+          <!-- Host responsibilities upstream's DataTable does not provide: the error path,
+               the empty state, the card view and the column picker. All four were in the
+               hand-written list and are rehomed here rather than lost. -->
           @if (error()) {
             <div class="hxp-poc-error">
               <p role="alert">{{ error() }}</p>
               <button type="button" (click)="reload()">Retry</button>
             </div>
+          } @else if (!loading() && !listLoading() && filteredDocuments().length === 0) {
+            <div class="hxp-poc-empty">
+              <p>This folder is empty</p>
+            </div>
+          } @else if (viewMode() === 'list') {
+            <div class="hxp-poc-list">
+              <button
+                type="button"
+                class="hxp-poc-column-btn"
+                aria-label="Manage columns"
+                title="Manage columns"
+                (click)="openColumnPicker()"
+              >
+                Columns
+              </button>
+              @if (columnPickerOpen()) {
+                <hxp-column-picker
+                  [columns]="pickableColumns()"
+                  [defaults]="defaultColumnKeys()"
+                  (apply)="applyColumns($event)"
+                  (dismiss)="closeColumnPicker()"
+                />
+              }
+              <hxp-document-list
+                [documents]="filteredDocuments()"
+                [isLoading]="loading() || listLoading()"
+                [schema]="schema()"
+                [multiselect]="true"
+                [contextMenuActions]="false"
+                (rowClicked)="onUpstreamRowClicked($event)"
+              />
+            </div>
           } @else {
-            <hxp-document-list
+            <hxp-document-cards
               [documents]="filteredDocuments()"
-              [isLoading]="loading() || listLoading()"
-              [schema]="schema()"
-              [multiselect]="true"
-              [contextMenuActions]="false"
-              (rowClicked)="onUpstreamRowClicked($event)"
+              [thumbnails]="thumbnails()"
+              (documentClick)="onUpstreamRowClicked($event)"
             />
           }
         } @else if (activeTab() === 'permissions') {
