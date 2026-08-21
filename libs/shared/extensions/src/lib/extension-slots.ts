@@ -16,7 +16,7 @@
  *
  * The practical consequence — and the thing that turns the "addressable
  * ceiling" from an irreversible decision into ordinary backlog — is that adding
- * a tenth slot after Beta ships requires **no change to the nine**, and no
+ * a ninth slot after Beta ships requires **no change to the eight**, and no
  * change to this library at all. `extension-slot-registry.service.spec.ts`
  * proves it by registering a slot this file has never heard of.
  *
@@ -24,7 +24,14 @@
  * closed set**. Anything may register any string.
  */
 
-/** The nine slots Beta implements. Not a closed set — see the file comment. */
+/**
+ * The eight slots Beta implements. Not a closed set — see the file comment.
+ *
+ * `rules` used to be listed here and was removed: rules are not descriptors and
+ * do not live in a slot. They are registered in `ExtensionRuleRegistry`, so a
+ * manifest writing `slots.rules` was silently inert while the constant implied
+ * otherwise.
+ */
 export const EXTENSION_SLOTS = {
   /** Primary platform navigation entries. */
   navbar: 'navbar',
@@ -40,8 +47,6 @@ export const EXTENSION_SLOTS = {
   'bulk-actions': 'bulk-actions',
   /** Document-detail tab children. */
   tabs: 'tabs',
-  /** Named rule definitions a slot entry may reference by id. */
-  rules: 'rules',
   /** Document list column descriptors. */
   documentList: 'documentList',
 } as const;

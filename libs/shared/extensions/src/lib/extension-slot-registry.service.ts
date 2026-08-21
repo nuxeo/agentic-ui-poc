@@ -39,7 +39,7 @@ export const NO_EXTENSION_SLOT_OVERRIDES: ExtensionSlotOverrides = { byId: {}, a
  *
  * Registration and resolution are both generic and per-slot. There is no enum,
  * no union and no `switch` on slot identity anywhere below, which is what makes
- * the nine Beta slots extensible to a tenth without touching them — see
+ * the eight Beta slots extensible to a ninth without touching them — see
  * `extension-slots.ts` and the additivity spec.
  *
  * `filterEnabled` and `sortByOrder` come from `@alfresco/adf-extensions`, so

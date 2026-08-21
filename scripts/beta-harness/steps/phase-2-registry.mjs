@@ -16,21 +16,37 @@
  *   an equality assertion rather than a count, so a reorder or a dropped entry
  *   fails it.
  * - Steps 4-8: hide, add, reorder, relabel and rule-gate, each asserted against
- *   the DOM after a real reload, with the bundle bytes hashed and compared on
- *   every pass. If configuration were dead these all fail.
+ *   the DOM after a real reload. The DOM assertions are the load-bearing part.
+ *   The nine bundle digests alongside them are **not**: the dev server does not
+ *   rebuild between reloads, so they pass whether or not configuration is doing
+ *   anything. They rule out one specific alternative explanation — that a
+ *   rebuild, not the manifest, produced the change — and nothing else. An
+ *   earlier draft of this file claimed they would fail "if configuration were
+ *   dead", which was untrue.
  * - Step 9: a manifest-added nav item resolves a `sidebar` component and renders
  *   real panel content. Before Phase 2 this branch could only render a
  *   placeholder, so this is the check that the nav array is no longer decorative.
  * - Step 11: the fail-open contract — an unknown rule id leaves the entry
- *   visible. It is asserted positively (the entry is present *and* the known-bad
- *   rule id is in the served manifest), not by absence.
+ *   visible. The same manifest carries a second, independently observable
+ *   override (Browse relabelled), so the *arrival* of the payload is proven by
+ *   an effect the harness cannot fake. An earlier draft asserted the unknown
+ *   rule id against the harness's own local variable, which proved only that the
+ *   harness had constructed what it intended to send, and paired it with a check
+ *   that Trash was visible — which is true in the packaged default. Both halves
+ *   were self-confirming.
+ * - Step 12: the bulk-action surface — the six packaged actions render in the
+ *   markup's order, and a manifest hides one and adds another.
  *
  * **Negative / fallback** — worth keeping as regression guards, but they would
  * also pass if configuration loading were entirely inert:
  *
  * - Steps 2 and 3: production browse and the adf-hx POC route still render.
- * - Step 12: a malformed `extensions` block leaves a working application.
- * - Step 13: no unexpected console errors.
+ * - Step 13: a malformed `extensions` block leaves a working application.
+ * - Step 14: an absent configuration document leaves the packaged surface.
+ * - Step 15: no unexpected console errors.
+ *
+ * That is 12 load-bearing steps and 4 negative ones. Read the check total as
+ * that mixture, not as a count of equally meaningful facts.
  *
  * ## Two traps inherited from Phase 1, encoded here
  *
@@ -97,8 +113,15 @@ const PACKAGED_NAV = [
 ];
 
 /**
- * SHA-256 over the bytes of every script the page loaded, plus their URLs.
- * `page.request` bypasses page routes, so this reads the real bundle.
+ * SHA-256 over the bytes of every script referenced by a `<script src>` tag,
+ * plus their URLs. `page.request` bypasses page routes, so this reads the real
+ * bundle.
+ *
+ * **Not** every script the page loaded: lazy chunks pulled in by a dynamic
+ * `import()` never appear as a `<script src>` element, so a change confined to
+ * one would not move this digest. It covers the entry bundle and the eagerly
+ * referenced chunks, which is what the "no rebuild" claim needs, but the
+ * stronger reading is wrong.
  *
  * @param {import('@playwright/test').Page} page
  */
@@ -180,7 +203,7 @@ export default async function run(page, h) {
     await reloadApp(page);
     const bundle = await bundleFingerprint(page);
     h.check(
-      `${label}: the JavaScript bundle bytes are unchanged — no rebuild took place`,
+      `${label}: the referenced bundle bytes are unchanged, ruling out a rebuild`,
       bundle.count > 0 && bundle.digest === baseline.digest,
       `bundle content hash differed:\n` +
         `  before ${baseline.digest} (${baseline.count} scripts, ${baseline.bytes} bytes)\n` +
@@ -433,21 +456,33 @@ export default async function run(page, h) {
   // LOAD-BEARING: the documented fail-open contract.
   // ---------------------------------------------------------------------------
   h.step('An unknown rule id leaves the entry visible, as documented');
-  // This is only meaningful because step 8 already showed that a rule in this
-  // exact position *can* remove the entry (`core.false` did). So the entry
-  // surviving here isolates one thing: an unregistered id is not treated as
-  // deny. Without step 8 this check would be indistinguishable from "rules are
-  // ignored entirely", which is the shape of tautology to avoid.
+  // Two things have to be true for this to mean anything, and neither can be
+  // asserted from the harness's own variables.
+  //
+  // 1. The payload actually reached the app. The manifest therefore carries a
+  //    **second** override — Browse relabelled — whose effect is visible in the
+  //    DOM. The same fetch carries both, so seeing the relabel proves the app
+  //    received the unknown rule id too. Asserting the rule id against
+  //    `manifestBody` instead, as an earlier draft did, would only prove the
+  //    harness built what it meant to build.
+  // 2. A rule in this position *can* remove the entry — step 8 showed
+  //    `core.false` doing exactly that. Without it, Trash surviving here would
+  //    be indistinguishable from rules being ignored entirely, and Trash is
+  //    visible in the packaged default anyway.
   const failedOpen = await applyManifest(
-    { overrides: { 'app.navbar.trash': { rule: 'acme.rules.notInThisBuild' } } },
+    {
+      overrides: {
+        'app.navbar.trash': { rule: 'acme.rules.notInThisBuild' },
+        'app.navbar.browse': { label: 'Delivery receipt' },
+      },
+    },
     'unknown rule',
     baselineBundle,
   );
-  const served = JSON.parse(manifestBody.properties['note:note']);
   h.check(
-    'the manifest the app was served really names an unregistered rule',
-    served.extensions?.overrides?.['app.navbar.trash']?.rule === 'acme.rules.notInThisBuild',
-    `served overrides: ${JSON.stringify(served.extensions?.overrides)}`,
+    'the manifest carrying the unknown rule id demonstrably reached the app',
+    failedOpen.some(([id, label]) => id === 'app.navbar.browse' && label === 'Delivery receipt'),
+    `Browse was not relabelled, so this manifest was never applied: ${JSON.stringify(failedOpen)}`,
   );
   h.check(
     'the entry is still rendered, so a typo cannot strip working navigation',
@@ -456,9 +491,124 @@ export default async function run(page, h) {
   );
   await h.screenshot('unknown-rule-fails-open');
 
+  h.step('A user without administration access is not offered Administration');
+  // Phase 2 ran every check as Administrator, so the one user-visible
+  // regression it could cause — Administration exposed to everyone — had no
+  // coverage anywhere.
+  //
+  // **What this proves and what it does not.** The harness injects the session
+  // object `AuthService` writes, so this is a genuine non-administrator *client
+  // session*: `hasAdministrationAccess()` is false and the rule on the
+  // descriptor is what removes the entry. It is not a second Nuxeo account —
+  // the browser context's `httpCredentials` still carry the configured user, so
+  // XHRs are unchanged. It therefore tests the Layer 1 gate, which is the thing
+  // Phase 2 changed, and says nothing about server-side authorisation, which
+  // Phase 2 did not touch and which Nuxeo enforces regardless.
+  manifestBody = null;
+  await page.evaluate(() => {
+    const key = 'agentic_ui_nuxeo_session';
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return;
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({ ...JSON.parse(raw), isAdministrator: false, groups: ['members'] }),
+    );
+  });
+  await reloadApp(page);
+  const asMember = await readNav(page);
+  h.check(
+    'the session really is a non-administrator one',
+    await page.evaluate(
+      () => JSON.parse(sessionStorage.getItem('agentic_ui_nuxeo_session') ?? '{}').isAdministrator === false,
+    ),
+    'the injected session still claims administrator',
+  );
+  h.check(
+    'Administration is absent for a user without access',
+    !asMember.some(([id]) => id === 'app.navbar.administration'),
+    `rendered: ${JSON.stringify(asMember.map(([id]) => id))}`,
+  );
+  h.check(
+    'and nothing else was removed with it',
+    JSON.stringify(asMember) ===
+      JSON.stringify(PACKAGED_NAV.filter(([id]) => id !== 'app.navbar.administration')),
+    `rendered: ${JSON.stringify(asMember)}`,
+  );
+  await h.screenshot('non-admin-has-no-administration-entry');
+
+  // Back to the configured user for the remaining steps.
+  await h.login();
+  await page.waitForTimeout(500);
+
   // ---------------------------------------------------------------------------
   // NEGATIVE / FALLBACK.
   // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // LOAD-BEARING: the bulk-action surface is registry-driven.
+  // ---------------------------------------------------------------------------
+  h.step('The bulk-action bar is resolved from the registry, and a manifest changes it');
+
+  /** Select the first two rows in production browse, which raises the topbar. */
+  const selectTwoRows = async () => {
+    await h.goTo('/#/browse');
+    await page.waitForSelector('lib-browse');
+    await page.waitForTimeout(1500);
+    const checkboxes = page.locator('lib-browse mat-checkbox input[type="checkbox"]');
+    const total = await checkboxes.count();
+    for (let index = 1; index < Math.min(total, 3); index += 1) {
+      await checkboxes.nth(index).click({ force: true });
+    }
+    await page.waitForTimeout(800);
+    return page.evaluate(() =>
+      [...document.querySelectorAll('lib-selection-topbar button[data-action-id]')].map((el) =>
+        el.getAttribute('data-action-id'),
+      ),
+    );
+  };
+
+  manifestBody = null;
+  await reloadApp(page);
+  const packagedBulk = await selectTwoRows();
+  h.check(
+    'every bulk control carries an addressable extension id, in the order the fixed markup had',
+    JSON.stringify(packagedBulk) ===
+      JSON.stringify([
+        'app.bulkActions.downloadZip',
+        'app.bulkActions.addToCollection',
+        'app.bulkActions.compare',
+        'app.bulkActions.addToClipboard',
+        'app.bulkActions.publish',
+        'app.bulkActions.delete',
+      ]),
+    `rendered: ${JSON.stringify(packagedBulk)}`,
+  );
+  await h.screenshot('packaged-bulk-actions');
+
+  manifestBody = manifestDocument({
+    overrides: { 'app.bulkActions.publish': { visible: false } },
+    slots: {
+      'bulk-actions': [
+        { id: 'acme.bulkActions.archive', label: 'Archive', icon: 'inventory_2', order: 15 },
+      ],
+    },
+  });
+  await reloadApp(page);
+  const customisedBulk = await selectTwoRows();
+  h.check(
+    'a manifest hid a packaged bulk action and added its own, with no rebuild',
+    JSON.stringify(customisedBulk) ===
+      JSON.stringify([
+        'app.bulkActions.downloadZip',
+        'acme.bulkActions.archive',
+        'app.bulkActions.addToCollection',
+        'app.bulkActions.compare',
+        'app.bulkActions.addToClipboard',
+        'app.bulkActions.delete',
+      ]),
+    `rendered: ${JSON.stringify(customisedBulk)}`,
+  );
+  await h.screenshot('manifest-customised-bulk-actions');
+
   h.step('A malformed extensions block leaves a working application');
   manifestBody = {
     'entity-type': 'document',
