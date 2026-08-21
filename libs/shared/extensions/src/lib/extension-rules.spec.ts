@@ -93,6 +93,27 @@ describe('ExtensionRuleRegistry', () => {
       ).toBe(true);
     });
 
+    it('makes core.not a NOR over several arguments, matching upstream', () => {
+      // Upstream `@alfresco/adf-extensions` is `args.every(arg => !evaluator(...))`.
+      // NAND and NOR agree on one argument and disagree from two upwards, so the
+      // mixed case below is the only one that distinguishes them.
+      const writeOnly = context({ document: doc(['Write']) });
+      expect(
+        registry.evaluate(
+          { type: 'core.not', parameters: ['app.rules.canWrite', 'app.rules.canRemove'] },
+          writeOnly,
+        ),
+      ).toBe(false);
+
+      const readOnly = context({ document: doc(['Read']) });
+      expect(
+        registry.evaluate(
+          { type: 'core.not', parameters: ['app.rules.canWrite', 'app.rules.canRemove'] },
+          readOnly,
+        ),
+      ).toBe(true);
+    });
+
     it('uses the identity element for an empty parameter list', () => {
       expect(registry.evaluate({ type: 'core.every' }, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
       expect(registry.evaluate({ type: 'core.some' }, EMPTY_EXTENSION_RULE_CONTEXT)).toBe(false);
@@ -114,6 +135,25 @@ describe('ExtensionRuleRegistry', () => {
       expect(
         registry.evaluate('app.rules.definitelyNotRegistered', EMPTY_EXTENSION_RULE_CONTEXT),
       ).toBe(true);
+    });
+
+    it('fails closed on an unregistered security-relevant id', () => {
+      // The dangerous window is registration order: `hasAdministrationAccess`
+      // is contributed by the shell's APP_INITIALIZER, so between injector
+      // creation and that call the id is unknown. Failing open there would
+      // offer Administration to every user.
+      const bare = TestBed.inject(ExtensionRuleRegistry);
+      expect(bare.has('app.rules.hasAdministrationAccess')).toBe(false);
+      expect(bare.isFailClosed('app.rules.hasAdministrationAccess')).toBe(true);
+      expect(bare.evaluate('app.rules.hasAdministrationAccess', EMPTY_EXTENSION_RULE_CONTEXT)).toBe(
+        false,
+      );
+    });
+
+    it('lets Layer 2 declare its own fail-closed ids', () => {
+      registry.declareFailClosed(['acme.rules.isAuditor']);
+      expect(registry.evaluate('acme.rules.isAuditor', EMPTY_EXTENSION_RULE_CONTEXT)).toBe(false);
+      expect(registry.evaluate('acme.rules.notDeclared', EMPTY_EXTENSION_RULE_CONTEXT)).toBe(true);
     });
 
     it('treats an absent rule as no gate at all', () => {

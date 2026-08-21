@@ -93,11 +93,41 @@ function nestedRules(parameters: readonly unknown[]): ExtensionRule[] {
 export const CORE_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>> = {
   'core.every': (_context, parameters, resolve) => nestedRules(parameters).every(resolve),
   'core.some': (_context, parameters, resolve) => nestedRules(parameters).some(resolve),
-  'core.not': (_context, parameters, resolve) => !nestedRules(parameters).every(resolve),
+  // NOR, not NAND. Upstream is `args.every(arg => !evaluator(...))` — every
+  // nested rule must be false. `!every(resolve)` agrees for one argument and
+  // diverges from two upwards, which would have made a manifest written against
+  // ACA's documentation behave differently here.
+  'core.not': (_context, parameters, resolve) =>
+    nestedRules(parameters).every((rule) => !resolve(rule)),
   /** Escape hatches, so a manifest can pin a slot entry on or off without code. */
   'core.true': () => true,
   'core.false': () => false,
 };
+
+/**
+ * Rule ids that must fail **closed** when they are not registered.
+ *
+ * Fail-open is right for the general case — a manifest typo must not strip
+ * working actions out of the UI — but it is wrong for the small set of rules
+ * whose whole job is to keep a surface away from users who should not see it.
+ * `app.rules.hasAdministrationAccess` gates the Administration nav entry; if it
+ * resolved `true` merely because registration had not happened yet, every user
+ * would be offered Administration.
+ *
+ * This is a **declared list rather than a property of registration**, and that
+ * is the point: the dangerous window is precisely the one in which the id is
+ * not yet in the registry, so a marker attached at registration time could not
+ * close it. Layer 2 adds to the list with
+ * {@link ExtensionRuleRegistry.declareFailClosed}.
+ *
+ * Fail-closed is still not an authorisation boundary. Nuxeo evaluates the real
+ * permission server-side; this only decides what the interface offers.
+ */
+export const SECURITY_RELEVANT_RULE_IDS: readonly string[] = [
+  'app.rules.isAdministrator',
+  'app.rules.isPowerUser',
+  'app.rules.hasAdministrationAccess',
+];
 
 /**
  * Named predicates a manifest may reference by id.
@@ -110,6 +140,21 @@ export class ExtensionRuleRegistry {
   private readonly evaluators = new Map<string, ExtensionRuleEvaluator>(
     Object.entries(CORE_RULE_EVALUATORS),
   );
+
+  private readonly failClosed = new Set<string>(SECURITY_RELEVANT_RULE_IDS);
+
+  /**
+   * Mark rule ids as security-relevant, so an unregistered one denies rather
+   * than permits. Safe to call before or after the rules themselves register.
+   */
+  declareFailClosed(ids: readonly string[]): void {
+    for (const id of ids) this.failClosed.add(id);
+  }
+
+  /** Whether an unregistered `id` would deny. For diagnostics and the reference doc. */
+  isFailClosed(id: string): boolean {
+    return this.failClosed.has(id);
+  }
 
   /**
    * Add or replace evaluators. Later registration wins, which is what lets a
@@ -139,6 +184,8 @@ export class ExtensionRuleRegistry {
    * the UI. Failing open here is safe because Layer 1 visibility is not an
    * authorisation boundary: the server-side Nuxeo permission still decides
    * whether the operation succeeds. See `docs/extension-reference.md`.
+   *
+   * The exception is {@link SECURITY_RELEVANT_RULE_IDS}, which fail closed.
    */
   evaluate(rule: ExtensionRule | null | undefined, context: ExtensionRuleContext): boolean {
     if (rule === null || rule === undefined) return true;
@@ -151,7 +198,7 @@ export class ExtensionRuleRegistry {
     seen: Set<string>,
   ): boolean {
     const evaluator = this.evaluators.get(ref.type);
-    if (!evaluator) return true;
+    if (!evaluator) return !this.failClosed.has(ref.type);
 
     // A manifest is customer-authored data, so a composite that references
     // itself is a reachable input, not a hypothetical. Break the cycle rather
