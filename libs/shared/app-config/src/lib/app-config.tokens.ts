@@ -17,9 +17,15 @@ export const APP_BOOTSTRAP_CONFIG_FILE = 'bootstrap.json';
  * non-overwriting step, so customer edits survive.
  *
  * Production base href is `/nuxeo/agentic-ui/`, giving
- * `/nuxeo/agentic-ui-config/bootstrap.json`. Under `nx serve` the base href is
- * `/`, where `../` clamps to the root and gives
- * `/agentic-ui-config/bootstrap.json`.
+ * `/nuxeo/agentic-ui-config/bootstrap.json`. The `nuxeo` Tomcat context has
+ * `docBase="../nxserver/nuxeo.war"`, so that URL is served from
+ * `<server.home>/nxserver/nuxeo.war/agentic-ui-config/` — which is exactly the
+ * `todir` of the non-overwriting copy in `install.xml`. Note that
+ * `<server.home>/nxserver/web` holds only `root.war` and is not a docBase;
+ * installing there produces a permanent 404.
+ *
+ * Under `nx serve` the base href is `/`, where `../` clamps to the root and
+ * gives `/agentic-ui-config/bootstrap.json`.
  *
  * @param baseUri normally `document.baseURI`
  */
