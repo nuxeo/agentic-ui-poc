@@ -204,6 +204,51 @@ DocumentService`. The chain, read from the published bundle:
 - **The published packages are compiled against Angular 19.2.18**, per the
   `ɵɵngDeclareFactory` metadata, while this repo runs 20.3.27. It compiles and builds;
   treat any partial-compilation oddity as a candidate cause before blaming our code.
+- **The full provider chain for `HxpDocumentListComponent` is six API ports, not three,
+  and it was walked to the end.** `DOCUMENT`, `QUERY` and `VERSION` are
+  `DocumentService`'s own constructor tokens. Then `COPY` and `MOVE` arrive through its
+  `SingleItemCopyService` and `SingleItemMoveService`, `CHECKIN` through its
+  `CreateDocumentVersionService`, and `DOWNLOAD` through the context-menu handlers'
+  `FileDownloadService -> SingleFileDownloadService -> BlobDownloadService`. Every link
+  is non-optional. `[contextMenuActions]="false"` does **not** avoid the handler chain —
+  `ContextMenuActionsService` constructs its handlers eagerly and that input only
+  controls rendering. All six are thin over existing `nuxeo-client` methods:
+  `VersionApi` declares one method, `CopyApi` and `MoveApi` one each, and
+  `DocumentDetailService` already had `restoreVersion`, `fetchBlobByXpath`,
+  `copyDocuments` and `moveDocuments`. Only `CHECKIN` needed a new service method.
+- **`providedIn: 'root'` upstream decides where our providers must live.**
+  `DocumentCacheService` is root-provided, so it resolves `DocumentService` from the
+  root injector and cannot see component providers — providing `DocumentService` on the
+  POC component leaves `NG0201` unchanged. Providing `DocumentCacheService` **itself**
+  on the component shadows the root default and the whole chain then resolves locally.
+  Prefer that to registering in `app.config.ts`, which also works and costs the initial
+  bundle dearly (see below).
+- **adf-core's `TranslationService` does not use the ngx-translate loader interface.**
+  It takes `translate.currentLoader` and calls `setDefaultLang`, `providerRegistered`,
+  `registerProvider`, `getFullTranslationJSON` and `init` — none of them part of
+  `TranslateLoader`. With a plain loader in place every adf-hx component dies with
+  `TypeError: this.customLoader.setDefaultLang is not a function`. Do **not** replace
+  `AppTranslateLoader` with adf-core's `TranslateLoaderService`: that deletes the
+  manifest-`labels` layering, which is a shipped Layer 0 capability. Extend it instead
+  and override `getTranslation`. Note the base declares a **private** `http`, so a
+  subclass field of that name fails `TS2415`/`TS4114`. adf-core also fetches
+  `assets/adf-core/i18n/<lang>.json`, which has to be added to the build's asset globs.
+- **`nuxeo-ui` has no `typecheck` target, so the `typecheck` gate does not cover the
+  app.** Two real `TS` errors in `app.config.ts`-adjacent app code passed
+  `nx affected -t typecheck` and were caught only by `build`. This is the same trap as
+  the `test` gate, one layer over.
+- **THE CURRENT PHASE 3 BLOCKER IS A BUNDLE-BOUNDARY PROBLEM, NOT A PORT PROBLEM.**
+  `apps/nuxeo-ui/src/app/shell/app-shell.component.ts` and `nav-drawer.component.ts`
+  both import `@agentic-ui/shared/adf-hx-bridge`, whose single barrel re-exports
+  `provide-adf-hx-nuxeo-bridge.ts`. The moment that file imports anything from
+  `@alfresco/adf-hx-content-services`, adf-hx and its dependencies become reachable from
+  the shell and land in the **initial** bundle. Measured: initial goes 1.70 MB → 2.65 MB
+  with the ports rebound and the POC untouched, and → 2.86 MB with the swap, against a
+  2.00 MB `maximumError`. Removing the ports from the barrel's exports does not help —
+  the providers file still imports them. **Rebinding to upstream tokens at all requires
+  a secondary entry point in the bridge library, or the shell must stop importing the
+  bridge barrel.** That is the next piece of work, and it is architectural rather than
+  incremental.
 - **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
   A second `install.xml` copy step with `overwrite="false"` puts customer
   configuration in a _sibling_ of the bundle, outside the destructive copy's
