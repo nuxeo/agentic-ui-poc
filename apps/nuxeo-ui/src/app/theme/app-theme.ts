@@ -1,72 +1,33 @@
-export type AppThemeId = 'nuxeo' | 'dark' | 'kawaii' | 'light';
+import type { AppThemeConfig } from '@agentic-ui/shared/app-config';
+
+/**
+ * Theme identifiers are open, not a closed union.
+ *
+ * They used to be `'nuxeo' | 'dark' | 'kawaii' | 'light'`, which meant a
+ * customer could not add a theme without a rebuild — the definition of a Layer 0
+ * failure. The set now comes from configuration, so the type is a string and
+ * validation is a membership test against the configured list.
+ */
+export type AppThemeId = string;
 
 export const APP_THEME_STORAGE_KEY = 'agentic_ui_color_theme';
 
-export interface AppThemePreviewColors {
-  sidebar: string;
-  surface: string;
-  header: string;
-  accent: string;
-  tile: string;
+/** The compiled `html[data-app-theme=...]` palettes. A configured theme names one of these as its base. */
+export const COMPILED_THEME_BASES = ['nuxeo', 'dark', 'kawaii', 'light'] as const;
+
+export type AppThemeDefinition = AppThemeConfig;
+
+export function isAppThemeId(
+  value: string | null,
+  themes: readonly AppThemeConfig[],
+): value is AppThemeId {
+  return value !== null && themes.some((theme) => theme.id === value);
 }
 
-export interface AppThemeDefinition {
-  id: AppThemeId;
-  label: string;
-  preview: AppThemePreviewColors;
-}
-
-export const APP_THEMES: readonly AppThemeDefinition[] = [
-  {
-    id: 'nuxeo',
-    label: 'Nuxeo',
-    preview: {
-      sidebar: '#1a237e',
-      surface: '#f5f5f5',
-      header: '#e8eaf6',
-      accent: '#2196f3',
-      tile: '#dce3f5',
-    },
-  },
-  {
-    id: 'dark',
-    label: 'Dark',
-    preview: {
-      sidebar: '#1e2a3a',
-      surface: '#0d1117',
-      header: '#161b22',
-      accent: '#3d5afe',
-      tile: '#21262d',
-    },
-  },
-  {
-    id: 'kawaii',
-    label: 'Kawaii',
-    preview: {
-      sidebar: '#880e4f',
-      surface: '#fce4ec',
-      header: '#f8bbd9',
-      accent: '#e91e63',
-      tile: '#f5c6d6',
-    },
-  },
-  {
-    id: 'light',
-    label: 'Light',
-    preview: {
-      sidebar: '#37474f',
-      surface: '#eceff1',
-      header: '#cfd8dc',
-      accent: '#00bcd4',
-      tile: '#b0bec5',
-    },
-  },
-];
-
-export function isAppThemeId(value: string | null): value is AppThemeId {
-  return value === 'nuxeo' || value === 'dark' || value === 'kawaii' || value === 'light';
-}
-
+/**
+ * Earlier releases stored palette names rather than theme ids. Kept so an
+ * upgrade does not silently reset a user's chosen theme.
+ */
 export function migrateLegacyThemeId(raw: string | null): AppThemeId | null {
   if (!raw) return null;
   const legacy: Record<string, AppThemeId> = {
@@ -76,4 +37,15 @@ export function migrateLegacyThemeId(raw: string | null): AppThemeId | null {
     violet: 'dark',
   };
   return legacy[raw] ?? null;
+}
+
+/**
+ * The `data-app-theme` attribute value to put on `<html>`.
+ *
+ * A configured theme with an unrecognised `base` still has to render, so it
+ * falls back to the packaged Nuxeo palette and relies on its own token
+ * overrides for the parts a customer cares about.
+ */
+export function resolveThemeAttribute(theme: AppThemeConfig): string {
+  return (COMPILED_THEME_BASES as readonly string[]).includes(theme.base) ? theme.base : 'nuxeo';
 }

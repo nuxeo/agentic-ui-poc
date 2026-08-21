@@ -29,8 +29,8 @@
         <button
           type="button"
           class="hxp-browse-page__panel-toggle"
-          [title]="panelOpen() ? 'Hide details' : 'Show details'"
-          aria-label="Toggle details panel"
+          [title]="(panelOpen() ? 'browse.details.hide' : 'browse.details.show') | translate"
+          [attr.aria-label]="'browse.details.toggle' | translate"
           (click)="togglePanel()"
         >
           <hxp-icon [name]="panelOpen() ? 'info' : 'info-outline'" size="md" [decorative]="true" />

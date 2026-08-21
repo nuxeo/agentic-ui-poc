@@ -1,13 +1,15 @@
 <section class="settings-page">
   <div class="themes-toolbar">
-    <div class="settings-page__title" role="heading" aria-level="2">Themes</div>
-    <button type="button" mat-icon-button aria-label="Search (placeholder)">
+    <div class="settings-page__title" role="heading" aria-level="2">
+      {{ 'settings.themes.title' | translate }}
+    </div>
+    <button type="button" mat-icon-button [attr.aria-label]="'settings.themes.search' | translate">
       <mat-icon>search</mat-icon>
     </button>
   </div>
 
   <div class="themes-grid" role="list">
-    @for (t of themes; track t.id) {
+    @for (t of themes(); track t.id) {
       <article
         class="theme-card"
         [class.theme-card--current]="theme.themeId() === t.id"
@@ -32,7 +34,7 @@
           <span class="theme-card__name">{{ t.label }}</span>
           @if (theme.themeId() === t.id) {
             <button type="button" mat-stroked-button disabled class="theme-card__btn">
-              Current
+              {{ 'settings.themes.current' | translate }}
             </button>
           } @else {
             <button
@@ -42,7 +44,7 @@
               class="theme-card__btn"
               (click)="theme.setTheme(t.id)"
             >
-              Apply
+              {{ 'settings.themes.apply' | translate }}
             </button>
           }
         </div>

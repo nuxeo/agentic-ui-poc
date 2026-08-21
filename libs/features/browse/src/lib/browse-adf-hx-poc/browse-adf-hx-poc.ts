@@ -2,6 +2,7 @@ import { Component, DestroyRef, computed, effect, inject, signal } from '@angula
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, map, Subject } from 'rxjs';
+import { TranslatePipe } from '@ngx-translate/core';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import {
   auditActivityLabel,
@@ -65,6 +66,7 @@ import {
     HxpBrowseTrashComponent,
     HxpBrowseDetailsPanelComponent,
     HxpIconComponent,
+    TranslatePipe,
   ],
   providers: [...ADF_HX_NUXEO_BRIDGE_PROVIDERS],
 })

@@ -164,6 +164,12 @@ sat-platform-nav p.sat-platform-nav-item-label {
 
 /*
  * App-wide pill normalization using the Asset Grid pill style as the single source.
+ *
+ * Layer 0: every value is a `--agentic-pill-*` custom property, so a customer can
+ * restyle every badge in the product from configuration. `!important` was removed
+ * from this block — nothing in Material or Satori targets these app-owned class
+ * names, so the flags only served to make the rules unoverridable by the customer
+ * CSS they are supposed to coexist with.
  */
 .asset-type-pill,
 .result-type-pill,
@@ -181,28 +187,53 @@ sat-platform-nav p.sat-platform-nav-item-label {
 .sentiment-badge,
 .ai-tag-chip,
 .ai-anomaly-badge,
-.overdue-badge,
-.sat-tag {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 2px 8px !important;
-  border-radius: 999px !important;
-  background: var(--mat-sys-surface-container-high, #eef0f4) !important;
-  border: 1px solid var(--mat-sys-outline-variant, #d8dbe2) !important;
-  color: var(--mat-sys-on-surface-variant, #5c5f6b) !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-  text-align: center !important;
-  max-width: 120px !important;
+.overdue-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--agentic-pill-padding, 2px 8px);
+  border-radius: var(--agentic-pill-radius, 999px);
+  background: var(--agentic-pill-background, var(--mat-sys-surface-container-high, #eef0f4));
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2));
+  color: var(--agentic-pill-color, var(--mat-sys-on-surface-variant, #5c5f6b));
+  font-size: var(--agentic-pill-font-size, 11px);
+  font-weight: var(--agentic-pill-font-weight, 600);
+  line-height: 1;
+  text-align: center;
+  max-width: var(--agentic-pill-max-width, 120px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
 }
 
+/*
+ * `.sat-tag` keeps its `!important` flags, unlike the app-owned classes above: it
+ * is a Satori component class whose own stylesheet is injected by `sat.theme` and
+ * would otherwise win. The values still come from the same custom properties, so a
+ * customer rebrands both sets with one token change.
+ */
 .sat-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: var(--agentic-pill-padding, 2px 8px) !important;
+  border-radius: var(--agentic-pill-radius, 999px) !important;
+  background: var(
+    --agentic-pill-background,
+    var(--mat-sys-surface-container-high, #eef0f4)
+  ) !important;
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2)) !important;
+  color: var(--agentic-pill-color, var(--mat-sys-on-surface-variant, #5c5f6b)) !important;
+  font-size: var(--agentic-pill-font-size, 11px) !important;
+  font-weight: var(--agentic-pill-font-weight, 600) !important;
+  line-height: 1 !important;
+  text-align: center !important;
+  max-width: var(--agentic-pill-max-width, 120px) !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
   min-height: auto !important;
   box-shadow: none !important;
 }
@@ -237,9 +268,9 @@ sat-status-tag {
  */
 [mat-dialog-title],
 .mat-mdc-dialog-title {
-  font-size: 1.375rem !important;
-  line-height: 1.75rem !important;
-  font-weight: 500 !important;
+  font-size: var(--agentic-dialog-title-font-size, 1.375rem) !important;
+  line-height: var(--agentic-dialog-title-line-height, 1.75rem) !important;
+  font-weight: var(--agentic-dialog-title-font-weight, 500) !important;
   letter-spacing: 0 !important;
 }
 
