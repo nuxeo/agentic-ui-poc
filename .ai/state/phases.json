@@ -28,7 +28,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/latest",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/latest:regate-8-gates-nocache"
+        "regate": "gates/latest:phase-3-spike"
       },
       "deviations": [],
       "notCovered": [
@@ -43,7 +43,7 @@
       "evidence": {
         "manifest": "phase-1-config/latest",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/latest:regate-8-gates-nocache"
+        "regate": "gates/latest:phase-3-spike"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -60,7 +60,7 @@
       "evidence": {
         "manifest": "phase-2-registry/latest",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/latest:regate-8-gates-nocache"
+        "regate": "gates/latest:phase-3-spike"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -80,14 +80,31 @@
     {
       "id": "phase-3-adfhx",
       "title": "adf-hx component adoption",
-      "status": "blocked",
-      "blockedOn": [
-        "@alfresco/adf-hx-content-services is not installed; it is GitHub Packages only and needs a read:packages token",
-        "@alfresco/adf-core is not installed"
-      ],
-      "evidence": null,
+      "status": "in-progress",
+      "evidence": {
+        "manifest": "phase-3-adf-hx/latest",
+        "regate": "gates/latest:phase-3-spike"
+      },
       "deviations": [],
-      "notCovered": ["everything"]
+      "notCovered": [
+        "The document-list swap itself — blocked on the three API ports above, not on the component.",
+        "Four capabilities to rehome from the hand-written list to the host page: error/retry, card view, thumbnails, column picker.",
+        "breadcrumb, document-tree, metadata-sidebar, permissions, manage-versions, document-viewer, search",
+        "bridge defects: 2 of 5 verified still open (hardcoded sys_effectivePermissions, browse_column_settings key collision)",
+        "angular-oauth2-oidc and cropperjs reach the bundle and are unused by this product; pdfjs-dist tree-shakes out entirely"
+      ],
+      "delivered": [
+        "Dependency pin set: 9 packages, all exact. adf-core declares all 16 peers as unbounded >=, so two had to be corrected against its suggestion (@mat-datetimepicker/core 16.0.1 for the Angular 20 line, pdfjs-dist 6.2.108 to avoid a native downgrade). Resolves with no --legacy-peer-deps; npm ci verified on Linux in CI.",
+        "ng-mocks stubbed via tools/stubs/ng-mocks (file: dependency). adf-hx imports this test library from its shipped /ui runtime bundle; with the real library installed it reached a 1.6 MB customer chunk carrying two eval() calls. Both eliminated.",
+        "bundle gate (9th): reads the built bytes and fails on test-library or eval() presence. Reports VACUOUS while adf-hx is not yet in the bundle.",
+        "Before-capture of the hand-written document list: phase-3-adf-hx, 9/9 against live Nuxeo.",
+        "Adoption chain measured end to end by attempting the swap: it compiles and typechecks, then fails NG0201 on upstream DocumentService."
+      ],
+      "blockedOn": [
+        "VERSION_API_TOKEN has no implementation. Upstream DocumentService requires DOCUMENT_API_TOKEN, QUERY_API_TOKEN and VERSION_API_TOKEN, none optional, and manage-versions is a capability the POC lacks entirely.",
+        "The bridge binds NuxeoDocumentApi/NuxeoQueryApi to its own clone tokens, not upstream's, so upstream DocumentService cannot see them.",
+        "DocumentService and ContextMenuActionsService are not providedIn anything and need explicit providers, plus copy/move/create-version/restore-version services."
+      ]
     },
     {
       "id": "phase-4-platform",

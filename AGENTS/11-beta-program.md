@@ -170,6 +170,40 @@ Treat them as settled; if you contradict one, prove it first.
 - The POC's bridge tokens (`DOCUMENT_API_TOKEN`, `QUERY_API_TOKEN`,
   `ROOT_DOCUMENT`, `DEFAULT_REPOSITORY_ID`) are local clones of published
   exports. Migration is to import upstream's and delete the clones.
+- **Adopting `HxpDocumentListComponent` is API-port work, not a component swap, and
+  the chain is now measured rather than estimated.** Attempting the swap on this
+  branch compiles and typechecks, then fails at runtime with
+  `NG0201: No provider found for DocumentService. Path: DocumentCacheService ->
+DocumentService`. The chain, read from the published bundle:
+  - the component does `inject(DocumentCacheService)` and
+    `inject(ContextMenuActionsService)`, both **non-optionally**, so neither can be
+    avoided — including by setting `[contextMenuActions]="false"`, which only
+    changes rendering;
+  - `DocumentCacheService` is `providedIn: 'root'` but injects upstream's
+    `DocumentService`, which is **not** `providedIn` anything and must be provided;
+  - `DocumentService`'s constructor requires three tokens — `DOCUMENT_API_TOKEN`,
+    `QUERY_API_TOKEN` and `VERSION_API_TOKEN`, none optional — plus copy, move,
+    create-version and restore-version services;
+  - `ContextMenuActionsService` is also not `providedIn` anything and takes ten
+    action handlers; `CONTEXT_MENU_ACTIONS_PROVIDERS` supplies nine of them.
+
+  `ADF_HX_NUXEO_BRIDGE_PROVIDERS` binds `NuxeoDocumentApi` and `NuxeoQueryApi` to the
+  bridge's **clone** tokens, so upstream's `DocumentService` cannot see them.
+  **`VERSION_API_TOKEN` has no implementation at all** — manage-versions is a
+  capability the POC lacks — so no amount of rebinding makes the swap work. Implement
+  and bind the three ports first; the component swap is the small part that follows.
+
+- **The two document lists are not interchangeable.** The hand-written
+  `hxp-document-list` is 384 lines and renders an error state with retry, a card view,
+  thumbnails and its own column picker. Upstream's renders a DataTable and nothing
+  else: its inputs are `documents`, `isLoading`, `multiselect`, `contextMenuActions`
+  and `schema`, and it emits `selectedDocuments`, `rowClicked`, `sortingClicked` and
+  `columnsResized`. Those four capabilities must be rehomed to the host page, not
+  dropped. `PACKAGED_BROWSE_COLUMNS` maps cleanly onto upstream's `[schema]` as
+  `DataColumn[]`, so Layer 1 can drive the real DataTable without a second column list.
+- **The published packages are compiled against Angular 19.2.18**, per the
+  `ɵɵngDeclareFactory` metadata, while this repo runs 20.3.27. It compiles and builds;
+  treat any partial-compilation oddity as a candidate cause before blaming our code.
 - **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
   A second `install.xml` copy step with `overwrite="false"` puts customer
   configuration in a _sibling_ of the bundle, outside the destructive copy's
