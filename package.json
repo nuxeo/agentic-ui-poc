@@ -13,7 +13,9 @@
     "lint:affected": "nx affected -t lint",
     "review:guardrails": "node scripts/review-guardrails.mjs",
     "review:preflight": "npm run review:guardrails && npx nx affected -t lint && npx nx affected -t test",
-    "evidence:collect": "node scripts/collect-evidence/runner.mjs"
+    "evidence:collect": "node scripts/collect-evidence/runner.mjs",
+    "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",
+    "beta:gate": "node scripts/beta-harness/verify-gate.mjs"
   },
   "lint-staged": {
     "*.ts": [
@@ -32,6 +34,9 @@
   },
   "private": true,
   "packageManager": "npm@11.6.2",
+  "engines": {
+    "node": "20.x"
+  },
   "dependencies": {
     "@angular/animations": "~20.3.0",
     "@angular/cdk": "~20.2.0",

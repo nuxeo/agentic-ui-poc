@@ -1,0 +1,81 @@
+/**
+ * Phase 0 — authenticated baseline against a live Nuxeo instance.
+ *
+ * Captures the state of the application before any Beta work begins, so later
+ * phases have something to be compared against. Everything asserted here is
+ * expected to pass on the current branch; if it does not, Phase 0 has found a
+ * real regression and the plan should not proceed past it.
+ *
+ * Two things learned while first running this, both encoded below:
+ *
+ * 1. The adf-hx nav drawer only mounts when the route is entered through the
+ *    platform nav item, because the shell owns the drawer state. Navigating
+ *    straight to the URL renders the page without a drawer, so asserting the
+ *    tree after a direct `goTo` tests the wrong entry path.
+ * 2. This Nuxeo instance does not provide the `AI.Insights` automation
+ *    operation, and the app probes `/nuxeo/logout` on boot. Both surface as
+ *    console errors that have nothing to do with browse, so they are ignored
+ *    explicitly — and still counted in the report.
+ *
+ * Prerequisites:
+ *   docker start nuxeo          (container `nuxeo`, published on 8080)
+ *   npx nx serve nuxeo-ui       (separate terminal)
+ *
+ * Run:
+ *   npm run beta:evidence -- phase-0-baseline
+ */
+
+/**
+ * Errors this environment always produces, unrelated to the browse surfaces.
+ * `AI.*` operations come from a marketplace package that is not installed on a
+ * plain local Nuxeo, and the app probes `/nuxeo/logout` on boot.
+ */
+const ENVIRONMENTAL_ERRORS = [/automation\/AI\./, '/nuxeo/logout'];
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
+ */
+export default async function run(page, h) {
+  h.step('Application loads and authenticates against live Nuxeo');
+  await h.login();
+  await h.expectVisible('app shell rendered', 'app-shell');
+  const me = await page.evaluate(async () => {
+    const r = await fetch('/nuxeo/api/v1/me', { headers: { Accept: 'application/json' } });
+    return r.ok ? (await r.json()).id : `HTTP ${r.status}`;
+  });
+  h.check('authenticated as Administrator', me === 'Administrator', `/me returned ${me}`);
+  await h.screenshot('app-shell');
+
+  h.step('Production browse renders real repository content');
+  await h.goTo('/#/browse');
+  await h.expectVisible('browse page rendered', 'lib-browse');
+  await h.expectText('repository content listed', 'lib-browse', 'Default domain');
+  await h.screenshot('production-browse');
+
+  h.step('adf-hx POC browse renders real repository content');
+  // Entered directly: the page and its hxp components must render on their own.
+  await h.goTo('/#/browse-adf-hx');
+  await h.expectVisible('POC page rendered', 'lib-browse-adf-hx-poc');
+  await h.expectVisible('hxp folder header present', 'hxp-folder-header');
+  await h.expectVisible('hxp document list present', 'hxp-document-list');
+  await h.expectText('Nuxeo children listed', 'hxp-document-list', 'Default domain');
+  await h.expectText('Last Contributor column populated', 'hxp-document-list', 'Administrator');
+  await h.screenshot('adf-hx-poc-browse');
+
+  h.step('POC tabs render');
+  await h.expectVisible('hxp tabs present', 'hxp-browse-tabs');
+  await h.screenshot('adf-hx-poc-tabs');
+
+  h.step('Nav drawer and folder tree mount when entered via platform nav');
+  await h.goTo('/#/browse');
+  const navEntry = page.locator('a,button').filter({ hasText: /adf-hx/i }).first();
+  h.check('platform nav offers the adf-hx entry', (await navEntry.count()) > 0);
+  await navEntry.click();
+  await page.waitForTimeout(3000);
+  await h.expectVisible('hxp nav drawer mounted', 'hxp-browse-nav-drawer');
+  await h.screenshot('adf-hx-poc-nav-drawer');
+
+  h.step('Baseline health');
+  h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);
+}
