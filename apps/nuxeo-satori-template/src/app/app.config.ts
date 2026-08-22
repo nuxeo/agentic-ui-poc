@@ -18,6 +18,7 @@ import { ExtensionRuleContextService } from '@nuxeo-satori/platform/extensions';
 import { routes } from './app.routes';
 import { provideTemplateExtensions } from './extensions/template-extensions';
 import { TemplateSessionService } from './template-session.service';
+import { TemplateThemeService } from './template-theme.service';
 
 /**
  * The whole bootstrap. Four things, in an order that matters.
@@ -32,8 +33,27 @@ export const appConfig: ApplicationConfig = {
     //    than throwing, so an unconfigured deployment still starts — inspect
     //    `AppConfigService.diagnostics()` to see which half fell back and why.
     //    The template's home page renders exactly that.
+    //
+    //    Anything that reads the configuration **once** must be sequenced inside
+    //    this initializer, after the await. Angular runs `provideAppInitializer`
+    //    functions *concurrently*, so a separate initializer reading
+    //    `bootstrap()` races the load and reliably loses: the document title was
+    //    a second initializer and rendered the packaged default while the shell
+    //    around it showed the configured brand.
+    //
+    //    Reactive readers do not need this. `TemplateThemeService` applies its
+    //    tokens from an `effect` over the same signal, so it simply re-runs when
+    //    the load lands — which is why the theme was correct while the title was
+    //    not. Prefer the reactive form; sequence here only when a one-shot write
+    //    to something outside Angular (like `document.title`) is unavoidable.
     provideAppInitializer(async () => {
-      await inject(AppConfigService).load();
+      const config = inject(AppConfigService);
+      // Constructed before the await so its effect is live for the first paint.
+      inject(TemplateThemeService);
+
+      await config.load();
+
+      document.title = config.bootstrap().branding.documentTitle;
     }),
 
     // 2. Layer 2. Registers this fork's slots, rules, components and actions.
@@ -68,12 +88,6 @@ export const appConfig: ApplicationConfig = {
           takeUntilDestroyed(destroyRef),
         )
         .subscribe((event) => ruleContext.url.set(event.urlAfterRedirects.split('?')[0]));
-    }),
-
-    // 4. Apply Layer 0 branding to the document title.
-    provideAppInitializer(() => {
-      const config = inject(AppConfigService);
-      document.title = config.bootstrap().branding.documentTitle;
     }),
   ],
 };

@@ -15,8 +15,13 @@
   color: var(--shell-fg, #1f2328);
 }
 
+// The nav carries its own foreground and muted tokens rather than inheriting
+// from `.shell`. Without that, a theme darkening `--shell-nav-bg` leaves the
+// links at the body text colour and renders dark-on-dark. A rebrand should not
+// be able to make the navigation unreadable from JSON alone.
 .shell__nav {
   padding: 1.5rem 1rem;
+  color: var(--shell-nav-fg, #1f2328);
   background: var(--shell-nav-bg, #f6f8fa);
   border-right: 1px solid var(--shell-border, #d0d7de);
 }
@@ -56,7 +61,7 @@
 
 .shell__nav-empty {
   padding: 0.5rem 0.75rem;
-  color: var(--shell-muted, #656d76);
+  color: var(--shell-nav-muted, #656d76);
   font-size: 0.875rem;
 }
 

@@ -5,10 +5,16 @@
 // be a single block here — or, better, Layer 0 `themes[].tokens`, which applies
 // without a rebuild.
 
+// These are the *packaged* defaults. Layer 0 `themes[].tokens` overwrites any of
+// them on `<html>` at runtime via `TemplateThemeService`, and `<html>` wins over
+// `:root` for a custom property set inline, so an unconfigured deployment gets
+// exactly this palette and a configured one gets its own.
 :root {
   --shell-fg: #1f2328;
   --shell-muted: #656d76;
   --shell-border: #d0d7de;
+  --shell-nav-fg: #1f2328;
+  --shell-nav-muted: #656d76;
   --shell-nav-bg: #f6f8fa;
   --shell-nav-hover: #eaeef2;
   --shell-nav-active: #ddf4ff;

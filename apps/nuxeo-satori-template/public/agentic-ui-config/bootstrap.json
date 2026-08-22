@@ -15,9 +15,34 @@
     "documentTitle": "Acme Content"
   },
 
-  "defaultThemeId": "nuxeo",
-  "$themes": "Merged over the packaged themes by id. `tokens` are CSS custom properties applied to <html>, so a rebrand needs no rebuild.",
-  "themes": [],
+  "$themes": "Merged over the packaged themes by id. `tokens` are CSS custom properties written onto <html> by TemplateThemeService, so a rebrand genuinely needs no rebuild — edit a hex value below, reload, and the shell changes. The `--shell-*` names are the ones this template's own SCSS reads; a fork renames them to whatever its CSS uses. `base` names a compiled Material palette and is ignored by this template, which ships no Material.",
+  "defaultThemeId": "acme",
+  "themes": [
+    {
+      "id": "acme",
+      "label": "Acme",
+      "base": "nuxeo",
+      "preview": {
+        "sidebar": "#0f2b46",
+        "surface": "#ffffff",
+        "header": "#0f2b46",
+        "accent": "#1f6feb",
+        "tile": "#dbeafe"
+      },
+      "tokens": {
+        "--shell-fg": "#0f172a",
+        "--shell-muted": "#5b6b7f",
+        "--shell-border": "#c7d3e0",
+        "--shell-nav-fg": "#eef4fb",
+        "--shell-nav-muted": "#9fb4ca",
+        "--shell-nav-bg": "#0f2b46",
+        "--shell-nav-hover": "#1c3d5c",
+        "--shell-nav-active": "#1f6feb",
+        "--shell-warn-bg": "#fff4d6",
+        "--shell-warn-border": "#d99b1c"
+      }
+    }
+  ],
 
   "defaultLanguage": "en",
   "availableLanguages": ["en"]
