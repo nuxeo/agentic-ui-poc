@@ -39,8 +39,15 @@ type AxiosLikeResponse<T> = { data: T };
 const HXQL_DOCUMENT_VERSIONS =
   /^\s*SELECT\s+\*\s+FROM\s+SysContent\s+WHERE\s+sys_parentId\s*=\s*'([^']*)'\s+AND\s+sysver_isVersion\s*=\s*1\s+ORDER\s+BY\s+sysver_created\s+DESC\s*$/i;
 
+/**
+ * `WHERE` is **optional**, because the search page sends none until the user
+ * narrows something: with an empty box and no filters the statement is
+ * `SELECT * FROM SysContent ORDER BY sys_modified DESC`. Requiring `WHERE` made
+ * that fall through to the refusal branch, so the search page threw on first load
+ * — before any interaction.
+ */
 const HXQL_SEARCH_QUERY =
-  /^\s*SELECT\s+\*\s+FROM\s+SysContent\s+WHERE\s+(.*?)(?:\s+ORDER\s+BY\s+(.*?))?\s*$/i;
+  /^\s*SELECT\s+\*\s+FROM\s+SysContent(?:\s+WHERE\s+(.*?))?(?:\s+ORDER\s+BY\s+(.*?))?\s*$/i;
 
 /**
  * HxPR sort key -> the Nuxeo property `@children` can order by.
@@ -107,43 +114,51 @@ const HXQL_TO_NUXEO_FIELD: Readonly<Record<string, string>> = {
 };
 
 /**
- * Translate an HXQL WHERE clause to NXQL.
+ * Translate an HXQL fragment — a `WHERE` clause or an `ORDER BY` list — to NXQL.
  *
- * Supports:
- * - sys_fulltext = 'term*' -> ecm:fulltext = 'term*'
- * - sys_created >= DATE '...' -> dc:created >= TIMESTAMP '...'
- * - sys_primaryType IN ('File','Folder') -> ecm:primaryType IN ('File','Folder')
- * - sysfile_blob/mimeType IN ('image/png') -> file:content/mime-type IN ('image/png')
- * - Logical operators: AND, OR
+ * Handles what upstream's four filter services actually emit:
+ * - `sys_fulltext = 'term*'`                  -> `ecm:fulltext = 'term*'`
+ * - `sys_created >= DATE '…'`                 -> `dc:created >= TIMESTAMP '…'`
+ * - `sys_primaryType IN ('File','Folder')`    -> `ecm:primaryType IN (…)`
+ * - `sysfile_blob/mimeType IN ('image/png')`  -> `file:content/mime-type IN (…)`
+ * - `sys_modified DESC`                       -> `dc:modified DESC`
+ * - `AND` / `OR` between them, unchanged
  *
- * Refuses any unrecognized field by name so translation errors are explicit.
+ * Anything left carrying an HxPR field name is **refused by name**. A field Nuxeo
+ * cannot resolve does not error there — it answers HTTP 200 with zero entries,
+ * which is indistinguishable from an empty repository and becomes a bug report
+ * about missing documents.
+ *
+ * Field substitution is deliberately **not** conditioned on what follows the
+ * name. An earlier cut required an operator (`=`, `IN`, `>=`) in a lookahead,
+ * which silently excluded the `ORDER BY sys_modified DESC` that the search page's
+ * own default query ends with — so every search threw, and the message claimed
+ * `sys_modified` was unsupported while listing it as supported. Ordering is a
+ * position, not an operator.
  */
-function translateHxqlToNxql(hxqlWhere: string): string {
-  if (!hxqlWhere.trim()) {
+function translateHxqlToNxql(hxqlFragment: string): string {
+  if (!hxqlFragment.trim()) {
     return '';
   }
 
-  // Replace HXQL field names with Nuxeo equivalents
-  let nxql = hxqlWhere;
+  // Longest first, so `sysfile_blob/mimeType` is consumed before any shorter key
+  // could match part of it.
+  const byLengthDescending = Object.keys(HXQL_TO_NUXEO_FIELD).sort((a, b) => b.length - a.length);
 
-  // Sort by length descending to handle longer fields first (e.g. sysfile_blob/mimeType before sys_fulltext)
-  const sortedFields = Object.keys(HXQL_TO_NUXEO_FIELD).sort((a, b) => b.length - a.length);
-
-  for (const hxqlField of sortedFields) {
-    const nuxeoField = HXQL_TO_NUXEO_FIELD[hxqlField];
-    // Match field name followed by a space or operator (=, >=, <=, IN, etc.)
-    const regex = new RegExp(
-      `\\b${hxqlField.replace('/', '\\/')}\\b(?=\\s*(=|>=|<=|<>|<|>|IN))`,
-      'gi',
-    );
-    nxql = nxql.replace(regex, nuxeoField);
+  let nxql = hxqlFragment;
+  for (const hxqlField of byLengthDescending) {
+    const escaped = hxqlField.replace(/[/\\^$*+?.()|[\]{}]/g, '\\$&');
+    nxql = nxql.replace(new RegExp(`\\b${escaped}\\b`, 'gi'), HXQL_TO_NUXEO_FIELD[hxqlField]);
   }
 
-  // Replace DATE keyword with TIMESTAMP for Nuxeo
+  // HXQL spells a date literal `DATE '…'`; NXQL spells it `TIMESTAMP '…'`.
   nxql = nxql.replace(/\bDATE\s+'/gi, "TIMESTAMP '");
 
-  // Check for any remaining sys_* fields that weren't translated
-  const unmappedField = /\bsys_\w+|sysfile_\w+/.exec(nxql);
+  // Refuse anything still naming an HxPR field — but read past quoted literals
+  // first, or a user searching for the text "sys_id" would be told their own
+  // search term is an unsupported field.
+  const withoutLiterals = nxql.replace(/'(?:[^'\\]|\\.)*'/g, "''");
+  const unmappedField = /\bsys(?:file)?_\w+/.exec(withoutLiterals);
   if (unmappedField) {
     throw new Error(
       `Cannot translate HXQL field "${unmappedField[0]}": no Nuxeo property corresponds to it. ` +
@@ -340,8 +355,16 @@ export class NuxeoQueryApi {
   /**
    * Full-text search over the repository, translating HXQL to NXQL.
    *
-   * Calls Nuxeo's `/search/lang/NXQL/execute` endpoint with the translated query. ORDER BY
-   * comes from the HXQL statement itself if present, or from the `sort` array otherwise.
+   * `ORDER BY` comes from the HXQL statement itself when it carries one, and from
+   * the `sort` array otherwise — upstream's `SearchService` populates both, and
+   * the statement is the more specific of the two.
+   *
+   * Not immediately consistent. `/search/lang/NXQL/execute` is OpenSearch-backed
+   * on this deployment and lags a write, which is why the versions panel reads
+   * `Document.GetVersions` instead. Search is the one surface where that is
+   * acceptable: a document missing from a result set for a second is a very
+   * different defect from a version missing from the list of versions the user
+   * just created.
    */
   private async querySearch(
     hxqlWhere: string,
@@ -351,22 +374,28 @@ export class NuxeoQueryApi {
     offset: number,
     sort: readonly string[],
   ): Promise<AxiosLikeResponse<QueryResult>> {
-    // Translate HXQL WHERE to NXQL
-    const nxqlWhere = translateHxqlToNxql(hxqlWhere);
+    const translatedWhere = translateHxqlToNxql(hxqlWhere);
 
-    // Build ORDER BY clause - from statement or from sort array
     let nxqlOrderBy = '';
     if (hxqlOrderBy) {
-      // Translate HXQL field names in ORDER BY
       nxqlOrderBy = translateHxqlToNxql(hxqlOrderBy);
     } else if (sort.length > 0) {
-      // Convert sort array to NXQL ORDER BY
-      const sortClauses = toNuxeoSort(sort);
-      nxqlOrderBy = sortClauses.map((s) => `${s.sortBy} ${s.sortOrder}`).join(', ');
+      nxqlOrderBy = toNuxeoSort(sort)
+        .map((entry) => `${entry.sortBy} ${entry.sortOrder}`)
+        .join(', ');
     }
 
-    // Build complete NXQL query
-    const nxqlQuery = `SELECT * FROM Document WHERE ${nxqlWhere || '1=1'}${nxqlOrderBy ? ` ORDER BY ${nxqlOrderBy}` : ''}`;
+    // Without these two, a search returns every *version* of every match and
+    // everything in the trash. Upstream's HXQL carries no equivalent — HxPR
+    // filters versions with `sysver_isVersion` only when a caller asks — so the
+    // hygiene is ours to add, and it is added unconditionally rather than left to
+    // whichever filter the user happens to apply.
+    const clauses = ['ecm:isVersion = 0', 'ecm:isTrashed = 0'];
+    if (translatedWhere) clauses.push(`(${translatedWhere})`);
+
+    const nxqlQuery =
+      `SELECT * FROM Document WHERE ${clauses.join(' AND ')}` +
+      (nxqlOrderBy ? ` ORDER BY ${nxqlOrderBy}` : '');
 
     // Call Nuxeo search endpoint
     const currentPageIndex = limit > 0 ? Math.floor(offset / limit) : 0;

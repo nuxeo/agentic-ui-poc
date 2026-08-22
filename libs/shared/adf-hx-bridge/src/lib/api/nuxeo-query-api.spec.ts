@@ -363,21 +363,88 @@ describe('NuxeoQueryApi', () => {
       );
     });
 
-    it('accepts and translates a search query', async () => {
-      // Search queries are now supported and translated to NXQL
-      http
-        .get('/nuxeo/api/v1/search/lang/NXQL/execute')
-        .query(true)
-        .reply(200, { entries: [], resultsCount: 0 });
-
-      const result = await api.getDocumentsByQuery({
-        query: `SELECT * FROM SysContent WHERE sys_fulltext = 'test*'`,
+    it('translates a search statement to NXQL and asks Nuxeo for it', async () => {
+      // The translation is asserted **at the wire**, not through the return value.
+      // A port that answered `[]` without ever calling Nuxeo would satisfy a
+      // result-shape assertion, and an empty result set is indistinguishable from
+      // an empty repository — which is the whole failure mode `REFUSES: R3`
+      // existed to avoid.
+      const pending = api.getDocumentsByQuery({
+        query: `SELECT * FROM SysContent WHERE sys_fulltext = 'invoice*' ORDER BY sys_modified DESC`,
         limit: 10,
         offset: 0,
       });
 
-      expect(result.data.documents).toEqual([]);
-      expect(result.data.totalCount).toBe(0);
+      const search = httpMock.expectOne((r) =>
+        r.url.includes('/nuxeo/api/v1/search/lang/NXQL/execute'),
+      );
+      const nxql = search.request.params.get('query') ?? '';
+      // HxPR field names must not survive into NXQL: Nuxeo has never heard of them.
+      expect(nxql).toContain("ecm:fulltext = 'invoice*'");
+      expect(nxql).toContain('ORDER BY dc:modified DESC');
+      expect(nxql).not.toMatch(/sys_/);
+      search.flush({ entries: [], resultsCount: 0 });
+
+      const result = (await pending).data;
+      expect(result.documents).toEqual([]);
+      expect(result.totalCount).toBe(0);
+    });
+
+    it("accepts the search page's own first query, which carries no WHERE", async () => {
+      // With an empty search box and no filters the page sends exactly this. An
+      // earlier cut required `WHERE`, so this fell through to the refusal branch
+      // and the search page threw before the user had typed anything.
+      const pending = api.getDocumentsByQuery({
+        query: 'SELECT * FROM SysContent ORDER BY sys_modified DESC',
+        limit: 50,
+      });
+
+      const search = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      const nxql = search.request.params.get('query') ?? '';
+      expect(nxql).toContain('ORDER BY dc:modified DESC');
+      search.flush({ entries: [], resultsCount: 0 });
+      await pending;
+    });
+
+    it('excludes versions and trashed documents from every search', async () => {
+      // Without this, searching returns every version of every match plus the
+      // trash. Upstream's HXQL carries no equivalent, so the hygiene is ours.
+      const pending = api.getDocumentsByQuery({
+        query: `SELECT * FROM SysContent WHERE sys_fulltext = 'invoice*'`,
+        limit: 50,
+      });
+
+      const search = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      const nxql = search.request.params.get('query') ?? '';
+      expect(nxql).toContain('ecm:isVersion = 0');
+      expect(nxql).toContain('ecm:isTrashed = 0');
+      // The user's own filter has to survive alongside them.
+      expect(nxql).toContain("ecm:fulltext = 'invoice*'");
+      search.flush({ entries: [], resultsCount: 0 });
+      await pending;
+    });
+
+    it('does not mistake a search term containing sys_ for an untranslatable field', async () => {
+      const pending = api.getDocumentsByQuery({
+        query: `SELECT * FROM SysContent WHERE sys_fulltext = 'sys_id*'`,
+        limit: 50,
+      });
+
+      const search = httpMock.expectOne((r) => r.url.includes('/search/lang/NXQL/execute'));
+      expect(search.request.params.get('query')).toContain("ecm:fulltext = 'sys_id*'");
+      search.flush({ entries: [], resultsCount: 0 });
+      await pending;
+    });
+
+    it('refuses a search statement naming a field with no Nuxeo equivalent', async () => {
+      // Refused by name rather than forwarded. A field Nuxeo cannot resolve comes
+      // back as an empty page, not an error, so forwarding it would report an
+      // empty repository.
+      await expect(
+        api.getDocumentsByQuery({
+          query: `SELECT * FROM SysContent WHERE sys_madeUpField = 'x'`,
+        }),
+      ).rejects.toThrow('Cannot translate HXQL field');
     });
   });
 });

@@ -1,8 +1,8 @@
 # Phase 4: Layer 2 — Publishable Platform
 
-**Status:** STARTED (foundation laid)  
+**Status:** IN PROGRESS — the registration API is delivered; the **build is not**  
 **Estimated:** 11-16 days with AI support  
-**Started:** 2026-08-23
+**Started:** 2026-08-23 · **Last updated:** 2026-08-23
 
 ## Goal
 
@@ -10,11 +10,80 @@ Make libraries publishable as npm packages (`@nuxeo-satori/*`) that customers ca
 
 ## Key Deliverables
 
-1. ✅ Libraries build with ng-packagr to `dist/`
-2. ⬜ Public API surface declared and gated
-3. ⬜ Registration API exposed (setComponents, setEvaluators, setActions)
-4. ⬜ Thin forkable app template
-5. ⬜ Customer extension library starter
+| #   | Deliverable                                                             | Status                                                                      |
+| --- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| 1   | Libraries build to `dist/` as installable packages                      | **not started** — see the blocker below                                     |
+| 2   | Public API surface declared and pinned against accidental change        | **not started**                                                             |
+| 3   | Registration API — our `setComponents` / `setEvaluators` / `setActions` | **done** — `provideSatoriExtensions()`, 8 specs, and the app itself uses it |
+| 4   | Thin forkable app template                                              | **not started**                                                             |
+| 5   | Customer extension library starter                                      | **not started**                                                             |
+
+### Correcting the first version of this file
+
+Its checklist marked deliverable 1 **done** on the strength of an `ng-package.json`
+existing. That was wrong twice over: a config file is not a build, and
+**`ng-packagr` is not installed at all** — the file even referenced a
+`node_modules/ng-packagr/ng-package.schema.json` that is not on disk. Nothing
+built, and nothing could have. Recorded here rather than quietly fixed, because
+"documented as done, never ran" is the exact failure this programme keeps paying
+for.
+
+### The blocker on deliverable 1
+
+`@nx/angular:ng-packagr-lite` is the right executor and is present, but it
+resolves `ng-packagr` at runtime and that package is **absent** from
+`package.json` and from `node_modules`. `@nx/js:tsc` — the executor
+`shared-util` uses — is not a substitute: this library ships a component with a
+`templateUrl`, so it needs the Angular compiler, and `tsc` alone produces no
+package metadata, no FESM bundle and no entry points.
+
+Adding it is a `package-lock.json` change, which is the single most expensive
+operation in this repo: a bare `npm install` on macOS prunes optional platform
+entries Linux needs and `npm ci` then refuses the whole tree — that broke CI for
+the length of Phase 2. So it is a deliberate, isolated change with the
+`lockfile` gate run before and after, not a side effect of a feature commit.
+
+## Delivered: the registration API
+
+`provideSatoriExtensions()` in `@agentic-ui/shared/extensions` — one declarative
+object reaching all four registries, applied in an **environment initializer** so
+every id is registered before the first slot resolves.
+
+```ts
+provideSatoriExtensions({
+  slots: { toolbar: [{ id: 'acme.toolbar.export', order: 10 }] },
+  rules: { 'acme.rules.isPilot': () => true },
+  failClosedRules: ['acme.rules.isPilot'],
+  components: { 'acme.sidebar.reports': () => import('./reports').then((m) => m.Reports) },
+  actions: { 'acme.actions.export': { execute: (ctx) => void ctx } },
+});
+```
+
+Four properties worth knowing, each pinned by a spec:
+
+- **The factory form gets an injection context.** `provideSatoriExtensions(() => ({...}))`
+  may `inject()`, which is not optional in practice — two of the application's
+  own rules close over `AuthService` and all six bulk handlers close over an
+  `Injector`.
+- **Later wins per id** for rules, components and actions, which is how a
+  customer layer overrides a packaged one without forking it.
+- **Slot descriptors accumulate**, so a customer adding a toolbar button cannot
+  silently delete the packaged ones. Hiding and reordering stay a manifest edit.
+- **Returns `EnvironmentProviders`**, so it cannot be listed in a component's
+  `providers`, where it would run too late to mean anything.
+
+**The application uses it.** `apps/nuxeo-ui/src/app/extensions/provide-app-extensions.ts`
+was rewritten to contribute through this function instead of injecting the four
+registries by hand, so the documented customer path is the one the product
+exercises on every boot. Its live rule-context wiring stays a separate
+`APP_INITIALIZER`, because pushing shell state into a signal is not registration.
+
+**Watched fail on purpose.** With all five registration paths sabotaged, 6 of the
+8 specs went red. One of the two that stayed green was a genuine false green —
+it asserted a rule evaluated `true`, and an _unregistered_ rule also evaluates
+`true` because unknown rules fail open, so it passed whether or not the factory
+had ever run. It now asserts `false`, which only a registered evaluator can
+return, and it goes red under the same sabotage.
 
 ## Libraries to Publish
 
@@ -182,14 +251,11 @@ Create `libs/shared/extensions/api-extractor.json`:
 
 ### GATE
 
-Add to `scripts/review-guardrails.mjs`:
-
-```javascript
-function checkPublicApiSurface() {
-  // Fail if adf-hx types leak into @nuxeo-satori/* public APIs
-  // Fail if undocumented exports in public-api.ts
-}
-```
+`checkNoAdfHxInPublicApi()` in `scripts/review-guardrails.mjs` **already enforces
+the adf-hx half**, delivered in Phase 3 — the first version of this file listed it
+as outstanding work, which was wrong. What is still missing is different: a
+**pinned surface**, so that an accidental export addition or signature change
+fails rather than shipping. That is deliverable 2.
 
 ## Package Naming
 
@@ -226,7 +292,8 @@ function checkPublicApiSurface() {
 
 ## Success Criteria
 
-- [x] ng-package.json created for extensions
+- [x] Registration API delivered, spec'd, and used by the application
+- [ ] `ng-packagr` added to `package.json` (deliberate, isolated lockfile change)
 - [ ] `nx build shared-extensions` produces dist/
 - [ ] package.json has `publishConfig`
 - [ ] API extractor generates .api.md baseline

@@ -45,4 +45,9 @@ export {
 } from './lib/extension-component-registry.service';
 export { ExtensionOutletComponent } from './lib/extension-outlet.component';
 export { AppExtensionsService } from './lib/app-extensions.service';
+export {
+  provideSatoriExtensions,
+  type SatoriExtensionContributions,
+  type SatoriExtensionContributor,
+} from './lib/provide-satori-extensions';
 export { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS, type NavItemDescriptor } from './lib/nav-items';
