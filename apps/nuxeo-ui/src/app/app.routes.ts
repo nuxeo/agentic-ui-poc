@@ -29,6 +29,11 @@ export const routes: Routes = [
           import('@agentic-ui/feature-browse/adf-hx-poc').then((m) => m.BrowseAdfHxPocComponent),
       },
       {
+        path: 'search-adf-hx',
+        loadComponent: () =>
+          import('@agentic-ui/feature-browse/search-adf-hx').then((m) => m.SearchAdfHxComponent),
+      },
+      {
         path: 'browse',
         loadChildren: () => import('@agentic-ui/feature-browse').then((m) => m.browseRoutes),
       },

@@ -296,7 +296,7 @@ describe('NuxeoQueryApi', () => {
       expect(documents.map((d) => d.sys_id)).toEqual(['ver-0-2', 'ver-0-1']);
     });
 
-    it('maps the version fields upstream’s panel reads', async () => {
+    it('maps the version fields upstream panel reads', async () => {
       const pending = api.getDocumentsByQuery({ query: versionsQuery('live-1') });
       flushVersions();
 
@@ -331,16 +331,18 @@ describe('NuxeoQueryApi', () => {
       expect(result.totalCount).toBe(2);
     });
 
-    it('refuses an HXQL statement it does not understand instead of returning nothing', async () => {
+    it('refuses an HXQL statement with unmapped fields', async () => {
       // An empty result set is indistinguishable from an empty repository, which is how a
       // silently unsupported query becomes a bug report about missing documents.
       await expect(
-        api.getDocumentsByQuery({ query: 'SELECT * FROM SysContent WHERE sys_title = ‘x’' }),
-      ).rejects.toThrow('does not understand this HXQL statement');
+        api.getDocumentsByQuery({
+          query: `SELECT * FROM SysContent WHERE sys_unmappedField = 'x'`,
+        }),
+      ).rejects.toThrow('Cannot translate HXQL field');
     });
 
     it('refuses an empty statement', async () => {
-      await expect(api.getDocumentsByQuery({})).rejects.toThrow('(empty)');
+      await expect(api.getDocumentsByQuery({})).rejects.toThrow('does not understand');
     });
 
     it('refuses a sort it would otherwise discard', async () => {
@@ -359,6 +361,23 @@ describe('NuxeoQueryApi', () => {
       await expect(api.getDocumentsByQuery({ query: versionsQuery('') })).rejects.toThrow(
         'carried no document id',
       );
+    });
+
+    it('accepts and translates a search query', async () => {
+      // Search queries are now supported and translated to NXQL
+      http
+        .get('/nuxeo/api/v1/search/lang/NXQL/execute')
+        .query(true)
+        .reply(200, { entries: [], resultsCount: 0 });
+
+      const result = await api.getDocumentsByQuery({
+        query: `SELECT * FROM SysContent WHERE sys_fulltext = 'test*'`,
+        limit: 10,
+        offset: 0,
+      });
+
+      expect(result.data.documents).toEqual([]);
+      expect(result.data.totalCount).toBe(0);
     });
   });
 });
