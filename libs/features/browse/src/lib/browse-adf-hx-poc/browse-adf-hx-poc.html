@@ -124,12 +124,28 @@
             (editExternal)="onPermissionAction('Edit external permission')"
             (notifyEmail)="onPermissionAction('Send notification email')"
           />
+        } @else if (activeTab() === 'properties') {
+          <!-- Same selection guard as Versions, for the same reason: properties belong to a
+               document, and the folder being browsed is not the one the user means. -->
+          @if (selectedDocument(); as target) {
+            <div class="hxp-poc-properties">
+              <hxp-properties-sidebar
+                [document]="target"
+                [editable]="false"
+                (closePropertySidebar)="onCloseProperties()"
+              />
+            </div>
+          } @else {
+            <div class="hxp-poc-empty">
+              <p>Select a single document in the View tab to see its properties.</p>
+            </div>
+          }
         } @else if (activeTab() === 'versions') {
           <!-- Upstream's panel takes one document. Without a single selected row there is
                nothing to show, and saying so beats rendering the browsed folder's versions —
                a folder always has a "current version" entry, so that would look like a
                working feature answering the wrong question. -->
-          @if (versionsTarget(); as target) {
+          @if (selectedDocument(); as target) {
             <div class="hxp-poc-versions">
               <hxp-manage-versions-sidebar
                 [document]="target"

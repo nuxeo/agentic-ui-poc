@@ -97,8 +97,9 @@ describe('NuxeoModelApi', () => {
 
     expect(Object.keys(model.primaryTypes ?? {})).toEqual(['Document', 'File', 'Folder']);
     expect(Object.keys(model.mixinTypes ?? {})).toEqual(['Folderish', 'Versionable', 'NXTag']);
-    // Six from `/config/schemas`, not the one from `/config/types`.
-    expect(Object.keys(model.schemas ?? {})).toHaveLength(6);
+    // Six from `/config/schemas`, not the one from `/config/types` — plus the `sys`
+    // pseudo-schema this bridge adds for its own fields.
+    expect(Object.keys(model.schemas ?? {})).toHaveLength(7);
     expect(model.schemas?.['facetedTag']).toBeDefined();
   });
 
@@ -176,7 +177,8 @@ describe('NuxeoModelApi', () => {
 
     expect(model.primaryTypes?.['File']).toMatchObject({
       extends: 'Document',
-      mixins: ['Versionable', 'Downloadable'],
+      // `SysFilish` is appended from the `file` schema — see the mixin test below.
+      mixins: ['Versionable', 'Downloadable', 'SysFilish'],
     });
     expect(model.primaryTypes?.['File']?.schemas).toContain('dublincore');
     // No parent on the root doctype, and `extends: undefined` would make `hasMixin` recurse
@@ -211,6 +213,55 @@ describe('NuxeoModelApi', () => {
     // An empty model renders every property as an untyped string, which looks like a
     // formatting bug rather than a failed request.
     await rejects;
+  });
+
+  it('adds a sys pseudo-schema, because Nuxeo has none and sys_* is what the panel shows', async () => {
+    const pending = api.getModel();
+    flushConfig();
+    const model = (await pending).data;
+
+    // Upstream's `TOP_DEFAULT_PROPERTIES` are all `sys_*`, and a faithfully translated Nuxeo
+    // model types none of them. Observed without this: `Created` rendered
+    // `2026-08-22T14:23:05.687Z` and `Creator` rendered `[object Object]`.
+    const sys = model.schemas?.['sys'];
+    expect(sys?.prefix).toBe('sys');
+    expect(sys?.fields?.['sys_created']?.type).toBe('date');
+    expect(sys?.fields?.['sys_modified']?.type).toBe('date');
+    // `user`, which is what routes the value through `UserResolverPipe` instead of stringifying
+    // the `User` object into `[object Object]`.
+    expect(sys?.fields?.['sys_creator']?.type).toBe('user');
+    expect(sys?.fields?.['sys_lastContributor']?.type).toBe('user');
+    expect(sys?.fields?.['sys_isFolderish']?.type).toBe('boolean');
+    expect(sys?.fields?.['sys_title']?.type).toBe('string');
+  });
+
+  it('lists sys among every doctype’s schemas, so a type matches its documents', async () => {
+    const pending = api.getModel();
+    flushConfig();
+    const model = (await pending).data;
+    expect(model.primaryTypes?.['File']?.schemas).toContain('sys');
+    expect(model.primaryTypes?.['Folder']?.schemas).toContain('sys');
+  });
+
+  it('translates Nuxeo facets into the mixins adf-hx classifies types by', async () => {
+    const pending = api.getModel();
+    flushConfig();
+    const model = (await pending).data;
+
+    // `getFolderishTypes()`/`getFilishTypes()` filter on `SysFolderish`/`SysFilish`; Nuxeo says
+    // `Folderish` and, for a file, nothing at all. Without the translation the properties panel's
+    // Category selector renders empty, because `availableDocumentCategories` is built from those
+    // two calls. The Nuxeo names are kept alongside rather than replaced.
+    expect(model.primaryTypes?.['Folder']?.mixins).toEqual(['Folderish', 'SysFolderish']);
+    expect(model.primaryTypes?.['File']?.mixins).toEqual([
+      'Versionable',
+      'Downloadable',
+      'SysFilish',
+    ]);
+    // `Document` gets NEITHER. It carries no `file` schema and is not `Folderish`, and marking it
+    // filish is the bug the first attempt had: `hasMixin` walks `extends`, so `Folder extends
+    // Document` inherited it and every folder landed in `getFilishTypes()`.
+    expect(model.primaryTypes?.['Document']?.mixins).toEqual([]);
   });
 
   it('refuses every write side rather than accepting and discarding it', async () => {
@@ -275,8 +326,17 @@ describe('DocumentModelService over the real MODEL port', () => {
     expect(model.getFieldType('file_content')).toBe('blob');
     expect(model.getFieldType('files_files')).toBe('complex[]');
 
+    // The `sys` half, which is what the panel's *main* section is made of. These four are the
+    // difference between a formatted date and a raw ISO string, and between a name and
+    // `[object Object]`.
+    expect(model.getFieldType('sys_created')).toBe('date');
+    expect(model.getFieldType('sys_modified')).toBe('date');
+    expect(model.getFieldType('sys_creator')).toBe('user');
+    expect(model.getFieldType('sys_lastContributor')).toBe('user');
+
     // And the mixin lookup upstream uses to classify types, which walks `extends`.
-    expect(model.getFolderishTypes()).toEqual([]);
+    expect(model.getFolderishTypes()).toEqual(['Folder']);
+    expect(model.getFilishTypes()).toEqual(['File']);
     expect(model.getAllTypes()).toEqual(['Document', 'File', 'Folder']);
   });
 });

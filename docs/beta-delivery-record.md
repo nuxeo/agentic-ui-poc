@@ -31,7 +31,7 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 | 0 — Unblock and verify                  | **complete**                                           | `phase-0-baseline` 14/14 |
 | 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                    | `phase-1-config` 39/39   |
 | 2 — Layer 1: extension registry         | **complete**, carry-forward named                      | `phase-2-registry` 46/46 |
-| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 4 components adopted | `phase-3-adf-hx` 34/34   |
+| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 5 components adopted | `phase-3-adf-hx` 41/41   |
 | 4 — Layer 2: publishable platform       | not started                                            | —                        |
 | 5 — Layer 3: agent harness              | partial (the harness below exists)                     | —                        |
 | 6 — Beta quality bar                    | partial — coverage and a11y now _measured_             | `phase-6-a11y` 12/12     |
@@ -251,11 +251,18 @@ Settled. Do not re-open without new information.
 |                     | Downloaded before the app starts       |
 | ------------------- | -------------------------------------- |
 | before adf-hx       | 1.70 MB                                |
-| with adf-hx adopted | **3.24 MB**                            |
-| increase            | **+1.54 MB once, then browser-cached** |
+| with adf-hx adopted | **3.49 MB**                            |
+| increase            | **+1.79 MB once, then browser-cached** |
 
 Movement since first measured: 3.15 MB with the document list, +80 kB for the tree, +10 kB for
-the versions panel. Each component has been measured on adoption rather than estimated.
+the versions panel, **+250 kB for the properties panel**. Each component has been measured on
+adoption rather than estimated.
+
+**`maximumError` was raised again, 3.5 → 4.0 MB.** The properties panel left **10 kB** of
+headroom, so the next component adopted would have failed the build for an unrelated reason.
+Raised deliberately and recorded here rather than discovered in CI. The panels sit in an eager
+1.2 MB chunk — verified by reading the built bundle — which is the root-injector consequence
+above, not a new boundary break.
 
 Unavoidable rather than chosen — see the root-injector decision above. Practically:
 unnoticeable on an office network, a second or two on a first load over a slow link. The
@@ -325,20 +332,21 @@ Nothing here is a surprise later.
    of five recorded bridge defects. The other four are closed, most recently the
    `browse_column_settings` localStorage key that the POC and production browse shared, so
    choosing columns on either surface silently overwrote the other.
-3. **Four components remain**: metadata-sidebar, permissions, document-viewer, search.
-   Document list, breadcrumb, tree and manage-versions are done.
-   **The `MODEL` blocker is cleared** — the read side is implemented and tested. What stands
-   between here and metadata-sidebar is now a **decision, not a mapping**: upstream's
-   `DocumentPropertiesService` lists properties from `Object.keys(document)`, and our mapper
-   emits only `sys_*` plus a few `hx:*` keys. A Nuxeo-derived model has no `sys` schema — Nuxeo's
-   are `dublincore`, `common`, `uid`, `file` — so `getSchemaByPrefix` finds nothing for
-   `sys_created` and every field falls back to `FieldType.String`, rendering dates as raw ISO
-   strings. Three options, and they differ materially:
-   **(A)** synthesise a `sys` schema describing exactly the fields we map;
-   **(B)** also emit Nuxeo's real properties on the document as `prefix_field`, so the sidebar
-   shows a document's **actual Nuxeo metadata**;
-   **(C)** both, which is what upstream's own `TOP_DEFAULT_PROPERTIES` + `extractSchemas`
-   structure is built for. Not picked unilaterally.
+3. **Three components remain**: permissions, document-viewer, search. Document list,
+   breadcrumb, tree, manage-versions and the **properties panel** are done.
+   The `MODEL` blocker is closed: the read side is implemented and the panel renders a document's
+   real Nuxeo metadata with correct types.
+   Two named gaps inside the adopted panel:
+   - **`Category` renders empty.** `sys_primaryType` is our synthetic `SysFile`/`SysFolder` while
+     the model's `primaryTypes` are Nuxeo names (`File`, `Folder`, `Workspace`), so upstream's
+     select has no option matching the current value. Cosmetic in a read-only panel; fixing it
+     means deciding whether `sys_primaryType` should carry the Nuxeo type name, which changes
+     `isRoot()` and the browse type column with it.
+   - **The newer, editable metadata sidebar is not adopted.** It sits behind adf-hx's
+     `CIC_WORKSPACE_NEW_METADATA_PANEL` flag; the flag is off, so the read-oriented legacy panel
+     renders. Turning it on needs `HxpMetadataCacheService`, which has no `providedIn` **and is
+     not exported from adf-hx's `/ui` barrel** — neither it nor the metadata sidebar itself is.
+     That is upstream's to fix by exporting them.
 4. **`UPLOAD` refuses**, and so does `MODEL`'s **write** half. The `MODEL` read side is done;
    the write side has no Nuxeo REST endpoint to call at all, so it is unimplementable rather
    than unimplemented. Mapping `UPLOAD` is real work, not a rename.

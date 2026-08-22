@@ -1,4 +1,4 @@
-import { AsyncPipe } from '@angular/common';
+import { DecimalNumberPipe, FileSizePipe, LocalizedDatePipe } from '@alfresco/adf-core';
 import { EnvironmentProviders, makeEnvironmentProviders, type Provider } from '@angular/core';
 // The **upstream** tokens, not local clones. The bridge used to declare its own
 // `DOCUMENT_API_TOKEN` and `QUERY_API_TOKEN` with the same description strings; Angular
@@ -32,7 +32,12 @@ import { AdfHxBrowseFolderService } from '../services/adf-hx-browse-folder.servi
 import { AdfHxBrowseMediaService } from '../services/adf-hx-browse-media.service';
 import { AdfHxDocumentService } from '../services/adf-hx-document.service';
 import { NuxeoDocumentRouterService } from '../services/nuxeo-document-router.service';
-import { DocumentRouterService } from '@alfresco/adf-hx-content-services/services';
+import {
+  DocumentRouterService,
+  DOCUMENT_PROVIDERS,
+  USER_RESOLVER_PROVIDERS,
+} from '@alfresco/adf-hx-content-services/services';
+import { provideDummyFeatureFlags } from '@alfresco/adf-core/feature-flags';
 
 /**
  * Provider array for component-level registration.
@@ -88,20 +93,59 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   AdfHxBrowseMediaService,
   AdfHxBrowseFolderService,
   NuxeoDocumentRouterService,
-  // Not a Nuxeo binding — an upstream requirement with no other home.
+  // adf-core's pipes, which upstream's arrays do **not** cover.
   //
-  // adf-hx's `UserResolverPipe` (`hxpUserResolverPipe`) calls `inject(AsyncPipe)` in its
-  // constructor, and `AsyncPipe` carries no `providedIn`, so it has to be provided by the
-  // host. Without it every component rendering a user name — the versions panel, and anything
-  // else reaching that pipe — throws `NG0201: No provider found for _AsyncPipe` while
-  // rendering. That failure is quiet in the worst way: the component's shell renders, its
-  // *content* does not, so the panel appears with a heading and an empty body.
-  AsyncPipe,
+  // adf-core declares these as pipes, so none carries `providedIn`, and `PropertyUtilService`
+  // takes all three as constructor *services* to format property values. Missing, the properties
+  // sidebar dies with `NG0201: No provider found for _DecimalNumberPipe`, path
+  // `DocumentPropertiesService -> PropertyUtilService -> _DecimalNumberPipe`.
+  //
+  // Worth stating as a rule: **a pipe injected as a service always needs providing.** And note
+  // the gap this closes — `provideAdfEnterpriseAdfHxContentServicesServices()` alone is not
+  // enough to construct `PropertyUtilService`, because it provides adf-hx's pipes and not
+  // adf-core's.
+  DecimalNumberPipe,
+  LocalizedDatePipe,
+  FileSizePipe,
   // adf-hx's own `DocumentRouterService` builds `/{repository}/documents/{id}`, a route
   // structure this application does not have, and its breadcrumb feeds the result straight
   // into `[routerLink]`. It carries no `providedIn`, which makes it an intended substitution
   // point rather than a monkey-patch.
   { provide: DocumentRouterService, useExisting: NuxeoDocumentRouterService },
+  // Upstream's **own** provider arrays, rather than the equivalents assembled by hand.
+  //
+  // `DOCUMENT_PROVIDERS` binds `DOCUMENT_SERVICE` and `DOCUMENT_PROPERTIES_SERVICE` — two
+  // abstract tokens — to upstream's own root implementations. `USER_RESOLVER_PROVIDERS` is
+  // `[UserResolverPipe, AsyncPipe]`.
+  //
+  // Both were rediscovered the hard way. `AsyncPipe`, then `UserResolverPipe`, then
+  // `DOCUMENT_PROPERTIES_SERVICE`, then `DOCUMENT_SERVICE` were each added in response to a
+  // separate `NG0201`, and only then did the exported arrays turn up in
+  // `provideAdfEnterpriseAdfHxContentServicesServices()`. Referencing them instead of listing
+  // their contents means an addition upstream arrives with the package rather than as another
+  // `NG0201`. **Look for an exported provider array before chasing injector errors one at a
+  // time.**
+  ...DOCUMENT_PROVIDERS,
+  ...USER_RESOLVER_PROVIDERS,
+  // `HxpPropertiesSidebarComponent` injects adf-core's `FeaturesServiceToken` to choose between
+  // two implementations: flag on renders `hxp-metadata-sidebar`, off renders
+  // `hxp-properties-sidebar-legacy`. Unprovided it is `NG0201`.
+  //
+  // The dummy service answers every flag `false`, so the **legacy** panel renders — and that is
+  // a decision, not a default we fell into. The legacy panel is display-oriented and splits its
+  // properties exactly the way this bridge needs: `TOP_DEFAULT_PROPERTIES` (all `sys_*`) in its
+  // default section, and everything **not** `sys_`/`sysfile_blob`/`sysver_`/`sysgov_` in its
+  // other section — which is precisely where Nuxeo's `dc_*`, `file_*` and `uid_*` properties
+  // land. The `sys_*` and Nuxeo surfaces therefore appear once each rather than twice.
+  //
+  // Turning the flag **on** needs one more provider that is deliberately absent here:
+  // `HxpMetadataSidebarComponent` requires `HxpMetadataCacheService`, which carries no
+  // `providedIn` **and is not exported from adf-hx's `/ui` barrel** — neither it nor the metadata
+  // sidebar itself is. With the flag off that component is never instantiated, so the provider
+  // is never needed; with it on, satisfying the injector would take a deep import into
+  // `ui/lib/components/metadata-sidebar/`, which is not a public path. That is the real cost of
+  // switching, and it is upstream's to fix by exporting them.
+  ...provideDummyFeatureFlags(),
 ];
 
 /** Wires Nuxeo-backed HxPR API facades for adf-hx browse POC (Scope A). */

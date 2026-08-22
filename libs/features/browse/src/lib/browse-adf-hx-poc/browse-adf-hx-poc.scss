@@ -103,3 +103,16 @@ hxp-domain-hint {
     width: 100%;
   }
 }
+
+// Same containment problem as the versions panel: upstream's properties sidebar is built to be
+// a drawer and ships `ViewEncapsulation.None` styles sized for one. Wider than Versions because
+// it renders two-column property cards rather than a list.
+.hxp-poc-properties {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+
+  ::ng-deep .adf-info-drawer-layout-content {
+    height: auto;
+  }
+}

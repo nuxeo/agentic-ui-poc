@@ -43,11 +43,11 @@ export class HxpBrowseDetailsPanelComponent {
   }
 
   protected creator(doc: Document): string {
-    return (doc['hx:creator'] as string | undefined) ?? '—';
+    return (doc['dc_creator'] as string | undefined) ?? '—';
   }
 
   protected lastContributor(doc: Document): string {
-    return (doc['hx:lastContributor'] as string | undefined) ?? '—';
+    return (doc['dc_lastContributor'] as string | undefined) ?? '—';
   }
 
   protected relativeTime(dateStr: string): string {

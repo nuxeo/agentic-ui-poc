@@ -58,6 +58,7 @@ import {
   HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
   HxpDocumentListComponent as UpstreamDocumentListComponent,
   ManageVersionsSidebarComponent as UpstreamManageVersionsSidebarComponent,
+  HxpPropertiesSidebarComponent as UpstreamPropertiesSidebarComponent,
 } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
 
@@ -90,6 +91,13 @@ const HXP_FIELD_BY_COLUMN: Readonly<Record<string, string>> = {
   lastContributor: 'sys_lastContributor.username',
   author: 'sys_creator.username',
   state: 'sys_lifecycleState',
+  // Three columns that shipped hidden and rendered empty when switched on, because no HxPR
+  // field held their value. The mapper now emits Nuxeo's own properties as `prefix_field`, so
+  // they resolve. `version` stays unmapped deliberately: Nuxeo holds it as two integers
+  // (`uid_major_version`, `uid_minor_version`) and the DataTable reads a single key.
+  nature: 'dc_nature',
+  coverage: 'dc_coverage',
+  subjects: 'dc_subjects',
 };
 
 /**
@@ -114,6 +122,7 @@ const DATE_COLUMNS = new Set(['modified', 'created']);
     UpstreamBreadcrumbComponent,
     UpstreamDocumentListComponent,
     UpstreamManageVersionsSidebarComponent,
+    UpstreamPropertiesSidebarComponent,
     HxpDocumentCardsComponent,
     HxpColumnPickerComponent,
     HxpBrowsePermissionsComponent,
@@ -230,18 +239,23 @@ export class BrowseAdfHxPocComponent {
     this.documentRouter.navigateTo(document);
   }
 
-  // ── Versions ──
+  // ── Per-document tabs: Properties and Versions ──
   //
-  // Versions belong to a document, not to the folder being browsed, so this tab acts on the
-  // row **selected** in the View tab rather than on `currentDocument()`. Binding the folder
-  // instead would have looked like a working feature: upstream always prepends a "current
+  // Both belong to a document, not to the folder being browsed, so they act on the row
+  // **selected** in the View tab rather than on `currentDocument()`. Binding Versions to the
+  // folder would have looked like a working feature: upstream always prepends a "current
   // version" entry, so a folder with no versions still renders one row.
 
   /** The rows checked in upstream's DataTable, from its `selectedDocuments` output. */
   private readonly selectedDocuments = signal<readonly Document[]>([]);
 
-  /** The document the versions panel acts on, or `null` when the selection is not a single row. */
-  protected readonly versionsTarget = computed<Document | null>(() => {
+  /**
+   * The document the per-document tabs act on, or `null` when the selection is not a single row.
+   *
+   * Shared by Properties and Versions: both take one `[document]`, and both are meaningless
+   * without a choice of which.
+   */
+  protected readonly selectedDocument = computed<Document | null>(() => {
     const selection = this.selectedDocuments();
     return selection.length === 1 ? selection[0] : null;
   });
@@ -252,6 +266,17 @@ export class BrowseAdfHxPocComponent {
 
   /** Upstream's panel emits its own close; there is no drawer here, so fall back to View. */
   protected onCloseVersions(): void {
+    this.activeTab.set('view');
+  }
+
+  /**
+   * The properties panel acts on the same selection as Versions.
+   *
+   * It is rendered with `[editable]="false"`, which is upstream's own read-only mode rather than
+   * our scope-notice path. Scope A does not write, and suppressing the edit affordance entirely
+   * is more honest than offering one that always refuses.
+   */
+  protected onCloseProperties(): void {
     this.activeTab.set('view');
   }
 
@@ -404,7 +429,7 @@ export class BrowseAdfHxPocComponent {
     if (contributor) {
       const term = contributor.toLowerCase();
       docs = docs.filter((doc) =>
-        ((doc['hx:lastContributor'] as string | undefined) ?? '').toLowerCase().includes(term),
+        ((doc['dc_lastContributor'] as string | undefined) ?? '').toLowerCase().includes(term),
       );
     }
     return docs;

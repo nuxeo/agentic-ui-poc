@@ -41,6 +41,9 @@ import type {
  * name, so prefixing them would break the lookup that prefixing the top level fixes.
  */
 
+/** The pseudo-schema name and prefix for the bridge's own `sys_*` fields. */
+export const SYS_SCHEMA_NAME = 'sys';
+
 /**
  * A schema's effective prefix.
  *
@@ -95,6 +98,73 @@ function mapSchema(schema: NuxeoSchemaDefinition): Schema {
 }
 
 /**
+ * The `sys` pseudo-schema, describing the fields **this bridge's own document mapper emits**.
+ *
+ * Nuxeo has no `sys` schema — its are `dublincore`, `common`, `uid`, `file` — so a faithfully
+ * translated Nuxeo model types none of the `sys_*` fields. And `sys_*` is exactly what upstream's
+ * `TOP_DEFAULT_PROPERTIES` puts in the properties panel's *main* section, so without this every
+ * one of them falls back to `FieldType.String`. Observed before this existed:
+ *
+ * - `Created` and `Last Modified` rendered `2026-08-22T14:23:05.687Z` instead of a formatted date;
+ * - `Creator` and `Last Contributor` rendered **`[object Object]`**, because a `User` stringified
+ *   as a string.
+ *
+ * This is not invented content-model knowledge. Every entry below is a field
+ * `nuxeo-to-hx-document.mapper.ts` demonstrably produces, with the type it demonstrably produces —
+ * declaring our own output rather than guessing at Nuxeo's. If the two drift apart, the panel
+ * mistypes a field, which is why `nuxeo-model-api.spec.ts` asserts the pair together.
+ */
+const SYS_SCHEMA_FIELDS: Readonly<Record<string, string>> = {
+  sys_id: 'string',
+  sys_title: 'string',
+  sys_name: 'string',
+  sys_path: 'string',
+  sys_parentPath: 'string',
+  sys_parentId: 'string',
+  sys_primaryType: 'string',
+  sys_typeLabel: 'string',
+  sys_repository: 'string',
+  sys_contentType: 'string',
+  sys_lifecycleState: 'string',
+  sys_isFolderish: 'boolean',
+  sys_created: 'date',
+  sys_modified: 'date',
+  // `user`, not `string`. This is what routes the value through `UserResolverPipe` instead of
+  // stringifying the `User` object.
+  sys_creator: 'user',
+  sys_lastContributor: 'user',
+  sys_contributors: 'user[]',
+  sys_mixinTypes: 'string[]',
+  sys_effectivePermissions: 'string[]',
+};
+
+/** Nuxeo's content-bearing schema. Its presence is what makes a doctype hold a main blob. */
+const NUXEO_CONTENT_SCHEMA = 'file';
+
+/**
+ * A doctype's Nuxeo facets, plus the HxPR mixin adf-hx classifies types by.
+ *
+ * `DocumentModel.getFolderishTypes()` and `getFilishTypes()` filter on `SysFolderish` and
+ * `SysFilish`; Nuxeo says `Folderish` and, for a file, nothing at all. Without this translation
+ * the properties panel's **Category** selector renders empty, because
+ * `PropertyUtilService.availableDocumentCategories` builds its option list from those two calls.
+ * The Nuxeo names are kept alongside rather than replaced.
+ *
+ * `SysFilish` is decided by the **`file` schema**, not by "is not `Folderish`". The first attempt
+ * used that fallback and got `Folder` wrong: `hasMixin` walks `extends`, `Folder extends Document`,
+ * and `Document` is not `Folderish` — so `Document` was marked filish and `Folder` **inherited**
+ * it, putting every folder in `getFilishTypes()`. Keying on the content schema also matches what
+ * `SysFilish` means in HxPR — has a main blob — and leaves an abstract type like `Document`
+ * correctly in neither category.
+ */
+function hxMixinsForDoctype(facets: readonly string[], schemas: readonly string[]): string[] {
+  const extra: string[] = [];
+  if (facets.includes('Folderish')) extra.push('SysFolderish');
+  if (schemas.includes(NUXEO_CONTENT_SCHEMA)) extra.push('SysFilish');
+  return [...facets, ...extra];
+}
+
+/**
  * Nuxeo's `/config/*` reads as an HxPR `Model`.
  *
  * Three things Nuxeo cannot answer, left **unset** rather than invented:
@@ -116,8 +186,9 @@ export function mapNuxeoContentModelToHx(nuxeo: NuxeoContentModel): Model {
   for (const [name, doctype] of Object.entries(nuxeo.doctypes)) {
     primaryTypes[name] = {
       ...(doctype.parent ? { extends: doctype.parent } : {}),
-      mixins: [...(doctype.facets ?? [])],
-      schemas: [...(doctype.schemas ?? [])],
+      mixins: hxMixinsForDoctype(doctype.facets ?? [], doctype.schemas ?? []),
+      // `sys` is appended so a type's schema list matches the properties its documents carry.
+      schemas: [...(doctype.schemas ?? []), SYS_SCHEMA_NAME],
     };
   }
 
@@ -132,6 +203,13 @@ export function mapNuxeoContentModelToHx(nuxeo: NuxeoContentModel): Model {
     if (!schema?.name) continue;
     schemas[schema.name] = mapSchema(schema);
   }
+  // Added last so a Nuxeo schema genuinely called `sys` would be overridden rather than silently
+  // merged. None exists today; the ordering makes that safe rather than lucky.
+  schemas[SYS_SCHEMA_NAME] = {
+    prefix: SYS_SCHEMA_NAME,
+    // Already prefixed, unlike Nuxeo's, so these are used as-is.
+    fields: Object.fromEntries(Object.entries(SYS_SCHEMA_FIELDS).map(([k, t]) => [k, { type: t }])),
+  };
 
   // `types` intentionally empty — see the header. `resolveType` passes unknown types through,
   // and Nuxeo's type strings are already valid `FieldType` values.

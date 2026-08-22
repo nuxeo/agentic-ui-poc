@@ -64,7 +64,90 @@ function userFromNuxeoUsername(value: unknown): User | undefined {
     : undefined;
 }
 
-/** Maps a Nuxeo document into the HxPR Document shape expected by adf-hx browse components. */
+/** A Nuxeo blob, as its REST payload describes one. */
+interface NuxeoBlob {
+  name?: string;
+  'mime-type'?: string;
+  length?: number | string;
+  [key: string]: unknown;
+}
+
+function isNuxeoBlob(value: unknown): value is NuxeoBlob {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    // `mime-type` is the discriminator: Nuxeo puts it on every blob and on nothing else.
+    'mime-type' in value
+  );
+}
+
+/**
+ * A Nuxeo blob as the shape adf-core's property card reads.
+ *
+ * `PropertyUtilService.createBlobCardItems` builds three cards from
+ * `<property>.filename`, `.mimeType` and `.length`. Nuxeo names the same three `name`,
+ * `mime-type` and `length`, so an unmapped blob renders three empty cards. `data`, `digest`
+ * and `encoding` are dropped: nothing reads them, and `data` is a download URL that has no
+ * business in a metadata panel.
+ */
+function blobForHx(blob: NuxeoBlob): Record<string, unknown> {
+  return {
+    filename: blob.name,
+    mimeType: blob['mime-type'],
+    length: typeof blob.length === 'string' ? Number(blob.length) : blob.length,
+  };
+}
+
+/**
+ * Nuxeo's `properties` as the `prefix_field` keys adf-hx addresses properties by.
+ *
+ * Nuxeo writes `dc:title`; HxPR writes `dc_title`. That single substitution is what lets
+ * upstream's metadata panel find a type for each property, because `getSchemaByPrefix` splits
+ * the key on `_` and then looks the whole key up in the schema's `fields` — see
+ * `nuxeo-to-hx-model.mapper.ts`, which keys the model the same way. Without both halves the
+ * panel renders every value as an untyped string.
+ *
+ * Two deliberate omissions:
+ *
+ * - **Empty values are skipped** — `null`, `undefined`, `''` and `[]`. Upstream lists
+ *   properties from `Object.keys(document)`, so a document answered with `properties: *`
+ *   would otherwise contribute around a hundred blank cards, most of them from schemas the
+ *   document has never used. A property Nuxeo holds no value for is not metadata to show.
+ * - **Keys without a prefix are skipped.** `translateProperty` returns an empty label for any
+ *   key with no `_` in it, so an unprefixed key renders as a card with no name at all.
+ */
+function nuxeoPropertiesForHx(props: Record<string, unknown>): Record<string, unknown> {
+  const mapped: Record<string, unknown> = {};
+  for (const [nuxeoKey, value] of Object.entries(props)) {
+    if (value === null || value === undefined || value === '') continue;
+    if (Array.isArray(value) && value.length === 0) continue;
+    const separator = nuxeoKey.indexOf(':');
+    if (separator <= 0) continue;
+    const hxKey = `${nuxeoKey.slice(0, separator)}_${nuxeoKey.slice(separator + 1)}`;
+    mapped[hxKey] = isNuxeoBlob(value) ? blobForHx(value) : value;
+  }
+  return mapped;
+}
+
+/**
+ * Maps a Nuxeo document into the HxPR Document shape expected by adf-hx browse components.
+ *
+ * The document carries **two** property surfaces on purpose, and upstream's own design is what
+ * makes that work rather than duplicate:
+ *
+ * - the `sys_*` fields, which upstream's `TOP_DEFAULT_PROPERTIES` orders into its default panel;
+ * - Nuxeo's real properties as `prefix_field`, which land in the panel's *other* section because
+ *   upstream excludes `sys_`, `sysfile_blob`, `sysver_` and `sysgov_` from it.
+ *
+ * So a document shows its Nuxeo metadata — `dc:nature`, `dc:subjects`, `file:content` — with the
+ * right types, and nothing appears twice.
+ *
+ * The previous `hx:*` keys are **gone**. They held the same Dublin Core values under names no
+ * adf-hx component has heard of, and they would have rendered in the adopted panel as cards with
+ * **no label at all**: `translateProperty` splits on `_`, and `hx:nature` has none. Their
+ * consumers read the Nuxeo keys directly now.
+ */
 export function mapNuxeoDocumentToHx(
   doc: NuxeoDocument,
   repositoryId: string = DEFAULT_REPOSITORY_ID,
@@ -72,9 +155,12 @@ export function mapNuxeoDocumentToHx(
   const folderish = isFolderishDocument(doc) || FOLDERISH_NUXEO_TYPES.has(doc.type);
   const content = doc.properties?.['file:content'] as { 'mime-type'?: string } | undefined;
   const props = doc.properties ?? {};
-  const subjects = props['dc:subjects'] as string[] | undefined;
 
   return {
+    // First, so a `sys_*` field always wins over a Nuxeo property of the same name. None
+    // collide today — Nuxeo has no `sys` schema — but the ordering makes that safe by
+    // construction rather than by coincidence.
+    ...nuxeoPropertiesForHx(props),
     sys_id: doc.uid,
     sys_title: doc.title,
     sys_name: doc.title,
@@ -107,13 +193,6 @@ export function mapNuxeoDocumentToHx(
     sys_lastContributor: userFromNuxeoUsername(props['dc:lastContributor']),
     sys_creator: userFromNuxeoUsername(props['dc:creator']),
     sys_lifecycleState: doc.state,
-    'hx:lastContributor': (props['dc:lastContributor'] as string | undefined) ?? '',
-    'hx:creator': (props['dc:creator'] as string | undefined) ?? '',
-    'hx:nature': (props['dc:nature'] as string | undefined) ?? '',
-    'hx:coverage': (props['dc:coverage'] as string | undefined) ?? '',
-    'hx:subjects': subjects?.join(', ') ?? '',
-    'hx:majorVersion': props['uid:major_version'] as number | undefined,
-    'hx:minorVersion': props['uid:minor_version'] as number | undefined,
   };
 }
 

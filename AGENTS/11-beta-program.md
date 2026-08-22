@@ -373,7 +373,32 @@ DocumentService`. The chain, read from the published bundle:
 - **A Nuxeo `@prefix` of `''` means "use the schema name", not "no prefix".** `file`, `uid` and
   `files` all report empty, and Nuxeo then addresses them as `file:content` and
   `uid:major_version`. Read literally the keys become `_content` and `_major_version`.
-- **Nuxeo has no `sys` schema, and that is the metadata-sidebar problem.** Upstream's
+- **Nuxeo has no `sys` schema, so the bridge supplies one.** Upstream's
+  `DocumentPropertiesService` lists properties from `Object.keys(document)` and its
+  `TOP_DEFAULT_PROPERTIES` are all `sys_*`, so a faithfully translated Nuxeo model types **none**
+  of them: `Created` rendered `2026-08-22T14:23:05.687Z` and `Creator` rendered
+  **`[object Object]`**. The `MODEL` mapper now adds a `sys` pseudo-schema describing the fields
+  _our own document mapper emits_ — declaring our output, not guessing at Nuxeo's. **If the two
+  drift apart the panel mistypes a field**, which is why one spec asserts the pair together.
+- **A document carries TWO property surfaces, and upstream's design is what stops them
+  duplicating.** `sys_*` fills the properties panel's _main_ section; Nuxeo's own properties as
+  `prefix_field` fill the _other_ section, because upstream excludes `sys_`, `sysfile_blob`,
+  `sysver_` and `sysgov_` from it. Do not "clean this up" by removing one.
+- **`SysFilish` on a type must come from the `file` schema, not from "is not `Folderish`".**
+  `hasMixin` walks `extends`; `Folder extends Document`; `Document` is not `Folderish`. The
+  fallback marked `Document` filish and **every folder inherited it**.
+- **Look for an exported provider array before chasing `NG0201` one at a time.** `AsyncPipe`,
+  `UserResolverPipe`, `DOCUMENT_PROPERTIES_SERVICE` and `DOCUMENT_SERVICE` were each added in
+  response to a separate injector error before `DOCUMENT_PROVIDERS` and `USER_RESOLVER_PROVIDERS`
+  turned up, already exported, in `provideAdfEnterpriseAdfHxContentServicesServices()`. Note the
+  gap that function still leaves: it provides adf-hx's pipes and **not adf-core's**, so
+  `PropertyUtilService` cannot construct without `DecimalNumberPipe`, `LocalizedDatePipe` and
+  `FileSizePipe` as well.
+- **adf-core renders property values inside `<input>` elements, so `innerText` does not contain
+  them.** Two evidence assertions passed while the screenshot showed a raw ISO timestamp and
+  `[object Object]`. **A negative assertion over text that cannot contain the value is not an
+  assertion** — read `input.value` too.
+- **~~Nuxeo has no `sys` schema, and that is the metadata-sidebar problem.~~ Resolved above.** Upstream's
   `DocumentPropertiesService` lists properties from `Object.keys(document)`; our mapper emits
   `sys_*`. A faithfully translated Nuxeo model therefore types **none** of them. Making the
   metadata sidebar work is a decision about the document's property surface, not a mapping fix.

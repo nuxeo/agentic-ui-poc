@@ -435,6 +435,127 @@ export default async function run(page, h) {
   );
   await h.screenshot('versions-panel');
 
+  h.step("Adopted: upstream properties sidebar over the document's real Nuxeo metadata");
+  // The same fixture and the same selection, so this step asserts the *panel*, not the setup.
+  // The row is still selected from the Versions step above.
+  await tab('Properties').click();
+  await page.waitForTimeout(2500);
+  await h.expectVisible('upstream properties sidebar rendered', 'hxp-properties-sidebar');
+
+  const propertyLabels = await page.$$eval(
+    'hxp-properties-sidebar adf-card-view-item .adf-property-label, ' +
+      'hxp-properties-sidebar .adf-property-label',
+    (els) => els.map((el) => (el.textContent ?? '').trim()).filter(Boolean),
+  );
+  h.check(
+    'the panel renders property labels, not raw translation keys',
+    propertyLabels.length > 0 && !propertyLabels.some((l) => l.includes('DOCUMENT.PROPERTIES.')),
+    `rendered ${propertyLabels.length}: ${JSON.stringify(propertyLabels.slice(0, 12))}`,
+  );
+
+  // Upstream renders the *other* properties section with `[expanded]="false"`, so its labels are
+  // not in `innerText` until it is opened. The first run of this step read a collapsed panel and
+  // reported that Nuxeo's metadata was missing when it was there all along — and the section only
+  // renders at all under `*ngIf="otherProperties.length > 0"`, so its mere presence already says
+  // the list is non-empty. Both facts are asserted: the header exists, and expanding it shows the
+  // values.
+  const otherHeader = page
+    .locator('hxp-properties-sidebar mat-expansion-panel-header')
+    .filter({ hasText: /Other Properties/i })
+    .first();
+  const otherSectionRendered = (await otherHeader.count()) > 0;
+  h.check(
+    "the panel renders an 'Other Properties' section, which upstream omits when it is empty",
+    otherSectionRendered,
+    'no Other Properties header — `*ngIf="otherProperties.length > 0"` means the document ' +
+      'contributed no non-sys_ properties at all',
+  );
+  if (otherSectionRendered) {
+    await otherHeader.click().catch(() => {});
+    await page.waitForTimeout(1200);
+  }
+
+  // `innerText` **plus** every input value, and that distinction cost a round of false greens.
+  // adf-core renders each property card as a Material form field, so the *values* live in
+  // `input.value` and never appear in `innerText`. Two assertions below read only the text and
+  // reported green while the screenshot showed `Created` as `2026-08-22T14:23:05.687Z` and
+  // `Creator` as `[object Object]`. Both were real defects in the `sys_*` half of the model.
+  const propertiesInputs = await page.$$eval(
+    'hxp-properties-sidebar input, hxp-properties-sidebar textarea',
+    (els) => els.map((el) => el.value ?? '').filter(Boolean),
+  );
+  const propertiesText = [
+    await page
+      .locator('hxp-properties-sidebar')
+      .first()
+      .innerText()
+      .catch(() => ''),
+    ...propertiesInputs,
+  ].join('\n');
+
+  // The load-bearing one. `Object.keys(document)` drives this list, so a document carrying only
+  // `sys_*` would render the default section and nothing else. Seeing the fixture's Nuxeo
+  // description proves the `prefix_field` property surface reached the panel.
+  h.check(
+    "the document's real Nuxeo metadata is shown, not just the sys_* set",
+    propertiesText.includes('second evidence version'),
+    'expected the fixture\'s dc:description — panel text was ' +
+      JSON.stringify(propertiesText.slice(0, 400)),
+  );
+
+  // Both remaining checks are **negative** — they assert the absence of something — so each is
+  // conjoined with `propertiesText.length > 0`. Without that they pass on an empty string, which
+  // is exactly what happened on the first run: the panel failed to construct, `propertiesText`
+  // was `''`, and two assertions reported green against nothing.
+  const panelRendered = propertiesText.length > 0;
+
+  // A date typed as a date rather than defaulting to string. This is what fails if the MODEL
+  // port's schema field keys are not prefixed: `getFieldDefinition` finds nothing, every field
+  // becomes FieldType.String, and a date renders as a raw ISO timestamp.
+  h.check(
+    'dates are typed through the MODEL port, not rendered as raw ISO strings',
+    panelRendered && !/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(propertiesText),
+    panelRendered
+      ? `an ISO timestamp is visible, so the model did not type the field — ${JSON.stringify(
+          propertiesText.slice(0, 500),
+        )}`
+      : 'the panel rendered nothing, so this proves nothing',
+  );
+
+  // The other half of the same defect. `sys_creator` is a `User` object, so a field typed as
+  // `string` stringifies it. This is what the `sys` pseudo-schema in the MODEL mapper exists to
+  // prevent, and it is worth its own check because it fails independently of the date typing.
+  h.check(
+    'user fields resolve to a name, not "[object Object]"',
+    panelRendered && !propertiesText.includes('[object Object]'),
+    panelRendered
+      ? `a User was stringified — ${JSON.stringify(propertiesText.slice(0, 500))}`
+      : 'the panel rendered nothing, so this proves nothing',
+  );
+
+  // Read-only by construction: `[editable]="false"` is upstream's own mode, so there should be
+  // no edit affordance at all rather than one that refuses.
+  const editControls = await page
+    .locator('hxp-properties-sidebar button')
+    .filter({ hasText: /edit|save/i })
+    .count();
+  h.check(
+    'no edit affordance is offered, because Scope A does not write',
+    panelRendered && editControls === 0,
+    panelRendered
+      ? `found ${editControls} edit/save control(s)`
+      : 'the panel rendered nothing, so this proves nothing',
+  );
+  await h.screenshot('properties-panel');
+  h.note(
+    "the Category field renders EMPTY, and the screenshot shows it. `sys_primaryType` is our " +
+      'synthetic `SysFile`/`SysFolder`, while the model\'s `primaryTypes` are Nuxeo names — ' +
+      '`File`, `Folder`, `Workspace` — so upstream\'s select has no option matching the current ' +
+      'value. Not asserted either way: asserting it empty would enshrine a defect, and it is ' +
+      'cosmetic in a read-only panel. Fixing it means deciding whether `sys_primaryType` should ' +
+      'carry the Nuxeo type name, which changes `isRoot()` and the browse type column with it.',
+  );
+
   h.step('Health');
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);
   h.note(

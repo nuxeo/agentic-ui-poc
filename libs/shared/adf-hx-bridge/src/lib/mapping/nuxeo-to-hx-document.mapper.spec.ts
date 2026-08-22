@@ -71,17 +71,105 @@ describe('nuxeo-to-hx-document.mapper', () => {
     expect(mapped[0].sys_id).toBe('ws-uid');
   });
 
+  describe("Nuxeo's own property surface, as prefix_field", () => {
+    const invoice = {
+      uid: 'doc-1',
+      title: 'Invoice',
+      type: 'File',
+      path: '/default-domain/workspaces/ws/Invoice',
+      lastModified: '2026-02-01T00:00:00.000Z',
+      properties: {
+        'dc:title': 'Invoice',
+        'dc:nature': 'contract',
+        'dc:subjects': ['finance', 'legal'],
+        'dc:coverage': null,
+        'dc:description': '',
+        'dc:contributors': [],
+        'uid:major_version': 1,
+        'uid:minor_version': 2,
+        'file:content': {
+          name: 'invoice.pdf',
+          'mime-type': 'application/pdf',
+          length: '84213',
+          data: 'http://localhost:8080/nuxeo/nxfile/default/doc-1/file:content/invoice.pdf',
+          digest: 'abc123',
+        },
+        unprefixed: 'ignored',
+      },
+    } as unknown as Parameters<typeof mapNuxeoDocumentToHx>[0];
+
+    it('rewrites the colon Nuxeo uses to the underscore adf-hx addresses properties by', () => {
+      // The other half of this is `nuxeo-to-hx-model.mapper.ts`, which keys the model's schema
+      // fields the same way. Without both, upstream finds no type for any property and renders
+      // every value as an untyped string.
+      const hx = mapNuxeoDocumentToHx(invoice);
+      expect(hx['dc_title']).toBe('Invoice');
+      expect(hx['dc_nature']).toBe('contract');
+      expect(hx['dc_subjects']).toEqual(['finance', 'legal']);
+      expect(hx['uid_major_version']).toBe(1);
+    });
+
+    it('omits properties Nuxeo holds no value for', () => {
+      // Upstream lists properties from `Object.keys(document)`, so a `properties: *` read would
+      // otherwise contribute around a hundred blank cards from schemas the document never used.
+      const hx = mapNuxeoDocumentToHx(invoice);
+      expect('dc_coverage' in hx).toBe(false);
+      expect('dc_description' in hx).toBe(false);
+      expect('dc_contributors' in hx).toBe(false);
+    });
+
+    it('skips a key with no prefix, which would render a card with no label', () => {
+      // `translateProperty` splits on `_` and returns an empty label when there is none.
+      expect('unprefixed' in mapNuxeoDocumentToHx(invoice)).toBe(false);
+    });
+
+    it("reshapes a blob to the three fields adf-core's blob card reads", () => {
+      // `createBlobCardItems` builds cards from `.filename`, `.mimeType` and `.length`; Nuxeo
+      // names the same three `name`, `mime-type` and `length`.
+      expect(mapNuxeoDocumentToHx(invoice)['file_content']).toEqual({
+        filename: 'invoice.pdf',
+        mimeType: 'application/pdf',
+        // Coerced: Nuxeo sends the length as a string, and the card formats a number.
+        length: 84213,
+      });
+    });
+
+    it('drops the blob download URL rather than showing it as metadata', () => {
+      const blob = mapNuxeoDocumentToHx(invoice)['file_content'] as Record<string, unknown>;
+      expect('data' in blob).toBe(false);
+      expect('digest' in blob).toBe(false);
+    });
+
+    it('no longer emits the custom hx: keys at all', () => {
+      // They duplicated Dublin Core under names no adf-hx component reads, and would have
+      // rendered in the adopted metadata panel as cards with no label.
+      const hx = mapNuxeoDocumentToHx(invoice);
+      expect(Object.keys(hx).filter((k) => k.startsWith('hx:'))).toEqual([]);
+    });
+
+    it('lets a sys_ field win over a Nuxeo property of the same name', () => {
+      // None collide today — Nuxeo has no `sys` schema — so this asserts the spread ordering
+      // rather than an observed conflict.
+      const spoofed = {
+        ...invoice,
+        properties: { ...invoice.properties, 'sys:title': 'from Nuxeo' },
+      } as typeof invoice;
+      expect(mapNuxeoDocumentToHx(spoofed).sys_title).toBe('Invoice');
+    });
+  });
+
   it('builds synthetic repository root', () => {
     const root = syntheticHxRepositoryRoot();
     expect(root.sys_id).toBe('00000000-0000-0000-0000-000000000000');
     expect(root.sys_primaryType).toBe('SysRoot');
     expect(root.sys_isFolderish).toBe(true);
   });
-  describe('standard HxPR fields, not just the hx: custom ones', () => {
+  describe('standard HxPR fields', () => {
     // These three were dropped, which is why upstream's DataTable rendered a blank Last
-    // Contributor column: the value existed only under `hx:lastContributor`, a key adf-hx
-    // has never heard of. Asserted on the standard names because that is what any upstream
-    // component reads.
+    // Contributor column: the value existed only under a custom `hx:lastContributor` key that
+    // no adf-hx component has heard of. Asserted on the standard names because that is what any
+    // upstream component reads. The custom keys are gone entirely — see the Nuxeo property
+    // surface tests below.
     const withPeople = {
       uid: 'doc-9',
       title: 'Invoice',
