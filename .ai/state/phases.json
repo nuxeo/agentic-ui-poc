@@ -89,13 +89,15 @@
       "status": "in-progress",
       "evidence": {
         "manifest": "phase-3-adf-hx/latest",
-        "regate": "gates/latest:phase-3-versions-final"
+        "regate": "gates/latest:phase-3-model-probe"
       },
-      "deviations": [],
+      "deviations": [
+        "CORRECTED: this file previously recorded that DocumentModelService \"calls getModel() from its CONSTRUCTOR, so anything injecting it fails to construct\". The eager call is real; the consequence was not. An async method that throws returns a rejected promise, so the service constructs. Established by writing the test rather than by reasoning about it, after the reasoning had already been written into three files."
+      ],
       "notCovered": [
         "metadata-sidebar (blocked on MODEL), permissions, document-viewer, search \u2014 four components remain",
         "UPLOAD: HxPR chunked protocol vs Nuxeo batch upload are different lifecycles, not different endpoints. Bound but refusing.",
-        "MODEL: Nuxeo content model is server-side config exposed piecemeal and not writable over REST. Bound but refusing \u2014 and this is now a known blocker, not just a gap.",
+        "MODEL: Nuxeo content model is server-side config exposed piecemeal and not writable over REST. Bound but refusing, and a known blocker \u2014 see blockedOn.",
         "RENDITIONS getRenditions returns a fixed servable set (thumbnail, pdf); Nuxeo exposes no rendition-enumeration endpoint through this bridge, so it is not a discovery call.",
         "bridge defects: 1 of 5 verified still open (hardcoded sys_effectivePermissions)",
         "Initial bundle 1.70 -> 3.24 MB, accepted; leadership not yet informed",
@@ -131,7 +133,7 @@
         "Evidence step 4 no longer screenshots an untouched list under the name row-selection: it selects a row, asserts the checkbox reports itself checked, then clears the selection. The screenshot audit had caught the two images being byte-identical."
       ],
       "blockedOn": [
-        "metadata-sidebar and (probably) properties-viewer are blocked on the MODEL port. DocumentModelService is providedIn root, injects MODEL_API_TOKEN, and calls getModel() from its CONSTRUCTOR, so a refusing MODEL port makes every component behind DOCUMENT_PROPERTIES_SERVICE fail to construct rather than degrade. Unblocking needs a read-only MODEL implementation over Nuxeo /config/types and /config/schemas; setModel and patchModel can keep refusing because Nuxeo genuinely cannot accept them."
+        "metadata-sidebar and (probably) properties-viewer need a read-side MODEL port. DocumentModelService is providedIn root, injects MODEL_API_TOKEN, and calls modelApi.getModel() EAGERLY from its constructor. Because the refusing port is async that produces a REJECTED PROMISE, not a synchronous throw, so the service does construct \u2014 proven by nuxeo-unmapped-api.spec.ts. Two consequences: an unhandled promise rejection appears in the console at injection time before any user action, which will trip expectNoConsoleErrors; and the failure lands where the model is READ, so the component renders and its property fields fail. Unblocking needs a read-only MODEL over Nuxeo /config/types and /config/schemas; setModel and patchModel can keep refusing because Nuxeo genuinely cannot accept them."
       ]
     },
     {

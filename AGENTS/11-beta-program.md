@@ -352,11 +352,22 @@ DocumentService`. The chain, read from the published bundle:
 - **`@versions` is not a registered adapter on this Nuxeo distribution.**
   `GET /id/{uid}/@versions` answers `404 Service versions not found for object`. Use the
   `Document.GetVersions` operation instead.
-- **`DocumentModelService` calls `getModel()` from its constructor.** It is
-  `providedIn: 'root'` and injects `MODEL_API_TOKEN`, so with `MODEL` bound to a refusing
-  implementation **everything behind `DOCUMENT_PROPERTIES_SERVICE` fails to construct** rather
-  than degrading — metadata-sidebar, and probably properties-viewer. This is what blocks them,
-  and no amount of component-level work moves it.
+- **`DocumentModelService` calls `modelApi.getModel()` eagerly from its constructor — but a
+  refusing port does NOT stop it constructing.** It is `providedIn: 'root'` and injects
+  `MODEL_API_TOKEN`. The eager call is real; the obvious conclusion from it is wrong. Our
+  refusing `getModel` is `async`, so its `throw` becomes a **rejected promise**, and
+  `from(promise)` does not touch it until something subscribes. Verified in
+  `nuxeo-unmapped-api.spec.ts` — which exists because the opposite was asserted in three files
+  first, on reasoning alone. Two real consequences:
+  - an **unhandled promise rejection reaches the console at injection time**, before any user
+    action, because the constructor makes a rejected promise nobody is subscribed to. It will
+    trip `expectNoConsoleErrors` the moment metadata-sidebar or properties-viewer is adopted,
+    and only a read-side `MODEL` removes it;
+  - the failure lands **where the model is read**, so the component renders and its property
+    fields fail — which is the behaviour a refusing port is _meant_ to have, and why these two
+    ports are bound rather than left unbound.
+    **This is the general shape of every refusing port: bound, constructs, fails at the point of
+    use. Do not describe one as a construction-time blocker without testing it.**
 
 ---
 

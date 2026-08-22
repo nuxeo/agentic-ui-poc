@@ -325,13 +325,17 @@ Nothing here is a surprise later.
    choosing columns on either surface silently overwrote the other.
 3. **Four components remain**: metadata-sidebar, permissions, document-viewer, search.
    Document list, breadcrumb, tree and manage-versions are done.
-   **metadata-sidebar — and probably properties-viewer — are blocked on `MODEL`.**
+   **metadata-sidebar — and probably properties-viewer — need a read-side `MODEL`.**
    `DocumentModelService` is `providedIn: 'root'`, injects `MODEL_API_TOKEN`, and calls
-   `getModel()` from its **constructor**, so a refusing `MODEL` port makes everything behind
-   `DOCUMENT_PROPERTIES_SERVICE` fail to construct rather than degrade. Unblocking needs a
-   read-only `MODEL` over Nuxeo's `/config/types` and `/config/schemas`; `setModel` and
-   `patchModel` can keep refusing, because Nuxeo genuinely cannot accept them. This is the
-   largest single item left in Phase 3.
+   `modelApi.getModel()` **eagerly from its constructor**. Because the refusing port is
+   `async`, that produces a **rejected promise rather than a synchronous throw**, so the
+   service _does_ construct — see the correction in §7. Two consequences: an **unhandled
+   promise rejection reaches the console at injection time**, before any user action, which
+   will trip `expectNoConsoleErrors`; and the failure lands where the model is **read**, so
+   the component renders and its property fields fail. Unblocking needs a read-only `MODEL`
+   over Nuxeo's `/config/types` and `/config/schemas`; `setModel` and `patchModel` can keep
+   refusing, because Nuxeo genuinely cannot accept them. This is the largest single item left
+   in Phase 3.
 4. **`UPLOAD` and `MODEL` refuse.** Mapping either is real work, not a rename — and `MODEL`
    is now a known blocker, not just a gap (see 3).
    **`getDocumentsByQuery` understands one HXQL statement** — upstream's document-versions
