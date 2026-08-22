@@ -1,0 +1,24 @@
+{
+  "$schema": "Layer 0 bootstrap configuration for the template. Every key is optional; anything omitted falls back to the value compiled into the application, so an untouched file behaves exactly like no file at all.",
+  "$deployment": "In production this file lives BESIDE the application bundle, not inside it — the marketplace installer copies the bundle directory with overwrite=\"true\" and would destroy customer edits. `resolveBootstrapConfigUrl()` looks for it one level up from the base href, which is why it is served here from `public/agentic-ui-config/`.",
+
+  "$nuxeoApiOrigin": "Origin for Nuxeo REST calls. Empty keeps requests relative, correct behind a dev proxy and for same-origin production.",
+  "nuxeoApiOrigin": "",
+
+  "$manifestDocumentPath": "Repository path of the Nuxeo document holding the Layer 1 manifest. The template ships no Nuxeo server, so this will not resolve and the application will fall back to packaged defaults — visible on the home page under 'Configuration sources'. That fallback is the demonstration, not a failure.",
+  "manifestDocumentPath": "/default-domain/config/satori-template",
+  "manifestDocumentProperty": "note:note",
+
+  "$branding": "Rendered by the shell and written to document.title. Change these two strings and reload — no rebuild.",
+  "branding": {
+    "applicationTitle": "Acme Content",
+    "documentTitle": "Acme Content"
+  },
+
+  "defaultThemeId": "nuxeo",
+  "$themes": "Merged over the packaged themes by id. `tokens` are CSS custom properties applied to <html>, so a rebrand needs no rebuild.",
+  "themes": [],
+
+  "defaultLanguage": "en",
+  "availableLanguages": ["en"]
+}

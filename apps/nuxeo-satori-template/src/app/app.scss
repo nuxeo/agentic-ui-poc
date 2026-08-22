@@ -1,0 +1,75 @@
+// Plain CSS on purpose. The template brings no design system, so a fork is free
+// to add Angular Material, Satori UI, Tailwind or nothing at all without first
+// removing ours. `@nuxeo-satori/platform/ui` is available but not imported here,
+// which is what keeps this shell's bundle small.
+
+.shell {
+  display: grid;
+  grid-template-columns: 15rem 1fr;
+  min-height: 100vh;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  color: var(--shell-fg, #1f2328);
+}
+
+.shell__nav {
+  padding: 1.5rem 1rem;
+  background: var(--shell-nav-bg, #f6f8fa);
+  border-right: 1px solid var(--shell-border, #d0d7de);
+}
+
+.shell__brand {
+  margin: 0 0 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.shell__nav-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.shell__nav-link {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover {
+    background: var(--shell-nav-hover, #eaeef2);
+  }
+
+  &--active {
+    background: var(--shell-nav-active, #ddf4ff);
+    font-weight: 600;
+  }
+}
+
+.shell__nav-empty {
+  padding: 0.5rem 0.75rem;
+  color: var(--shell-muted, #656d76);
+  font-size: 0.875rem;
+}
+
+.shell__content {
+  padding: 2rem;
+  min-width: 0;
+}
+
+.shell__warning {
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  background: var(--shell-warn-bg, #fff8c5);
+  border: 1px solid var(--shell-warn-border, #d4a72c);
+  font-size: 0.875rem;
+}

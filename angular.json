@@ -147,6 +147,62 @@
           }
         }
       }
+    },
+    "nuxeo-satori-template": {
+      "projectType": "application",
+      "root": "apps/nuxeo-satori-template",
+      "sourceRoot": "apps/nuxeo-satori-template/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/nuxeo-satori-template/src/main.ts",
+            "index": "apps/nuxeo-satori-template/src/index.html",
+            "tsConfig": "apps/nuxeo-satori-template/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "outputPath": "dist/nuxeo-satori-template",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "apps/nuxeo-satori-template/public"
+              }
+            ],
+            "styles": ["apps/nuxeo-satori-template/src/styles.scss"]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "400kb",
+                  "maximumError": "700kb"
+                }
+              ],
+              "outputHashing": "all",
+              "optimization": true
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "configurations": {
+            "production": {
+              "buildTarget": "nuxeo-satori-template:build:production"
+            },
+            "development": {
+              "buildTarget": "nuxeo-satori-template:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
     }
   },
   "cli": {

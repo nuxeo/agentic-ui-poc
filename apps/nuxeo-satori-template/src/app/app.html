@@ -1,0 +1,37 @@
+<div class="shell">
+  <nav class="shell__nav" aria-label="Main">
+    <p class="shell__brand">Nuxeo Satori</p>
+
+    <!--
+      Rendered from the extension registry. Adding an entry is a manifest edit or
+      a `provideSatoriExtensions({ slots: { navbar: [...] } })` call — never a
+      change to this template.
+    -->
+    <ul class="shell__nav-list">
+      @for (item of navItems(); track item.id) {
+        <li>
+          <a
+            class="shell__nav-link"
+            routerLinkActive="shell__nav-link--active"
+            [routerLink]="item.path"
+          >
+            {{ item.label }}
+          </a>
+        </li>
+      } @empty {
+        <li class="shell__nav-empty">No navigation entries registered.</li>
+      }
+    </ul>
+  </nav>
+
+  <main class="shell__content">
+    @if (missingLayers().length) {
+      <p class="shell__warning" role="status">
+        Manifest references {{ missingLayers().length }} extension layer(s) that did not resolve:
+        {{ missingLayers().join(', ') }}
+      </p>
+    }
+
+    <router-outlet />
+  </main>
+</div>

@@ -1,0 +1,27 @@
+// Global styles for the template.
+//
+// Deliberately minimal: a fork brings its own design system. The custom
+// properties below are the ones `app.scss` and the pages read, so a rebrand can
+// be a single block here — or, better, Layer 0 `themes[].tokens`, which applies
+// without a rebuild.
+
+:root {
+  --shell-fg: #1f2328;
+  --shell-muted: #656d76;
+  --shell-border: #d0d7de;
+  --shell-nav-bg: #f6f8fa;
+  --shell-nav-hover: #eaeef2;
+  --shell-nav-active: #ddf4ff;
+  --shell-warn-bg: #fff8c5;
+  --shell-warn-border: #d4a72c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}

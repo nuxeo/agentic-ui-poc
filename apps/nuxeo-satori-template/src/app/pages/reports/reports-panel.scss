@@ -1,0 +1,49 @@
+h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.5rem;
+}
+
+.reports__lede {
+  margin: 0 0 2rem;
+  max-width: 65ch;
+  color: var(--shell-muted, #656d76);
+}
+
+.reports__panel {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--shell-border, #d0d7de);
+  border-radius: 8px;
+
+  h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.075rem;
+  }
+
+  p {
+    margin: 0 0 0.5rem;
+  }
+}
+
+.reports__button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--shell-border, #d0d7de);
+  border-radius: 6px;
+  background: var(--shell-nav-bg, #f6f8fa);
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--shell-nav-hover, #eaeef2);
+  }
+}
+
+.reports__hint {
+  color: var(--shell-muted, #656d76);
+  font-size: 0.875rem;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.9em;
+}

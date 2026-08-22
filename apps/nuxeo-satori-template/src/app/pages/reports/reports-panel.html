@@ -1,0 +1,34 @@
+<h1>Reports</h1>
+
+<p class="reports__lede">
+  A component this fork owns. It is reachable as the <code>/reports</code> route <em>and</em> as
+  <code>template.sidebar.reports</code> in the component registry, so a manifest can place it in a
+  drawer without editing the route table.
+</p>
+
+<section class="reports__panel">
+  <h2>Rule evaluation</h2>
+  <p>
+    <code>template.rules.isSignedIn</code> currently evaluates to <strong>{{ signedIn() }}</strong
+    >. It is declared fail-closed, so an unregistered build denies rather than permits.
+  </p>
+</section>
+
+<section class="reports__panel">
+  <h2>Action dispatch</h2>
+  @if (handlerRegistered) {
+    <p>
+      <code>{{ actionId }}</code> has a registered handler. The button dispatches by ID — it does
+      not call a method on this component.
+    </p>
+    <button type="button" class="reports__button" (click)="runExport()">
+      {{ actionLabel }}
+    </button>
+    <p class="reports__hint">Writes to the browser console.</p>
+  } @else {
+    <p class="reports__hint">
+      No handler registered under <code>{{ actionId }}</code
+      >. Dispatching would be inert rather than an error.
+    </p>
+  }
+</section>
