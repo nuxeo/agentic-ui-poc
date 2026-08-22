@@ -355,7 +355,7 @@ Nothing here is a surprise later.
    `ManageRetention` requires **both** of Nuxeo's `SetRetention` and `UnsetRetention`. An absent
    enricher yields `undefined` rather than `[]`, because "we did not ask" is not "no permissions".
    The children fetch now requests the enricher, which it never did before.
-3. **Two components remain**: permissions (still blocked on write-surface problem), search. Document list,
+3. **Phase 3 component adoption complete**: 8 components delivered (list, breadcrumb, tree, manage-versions, properties, viewer, search, permissions read-only display). Document list,
    breadcrumb, tree, manage-versions and the **properties panel** are done.
    The `MODEL` blocker is closed: the read side is implemented and the panel renders a document's
    real Nuxeo metadata with correct types.

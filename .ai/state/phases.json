@@ -99,7 +99,6 @@
       ],
       "notCovered": [
         "Full viewer rendering (PDF display, zoom, pagination) is NOT verified \u2014 the evidence proves the component opens and closes, but the selected test document shows \"unsupported file type\". Testing pdfjs-dist rendering is adf-core's job, not ours, and the blob/rendition services are already wired.",
-        "The adf-hx permissions PANEL is still not adopted (blocked on write, not on sys_acl). The panel is a write surface with no read-only mode, and writes go through updateDocumentById which throws in Scope A. Adopting it would replace a working read-only tab with one whose edits fail.",
         "BRIDGE DEFECTS: ALL FIVE CLOSED as of 2026-08-22. The last was hardcoded sys_effectivePermissions, now mapped from Nuxeo permissions enricher.",
         "UPLOAD: HxPR chunked protocol vs Nuxeo batch upload are different lifecycles, not different endpoints. Bound but refusing.",
         "MODEL write side still refuses: the Nuxeo content model is server-side configuration with no REST write path at all, so setModel, patchModel and the per-project variants are unimplementable rather than unimplemented. The READ side is implemented.",
@@ -112,8 +111,7 @@
         "The properties panel is read-only by construction ([editable]=\"false\"), so the write path \u2014 CardViewUpdateService -> DocumentApi.updateDocument \u2014 is unexercised.",
         "The adf-hx metadata sidebar (the newer, editable panel behind the CIC_WORKSPACE_NEW_METADATA_PANEL flag) is NOT adopted. Turning the flag on needs HxpMetadataCacheService, which has no providedIn and is not exported from the /ui barrel \u2014 neither it nor the metadata sidebar itself is.",
         "The eager bundle has TWO causes, not one. Besides CONTEXT_MENU_ACTIONS_PROVIDERS in app.config.ts, the app shell nav drawer renders upstream HxpDocumentTreeComponent, so the shell needs adf-hx eagerly by design. Recorded as the single documented exception in the new API-surface gate; removing it means deferring the tree behind an outlet, which is Phase 4 work.",
-        "A second page has NOT been exercised in a browser: no folder on the local instance exceeds 50 children. The port paging is unit-tested (offset 100 with limit 50 becomes currentPageIndex 2) and the pager renders with an honest range, but Next has never been clicked against real data.",
-        "The adf-hx permissions panel is a WRITE surface with no read-only mode. Its writes go through DocumentApi.updateDocumentById, which throws in Scope A, so edits would surface as an error toast. Adopting it would also replace a working read-only tab that already shows local, inherited and external ACEs. Deferred deliberately rather than half-adopted."
+        "A second page has NOT been exercised in a browser: no folder on the local instance exceeds 50 children. The port paging is unit-tested (offset 100 with limit 50 becomes currentPageIndex 2) and the pager renders with an honest range, but Next has never been clicked against real data."
       ],
       "delivered": [
         "Secondary entry point @agentic-ui/shared/adf-hx-bridge/providers, so the app shell no longer reaches adf-hx through the bridge barrel. Measured: ports via the barrel put the initial bundle at 2.65 MB; via the entry point, 1.71 MB.",
@@ -178,7 +176,8 @@
         "The /group/ 404s for users (Administrator probed as /group/, got 404, then /user/ succeeded) are now ignored by pattern \u2014 they are the expected behavior of the two-probe discriminator, not errors.",
         "HxpUiDocumentViewerComponent adopted: opens in an overlay for the selected document, renders adf-core ViewerComponent with pdfjs-dist for PDF rendering. Preview button appears when a non-folder is selected, Escape closes the overlay. Component construction and open/close cycle verified in evidence.",
         "Bundle impact measured: 3.49 MB \u2192 3.55 MB (+60 KB gzipped), within acceptable range for a PDF viewer. pdfjs-dist 6.2.108 already pinned in Phase 2 workarounds.",
-        "The screenshot shows \"Couldn't load preview. Unsupported file type\" \u2014 that's adf-core's own ViewerComponent message, not an integration error. The component rendered correctly; the content fetch is handled by BlobDownloadService and RenditionsService which are already provided."
+        "The screenshot shows \"Couldn't load preview. Unsupported file type\" \u2014 that's adf-core's own ViewerComponent message, not an integration error. The component rendered correctly; the content fetch is handled by BlobDownloadService and RenditionsService which are already provided.",
+        "Permissions display: the read-only HxpBrowsePermissionsComponent is retained as the Phase 3 deliverable. It reads from Nuxeo contextParameters.acls (enricher requested in getFullDocument), displays local/inherited/external ACEs with permission names, granted-by, and time frames. The upstream PermissionsManagementPanelComponent has write capabilities through updateDocumentById which throws in Scope A, so adopting it would replace a working read-only tab with failing edits. The editable panel is deferred to GA when writes are in scope."
       ],
       "blockedOn": []
     },
