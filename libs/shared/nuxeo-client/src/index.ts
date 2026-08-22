@@ -9,6 +9,15 @@ export type {
 } from './lib/models/asset.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
 export type {
+  NuxeoComplexField,
+  NuxeoContentModel,
+  NuxeoDoctypeDefinition,
+  NuxeoFacetDefinition,
+  NuxeoFieldType,
+  NuxeoSchemaDefinition,
+  NuxeoTypesConfig,
+} from './lib/models/content-model.model';
+export type {
   ContentLakeDuplicate,
   ContentLakeBackfillResult,
   ContentLakeIngestCommand,
@@ -196,6 +205,7 @@ export {
   type LocalPermissionRow,
   type SynchronizationRootRow,
 } from './lib/services/settings.service';
+export { ContentModelService } from './lib/services/content-model.service';
 export {
   AdministrationService,
   FALLBACK_DIRECTORY_NAMES,

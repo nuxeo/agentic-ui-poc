@@ -45,6 +45,26 @@ describe('nuxeo-to-hx-document.mapper', () => {
     expect(hx.sys_contentType).toBe('application/pdf');
   });
 
+  /**
+   * Spelling, and it is load-bearing. adf-hx writes `SysFilish` with no `e` in all four places
+   * it appears — `isFile()`, `getFilishTypes()` and two mixin checks. This mapper emitted the
+   * plausible-looking `SysFileish`, so upstream's `isFile()` was **always false** for every
+   * non-folder document we produced. Asserted as exact strings, because that is the only thing
+   * that distinguishes the two.
+   */
+  it('spells the mixins the way adf-hx reads them', () => {
+    const file: NuxeoDocument = {
+      uid: 'file-uid',
+      title: 'Report.pdf',
+      type: 'File',
+      path: '/x/Report.pdf',
+      lastModified: '2026-01-02T00:00:00.000Z',
+      properties: {},
+    };
+    expect(mapNuxeoDocumentToHx(file).sys_mixinTypes).toEqual(['SysFilish']);
+    expect(mapNuxeoDocumentToHx(workspace).sys_mixinTypes).toEqual(['SysFolderish']);
+  });
+
   it('maps arrays via mapNuxeoDocumentsToHx', () => {
     const mapped = mapNuxeoDocumentsToHx([workspace]);
     expect(mapped).toHaveLength(1);

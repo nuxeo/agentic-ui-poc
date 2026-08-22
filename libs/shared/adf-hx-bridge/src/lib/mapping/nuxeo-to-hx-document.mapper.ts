@@ -86,7 +86,14 @@ export function mapNuxeoDocumentToHx(
     sys_modified: doc.lastModified,
     sys_created: (props['dc:created'] as string | undefined) ?? doc.lastModified,
     sys_repository: repositoryId,
-    sys_mixinTypes: folderish ? ['SysFolderish'] : ['SysFileish'],
+    // `SysFilish`, with no `e`. adf-hx spells it that way in all four places it appears —
+    // `isFile()`, `getFilishTypes()` and two mixin checks — and Angular compares strings, so
+    // the plausible-looking `SysFileish` this used to emit meant upstream's `isFile()` was
+    // **always false** for every non-folder document we produced. Its visible consequence is
+    // in `PropertyUtilService.availableDocumentCategories`, which feeds the metadata sidebar's
+    // document-type selector: with no filish types contributed it falls back to offering only
+    // the document's current type.
+    sys_mixinTypes: folderish ? ['SysFolderish'] : ['SysFilish'],
     sys_effectivePermissions: minimalEffectivePermissions(),
     sys_contentType: typeof content?.['mime-type'] === 'string' ? content['mime-type'] : undefined,
     sys_typeLabel: doc.type,

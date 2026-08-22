@@ -10,6 +10,7 @@
 export * from './lib/tokens/adf-hx-bridge.tokens';
 export * from './lib/mapping/nuxeo-to-hx-document.mapper';
 export * from './lib/mapping/nuxeo-to-hx-version.mapper';
+export * from './lib/mapping/nuxeo-to-hx-model.mapper';
 export * from './lib/api/nuxeo-document-api';
 export * from './lib/api/nuxeo-query-api';
 export * from './lib/services/adf-hx-document.service';

@@ -352,6 +352,41 @@ DocumentService`. The chain, read from the published bundle:
 - **`@versions` is not a registered adapter on this Nuxeo distribution.**
   `GET /id/{uid}/@versions` answers `404 Service versions not found for object`. Use the
   `Document.GetVersions` operation instead.
+- **The Nuxeo content model needs THREE reads, and `/config/types` alone is a trap.**
+  `/config/types` gives doctypes (`parent`, `facets`, `schemas`) and a **flat** schema map
+  covering only the schemas a doctype reaches — 48 of 98 on the local instance. `/config/facets`
+  is the only way to learn what a facet contributes, because a doctype lists its facets by name.
+  `/config/schemas` is the nested superset. Reading schemas from `/config/types` silently omits
+  fifty of them.
+- **adf-hx's `FieldType` values ARE Nuxeo's field type strings** —
+  `boolean | blob | complex | date | double | long | object | string`, each with a `[]` variant.
+  And `DocumentModel.resolveType` returns any type it does not recognise unchanged. So
+  `Model.types` is left **empty** on purpose: there is nothing in Nuxeo to populate it from, and
+  populating it could only _change_ types that are already right.
+- **HxPR keys a schema's fields by their PREFIXED name; sub-fields stay unprefixed.**
+  `{ prefix: 'dc', fields: { dc_title: … } }`. `getSchemaByPrefix('dc_title')` splits on `_`,
+  takes `dc`, then requires `Object.keys(fields)` to contain the **whole** `dc_title`. Keyed by
+  the bare `title` it matches nothing and **every field silently becomes `FieldType.String`** —
+  dates rendering as raw ISO strings, which looks like a formatting bug. But
+  `getComplexFieldDetails` and the dotted-path branch of `getFieldDefinition` look sub-fields up
+  by their **bare** name, so prefixing those breaks what prefixing the top level fixes.
+- **A Nuxeo `@prefix` of `''` means "use the schema name", not "no prefix".** `file`, `uid` and
+  `files` all report empty, and Nuxeo then addresses them as `file:content` and
+  `uid:major_version`. Read literally the keys become `_content` and `_major_version`.
+- **Nuxeo has no `sys` schema, and that is the metadata-sidebar problem.** Upstream's
+  `DocumentPropertiesService` lists properties from `Object.keys(document)`; our mapper emits
+  `sys_*`. A faithfully translated Nuxeo model therefore types **none** of them. Making the
+  metadata sidebar work is a decision about the document's property surface, not a mapping fix.
+- **adf-hx writes `SysFilish`, with no `e`** — in `isFile()`, `getFilishTypes()` and two mixin
+  checks. Our mapper emitted `SysFileish`, so `isFile()` was always false for every non-folder
+  document we produce.
+- **`adf-hx-bridge` can be unit-tested against real upstream services, but only with two vitest
+  settings.** adf-core's fesm bundle does a _directory_ import of `date-fns/locale`, which Node's
+  ESM resolver rejects; Vitest externalises `node_modules`, so `resolve.alias` never sees the
+  specifier. An alias **plus** `server.deps.inline` for `@alfresco/*` and `date-fns` is what
+  makes it work. The Angular bundler tolerates the directory import, which is why the
+  application builds and only tests were affected. Worth the setup: the field-key discovery above
+  came from a `DocumentModelService` integration test, not from reading the bundle.
 - **`DocumentModelService` calls `modelApi.getModel()` eagerly from its constructor — but a
   refusing port does NOT stop it constructing.** It is `providedIn: 'root'` and injects
   `MODEL_API_TOKEN`. The eager call is real; the obvious conclusion from it is wrong. Our

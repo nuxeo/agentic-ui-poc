@@ -26,7 +26,8 @@ import { NuxeoCheckInApi } from '../api/nuxeo-checkin-api';
 import { NuxeoDownloadApi } from '../api/nuxeo-download-api';
 import { NuxeoGroupApi, NuxeoUserApi } from '../api/nuxeo-user-group-api';
 import { NuxeoRenditionsApi } from '../api/nuxeo-renditions-api';
-import { NuxeoModelApi, NuxeoUploadApi } from '../api/nuxeo-unmapped-api';
+import { NuxeoModelApi } from '../api/nuxeo-model-api';
+import { NuxeoUploadApi } from '../api/nuxeo-unmapped-api';
 import { AdfHxBrowseFolderService } from '../services/adf-hx-browse-folder.service';
 import { AdfHxBrowseMediaService } from '../services/adf-hx-browse-media.service';
 import { AdfHxDocumentService } from '../services/adf-hx-document.service';
@@ -62,12 +63,14 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   { provide: USER_API_TOKEN, useClass: NuxeoUserApi },
   { provide: GROUP_API_TOKEN, useClass: NuxeoGroupApi },
   { provide: RENDITIONS_API_TOKEN, useClass: NuxeoRenditionsApi },
-  // Bound although their Nuxeo equivalent is a different protocol, not a different
-  // endpoint. Eleven upstream services inject their tokens at construction, so leaving
-  // these unbound stops those services — and every component touching them — constructing
-  // at all. Bound, a component constructs and fails at the point of use with a message
-  // naming the operation. See `nuxeo-unmapped-api.ts`.
+  // `UPLOAD` is bound although its Nuxeo equivalent is a different protocol, not a different
+  // endpoint. Eleven upstream services inject their tokens at construction, so leaving it
+  // unbound stops those services — and every component touching them — constructing at all.
+  // Bound, a component constructs and fails at the point of use with a message naming the
+  // operation. See `nuxeo-unmapped-api.ts`.
   { provide: UPLOAD_API_TOKEN, useClass: NuxeoUploadApi },
+  // `MODEL` reads for real now, over `/config/types`, `/config/facets` and `/config/schemas`.
+  // Only its write half still refuses, because Nuxeo exposes no REST path for it at all.
   { provide: MODEL_API_TOKEN, useClass: NuxeoModelApi },
   NuxeoDocumentApi,
   NuxeoQueryApi,

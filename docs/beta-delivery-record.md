@@ -97,9 +97,11 @@ knowing:
   `@mat-datetimepicker/core@16.0.1` (its major track is offset from Angular's) and
   `pdfjs-dist@6.2.108` (4.x downgrades a shared native package).
 - **All twelve API ports bound** to upstream's tokens, with the bridge's local clone tokens
-  deleted. Seven are real implementations over existing `nuxeo-client` methods; `UPLOAD` and
-  `MODEL` are bound but refuse, because their Nuxeo equivalent is a different protocol
-  rather than a different endpoint.
+  deleted. **Eleven do real work.** Only `UPLOAD` refuses wholesale, because its Nuxeo
+  equivalent is a different protocol rather than a different endpoint. `MODEL` reads for real
+  over `/config/types`, `/config/facets` and `/config/schemas`; only its **write** half still
+  refuses, and that half is unimplementable rather than unimplemented — Nuxeo exposes no REST
+  path for writing the content model at all.
 - **The real `HxpDocumentListComponent` renders** on `/#/browse-adf-hx` over live Nuxeo, and
   its `[schema]` is fed from Layer 1's `PACKAGED_BROWSE_COLUMNS` — so **a customer's
   manifest edit drives Alfresco's own DataTable**, with no second column list.
@@ -235,7 +237,7 @@ Settled. Do not re-open without new information.
 | **`angular-oauth2-oidc` and `cropperjs` are kept**, unused | They cause no issue today. `pdfjs-dist` tree-shakes out entirely; these two do not.                                                                                                          |
 | **The adf-hx initial-bundle cost is accepted**             | See §5. Unavoidable, not a preference.                                                                                                                                                       |
 | **API ports live in the root injector**                    | Eleven upstream services are `providedIn: 'root'` and resolve the tokens from root. Scoping them to the lazy POC route means shadowing all eleven, and the list grows per component adopted. |
-| **`UPLOAD` and `MODEL` bound but refusing**                | An unbound token stops eleven root services constructing at all. Bound, a component constructs and fails at the point of use with a message naming the operation.                            |
+| **`UPLOAD` bound but refusing** (and `MODEL`'s write half) | An unbound token stops eleven root services constructing at all. Bound, a component constructs and fails at the point of use with a message naming the operation.                            |
 | **The POC route stays at `/#/browse-adf-hx`**              | Production `/#/browse` is untouched until parity is agreed.                                                                                                                                  |
 
 ---
@@ -325,19 +327,21 @@ Nothing here is a surprise later.
    choosing columns on either surface silently overwrote the other.
 3. **Four components remain**: metadata-sidebar, permissions, document-viewer, search.
    Document list, breadcrumb, tree and manage-versions are done.
-   **metadata-sidebar — and probably properties-viewer — need a read-side `MODEL`.**
-   `DocumentModelService` is `providedIn: 'root'`, injects `MODEL_API_TOKEN`, and calls
-   `modelApi.getModel()` **eagerly from its constructor**. Because the refusing port is
-   `async`, that produces a **rejected promise rather than a synchronous throw**, so the
-   service _does_ construct — see the correction in §7. Two consequences: an **unhandled
-   promise rejection reaches the console at injection time**, before any user action, which
-   will trip `expectNoConsoleErrors`; and the failure lands where the model is **read**, so
-   the component renders and its property fields fail. Unblocking needs a read-only `MODEL`
-   over Nuxeo's `/config/types` and `/config/schemas`; `setModel` and `patchModel` can keep
-   refusing, because Nuxeo genuinely cannot accept them. This is the largest single item left
-   in Phase 3.
-4. **`UPLOAD` and `MODEL` refuse.** Mapping either is real work, not a rename — and `MODEL`
-   is now a known blocker, not just a gap (see 3).
+   **The `MODEL` blocker is cleared** — the read side is implemented and tested. What stands
+   between here and metadata-sidebar is now a **decision, not a mapping**: upstream's
+   `DocumentPropertiesService` lists properties from `Object.keys(document)`, and our mapper
+   emits only `sys_*` plus a few `hx:*` keys. A Nuxeo-derived model has no `sys` schema — Nuxeo's
+   are `dublincore`, `common`, `uid`, `file` — so `getSchemaByPrefix` finds nothing for
+   `sys_created` and every field falls back to `FieldType.String`, rendering dates as raw ISO
+   strings. Three options, and they differ materially:
+   **(A)** synthesise a `sys` schema describing exactly the fields we map;
+   **(B)** also emit Nuxeo's real properties on the document as `prefix_field`, so the sidebar
+   shows a document's **actual Nuxeo metadata**;
+   **(C)** both, which is what upstream's own `TOP_DEFAULT_PROPERTIES` + `extractSchemas`
+   structure is built for. Not picked unilaterally.
+4. **`UPLOAD` refuses**, and so does `MODEL`'s **write** half. The `MODEL` read side is done;
+   the write side has no Nuxeo REST endpoint to call at all, so it is unimplementable rather
+   than unimplemented. Mapping `UPLOAD` is real work, not a rename.
    **`getDocumentsByQuery` understands one HXQL statement** — upstream's document-versions
    query — and refuses every other by name. Adopting adf-hx **search** will need more.
 5. **`getRenditions` is not a discovery call** — it returns a fixed `thumbnail, pdf` pair,
