@@ -43,6 +43,8 @@ const ENVIRONMENTAL_ERRORS = [
   '/nuxeo/logout',
   '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
   '/agentic-ui-config/bootstrap.json',
+  // sys_acl principal resolution: probes /group/ first for every principal, gets 404 for users
+  /HTTP 404 \/nuxeo\/api\/v1\/group\//,
 ];
 
 /** Where the versions fixture lives. Its own folder, so the list has one row to select. */
@@ -118,6 +120,13 @@ async function createVersionedFixture(page, h) {
  * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
  */
 export default async function run(page, h) {
+  // ── sys_acl principal lookup monitoring (global for the whole run) ──
+  const principalLookups = [];
+  page.on('request', (request) => {
+    const url = request.url();
+    if (/\/nuxeo\/api\/v1\/(group|user)\/[^/?]+$/.test(url)) principalLookups.push(url);
+  });
+
   h.step('Precondition: the dev server serves adf-core\'s translation catalogue');
   // adf-hx components fetch `assets/adf-core/i18n/<lang>.json` at runtime, copied in by an
   // asset glob in `angular.json`. Without it one accessibility label renders as a raw key and
@@ -533,6 +542,7 @@ export default async function run(page, h) {
   await h.screenshot('versions-panel');
 
   h.step("Adopted: upstream properties sidebar over the document's real Nuxeo metadata");
+  
   // The same fixture and the same selection, so this step asserts the *panel*, not the setup.
   // The row is still selected from the Versions step above.
   await tab('Properties').click();
@@ -663,8 +673,25 @@ export default async function run(page, h) {
       'Blank means `sys_primaryType` is not a key in `Model.primaryTypes`.',
   );
   await h.screenshot('properties-panel');
+  
+
 
   h.step('Health');
+  // sys_acl assertions - principal lookups are async and complete after the properties panel renders
+  h.check(
+    'the bridge probes the directory to classify ACL principals',
+    principalLookups.some((url) => /\/group\//.test(url)),
+    `${principalLookups.length} principal lookup(s): ${JSON.stringify(principalLookups.slice(0, 4))}`,
+  );
+  const distinctPrincipals = new Set(principalLookups);
+  // Informational: the test loads multiple documents, and each probe tries /group/ then /user/, so
+  // 2× the distinct count is expected minimum. The exact ratio depends on how many documents are
+  // loaded and whether they share principals.
+  h.note(
+    `${principalLookups.length} principal lookup(s) for ${distinctPrincipals.size} distinct principal(s) — ` +
+    `ratio ${(principalLookups.length / distinctPrincipals.size).toFixed(1)}:1 ` +
+    `(2.0:1 means perfect caching with group-then-user probes)`,
+  );
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);
   h.note(
     'card view, thumbnails and the error/retry state — rendered by the hand-written ' +

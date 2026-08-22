@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
 import { NuxeoDocumentApi } from './nuxeo-document-api';
+import { NuxeoAclService } from '../services/nuxeo-acl.service';
+import { NuxeoPrincipalResolver } from '../services/nuxeo-principal-resolver.service';
 import { ROOT_DOCUMENT } from '../tokens/adf-hx-bridge.tokens';
 
 describe('NuxeoDocumentApi', () => {
@@ -15,7 +17,7 @@ describe('NuxeoDocumentApi', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
-      providers: [NuxeoDocumentApi],
+      providers: [NuxeoDocumentApi, NuxeoAclService, NuxeoPrincipalResolver],
     });
     api = TestBed.inject(NuxeoDocumentApi);
     httpMock = TestBed.inject(HttpTestingController);

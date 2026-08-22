@@ -67,7 +67,7 @@ function mapNuxeoTypeToHxPrimaryType(nuxeoType: string): string {
  * - **`ManageRetention`** needs **both** `SetRetention` and `UnsetRetention` — see
  *   `HX_PERMISSION_REQUIRES_ALL`. Nuxeo splits the two, and holding only one is not management.
  */
-const HX_PERMISSION_FROM_NUXEO: Readonly<Record<string, string>> = {
+export const HX_PERMISSION_FROM_NUXEO: Readonly<Record<string, string>> = {
   Read: 'Read',
   Write: 'Write',
   ReadWrite: 'ReadWrite',

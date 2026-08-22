@@ -17,6 +17,8 @@ export * from './lib/api/nuxeo-query-api';
 // `@alfresco/adf-hx-content-services/api`. It is in `@agentic-ui/shared/adf-hx-bridge/providers`.
 export * from './lib/services/adf-hx-browse-context.service';
 export * from './lib/services/nuxeo-document-router.service';
+export * from './lib/services/nuxeo-principal-resolver.service';
+export * from './lib/services/nuxeo-acl.service';
 export * from './lib/utils/adf-hx-browse-path.utils';
 export * from './lib/utils/hxp-browse-cell.utils';
 export * from './lib/utils/hxp-document.predicates';

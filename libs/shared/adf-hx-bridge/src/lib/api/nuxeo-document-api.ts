@@ -1,7 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import type { Document, DocumentAncestors } from '@hylandsoftware/hxcs-js-client';
 import { firstValueFrom } from 'rxjs';
-import { BrowseService, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import {
+  BrowseService,
+  DocumentDetailService,
+  type NuxeoDocument as NuxeoDocumentInput,
+} from '@agentic-ui/shared/nuxeo-client';
 import {
   DEFAULT_REPOSITORY_ID,
   isHxRootDocument,
@@ -11,6 +15,7 @@ import {
   mapNuxeoDocumentToHx,
   syntheticHxRepositoryRoot,
 } from '../mapping/nuxeo-to-hx-document.mapper';
+import { NuxeoAclService } from '../services/nuxeo-acl.service';
 
 type AxiosLikeResponse<T> = { data: T };
 
@@ -18,6 +23,23 @@ type AxiosLikeResponse<T> = { data: T };
 export class NuxeoDocumentApi {
   private readonly browse = inject(BrowseService);
   private readonly documentDetail = inject(DocumentDetailService);
+  private readonly acl = inject(NuxeoAclService);
+
+  /**
+   * Adds `sys_acl`, which the synchronous mapper cannot produce.
+   *
+   * Nuxeo's ACE names a principal without saying whether it is a user or a group, so each distinct
+   * name needs a directory lookup — see `NuxeoPrincipalResolver`. A port method is `async`, so this
+   * is the first place in the chain that can do it.
+   *
+   * Only the **single-document** reads get it. The children fetch does not request the `acls`
+   * enricher and should not: a list of fifty rows does not need fifty ACLs, and `undefined` there is
+   * the honest answer rather than an empty one.
+   */
+  private async withAcl(nuxeo: NuxeoDocumentInput, mapped: Document): Promise<Document> {
+    const acl = await firstValueFrom(this.acl.aclFor(nuxeo));
+    return acl === undefined ? mapped : { ...mapped, sys_acl: acl };
+  }
 
   async getDocumentById(
     docId: string,
@@ -28,7 +50,7 @@ export class NuxeoDocumentApi {
     }
 
     const nuxeo = await firstValueFrom(this.documentDetail.getFullDocument(docId));
-    return { data: mapNuxeoDocumentToHx(nuxeo, repositoryId) };
+    return { data: await this.withAcl(nuxeo, mapNuxeoDocumentToHx(nuxeo, repositoryId)) };
   }
 
   async getDocumentByPath(
@@ -41,7 +63,7 @@ export class NuxeoDocumentApi {
     }
 
     const nuxeo = await firstValueFrom(this.browse.getByPath(safePath));
-    return { data: mapNuxeoDocumentToHx(nuxeo, repositoryId) };
+    return { data: await this.withAcl(nuxeo, mapNuxeoDocumentToHx(nuxeo, repositoryId)) };
   }
 
   async getDocumentAncestors(

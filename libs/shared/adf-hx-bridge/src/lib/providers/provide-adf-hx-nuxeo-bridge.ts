@@ -32,6 +32,8 @@ import { AdfHxBrowseFolderService } from '../services/adf-hx-browse-folder.servi
 import { AdfHxBrowseMediaService } from '../services/adf-hx-browse-media.service';
 import { AdfHxDocumentService } from '../services/adf-hx-document.service';
 import { NuxeoDocumentRouterService } from '../services/nuxeo-document-router.service';
+import { NuxeoPrincipalResolver } from '../services/nuxeo-principal-resolver.service';
+import { NuxeoAclService } from '../services/nuxeo-acl.service';
 import {
   DocumentRouterService,
   DOCUMENT_PROVIDERS,
@@ -93,6 +95,10 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   AdfHxBrowseMediaService,
   AdfHxBrowseFolderService,
   NuxeoDocumentRouterService,
+  // Principal resolution and ACL mapping. Both are ours rather than upstream bindings, and both are
+  // async by necessity: Nuxeo's ACE does not say whether a principal is a user or a group.
+  NuxeoPrincipalResolver,
+  NuxeoAclService,
   // WORKAROUND(adf-hx): W7 — pipes provided as services, because none carries `providedIn`.
   //
   // adf-core's pipes, which upstream's arrays do **not** cover.
