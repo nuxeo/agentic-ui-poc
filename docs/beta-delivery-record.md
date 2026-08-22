@@ -349,10 +349,22 @@ Nothing here is a surprise later.
    upstream's `UserService.resolveUser` already performs exactly that lookup and **caches it
    per id**, so passing a username string where upstream expects one gets a real display name
    for one request per distinct user. That path is live in the versions panel today.
-2. **`sys_effectivePermissions` is hardcoded** to a minimal set for every document — the last
-   of five recorded bridge defects. The other four are closed, most recently the
-   `browse_column_settings` localStorage key that the POC and production browse shared, so
-   choosing columns on either surface silently overwrote the other.
+2. **Four of the five recorded bridge defects are still open — not one, as this file said until
+   2026-08-22.** Re-checked against the code while reporting status against the plan:
+   - **closed:** the `browse_column_settings` localStorage key the POC and production browse
+     shared, so choosing columns on either surface silently overwrote the other.
+   - **open — `sys_effectivePermissions` is hardcoded** to a minimal set for every document, so
+     upstream's `hasPermission()` answers from a constant.
+   - **open — the dropped sort.** `(sortingClicked)` is unhandled, so the server is never asked to
+     order. Measured in a browser: clicking `Title` reorders the loaded page **client-side**, 37
+     rows before and after with no refetch. And the POC sets `sortable: true` on **every** column,
+     so the UI offers a sort it can only apply to the loaded rows — which, with the ceiling below,
+     is worse than not offering it, because on a large folder it sorts an arbitrary subset and
+     looks right.
+   - **open — `totalCount` overwritten** with the page length in `sliceQueryResult`, which the
+     `tree_children` path uses.
+   - **open — the 50-child ceiling, with no pager.** `getAllChildren` is still called with a
+     hardcoded `limit: 50`.
 3. **Three components remain**: permissions, document-viewer, search. Document list,
    breadcrumb, tree, manage-versions and the **properties panel** are done.
    The `MODEL` blocker is closed: the read side is implemented and the panel renders a document's
