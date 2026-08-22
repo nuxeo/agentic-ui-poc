@@ -102,6 +102,17 @@ const ALL_GATES = [
     // It reports VACUOUS when adf-hx is not in the bundle; that has to be visible.
     echoOnPass: true,
   },
+  // Phase 4 gate: the publishable platform's API surface must match its snapshot.
+  // Runs after `build` because it reads dist/libs/platform/*.d.ts — the bytes a
+  // customer actually installs, not the source. A library can gain or lose an
+  // export without lint/test/build/typecheck noticing, because every in-repo
+  // caller is updated in the same commit; the break lands on the customer.
+  {
+    id: 'api-surface',
+    label: 'API surface',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/api-surface.mjs'],
+  },
 ];
 
 const requested = args.get('gates');
