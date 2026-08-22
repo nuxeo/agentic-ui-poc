@@ -1,57 +1,93 @@
 # Phase 4: Layer 2 — Publishable Platform
 
-**Status:** IN PROGRESS — the registration API is delivered; the **build is not**  
-**Estimated:** 11-16 days with AI support  
-**Started:** 2026-08-23 · **Last updated:** 2026-08-23
+**Status:** COMPLETE — all five deliverables shipped and verified
+**Estimated:** 11-16 days with AI support
+**Started:** 2026-08-23 · **Completed:** 2026-08-23
 
 ## Goal
 
-Make libraries publishable as npm packages (`@nuxeo-satori/*`) that customers can install and extend.
+Ship the platform as an installable npm package customers can extend from their own
+code, without forking it.
 
 ## Key Deliverables
 
-| #   | Deliverable                                                             | Status                                                                      |
-| --- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| 1   | Libraries build to `dist/` as installable packages                      | **not started** — see the blocker below                                     |
-| 2   | Public API surface declared and pinned against accidental change        | **not started**                                                             |
-| 3   | Registration API — our `setComponents` / `setEvaluators` / `setActions` | **done** — `provideSatoriExtensions()`, 8 specs, and the app itself uses it |
-| 4   | Thin forkable app template                                              | **not started**                                                             |
-| 5   | Customer extension library starter                                      | **not started**                                                             |
+| #   | Deliverable                                                             | Status                                                                                |
+| --- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| 1   | Libraries build to `dist/` as an installable package                    | **done** — `@nuxeo-satori/platform`, installed from a tarball and typechecked against |
+| 2   | Public API surface declared and pinned against accidental change        | **done** — `docs/api/platform.api.md`, 233 symbols, gated                             |
+| 3   | Registration API — our `setComponents` / `setEvaluators` / `setActions` | **done** — `provideSatoriExtensions()`, 8 specs, and the app uses it                  |
+| 4   | Thin forkable app template                                              | **done** — `apps/nuxeo-satori-template`, 387 kB, verified in a browser                |
+| 5   | Customer extension library starter                                      | **done** — Nx generator, output integrated with zero platform edits                   |
 
-### Correcting the first version of this file
+## 1. The package
 
-Its checklist marked deliverable 1 **done** on the strength of an `ng-package.json`
-existing. That was wrong twice over: a config file is not a build, and
-**`ng-packagr` is not installed at all** — the file even referenced a
-`node_modules/ng-packagr/ng-package.schema.json` that is not on disk. Nothing
-built, and nothing could have. Recorded here rather than quietly fixed, because
-"documented as done, never ran" is the exact failure this programme keeps paying
-for.
+**`@nuxeo-satori/platform`** — one versioned package, five entry points:
 
-### The blocker on deliverable 1
+| Import specifier                      | What it is                                          |
+| ------------------------------------- | --------------------------------------------------- |
+| `@nuxeo-satori/platform`              | `PLATFORM_ENTRY_POINTS`                             |
+| `@nuxeo-satori/platform/extensions`   | Layer 1/2 — slots, rules, actions, registration     |
+| `@nuxeo-satori/platform/app-config`   | Layer 0 — bootstrap config and the runtime manifest |
+| `@nuxeo-satori/platform/nuxeo-client` | Nuxeo REST services and document models             |
+| `@nuxeo-satori/platform/ui`           | Shared components and dialogs                       |
 
-`@nx/angular:ng-packagr-lite` is the right executor and is present, but it
-resolves `ng-packagr` at runtime and that package is **absent** from
-`package.json` and from `node_modules`. `@nx/js:tsc` — the executor
-`shared-util` uses — is not a substitute: this library ships a component with a
-`templateUrl`, so it needs the Angular compiler, and `tsc` alone produces no
-package metadata, no FESM bundle and no entry points.
+```bash
+npx nx build platform     # -> dist/libs/platform
+```
 
-Adding it is a `package-lock.json` change, which is the single most expensive
-operation in this repo: a bare `npm install` on macOS prunes optional platform
-entries Linux needs and `npm ci` then refuses the whole tree — that broke CI for
-the length of Phase 2. So it is a deliberate, isolated change with the
-`lockfile` gate run before and after, not a side effect of a feature commit.
+### Why one package, not four
 
-## Delivered: the registration API
+The distribution model in `docs/adf-hx-beta-plan.md` promises an upgrade is "an npm
+version bump for the platform" — singular. Four independently versioned packages make
+that four bumps and a cross-compatibility matrix to support. It is also the shape
+`@alfresco/adf-hx-content-services` ships in, which this codebase already consumes.
 
-`provideSatoriExtensions()` in `@nuxeo-satori/platform/extensions` — one declarative
-object reaching all four registries, applied in an **environment initializer** so
-every id is registered before the first slot resolves.
+### No files were moved
+
+ng-packagr accepts a secondary entry point whose `entryFile` points **outside** the
+package root — established by probe before relying on it. So `libs/platform/*/ng-package.json`
+reference the existing `libs/shared/*/src` sources and a 200-file move was avoided.
+The same probe confirmed sibling entry points may import each other by published
+subpath, and that the specifier is preserved rather than inlined.
+
+### Publish is blocked on purpose
+
+`private: true`, no `publishConfig`. The `@nuxeo-satori` scope is unconfirmed
+(risk **R10**), so the package is installable from a tarball or a path today and
+cannot be pushed to a scope we may not own. One field flips when ownership is settled.
+
+## 2. The API surface gate
+
+```bash
+npm run beta:api              # check, non-zero on drift
+npm run beta:api -- --update  # regenerate the snapshot
+```
+
+Reads the **built** `.d.ts` files — the bytes a customer installs, not the source —
+and compares against `docs/api/platform.api.md` (233 symbols across 5 entry points).
+Wired into `npm run beta:gate` as the `api-surface` step, after `build`.
+
+Nothing else in the repo can see a surface change: lint, test, build and typecheck are
+all happy when a library gains or loses an export, because every in-repo caller is
+updated in the same commit. The break lands on the customer a release later.
+
+**Not `@microsoft/api-extractor`**: another lockfile dependency, wants a single
+rolled-up entry point where this package ships five, and is markedly harder to break
+on purpose — which every gate here has to clear.
+
+**What it does not check:** names, kinds and signatures only. Angular decorator
+metadata — a selector, an input alias — is invisible to it. A green check is not a
+promise of backwards compatibility.
+
+## 3. The registration API
+
+`provideSatoriExtensions()` — one declarative object reaching all four registries,
+applied in an environment initializer so every ID is registered before the first slot
+resolves.
 
 ```ts
 provideSatoriExtensions({
-  slots: { toolbar: [{ id: 'acme.toolbar.export', order: 10 }] },
+  slots: { navbar: NAV_ITEMS }, // typed const, not an inline literal
   rules: { 'acme.rules.isPilot': () => true },
   failClosedRules: ['acme.rules.isPilot'],
   components: { 'acme.sidebar.reports': () => import('./reports').then((m) => m.Reports) },
@@ -59,253 +95,134 @@ provideSatoriExtensions({
 });
 ```
 
-Four properties worth knowing, each pinned by a spec:
+Four properties, each pinned by a spec:
 
-- **The factory form gets an injection context.** `provideSatoriExtensions(() => ({...}))`
-  may `inject()`, which is not optional in practice — two of the application's
-  own rules close over `AuthService` and all six bulk handlers close over an
-  `Injector`.
-- **Later wins per id** for rules, components and actions, which is how a
-  customer layer overrides a packaged one without forking it.
+- **The factory form gets an injection context** — `provideSatoriExtensions(() => ({...}))`
+  may `inject()`. Not optional in practice: two of the application's own rules close
+  over `AuthService`.
+- **Later wins per ID** for rules, components and actions — how a customer overrides a
+  packaged one without forking.
 - **Slot descriptors accumulate**, so a customer adding a toolbar button cannot
-  silently delete the packaged ones. Hiding and reordering stay a manifest edit.
+  silently delete the packaged ones.
 - **Returns `EnvironmentProviders`**, so it cannot be listed in a component's
-  `providers`, where it would run too late to mean anything.
+  `providers`, where it would run too late to matter.
 
-**The application uses it.** `apps/nuxeo-ui/src/app/extensions/provide-app-extensions.ts`
-was rewritten to contribute through this function instead of injecting the four
-registries by hand, so the documented customer path is the one the product
-exercises on every boot. Its live rule-context wiring stays a separate
-`APP_INITIALIZER`, because pushing shell state into a signal is not registration.
+### A sharp edge worth knowing
 
-**Watched fail on purpose.** With all five registration paths sabotaged, 6 of the
-8 specs went red. One of the two that stayed green was a genuine false green —
-it asserted a rule evaluated `true`, and an _unregistered_ rule also evaluates
-`true` because unknown rules fail open, so it passed whether or not the factory
-had ever run. It now asserts `false`, which only a registered evaluator can
-return, and it goes red under the same sabotage.
+`slots` is typed `Record<ExtensionSlotId, readonly ExtensionElement[]>`, and
+`ExtensionElement` carries only `id`, `disabled` and `order`. An **inline** literal
+with `label`/`path`/`icon` is a fresh object literal, so excess property checking
+rejects it with **TS2418**. Assigning an already-typed `readonly NavItemDescriptor[]`
+is fine. ACA's own `ExtensionElement` has no index signature either, so the contract
+is right and the inline literal is wrong — hoist to a typed const. The template and
+the generator both do this and say why.
 
-## Libraries to Publish
+## 4. The app template
 
-### Priority 1: Customer-Facing
+`apps/nuxeo-satori-template` — a real Nx project, so `nx run-many` builds and
+typechecks it and it cannot rot into a template that no longer compiles.
 
-**@nuxeo-satori/extensions** (`libs/shared/extensions`)
+**387 kB initial / 104 kB compressed**, against the product's 3.5 MB. It imports only
+`/extensions` and `/app-config` — no adf-hx, no Angular Material — because a fork
+should not have to remove our design system before adding its own. The production
+budget is 400 kB warning / 700 kB error so a fork that pulls in something heavy is
+told at build time.
 
-- Extension registry, slots, rule evaluation
-- **Status:** ng-package.json created, build target needed
-- **Public API:** `ExtensionSlotRegistry`, `ExtensionRuleRegistry`, `filterEnabled`, `sortByOrder`
-- **Registration:** `registerComponent()`, `registerEvaluator()`, `registerAction()`
+| Layer | Where                                       | What it demonstrates                                   |
+| ----- | ------------------------------------------- | ------------------------------------------------------ |
+| 0     | `public/agentic-ui-config/bootstrap.json`   | branding and a real theme; edit and reload, no rebuild |
+| 1     | `manifest.example.json`                     | `overrides`, `slots`, a rule-gated toolbar action      |
+| 2     | `src/app/extensions/template-extensions.ts` | all five contribution kinds, in the factory form       |
 
-**@nuxeo-satori/app-config** (`libs/shared/app-config`)
+The nav is **resolved from the registry**, not written in the template — that is what
+makes it addressable. The home page renders `inventory()` and `diagnostics()`, so a
+fork can see every registered ID and which half of its config fell back and why.
 
-- Bootstrap config, runtime manifest loading
-- **Status:** Not started
-- **Public API:** `AppConfigService`, config models, manifest schema
+### Does it fall back to a default if a customer has no design system?
 
-**@nuxeo-satori/ui** (`libs/shared/ui`)
+Yes. It ships ~150 lines of plain CSS and every one of its `var()` uses carries an
+inline fallback, so it renders even with `styles.scss` deleted. What it does not ship
+is a component library: `@nuxeo-satori/platform/ui` needs Angular Material (already a
+declared peer). The chain is **template CSS built in → add Material + `/ui` → replace
+with your own**.
 
-- Shared UI components (dialogs, utilities)
-- **Status:** Not started
-- **Public API:** Standalone components, dialog services
-
-### Priority 2: Supporting
-
-**@nuxeo-satori/nuxeo-client** (`libs/shared/nuxeo-client`)
-
-- Nuxeo API services
-- **Decision needed:** Expose as extension point or keep internal?
-
-**@nuxeo-satori/adf-hx-bridge** (`libs/shared/adf-hx-bridge`)
-
-- adf-hx integration layer
-- **Public API:** Providers only (`ADF_HX_NUXEO_BRIDGE_PROVIDERS`)
-- **Internal:** All implementation details
-
-## Next Steps
-
-### 1. Complete extensions Library Build
+## 5. The extension library generator
 
 ```bash
-# Add to libs/shared/extensions/project.json
-{
-  "targets": {
-    "build": {
-      "executor": "@nx/angular:ng-packagr-lite",
-      "outputs": ["{workspaceRoot}/dist/libs/shared/extensions"],
-      "options": {
-        "project": "libs/shared/extensions/ng-package.json"
-      }
-    }
-  }
-}
+npx nx g ./tools/satori-generators:extension-library acme-extensions --owner=acme
 ```
 
-### 2. Define Public API Surface
+Generates 14 files: the provider, a rules service, a component contributed by ID, six
+specs, and the config to make it a first-class Nx project with `test`, `lint` and
+`typecheck`. Registers the import alias in `tsconfig.base.json`.
 
-Create `libs/shared/extensions/src/public-api.ts`:
+**The generated spec is the point.** The failure it prevents is a library that
+registers descriptors nothing renders — Phase 1 nearly shipped exactly that — so the
+specs assert observable registry state. One asserts a rule evaluates **false** on
+purpose: an unregistered rule ID evaluates to `true` because rules fail open, so a
+test expecting `true` would pass even if registration never happened.
 
-```typescript
-// Extension registry
-export * from './lib/registry/extension-slot-registry';
-export * from './lib/registry/extension-rule-registry';
-export * from './lib/registry/extension-action-registry';
+### The zero-edit claim, proven from git
 
-// Utilities (from adf-extensions)
-export { filterEnabled, sortByOrder } from './lib/utils/extension.utils';
+Integrating the generated library touched **two** things: one line plus an import in
+the template's `app.config.ts`, and one alias line in `tsconfig.base.json` written by
+the generator. **No file under `libs/shared/` or `libs/platform/` was modified.**
 
-// Types
-export type { ExtensionSlot, ExtensionRule, ExtensionAction } from './lib/models';
+In a browser against the production build, nav renders `[Home, Reports, AcmeExtensions]`
+and `inventory()` lists `acme.navbar.acmeExtensions` and `acme.rules.canUseAcme`. The
+provider stays wired into the template so CI keeps proving this end to end; the call
+site says to delete it in a fork.
 
-// Registration API (NEW)
-export { registerComponent, registerEvaluator, registerAction } from './lib/api/registration';
-```
+## Defects found by verifying rather than trusting
 
-### 3. Create Registration API
+Recorded because each was invisible to a green build.
 
-**File:** `libs/shared/extensions/src/lib/api/registration.ts`
+| #   | Defect                                                                                                                                                                  | How it was caught                           |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 1   | `@agentic-ui/shared/extensions` is an **invalid npm name** — two slashes. Phase 4 was unshippable as specified, and no document recorded it.                            | Checking name validity before packaging     |
+| 2   | `@nx/angular:ng-packagr-lite` **ships a broken package** — skips FESM bundling while the exports map points at `./fesm2022/*.mjs`; all four subpaths were unresolvable. | `npm pack` → install → resolve              |
+| 3   | `npm install` **pruned the two Linux-only lock entries** named in CLAUDE.md, reproducing the fault that kept CI red for all of Phase 2.                                 | Diffing against a known-good lock           |
+| 4   | The API surface extractor **silently omitted `export type { T }`** declarations, so `PlatformEntryPoint` was absent and its removal would not have been caught.         | Reading the built `.d.ts` by hand           |
+| 5   | The template's `themes` / `defaultThemeId` were **inert** — both keys present, a comment claiming "no rebuild needed", nothing reading them.                            | Asking whether the default actually applies |
+| 6   | The template's `documentTitle` **never applied** — `provideAppInitializer` functions run concurrently, so it read config before `load()` resolved.                      | Browser probe                               |
+| 7   | The generated provider was named **`provideAcmeExtensionsExtensions`**, with a selector of `acme-acme-extensions-panel`.                                                | Running the generator                       |
+| 8   | Generated code was **not lint-clean** (`console.info` trips `no-console`).                                                                                              | `nx lint` on the output                     |
 
-```typescript
-import { Type } from '@angular/core';
-import { ExtensionSlotRegistry } from '../registry/extension-slot-registry';
-import { ExtensionRuleRegistry } from '../registry/extension-rule-registry';
+### One guardrail widened, and re-broken to prove it still bites
 
-export interface ComponentRegistration {
-  id: string;
-  loader: () => Promise<Type<unknown>>;
-}
+`checkThemeTokens` required a colour literal to sit on a line referencing
+`--mat-sys-*` or `--kd-*`. The template ships no Material by design, so `--mat-sys-*`
+is undefined there and `var(--mat-sys-surface, #fff)` would have satisfied the gate
+while the fallback did all the work — the tautological gate this repo has already paid
+for twice. `--shell-*` is now recognised as a third themed namespace, legitimate
+because `TemplateThemeService` genuinely applies Layer 0 tokens to it. Custom property
+_declarations_ are exempt, narrowly. Verified afterwards that a plain `color: #ff0000`
+and an `rgba()` are both still caught.
 
-export interface EvaluatorRegistration {
-  id: string;
-  evaluator: (context: unknown) => boolean;
-}
-
-export interface ActionRegistration {
-  id: string;
-  handler: {
-    execute: (context: unknown) => void | Promise<void>;
-  };
-}
-
-export function registerComponent(registration: ComponentRegistration): void {
-  // Implementation: add to ExtensionSlotRegistry
-}
-
-export function registerEvaluator(registration: EvaluatorRegistration): void {
-  // Implementation: add to ExtensionRuleRegistry
-}
-
-export function registerAction(registration: ActionRegistration): void {
-  // Implementation: add to action registry
-}
-```
-
-### 4. Add API Extractor
+## Verification
 
 ```bash
-npm install --save-dev @microsoft/api-extractor
+npm run beta:gate -- --phase phase-4-platform     # 10/10 green
+npx nx run-many -t typecheck build test --all --skip-nx-cache   # 22 projects green
 ```
 
-Create `libs/shared/extensions/api-extractor.json`:
+22 projects, up from 20 — the template and the generated library are both under CI.
 
-```json
-{
-  "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
-  "mainEntryPointFilePath": "<projectFolder>/dist/index.d.ts",
-  "apiReport": {
-    "enabled": true,
-    "reportFolder": "<projectFolder>/../../api-reports"
-  },
-  "docModel": {
-    "enabled": false
-  },
-  "dtsRollup": {
-    "enabled": true
-  }
-}
-```
+## What is deliberately not done
 
-### 5. Create App Template
-
-**File:** `apps/nuxeo-satori-template/`
-
-- Minimal shell (routes, config, theme)
-- Layer 0 config examples
-- Layer 1 manifest examples
-- README: how to fork and customize
-
-### 6. Create Extension Starter
-
-**File:** `tools/generators/extension-library/`
-
-- Nx generator: `nx g @nuxeo-satori/generators:extension-library my-extensions`
-- Generates: library scaffold, example component, example rule, example action
-- README: how to build and integrate
-
-## API Surface Rules
-
-### MUST
-
-- All types in public API must be documented (TSDoc)
-- Breaking changes require major version bump
-- adf-hx types NEVER in public signatures
-
-### GATE
-
-`checkNoAdfHxInPublicApi()` in `scripts/review-guardrails.mjs` **already enforces
-the adf-hx half**, delivered in Phase 3 — the first version of this file listed it
-as outstanding work, which was wrong. What is still missing is different: a
-**pinned surface**, so that an accidental export addition or signature change
-fails rather than shipping. That is deliverable 2.
-
-## Package Naming
-
-**Scope:** `@nuxeo-satori`  
-**Rationale:** Plan proposes this scope (R10 notes ownership unconfirmed)
-
-**Libraries:**
-
-- `@nuxeo-satori/extensions`
-- `@nuxeo-satori/app-config`
-- `@nuxeo-satori/ui`
-- `@nuxeo-satori/nuxeo-client` (if exposed)
-
-**Template:**
-
-- `@nuxeo-satori/app-template`
-
-**Generators:**
-
-- `@nuxeo-satori/generators`
-
-## Customer Extension Example
-
-**Goal:** Reference customer extension exercising Layers 0-2 (Phase 6 requirement).
-
-**Creates:**
-
-1. Custom nav item (Layer 1)
-2. Rule-gated action (Layer 1)
-3. Custom component (Layer 2)
-4. Rebrand (Layer 0)
-
-**Zero edits to our libraries** - proves the contract works.
-
-## Success Criteria
-
-- [x] Registration API delivered, spec'd, and used by the application
-- [ ] `ng-packagr` added to `package.json` (deliberate, isolated lockfile change)
-- [ ] `nx build shared-extensions` produces dist/
-- [ ] package.json has `publishConfig`
-- [ ] API extractor generates .api.md baseline
-- [ ] Gate fails on adf-hx type leak
-- [ ] Customer can: `npm install @nuxeo-satori/extensions`
-- [ ] Customer can: call `registerComponent()` from their code
-- [ ] Template app forks and builds
-- [ ] Extension starter generates working library
-- [ ] Reference extension builds and integrates with zero library edits
+- **Publishing.** Blocked on `@nuxeo-satori` scope ownership (R10).
+- **`adf-hx-bridge` is not an entry point.** It would make adf-hx reachable from the
+  package; the existing `checkNoAdfHxInPublicApi` guardrail enforces this.
+- **Semantic compatibility checking.** The API gate is a shape gate; it does not read
+  decorator metadata.
+- **The template resolves platform imports through workspace tsconfig aliases to
+  source**, not to the built package. Package consumability is covered separately by
+  the tarball probe, but a fork swapping aliases for the npm dependency is not yet
+  verified end to end.
 
 ## References
 
 - Plan: `docs/adf-hx-beta-plan.md` Phase 4 section
-- ACA equivalent: `@alfresco/adf-extensions` with `setComponents()`, `setEvaluators()`
-- Current registry: `libs/shared/extensions/src/lib/registry/`
+- Package README: `libs/platform/README.md`
+- API snapshot: `docs/api/platform.api.md`
+- Layer 1 ID contract: `docs/extension-reference.md`
