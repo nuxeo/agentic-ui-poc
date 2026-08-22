@@ -16,7 +16,13 @@
     "origin/main (21 affected projects), not one phase in isolation. Running it three",
     "times under three labels would be theatre, not three verifications. The original",
     "evidence.gate citation is kept because it is the historical fact of what was",
-    "actually run at sign-off."
+    "actually run at sign-off.",
+    "",
+    "evidence.manifest pins a SPECIFIC run for a completed phase rather than using",
+    "\"latest\". A completed phase was signed off on one particular capture, and \"latest\"",
+    "drifts with unrelated environment changes — a stale local dev server turned Phase 0",
+    "red and invalidated a claim that was never in doubt. Phases still in progress keep",
+    "\"latest\", because there the newest run is the point."
   ],
   "schemaVersion": 1,
   "evidenceRoot": "$AGENTIC_UI_EVIDENCE_DIR/beta",
@@ -26,9 +32,9 @@
       "title": "Unblock and verify",
       "status": "complete",
       "evidence": {
-        "manifest": "phase-0-baseline/latest",
+        "manifest": "phase-0-baseline/2026-08-21T11-47-33",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/latest:phase-3-document-tree"
+        "regate": "gates/latest:phase-3-tree-final"
       },
       "deviations": [],
       "notCovered": [
@@ -41,9 +47,9 @@
       "title": "Layer 0 — upgrade-safe configuration",
       "status": "complete",
       "evidence": {
-        "manifest": "phase-1-config/latest",
+        "manifest": "phase-1-config/2026-08-21T11-47-45",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/latest:phase-3-document-tree"
+        "regate": "gates/latest:phase-3-tree-final"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -58,9 +64,9 @@
       "title": "Layer 1 — extension registry",
       "status": "complete",
       "evidence": {
-        "manifest": "phase-2-registry/latest",
+        "manifest": "phase-2-registry/2026-08-21T11-51-02",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/latest:phase-3-document-tree"
+        "regate": "gates/latest:phase-3-tree-final"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -83,7 +89,7 @@
       "status": "in-progress",
       "evidence": {
         "manifest": "phase-3-adf-hx/latest",
-        "regate": "gates/latest:phase-3-document-tree"
+        "regate": "gates/latest:phase-3-tree-final"
       },
       "deviations": [],
       "notCovered": [
@@ -111,7 +117,7 @@
         "Document tree adopted: upstream HxpDocumentTreeComponent replaces hxp-browse-nav-tree in the app shell nav drawer, and ours plus HxpBrowseNavTreeService are deleted. Needed DocumentTreeDatabaseService provided (no providedIn) and the host converting a selected Document to a path for AdfHxBrowseContextService. Initial bundle cost measured at +80 kB (3.15 -> 3.23 MB), which is why it went in directly rather than behind ExtensionOutletComponent."
       ],
       "blockedOn": [
-        "Local dev server predates the adf-core asset glob, so it 404s /assets/adf-core/i18n/en.json and one accessibility label renders as a raw key. The BUILD ships the file — verified in dist/. The two failing checks of 14 have this single cause; a dev-server restart confirms 14/14."
+        "Local dev server predates the adf-core asset glob, so it 404s /assets/adf-core/i18n/en.json. The affected captures now abort with precondition-not-met (exit 2) rather than reporting failures that look like broken components, and the bundle gate asserts the file ships. A dev-server restart is all that is needed."
       ]
     },
     {

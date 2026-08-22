@@ -156,6 +156,13 @@ Three of those gates exist because something got through:
   library**, from its shipped runtime bundle. With the real library installed it reached a
   1.6 MB customer-facing chunk carrying two `eval()` calls.
 
+Two refinements the harness earned on itself during Phase 3. A completed phase now cites a
+**specific** manifest rather than `latest`: a stale local dev server turned Phase 0's newest
+capture red and invalidated a `complete` claim that was never in doubt. And captures that
+depend on the adf-core asset glob assert it as a **precondition**, so a dev server started
+before that glob aborts with `precondition-not-met` instead of reporting failures that look
+like broken components.
+
 **`beta:state`** is the anti-false-completion control: a phase may claim `complete` only if
 its cited manifest exists and says `pass`. It has already refused a sign-off of mine — adding
 the ninth gate invalidated three phases' re-gate citations until they were re-gated.

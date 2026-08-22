@@ -62,6 +62,22 @@ async function openTabAndAssert(page, h, label, name, panel) {
  * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
  */
 export default async function run(page, h) {
+  h.step('Precondition: the dev server serves adf-core\'s translation catalogue');
+  // adf-hx components fetch `assets/adf-core/i18n/<lang>.json` at runtime, copied in by an
+  // asset glob in `angular.json`. A dev server started **before** that glob was added keeps
+  // 404ing it, which renders one accessibility label as a raw key and fills the console with
+  // 404s — a stale environment, not a defect. Asserted as a precondition so the run says so
+  // instead of reporting failures that look like broken components. The shipped case is gated
+  // separately by `bundle`, which asserts the file is present in `dist/`.
+  const catalogue = await page.request
+    .get(`${h.baseUrl}/assets/adf-core/i18n/en.json`, { failOnStatusCode: false })
+    .catch(() => null);
+  h.requirePrecondition(
+    "adf-core's catalogue is served",
+    catalogue?.status() === 200,
+    `/assets/adf-core/i18n/en.json returned ${catalogue?.status() ?? 'no response'} — this dev ` +
+      'server predates the adf-core asset glob. Restart it: npx nx serve nuxeo-ui',
+  );
   h.step('Agentic UI — production browse, built on Satori and Angular Material');
   await h.login();
   await h.goTo('/#/browse/default-domain');
