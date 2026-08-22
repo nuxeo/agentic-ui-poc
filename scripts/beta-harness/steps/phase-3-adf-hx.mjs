@@ -197,6 +197,32 @@ export default async function run(page, h) {
   h.check('card view renders a card per document', cardCount >= 1, `found ${cardCount}`);
   await h.screenshot('card-view');
 
+  h.step('Upstream document tree mounts in the shell nav drawer');
+  // The tree lives in the **app shell's** nav drawer, not the POC page, and only mounts when
+  // the route is entered through the platform nav item — the shell owns the drawer state, so
+  // a direct `goTo` renders the page without one. Section 3 records that.
+  await h.goTo('/#/browse');
+  await page.waitForTimeout(1200);
+  const navEntry = page.locator('a,button').filter({ hasText: /adf-hx/i }).first();
+  h.check('platform nav offers the adf-hx entry', (await navEntry.count()) > 0);
+  await navEntry.click().catch(() => {});
+  await page.waitForTimeout(3000);
+  await h.expectVisible('nav drawer mounted', 'hxp-browse-nav-drawer');
+  await h.expectVisible('upstream document tree rendered', 'hxp-document-tree');
+
+  // A tree that renders no nodes is the failure this replaces a working component with, so
+  // the node count is the load-bearing assertion rather than the element's presence.
+  const treeNodes = await page.$$eval(
+    'hxp-browse-nav-drawer hxp-document-tree [role="treeitem"], hxp-browse-nav-drawer hxp-document-tree mat-tree-node',
+    (nodes) => nodes.map((n) => (n.textContent ?? '').trim()).filter(Boolean),
+  );
+  h.check(
+    'the tree renders real Nuxeo folders',
+    treeNodes.length > 0,
+    `found ${treeNodes.length}: ${JSON.stringify(treeNodes.slice(0, 4))}`,
+  );
+  await h.screenshot('upstream-document-tree');
+
   h.step('Health');
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);
   h.note(

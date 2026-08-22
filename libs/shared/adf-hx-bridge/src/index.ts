@@ -26,8 +26,6 @@ export * from './lib/ui/hxp-folder-header/hxp-folder-header.component';
 export * from './lib/ui/hxp-domain-hint/hxp-domain-hint.component';
 export * from './lib/ui/hxp-browse-toolbar/hxp-browse-toolbar.component';
 export * from './lib/ui/hxp-browse-nav-drawer/hxp-browse-nav-drawer.component';
-export * from './lib/ui/hxp-browse-nav-tree/hxp-browse-nav-tree.component';
-export * from './lib/services/hxp-browse-nav-tree.service';
 export * from './lib/ui/hxp-document-cards/hxp-document-cards.component';
 export * from './lib/ui/hxp-column-picker/hxp-column-picker.component';
 export * from './lib/ui/hxp-icon/hxp-icon.component';

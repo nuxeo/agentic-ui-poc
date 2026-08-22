@@ -79,17 +79,24 @@ export default async function run(page, h) {
   h.step('adf-hx card view');
   const cardToggle = page.locator('hxp-browse-toolbar button[aria-label="Card view"]');
   h.check('the card-view toggle is present in the toolbar', (await cardToggle.count()) === 1);
-  const rowsBefore = await page.locator('hxp-document-list .hxp-browse-table tbody tr').count();
+  // Selectors updated for the adf-hx adoption. The list is upstream's DataTable now, whose
+  // rows are `adf-datatable-row` and whose header is one of them, and the card view moved out
+  // of `hxp-document-list` into its own `hxp-document-cards`. This step previously asserted
+  // the hand-written markup and went red the moment that component was deleted — a stale
+  // assertion, not a regression.
+  const dataRows = () =>
+    page.locator('hxp-document-list adf-datatable-row').count().then((n) => Math.max(0, n - 1));
+  const rowsBefore = await dataRows();
   await cardToggle.click();
   await page.waitForTimeout(2000);
-  const rowsAfter = await page.locator('hxp-document-list .hxp-browse-table tbody tr').count();
-  const cards = await page.locator('hxp-document-list .hxp-card-grid .hxp-doc-card-wrapper').count();
+  const listAfter = await page.locator('hxp-document-list').count();
+  const cards = await page.locator('hxp-document-cards .hxp-doc-card').count();
   h.check(
-    'the toggle really switches the list from a table to a card grid',
-    rowsBefore > 0 && rowsAfter === 0 && cards === rowsBefore,
-    `table rows ${rowsBefore} before / ${rowsAfter} after, ${cards} cards rendered`,
+    'the toggle really switches the list for a card grid',
+    rowsBefore > 0 && listAfter === 0 && cards === rowsBefore,
+    `${rowsBefore} table row(s) before, ${listAfter} list(s) after, ${cards} card(s) rendered`,
   );
-  await h.expectText('the same folder content is still listed', 'hxp-document-list', 'Workspaces');
+  await h.expectText('the same folder content is still listed', 'hxp-document-cards', 'Workspaces');
   await h.screenshot('adf-hx-card-view');
 
   h.step('adf-hx folder header and toolbar');

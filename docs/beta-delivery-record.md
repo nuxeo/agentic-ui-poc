@@ -113,6 +113,12 @@ knowing:
   `providedIn`, which makes it an intended substitution point:
   `NuxeoDocumentRouterService` is bound against it and the capture asserts every crumb link
   targets `browse-adf-hx` and none targets upstream's shape.
+- **The real `HxpDocumentTreeComponent` is adopted** in the app shell's nav drawer, and the
+  hand-written `hxp-browse-nav-tree` plus its state service are deleted. It needed
+  `DocumentTreeDatabaseService` provided — no `providedIn` again — and the host now handles a
+  selected `Document` where ours emitted a path string. Measured cost to the initial bundle:
+  **+80 kB** (3.15 → 3.23 MB), which is why it went in directly rather than behind
+  `ExtensionOutletComponent`; the measurement decided that, not a preference.
 - **`nuxeo-ui` now has a `typecheck` target.** Two real type errors escaped
   `nx affected -t typecheck` during Phase 3 because the app had none; the gap is closed and
   proven by reintroducing one of them.
@@ -254,9 +260,9 @@ Nothing here is a surprise later.
    of five recorded bridge defects. The other four are closed, most recently the
    `browse_column_settings` localStorage key that the POC and production browse shared, so
    choosing columns on either surface silently overwrote the other.
-3. **Six components remain**: document-tree, metadata-sidebar, permissions, manage-versions,
-   document-viewer, search. Breadcrumb is done. Cheaper now that the ports are done — the
-   breadcrumb needed one line plus a router-service override.
+3. **Five components remain**: metadata-sidebar, permissions, manage-versions,
+   document-viewer, search. Document list, breadcrumb and tree are done. Each has so far cost
+   one import plus one upstream service to provide or override.
 4. **`UPLOAD` and `MODEL` refuse.** Mapping either is real work, not a rename.
 5. **`getRenditions` is not a discovery call** — it returns a fixed `thumbnail, pdf` pair,
    because Nuxeo exposes no rendition-enumeration endpoint through this bridge.
