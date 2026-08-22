@@ -3,7 +3,7 @@ import type {
   NuxeoContentModel,
   NuxeoFieldType,
   NuxeoSchemaDefinition,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 /**
  * Nuxeo's content model as the single `Model` document HxPR expects.

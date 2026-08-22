@@ -10,7 +10,7 @@ import {
   NuxeoAce,
   PERMISSION_NOTIFICATION_MAIL_HINT,
   permissionUpdateMailFailureMessage,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import { UpdatePermissionDialogComponent } from './update-permission-dialog';
 

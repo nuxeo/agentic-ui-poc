@@ -12,7 +12,7 @@ import {
   DirectoryService,
   DocumentImportService,
   type NuxeoDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import { CreateImportDialogComponent } from './create-import-dialog.component';
 

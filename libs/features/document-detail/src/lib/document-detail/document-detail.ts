@@ -10,7 +10,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ExtensionRuleContextService } from '@agentic-ui/shared/extensions';
+import { ExtensionRuleContextService } from '@nuxeo-satori/platform/extensions';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -97,7 +97,7 @@ import {
   toBrowseRouterUrlForReturnMode,
   type BrowseReturnMode,
   type ClipboardDoc,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { SatTagModule, SatTagCategory } from '@hylandsoftware/satori-ui/tag';
@@ -149,7 +149,7 @@ import {
   type ExifData,
   type IptcData,
   type VideoInfo,
-} from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
   CreateVersionDialogComponent,

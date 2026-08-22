@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 
-import { AdministrationService, NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import { AdministrationService, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 const DEFAULT_NXQL =

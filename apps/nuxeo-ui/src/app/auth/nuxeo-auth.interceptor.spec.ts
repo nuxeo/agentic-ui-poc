@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
+import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from './auth.service';
 import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';

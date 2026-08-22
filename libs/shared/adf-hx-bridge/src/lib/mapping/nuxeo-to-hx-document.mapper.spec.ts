@@ -4,7 +4,7 @@ import {
   mapNuxeoDocumentsToHx,
   syntheticHxRepositoryRoot,
 } from './nuxeo-to-hx-document.mapper';
-import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
 describe('nuxeo-to-hx-document.mapper', () => {
   const workspace: NuxeoDocument = {

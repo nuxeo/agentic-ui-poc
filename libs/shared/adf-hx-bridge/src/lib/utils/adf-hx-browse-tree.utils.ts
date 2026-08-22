@@ -2,7 +2,7 @@ import {
   cumulativeNuxeoPathPrefixes,
   normalizeNuxeoPath,
   nuxeoPathSegments,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 
 /** Normalized Nuxeo path for an Hx document. */

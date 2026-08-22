@@ -9,7 +9,7 @@ import {
   DocumentDetailService,
   PERMISSION_NOTIFICATION_MAIL_HINT,
   permissionCreateMailFailureMessage,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AddPermissionDialogComponent } from './add-permission-dialog';
 

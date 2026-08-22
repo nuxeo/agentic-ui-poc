@@ -6,19 +6,19 @@ import { MatDialog } from '@angular/material/dialog';
 import { EMPTY, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
-import { AppConfigService } from '@agentic-ui/shared/app-config';
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import {
   AppExtensionsService,
   EXTENSION_SLOTS,
   PACKAGED_BROWSE_COLUMNS,
-} from '@agentic-ui/shared/extensions';
+} from '@nuxeo-satori/platform/extensions';
 import {
   BrowseService,
   DirectoryService,
   DocumentDetailService,
   SelectionService,
   TagService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import { BrowseComponent } from './browse';
 import { ALL_COLUMNS } from '../column-settings-dialog/column-settings-dialog';

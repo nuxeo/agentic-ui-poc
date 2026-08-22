@@ -8,7 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoDocument, DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 
 @Component({
   selector: 'lib-add-to-collection-dialog',

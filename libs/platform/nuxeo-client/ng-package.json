@@ -1,0 +1,3 @@
+{
+  "lib": { "entryFile": "../../shared/nuxeo-client/src/index.ts" }
+}

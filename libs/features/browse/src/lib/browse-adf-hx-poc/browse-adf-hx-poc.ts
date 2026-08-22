@@ -18,7 +18,7 @@ import {
   type AuditEntry,
   type DirectoryEntry,
   type NuxeoDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AdfHxBrowseContextService,
   AdfHxBrowseFolderService,
@@ -70,7 +70,7 @@ import {
   AppExtensionsService,
   EXTENSION_SLOTS,
   type ExtensionColumnDescriptor,
-} from '@agentic-ui/shared/extensions';
+} from '@nuxeo-satori/platform/extensions';
 
 /**
  * Layer 1 column `field` -> HxPR `Document` property.

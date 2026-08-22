@@ -1,0 +1,22 @@
+{
+  "name": "@nuxeo-satori/platform",
+  "version": "0.1.0",
+  "description": "Nuxeo Satori platform — the Layer 0/1/2 extensibility contract, configuration loader, Nuxeo client and shared UI.",
+  "private": true,
+  "sideEffects": false,
+  "peerDependencies": {
+    "@angular/cdk": "^20.2.0",
+    "@angular/common": "^20.3.0",
+    "@angular/core": "^20.3.0",
+    "@angular/forms": "^20.3.0",
+    "@angular/material": "^20.2.0",
+    "@angular/platform-browser": "^20.3.0",
+    "@angular/router": "^20.3.0",
+    "@alfresco/adf-extensions": "^9.0.0",
+    "@hylandsoftware/satori-ui": "^0.2.0",
+    "rxjs": "^7.8.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  }
+}

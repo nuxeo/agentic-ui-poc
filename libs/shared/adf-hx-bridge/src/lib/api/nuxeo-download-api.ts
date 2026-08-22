@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
-import { DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { DEFAULT_REPOSITORY_ID } from '../tokens/adf-hx-bridge.tokens';
 import { assertDefaultRepository, type AxiosLikeResponse } from './nuxeo-version-api';

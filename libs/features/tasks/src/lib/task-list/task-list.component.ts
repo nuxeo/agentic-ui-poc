@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { NuxeoTask, TaskService, CURRENT_USERNAME } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoTask, TaskService, CURRENT_USERNAME } from '@nuxeo-satori/platform/nuxeo-client';
 
 @Component({
   selector: 'lib-task-list',

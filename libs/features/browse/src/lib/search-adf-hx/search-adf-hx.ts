@@ -11,7 +11,7 @@ import { SearchService } from '@alfresco/adf-hx-content-services/services';
 import { HxpDocumentListComponent } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
 import { catchError, debounceTime, distinctUntilChanged, of, switchMap, Subject } from 'rxjs';
-import { PACKAGED_BROWSE_COLUMNS } from '@agentic-ui/shared/extensions';
+import { PACKAGED_BROWSE_COLUMNS } from '@nuxeo-satori/platform/extensions';
 
 @Component({
   selector: 'lib-search-adf-hx',

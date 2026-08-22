@@ -7,7 +7,7 @@ import {
   DocumentDetailService,
   NuxeoApiBase,
   type NuxeoDocumentList,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { DEFAULT_REPOSITORY_ID, isHxRootDocument } from '../tokens/adf-hx-bridge.tokens';
 import { mapNuxeoDocumentsToHx } from '../mapping/nuxeo-to-hx-document.mapper';
 import { mapNuxeoVersionsToHx } from '../mapping/nuxeo-to-hx-version.mapper';

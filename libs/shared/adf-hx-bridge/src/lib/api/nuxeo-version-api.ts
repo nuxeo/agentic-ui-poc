@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import { firstValueFrom } from 'rxjs';
 
-import { DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { DEFAULT_REPOSITORY_ID } from '../tokens/adf-hx-bridge.tokens';
 import { mapNuxeoDocumentToHx } from '../mapping/nuxeo-to-hx-document.mapper';

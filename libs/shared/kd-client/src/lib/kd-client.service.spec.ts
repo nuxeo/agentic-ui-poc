@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
 
-import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
+import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
 import {
   DEFAULT_KD_CIC_OPERATIONS,

@@ -1,7 +1,7 @@
 import { Component, inject, input, output } from '@angular/core';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 
-import { SelectionService } from '@agentic-ui/shared/nuxeo-client';
+import { SelectionService } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { isHxFolder } from '../../utils/hxp-document.predicates';
 import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils';

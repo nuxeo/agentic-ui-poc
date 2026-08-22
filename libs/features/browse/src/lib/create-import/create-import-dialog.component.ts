@@ -58,7 +58,7 @@ import {
   createExpiresErrorStateMatcher,
   isExpiresFieldValid,
   shouldShowExpiresFieldError,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface CreateImportDialogData {
   /** Import target folder; if omitted, falls back to `DocumentImportService.getDefaultImportParentPath()`. */

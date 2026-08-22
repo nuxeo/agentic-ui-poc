@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { mapNuxeoVersionToHx, nuxeoVersionLabel } from './nuxeo-to-hx-version.mapper';
 

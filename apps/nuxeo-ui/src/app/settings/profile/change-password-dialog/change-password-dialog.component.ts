@@ -1,11 +1,17 @@
 import { Component, inject, signal } from '@angular/core';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { SettingsService } from '@agentic-ui/shared/nuxeo-client';
+import { SettingsService } from '@nuxeo-satori/platform/nuxeo-client';
 
 function passwordsMatch(control: AbstractControl): ValidationErrors | null {
   const newPwd = control.get('newPassword')?.value;
@@ -56,7 +62,9 @@ export class ChangePasswordDialogComponent {
     this.settingsService.changePassword(oldPassword, newPassword).subscribe({
       next: () => this.dialogRef.close(true),
       error: () => {
-        this.error.set('Failed to change password. Please check your current password and try again.');
+        this.error.set(
+          'Failed to change password. Please check your current password and try again.',
+        );
         this.saving.set(false);
       },
     });

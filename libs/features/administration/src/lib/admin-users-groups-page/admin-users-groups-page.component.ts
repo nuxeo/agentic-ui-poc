@@ -24,9 +24,9 @@ import {
   NuxeoUserList,
   UserService,
   resolvePaginatedListTotal,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
-import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
+import { ConfirmDialogComponent, ConfirmDialogData } from '@nuxeo-satori/platform/ui';
 import {
   GroupFormDialogComponent,
   GroupFormDialogData,

@@ -16,7 +16,7 @@ import {
   PERMISSION_NOTIFICATION_MAIL_HINT,
   isMailSendError,
   permissionCreateMailFailureMessage,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface ShareExternalDialogData {
   documentUid: string;

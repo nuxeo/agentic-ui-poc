@@ -6,7 +6,7 @@ import { MAT_FAB_DEFAULT_OPTIONS } from '@angular/material/button';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
 
-import { CURRENT_USERNAME, ADMIN_ACCESS_CHECKS } from '@agentic-ui/shared/nuxeo-client';
+import { CURRENT_USERNAME, ADMIN_ACCESS_CHECKS } from '@nuxeo-satori/platform/nuxeo-client';
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
 import { provideAppConfig } from './config/provide-app-config';

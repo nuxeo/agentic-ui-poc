@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { Model } from '@hylandsoftware/hxcs-js-client';
 import { firstValueFrom } from 'rxjs';
 
-import { ContentModelService } from '@agentic-ui/shared/nuxeo-client';
+import { ContentModelService } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { mapNuxeoContentModelToHx } from '../mapping/nuxeo-to-hx-model.mapper';
 import type { AxiosLikeResponse } from './nuxeo-version-api';

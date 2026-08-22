@@ -20,7 +20,7 @@ import {
   PERMISSION_NOTIFICATION_MAIL_HINT,
   isMailSendError,
   permissionUpdateMailFailureMessage,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface UpdatePermissionDialogData {
   documentUid: string;

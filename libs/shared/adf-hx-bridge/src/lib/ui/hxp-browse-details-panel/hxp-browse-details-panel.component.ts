@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, input, output } from '@angular/core';
-import type { AuditEntry } from '@agentic-ui/shared/nuxeo-client';
+import type { AuditEntry } from '@nuxeo-satori/platform/nuxeo-client';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils';
 import { hxpRelativeTime } from '../../utils/hxp-relative-time.utils';

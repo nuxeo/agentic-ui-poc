@@ -6,7 +6,7 @@ import {
 } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, tap, throwError } from 'rxjs';
-import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
+import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from './auth.service';
 import { SessionTimeoutService } from './session-timeout.service';

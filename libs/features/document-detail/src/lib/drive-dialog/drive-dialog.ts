@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { NuxeoDriveService } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoDriveService } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface DriveDialogData {
   docUid: string;

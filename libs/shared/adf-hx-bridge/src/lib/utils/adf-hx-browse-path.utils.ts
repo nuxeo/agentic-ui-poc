@@ -2,4 +2,4 @@ export {
   isAdfHxBrowseRouterUrl,
   parseAdfHxBrowsePathFromRouterUrl,
   toAdfHxBrowseRouterUrl,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';

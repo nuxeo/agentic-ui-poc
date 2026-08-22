@@ -26,7 +26,7 @@ import {
   isMarkdownNoteFormat,
   isSafeHttpUrl,
   renderNoteMarkdown,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import DOMPurify from 'dompurify';
 import Quill from 'quill';
 import { applyHeaderFormatSelectionOnly, type QuillRange } from './note-quill-header';

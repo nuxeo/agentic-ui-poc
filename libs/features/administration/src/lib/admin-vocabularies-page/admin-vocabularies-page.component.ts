@@ -20,8 +20,8 @@ import {
   directoryAdminTableLabel,
   getDirectoryMetadata,
   vocabularyTableColumns,
-} from '@agentic-ui/shared/nuxeo-client';
-import { ConfirmDialogComponent, ConfirmDialogData } from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/nuxeo-client';
+import { ConfirmDialogComponent, ConfirmDialogData } from '@nuxeo-satori/platform/ui';
 
 import {
   VocabularyEntryFormDialogComponent,

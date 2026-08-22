@@ -50,7 +50,7 @@ import {
   readClipboardDocs,
   writeClipboardDocs,
   type ClipboardDoc,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   HxpBrowseNavDrawerComponent,
   toAdfHxBrowseRouterUrl,
@@ -62,7 +62,7 @@ import {
   ExtensionOutletComponent,
   ExtensionRuleContextService,
   type ExtensionElement,
-} from '@agentic-ui/shared/extensions';
+} from '@nuxeo-satori/platform/extensions';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';

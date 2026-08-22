@@ -26,7 +26,7 @@ import {
   isExpiresFieldValid,
   shouldShowExpiresFieldError,
   l10nEntryLabel,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface EditMetadataDialogData {
   uid: string;

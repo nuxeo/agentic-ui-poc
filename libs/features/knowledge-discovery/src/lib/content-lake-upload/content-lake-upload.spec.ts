@@ -10,7 +10,7 @@ import {
   BrowseService,
   ContentLakeIngestService,
   DocumentImportService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
 
 import { ContentLakeUploadComponent } from './content-lake-upload';

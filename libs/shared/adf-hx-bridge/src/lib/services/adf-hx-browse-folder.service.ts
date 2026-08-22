@@ -9,7 +9,7 @@ import {
   NuxeoDocument,
   NuxeoDocumentList,
   TagService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { Observable, forkJoin } from 'rxjs';
 import { map } from 'rxjs/operators';
 import type { Document } from '@hylandsoftware/hxcs-js-client';

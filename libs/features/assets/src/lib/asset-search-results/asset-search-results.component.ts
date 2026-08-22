@@ -21,8 +21,13 @@ import {
   docTypeIcon,
   type NuxeoDocument,
   type AssetAggregations,
-} from '@agentic-ui/shared/nuxeo-client';
-import { SavedSearchDialogComponent, ShareSavedSearchDialogComponent, ConfirmDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  SavedSearchDialogComponent,
+  ShareSavedSearchDialogComponent,
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '@nuxeo-satori/platform/ui';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'list';
@@ -121,8 +126,7 @@ function mapToAssetResult(doc: NuxeoDocument): AssetResult {
   const widthPx = Number((props['imd:pixel_xdimension'] as number | string | undefined) ?? NaN);
   const heightPx = Number((props['imd:pixel_ydimension'] as number | string | undefined) ?? NaN);
   const vidInfo = props['vid:info'] as
-    | { duration?: number; width?: number; height?: number }
-    | undefined;
+    { duration?: number; width?: number; height?: number } | undefined;
   const videoDurationSec = Number((vidInfo?.duration as number | string | undefined) ?? NaN);
   return {
     id: doc.uid,

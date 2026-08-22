@@ -52,7 +52,7 @@ export interface AppRuntimeManifest {
    * `$references` layering.
    *
    * Held **opaquely** on purpose. Its schema belongs to
-   * `@agentic-ui/shared/extensions`, which parses it with
+   * `@nuxeo-satori/platform/extensions`, which parses it with
    * `readExtensionConfig()`; keeping the type out of this library is what stops
    * the configuration loader depending on the registry it configures. This
    * whole subtree is passed through unvalidated by design — the registry
@@ -163,7 +163,7 @@ export function mergeRuntimeManifest(base: AppRuntimeManifest, patch: unknown): 
     labels: { ...base.labels, ...readStringMap(patch['labels']) },
     // Passed through whole rather than deep-merged here. The `$references`
     // layering inside this subtree has its own semantics, implemented once in
-    // `@agentic-ui/shared/extensions`; a second, shallower merge at this level
+    // `@nuxeo-satori/platform/extensions`; a second, shallower merge at this level
     // would silently disagree with it.
     extensions: isRecord(patch['extensions']) ? patch['extensions'] : base.extensions,
   };

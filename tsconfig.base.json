@@ -18,6 +18,8 @@
         "libs/features/assets/src/lib/assets-drawer/assets-drawer.component.ts"
       ],
       "@agentic-ui/feature-browse": ["libs/features/browse/src/index.ts"],
+      "@agentic-ui/feature-browse/adf-hx-poc": ["libs/features/browse/src/adf-hx-poc.ts"],
+      "@agentic-ui/feature-browse/search-adf-hx": ["libs/features/browse/src/search-adf-hx.ts"],
       "@agentic-ui/feature-collections": ["libs/features/collections/src/index.ts"],
       "@agentic-ui/feature-document-detail": ["libs/features/document-detail/src/index.ts"],
       "@agentic-ui/feature-knowledge-discovery": ["libs/features/knowledge-discovery/src/index.ts"],
@@ -30,16 +32,15 @@
       "@agentic-ui/shared/adf-hx-bridge": ["libs/shared/adf-hx-bridge/src/index.ts"],
       "@agentic-ui/shared/adf-hx-bridge/providers": ["libs/shared/adf-hx-bridge/src/providers.ts"],
       "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"],
-      "@agentic-ui/shared/app-config": ["libs/shared/app-config/src/index.ts"],
       "@agentic-ui/shared/drawers": ["libs/shared/drawers/src/index.ts"],
-      "@agentic-ui/shared/extensions": ["libs/shared/extensions/src/index.ts"],
       "@agentic-ui/shared/kd-client": ["libs/shared/kd-client/src/index.ts"],
       "@agentic-ui/shared/ke-client": ["libs/shared/ke-client/src/index.ts"],
-      "@agentic-ui/shared/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
-      "@agentic-ui/shared/ui": ["libs/shared/ui/src/index.ts"],
       "@agentic-ui/shared/util": ["libs/shared/util/src/index.ts"],
-      "@agentic-ui/feature-browse/adf-hx-poc": ["libs/features/browse/src/adf-hx-poc.ts"],
-      "@agentic-ui/feature-browse/search-adf-hx": ["libs/features/browse/src/search-adf-hx.ts"]
+      "@nuxeo-satori/platform": ["libs/platform/src/index.ts"],
+      "@nuxeo-satori/platform/app-config": ["libs/shared/app-config/src/index.ts"],
+      "@nuxeo-satori/platform/extensions": ["libs/shared/extensions/src/index.ts"],
+      "@nuxeo-satori/platform/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
+      "@nuxeo-satori/platform/ui": ["libs/shared/ui/src/index.ts"]
     }
   }
 }

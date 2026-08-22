@@ -4,7 +4,7 @@ import {
   canRemoveDocument,
   canWriteDocument,
   type NuxeoDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import type { ExtensionRuleEvaluator } from './extension-rules';
 

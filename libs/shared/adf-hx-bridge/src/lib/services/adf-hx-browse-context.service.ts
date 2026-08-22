@@ -1,5 +1,5 @@
 import { Injectable, signal } from '@angular/core';
-import { normalizeNuxeoPath, nuxeoPathsEqualFlexible } from '@agentic-ui/shared/nuxeo-client';
+import { normalizeNuxeoPath, nuxeoPathsEqualFlexible } from '@nuxeo-satori/platform/nuxeo-client';
 import { parseAdfHxBrowsePathFromRouterUrl } from '../utils/adf-hx-browse-path.utils';
 
 /** Tracks the Nuxeo path driving the adf-hx browse nav tree and main view. */

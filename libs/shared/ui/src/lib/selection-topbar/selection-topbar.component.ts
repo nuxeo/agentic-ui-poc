@@ -19,7 +19,7 @@ import {
   ExtensionActionRegistry,
   ExtensionRuleContextService,
   type ExtensionActionDescriptor,
-} from '@agentic-ui/shared/extensions';
+} from '@nuxeo-satori/platform/extensions';
 
 @Component({
   selector: 'lib-selection-topbar',

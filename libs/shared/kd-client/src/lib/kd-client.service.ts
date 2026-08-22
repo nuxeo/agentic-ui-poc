@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap, throwError } from 'rxjs';
 
-import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
+import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
 import {
   KD_CIC_OPERATIONS,
@@ -263,20 +263,18 @@ export class KdClientService {
       data?: Array<Partial<KdQuestionHistoryItem> & { responseCompleteness?: string }>;
     }>('GET', this.paths.getQuestionHistory(agentId, pageNumber, pageSize)).pipe(
       map((response) => ({
-        data: (response?.data ?? []).map(
-          (item): KdQuestionHistoryItem => ({
-            id: item.id ?? '',
-            question: item.question ?? '',
-            answer: item.answer ?? '',
-            dateCreated: item.dateCreated ?? '',
-            dateAnswered: item.dateAnswered ?? '',
-            agentVersion: item.agentVersion,
-            status: this.mapCompletenessToStatus(item.responseCompleteness ?? item.status),
-            feedback: typeof item.feedback === 'string' ? item.feedback : (item.feedback ?? null),
-            staticFilter: item.staticFilter ?? null,
-            dynamicFilter: item.dynamicFilter ?? null,
-          }),
-        ),
+        data: (response?.data ?? []).map((item): KdQuestionHistoryItem => ({
+          id: item.id ?? '',
+          question: item.question ?? '',
+          answer: item.answer ?? '',
+          dateCreated: item.dateCreated ?? '',
+          dateAnswered: item.dateAnswered ?? '',
+          agentVersion: item.agentVersion,
+          status: this.mapCompletenessToStatus(item.responseCompleteness ?? item.status),
+          feedback: typeof item.feedback === 'string' ? item.feedback : (item.feedback ?? null),
+          staticFilter: item.staticFilter ?? null,
+          dynamicFilter: item.dynamicFilter ?? null,
+        })),
         pagination: response?.pagination ?? {},
       })),
     );

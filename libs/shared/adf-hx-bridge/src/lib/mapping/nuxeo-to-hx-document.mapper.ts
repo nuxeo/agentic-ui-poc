@@ -1,5 +1,5 @@
 import type { Document, User } from '@hylandsoftware/hxcs-js-client';
-import { isFolderishDocument, type NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import { isFolderishDocument, type NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { DEFAULT_REPOSITORY_ID, SYS_ROOT } from '../tokens/adf-hx-bridge.tokens';
 
 const FOLDERISH_NUXEO_TYPES = new Set([

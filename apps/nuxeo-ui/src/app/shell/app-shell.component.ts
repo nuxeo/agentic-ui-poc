@@ -51,15 +51,15 @@ import {
   toBrowseRouterUrl,
   type GlobalSearchSuggestion,
   docTypeIcon,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AdfHxBrowseContextService,
   toAdfHxBrowseRouterUrl,
 } from '@agentic-ui/shared/adf-hx-bridge';
-import { SelectionTopbarComponent } from '@agentic-ui/shared/ui';
+import { SelectionTopbarComponent } from '@nuxeo-satori/platform/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
-import { AppConfigService } from '@agentic-ui/shared/app-config';
-import { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from '@agentic-ui/shared/extensions';
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
+import { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from '@nuxeo-satori/platform/extensions';
 import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthService } from '../auth/auth.service';

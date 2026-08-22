@@ -335,7 +335,7 @@ descriptor with no handler renders and is inert rather than throwing, so a
 manifest can be written before the Layer 2 library that backs it ships.
 
 ```ts
-import { ExtensionActionRegistry } from '@agentic-ui/shared/extensions';
+import { ExtensionActionRegistry } from '@nuxeo-satori/platform/extensions';
 
 inject(ExtensionActionRegistry).register({
   'acme.bulkActions.archive': inject(AcmeArchiveActionService),
@@ -432,7 +432,10 @@ Stated so nobody plans around a capability that is not there.
 ## 9. Registering from your own library (Layer 2)
 
 ```ts
-import { AppExtensionsService, ExtensionComponentRegistry } from '@agentic-ui/shared/extensions';
+import {
+  AppExtensionsService,
+  ExtensionComponentRegistry,
+} from '@nuxeo-satori/platform/extensions';
 
 const extensions = inject(AppExtensionsService);
 const components = inject(ExtensionComponentRegistry);

@@ -80,7 +80,7 @@ import {
   isMailSendError,
   mailSendFailureMessage,
   resolveAcePrincipal,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
@@ -95,7 +95,7 @@ import {
   ConfirmDialogComponent,
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
-} from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/ui';
 
 import {
   AddPermissionDialogComponent,
@@ -113,7 +113,7 @@ import {
   EXTENSION_SLOTS,
   ExtensionRuleContextService,
   type ExtensionColumnDescriptor,
-} from '@agentic-ui/shared/extensions';
+} from '@nuxeo-satori/platform/extensions';
 
 import {
   BrowseDriveDialogComponent,

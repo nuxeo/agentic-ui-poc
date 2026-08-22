@@ -188,7 +188,7 @@
       "title": "Layer 2 \u2014 publishable platform",
       "status": "in-progress",
       "delivered": [
-        "Registration API: provideSatoriExtensions() in @agentic-ui/shared/extensions is the single documented Layer 2 entry point \u2014 one declarative object ({slots, rules, failClosedRules, components, actions}) reaching all four registries, applied in an environment initializer so every id is registered before the first slot resolves. Factory form runs in an injection context. Rules/components/actions are last-wins per id; slot descriptors accumulate. Returns EnvironmentProviders so it cannot be misused in a component. 8 specs, watched fail on purpose (6 of 8 went red under sabotage; the 2 survivors were examined and one was a real false green, since fixed).",
+        "Registration API: provideSatoriExtensions() in @nuxeo-satori/platform/extensions is the single documented Layer 2 entry point \u2014 one declarative object ({slots, rules, failClosedRules, components, actions}) reaching all four registries, applied in an environment initializer so every id is registered before the first slot resolves. Factory form runs in an injection context. Rules/components/actions are last-wins per id; slot descriptors accumulate. Returns EnvironmentProviders so it cannot be misused in a component. 8 specs, watched fail on purpose (6 of 8 went red under sabotage; the 2 survivors were examined and one was a real false green, since fixed).",
         "The application contributes through it: provide-app-extensions.ts no longer injects the four registries by hand, so the documented customer path is the one the product boots with."
       ],
       "notCovered": [

@@ -30,7 +30,7 @@ import {
   ShareSavedSearchDialogComponent,
   ConfirmDialogComponent,
   type ConfirmDialogData,
-} from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/ui';
 import {
   SearchService,
   SearchAggregationService,
@@ -42,7 +42,7 @@ import {
   type SearchResultItem,
   type SearchResponse,
   type SearchQueryParams,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
 
 export type SortDirection = 'asc' | 'desc' | null;

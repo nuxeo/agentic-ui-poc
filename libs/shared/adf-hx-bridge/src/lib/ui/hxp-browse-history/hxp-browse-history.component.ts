@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
-import type { AuditEntry, DirectoryEntry } from '@agentic-ui/shared/nuxeo-client';
+import type { AuditEntry, DirectoryEntry } from '@nuxeo-satori/platform/nuxeo-client';
 import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
 
 @Component({

@@ -20,7 +20,7 @@ import {
   type KdAnswerResponse,
   type KdIndexedReference,
 } from '@agentic-ui/shared/kd-client';
-import { DocumentDetailService, type NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import { DocumentDetailService, type NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface KdCitationDialogData {
   answer: KdAnswerResponse;
@@ -180,8 +180,7 @@ export class KdCitationDialogComponent implements OnDestroy {
     this.documentPath.set(document.path ?? '');
 
     const fileContent = document.properties?.['file:content'] as
-      | { 'mime-type'?: string; name?: string }
-      | undefined;
+      { 'mime-type'?: string; name?: string } | undefined;
     const mime = fileContent?.['mime-type'] ?? '';
     this.mimeType.set(mime);
 

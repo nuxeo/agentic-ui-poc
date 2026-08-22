@@ -16,7 +16,7 @@ import {
   SearchAggregationService,
   SearchService,
   SelectionService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { AiFeatureFlagService, AiGatewayService } from '@agentic-ui/shared/ai-client';
 
 const mockSearchService = {

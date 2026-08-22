@@ -65,7 +65,7 @@ NuxeoDocumentApi
 | Production browse | Path segments after `/browse` | `/#/browse/default-domain/workspaces`                  |
 | adf-hx browse     | Query param `path`            | `/#/browse-adf-hx?path=%2Fdefault-domain%2Fworkspaces` |
 
-Helpers (in `@agentic-ui/shared/nuxeo-client`):
+Helpers (in `@nuxeo-satori/platform/nuxeo-client`):
 
 - `toBrowseRouterUrl(nuxeoPath)` / `toAdfHxBrowseRouterUrl(nuxeoPath)`
 - `parseBrowseNuxeoPathFromRouterUrl()` / `parseAdfHxBrowsePathFromRouterUrl()`

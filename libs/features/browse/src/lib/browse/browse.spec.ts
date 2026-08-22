@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
-import { AppConfigService } from '@agentic-ui/shared/app-config';
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -17,8 +17,8 @@ import {
   NuxeoDocument,
   SelectionService,
   TagService,
-} from '@agentic-ui/shared/nuxeo-client';
-import { trashSelectedDocumentsConfirmData } from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/nuxeo-client';
+import { trashSelectedDocumentsConfirmData } from '@nuxeo-satori/platform/ui';
 
 const mockBrowseService = {
   getByPath: vi.fn(() => throwError(() => new Error('not connected'))),

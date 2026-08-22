@@ -27,9 +27,9 @@ import {
   DocumentService,
   NuxeoApiBase,
   CURRENT_USERNAME,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
-import { DocumentViewerComponent } from '@agentic-ui/shared/ui';
+import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 
 @Component({

@@ -3,7 +3,7 @@ import {
   type NuxeoAce,
   type NuxeoAcl,
   type NuxeoDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface HxpPermissionRow {
   id: string;

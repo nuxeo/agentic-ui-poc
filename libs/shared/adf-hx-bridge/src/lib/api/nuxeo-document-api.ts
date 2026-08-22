@@ -5,7 +5,7 @@ import {
   BrowseService,
   DocumentDetailService,
   type NuxeoDocument as NuxeoDocumentInput,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   DEFAULT_REPOSITORY_ID,
   isHxRootDocument,

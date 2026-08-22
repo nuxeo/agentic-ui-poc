@@ -41,7 +41,7 @@ import {
   readClipboardDocs,
   writeClipboardDocs,
   type ClipboardDoc,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
@@ -53,7 +53,7 @@ import {
   ExportType,
   ConfirmDialogComponent,
   ConfirmDialogData,
-} from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/ui';
 import {
   EditCollectionDialogComponent,
   EditCollectionDialogData,

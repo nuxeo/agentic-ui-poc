@@ -1,5 +1,5 @@
 import { APP_INITIALIZER, Provider, inject } from '@angular/core';
-import { AppConfigService } from '@agentic-ui/shared/app-config';
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AI_BACKEND_URL } from '@agentic-ui/shared/ai-client';
@@ -12,7 +12,7 @@ import {
   NUXEO_SERVER_URL,
   NUXEO_SSO_POST_LOGIN_PATH,
   NUXEO_SSO_RETURN_QUERY_PARAM,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import {
   DEFAULT_SESSION_TIMEOUT_CONFIG,

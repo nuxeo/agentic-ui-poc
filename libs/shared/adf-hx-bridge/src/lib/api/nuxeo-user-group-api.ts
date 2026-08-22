@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { Group, User } from '@hylandsoftware/hxcs-js-client';
 import { firstValueFrom } from 'rxjs';
 
-import { UserService, type NuxeoGroup, type NuxeoUser } from '@agentic-ui/shared/nuxeo-client';
+import { UserService, type NuxeoGroup, type NuxeoUser } from '@nuxeo-satori/platform/nuxeo-client';
 
 import type { AxiosLikeResponse } from './nuxeo-version-api';
 

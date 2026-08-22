@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { ACE } from '@hylandsoftware/hxcs-js-client';
 import { Observable, combineLatest, map, of } from 'rxjs';
 
-import type { NuxeoAce, NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { HX_PERMISSION_FROM_NUXEO } from '../mapping/nuxeo-to-hx-document.mapper';
 import { NuxeoPrincipalResolver } from './nuxeo-principal-resolver.service';

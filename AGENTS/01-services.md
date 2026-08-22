@@ -1,7 +1,7 @@
 # Services — All Public Methods
 
 Most frontend data services live in `libs/shared/nuxeo-client/src/lib/services/` and are
-imported from `@agentic-ui/shared/nuxeo-client`.
+imported from `@nuxeo-satori/platform/nuxeo-client`.
 
 Knowledge Discovery uses the dedicated shared client in `libs/shared/kd-client/src/lib/`
 and is imported from `@agentic-ui/shared/kd-client`. It calls Knowledge Discovery through

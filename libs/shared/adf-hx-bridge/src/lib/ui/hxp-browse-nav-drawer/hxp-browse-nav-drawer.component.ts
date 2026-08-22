@@ -3,7 +3,7 @@ import type { Document } from '@hylandsoftware/hxcs-js-client';
 import { HxpDocumentTreeComponent as UpstreamDocumentTreeComponent } from '@alfresco/adf-hx-content-services/ui';
 import { DocumentTreeDatabaseService } from '@alfresco/adf-hx-content-services/services';
 
-import { normalizeNuxeoPath } from '@agentic-ui/shared/nuxeo-client';
+import { normalizeNuxeoPath } from '@nuxeo-satori/platform/nuxeo-client';
 import { ADF_HX_NUXEO_BRIDGE_PROVIDERS } from '../../providers/provide-adf-hx-nuxeo-bridge';
 import { AdfHxBrowseContextService } from '../../services/adf-hx-browse-context.service';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';

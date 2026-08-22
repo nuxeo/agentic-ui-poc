@@ -9,7 +9,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
-import { WidgetContainerComponent, WidgetGridComponent } from '@agentic-ui/shared/ui';
+import { WidgetContainerComponent, WidgetGridComponent } from '@nuxeo-satori/platform/ui';
 
 import {
   NuxeoDocument,
@@ -21,7 +21,7 @@ import {
   docTypeIcon,
   FOLDERISH_TYPES,
   avatarColor,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';

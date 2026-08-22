@@ -10,7 +10,7 @@ import {
   DirectoryService,
   type L10nDirectoryEntry,
   type NuxeoDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import { EditMetadataDialogComponent, type EditMetadataDialogData } from './edit-metadata-dialog';
 

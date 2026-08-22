@@ -4,7 +4,7 @@ import {
   DOMAIN_CONTAINER_GUIDANCE,
   isDomainParentType,
   isRepositoryRootPath,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { ROOT_DOCUMENT } from '../../tokens/adf-hx-bridge.tokens';
 
 @Component({

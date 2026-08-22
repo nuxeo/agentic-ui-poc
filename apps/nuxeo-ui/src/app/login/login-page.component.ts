@@ -11,7 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { SatLogoModule } from '@hylandsoftware/satori-ui/logo';
 
-import type { NuxeoSamlLoginEndpoint } from '@agentic-ui/shared/nuxeo-client';
+import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
 

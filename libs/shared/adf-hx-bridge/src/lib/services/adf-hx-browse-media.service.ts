@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type { Document } from '@hylandsoftware/hxcs-js-client';
-import { BrowseService, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import { BrowseService, DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 import { catchError, Observable, of, switchMap } from 'rxjs';
 
 @Injectable()

@@ -17,7 +17,7 @@ import {
   type NuxeoDocument,
   type UserGroupSuggestion,
   type SavedSearch,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 interface SizeOption {
   key: string;
@@ -257,17 +257,13 @@ export class TrashFiltersDrawerComponent implements OnInit {
     for (const prefix of ['', 'defaults:']) {
       const val = params[`${prefix}${key}`];
       if (Array.isArray(val)) {
-        return val
-          .map((item) => String(item ?? '').trim())
-          .filter(Boolean);
+        return val.map((item) => String(item ?? '').trim()).filter(Boolean);
       }
       if (typeof val === 'string' && val.trim()) {
         try {
           const parsed = JSON.parse(val);
           if (Array.isArray(parsed)) {
-            return parsed
-              .map((item) => String(item ?? '').trim())
-              .filter(Boolean);
+            return parsed.map((item) => String(item ?? '').trim()).filter(Boolean);
           }
         } catch {
           return val

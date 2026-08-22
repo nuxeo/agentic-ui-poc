@@ -15,8 +15,8 @@ import {
   type AssetAggregations,
   type AssetQueueItem,
   type SavedSearchOption,
-} from '@agentic-ui/shared/nuxeo-client';
-import { SavedSearchDialogComponent } from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/nuxeo-client';
+import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { AssetsQueueComponent } from '../assets-queue/assets-queue.component';
 
 export interface FilterOption {

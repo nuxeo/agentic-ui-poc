@@ -219,8 +219,8 @@ export class DocumentDetailComponent {
 
 ```typescript
 // Features import from shared
-import { DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
-import { WidgetContainerComponent } from '@agentic-ui/shared/ui';
+import { DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
+import { WidgetContainerComponent } from '@nuxeo-satori/platform/ui';
 
 // Features NEVER import from other features
 import { BrowseComponent } from '@agentic-ui/feature-browse'; // ❌ BANNED

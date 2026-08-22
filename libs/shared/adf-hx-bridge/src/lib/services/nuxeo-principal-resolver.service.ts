@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import type { Group, User } from '@hylandsoftware/hxcs-js-client';
 import { Observable, catchError, map, of, shareReplay } from 'rxjs';
 
-import { UserService } from '@agentic-ui/shared/nuxeo-client';
+import { UserService } from '@nuxeo-satori/platform/nuxeo-client';
 
 /**
  * What a Nuxeo principal name turned out to be.

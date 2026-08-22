@@ -22,7 +22,7 @@ import {
   WorkflowService,
   DocumentService,
   NuxeoApiBase,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 @Component({

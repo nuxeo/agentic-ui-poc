@@ -45,7 +45,7 @@ the length of Phase 2. So it is a deliberate, isolated change with the
 
 ## Delivered: the registration API
 
-`provideSatoriExtensions()` in `@agentic-ui/shared/extensions` — one declarative
+`provideSatoriExtensions()` in `@nuxeo-satori/platform/extensions` — one declarative
 object reaching all four registries, applied in an **environment initializer** so
 every id is registered before the first slot resolves.
 

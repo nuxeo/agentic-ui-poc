@@ -4,7 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
 
-import { BrowseService } from '@agentic-ui/shared/nuxeo-client';
+import { BrowseService } from '@nuxeo-satori/platform/nuxeo-client';
 
 /**
  * Resolves the current user's personal workspace and opens it in browse view,

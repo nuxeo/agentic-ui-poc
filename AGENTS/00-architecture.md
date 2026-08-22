@@ -132,4 +132,4 @@ All routes use `HashLocationStrategy` (`/#/path`). This ensures Nuxeo/Tomcat ser
 - Subscriptions: always use `takeUntilDestroyed()` — never manual `unsubscribe()`
 - Blob URLs: always `URL.revokeObjectURL()` in `ngOnDestroy` for every `createObjectURL`
 - Authenticated content: always use `HttpClient` (via services) — never `<img [src]="nuxeoUrl">`
-- Imports: `@agentic-ui/shared/nuxeo-client`, `@agentic-ui/shared/ui`, `@agentic-ui/shared/ai-client`, `@agentic-ui/shared/kd-client`, `@agentic-ui/shared/ke-client`
+- Imports: `@nuxeo-satori/platform/nuxeo-client`, `@nuxeo-satori/platform/ui`, `@agentic-ui/shared/ai-client`, `@agentic-ui/shared/kd-client`, `@agentic-ui/shared/ke-client`

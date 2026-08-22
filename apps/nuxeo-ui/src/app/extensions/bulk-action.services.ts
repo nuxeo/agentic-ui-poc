@@ -11,13 +11,13 @@ import {
   SelectionService,
   readClipboardDocs,
   writeClipboardDocs,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   ConfirmDialogComponent,
   openDocumentCompareDialog,
   trashSelectedDocumentsConfirmData,
-} from '@agentic-ui/shared/ui';
-import type { ExtensionActionHandler } from '@agentic-ui/shared/extensions';
+} from '@nuxeo-satori/platform/ui';
+import type { ExtensionActionHandler } from '@nuxeo-satori/platform/extensions';
 
 /**
  * The packaged bulk actions, one service per action.

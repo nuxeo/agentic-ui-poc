@@ -17,7 +17,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { debounceTime, distinctUntilChanged, finalize, Subject, switchMap } from 'rxjs';
 
-import { NuxeoUser, UserService } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoUser, UserService } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface UserFormDialogData {
   mode: 'create' | 'edit';

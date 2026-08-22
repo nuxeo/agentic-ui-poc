@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { AdministrationService, NuxeoOAuth2Provider } from '@agentic-ui/shared/nuxeo-client';
+import { AdministrationService, NuxeoOAuth2Provider } from '@nuxeo-satori/platform/nuxeo-client';
 
 @Component({
   selector: 'lib-admin-cloud-services-page',

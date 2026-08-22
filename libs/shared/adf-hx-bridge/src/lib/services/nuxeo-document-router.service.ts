@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 
 import type { Document } from '@hylandsoftware/hxcs-js-client';
 
-import { BROWSE_RETURN_MODE_PARAM, normalizeNuxeoPath } from '@agentic-ui/shared/nuxeo-client';
+import { BROWSE_RETURN_MODE_PARAM, normalizeNuxeoPath } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { isHxFolder } from '../utils/hxp-document.predicates';
 

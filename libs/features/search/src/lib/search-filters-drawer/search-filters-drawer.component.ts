@@ -18,8 +18,8 @@ import {
   type SearchAggregations,
   type SavedSearchOption,
   type SearchResultItem,
-} from '@agentic-ui/shared/nuxeo-client';
-import { SavedSearchDialogComponent } from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/nuxeo-client';
+import { SavedSearchDialogComponent } from '@nuxeo-satori/platform/ui';
 import { SearchQueueComponent } from '../search-queue/search-queue.component';
 
 interface CountOption {
@@ -257,8 +257,9 @@ export class SearchFiltersDrawerComponent {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (params) => {
-                const currentSavedSearchId =
-                  this.searchAggregationService.selectedSavedSearchId().trim();
+                const currentSavedSearchId = this.searchAggregationService
+                  .selectedSavedSearchId()
+                  .trim();
                 if (currentSavedSearchId !== savedSearchId) {
                   return;
                 }
@@ -267,8 +268,9 @@ export class SearchFiltersDrawerComponent {
                 this.restoringSavedSearchFilters.set(false);
               },
               error: () => {
-                const currentSavedSearchId =
-                  this.searchAggregationService.selectedSavedSearchId().trim();
+                const currentSavedSearchId = this.searchAggregationService
+                  .selectedSavedSearchId()
+                  .trim();
                 if (currentSavedSearchId !== savedSearchId) {
                   return;
                 }
@@ -634,11 +636,7 @@ export class SearchFiltersDrawerComponent {
       const rawValue = getRaw(key);
 
       if (Array.isArray(rawValue)) {
-        return new Set(
-          rawValue
-            .map((value) => String(value ?? '').trim())
-            .filter(Boolean),
-        );
+        return new Set(rawValue.map((value) => String(value ?? '').trim()).filter(Boolean));
       }
 
       const raw = toStringValue(rawValue);
@@ -683,7 +681,9 @@ export class SearchFiltersDrawerComponent {
     this.secondarySearchInput.set(fallback('ecm_fulltext', 'ecmFulltext'));
 
     // Aggregation keys (dc_modified_agg etc.) take priority over URL-style keys (modifiedDate etc.)
-    this.selectedModificationDates.set(fallbackSet('dc_modified_agg', 'modifiedDate', 'dc_modified'));
+    this.selectedModificationDates.set(
+      fallbackSet('dc_modified_agg', 'modifiedDate', 'dc_modified'),
+    );
     this.selectedNatures.set(fallbackSet('dc_nature_agg', 'nature', 'dc_nature'));
     this.selectedSubjects.set(fallbackSet('dc_subjects_agg', 'subjects', 'dc_subjects'));
     this.selectedCoverage.set(fallbackSet('dc_coverage_agg', 'coverage', 'dc_coverage'));

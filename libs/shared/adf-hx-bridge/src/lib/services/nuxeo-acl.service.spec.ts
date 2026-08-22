@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { firstValueFrom } from 'rxjs';
-import type { NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { NuxeoAclService } from './nuxeo-acl.service';
 import { NuxeoPrincipalResolver } from './nuxeo-principal-resolver.service';

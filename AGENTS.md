@@ -42,7 +42,7 @@ Nuxeo Server           ← Via proxy in dev, same-origin in prod
 
 ## 3. Key Services (quick reference)
 
-All in `libs/shared/nuxeo-client/src/lib/services/` · Import: `@agentic-ui/shared/nuxeo-client`
+All in `libs/shared/nuxeo-client/src/lib/services/` · Import: `@nuxeo-satori/platform/nuxeo-client`
 
 | Service                    | Primary use                                                                  |
 | -------------------------- | ---------------------------------------------------------------------------- |
