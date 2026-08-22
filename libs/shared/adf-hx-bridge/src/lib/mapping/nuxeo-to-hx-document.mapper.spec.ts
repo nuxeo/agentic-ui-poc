@@ -196,6 +196,78 @@ describe('nuxeo-to-hx-document.mapper', () => {
     expect(root.sys_primaryType).toBe('SysRoot');
   });
 
+  describe('effective permissions, from Nuxeo rather than from a constant', () => {
+    const withPermissions = (permissions: unknown) =>
+      ({
+        uid: 'doc-1',
+        title: 'Invoice',
+        type: 'File',
+        path: '/x/Invoice',
+        lastModified: '2026-02-01T00:00:00.000Z',
+        properties: {},
+        ...(permissions === undefined ? {} : { contextParameters: { permissions } }),
+      }) as unknown as Parameters<typeof mapNuxeoDocumentToHx>[0];
+
+    it('translates Nuxeo permission names into HxPR ones', () => {
+      const hx = mapNuxeoDocumentToHx(
+        withPermissions(['Read', 'Write', 'AddChildren', 'RemoveChildren', 'Remove', 'Version']),
+      );
+      // `Read` and `Write` agree by name; the other four are Nuxeo's own names for the same idea.
+      expect(new Set(hx.sys_effectivePermissions)).toEqual(
+        new Set(['Read', 'Write', 'CreateChild', 'DeleteChild', 'Delete', 'CreateVersion']),
+      );
+    });
+
+    it('grants nothing Nuxeo did not grant', () => {
+      // The defect this replaces returned ['Browse','Read','ReadWrite','Everything'] for every
+      // document, so every document looked fully writable.
+      const hx = mapNuxeoDocumentToHx(withPermissions(['Read']));
+      expect(hx.sys_effectivePermissions).toEqual(['Read']);
+      expect(hx.sys_effectivePermissions).not.toContain('Everything');
+      expect(hx.sys_effectivePermissions).not.toContain('ReadWrite');
+    });
+
+    it('requires BOTH Nuxeo retention permissions before claiming ManageRetention', () => {
+      // Nuxeo splits set and unset; holding one is not management.
+      expect(
+        mapNuxeoDocumentToHx(withPermissions(['SetRetention'])).sys_effectivePermissions,
+      ).not.toContain('ManageRetention');
+      expect(
+        mapNuxeoDocumentToHx(withPermissions(['SetRetention', 'UnsetRetention']))
+          .sys_effectivePermissions,
+      ).toContain('ManageRetention');
+    });
+
+    it('ignores Nuxeo permissions with no HxPR counterpart rather than passing them through', () => {
+      // `Moderate`, `Comment`, `DataVisualization` and a dozen others exist in Nuxeo and mean
+      // nothing to upstream. Leaking them would let a caller test for a permission by a Nuxeo name
+      // and couple the two vocabularies.
+      const hx = mapNuxeoDocumentToHx(withPermissions(['Read', 'Moderate', 'DataVisualization']));
+      expect(hx.sys_effectivePermissions).toEqual(['Read']);
+    });
+
+    it('is UNDEFINED when the enricher was not requested, not an empty list', () => {
+      // The distinction is the whole point. `[]` asserts "no permissions"; `undefined` says "we did
+      // not ask". A read without `enrichers.document=permissions` cannot know, and inventing either
+      // answer is how the original defect happened.
+      expect(
+        mapNuxeoDocumentToHx(withPermissions(undefined)).sys_effectivePermissions,
+      ).toBeUndefined();
+    });
+
+    it('is undefined rather than empty when the enricher answered a non-array', () => {
+      expect(
+        mapNuxeoDocumentToHx(withPermissions('Read')).sys_effectivePermissions,
+      ).toBeUndefined();
+    });
+
+    it('states what the synthetic root supports rather than borrowing a document default', () => {
+      // Not a Nuxeo document, so no enricher can describe it. It can be listed and it contains
+      // domains; nothing more is claimed.
+      expect(syntheticHxRepositoryRoot().sys_effectivePermissions).toEqual(['Read', 'CreateChild']);
+    });
+  });
+
   it('builds synthetic repository root', () => {
     const root = syntheticHxRepositoryRoot();
     expect(root.sys_id).toBe('00000000-0000-0000-0000-000000000000');

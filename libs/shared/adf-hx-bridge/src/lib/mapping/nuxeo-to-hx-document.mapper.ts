@@ -54,13 +54,69 @@ function mapNuxeoTypeToHxPrimaryType(nuxeoType: string): string {
 }
 
 /**
- * DEGRADED(adf-hx): D1 — hardcoded for every document. The last of five recorded bridge defects.
+ * Nuxeo permission -> the HxPR `DocumentPermissions` value it satisfies.
  *
- * Upstream's `hasPermission()` therefore answers from a constant. Hiding an action is **not** a
- * security control: Nuxeo's server-side ACLs still gate every operation.
+ * Six map by identity — `Read`, `Write`, `ReadWrite`, `Everything`, `ReadVersion`, `WriteVersion` —
+ * because the two vocabularies happen to agree. The rest are Nuxeo's own names for the same idea.
+ *
+ * Two are approximations and are called out rather than smoothed over:
+ *
+ * - **`ManageLock`** ← Nuxeo `Unlock`. Nuxeo governs locking through `WriteProperties` *and*
+ *   `Unlock`; `Unlock` is the narrower and more meaningful of the two, since anyone who can unlock
+ *   another user's lock is who upstream means by "manage lock".
+ * - **`ManageRetention`** needs **both** `SetRetention` and `UnsetRetention` — see
+ *   `HX_PERMISSION_REQUIRES_ALL`. Nuxeo splits the two, and holding only one is not management.
  */
-function minimalEffectivePermissions(): string[] {
-  return ['Browse', 'Read', 'ReadWrite', 'Everything'];
+const HX_PERMISSION_FROM_NUXEO: Readonly<Record<string, string>> = {
+  Read: 'Read',
+  Write: 'Write',
+  ReadWrite: 'ReadWrite',
+  Everything: 'Everything',
+  ReadVersion: 'ReadVersion',
+  WriteVersion: 'WriteVersion',
+  AddChildren: 'CreateChild',
+  RemoveChildren: 'DeleteChild',
+  Remove: 'Delete',
+  Version: 'CreateVersion',
+  WriteSecurity: 'ManageSecurity',
+  Unlock: 'ManageLock',
+};
+
+/** HxPR permissions that require every listed Nuxeo permission, not any one of them. */
+const HX_PERMISSION_REQUIRES_ALL: Readonly<Record<string, readonly string[]>> = {
+  ManageRetention: ['SetRetention', 'UnsetRetention'],
+};
+
+/**
+ * A document's effective permissions **for the current user**, from Nuxeo's `permissions` enricher.
+ *
+ * This closes the last of the five recorded bridge defects. It used to return a fixed
+ * `['Browse', 'Read', 'ReadWrite', 'Everything']` for every document, so upstream's
+ * `hasPermission()` answered from a constant and every document looked fully writable.
+ *
+ * **Returns `undefined` when the enricher is absent**, and that distinction is deliberate. An empty
+ * array asserts "this user has no permissions"; `undefined` says "we did not ask". A read that omits
+ * `enrichers.document=permissions` cannot know, and inventing either answer is how the original
+ * defect happened. `hasPermission` treats an absent list as not-granted — conservative, and correct
+ * given that **hiding an action is not a security control**: Nuxeo's server-side ACLs gate every
+ * operation regardless of what this returns.
+ */
+function effectivePermissions(doc: NuxeoDocument): string[] | undefined {
+  const granted = doc.contextParameters?.['permissions'];
+  if (!Array.isArray(granted)) {
+    return undefined;
+  }
+
+  const nuxeo = new Set(granted.filter((p): p is string => typeof p === 'string'));
+  const mapped = new Set<string>();
+  for (const permission of nuxeo) {
+    const hx = HX_PERMISSION_FROM_NUXEO[permission];
+    if (hx) mapped.add(hx);
+  }
+  for (const [hx, required] of Object.entries(HX_PERMISSION_REQUIRES_ALL)) {
+    if (required.every((permission) => nuxeo.has(permission))) mapped.add(hx);
+  }
+  return [...mapped];
 }
 
 /**
@@ -206,7 +262,7 @@ export function mapNuxeoDocumentToHx(
     // document-type selector: with no filish types contributed it falls back to offering only
     // the document's current type.
     sys_mixinTypes: folderish ? ['SysFolderish'] : ['SysFilish'],
-    sys_effectivePermissions: minimalEffectivePermissions(),
+    sys_effectivePermissions: effectivePermissions(doc),
     sys_contentType: typeof content?.['mime-type'] === 'string' ? content['mime-type'] : undefined,
     sys_typeLabel: doc.type,
     // The **standard** HxPR fields, not just our `hx:` custom ones below.
@@ -242,6 +298,9 @@ export function syntheticHxRepositoryRoot(repositoryId: string = DEFAULT_REPOSIT
     sys_isFolderish: true,
     sys_repository: repositoryId,
     sys_mixinTypes: ['SysFolderish'],
-    sys_effectivePermissions: minimalEffectivePermissions(),
+    // The synthetic root is not a Nuxeo document, so no enricher can describe it. `Read` and
+    // `CreateChild` are what this node actually supports — it can be listed and it contains
+    // domains — and nothing more is claimed.
+    sys_effectivePermissions: ['Read', 'CreateChild'],
   };
 }

@@ -366,6 +366,11 @@ export class BrowseService {
 
     return this.api.get<NuxeoDocumentList>(`/nuxeo/api/v1/path${safePath}/@children`, params, {
       properties: '*',
+      // `permissions` only — not the full enricher set `getFullDocument` asks for, which would
+      // multiply the payload of every row. Without it each row's `sys_effectivePermissions` is
+      // `undefined`, and upstream reads that as no permission at all, so row-level actions would
+      // disappear. Asking is cheaper than the alternatives: guessing, or hardcoding.
+      'enrichers.document': 'permissions',
     });
   }
 

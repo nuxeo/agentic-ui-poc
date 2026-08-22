@@ -433,7 +433,15 @@ function checkAdfHxWorkaroundIds() {
       fail(`${register}:${index + 1} declares ${id} twice. An id must identify one row.`);
       return;
     }
-    rows.set(id, { configOnly: text.includes('(config)'), line: index + 1 });
+    // Two documented exemptions from the "must have a marker" rule:
+    //   `(config)` — the site is a `.json` file, which cannot hold a comment.
+    //   `(fixed`   — the workaround is gone. The register keeps the row on purpose, because the
+    //                history of what adf-hx cost is the point of the file, but there is no longer
+    //                a marker to find.
+    rows.set(id, {
+      configOnly: text.includes('(config)') || text.includes('(fixed'),
+      line: index + 1,
+    });
   });
 
   if (rows.size === 0) {

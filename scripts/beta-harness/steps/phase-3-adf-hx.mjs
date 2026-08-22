@@ -231,7 +231,11 @@ export default async function run(page, h) {
   // inferred from what the rows look like.
   const childrenRequests = [];
   const recordChildren = (request) => {
-    if (request.url().includes('/@children')) childrenRequests.push(request.url());
+    if (!request.url().includes('/@children')) return;
+    // URL *and* headers: Nuxeo takes the sort as query params and the enrichers as a header, so a
+    // check that looks only at the URL cannot see the enricher. The first version of this step did
+    // exactly that and reported the enricher missing while it was being sent.
+    childrenRequests.push({ url: request.url(), headers: request.headers() });
   };
   page.on('request', recordChildren);
 
@@ -266,17 +270,27 @@ export default async function run(page, h) {
   // page client-side, so a reordered list on its own does not prove the server was asked — that is
   // exactly what made this defect look fixed. A `sortBy` in a `@children` URL does prove it.
   page.off('request', recordChildren);
-  const sortedRequests = childrenRequests.filter((url) => url.includes('sortBy='));
+  // The permissions enricher, asserted at the wire for the same reason as the sort: the mapped
+  // `sys_effectivePermissions` is invisible in the DOM, and without the enricher every row's
+  // permission list is `undefined`, which upstream reads as no permission at all.
+  h.check(
+    'the children request asks Nuxeo for real permissions',
+    childrenRequests.some((r) => (r.headers['enrichers.document'] ?? '').includes('permissions')),
+    `${childrenRequests.length} @children request(s); last enrichers.document header: ` +
+      JSON.stringify(childrenRequests.at(-1)?.headers['enrichers.document'] ?? null),
+  );
+
+  const sortedRequests = childrenRequests.filter((r) => r.url.includes('sortBy='));
   h.check(
     'a @children request carried sortBy, so the server did the ordering',
     sortedRequests.length > 0,
     `${childrenRequests.length} @children request(s), none with sortBy: ` +
-      JSON.stringify(childrenRequests.slice(-2)),
+      JSON.stringify(childrenRequests.slice(-2).map((r) => r.url)),
   );
   h.check(
     'the sort field is a Nuxeo property, not an HxPR key',
-    sortedRequests.some((url) => /sortBy=dc(%3A|:)/.test(url)),
-    `sorted request URLs: ${JSON.stringify(sortedRequests.slice(-2))}`,
+    sortedRequests.some((r) => /sortBy=dc(%3A|:)/.test(r.url)),
+    `sorted request URLs: ${JSON.stringify(sortedRequests.slice(-2).map((r) => r.url))}`,
   );
   h.check(
     'the sorted list is not empty — an unmappable sortBy makes Nuxeo answer 200 with no entries',
