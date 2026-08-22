@@ -79,3 +79,27 @@ hxp-breadcrumb,
 hxp-domain-hint {
   flex-shrink: 0;
 }
+
+// Upstream's versions panel is built to be a drawer, not a tab body: it ships
+// `ViewEncapsulation.None` styles that give its list `height: 100vh` and its skeleton loader a
+// fixed 370px width. Inside a tab that pushes the page taller than the viewport.
+//
+// `::ng-deep` rather than a scroll container, because a scroll container would leave a
+// viewport-tall empty area below three versions. The selectors are upstream's own class names
+// and would stop matching if it were restyled — that shows up as a layout regression in the
+// evidence screenshot, not as silently broken data.
+.hxp-poc-versions {
+  flex: 1;
+  min-height: 0;
+  max-width: 420px;
+  overflow: auto;
+
+  ::ng-deep .hxp-version-list {
+    height: auto;
+    padding: 12px 0;
+  }
+
+  ::ng-deep .hxp-version-panel-skeleton-loader {
+    width: 100%;
+  }
+}

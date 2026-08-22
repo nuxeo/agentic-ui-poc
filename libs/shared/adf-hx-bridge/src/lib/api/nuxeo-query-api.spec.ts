@@ -61,4 +61,148 @@ describe('NuxeoQueryApi', () => {
     expect(response.data.documents?.[0]?.sys_title).toBe('Default Domain');
     expect(response.data.documents?.[0]?.sys_isFolderish).toBe(true);
   });
+
+  /**
+   * The HXQL entry point, reached by upstream's `SearchService`. The statement is upstream's
+   * own, copied from `DocumentVersionsService.getVersionsById` — if these tests are updated
+   * because the text changed, the port's regex has to change with them.
+   */
+  describe('getDocumentsByQuery', () => {
+    const versionsQuery = (id: string) =>
+      `SELECT * FROM SysContent WHERE sys_parentId = '${id}' AND sysver_isVersion = 1 ORDER BY sysver_created DESC`;
+
+    /** Two versions, returned oldest-first the way `Document.GetVersions` does. */
+    const nuxeoVersions = [
+      {
+        uid: 'ver-0-1',
+        title: 'Invoice',
+        type: 'File',
+        path: '/default-domain/workspaces/ws/Invoice',
+        lastModified: '2026-02-01T10:00:00.000Z',
+        isVersion: true,
+        isCheckedOut: false,
+        versionableId: 'live-1',
+        parentRef: 'folder-1',
+        properties: {
+          'uid:major_version': 0,
+          'uid:minor_version': 1,
+          'dc:lastContributor': 'jdoe',
+          'dc:creator': 'Administrator',
+          'dc:description': 'the document description, not the version comment',
+        },
+      },
+      {
+        uid: 'ver-0-2',
+        title: 'Invoice',
+        type: 'File',
+        path: '/default-domain/workspaces/ws/Invoice',
+        lastModified: '2026-02-02T10:00:00.000Z',
+        isVersion: true,
+        isCheckedOut: false,
+        versionableId: 'live-1',
+        parentRef: 'folder-1',
+        properties: {
+          'uid:major_version': 0,
+          'uid:minor_version': 2,
+          'dc:lastContributor': 'jdoe',
+          'dc:creator': 'Administrator',
+        },
+      },
+    ];
+
+    function flushVersions(entries: unknown[] = nuxeoVersions) {
+      httpMock
+        .expectOne((r) => r.url.includes('/@op/Document.GetVersions'))
+        .flush({ 'entity-type': 'documents', entries });
+    }
+
+    it('reads versions through Document.GetVersions, not the search index', async () => {
+      const pending = api.getDocumentsByQuery({ query: versionsQuery('live-1'), sort: [] });
+      // The operation on the *live* document, which is the id carried in the statement.
+      const req = httpMock.expectOne((r) =>
+        r.url.includes('/nuxeo/api/v1/id/live-1/@op/Document.GetVersions'),
+      );
+      expect(req.request.method).toBe('POST');
+      req.flush({ 'entity-type': 'documents', entries: nuxeoVersions });
+
+      const response = await pending;
+      expect(response.data.documents).toHaveLength(2);
+      expect(response.data.totalCount).toBe(2);
+    });
+
+    it('honours ORDER BY sysver_created DESC even though Nuxeo answers oldest-first', async () => {
+      const pending = api.getDocumentsByQuery({ query: versionsQuery('live-1') });
+      flushVersions();
+
+      const documents = (await pending).data.documents ?? [];
+      // Reversed relative to the flushed order: the statement asks for newest first, and a
+      // port that returned Nuxeo's order would look correct on a one-version document.
+      expect(documents.map((d) => d.sys_id)).toEqual(['ver-0-2', 'ver-0-1']);
+    });
+
+    it('maps the version fields upstream’s panel reads', async () => {
+      const pending = api.getDocumentsByQuery({ query: versionsQuery('live-1') });
+      flushVersions();
+
+      const newest = (await pending).data.documents?.[0];
+      expect(newest?.['sysver_isVersion']).toBe(true);
+      expect(newest?.['sysver_title']).toBe('0.2');
+      expect(newest?.['sysver_created']).toBe('2026-02-02T10:00:00.000Z');
+      expect(newest?.['sysver_creator']).toBe('jdoe');
+      // `sys_parentId` has to be the live document, not Nuxeo's `parentRef` (the folder):
+      // `DocumentVersionsService.getCurrentDocument` follows it to reload the live document.
+      expect(newest?.sys_parentId).toBe('live-1');
+    });
+
+    it('leaves the version comment unset rather than showing the document description', async () => {
+      const pending = api.getDocumentsByQuery({ query: versionsQuery('live-1') });
+      flushVersions();
+
+      // Nuxeo keeps the check-in comment in the audit log, so `sysver_description` has no
+      // document-level source. `dc:description` is a different thing and must not leak in.
+      const oldest = (await pending).data.documents?.[1];
+      expect(oldest?.['sysver_description']).toBeUndefined();
+      expect(oldest?.['sysver_expires']).toBeUndefined();
+    });
+
+    it('applies limit and offset to the version list', async () => {
+      const pending = api.getDocumentsByQuery({ query: versionsQuery('live-1'), limit: 1 });
+      flushVersions();
+
+      const result = (await pending).data;
+      expect(result.documents).toHaveLength(1);
+      expect(result.count).toBe(1);
+      expect(result.totalCount).toBe(2);
+    });
+
+    it('refuses an HXQL statement it does not understand instead of returning nothing', async () => {
+      // An empty result set is indistinguishable from an empty repository, which is how a
+      // silently unsupported query becomes a bug report about missing documents.
+      await expect(
+        api.getDocumentsByQuery({ query: 'SELECT * FROM SysContent WHERE sys_title = ‘x’' }),
+      ).rejects.toThrow('does not understand this HXQL statement');
+    });
+
+    it('refuses an empty statement', async () => {
+      await expect(api.getDocumentsByQuery({})).rejects.toThrow('(empty)');
+    });
+
+    it('refuses a sort it would otherwise discard', async () => {
+      await expect(
+        api.getDocumentsByQuery({ query: versionsQuery('live-1'), sort: ['sys_title asc'] }),
+      ).rejects.toThrow('cannot apply the sort');
+    });
+
+    it('refuses a non-default repository', async () => {
+      await expect(
+        api.getDocumentsByQuery({ query: versionsQuery('live-1'), repositoryId: 'other' }),
+      ).rejects.toThrow('serves only "default"');
+    });
+
+    it('refuses a versions query with no document id', async () => {
+      await expect(api.getDocumentsByQuery({ query: versionsQuery('') })).rejects.toThrow(
+        'carried no document id',
+      );
+    });
+  });
 });

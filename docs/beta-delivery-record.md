@@ -26,15 +26,15 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 
 ## 1. Where the programme stands
 
-| Phase                                   | Status                                                  | Evidence                 |
-| --------------------------------------- | ------------------------------------------------------- | ------------------------ |
-| 0 — Unblock and verify                  | **complete**                                            | `phase-0-baseline` 14/14 |
-| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                     | `phase-1-config` 39/39   |
-| 2 — Layer 1: extension registry         | **complete**, carry-forward named                       | `phase-2-registry` 46/46 |
-| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, document list adopted | `phase-3-adf-hx` 12/14   |
-| 4 — Layer 2: publishable platform       | not started                                             | —                        |
-| 5 — Layer 3: agent harness              | partial (the harness below exists)                      | —                        |
-| 6 — Beta quality bar                    | partial — coverage and a11y now _measured_              | `phase-6-a11y` 12/12     |
+| Phase                                   | Status                                                 | Evidence                 |
+| --------------------------------------- | ------------------------------------------------------ | ------------------------ |
+| 0 — Unblock and verify                  | **complete**                                           | `phase-0-baseline` 14/14 |
+| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                    | `phase-1-config` 39/39   |
+| 2 — Layer 1: extension registry         | **complete**, carry-forward named                      | `phase-2-registry` 46/46 |
+| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 4 components adopted | `phase-3-adf-hx` 34/34   |
+| 4 — Layer 2: publishable platform       | not started                                            | —                        |
+| 5 — Layer 3: agent harness              | partial (the harness below exists)                     | —                        |
+| 6 — Beta quality bar                    | partial — coverage and a11y now _measured_             | `phase-6-a11y` 12/12     |
 
 Branch `feature/adf-hx-browse-poc`, 49 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.
@@ -122,6 +122,57 @@ knowing:
 - **`nuxeo-ui` now has a `typecheck` target.** Two real type errors escaped
   `nx affected -t typecheck` during Phase 3 because the app had none; the gap is closed and
   proven by reintroducing one of them.
+- **The real `ManageVersionsSidebarComponent` is adopted**, in a new **Versions** tab. This is
+  the first adoption that **adds** a capability rather than replacing one of ours — the POC had
+  no version history at all — and the first thing to drive the `VERSION` and `QUERY` ports
+  through the UI rather than through unit tests.
+  - It needed a `QUERY` method the bridge had never implemented: `getDocumentsByQuery`, the
+    free-text **HXQL** entry point upstream's `SearchService` uses. HXQL queries the HxPR
+    content model; Nuxeo speaks NXQL over a different one. Rather than write a translator, the
+    port recognises the one statement upstream actually sends — its versions query — **whole**,
+    and refuses anything else **by name**. An unrecognised query answering with an empty result
+    set is indistinguishable from an empty repository, which is how it becomes a bug report
+    about missing documents.
+  - Versions are read through **`Document.GetVersions`**, not the NXQL search. Measured on the
+    local instance: immediately after two check-ins the NXQL path — OpenSearch-backed here —
+    returned **one** of the two versions, and both only once the index caught up. A panel that
+    reloads on check-in would have shown the user a list missing the version they just made.
+  - Nuxeo sends **no `versionLabel`**, so `sysver_title` is composed from `uid:major_version`
+    and `uid:minor_version`. And a version's `sys_parentId` is overridden to Nuxeo's
+    `versionableId`, because Nuxeo reports a version's `parentRef` as the live document's
+    _folder_ while upstream follows `sys_parentId` to reload the live _document_.
+  - The tab acts on the row **selected** in View, not on the folder being browsed, and says so
+    when nothing is selected. Bound to the folder it would have looked like a working feature:
+    upstream always prepends a "current version" entry, so a folder with no versions still
+    renders one row.
+  - Deliberately still missing: **`sysver_description`**, upstream's version comment. Nuxeo
+    keeps the check-in comment in the audit log, not on the version document. Mapping
+    `dc:description` into it would show the _document's_ description as if it were the
+    version's, so it is left unset and the panel omits the line.
+
+**Four defects this adoption exposed**, none of them in the versions panel and all of them
+pre-existing:
+
+| Defect                                                                  | Effect                                                                                                              | Cause                                                                                                                                                                                                                                                                |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Angular's `development` config **replaces** `assets`, it does not merge | **every dev server on this branch 404ed adf-core's catalogue**, while production shipped it correctly               | only the base array carried the glob                                                                                                                                                                                                                                 |
+| adf-hx's own i18n catalogues were never served                          | the versions panel rendered `MANAGE_VERSIONS.DIALOG.TITLE` as its heading                                           | adf-hx _does_ register them, via `provideTranslations` in each component's `providers` — but registration happens at component construction, long after the language loaded, and our loader's `init` is a no-op. The registration landed; the strings never arrived. |
+| adf-hx's icon set was never served                                      | `Folder.svg` and `Folder_open.svg` 404ed on every tree render                                                       | no asset glob                                                                                                                                                                                                                                                        |
+| `NG0201: No provider found for _AsyncPipe`                              | any component rendering a user name threw **while rendering** — the panel appeared with a heading and an empty body | adf-hx's `UserResolverPipe` calls `inject(AsyncPipe)`, and `AsyncPipe` has no `providedIn`                                                                                                                                                                           |
+
+A fifth was a mapping decision of ours that upstream turned into a visible bug: user names
+rendered as **`undefined undefined`**. Upstream's `UserResolverService.getFullName` is
+`` `${firstName} ${lastName}` `` with no guard, and our mapper deliberately left both unset on
+the grounds that Nuxeo carries only a username and a guessed name is worse than an honest one.
+The reasoning was right about not guessing and wrong about the consequence. The username now
+fills `firstName` with `lastName` empty, which composes to the username itself — and that also
+fixes Nuxeo's own `Administrator`, whose `firstName` and `lastName` are both empty strings.
+
+The first of those took a session to find because the symptom was blamed on a stale dev server
+and the fix was "restart it", which could never have worked. There is now a **review guardrail**
+that fails when any build configuration overrides `assets` and omits a base entry, and the
+**bundle gate** asserts all three catalogues and one adf-hx icon actually ship. Both were
+watched fail on purpose.
 
 ---
 
@@ -198,8 +249,11 @@ Settled. Do not re-open without new information.
 |                     | Downloaded before the app starts       |
 | ------------------- | -------------------------------------- |
 | before adf-hx       | 1.70 MB                                |
-| with adf-hx adopted | **3.15 MB**                            |
-| increase            | **+1.45 MB once, then browser-cached** |
+| with adf-hx adopted | **3.24 MB**                            |
+| increase            | **+1.54 MB once, then browser-cached** |
+
+Movement since first measured: 3.15 MB with the document list, +80 kB for the tree, +10 kB for
+the versions panel. Each component has been measured on adoption rather than estimated.
 
 Unavoidable rather than chosen — see the root-injector decision above. Practically:
 unnoticeable on an office network, a second or two on a first load over a slow link. The
@@ -260,17 +314,28 @@ Nothing here is a surprise later.
    fields were being dropped and are now mapped: `sys_lastContributor`, `sys_creator`,
    `sys_lifecycleState`. The residual limitation is narrow: Nuxeo carries a **username**
    only, so the column shows `jdoe` rather than `Jane Doe`. A display name would need a
-   `/user/{id}` call per distinct contributor; the `USER` port can do it, and the right place
-   is a cached batch lookup in the consumer, not a synchronous mapper. **Open question for
-   the team** — is a username acceptable, or is a display name required?
+   `/user/{id}` call per distinct contributor. **Open question for the team** — is a username
+   acceptable, or is a display name required? The answer is now cheaper than first thought:
+   upstream's `UserService.resolveUser` already performs exactly that lookup and **caches it
+   per id**, so passing a username string where upstream expects one gets a real display name
+   for one request per distinct user. That path is live in the versions panel today.
 2. **`sys_effectivePermissions` is hardcoded** to a minimal set for every document — the last
    of five recorded bridge defects. The other four are closed, most recently the
    `browse_column_settings` localStorage key that the POC and production browse shared, so
    choosing columns on either surface silently overwrote the other.
-3. **Five components remain**: metadata-sidebar, permissions, manage-versions,
-   document-viewer, search. Document list, breadcrumb and tree are done. Each has so far cost
-   one import plus one upstream service to provide or override.
-4. **`UPLOAD` and `MODEL` refuse.** Mapping either is real work, not a rename.
+3. **Four components remain**: metadata-sidebar, permissions, document-viewer, search.
+   Document list, breadcrumb, tree and manage-versions are done.
+   **metadata-sidebar — and probably properties-viewer — are blocked on `MODEL`.**
+   `DocumentModelService` is `providedIn: 'root'`, injects `MODEL_API_TOKEN`, and calls
+   `getModel()` from its **constructor**, so a refusing `MODEL` port makes everything behind
+   `DOCUMENT_PROPERTIES_SERVICE` fail to construct rather than degrade. Unblocking needs a
+   read-only `MODEL` over Nuxeo's `/config/types` and `/config/schemas`; `setModel` and
+   `patchModel` can keep refusing, because Nuxeo genuinely cannot accept them. This is the
+   largest single item left in Phase 3.
+4. **`UPLOAD` and `MODEL` refuse.** Mapping either is real work, not a rename — and `MODEL`
+   is now a known blocker, not just a gap (see 3).
+   **`getDocumentsByQuery` understands one HXQL statement** — upstream's document-versions
+   query — and refuses every other by name. Adopting adf-hx **search** will need more.
 5. **`getRenditions` is not a discovery call** — it returns a fixed `thumbnail, pdf` pair,
    because Nuxeo exposes no rendition-enumeration endpoint through this bridge.
 6. **`routes`, `toolbar`, `contextMenu`, `tabs` slots are reserved and unread.**
@@ -281,6 +346,9 @@ Nothing here is a surprise later.
    so risk R7 stays Medium. That is the Phase 6 upgrade rehearsal.
 10. **Independent validation has never run** for Phase 1 or Phase 2, and the multi-model
     review gate has never run at all.
+11. **The versions context menu is unexercised.** Restore, delete and edit-a-version render in
+    the panel's menu, but the capture asserts the _list_, not the menu.
+    `NuxeoVersionApi.restoreVersion` is unit-tested and has never been driven from the UI.
 
 ---
 
@@ -288,14 +356,17 @@ Nothing here is a surprise later.
 
 Kept because a record that hides its own errors is not one.
 
-| Claim                                            | Correction                                                                                                                                                 |
-| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| "CI has never run on this branch"                | Wrong. `ci.yml` triggers on `push` as well as `pull_request`; it had run and passed repeatedly. Two phase reviews disagreed and the _other_ one was right. |
-| "`SATORI_GH_READONLY_TOKEN` was never set"       | Wrong. A repository secret since 2026-08-03.                                                                                                               |
-| "`phase-0-no-backend` is an abandoned red"       | Wrong. Its nine failures were one precondition mismatch — Nuxeo was up and that file requires it down.                                                     |
-| "adf-hx is v0.0.8" (still in the plan)           | Stale. 648 published versions; `latest` is `7.20.0-automate.292`.                                                                                          |
-| "adf-hx pulls in a large new dependency surface" | Half right. Twelve of the fifteen packages it imports were already installed; the sprawl comes from adf-core's peers.                                      |
-| Risk R7 downgraded to Low                        | Withdrawn. It was downgraded on the strength of an install path that would have 404'd.                                                                     |
+| Claim                                                                                                                      | Correction                                                                                                                                                                                                                   |
+| -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "CI has never run on this branch"                                                                                          | Wrong. `ci.yml` triggers on `push` as well as `pull_request`; it had run and passed repeatedly. Two phase reviews disagreed and the _other_ one was right.                                                                   |
+| "`SATORI_GH_READONLY_TOKEN` was never set"                                                                                 | Wrong. A repository secret since 2026-08-03.                                                                                                                                                                                 |
+| "`phase-0-no-backend` is an abandoned red"                                                                                 | Wrong. Its nine failures were one precondition mismatch — Nuxeo was up and that file requires it down.                                                                                                                       |
+| "adf-hx is v0.0.8" (still in the plan)                                                                                     | Stale. 648 published versions; `latest` is `7.20.0-automate.292`.                                                                                                                                                            |
+| "adf-hx pulls in a large new dependency surface"                                                                           | Half right. Twelve of the fifteen packages it imports were already installed; the sprawl comes from adf-core's peers.                                                                                                        |
+| Risk R7 downgraded to Low                                                                                                  | Withdrawn. It was downgraded on the strength of an install path that would have 404'd.                                                                                                                                       |
+| "the dev server predates the adf-core asset glob — restart it"                                                             | Wrong, and it sent the reader after a fix that could never work. Angular's `development` configuration **replaces** `assets`; only the base array had the glob, so no restart would ever have helped. Now guarded by a gate. |
+| "a Nuxeo username should map to a `User` with no first/last name, because a guessed name is worse than an honest username" | Right about not guessing, wrong about the consequence. Upstream renders `${firstName} ${lastName}` with no guard, so unset fields rendered the literal `undefined undefined`.                                                |
+| "`VersionContextMenuActionsService` has no `providedIn`"                                                                   | Wrong. It **is** `providedIn: 'root'`, and its five action-service tokens are already in `CONTEXT_MENU_ACTIONS_PROVIDERS`, so it needed no provider at all.                                                                  |
 
 ---
 

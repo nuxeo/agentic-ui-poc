@@ -20,7 +20,7 @@
     "",
     "evidence.manifest pins a SPECIFIC run for a completed phase rather than using",
     "\"latest\". A completed phase was signed off on one particular capture, and \"latest\"",
-    "drifts with unrelated environment changes — a stale local dev server turned Phase 0",
+    "drifts with unrelated environment changes \u2014 a stale local dev server turned Phase 0",
     "red and invalidated a claim that was never in doubt. Phases still in progress keep",
     "\"latest\", because there the newest run is the point."
   ],
@@ -40,11 +40,11 @@
       "notCovered": [
         "No pull request has been opened, so the PR-triggered path of every workflow is unexercised; CI has only ever run via the push trigger."
       ],
-      "verifiedOnCi": "CI run 32480243192, completed success on Node 20, 2026-08-21 — the authoritative verification. Local gates run on Node 25 with a webstorage workaround and are not authoritative."
+      "verifiedOnCi": "CI run 32480243192, completed success on Node 20, 2026-08-21 \u2014 the authoritative verification. Local gates run on Node 25 with a webstorage workaround and are not authoritative."
     },
     {
       "id": "phase-1-config",
-      "title": "Layer 0 — upgrade-safe configuration",
+      "title": "Layer 0 \u2014 upgrade-safe configuration",
       "status": "complete",
       "evidence": {
         "manifest": "phase-1-config/2026-08-21T11-47-45",
@@ -61,7 +61,7 @@
     },
     {
       "id": "phase-2-registry",
-      "title": "Layer 1 — extension registry",
+      "title": "Layer 1 \u2014 extension registry",
       "status": "complete",
       "evidence": {
         "manifest": "phase-2-registry/2026-08-21T11-51-02",
@@ -77,7 +77,7 @@
         "the 5 hardcoded mat-tab children in document-detail.html",
         "route contributions",
         "multi-model adversarial review gate: never run for this phase or Phase 1",
-        "browse contextMenu contributions — documentList is now live (see delivered below); contextMenu is still reserved and unread"
+        "browse contextMenu contributions \u2014 documentList is now live (see delivered below); contextMenu is still reserved and unread"
       ],
       "delivered": [
         "documentList slot wired end to end for browse columns: PACKAGED_BROWSE_COLUMNS registered, BrowseComponent resolves them, manifest can hide/reorder/relabel/switch-on by id. Evidence: pilot-documentlist-columns (12/12, 6 unique screenshots)."
@@ -89,40 +89,54 @@
       "status": "in-progress",
       "evidence": {
         "manifest": "phase-3-adf-hx/latest",
-        "regate": "gates/latest:phase-3-tree-final"
+        "regate": "gates/latest:phase-3-versions-final"
       },
       "deviations": [],
       "notCovered": [
-        "metadata-sidebar, permissions, manage-versions, document-viewer, search — five components remain",
+        "metadata-sidebar (blocked on MODEL), permissions, document-viewer, search \u2014 four components remain",
         "UPLOAD: HxPR chunked protocol vs Nuxeo batch upload are different lifecycles, not different endpoints. Bound but refusing.",
-        "MODEL: Nuxeo content model is server-side config exposed piecemeal and not writable over REST. Bound but refusing.",
+        "MODEL: Nuxeo content model is server-side config exposed piecemeal and not writable over REST. Bound but refusing \u2014 and this is now a known blocker, not just a gap.",
         "RENDITIONS getRenditions returns a fixed servable set (thumbnail, pdf); Nuxeo exposes no rendition-enumeration endpoint through this bridge, so it is not a discovery call.",
         "bridge defects: 1 of 5 verified still open (hardcoded sys_effectivePermissions)",
-        "Initial bundle 1.70 -> 3.15 MB, accepted; leadership not yet informed",
-        "Contributor and creator columns show a Nuxeo username, not a display name. Nuxeo carries only the username on the document; a display name needs a /user/{id} lookup per distinct contributor. Open question for the team."
+        "Initial bundle 1.70 -> 3.24 MB, accepted; leadership not yet informed",
+        "QUERY getDocumentsByQuery understands ONE HXQL statement \u2014 upstream document-versions \u2014 and refuses every other by name. Adopting adf-hx search will need more.",
+        "The versions panel context menu (restore, delete, edit a version) renders but its actions are unexercised: the capture asserts the list, not the menu. Restore goes through NuxeoVersionApi.restoreVersion, which is unit-tested but has never been driven from the UI.",
+        "sysver_description is always unset: Nuxeo keeps the check-in comment in the audit log, not on the version document, so the panel never shows a version comment.",
+        "Contributor and creator columns show a Nuxeo username, not a display name. Nuxeo carries only the username on the document; a display name needs a /user/{id} lookup per distinct contributor. Open question for the team \u2014 but upstream UserService.resolveUser already caches such a lookup per id, which is a cheaper answer than first assumed."
       ],
       "delivered": [
         "Secondary entry point @agentic-ui/shared/adf-hx-bridge/providers, so the app shell no longer reaches adf-hx through the bridge barrel. Measured: ports via the barrel put the initial bundle at 2.65 MB; via the entry point, 1.71 MB.",
         "Seven of twelve API ports bound to UPSTREAM tokens with the clones deleted: DOCUMENT, QUERY, VERSION, COPY, MOVE, CHECKIN, DOWNLOAD. Six were thin over existing nuxeo-client methods; only CHECKIN needed a new one (Document.CheckIn).",
         "AppTranslateLoader implements adf-core TranslationService five undocumented loader methods without importing adf-core, so Layer 0 manifest-labels relabelling survives and adf-core does not join the initial bundle through app.config.ts.",
         "adf-core own i18n catalogue added to the build asset globs.",
-        "THE SWAP RUNS: upstream HxpDocumentListComponent renders on /#/browse-adf-hx over live Nuxeo — document list present, column headers matching the packaged set in order, real Nuxeo children listed, multiselect checkboxes per row. Its [schema] is fed from PACKAGED_BROWSE_COLUMNS, so Phase 2 Layer 1 drives the real adf-core DataTable.",
+        "THE SWAP RUNS: upstream HxpDocumentListComponent renders on /#/browse-adf-hx over live Nuxeo \u2014 document list present, column headers matching the packaged set in order, real Nuxeo children listed, multiselect checkboxes per row. Its [schema] is fed from PACKAGED_BROWSE_COLUMNS, so Phase 2 Layer 1 drives the real adf-core DataTable.",
         "Layer 1 field -> HxPR property translation added: DataTable reads row.obj[key], so the browse view-model keys rendered correct headers over empty rows until mapped. packaged-columns.ts had predicted exactly this.",
         "Rehomed the three capabilities upstream does not have, then deleted the hand-written hxp-document-list: column picker (hxp-column-picker, driven by the Layer 1 descriptors, so Reset returns to the manifest rather than a packaged const), card view with thumbnails (hxp-document-cards), and the empty state. Error/retry moved to the host template earlier. Evidence: 12 of 14.",
-        "Fixed bridge defect 5 of 5 by construction: hxp-browse-columns.utils.ts wrote browse_column_settings — the SAME localStorage key production browse uses — so choosing columns on either surface overwrote the other. Those utils are deleted with the hand-written list and the POC now namespaces its own key.",
+        "Fixed bridge defect 5 of 5 by construction: hxp-browse-columns.utils.ts wrote browse_column_settings \u2014 the SAME localStorage key production browse uses \u2014 so choosing columns on either surface overwrote the other. Those utils are deleted with the hand-written list and the POC now namespaces its own key.",
         "ALL TWELVE API ports now bound to upstream tokens. Added USER and GROUP (over the existing UserService, mapping Nuxeo nested properties to HxPR flat User, and grouplabel->name / groupname->id), RENDITIONS (over the @rendition adapter, serving thumbnail and pdf), and UPLOAD and MODEL as refusing ports. UPLOAD and MODEL are bound rather than left unbound deliberately: eleven upstream services inject their tokens at construction, so an unbound token stops those services constructing at all, whereas a refusing port lets a component construct and fail at the point of use with a message naming the operation.",
         "Mapping fidelity: sys_lastContributor, sys_creator and sys_lifecycleState were being dropped in favour of custom hx:* keys no adf-hx component reads, which is why the real DataTable rendered a blank Last Contributor column. All three now map to the standard HxPR fields, and date columns render via adf-core type:date rather than as raw ISO strings.",
         "nuxeo-ui:typecheck target added and proven by reintroducing the RENDITION_API_TOKEN typo that escaped nx affected -t typecheck twice.",
         "Breadcrumb adopted: upstream HxpBreadcrumbComponent replaces ours, which is deleted. The swap was one line; the real work was overriding adf-hx DocumentRouterService, which builds /{repository}/documents/{id} routes this app does not have and feeds them to [routerLink]. It has no providedIn, so it is an intended substitution point. NuxeoDocumentRouterService gained urlFor(options) returning a router path and urlForParent, and is bound against it. The capture asserts every crumb link targets browse-adf-hx and none targets upstream shape.",
-        "Document tree adopted: upstream HxpDocumentTreeComponent replaces hxp-browse-nav-tree in the app shell nav drawer, and ours plus HxpBrowseNavTreeService are deleted. Needed DocumentTreeDatabaseService provided (no providedIn) and the host converting a selected Document to a path for AdfHxBrowseContextService. Initial bundle cost measured at +80 kB (3.15 -> 3.23 MB), which is why it went in directly rather than behind ExtensionOutletComponent."
+        "Document tree adopted: upstream HxpDocumentTreeComponent replaces hxp-browse-nav-tree in the app shell nav drawer, and ours plus HxpBrowseNavTreeService are deleted. Needed DocumentTreeDatabaseService provided (no providedIn) and the host converting a selected Document to a path for AdfHxBrowseContextService. Initial bundle cost measured at +80 kB (3.15 -> 3.23 MB), which is why it went in directly rather than behind ExtensionOutletComponent.",
+        "manage-versions adopted: upstream ManageVersionsSidebarComponent renders real Nuxeo versions in a new Versions tab. This ADDS a capability the POC never had rather than replacing one of ours, and it is the first thing to drive the VERSION and QUERY ports through the UI.",
+        "QUERY port gained getDocumentsByQuery \u2014 the free-text HXQL entry point upstream SearchService uses, which the bridge had never implemented. It recognises upstream document-versions statement whole and refuses anything else BY NAME, because an unrecognised query returning an empty result set is indistinguishable from an empty repository. It also refuses a non-empty sort rather than discarding it, which is the defect getDocumentsByNamedQuery still has.",
+        "Versions are read through Document.GetVersions, not the NXQL search. Measured on the local instance: immediately after two check-ins the NXQL/OpenSearch path returned one of two versions and both only after the index caught up, so a panel reloading on check-in would omit the version just created. getVersions (NXQL) is left alone because document-detail and the bulk-action services depend on its paginated shape.",
+        "Version mapping: Nuxeo sends NO versionLabel, so sysver_title is composed from uid:major_version and uid:minor_version; sys_parentId is overridden to versionableId because Nuxeo parentRef on a version is the live document FOLDER and upstream follows sys_parentId to reload the live document.",
+        "The Versions tab acts on the row SELECTED in View, not on the browsed folder, and says so when nothing is selected. Bound to the folder it would have looked like a working feature: upstream always prepends a current-version entry, so a folder with no versions still renders one row.",
+        "FIXED: Angular development configuration REPLACES the assets array rather than merging it, so only the base array carried adf-core translation glob and every dev server on this branch 404ed the catalogue while production shipped it. Diagnosed for a session as a stale dev server. A new review guardrail now fails when any configuration overrides assets and omits a base entry, verified by breaking it on purpose.",
+        "FIXED: adf-hx own i18n catalogues were never served. adf-hx components DO register them (provideTranslations in each component providers) but registration happens at component construction, long after the language loaded, and AppTranslateLoader.init is a no-op \u2014 so the registration landed and the strings never arrived. The versions panel rendered MANAGE_VERSIONS.DIALOG.TITLE as its heading. Both catalogues are now seeded like adf-core, and the bundle gate asserts all three ship.",
+        "FIXED: adf-hx own icon set (assets/images/*.svg) was never served, 404ing Folder.svg and Folder_open.svg on every tree render.",
+        "FIXED: NG0201 No provider found for _AsyncPipe. adf-hx UserResolverPipe calls inject(AsyncPipe) in its constructor and AsyncPipe has no providedIn, so any component rendering a user name threw WHILE rendering \u2014 the panel shell appeared with an empty body. AsyncPipe is now in the bridge provider array.",
+        "FIXED: user names rendered as \"undefined undefined\". Upstream UserResolverService.getFullName is `${firstName} ${lastName}` with no guard, and our mapper deliberately left both unset. The username now fills firstName with lastName empty, in both the document mapper and the USER port \u2014 which also fixes Nuxeo own Administrator, whose firstName and lastName are empty strings.",
+        "Evidence step 4 no longer screenshots an untouched list under the name row-selection: it selects a row, asserts the checkbox reports itself checked, then clears the selection. The screenshot audit had caught the two images being byte-identical."
       ],
       "blockedOn": [
-        "Local dev server predates the adf-core asset glob, so it 404s /assets/adf-core/i18n/en.json. The affected captures now abort with precondition-not-met (exit 2) rather than reporting failures that look like broken components, and the bundle gate asserts the file ships. A dev-server restart is all that is needed."
+        "metadata-sidebar and (probably) properties-viewer are blocked on the MODEL port. DocumentModelService is providedIn root, injects MODEL_API_TOKEN, and calls getModel() from its CONSTRUCTOR, so a refusing MODEL port makes every component behind DOCUMENT_PROPERTIES_SERVICE fail to construct rather than degrade. Unblocking needs a read-only MODEL implementation over Nuxeo /config/types and /config/schemas; setModel and patchModel can keep refusing because Nuxeo genuinely cannot accept them."
       ]
     },
     {
       "id": "phase-4-platform",
-      "title": "Layer 2 — publishable platform",
+      "title": "Layer 2 \u2014 publishable platform",
       "status": "not-started",
       "evidence": null,
       "deviations": [],
@@ -130,7 +144,7 @@
     },
     {
       "id": "phase-5-harness",
-      "title": "Layer 3 — agent harness",
+      "title": "Layer 3 \u2014 agent harness",
       "status": "not-started",
       "evidence": null,
       "deviations": [],

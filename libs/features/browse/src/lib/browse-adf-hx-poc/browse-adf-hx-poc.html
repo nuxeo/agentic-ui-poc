@@ -97,6 +97,7 @@
                 [multiselect]="true"
                 [contextMenuActions]="false"
                 (rowClicked)="onUpstreamRowClicked($event)"
+                (selectedDocuments)="onSelectedDocuments($event)"
               />
             </div>
           } @else {
@@ -123,6 +124,23 @@
             (editExternal)="onPermissionAction('Edit external permission')"
             (notifyEmail)="onPermissionAction('Send notification email')"
           />
+        } @else if (activeTab() === 'versions') {
+          <!-- Upstream's panel takes one document. Without a single selected row there is
+               nothing to show, and saying so beats rendering the browsed folder's versions —
+               a folder always has a "current version" entry, so that would look like a
+               working feature answering the wrong question. -->
+          @if (versionsTarget(); as target) {
+            <div class="hxp-poc-versions">
+              <hxp-manage-versions-sidebar
+                [document]="target"
+                (closeVersionsSidebar)="onCloseVersions()"
+              />
+            </div>
+          } @else {
+            <div class="hxp-poc-empty">
+              <p>Select a single document in the View tab to see its versions.</p>
+            </div>
+          }
         } @else if (activeTab() === 'history') {
           <hxp-browse-history
             [loading]="auditLoading()"

@@ -74,13 +74,20 @@ describe('nuxeo-to-hx-document.mapper', () => {
 
     it('maps dc:lastContributor to sys_lastContributor as a User', () => {
       const hx = mapNuxeoDocumentToHx(withPeople);
-      expect(hx.sys_lastContributor).toEqual({ id: 'jdoe', username: 'jdoe' });
+      expect(hx.sys_lastContributor).toEqual({
+        id: 'jdoe',
+        username: 'jdoe',
+        firstName: 'jdoe',
+        lastName: '',
+      });
     });
 
     it('maps dc:creator to sys_creator as a User', () => {
       expect(mapNuxeoDocumentToHx(withPeople).sys_creator).toEqual({
         id: 'asmith',
         username: 'asmith',
+        firstName: 'asmith',
+        lastName: '',
       });
     });
 
@@ -97,12 +104,21 @@ describe('nuxeo-to-hx-document.mapper', () => {
       expect(hx.sys_creator).toBeUndefined();
     });
 
-    it('does not fabricate a display name it cannot know', () => {
-      // Nuxeo carries a username only. Filling firstName/lastName would need a /user call
-      // per contributor, and a guessed name is worse than an honest username.
+    it('composes a readable name from the username, never "undefined undefined"', () => {
+      // This assertion is the reverse of what it used to be, and the reason is worth keeping.
+      // It previously required firstName/lastName to be **unset**, on the grounds that Nuxeo
+      // carries a username only and a guessed name is worse than an honest username. That
+      // reasoning was right about not guessing and wrong about the consequence: upstream
+      // renders every `User` through `UserResolverService.getFullName`, which is
+      // `${firstName} ${lastName}` with no guard, so unset fields rendered the literal string
+      // "undefined undefined" in the adopted versions panel.
+      //
+      // The username is not a guess. Putting it in `firstName` and leaving `lastName` empty
+      // composes to the username itself.
       const user = mapNuxeoDocumentToHx(withPeople).sys_lastContributor;
-      expect(user?.firstName).toBeUndefined();
-      expect(user?.lastName).toBeUndefined();
+      expect(`${user?.firstName} ${user?.lastName}`.trim()).toBe('jdoe');
+      expect(`${user?.firstName} ${user?.lastName}`).not.toContain('undefined');
+      // Still not fabricated: there is no plausible email, so none is invented.
       expect(user?.email).toBeUndefined();
     });
   });

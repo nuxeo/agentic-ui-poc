@@ -45,6 +45,74 @@ const ENVIRONMENTAL_ERRORS = [
   '/agentic-ui-config/bootstrap.json',
 ];
 
+/** Where the versions fixture lives. Its own folder, so the list has one row to select. */
+const FIXTURE_FOLDER_PATH = '/default-domain/workspaces/kd-versions-evidence';
+const FIXTURE_DOC_NAME = 'versioned-file';
+const FIXTURE_DOC_TITLE = 'KD Versions Evidence';
+
+/**
+ * A document carrying exactly two Nuxeo versions, 0.1 and 0.2.
+ *
+ * Built through Nuxeo's REST API rather than through the UI: this is *setup*, and driving it
+ * through the surface under test would make the fixture and the assertion the same claim.
+ * `page.request` inherits the context's `httpCredentials`, which is what authenticates it.
+ *
+ * The document is deleted and recreated on every run so the version labels are the same every
+ * run. Only this folder is touched, and only the document this step created inside it.
+ */
+async function createVersionedFixture(page, h) {
+  const api = `${h.baseUrl}/nuxeo/api/v1`;
+  const json = { 'Content-Type': 'application/json' };
+  const post = (path, body) =>
+    page.request.post(`${api}${path}`, { headers: json, data: body, failOnStatusCode: false });
+
+  // The folder, created if absent. A 409 means it already exists, which is the normal case.
+  await post('/path/default-domain/workspaces', {
+    'entity-type': 'document',
+    name: 'kd-versions-evidence',
+    type: 'Folder',
+    properties: { 'dc:title': 'KD Versions Evidence' },
+  });
+
+  // A clean document each run: a leftover would already be at 0.3 or beyond.
+  await page.request.delete(`${api}/path${FIXTURE_FOLDER_PATH}/${FIXTURE_DOC_NAME}`, {
+    failOnStatusCode: false,
+  });
+  const created = await post(`/path${FIXTURE_FOLDER_PATH}`, {
+    'entity-type': 'document',
+    name: FIXTURE_DOC_NAME,
+    type: 'File',
+    properties: { 'dc:title': FIXTURE_DOC_TITLE, 'dc:description': 'created by phase-3 evidence' },
+  });
+  const uid = (await created.json())?.uid;
+  h.requirePrecondition(
+    'the versions fixture could be created in Nuxeo',
+    Boolean(uid),
+    `POST ${FIXTURE_FOLDER_PATH} returned ${created.status()} — without a fixture the versions ` +
+      'panel has nothing real to render, and an empty panel proves nothing.',
+  );
+
+  // Two check-ins, each preceded by an edit so Nuxeo has a change to snapshot.
+  for (const comment of ['first evidence version', 'second evidence version']) {
+    await post(`/id/${uid}/@op/Document.CheckIn`, {
+      params: { version: 'minor', comment },
+      context: {},
+    });
+    await page.request.put(`${api}/id/${uid}`, {
+      headers: json,
+      data: { 'entity-type': 'document', properties: { 'dc:description': comment } },
+      failOnStatusCode: false,
+    });
+  }
+
+  // Counted through the same operation the `QUERY` port uses, so the fixture's own count and
+  // the UI's are read from one source. Deliberately **not** the NXQL search: that path is
+  // OpenSearch-backed here and lags a check-in by seconds, which would make this flaky.
+  const listed = await post(`/id/${uid}/@op/Document.GetVersions`, { params: {}, context: {} });
+  const versionCount = ((await listed.json())?.entries ?? []).length;
+  return { uid, versionCount };
+}
+
 /**
  * @param {import('@playwright/test').Page} page
  * @param {ReturnType<import('../helpers.mjs').createHelpers>} h
@@ -52,19 +120,26 @@ const ENVIRONMENTAL_ERRORS = [
 export default async function run(page, h) {
   h.step('Precondition: the dev server serves adf-core\'s translation catalogue');
   // adf-hx components fetch `assets/adf-core/i18n/<lang>.json` at runtime, copied in by an
-  // asset glob in `angular.json`. A dev server started **before** that glob was added keeps
-  // 404ing it, which renders one accessibility label as a raw key and fills the console with
-  // 404s — a stale environment, not a defect. Asserted as a precondition so the run says so
-  // instead of reporting failures that look like broken components. The shipped case is gated
-  // separately by `bundle`, which asserts the file is present in `dist/`.
+  // asset glob in `angular.json`. Without it one accessibility label renders as a raw key and
+  // the console fills with 404s — asserted as a precondition so the run says so instead of
+  // reporting failures that look like broken components. The shipped case is gated separately
+  // by `bundle`, which asserts the file is present in `dist/`.
+  //
+  // This first failed for a reason worth recording: Angular's `development` configuration
+  // **replaces** the `assets` array rather than merging with it, and only the top-level
+  // `options` array had the adf-core glob. Every dev server ever started on this branch
+  // 404ed the catalogue, and this precondition's first message blamed a stale server and
+  // told the reader to restart it — which could never have helped.
   const catalogue = await page.request
     .get(`${h.baseUrl}/assets/adf-core/i18n/en.json`, { failOnStatusCode: false })
     .catch(() => null);
   h.requirePrecondition(
     "adf-core's catalogue is served",
     catalogue?.status() === 200,
-    `/assets/adf-core/i18n/en.json returned ${catalogue?.status() ?? 'no response'} — this dev ` +
-      'server predates the adf-core asset glob. Restart it: npx nx serve nuxeo-ui',
+    `/assets/adf-core/i18n/en.json returned ${catalogue?.status() ?? 'no response'} — the dev ` +
+      "server is not serving adf-core's assets. Check that the `development` configuration in " +
+      'angular.json still lists the adf-core glob (it replaces the array, it does not merge), ' +
+      'then restart: npx nx serve nuxeo-ui',
   );
   h.step('Precondition: a backend is reachable, so the list has real rows');
   const probe = await page.request
@@ -132,7 +207,21 @@ export default async function run(page, h) {
   const rowCheckboxes = page.locator('hxp-document-list adf-datatable-row mat-checkbox');
   const checkboxCount = await rowCheckboxes.count();
   h.check('every row offers a selection checkbox', checkboxCount >= 2, `found ${checkboxCount}`);
+  // Actually select one, and assert the checkbox reports itself checked. The first version of
+  // this step screenshotted the untouched list, so `row-selection.png` was byte-identical to
+  // `document-list.png` — the screenshot audit caught it. A picture of an unselected list is
+  // not evidence that selection works.
+  await rowCheckboxes.nth(1).click().catch(() => {});
+  await page.waitForTimeout(500);
+  const selectedCount = await page
+    .locator('hxp-document-list adf-datatable-row mat-checkbox.mat-mdc-checkbox-checked')
+    .count();
+  h.check('clicking a row checkbox selects that row', selectedCount === 1, `${selectedCount} checked`);
   await h.screenshot('row-selection');
+  // Cleared again, so the versions step below starts from a known empty selection rather than
+  // inheriting this one.
+  await rowCheckboxes.nth(1).click().catch(() => {});
+  await page.waitForTimeout(300);
 
   h.step('adf-core strings are translated, not raw keys');
   // adf-core ships its own catalogue and this app has to serve it. Without the asset glob
@@ -238,6 +327,113 @@ export default async function run(page, h) {
     `found ${treeNodes.length}: ${JSON.stringify(treeNodes.slice(0, 4))}`,
   );
   await h.screenshot('upstream-document-tree');
+
+  h.step('Fixture: a document with two known Nuxeo versions');
+  // Built by the step rather than assumed to exist, so the version *labels* below are
+  // deterministic. A fixture left over from a previous run would have grown to 0.3, 0.4 …
+  // and an assertion loose enough to tolerate that would no longer be asserting the
+  // major/minor composition — the one part of the mapping Nuxeo does not answer directly.
+  const fixture = await createVersionedFixture(page, h);
+  h.check(
+    'fixture document has two versions in Nuxeo',
+    fixture.versionCount === 2,
+    `Document.GetVersions reported ${fixture.versionCount} version(s) for ${fixture.uid}`,
+  );
+
+  h.step('Adopted: upstream versions panel over real Nuxeo versions');
+  await h.goTo(`/#/browse-adf-hx?path=${encodeURIComponent(FIXTURE_FOLDER_PATH)}`);
+  await page.waitForTimeout(2000);
+
+  // The guard first, because it is the difference between a feature and a decoration.
+  // Versions belong to a document; the folder being browsed is not one, so with nothing
+  // selected the tab must say so rather than render the folder's own "current version".
+  //
+  // The labels are read and reported rather than matched by an anchored regex. The first
+  // draft used `/^Versions$/`, which never matches: Playwright tests a regex against the raw
+  // `textContent`, and the template puts the label on its own line. The failure said "a
+  // Versions tab exists — false", which reads as a missing tab rather than a bad selector.
+  const tabLabels = await page.$$eval('hxp-browse-tabs [role="tab"]', (els) =>
+    els.map((el) => (el.textContent ?? '').trim()),
+  );
+  h.check(
+    'a Versions tab exists',
+    tabLabels.includes('Versions'),
+    `tab strip rendered ${JSON.stringify(tabLabels)}`,
+  );
+  const tab = (label) =>
+    page.locator('hxp-browse-tabs [role="tab"]').filter({ hasText: label }).first();
+  const versionsTab = tab('Versions');
+  await versionsTab.click();
+  await page.waitForTimeout(800);
+  const unselectedHint = await page
+    .locator('lib-browse-adf-hx-poc .hxp-poc-empty')
+    .first()
+    .innerText()
+    .catch(() => '');
+  h.check(
+    'with no row selected the tab asks for a selection instead of showing the folder',
+    /select a single document/i.test(unselectedHint),
+    `tab body read ${JSON.stringify(unselectedHint.slice(0, 120))}`,
+  );
+  h.check(
+    'no versions panel is rendered without a selection',
+    (await page.locator('hxp-manage-versions-sidebar').count()) === 0,
+  );
+  await h.screenshot('versions-no-selection');
+
+  // Now select the fixture row and come back.
+  await tab('View').click();
+  await page.waitForTimeout(1200);
+  const fixtureRow = page
+    .locator('hxp-document-list adf-datatable-row')
+    .filter({ hasText: FIXTURE_DOC_TITLE })
+    .first();
+  h.check('the fixture document is listed', (await fixtureRow.count()) > 0, FIXTURE_DOC_TITLE);
+  await fixtureRow.locator('mat-checkbox').first().click();
+  await page.waitForTimeout(600);
+  await versionsTab.click();
+  await page.waitForTimeout(2500);
+
+  await h.expectVisible('upstream versions panel rendered', 'hxp-manage-versions-sidebar');
+
+  const versionTitles = await page.$$eval(
+    'hxp-manage-versions-sidebar .hxp-version-item .hxp-version-title',
+    (els) => els.map((el) => (el.textContent ?? '').trim()).filter(Boolean),
+  );
+  // Three entries: upstream prepends the live document as "current version", then the two
+  // Nuxeo versions. Asserting only "the element rendered" would pass on an empty list, which
+  // is exactly how the panel fails when the `QUERY` port cannot answer the HXQL statement.
+  h.check(
+    'the panel lists the live document plus both Nuxeo versions',
+    versionTitles.length === 3,
+    `rendered ${versionTitles.length}: ${JSON.stringify(versionTitles)}`,
+  );
+  h.check(
+    'version labels are composed from Nuxeo major/minor, newest first',
+    versionTitles.includes('0.2') &&
+      versionTitles.includes('0.1') &&
+      versionTitles.indexOf('0.2') < versionTitles.indexOf('0.1'),
+    `rendered ${JSON.stringify(versionTitles)} — Nuxeo sends no versionLabel and ` +
+      'Document.GetVersions answers oldest-first, so both the composition and the order are ' +
+      "the bridge's work",
+  );
+
+  const panelText = await page
+    .locator('hxp-manage-versions-sidebar')
+    .first()
+    .innerText()
+    .catch(() => '');
+  h.check(
+    'the version creator resolves to a name, not a blank or "undefined"',
+    panelText.includes('Administrator') && !panelText.includes('undefined'),
+    `panel text was ${JSON.stringify(panelText.slice(0, 240))}`,
+  );
+  h.check(
+    'no untranslated MANAGE_VERSIONS keys are rendered',
+    !panelText.includes('MANAGE_VERSIONS.'),
+    `panel text was ${JSON.stringify(panelText.slice(0, 240))}`,
+  );
+  await h.screenshot('versions-panel');
 
   h.step('Health');
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);

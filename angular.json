@@ -31,6 +31,21 @@
                 "glob": "**/*",
                 "input": "node_modules/@alfresco/adf-core/bundles/assets/adf-core",
                 "output": "assets/adf-core"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-hx-content-services/icons/assets",
+                "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-hx-content-services/ui/assets",
+                "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-hx-content-services/services/assets",
+                "output": "assets"
               }
             ],
             "styles": ["apps/nuxeo-ui/src/styles.scss"]
@@ -74,6 +89,26 @@
                   "glob": "bootstrap.json",
                   "input": "nuxeo-agentic-ui-package/src/main/config",
                   "output": "agentic-ui-config"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-core/bundles/assets/adf-core",
+                  "output": "assets/adf-core"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-hx-content-services/icons/assets",
+                  "output": "assets"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-hx-content-services/ui/assets",
+                  "output": "assets"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-hx-content-services/services/assets",
+                  "output": "assets"
                 }
               ]
             }

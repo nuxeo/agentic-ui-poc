@@ -44,6 +44,40 @@ describe('NuxeoUserApi', () => {
     });
   });
 
+  /**
+   * Upstream composes every displayed user name as `` `${firstName} ${lastName}` `` with no
+   * guard (`UserResolverService.getFullName`). Nuxeo's own `Administrator` has both properties
+   * set to the empty string, so these two cases are the difference between a readable name and
+   * a blank cell wherever a user is rendered — version creators, contributors, permissions.
+   */
+  it('falls back to the username when Nuxeo has no first name', async () => {
+    const pending = api.getUserById('Administrator');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/user/Administrator'))
+      .flush({
+        'entity-type': 'user',
+        id: 'Administrator',
+        properties: { username: 'Administrator', firstName: '', lastName: '', groups: [] },
+      });
+
+    const { data } = await pending;
+    expect(data.firstName).toBe('Administrator');
+    // Not the username again: upstream joins the two with a space, and repeating it would
+    // render "Administrator Administrator".
+    expect(data.lastName).toBe('');
+    expect(`${data.firstName} ${data.lastName}`.trim()).toBe('Administrator');
+  });
+
+  it('never leaves the composed name as "undefined undefined"', async () => {
+    const pending = api.getUserById('sparse');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/user/sparse'))
+      .flush({ 'entity-type': 'user', id: 'sparse', properties: { username: 'sparse' } });
+
+    const { data } = await pending;
+    expect(`${data.firstName} ${data.lastName}`).not.toContain('undefined');
+  });
+
   it('refuses an empty search term rather than fetching the whole directory', async () => {
     await expect(api.searchUsersByName('')).rejects.toThrow('requires a search term');
   });

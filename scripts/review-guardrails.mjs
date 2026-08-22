@@ -340,12 +340,66 @@ function checkHardcodedSecrets() {
   }
 }
 
+/**
+ * Every asset glob in the base build options must also be in the `development` configuration.
+ *
+ * Angular **replaces** a configuration's `assets` array; it does not merge it with the base
+ * one. That cost this programme a full debugging session: only the base array carried
+ * adf-core's translation glob, so every dev server ever started on this branch 404ed the
+ * catalogue while the production build shipped it correctly. The symptom — one accessibility
+ * label rendering as a raw key — was diagnosed as a stale dev server needing a restart, which
+ * could never have fixed it.
+ *
+ * The `development` config is allowed *extra* entries (it has its own bootstrap.json glob);
+ * it may not be missing any.
+ */
+function checkAngularDevAssets() {
+  const file = 'angular.json';
+  if (!fileExists(file)) return;
+
+  /** @type {any} */
+  let doc;
+  try {
+    doc = JSON.parse(read(file));
+  } catch (error) {
+    fail(`${file} is not valid JSON: ${error instanceof Error ? error.message : error}`);
+    return;
+  }
+
+  for (const [projectName, project] of Object.entries(doc.projects ?? {})) {
+    const targets = /** @type {any} */ (project).targets ?? /** @type {any} */ (project).architect;
+    for (const [targetName, target] of Object.entries(targets ?? {})) {
+      const base = /** @type {any} */ (target).options?.assets;
+      if (!Array.isArray(base)) continue;
+      const key = (entry) =>
+        typeof entry === 'string' ? entry : `${entry.glob}|${entry.input}|${entry.output ?? ''}`;
+
+      for (const [configName, config] of Object.entries(
+        /** @type {any} */ (target).configurations ?? {},
+      )) {
+        const override = /** @type {any} */ (config).assets;
+        if (!Array.isArray(override)) continue; // inherits the base array; nothing to diverge
+        const present = new Set(override.map(key));
+        for (const entry of base) {
+          if (present.has(key(entry))) continue;
+          fail(
+            `${file}: ${projectName}:${targetName} configuration "${configName}" overrides ` +
+              `assets but omits ${JSON.stringify(entry)}. Angular replaces the array rather ` +
+              'than merging it, so this asset is served by the base config and 404s here.',
+          );
+        }
+      }
+    }
+  }
+}
+
 checkThemeTokens();
 checkDocsNumbering();
 checkVitestProjects();
 checkBlobUrlLifecycle();
 checkTypeSafetyEscapes();
 checkHardcodedSecrets();
+checkAngularDevAssets();
 
 if (warnings.length) {
   console.warn('\nReview guardrail warnings:');

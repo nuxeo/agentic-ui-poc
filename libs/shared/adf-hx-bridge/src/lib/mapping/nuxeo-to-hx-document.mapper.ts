@@ -42,18 +42,26 @@ function minimalEffectivePermissions(): string[] {
 /**
  * A Nuxeo username as an HxPR `User`.
  *
- * Nuxeo's `dc:lastContributor` and `dc:creator` are **usernames**, not user records, so this
- * is all the information the document itself carries. `firstName`, `lastName` and `email`
- * are deliberately left unset rather than guessed: filling them would need a `/user/{id}`
- * call per distinct contributor on every page, and a fabricated display name is worse than
- * an honest username.
+ * Nuxeo's `dc:lastContributor` and `dc:creator` are **usernames**, not user records, so the
+ * username is all the information the document itself carries. `email` stays unset: no
+ * plausible value exists for it and a fabricated one would be worse than none.
  *
- * If a full display name is ever wanted, the `USER` API port already resolves one — see
- * `NuxeoUserApi` — and the right place to add it is a cached batch lookup in the consumer,
- * not here in a synchronous mapper.
+ * `firstName` carries the username and `lastName` is empty, and that is not cosmetic.
+ * Upstream renders every `User` object through `UserResolverService.getFullName`, which is
+ * literally `` `${user.firstName} ${user.lastName}` `` with no guard — an earlier version of
+ * this function left both unset, and the adopted versions panel rendered its creator line as
+ * `undefined undefined`. Putting the username in `firstName` makes the composed name read
+ * `jdoe`; putting it in both would read `jdoe jdoe`.
+ *
+ * This is *not* a display-name lookup. A real first and last name needs a `/user/{id}` call,
+ * which a synchronous mapper cannot make. Where upstream is given a username **string** it
+ * resolves one itself through `UserService.resolveUser` — cached per id — and that path goes
+ * through `NuxeoUserApi`, which does return the real names when Nuxeo has them.
  */
 function userFromNuxeoUsername(value: unknown): User | undefined {
-  return typeof value === 'string' && value ? { id: value, username: value } : undefined;
+  return typeof value === 'string' && value
+    ? { id: value, username: value, firstName: value, lastName: '' }
+    : undefined;
 }
 
 /** Maps a Nuxeo document into the HxPR Document shape expected by adf-hx browse components. */

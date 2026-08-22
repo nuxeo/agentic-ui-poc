@@ -1,3 +1,4 @@
+import { AsyncPipe } from '@angular/common';
 import { EnvironmentProviders, makeEnvironmentProviders, type Provider } from '@angular/core';
 // The **upstream** tokens, not local clones. The bridge used to declare its own
 // `DOCUMENT_API_TOKEN` and `QUERY_API_TOKEN` with the same description strings; Angular
@@ -35,18 +36,20 @@ import { DocumentRouterService } from '@alfresco/adf-hx-content-services/service
 /**
  * Provider array for component-level registration.
  *
- * Seven of the twelve adf-hx API ports are bound here: `DOCUMENT`, `QUERY`, `VERSION`,
- * `COPY`, `MOVE`, `CHECKIN` and `DOWNLOAD`. That set was not chosen — it was discovered,
- * one `NG0201` at a time, by following what upstream actually requires. `DOCUMENT`,
- * `QUERY` and `VERSION` are `DocumentService`'s own constructor tokens; `COPY`, `MOVE`
- * and `CHECKIN` arrive three levels down through its `SingleItemCopyService`,
+ * **All twelve** adf-hx API ports are bound here. That set was not chosen — it was
+ * discovered, one `NG0201` at a time, by following what upstream actually requires.
+ * `DOCUMENT`, `QUERY` and `VERSION` are `DocumentService`'s own constructor tokens; `COPY`,
+ * `MOVE` and `CHECKIN` arrive three levels down through its `SingleItemCopyService`,
  * `SingleItemMoveService` and `CreateDocumentVersionService`; `DOWNLOAD` comes from the
- * context-menu handlers. Every link is non-optional, so this is the minimum that lets
- * any component reach `DocumentCacheService` at all.
+ * context-menu handlers; `USER`, `GROUP` and `RENDITIONS` from the panels. Every link is
+ * non-optional, so this is the minimum that lets any component reach `DocumentCacheService`
+ * at all.
  *
- * The remaining five — `GROUP`, `MODEL`, `RENDITIONS`, `UPLOAD`, `USER` — are unbound,
- * and a component needing one fails loudly at construction rather than misbehaving
- * quietly.
+ * Two of the twelve — `UPLOAD` and `MODEL` — are bound to implementations that **refuse**
+ * every call, because their Nuxeo equivalent is a different protocol rather than a different
+ * endpoint. See `nuxeo-unmapped-api.ts`. `MODEL` refusing is what blocks the metadata sidebar
+ * and the properties viewer: `DocumentModelService` calls `getModel()` from its constructor,
+ * so anything injecting it fails to construct rather than degrading.
  */
 export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   { provide: DOCUMENT_API_TOKEN, useClass: NuxeoDocumentApi },
@@ -82,6 +85,15 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   AdfHxBrowseMediaService,
   AdfHxBrowseFolderService,
   NuxeoDocumentRouterService,
+  // Not a Nuxeo binding — an upstream requirement with no other home.
+  //
+  // adf-hx's `UserResolverPipe` (`hxpUserResolverPipe`) calls `inject(AsyncPipe)` in its
+  // constructor, and `AsyncPipe` carries no `providedIn`, so it has to be provided by the
+  // host. Without it every component rendering a user name — the versions panel, and anything
+  // else reaching that pipe — throws `NG0201: No provider found for _AsyncPipe` while
+  // rendering. That failure is quiet in the worst way: the component's shell renders, its
+  // *content* does not, so the panel appears with a heading and an empty body.
+  AsyncPipe,
   // adf-hx's own `DocumentRouterService` builds `/{repository}/documents/{id}`, a route
   // structure this application does not have, and its breadcrumb feeds the result straight
   // into `[routerLink]`. It carries no `providedIn`, which makes it an intended substitution

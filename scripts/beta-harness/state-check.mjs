@@ -60,10 +60,29 @@ for (const p of state.phases ?? []) {
   const row = { id: p.id, status: p.status, manifest: null, verdict: null, checks: null };
 
   if (!EVIDENCE_REQUIRED.has(p.status)) {
-    // Nothing to prove — but a phase that is not complete must not carry evidence
-    // implying it is, and a blocked phase must say what blocks it.
+    // Nothing to *prove* — but if the phase cites a manifest anyway, resolve it and show it.
+    // This branch used to skip resolution entirely, so an in-progress phase citing a real
+    // passing capture was reported as "no evidence cited". Understating recorded work is the
+    // mirror image of the false-completion this script exists to prevent, and equally
+    // misleading to a reader. Enforcement still happens only for the statuses above.
     if (p.status === 'blocked' && !(p.blockedOn?.length > 0)) {
       problems.push({ phase: p.id, severity: 'fail', message: 'is `blocked` but does not say what blocks it.' });
+    }
+    if (p.evidence?.manifest) {
+      const partial = await resolveManifest(p.evidence.manifest);
+      if (partial.ok) {
+        row.manifest = partial.rel;
+        row.verdict = partial.manifest.verdict;
+        row.checks = partial.manifest.totals?.checks ?? 0;
+      } else {
+        // Not a failure — an in-progress phase is allowed to cite a run that has since been
+        // pruned — but it must not read as though the citation resolved.
+        problems.push({
+          phase: p.id,
+          severity: 'warn',
+          message: `cites evidence that does not resolve: ${partial.detail}`,
+        });
+      }
     }
     rows.push(row);
     continue;

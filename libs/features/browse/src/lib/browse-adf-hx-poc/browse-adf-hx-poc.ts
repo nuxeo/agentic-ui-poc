@@ -57,6 +57,7 @@ import { ADF_HX_NUXEO_BRIDGE_PROVIDERS } from '@agentic-ui/shared/adf-hx-bridge/
 import {
   HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
   HxpDocumentListComponent as UpstreamDocumentListComponent,
+  ManageVersionsSidebarComponent as UpstreamManageVersionsSidebarComponent,
 } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
 
@@ -112,6 +113,7 @@ const DATE_COLUMNS = new Set(['modified', 'created']);
     HxpBrowseToolbarComponent,
     UpstreamBreadcrumbComponent,
     UpstreamDocumentListComponent,
+    UpstreamManageVersionsSidebarComponent,
     HxpDocumentCardsComponent,
     HxpColumnPickerComponent,
     HxpBrowsePermissionsComponent,
@@ -226,6 +228,31 @@ export class BrowseAdfHxPocComponent {
   /** Row click, previously the local component's own `onRowClick`. */
   protected onUpstreamRowClicked(document: Document): void {
     this.documentRouter.navigateTo(document);
+  }
+
+  // ── Versions ──
+  //
+  // Versions belong to a document, not to the folder being browsed, so this tab acts on the
+  // row **selected** in the View tab rather than on `currentDocument()`. Binding the folder
+  // instead would have looked like a working feature: upstream always prepends a "current
+  // version" entry, so a folder with no versions still renders one row.
+
+  /** The rows checked in upstream's DataTable, from its `selectedDocuments` output. */
+  private readonly selectedDocuments = signal<readonly Document[]>([]);
+
+  /** The document the versions panel acts on, or `null` when the selection is not a single row. */
+  protected readonly versionsTarget = computed<Document | null>(() => {
+    const selection = this.selectedDocuments();
+    return selection.length === 1 ? selection[0] : null;
+  });
+
+  protected onSelectedDocuments(documents: Document[]): void {
+    this.selectedDocuments.set(documents);
+  }
+
+  /** Upstream's panel emits its own close; there is no drawer here, so fall back to View. */
+  protected onCloseVersions(): void {
+    this.activeTab.set('view');
   }
 
   private readonly route = inject(ActivatedRoute);
@@ -587,6 +614,9 @@ export class BrowseAdfHxPocComponent {
     this.auditEntries.set([]);
     this.trashedDocuments.set([]);
     this.activityEntries.set([]);
+    // The selection belongs to the folder that was on screen. Carrying it across a navigation
+    // would leave the Versions tab pointed at a document no longer in the list.
+    this.selectedDocuments.set([]);
   }
 
   private loadFolder(path: string): void {

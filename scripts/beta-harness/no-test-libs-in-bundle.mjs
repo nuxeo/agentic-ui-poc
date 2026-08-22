@@ -106,6 +106,25 @@ const REQUIRED_FILES = [
     why: "adf-core's own translation catalogue; without it adf-hx components render raw keys.",
     fix: 'Check the asset glob for node_modules/@alfresco/adf-core/bundles/assets/adf-core in angular.json.',
   },
+  // The adf-hx side of the same problem, added after the adopted versions panel shipped with
+  // `MANAGE_VERSIONS.DIALOG.TITLE` as its heading. Each path is one that `app-translate-loader.ts`
+  // seeds as a folder: a seeded folder whose file is not shipped fails **silently**, because the
+  // loader catches the 404 and returns `{}`. Nothing else in the pipeline notices.
+  {
+    path: 'assets/adf-enterprise-adf-hx-content-services-ui/i18n/en.json',
+    why: "adf-hx's UI catalogue — MANAGE_VERSIONS, DOCUMENT_LIST, DOCUMENT_TREE and the rest.",
+    fix: 'Check the asset glob for node_modules/@alfresco/adf-hx-content-services/ui/assets in angular.json.',
+  },
+  {
+    path: 'assets/adf-enterprise-adf-hx-content-services-services/i18n/en.json',
+    why: "adf-hx's services catalogue — DOWNLOAD_STATUS, PERMISSION_LEVEL.",
+    fix: 'Check the asset glob for node_modules/@alfresco/adf-hx-content-services/services/assets in angular.json.',
+  },
+  {
+    path: 'assets/images/Folder.svg',
+    why: "adf-hx's own icon set, referenced by the document tree and list as assets/images/*.svg.",
+    fix: 'Check the asset glob for node_modules/@alfresco/adf-hx-content-services/icons/assets in angular.json.',
+  },
 ];
 
 /** @type {{ pattern: string, file: string, count: number, why: string, fix: string }[]} */

@@ -269,7 +269,9 @@ DocumentService`. The chain, read from the published bundle:
     first page load over a slow link. The alternatives, if the figure is ever refused,
     are trimming existing weight out of the startup bundle (real work, uncertain payoff)
     or not adopting adf-hx at all, which abandons the premise of the Beta.
-- **THE CURRENT PHASE 3 BLOCKER IS A BUNDLE-BOUNDARY PROBLEM, NOT A PORT PROBLEM.**
+- **~~THE CURRENT PHASE 3 BLOCKER~~ RESOLVED — kept because the measurements are the fact.**
+  A bundle-boundary problem, not a port problem, closed by the secondary entry point
+  `@agentic-ui/shared/adf-hx-bridge/providers`.
   `apps/nuxeo-ui/src/app/shell/app-shell.component.ts` and `nav-drawer.component.ts`
   both import `@agentic-ui/shared/adf-hx-bridge`, whose single barrel re-exports
   `provide-adf-hx-nuxeo-bridge.ts`. The moment that file imports anything from
@@ -279,8 +281,9 @@ DocumentService`. The chain, read from the published bundle:
   2.00 MB `maximumError`. Removing the ports from the barrel's exports does not help —
   the providers file still imports them. **Rebinding to upstream tokens at all requires
   a secondary entry point in the bridge library, or the shell must stop importing the
-  bridge barrel.** That is the next piece of work, and it is architectural rather than
-  incremental.
+  bridge barrel.** The entry point was built and the initial bundle returned to 1.71 MB with
+  the ports bound; it is now 3.24 MB for a different and accepted reason — see the
+  root-injector fact above. **Nothing eagerly loaded may import from `providers.ts`.**
 - **The non-overwriting installer path targets `nxserver/nuxeo.war/agentic-ui-config`.**
   A second `install.xml` copy step with `overwrite="false"` puts customer
   configuration in a _sibling_ of the bundle, outside the destructive copy's
@@ -303,6 +306,57 @@ DocumentService`. The chain, read from the published bundle:
   does not re-run `APP_INITIALIZER`. Any capture that changes configuration must
   force a full reload, and route interception must send `Cache-Control: no-store`
   or the browser answers from cache and the interception is never seen.
+- **Angular's build configurations REPLACE `assets`; they do not merge it.** Only
+  `architect.build.options.assets` carried adf-core's translation glob, so **every dev server
+  ever started on this branch 404ed `/assets/adf-core/i18n/en.json`** while the production
+  build shipped it correctly. This was diagnosed for a full session as a stale dev server
+  needing a restart, which could never have helped. A `guardrails` check now fails when any
+  configuration overrides `assets` and omits a base entry. **If a dev server 404s an asset the
+  production build ships, check the `development` array before anything else.**
+- **adf-hx's own i18n catalogues will not load themselves.** adf-hx components _do_ register
+  them — `provideTranslations('adf-enterprise-adf-hx-content-services-ui', …)` sits in each
+  component's own `providers` — but registration happens at **component construction**, long
+  after the language has loaded, and `AppTranslateLoader.init` is a no-op by design. So the
+  registration lands and the strings never arrive: the versions panel rendered
+  `MANAGE_VERSIONS.DIALOG.TITLE` as its heading. Both adf-hx catalogues are now **seeded**
+  alongside adf-core's in `SEEDED_FOLDERS`, and the `bundle` gate asserts all three ship.
+  **Adopting a new adf-hx component means checking its keys resolve, not just that it renders.**
+- **`AsyncPipe` must be provided for any adf-hx component that renders a user.**
+  `UserResolverPipe` calls `inject(AsyncPipe)` in its constructor and `AsyncPipe` carries no
+  `providedIn`. Missing, it throws `NG0201` **while rendering** — the component's shell appears
+  and its content does not, which reads as an empty panel rather than an injector error. It is
+  in `ADF_HX_NUXEO_BRIDGE_PROVIDERS`.
+- **Upstream renders every user as `` `${firstName} ${lastName}` `` with no guard.**
+  `UserResolverService.getFullName` is exactly that. Nuxeo's own `Administrator` has both
+  properties set to the **empty string**, and a `User` built from a bare username has both
+  **unset** — which rendered the literal `undefined undefined`. Both mappers now put the
+  username in `firstName` and leave `lastName` empty. **Never hand upstream a `User` with an
+  unset `firstName`.**
+- **`UserService.resolveUser` caches per id.** Given a username _string_, upstream resolves it
+  through the `USER` port once and caches the observable for the app's lifetime. That makes a
+  display-name lookup far cheaper than the earlier assessment of "a `/user/{id}` call per
+  distinct contributor on every page" implied, and it is the live path in the versions panel.
+- **Nuxeo sends no `versionLabel`.** Its REST payload carries `uid:major_version` and
+  `uid:minor_version` as separate integers and no composed label, so `sysver_title` must be
+  built. And **a version's `parentRef` is the live document's _folder_, not the live document** —
+  the live document id is `versionableId`, which is what `sys_parentId` must carry, because
+  `DocumentVersionsService.getCurrentDocument` follows it.
+- **`/search/lang/NXQL/execute` is OpenSearch-backed here and lags.** Measured: immediately
+  after two `Document.CheckIn` calls the NXQL query for a document's versions returned **one**
+  of the two, and both only once the index caught up. `Document.GetVersions` reads the
+  repository directly and returned both immediately. **Anything that must reflect a write it
+  just made cannot go through the search endpoint.**
+- **`Document.GetVersions` answers oldest-first**, and adf-hx's HXQL asks for
+  `ORDER BY sysver_created DESC`. The ordering is applied in the `QUERY` port; a port that
+  returned Nuxeo's order would look correct on any single-version document.
+- **`@versions` is not a registered adapter on this Nuxeo distribution.**
+  `GET /id/{uid}/@versions` answers `404 Service versions not found for object`. Use the
+  `Document.GetVersions` operation instead.
+- **`DocumentModelService` calls `getModel()` from its constructor.** It is
+  `providedIn: 'root'` and injects `MODEL_API_TOKEN`, so with `MODEL` bound to a refusing
+  implementation **everything behind `DOCUMENT_PROPERTIES_SERVICE` fails to construct** rather
+  than degrading — metadata-sidebar, and probably properties-viewer. This is what blocks them,
+  and no amount of component-level work moves it.
 
 ---
 

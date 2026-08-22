@@ -6,13 +6,28 @@ import { UserService, type NuxeoGroup, type NuxeoUser } from '@agentic-ui/shared
 
 import type { AxiosLikeResponse } from './nuxeo-version-api';
 
-/** Nuxeo user -> HxPR `User`. Nuxeo nests the names under `properties`; HxPR flattens them. */
+/**
+ * Nuxeo user -> HxPR `User`. Nuxeo nests the names under `properties`; HxPR flattens them.
+ *
+ * `firstName` falls back to the username, and that fallback is load-bearing rather than
+ * cosmetic. Upstream renders every resolved user through
+ * `UserResolverService.getFullName`, which is literally `` `${user.firstName} ${user.lastName}` ``
+ * — no guard. Nuxeo's own `Administrator` has `firstName: ''` and `lastName: ''` (verified
+ * against the local instance), so without a fallback every version creator, contributor and
+ * permission holder renders as a bare space, and any user missing the properties entirely
+ * renders as `undefined undefined`.
+ *
+ * The username is the honest substitute: it is what Nuxeo knows about that user. `lastName`
+ * defaults to an empty string rather than repeating the username, so the composed name is
+ * `jdoe` and not `jdoe jdoe`.
+ */
 function mapUser(nuxeo: NuxeoUser): User {
+  const username = nuxeo.properties?.username ?? nuxeo.id;
   return {
     id: nuxeo.id,
-    username: nuxeo.properties?.username ?? nuxeo.id,
-    firstName: nuxeo.properties?.firstName,
-    lastName: nuxeo.properties?.lastName,
+    username,
+    firstName: nuxeo.properties?.firstName || username,
+    lastName: nuxeo.properties?.lastName ?? '',
     email: nuxeo.properties?.email,
   };
 }

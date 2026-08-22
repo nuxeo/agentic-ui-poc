@@ -39,12 +39,34 @@ interface TranslationFolder {
 }
 
 /**
- * adf-core ships its component strings here, and its own loader seeds this folder in its
- * constructor. Seeded for the same reason: without it every adf-hx component renders raw
- * keys such as `ADF-DATATABLE.ACCESSIBILITY.SELECT_ALL`. The files are copied in by an
- * asset glob in `angular.json`.
+ * Catalogues seeded at construction, keyed by the name their owner registers under.
+ *
+ * adf-core's own loader seeds its folder in its constructor, and these are seeded for the same
+ * reason: without them adf-hx components render raw keys — `ADF-DATATABLE.ACCESSIBILITY.SELECT_ALL`
+ * from adf-core, `MANAGE_VERSIONS.DIALOG.TITLE` from adf-hx. All three are copied in by asset
+ * globs in `angular.json`.
+ *
+ * The adf-hx folders are seeded rather than left to arrive on their own, and that distinction
+ * is the bug this fixes. adf-hx components *do* register their catalogue — `provideTranslations`
+ * in each component's own `providers` — but registration happens when the component is
+ * constructed, which is long after the language has loaded, and `init` below is a no-op. So the
+ * registration landed and the strings still never arrived. The versions panel rendered
+ * `MANAGE_VERSIONS.DIALOG.TITLE` as its heading.
+ *
+ * The names match upstream's exactly so `providerRegistered` recognises its own registration
+ * and `registerProvider` updates the path in place instead of adding a duplicate folder.
  */
-const ADF_CORE_FOLDER: TranslationFolder = { name: 'adf-core', path: 'assets/adf-core' };
+const SEEDED_FOLDERS: readonly TranslationFolder[] = [
+  { name: 'adf-core', path: 'assets/adf-core' },
+  {
+    name: 'adf-enterprise-adf-hx-content-services-ui',
+    path: 'assets/adf-enterprise-adf-hx-content-services-ui',
+  },
+  {
+    name: 'adf-enterprise-adf-hx-content-services-services',
+    path: 'assets/adf-enterprise-adf-hx-content-services-services',
+  },
+];
 
 /**
  * Loads the shipped translation catalogue and layers the manifest's `labels` over it.
@@ -84,7 +106,7 @@ export class AppTranslateLoader implements TranslateLoader {
   private readonly config = inject(AppConfigService);
 
   private defaultLang = 'en';
-  private readonly folders: TranslationFolder[] = [{ ...ADF_CORE_FOLDER }];
+  private readonly folders: TranslationFolder[] = SEEDED_FOLDERS.map((folder) => ({ ...folder }));
   /** Last merged folder catalogue per language, for the synchronous read below. */
   private readonly folderCache = new Map<string, Record<string, string>>();
 
