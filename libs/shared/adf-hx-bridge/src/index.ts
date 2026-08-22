@@ -22,7 +22,6 @@ export * from './lib/utils/adf-hx-browse-tree.utils';
 export * from './lib/utils/hxp-browse-tabs.utils';
 export * from './lib/utils/hxp-permission.utils';
 export * from './lib/utils/hxp-relative-time.utils';
-export * from './lib/ui/hxp-breadcrumb/hxp-breadcrumb.component';
 export * from './lib/ui/hxp-folder-header/hxp-folder-header.component';
 export * from './lib/ui/hxp-domain-hint/hxp-domain-hint.component';
 export * from './lib/ui/hxp-browse-toolbar/hxp-browse-toolbar.component';

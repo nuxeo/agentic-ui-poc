@@ -50,6 +50,16 @@
         "cwd": "{workspaceRoot}",
         "command": "ng test nuxeo-ui --no-watch --browsers=ChromeHeadless"
       }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{workspaceRoot}/dist/out-tsc/apps/nuxeo-ui"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ngc -p apps/nuxeo-ui/tsconfig.app.json --outDir dist/out-tsc/apps/nuxeo-ui"
+      }
     }
   }
 }

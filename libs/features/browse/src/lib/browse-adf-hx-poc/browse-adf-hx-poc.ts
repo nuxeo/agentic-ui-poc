@@ -36,7 +36,6 @@ import {
   HxpColumnPickerComponent,
   type HxpPickableColumn,
   NuxeoDocumentRouterService,
-  HxpBreadcrumbComponent,
   HxpDomainHintComponent,
   HxpFolderHeaderComponent,
   HxpBrowseTrashComponent,
@@ -55,7 +54,10 @@ import {
 // `@alfresco/adf-hx-*`, and this route is lazily loaded — importing it from the main
 // barrel instead would put adf-core in the initial bundle. See `src/providers.ts`.
 import { ADF_HX_NUXEO_BRIDGE_PROVIDERS } from '@agentic-ui/shared/adf-hx-bridge/providers';
-import { HxpDocumentListComponent as UpstreamDocumentListComponent } from '@alfresco/adf-hx-content-services/ui';
+import {
+  HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
+  HxpDocumentListComponent as UpstreamDocumentListComponent,
+} from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
 
 import {
@@ -105,10 +107,10 @@ const DATE_COLUMNS = new Set(['modified', 'created']);
   styleUrl: './browse-adf-hx-poc.scss',
   imports: [
     HxpFolderHeaderComponent,
-    HxpBreadcrumbComponent,
     HxpDomainHintComponent,
     HxpBrowseTabsComponent,
     HxpBrowseToolbarComponent,
+    UpstreamBreadcrumbComponent,
     UpstreamDocumentListComponent,
     HxpDocumentCardsComponent,
     HxpColumnPickerComponent,

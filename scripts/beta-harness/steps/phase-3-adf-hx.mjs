@@ -130,6 +130,35 @@ export default async function run(page, h) {
     `found ${rawKeys.length}: ${JSON.stringify(rawKeys.slice(0, 3))}`,
   );
 
+  h.step('Upstream breadcrumb renders, and its links point at OUR routes');
+  // The interesting part is not that it renders. adf-hx's own `DocumentRouterService` builds
+  // `/{repository}/documents/{id}`, which this app has no route for, and the breadcrumb feeds
+  // that straight into `[routerLink]`. `NuxeoDocumentRouterService` is bound against it, so
+  // the assertion is on the hrefs the crumbs actually carry.
+  // Two levels deep, deliberately. Upstream's breadcrumb renders **ancestors only** — never
+  // the current document — and only links a crumb that is not the last. At the root there is
+  // one crumb and at a top-level folder still only one, so neither state has a link and the
+  // assertion below would fail for the wrong reason. Two earlier runs of this step did
+  // exactly that. `/default-domain/workspaces` gives root + default-domain, so the first is
+  // linked.
+  await h.goTo('/#/browse-adf-hx?path=%2Fdefault-domain%2Fworkspaces');
+  await page.waitForTimeout(2000);
+  await h.expectVisible('upstream breadcrumb rendered', 'hxp-ui-breadcrumb');
+  const crumbHrefs = await page.$$eval('hxp-breadcrumb a[href]', (as) =>
+    as.map((a) => a.getAttribute('href') ?? ''),
+  );
+  h.check(
+    'breadcrumb links target the adf-hx browse route',
+    crumbHrefs.length > 0 && crumbHrefs.every((href) => href.includes('browse-adf-hx')),
+    `hrefs were ${JSON.stringify(crumbHrefs.slice(0, 4))}`,
+  );
+  h.check(
+    'no link points at upstream\'s /{repository}/documents/ shape',
+    !crumbHrefs.some((href) => href.includes('/documents/')),
+    `hrefs were ${JSON.stringify(crumbHrefs.slice(0, 4))}`,
+  );
+  await h.screenshot('upstream-breadcrumb');
+
   h.step('Rehomed: the column picker is back, and driven by Layer 1');
   // Upstream's DataTable has no picker. Losing it would have been a silent regression, so
   // it moved to the host. Asserting it here is what makes "rehomed" a fact.

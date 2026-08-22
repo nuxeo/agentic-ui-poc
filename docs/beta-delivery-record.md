@@ -106,6 +106,16 @@ knowing:
 - The hand-written `hxp-document-list` is **deleted**, after its four extra capabilities were
   rehomed: the column picker (`hxp-column-picker`, driven by the Layer 1 descriptors), the
   card view with thumbnails (`hxp-document-cards`), the empty state and the error/retry path.
+- **The real `HxpBreadcrumbComponent` is adopted** and the hand-written one deleted. Same
+  selector and same `[document]` input, so the swap itself was one line — but upstream's
+  `DocumentRouterService` builds `/{repository}/documents/{id}`, a route this application does
+  not have, and its breadcrumb feeds that straight into `[routerLink]`. That service carries no
+  `providedIn`, which makes it an intended substitution point:
+  `NuxeoDocumentRouterService` is bound against it and the capture asserts every crumb link
+  targets `browse-adf-hx` and none targets upstream's shape.
+- **`nuxeo-ui` now has a `typecheck` target.** Two real type errors escaped
+  `nx affected -t typecheck` during Phase 3 because the app had none; the gap is closed and
+  proven by reintroducing one of them.
 
 ---
 
@@ -244,15 +254,16 @@ Nothing here is a surprise later.
    of five recorded bridge defects. The other four are closed, most recently the
    `browse_column_settings` localStorage key that the POC and production browse shared, so
    choosing columns on either surface silently overwrote the other.
-3. **Seven components remain**: breadcrumb, document-tree, metadata-sidebar, permissions,
-   manage-versions, document-viewer, search. Cheaper now that the ports are done.
+3. **Six components remain**: document-tree, metadata-sidebar, permissions, manage-versions,
+   document-viewer, search. Breadcrumb is done. Cheaper now that the ports are done — the
+   breadcrumb needed one line plus a router-service override.
 4. **`UPLOAD` and `MODEL` refuse.** Mapping either is real work, not a rename.
 5. **`getRenditions` is not a discovery call** — it returns a fixed `thumbnail, pdf` pair,
    because Nuxeo exposes no rendition-enumeration endpoint through this bridge.
 6. **`routes`, `toolbar`, `contextMenu`, `tabs` slots are reserved and unread.**
 7. **i18n covers three templates.** Inside a phase recorded complete.
-8. **`nuxeo-ui` has no `typecheck` target**, so app-level type errors escape that gate and
-   surface only in `build`. Two did during Phase 3.
+8. ~~**`nuxeo-ui` has no `typecheck` target.**~~ **Closed** — added and proven by
+   reintroducing the exact typo that escaped twice.
 9. **The marketplace package has never been built, installed and upgraded on a real server**,
    so risk R7 stays Medium. That is the Phase 6 upgrade rehearsal.
 10. **Independent validation has never run** for Phase 1 or Phase 2, and the multi-model

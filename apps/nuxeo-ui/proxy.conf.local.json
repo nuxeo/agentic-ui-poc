@@ -1,0 +1,21 @@
+{
+  "/nuxeo/agent": {
+    "target": "http://localhost:3100",
+    "secure": false,
+    "changeOrigin": true,
+    "ws": false,
+    "proxyTimeout": 600000,
+    "timeout": 600000,
+    "pathRewrite": { "^/nuxeo": "" }
+  },
+  "/nuxeo": {
+    "target": "http://localhost:8090",
+    "secure": false,
+    "changeOrigin": true,
+    "autoRewrite": true,
+    "headers": {
+      "X-NXproperties": "*",
+      "Origin": "http://localhost:8090"
+    }
+  }
+}

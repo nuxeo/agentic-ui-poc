@@ -30,6 +30,7 @@ import { AdfHxBrowseFolderService } from '../services/adf-hx-browse-folder.servi
 import { AdfHxBrowseMediaService } from '../services/adf-hx-browse-media.service';
 import { AdfHxDocumentService } from '../services/adf-hx-document.service';
 import { NuxeoDocumentRouterService } from '../services/nuxeo-document-router.service';
+import { DocumentRouterService } from '@alfresco/adf-hx-content-services/services';
 
 /**
  * Provider array for component-level registration.
@@ -81,6 +82,11 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   AdfHxBrowseMediaService,
   AdfHxBrowseFolderService,
   NuxeoDocumentRouterService,
+  // adf-hx's own `DocumentRouterService` builds `/{repository}/documents/{id}`, a route
+  // structure this application does not have, and its breadcrumb feeds the result straight
+  // into `[routerLink]`. It carries no `providedIn`, which makes it an intended substitution
+  // point rather than a monkey-patch.
+  { provide: DocumentRouterService, useExisting: NuxeoDocumentRouterService },
 ];
 
 /** Wires Nuxeo-backed HxPR API facades for adf-hx browse POC (Scope A). */
