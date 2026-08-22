@@ -42,6 +42,7 @@ describe('NuxeoDocumentApi', () => {
     const response = await pending;
     expect(response.data.sys_id).toBe('doc-1');
     expect(response.data.sys_title).toBe('Invoice');
-    expect(response.data.sys_primaryType).toBe('SysFile');
+    // The Nuxeo doctype: `sys_primaryType` keys into `Model.primaryTypes`.
+    expect(response.data.sys_primaryType).toBe('File');
   });
 });

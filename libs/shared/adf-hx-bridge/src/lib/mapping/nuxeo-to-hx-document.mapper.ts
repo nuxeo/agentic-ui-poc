@@ -1,6 +1,6 @@
 import type { Document, User } from '@hylandsoftware/hxcs-js-client';
 import { isFolderishDocument, type NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
-import { DEFAULT_REPOSITORY_ID } from '../tokens/adf-hx-bridge.tokens';
+import { DEFAULT_REPOSITORY_ID, SYS_ROOT } from '../tokens/adf-hx-bridge.tokens';
 
 const FOLDERISH_NUXEO_TYPES = new Set([
   'Root',
@@ -25,14 +25,32 @@ function parentPathFrom(nuxeoPath: string): string {
   return segments.length === 0 ? '/' : `/${segments.join('/')}`;
 }
 
+/**
+ * `sys_primaryType` is the **key into the type registry**, so it carries the Nuxeo doctype name.
+ *
+ * This used to return a synthetic `SysFolder` / `SysFile`, and that was a mistake of ours alone:
+ * the `MODEL` port keys `primaryTypes` by Nuxeo doctype — `File`, `Folder`, `Workspace`, sixty of
+ * them — because that is the only registry Nuxeo has. A field must agree with the registry it
+ * indexes. Every upstream use of `sys_primaryType` except `isRoot()` is a lookup or a query:
+ *
+ * - `createCardItemUtil` renders it as a select whose options come from the model, so a synthetic
+ *   value matched no option and the properties panel's **Category field rendered empty**;
+ * - `extractCustomSchemaFields(sys_primaryType)` reads `primaryTypes[type].schemas`, so the
+ *   metadata sidebar would find **no custom schema fields**;
+ * - `getSubtypes(primaryType)` silently falls back to all sixty types;
+ * - the document-category search filter emits `sys_primaryType IN ('…')` as HXQL, which would
+ *   have queried a type name Nuxeo has never heard of.
+ *
+ * Nothing anywhere — upstream or ours — compares this against `SysFolder` or `SysFile`.
+ * Folderishness travels on `sys_isFolderish` and `sys_mixinTypes`, both set independently below,
+ * which is why dropping the synthetic classification costs nothing.
+ *
+ * **`SysRoot` stays**, and is the one honest synthesis here: the repository root this bridge
+ * presents is not a Nuxeo document at all. Both `isHxRootDocument()` and upstream's `isRoot()`
+ * test for it. Nuxeo's real `Root` doctype maps to it too, so the two roots agree.
+ */
 function mapNuxeoTypeToHxPrimaryType(nuxeoType: string): string {
-  if (nuxeoType === 'Root') {
-    return 'SysRoot';
-  }
-  if (FOLDERISH_NUXEO_TYPES.has(nuxeoType)) {
-    return 'SysFolder';
-  }
-  return 'SysFile';
+  return nuxeoType === 'Root' ? SYS_ROOT : nuxeoType;
 }
 
 function minimalEffectivePermissions(): string[] {
@@ -207,7 +225,12 @@ export function syntheticHxRepositoryRoot(repositoryId: string = DEFAULT_REPOSIT
     sys_name: 'Repository',
     sys_path: '/',
     sys_parentPath: '/',
-    sys_primaryType: 'SysRoot',
+    sys_primaryType: SYS_ROOT,
+    // The folder header renders `sys_typeLabel ?? sys_primaryType` as its subtitle, and with this
+    // unset the POC's landing screen read **"Repository / SysRoot"** — an internal identifier shown
+    // to a user. `SysRoot` is the right *primary type*, because `isRoot()` tests for it; it is not
+    // a label. "Repository" is what this node is, and unlike a doctype name it is not a guess.
+    sys_typeLabel: 'Repository',
     sys_isFolderish: true,
     sys_repository: repositoryId,
     sys_mixinTypes: ['SysFolderish'],

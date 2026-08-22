@@ -26,10 +26,13 @@ describe('nuxeo-to-hx-document.mapper', () => {
     expect(hx.sys_parentPath).toBe('/default-domain/workspaces');
     expect(hx.sys_parentId).toBe('domain-uid');
     expect(hx.sys_isFolderish).toBe(true);
-    expect(hx.sys_primaryType).toBe('SysFolder');
+    // The **Nuxeo** doctype, not a synthetic `SysFolder`. `sys_primaryType` keys into
+    // `Model.primaryTypes`, which the MODEL port fills with Nuxeo's sixty doctypes, so a
+    // synthetic value indexes nothing — see the mapper's note.
+    expect(hx.sys_primaryType).toBe('Workspace');
   });
 
-  it('maps file documents as SysFile', () => {
+  it('keeps the Nuxeo doctype for a file, and stays folderish-free', () => {
     const file: NuxeoDocument = {
       uid: 'file-uid',
       title: 'Report.pdf',
@@ -41,8 +44,34 @@ describe('nuxeo-to-hx-document.mapper', () => {
 
     const hx = mapNuxeoDocumentToHx(file);
     expect(hx.sys_isFolderish).toBe(false);
-    expect(hx.sys_primaryType).toBe('SysFile');
+    expect(hx.sys_primaryType).toBe('File');
     expect(hx.sys_contentType).toBe('application/pdf');
+  });
+
+  it('keeps SysRoot for the repository root, which is not a Nuxeo document', () => {
+    // The one honest synthesis. `isHxRootDocument()` and upstream's `isRoot()` both test for it,
+    // and Nuxeo's own `Root` doctype maps to it so the two roots agree.
+    const nuxeoRoot = {
+      uid: 'root-uid',
+      title: 'Root',
+      type: 'Root',
+      path: '/',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    } as unknown as Parameters<typeof mapNuxeoDocumentToHx>[0];
+    expect(mapNuxeoDocumentToHx(nuxeoRoot).sys_primaryType).toBe('SysRoot');
+    expect(syntheticHxRepositoryRoot().sys_primaryType).toBe('SysRoot');
+  });
+
+  it('never emits the synthetic SysFolder or SysFile it used to', () => {
+    // Regression guard. Nothing compares `sys_primaryType` against these — folderishness travels
+    // on `sys_isFolderish` and `sys_mixinTypes` — but a reintroduced synthetic value would empty
+    // the properties panel's Category select and break `extractCustomSchemaFields`, both silently.
+    for (const type of ['Workspace', 'File', 'Note', 'Folder', 'Domain']) {
+      const doc = { ...workspace, type } as typeof workspace;
+      expect(['SysFolder', 'SysFile']).not.toContain(mapNuxeoDocumentToHx(doc).sys_primaryType);
+      expect(mapNuxeoDocumentToHx(doc).sys_primaryType).toBe(type);
+    }
   });
 
   /**
@@ -156,6 +185,15 @@ describe('nuxeo-to-hx-document.mapper', () => {
       } as typeof invoice;
       expect(mapNuxeoDocumentToHx(spoofed).sys_title).toBe('Invoice');
     });
+  });
+
+  it('labels the synthetic root "Repository", not "SysRoot"', () => {
+    // The folder header renders `sys_typeLabel ?? sys_primaryType`, so with no label the POC's
+    // landing screen read "Repository / SysRoot" — an internal identifier on screen.
+    const root = syntheticHxRepositoryRoot();
+    expect(root['sys_typeLabel']).toBe('Repository');
+    // Still `SysRoot` as the primary type, because `isRoot()` tests for exactly that.
+    expect(root.sys_primaryType).toBe('SysRoot');
   });
 
   it('builds synthetic repository root', () => {

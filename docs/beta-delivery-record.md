@@ -31,7 +31,7 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 | 0 — Unblock and verify                  | **complete**                                           | `phase-0-baseline` 14/14 |
 | 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                    | `phase-1-config` 39/39   |
 | 2 — Layer 1: extension registry         | **complete**, carry-forward named                      | `phase-2-registry` 46/46 |
-| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 5 components adopted | `phase-3-adf-hx` 41/41   |
+| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 5 components adopted | `phase-3-adf-hx` 43/43   |
 | 4 — Layer 2: publishable platform       | not started                                            | —                        |
 | 5 — Layer 3: agent harness              | partial (the harness below exists)                     | —                        |
 | 6 — Beta quality bar                    | partial — coverage and a11y now _measured_             | `phase-6-a11y` 12/12     |
@@ -124,6 +124,25 @@ knowing:
 - **`nuxeo-ui` now has a `typecheck` target.** Two real type errors escaped
   `nx affected -t typecheck` during Phase 3 because the app had none; the gap is closed and
   proven by reintroducing one of them.
+- **`sys_primaryType` carries the Nuxeo doctype name**, with `SysRoot` kept only for the
+  synthetic repository root. It had been a synthetic `SysFolder`/`SysFile`, and that was a mistake
+  of ours alone: `sys_primaryType` is the **key into `Model.primaryTypes`**, and the `MODEL` port
+  fills that with Nuxeo's sixty doctypes because it is the only registry Nuxeo has. A field has to
+  agree with the registry it indexes.
+  - One visible symptom and three latent ones: the properties panel's **Category select rendered
+    empty**; `extractCustomSchemaFields` would find **no custom schema fields** for the metadata
+    sidebar; `getSubtypes` silently fell back to all sixty types; and the document-category
+    **search filter** emits `sys_primaryType IN ('…')` as HXQL, which would have queried a type
+    name Nuxeo has never heard of. Two of those land on components still to be adopted.
+  - Safe because **nothing compares it against `SysFolder`/`SysFile`** — folderishness travels on
+    `sys_isFolderish` and `sys_mixinTypes`, and all four of our own readers were already written
+    as `sys_typeLabel ?? sys_primaryType`, so their fallback merely stopped being wrong.
+    `isRoot()` still works, because `SysRoot` survives for the one node that genuinely is not a
+    Nuxeo document.
+- **The POC landing screen no longer reads "Repository / SysRoot".** The folder header renders
+  `sys_typeLabel ?? sys_primaryType` and the synthetic root carried no label — the same class of
+  defect, an internal identifier reaching a user, found in the same screenshot. Both fixes have an
+  assertion, and both were **watched fail on purpose** by reverting them.
 - **The real `ManageVersionsSidebarComponent` is adopted**, in a new **Versions** tab. This is
   the first adoption that **adds** a capability rather than replacing one of ours — the POC had
   no version history at all — and the first thing to drive the `VERSION` and `QUERY` ports
@@ -336,12 +355,7 @@ Nothing here is a surprise later.
    breadcrumb, tree, manage-versions and the **properties panel** are done.
    The `MODEL` blocker is closed: the read side is implemented and the panel renders a document's
    real Nuxeo metadata with correct types.
-   Two named gaps inside the adopted panel:
-   - **`Category` renders empty.** `sys_primaryType` is our synthetic `SysFile`/`SysFolder` while
-     the model's `primaryTypes` are Nuxeo names (`File`, `Folder`, `Workspace`), so upstream's
-     select has no option matching the current value. Cosmetic in a read-only panel; fixing it
-     means deciding whether `sys_primaryType` should carry the Nuxeo type name, which changes
-     `isRoot()` and the browse type column with it.
+   One named gap inside the adopted panel:
    - **The newer, editable metadata sidebar is not adopted.** It sits behind adf-hx's
      `CIC_WORKSPACE_NEW_METADATA_PANEL` flag; the flag is off, so the read-oriented legacy panel
      renders. Turning it on needs `HxpMetadataCacheService`, which has no `providedIn` **and is

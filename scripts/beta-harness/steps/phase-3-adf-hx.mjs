@@ -159,6 +159,21 @@ export default async function run(page, h) {
   await h.expectVisible('POC page rendered', 'lib-browse-adf-hx-poc');
   await h.expectVisible('a document list is present', 'hxp-document-list');
 
+  // No synthetic identifier on the landing screen. The folder header renders
+  // `sys_typeLabel ?? sys_primaryType`, and with the synthetic root unlabelled this read
+  // "Repository / SysRoot". Asserted on the header alone so a `SysRoot` elsewhere in the page
+  // cannot mask it.
+  const folderHeaderText = await page
+    .locator('hxp-folder-header')
+    .first()
+    .innerText()
+    .catch(() => '');
+  h.check(
+    'the folder header shows no internal Sys* identifier',
+    folderHeaderText.length > 0 && !/\bSys[A-Z]/.test(folderHeaderText),
+    `folder header read ${JSON.stringify(folderHeaderText.slice(0, 120))}`,
+  );
+
   // Scoped to the list's own table so the surrounding chrome cannot contribute a
   // string. Header cells holding a control are excluded: the settings cell's
   // textContent is a Material icon ligature, which an earlier capture in this repo
@@ -546,15 +561,26 @@ export default async function run(page, h) {
       ? `found ${editControls} edit/save control(s)`
       : 'the panel rendered nothing, so this proves nothing',
   );
-  await h.screenshot('properties-panel');
-  h.note(
-    "the Category field renders EMPTY, and the screenshot shows it. `sys_primaryType` is our " +
-      'synthetic `SysFile`/`SysFolder`, while the model\'s `primaryTypes` are Nuxeo names — ' +
-      '`File`, `Folder`, `Workspace` — so upstream\'s select has no option matching the current ' +
-      'value. Not asserted either way: asserting it empty would enshrine a defect, and it is ' +
-      'cosmetic in a read-only panel. Fixing it means deciding whether `sys_primaryType` should ' +
-      'carry the Nuxeo type name, which changes `isRoot()` and the browse type column with it.',
+
+  // The Category field, which was empty until `sys_primaryType` started carrying the Nuxeo
+  // doctype name. Upstream renders it as a select whose options come from `Model.primaryTypes`, so
+  // a synthetic `SysFile` matched nothing and the field showed blank.
+  //
+  // Read from the select's own trigger rather than from `propertiesText`, because an empty select
+  // and a populated one differ only in that element — the surrounding label is present either way,
+  // which is exactly how this went unnoticed the first time.
+  const categoryValue = await page
+    .locator('hxp-properties-sidebar mat-select .mat-mdc-select-value')
+    .first()
+    .innerText()
+    .catch(() => '');
+  h.check(
+    'the Category select shows the document’s real Nuxeo doctype',
+    categoryValue.trim() === 'File',
+    `Category read ${JSON.stringify(categoryValue)} — expected the fixture's Nuxeo type "File". ` +
+      'Blank means `sys_primaryType` is not a key in `Model.primaryTypes`.',
   );
+  await h.screenshot('properties-panel');
 
   h.step('Health');
   h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);

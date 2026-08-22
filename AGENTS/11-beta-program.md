@@ -373,6 +373,20 @@ DocumentService`. The chain, read from the published bundle:
 - **A Nuxeo `@prefix` of `''` means "use the schema name", not "no prefix".** `file`, `uid` and
   `files` all report empty, and Nuxeo then addresses them as `file:content` and
   `uid:major_version`. Read literally the keys become `_content` and `_major_version`.
+- **`sys_primaryType` is the key into `Model.primaryTypes`, so it must carry the NUXEO doctype
+  name.** It was a synthetic `SysFolder`/`SysFile` for most of Phase 3, and that broke four things
+  for one reason: the `MODEL` port keys the registry by Nuxeo doctype, because that is the only
+  registry Nuxeo has. Visible — the properties panel's **Category select rendered empty**. Latent —
+  `extractCustomSchemaFields(sys_primaryType)` finds no custom schema fields; `getSubtypes` falls
+  back to all sixty types; and the document-category search filter emits
+  `sys_primaryType IN ('…')` as HXQL against a type name Nuxeo has never heard of.
+  **`isRoot()` is the only place upstream compares this to a `Sys*` literal**, so `SysRoot`
+  survives for the synthetic repository root and nothing else needs a synthetic value.
+  **Do not classify with `sys_primaryType`** — folderishness is `sys_isFolderish` and
+  `sys_mixinTypes`.
+- **The folder header renders `sys_typeLabel ?? sys_primaryType`.** With the synthetic root
+  unlabelled the POC's landing screen read "Repository / **SysRoot**". Any `Sys*` value that can
+  reach a label needs a `sys_typeLabel` beside it.
 - **Nuxeo has no `sys` schema, so the bridge supplies one.** Upstream's
   `DocumentPropertiesService` lists properties from `Object.keys(document)` and its
   `TOP_DEFAULT_PROPERTIES` are all `sys_*`, so a faithfully translated Nuxeo model types **none**
