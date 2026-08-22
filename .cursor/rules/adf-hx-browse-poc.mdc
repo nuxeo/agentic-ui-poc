@@ -29,14 +29,35 @@ Shell (nuxeo-ui)
 - **Production browse** (`/#/browse`) is unchanged; path sync and `browseReturn=adf-hx` helpers live in `browse-path.utils.ts`.
 - **Scope A:** read-only — write actions show a notice; tabs/load/export are implemented.
 
-## UI — `hxp-*` only
+## UI — real adf-hx components first, `hxp-*` for what adf-hx lacks
 
-- Use components from `@agentic-ui/shared/adf-hx-bridge` (`hxp-folder-header`, `hxp-breadcrumb`, `hxp-domain-hint`, `hxp-browse-toolbar`, `hxp-document-list`, `hxp-browse-nav-drawer`, `hxp-browse-nav-tree`, `hxp-icon`, `hxp-spinner`).
-- **Never** use Angular Material (`mat-*`, `Mat*Module`), Satori (`sat-*`), or production browse UI in the POC page or its bridge components.
-- Side nav: use **`hxp-browse-nav-tree`** (nested folder tree). The legacy Material `hxp-document-tree` was deleted in Phase 0.
-- Icons/spinners: **`hxp-icon`** / **`hxp-spinner`** only — no `mat-icon` / `mat-spinner`.
-- Form controls: native HTML (`input`, `select`, `button`) styled in bridge SCSS — no `mat-form-field`, `mat-datepicker`, etc.
-- CSS tokens: use **`--hxp-*`** only — never `--mat-sys-*` in bridge SCSS. Tokens are aliased from Satori in `apps/nuxeo-ui/src/styles/hxp-theme.scss` (after `@include sat.theme`).
+**This section was rewritten in Phase 3. Its previous form banned Angular Material outright, which
+was correct while every component here was hand-written and is wrong now: five real adf-hx
+components are adopted and adf-core brings Material in transitively. An agent following the old rule
+would try to remove working code.** `docs/adf-hx-beta-plan.md` lists updating it as a hard rule for
+this phase.
+
+- **Prefer the real upstream component.** `HxpDocumentListComponent`, `HxpBreadcrumbComponent`,
+  `HxpDocumentTreeComponent`, `ManageVersionsSidebarComponent` and `HxpPropertiesSidebarComponent`
+  are adopted from `@alfresco/adf-hx-content-services/ui`, and each replaced a hand-written
+  equivalent that was deleted in the same change. Do not reintroduce a local imitation of a
+  component upstream provides.
+- **Material arrives transitively through adf-core, and that is expected.** The adopted panels
+  render `mat-select`, `mat-expansion-panel`, `mat-icon-button` and Material form fields. Do not
+  strip it.
+- **Still do not reach for Material *directly* in our own `hxp-*` components.** Those exist for
+  what adf-hx does not provide — see `docs/adf-hx-workarounds.md` category 2 — and they stay native
+  HTML styled in bridge SCSS so they carry no Material dependency of their own. `hxp-icon`,
+  `hxp-spinner`, `hxp-column-picker`, `hxp-document-cards`, `hxp-browse-toolbar` and
+  `hxp-browse-pager` all follow this.
+- **Never** use Satori (`sat-*`) or production browse UI in the POC page or its bridge components.
+- Side nav: `hxp-browse-nav-drawer`, which now hosts upstream's `HxpDocumentTreeComponent`. The
+  hand-written `hxp-browse-nav-tree` was deleted when the real tree was adopted.
+- CSS tokens: prefer **`--hxp-*`** in bridge SCSS, aliased from Satori in
+  `apps/nuxeo-ui/src/styles/hxp-theme.scss`. `--mat-sys-*` with a literal fallback is acceptable
+  where a component sits inside adf-core markup, which is why `hxp-browse-pager` uses it.
+- Overriding an adopted component's styles needs `::ng-deep`, because upstream ships
+  `ViewEncapsulation.None`. Register it — see category 1, W9.
 
 ## Data — AdfHx bridge only
 

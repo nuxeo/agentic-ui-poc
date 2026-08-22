@@ -28,6 +28,52 @@ type AxiosLikeResponse<T> = { data: T };
 const HXQL_DOCUMENT_VERSIONS =
   /^\s*SELECT\s+\*\s+FROM\s+SysContent\s+WHERE\s+sys_parentId\s*=\s*'([^']*)'\s+AND\s+sysver_isVersion\s*=\s*1\s+ORDER\s+BY\s+sysver_created\s+DESC\s*$/i;
 
+/**
+ * HxPR sort key -> the Nuxeo property `@children` can order by.
+ *
+ * Only keys with an exact Nuxeo equivalent are here. Anything else is **refused**, and that is
+ * not pedantry: a `sortBy` Nuxeo cannot use answers **HTTP 200 with zero entries** — verified
+ * against the local instance with `sortBy=ecm:isFolder`. Forwarding an unmappable key would
+ * render an empty list on a folder full of documents, which is the worst failure available here.
+ *
+ * `sys_isFolderish` is deliberately absent. Nuxeo has no sortable folderish property, so
+ * "folders first" cannot be expressed server-side at all — see `assertSortable`.
+ */
+const NUXEO_SORT_FIELD: Readonly<Record<string, string>> = {
+  sys_title: 'dc:title',
+  sys_name: 'dc:title',
+  sys_modified: 'dc:modified',
+  sys_created: 'dc:created',
+  sys_creator: 'dc:creator',
+  sys_lastContributor: 'dc:lastContributor',
+  sys_lifecycleState: 'ecm:currentLifeCycleState',
+  'sys_creator.username': 'dc:creator',
+  'sys_lastContributor.username': 'dc:lastContributor',
+};
+
+/**
+ * Upstream's sort entries are `"<key> <asc|desc>"` strings. Translated, or refused by name.
+ */
+function toNuxeoSort(sort: readonly string[]): { sortBy: string; sortOrder: 'ASC' | 'DESC' }[] {
+  return sort.map((entry) => {
+    const [key, direction = 'asc'] = entry.trim().split(/\s+/);
+    const sortBy = NUXEO_SORT_FIELD[key];
+    if (!sortBy) {
+      throw new Error(
+        `Cannot sort by "${key}": no Nuxeo property corresponds to it. Nuxeo answers an ` +
+          'unsupported sortBy with HTTP 200 and zero entries, so forwarding this would render ' +
+          'an empty folder. Sortable keys: ' +
+          `${Object.keys(NUXEO_SORT_FIELD).join(', ')}.`,
+      );
+    }
+    const normalized = direction.toLowerCase();
+    if (normalized !== 'asc' && normalized !== 'desc') {
+      throw new Error(`Cannot sort by "${entry}": direction must be asc or desc.`);
+    }
+    return { sortBy, sortOrder: normalized === 'desc' ? ('DESC' as const) : ('ASC' as const) };
+  });
+}
+
 @Injectable()
 export class NuxeoQueryApi {
   private readonly browse = inject(BrowseService);
@@ -100,6 +146,14 @@ export class NuxeoQueryApi {
     return this.sliceQueryResult(documents, limit, offset);
   }
 
+  /**
+   * The named-query entry point.
+   *
+   * **The `sort` is applied now.** It used to be accepted and silently discarded — one of the five
+   * recorded bridge defects, and the one `AGENTS/11-beta-program.md` §3 cites as the pattern to
+   * avoid. Discarding it was not only losing a user's column click: `AdfHxDocumentService` sends a
+   * default order on *every* children fetch, so no browse listing was ever ordered as intended.
+   */
   async getDocumentsByNamedQuery(
     namedQuery: NamedQuery = {},
   ): Promise<AxiosLikeResponse<QueryResult>> {
@@ -108,13 +162,14 @@ export class NuxeoQueryApi {
     const repositoryId = namedQuery.repositoryId ?? DEFAULT_REPOSITORY_ID;
     const limit = namedQuery.limit ?? 50;
     const offset = namedQuery.offset ?? 0;
+    const sort = toNuxeoSort((namedQuery as { sort?: string[] }).sort ?? []);
 
     if (queryName === 'tree_children') {
       return this.queryTreeChildren(parentId, repositoryId, limit, offset);
     }
 
     if (queryName === 'advanced_document_content') {
-      return this.queryFolderContents(parentId, repositoryId, limit, offset);
+      return this.queryFolderContents(parentId, repositoryId, limit, offset, sort);
     }
 
     return {
@@ -146,11 +201,19 @@ export class NuxeoQueryApi {
     return this.sliceQueryResult(documents, limit, offset);
   }
 
+  /**
+   * A folder's children — one **server** page, ordered by the server.
+   *
+   * `offset` is turned into Nuxeo's `currentPageIndex` rather than used to slice a larger fetch.
+   * Slicing was the old shape and it is what made the 50-child ceiling invisible: the page after
+   * the first was never requested, so a folder with 200 children silently showed 50.
+   */
   private async queryFolderContents(
     parentId: string,
     repositoryId: string,
     limit: number,
     offset: number,
+    sort: { sortBy: string; sortOrder: 'ASC' | 'DESC' }[] = [],
   ): Promise<AxiosLikeResponse<QueryResult>> {
     if (isHxRootDocument({ sys_id: parentId })) {
       const bootstrap = await firstValueFrom(this.browse.getNavTreeBootstrap(limit));
@@ -159,16 +222,26 @@ export class NuxeoQueryApi {
     }
 
     const parentPath = await this.resolvePath(parentId);
-    const contents = await firstValueFrom(this.browse.getBrowseFolderContents(parentPath, limit));
+    const currentPageIndex = limit > 0 ? Math.floor(offset / limit) : 0;
+    const contents = await firstValueFrom(
+      this.browse.getBrowseFolderContents(parentPath, limit, { currentPageIndex, sort }),
+    );
     const documents = mapNuxeoDocumentsToHx(contents.entries, repositoryId);
     return {
       data: {
-        documents: documents.slice(offset, offset + limit),
+        documents,
         limit,
         offset,
+        // Nuxeo's own number, negative when it did not count — real only when the folder fits on
+        // one page, since `resultsCountLimit` is the requested `pageSize`. It is NOT replaced with
+        // `documents.length`: doing that told every caller the page was the whole folder, which is
+        // the recorded `totalCount` defect.
         totalCount: contents.totalSize,
         count: documents.length,
-      },
+        // Not on upstream's `QueryResult`, and the only honest basis for a pager when the total is
+        // unknown. `Document` and `QueryResult` both carry an index signature, so it travels.
+        hasNextPage: contents.hasNextPage,
+      } as QueryResult,
     };
   }
 

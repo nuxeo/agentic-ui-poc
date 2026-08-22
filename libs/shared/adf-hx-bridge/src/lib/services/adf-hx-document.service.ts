@@ -19,7 +19,13 @@ export interface DocumentFetchResults {
   documents: Document[];
   limit: number;
   offset: number;
+  /**
+   * Nuxeo's count, **negative when it declined to count** (`-2` from the `@children` page
+   * provider). Not a total in every case — use `hasNextPage` to drive a pager.
+   */
   totalCount: number;
+  /** Whether the server has another page. */
+  hasNextPage?: boolean;
 }
 
 export interface DocumentUpdateInfo {
@@ -45,8 +51,19 @@ export class AdfHxDocumentService {
   readonly documentRestored$ = new Subject<Document>();
 
   private repositoryId = DEFAULT_REPOSITORY_ID;
-  private readonly folderishSort = 'sys_isFolderish desc';
-  private readonly defaultSort = [this.folderishSort, 'sys_title asc'];
+  /**
+   * The default order for a children fetch.
+   *
+   * It used to be `['sys_isFolderish desc', 'sys_title asc']` — folders first, then by title. The
+   * folderish key is **gone**, because Nuxeo has no sortable folderish property and so cannot
+   * express it: `NuxeoQueryApi` now refuses a key it cannot map rather than forwarding one that
+   * Nuxeo answers with HTTP 200 and zero entries.
+   *
+   * Nothing regressed by removing it. The sort was being **discarded entirely** by the `QUERY`
+   * port, so folders-first was never actually applied to any listing — `sys_title asc` is the
+   * first ordering this bridge has ever really had.
+   */
+  private readonly defaultSort = ['sys_title asc'];
 
   setCurrentRepository(repositoryId: string): void {
     this.repositoryId = repositoryId;
@@ -137,11 +154,12 @@ export class AdfHxDocumentService {
         limit: data.limit ?? 0,
         offset: data.offset ?? 0,
         totalCount: data.totalCount ?? 0,
+        hasNextPage: (data as { hasNextPage?: boolean }).hasNextPage,
       })),
     );
   }
 }
 
-export function isHxFolder(document: Document): boolean {
-  return document.sys_isFolderish === true && !isHxRootDocument(document);
-}
+// `isHxFolder` moved to `../utils/hxp-document.predicates`. It is a pure predicate that needs no
+// adf-hx import, and living here made this whole file — and therefore `@alfresco/*` — reachable
+// from the bridge's public barrel through `nuxeo-document-router.service.ts`.

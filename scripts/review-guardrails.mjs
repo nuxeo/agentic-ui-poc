@@ -444,7 +444,11 @@ function checkAdfHxWorkaroundIds() {
   // ---- the codebase's markers ----
   /** @type {Map<string, string[]>} */
   const markerSites = new Map();
-  const sources = git(['ls-files'])
+  // `--others --exclude-standard` as well as tracked, because a workaround introduced in a
+  // **new** file is invisible to `ls-files` alone. That gap surfaced the first time this gate ran
+  // against a new pager component: the row was flagged as having no marker while the marker was
+  // sitting in an untracked file. Gitignored files stay excluded — they are not the codebase.
+  const sources = git(['ls-files', '--cached', '--others', '--exclude-standard'])
     .split('\n')
     .filter(Boolean)
     // The register and the findings document quote marker names as documentation, and the gate's
@@ -489,6 +493,100 @@ function checkAdfHxWorkaroundIds() {
   }
 }
 
+/**
+ * No `@alfresco/*` type may be reachable from a library's public barrel.
+ *
+ * `docs/adf-hx-beta-plan.md` sets this as a **hard rule** for Phase 3 — "adf-hx types must never
+ * appear in our public API signatures, enforced by a lint or API-extractor gate" — and until now
+ * only the convention existed. Nothing would have caught a leak.
+ *
+ * Two distinct harms, which is why the check is on *reachability from the barrel* rather than on
+ * signatures alone:
+ *
+ * 1. **API leak.** An adf-hx type in our public surface makes every consumer depend on adf-hx's
+ *    versioning, which is the opposite of what the four-layer contract promises.
+ * 2. **Bundle boundary.** A barrel is one module. The moment anything it re-exports imports
+ *    `@alfresco/*`, adf-core becomes reachable from the app shell and lands in the **initial**
+ *    bundle — measured at 1.70 → 2.65 MB when that happened, which is why
+ *    `libs/shared/adf-hx-bridge/src/providers.ts` exists as a separate entry point.
+ *
+ * The bridge's `providers.ts` is the sanctioned exception: it is a secondary entry point that only
+ * the lazily-loaded POC route imports, and its whole purpose is to hold the adf-hx-facing code.
+ */
+function checkNoAdfHxInPublicApi() {
+  // Scoped to the two heavy packages, deliberately. `@alfresco/adf-extensions` is also an
+  // `@alfresco` scope, but it is a small library this repo took as a production dependency by a
+  // Phase 2 decision, `libs/shared/extensions` imports two functions from it and re-exports
+  // nothing, so it leaks no type and moves no bundle. Failing on it would make the gate noise.
+  const ALFRESCO = /from\s+['"]@alfresco\/(adf-hx-content-services|adf-core)/;
+
+  /**
+   * Known, deliberate exceptions — each with the reason, because an allowlist without one becomes
+   * a dumping ground.
+   */
+  const ALLOWED = new Map([
+    [
+      'libs/shared/adf-hx-bridge/src/lib/ui/hxp-browse-nav-drawer/hxp-browse-nav-drawer.component.ts',
+      'The app shell\'s nav drawer renders adf-hx\'s document tree, so the shell genuinely needs ' +
+        'adf-hx eagerly. This is a product decision, not a barrel accident, and it means the eager ' +
+        'bundle has TWO causes — this and CONTEXT_MENU_ACTIONS_PROVIDERS in app.config.ts. Removing ' +
+        'it requires deferring the tree behind an outlet, which is Phase 4 work.',
+    ],
+  ]);
+  const barrels = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((file) => /^libs\/.+\/src\/index\.ts$/.test(file));
+
+  if (barrels.length === 0) {
+    fail('No library barrels found, so the adf-hx public-API gate cannot verify anything.');
+    return;
+  }
+
+  for (const barrel of barrels) {
+    if (!fileExists(barrel)) continue;
+    const seen = new Set();
+    /** @type {{ file: string, from: string[] }[]} */
+    const offenders = [];
+
+    // Walk the barrel's re-export graph. Depth matters: the leak that cost 0.95 MB of initial
+    // bundle was two hops away — the barrel exported a providers file which imported adf-hx.
+    const queue = [{ file: barrel, path: [barrel] }];
+    while (queue.length > 0) {
+      const { file, path } = queue.shift();
+      if (seen.has(file)) continue;
+      seen.add(file);
+      if (!fileExists(file)) continue;
+      const body = read(file);
+
+      if (ALFRESCO.test(body) && file !== barrel) {
+        offenders.push({ file, from: path });
+        continue; // one report per reachable file is enough
+      }
+
+      for (const match of body.matchAll(/from\s+['"](\.[^'"]+)['"]/g)) {
+        const target = join(dirname(file), match[1]);
+        const rel = relative(repoRoot, join(repoRoot, target));
+        for (const candidate of [`${rel}.ts`, join(rel, 'index.ts')]) {
+          if (fileExists(candidate) && !seen.has(candidate)) {
+            queue.push({ file: candidate, path: [...path, candidate] });
+          }
+        }
+      }
+    }
+
+    for (const offender of offenders) {
+      if (ALLOWED.has(offender.file)) continue;
+      fail(
+        `${offender.file} imports from \`@alfresco/*\` and is reachable from the public barrel ` +
+          `${barrel} via ${offender.from.slice(1).join(' -> ') || 'a direct export'}. That both ` +
+          'leaks an adf-hx type into our public API and makes adf-core reachable from anything ' +
+          'importing the barrel, which puts it in the initial bundle. Move it behind a secondary ' +
+          'entry point, as `libs/shared/adf-hx-bridge/src/providers.ts` does.',
+      );
+    }
+  }
+}
+
 checkThemeTokens();
 checkDocsNumbering();
 checkVitestProjects();
@@ -497,6 +595,7 @@ checkTypeSafetyEscapes();
 checkHardcodedSecrets();
 checkAngularDevAssets();
 checkAdfHxWorkaroundIds();
+checkNoAdfHxInPublicApi();
 
 if (warnings.length) {
   console.warn('\nReview guardrail warnings:');

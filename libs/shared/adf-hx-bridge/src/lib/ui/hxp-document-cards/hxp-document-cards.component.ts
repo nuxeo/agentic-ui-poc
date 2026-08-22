@@ -3,7 +3,7 @@ import type { Document } from '@hylandsoftware/hxcs-js-client';
 
 import { SelectionService } from '@agentic-ui/shared/nuxeo-client';
 
-import { isHxFolder } from '../../services/adf-hx-document.service';
+import { isHxFolder } from '../../utils/hxp-document.predicates';
 import { hxpDocTitle, hxpDocTypeLabel } from '../../utils/hxp-browse-cell.utils';
 import { hxpDocIconName } from '../../utils/hxp-doc-icon.utils';
 import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';

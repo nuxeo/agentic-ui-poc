@@ -62,6 +62,162 @@ describe('NuxeoQueryApi', () => {
     expect(response.data.documents?.[0]?.sys_isFolderish).toBe(true);
   });
 
+  describe('the sort, which used to be silently discarded', () => {
+    const workspace = {
+      uid: 'ws-1',
+      title: 'Workspace',
+      type: 'Workspace',
+      path: '/default-domain/workspaces/ws',
+      lastModified: '2026-02-01T00:00:00.000Z',
+      properties: {},
+    };
+
+    /** Lets an `await` inside the port run before the next request is expected. */
+    const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    /**
+     * Answers the two lookups `queryFolderContents` makes before it fetches children, awaiting a
+     * tick between them.
+     *
+     * The tick is load-bearing. `resolvePath` uses `await`, so the port's continuation — and
+     * therefore the *next* request — only runs on a following microtask. Flushing both
+     * synchronously, the way the `tree_children` test can because it composes with `switchMap`,
+     * fails with "Expected one matching request, found none".
+     */
+    async function flushParentLookup() {
+      httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/id/ws-1')).flush(workspace);
+      await tick();
+      httpMock
+        .expectOne((r) => r.url.includes('/nuxeo/api/v1/path/default-domain/workspaces/ws'))
+        .flush(workspace);
+      await tick();
+    }
+
+    it('translates an HxPR sort key into the Nuxeo property @children orders by', async () => {
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        limit: 50,
+        offset: 0,
+        sort: ['sys_modified desc'],
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+      await flushParentLookup();
+
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      // The whole point: the sort reaches the server. It used to be accepted and dropped.
+      expect(children.request.params.get('sortBy')).toBe('dc:modified');
+      expect(children.request.params.get('sortOrder')).toBe('DESC');
+      children.flush({ entries: [], resultsCount: -2, isNextPageAvailable: false });
+      await pending;
+    });
+
+    it('sends several sort fields in matching order', async () => {
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        limit: 50,
+        sort: ['sys_creator asc', 'sys_title desc'],
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+      await flushParentLookup();
+
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      expect(children.request.params.get('sortBy')).toBe('dc:creator,dc:title');
+      expect(children.request.params.get('sortOrder')).toBe('ASC,DESC');
+      children.flush({ entries: [], resultsCount: -2 });
+      await pending;
+    });
+
+    it('turns offset into a server page index rather than slicing one big fetch', async () => {
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        limit: 50,
+        offset: 100,
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+      await flushParentLookup();
+
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      // Slicing was what made the 50-child ceiling invisible: page two was never requested.
+      expect(children.request.params.get('currentPageIndex')).toBe('2');
+      expect(children.request.params.get('pageSize')).toBe('50');
+      children.flush({ entries: [], resultsCount: -2 });
+      await pending;
+    });
+
+    it("passes Nuxeo's own count through, including its refusal to count", async () => {
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        limit: 2,
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+      await flushParentLookup();
+      httpMock
+        .expectOne((r) => r.url.includes('/@children'))
+        .flush({
+          entries: [
+            {
+              uid: 'a',
+              title: 'A',
+              type: 'File',
+              path: '/x/a',
+              lastModified: '2026-01-01T00:00:00.000Z',
+              properties: {},
+            },
+            {
+              uid: 'b',
+              title: 'B',
+              type: 'File',
+              path: '/x/b',
+              lastModified: '2026-01-01T00:00:00.000Z',
+              properties: {},
+            },
+          ],
+          // `-2` is Nuxeo's "not computed" for the @children page provider.
+          resultsCount: -2,
+          isNextPageAvailable: true,
+        });
+
+      const result = (await pending).data;
+      // NOT 2. Reporting the page length as the total is the recorded defect: it makes a paged
+      // folder look complete, and a pager built on it would show "1-2 of 2".
+      expect(result.totalCount).toBe(-2);
+      expect(result.count).toBe(2);
+      expect((result as { hasNextPage?: boolean }).hasNextPage).toBe(true);
+    });
+
+    it('refuses a sort key Nuxeo cannot order by, rather than emptying the folder', async () => {
+      // Nuxeo answers an unsupported `sortBy` with HTTP 200 and ZERO entries — verified against
+      // the local instance with `sortBy=ecm:isFolder`. Forwarding it would render an empty folder.
+      await expect(
+        api.getDocumentsByNamedQuery({
+          queryName: 'advanced_document_content',
+          parameters: { parentId: 'ws-1' },
+          sort: ['sys_isFolderish desc'],
+        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
+      ).rejects.toThrow('Cannot sort by "sys_isFolderish"');
+    });
+
+    it('names the sortable keys in the refusal, so the caller can pick another', async () => {
+      await expect(
+        api.getDocumentsByNamedQuery({
+          queryName: 'advanced_document_content',
+          parameters: { parentId: 'ws-1' },
+          sort: ['sys_madeUp asc'],
+        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
+      ).rejects.toThrow('sys_title');
+    });
+
+    it('rejects a direction that is neither asc nor desc', async () => {
+      await expect(
+        api.getDocumentsByNamedQuery({
+          queryName: 'advanced_document_content',
+          parameters: { parentId: 'ws-1' },
+          sort: ['sys_title sideways'],
+        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
+      ).rejects.toThrow('direction must be asc or desc');
+    });
+  });
+
   /**
    * The HXQL entry point, reached by upstream's `SearchService`. The statement is upstream's
    * own, copied from `DocumentVersionsService.getVersionsById` — if these tests are updated

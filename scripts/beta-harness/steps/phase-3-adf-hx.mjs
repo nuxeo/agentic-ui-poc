@@ -216,6 +216,74 @@ export default async function run(page, h) {
   );
   await h.screenshot('document-list');
 
+  h.step('Fixed: the column sort reaches the server, and the list pages');
+  // Two of the five recorded bridge defects, both previously reported as closed and neither of
+  // which was. `(sortingClicked)` went nowhere, so clicking a header reordered only the loaded
+  // rows — measured at 37 before and after with no refetch — and the fetch took a hardcoded
+  // `limit: 50` with no pager.
+  const listRowTitles = () =>
+    page.$$eval(
+      'hxp-document-list adf-datatable-row:not(.adf-datatable-header)',
+      (rows) => rows.map((r) => (r.textContent ?? '').trim().slice(0, 24)).filter(Boolean),
+    );
+
+  // Every `@children` request this step causes, so the sort can be proved at the wire rather than
+  // inferred from what the rows look like.
+  const childrenRequests = [];
+  const recordChildren = (request) => {
+    if (request.url().includes('/@children')) childrenRequests.push(request.url());
+  };
+  page.on('request', recordChildren);
+
+  await h.goTo(`/#/browse-adf-hx?path=${encodeURIComponent('/default-domain/workspaces')}`);
+  await page.waitForTimeout(2500);
+
+  const pagerRange = () =>
+    page.locator('hxp-browse-pager .hxp-pager__range').first().innerText().catch(() => '');
+
+  h.check('a pager is present', (await page.locator('hxp-browse-pager').count()) > 0);
+  const firstPage = await listRowTitles();
+  const firstRange = await pagerRange();
+  h.check(
+    'the pager reports a range, and no total Nuxeo did not give',
+    /^\d+–\d+$/.test(firstRange.trim()) || /^\d+–\d+ of \d+$/.test(firstRange.trim()),
+    `pager read ${JSON.stringify(firstRange)} — "1–50 of 50" would mean the page length is being ` +
+      'reported as the total, which is the defect',
+  );
+
+  // Sorting: ask for descending title and require the *server* to have reordered, which shows up
+  // as a different first row than the ascending default.
+  const titleHeader = page.locator('hxp-document-list .adf-datatable-cell-header-content').first();
+  await titleHeader.click();
+  await page.waitForTimeout(2500);
+  const sortedPage = await listRowTitles();
+  h.check(
+    'clicking a column header reorders the list',
+    sortedPage.length > 0 && JSON.stringify(sortedPage) !== JSON.stringify(firstPage),
+    `before ${JSON.stringify(firstPage.slice(0, 3))} after ${JSON.stringify(sortedPage.slice(0, 3))}`,
+  );
+  // The load-bearing half, and asserted at the wire. adf-core's DataTable *also* sorts the loaded
+  // page client-side, so a reordered list on its own does not prove the server was asked — that is
+  // exactly what made this defect look fixed. A `sortBy` in a `@children` URL does prove it.
+  page.off('request', recordChildren);
+  const sortedRequests = childrenRequests.filter((url) => url.includes('sortBy='));
+  h.check(
+    'a @children request carried sortBy, so the server did the ordering',
+    sortedRequests.length > 0,
+    `${childrenRequests.length} @children request(s), none with sortBy: ` +
+      JSON.stringify(childrenRequests.slice(-2)),
+  );
+  h.check(
+    'the sort field is a Nuxeo property, not an HxPR key',
+    sortedRequests.some((url) => /sortBy=dc(%3A|:)/.test(url)),
+    `sorted request URLs: ${JSON.stringify(sortedRequests.slice(-2))}`,
+  );
+  h.check(
+    'the sorted list is not empty — an unmappable sortBy makes Nuxeo answer 200 with no entries',
+    (await page.locator('hxp-document-list adf-datatable-row').count()) > 1,
+  );
+  await h.screenshot('sorted-list');
+
   h.step('Upstream capability: rows are selectable');
   // What the swap *gains*. The hand-written list had its own checkbox column; upstream's
   // DataTable provides multiselect natively, which is why `[multiselect]="true"` is set.

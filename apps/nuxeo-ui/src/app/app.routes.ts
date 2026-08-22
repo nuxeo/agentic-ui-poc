@@ -26,7 +26,7 @@ export const routes: Routes = [
       {
         path: 'browse-adf-hx',
         loadComponent: () =>
-          import('@agentic-ui/feature-browse').then((m) => m.BrowseAdfHxPocComponent),
+          import('@agentic-ui/feature-browse/adf-hx-poc').then((m) => m.BrowseAdfHxPocComponent),
       },
       {
         path: 'browse',

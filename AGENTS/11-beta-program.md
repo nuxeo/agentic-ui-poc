@@ -387,6 +387,25 @@ DocumentService`. The chain, read from the published bundle:
 - **The folder header renders `sys_typeLabel ?? sys_primaryType`.** With the synthetic root
   unlabelled the POC's landing screen read "Repository / **SysRoot**". Any `Sys*` value that can
   reach a label needs a `sys_typeLabel` beside it.
+- **Nuxeo answers an unsupported `sortBy` with HTTP 200 and ZERO entries.** Not an error —
+  measured with `sortBy=ecm:isFolder` on `@children`. So a sort key must be validated _before_ the
+  request: forwarding one renders an empty folder, which reads as missing data. `NuxeoQueryApi`
+  refuses by name and lists the sortable keys.
+- **"Folders first" cannot be expressed as a Nuxeo sort.** There is no sortable folderish property,
+  so `sys_isFolderish` has no mapping and the default order dropped it. Nothing regressed: the sort
+  was being **discarded entirely** by the port, so folders-first was never actually applied.
+- **Nuxeo counts only within `resultsCountLimit`, which it sets to the requested `pageSize`.** So
+  `resultsCount` is a real total **exactly when the result set fits on one page**, and `-2`
+  otherwise — measured, `pageSize=39` over 39 children answered `39` while `pageSize=20` answered
+  `-2`. **The total is known only when there is nothing to page**, which is why a numbered pager is
+  impossible and `isNextPageAvailable` is the fact to build on.
+- **adf-core's DataTable sorts the loaded page client-side, independently of any server sort.** So a
+  reordered list does **not** prove the server was asked to order — that is what made the dropped
+  sort look fixed for several phases. Assert on the request, not on the row order.
+- **The eager bundle has TWO causes.** `CONTEXT_MENU_ACTIONS_PROVIDERS` in `app.config.ts`, **and**
+  the app shell's nav drawer rendering upstream's `HxpDocumentTreeComponent`. The second is a product
+  decision, so adf-hx is eagerly needed by the shell by design. It is the one documented exception in
+  the API-surface gate.
 - **Nuxeo has no `sys` schema, so the bridge supplies one.** Upstream's
   `DocumentPropertiesService` lists properties from `Object.keys(document)` and its
   `TOP_DEFAULT_PROPERTIES` are all `sys_*`, so a faithfully translated Nuxeo model types **none**

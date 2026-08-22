@@ -13,11 +13,13 @@ export * from './lib/mapping/nuxeo-to-hx-version.mapper';
 export * from './lib/mapping/nuxeo-to-hx-model.mapper';
 export * from './lib/api/nuxeo-document-api';
 export * from './lib/api/nuxeo-query-api';
-export * from './lib/services/adf-hx-document.service';
+// `adf-hx-document.service` is NOT exported here: it imports upstream's API tokens from
+// `@alfresco/adf-hx-content-services/api`. It is in `@agentic-ui/shared/adf-hx-bridge/providers`.
 export * from './lib/services/adf-hx-browse-context.service';
 export * from './lib/services/nuxeo-document-router.service';
 export * from './lib/utils/adf-hx-browse-path.utils';
 export * from './lib/utils/hxp-browse-cell.utils';
+export * from './lib/utils/hxp-document.predicates';
 export * from './lib/services/adf-hx-browse-media.service';
 export * from './lib/services/adf-hx-browse-folder.service';
 export * from './lib/utils/adf-hx-browse-tree.utils';
@@ -30,6 +32,7 @@ export * from './lib/ui/hxp-browse-toolbar/hxp-browse-toolbar.component';
 export * from './lib/ui/hxp-browse-nav-drawer/hxp-browse-nav-drawer.component';
 export * from './lib/ui/hxp-document-cards/hxp-document-cards.component';
 export * from './lib/ui/hxp-column-picker/hxp-column-picker.component';
+export * from './lib/ui/hxp-browse-pager/hxp-browse-pager.component';
 export * from './lib/ui/hxp-icon/hxp-icon.component';
 export * from './lib/ui/hxp-spinner/hxp-spinner.component';
 export * from './lib/ui/hxp-browse-tabs/hxp-browse-tabs.component';

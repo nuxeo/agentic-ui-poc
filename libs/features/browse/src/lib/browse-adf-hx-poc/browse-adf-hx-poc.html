@@ -103,6 +103,16 @@
                 [contextMenuActions]="false"
                 (rowClicked)="onUpstreamRowClicked($event)"
                 (selectedDocuments)="onSelectedDocuments($event)"
+                (sortingClicked)="onSortingClicked($event)"
+              />
+              <hxp-browse-pager
+                [pageIndex]="pageIndex()"
+                [pageSize]="pageSize()"
+                [loaded]="filteredDocuments().length"
+                [totalCount]="totalCount()"
+                [hasNextPage]="hasNextPage()"
+                [disabled]="loading() || listLoading()"
+                (pageChange)="onPageChange($event)"
               />
             </div>
           } @else {

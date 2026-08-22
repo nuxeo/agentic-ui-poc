@@ -23,7 +23,6 @@ import {
   AdfHxBrowseContextService,
   AdfHxBrowseFolderService,
   AdfHxBrowseMediaService,
-  AdfHxDocumentService,
   HxpBrowseDetailsPanelComponent,
   type HxpDetailsSubTab,
   HxpBrowseHistoryComponent,
@@ -34,6 +33,7 @@ import {
   type HxpBrowseViewMode,
   HxpDocumentCardsComponent,
   HxpColumnPickerComponent,
+  HxpBrowsePagerComponent,
   type HxpPickableColumn,
   NuxeoDocumentRouterService,
   HxpDomainHintComponent,
@@ -53,7 +53,10 @@ import {
 // The narrow entry point, deliberately. It is the only thing in this bridge that reaches
 // `@alfresco/adf-hx-*`, and this route is lazily loaded — importing it from the main
 // barrel instead would put adf-core in the initial bundle. See `src/providers.ts`.
-import { ADF_HX_NUXEO_BRIDGE_PROVIDERS } from '@agentic-ui/shared/adf-hx-bridge/providers';
+import {
+  ADF_HX_NUXEO_BRIDGE_PROVIDERS,
+  AdfHxDocumentService,
+} from '@agentic-ui/shared/adf-hx-bridge/providers';
 import {
   HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
   HxpDocumentListComponent as UpstreamDocumentListComponent,
@@ -125,6 +128,7 @@ const DATE_COLUMNS = new Set(['modified', 'created']);
     UpstreamPropertiesSidebarComponent,
     HxpDocumentCardsComponent,
     HxpColumnPickerComponent,
+    HxpBrowsePagerComponent,
     HxpBrowsePermissionsComponent,
     HxpBrowseHistoryComponent,
     HxpBrowseTrashComponent,
@@ -293,6 +297,37 @@ export class BrowseAdfHxPocComponent {
   private readonly documentRouter = inject(NuxeoDocumentRouterService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly tagSearch$ = new Subject<string>();
+
+  // ── Sorting and paging ──
+  //
+  // Both were recorded bridge defects. The list emitted `(sortingClicked)` into nothing, so the
+  // server was never asked to order — clicking a header reordered only the rows already loaded,
+  // measured at 37 before and after with no refetch. And the fetch took a hardcoded `limit: 50`
+  // with no pager, so a larger folder silently showed its first 50.
+
+  /** Upstream's format: `"<key> <asc|desc>"`. `null` means the service's default order. */
+  protected readonly sort = signal<readonly string[] | null>(null);
+  protected readonly pageIndex = signal(0);
+  protected readonly pageSize = signal(50);
+  protected readonly hasNextPage = signal(false);
+  protected readonly totalCount = signal(-2);
+
+  /**
+   * Upstream emits one entry, `"sys_title asc"`, already in the shape the port wants.
+   *
+   * Resets to the first page: keeping the page index across a re-order shows page 3 of a
+   * different ordering, which looks like data loss.
+   */
+  protected onSortingClicked(sort: string[]): void {
+    this.sort.set(sort.length ? sort : null);
+    this.pageIndex.set(0);
+    this.loadFolder(this.browsePath());
+  }
+
+  protected onPageChange(pageIndex: number): void {
+    this.pageIndex.set(pageIndex);
+    this.loadFolder(this.browsePath());
+  }
 
   protected readonly loading = signal(true);
   protected readonly listLoading = signal(false);
@@ -481,6 +516,9 @@ export class BrowseAdfHxPocComponent {
       this.filterModifiedTo.set('');
       this.filterContributor.set('');
       this.scopeNotice.set(null);
+      // A new folder starts at page one, in the default order.
+      this.pageIndex.set(0);
+      this.sort.set(null);
       this.loadFolder(path);
     });
 
@@ -693,21 +731,36 @@ export class BrowseAdfHxPocComponent {
   }
 
   private loadChildren(document: Document): void {
+    const limit = this.pageSize();
     this.documentService
-      .getAllChildren(document.sys_id ?? ROOT_DOCUMENT.sys_id, { limit: 50 })
+      .getAllChildren(document.sys_id ?? ROOT_DOCUMENT.sys_id, {
+        limit,
+        // Turned into Nuxeo's `currentPageIndex` by the port, so this is a real server page
+        // rather than a slice of one oversized fetch.
+        offset: this.pageIndex() * limit,
+        ...(this.sort() ? { sort: [...this.sort()!] } : {}),
+      })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
           this.documents.set(result.documents);
+          this.totalCount.set(result.totalCount);
+          this.hasNextPage.set(result.hasNextPage === true);
           this.loading.set(false);
           this.listLoading.set(false);
           this.loadThumbnails(result.documents);
         },
-        error: () => {
+        error: (err: unknown) => {
           this.documents.set([]);
+          this.hasNextPage.set(false);
           this.loading.set(false);
           this.listLoading.set(false);
-          this.error.set('Failed to load folder contents.');
+          // A refused sort key reaches here. Saying so beats "failed to load", because the folder
+          // is fine and the fix is to sort by something else.
+          const message = err instanceof Error ? err.message : '';
+          this.error.set(
+            message.startsWith('Cannot sort by') ? message : 'Failed to load folder contents.',
+          );
         },
       });
   }

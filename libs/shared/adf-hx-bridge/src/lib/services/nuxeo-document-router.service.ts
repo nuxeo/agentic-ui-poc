@@ -7,7 +7,7 @@ import type { Document } from '@hylandsoftware/hxcs-js-client';
 
 import { BROWSE_RETURN_MODE_PARAM, normalizeNuxeoPath } from '@agentic-ui/shared/nuxeo-client';
 
-import { isHxFolder } from '../services/adf-hx-document.service';
+import { isHxFolder } from '../utils/hxp-document.predicates';
 
 import { AdfHxBrowseContextService } from '../services/adf-hx-browse-context.service';
 
