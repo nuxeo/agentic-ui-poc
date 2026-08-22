@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "name": "nuxeo-satori-generators",
+  "version": "0.1.0",
+  "generators": {
+    "extension-library": {
+      "factory": "./src/extension-library/generator",
+      "schema": "./src/extension-library/schema.json",
+      "description": "Scaffold a customer Layer 2 extension library that contributes slots, rules, actions and components to the Satori platform."
+    }
+  }
+}

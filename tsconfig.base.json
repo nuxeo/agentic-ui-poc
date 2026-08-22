@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@agentic-ui/acme-extensions": ["libs/extensions/acme-extensions/src/index.ts"],
       "@agentic-ui/core": ["libs/core/src/index.ts"],
       "@agentic-ui/feature-administration": ["libs/features/administration/src/index.ts"],
       "@agentic-ui/feature-assets": ["libs/features/assets/src/index.ts"],

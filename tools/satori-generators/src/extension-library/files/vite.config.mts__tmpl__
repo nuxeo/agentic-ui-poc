@@ -1,0 +1,30 @@
+/// <reference types='vitest' />
+import { defineConfig } from 'vite';
+import angular from '@analogjs/vite-plugin-angular';
+import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
+
+export default defineConfig(() => ({
+  root: __dirname,
+  cacheDir: '<%= offsetFromRoot %>node_modules/.vite/<%= projectRoot %>',
+  plugins: [angular(), nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
+  test: {
+    name: '<%= projectName %>',
+    watch: false,
+    passWithNoTests: true,
+    globals: true,
+    environment: 'jsdom',
+    include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    setupFiles: ['src/test-setup.ts'],
+    reporters: ['default'],
+    // Matches the platform libraries: the default Vitest pool hangs under Node 20
+    // in Nx/CI once the first spec file completes.
+    pool: 'threads',
+    // zone.js keeps the event loop alive after TestBed teardown.
+    forceExit: true,
+    coverage: {
+      reportsDirectory: '<%= offsetFromRoot %>coverage/<%= projectRoot %>',
+      provider: 'v8' as const,
+    },
+  },
+}));

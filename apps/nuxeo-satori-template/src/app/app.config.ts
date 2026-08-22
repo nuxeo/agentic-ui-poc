@@ -12,6 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { filter } from 'rxjs/operators';
 
+import { provideAcmeExtensions } from '@agentic-ui/acme-extensions';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { ExtensionRuleContextService } from '@nuxeo-satori/platform/extensions';
 
@@ -61,6 +62,16 @@ export const appConfig: ApplicationConfig = {
     //    slot resolves — registering later would leave a window in which a rule
     //    id is unknown, and an unknown rule fails open.
     provideTemplateExtensions(),
+
+    //    A **generated** extension library, integrated by this one line and
+    //    nothing else. It is here so CI keeps proving the Layer 2 contract end to
+    //    end: `libs/extensions/acme-extensions` was produced by
+    //    `nx g ./tools/satori-generators:extension-library`, and integrating it
+    //    required no edit to any platform library, to the shell, or to a manifest.
+    //
+    //    Delete this line and the import in your fork — it is a demonstration,
+    //    not something you need.
+    provideAcmeExtensions(),
 
     // 3. Keep the rule context live. Not registration, which is why it is
     //    separate: rules read the signed-in user and the current route, and

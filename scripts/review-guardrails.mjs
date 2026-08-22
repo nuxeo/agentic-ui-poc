@@ -99,18 +99,45 @@ function warn(message) {
   warnings.push(message);
 }
 
+/**
+ * A colour literal must come from a **theme token with a fallback**, not be typed
+ * in at the point of use.
+ *
+ * Three token namespaces are recognised, and the third needs explaining.
+ * `--mat-sys-*` is Angular Material's, `--kd-*` is Knowledge Discovery's, and
+ * `--shell-*` is `apps/nuxeo-satori-template`'s. The template ships **no Angular
+ * Material on purpose** — a fork should not have to remove our design system
+ * before adding its own — so `--mat-sys-*` is undefined there and writing
+ * `var(--mat-sys-surface, #fff)` would satisfy this gate while the fallback did
+ * all the work. That is the tautological-gate failure this repo has already paid
+ * for twice, so the namespace is recognised rather than faked. `--shell-*` is
+ * genuinely themed: `TemplateThemeService` writes Layer 0 `themes[].tokens` onto
+ * `<html>`, verified in a browser against the built bundle.
+ *
+ * A **custom property declaration** is exempt. `--shell-border: #d0d7de;` is the
+ * one place a literal belongs, because defining the token is precisely how every
+ * other line avoids hardcoding. The exemption is deliberately narrow: the line
+ * must be a declaration of a `--*` property, so `color: #fff` is still caught
+ * wherever it appears.
+ */
 function checkThemeTokens() {
   const colorLiteral = /#[0-9a-fA-F]{3,8}\b|rgba?\(/;
+  const THEMED_NAMESPACES = ['var(--mat-sys-', 'var(--kd-', 'var(--shell-'];
+  // A design-token definition, e.g. `--shell-nav-bg: #0f2b46;`.
+  const tokenDefinition = /^--[a-z0-9-]+\s*:/;
+
   for (const [file, lines] of addedLinesByFile) {
     if (!file.endsWith('.scss') && !file.endsWith('.html')) continue;
     for (const { line, text } of lines) {
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*')) continue;
+      if (tokenDefinition.test(trimmed)) continue;
       const hasColor = colorLiteral.test(trimmed);
-      const isThemed = trimmed.includes('var(--mat-sys-') || trimmed.includes('var(--kd-');
+      const isThemed = THEMED_NAMESPACES.some((namespace) => trimmed.includes(namespace));
       if (hasColor && !isThemed) {
         fail(
-          `${file}:${line} introduces a hard-coded color. Use --mat-sys-* theme tokens with a fallback.`,
+          `${file}:${line} introduces a hard-coded color. Use a theme token with a fallback ` +
+            `(--mat-sys-*, --kd-*, or --shell-* in the template), or declare it as a --* token.`,
         );
       }
     }

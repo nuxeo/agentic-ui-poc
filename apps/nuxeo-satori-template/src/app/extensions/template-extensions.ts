@@ -98,7 +98,10 @@ export function provideTemplateExtensions(): EnvironmentProviders {
         // selection, the current url, the signed-in user.
         'template.actions.exportSummary': {
           execute: (context) => {
-            console.info('[template] export summary', {
+            // `warn`, not `info`: this is a placeholder a fork replaces, so
+            // "not implemented" is genuinely a warning — and it is the level the
+            // workspace lint rule allows, so the template stays warning-clean.
+            console.warn('[template] exportSummary is not implemented yet', {
               url: context.url,
               selectionCount: context.selectionCount,
             });
