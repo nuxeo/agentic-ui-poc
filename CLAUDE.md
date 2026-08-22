@@ -1,28 +1,118 @@
-# CLAUDE.md — Nuxeo Agentic UI Context
+# CLAUDE.md — Nuxeo Agentic UI
 
-Read `AGENTS.md` and all files in the `AGENTS/` directory before starting any task.
-They contain the complete codebase knowledge for this Angular 20 + Nx monorepo.
+Angular 20 + Nx monorepo. A Nuxeo content management UI being converted into a
+customer-shippable Beta ("Nuxeo Satori") on real `adf-hx` components, with a
+four-layer customisation contract.
 
-## Quick start
+---
 
-1. Read `AGENTS.md` — architecture summary, service map, where things live
-2. Read the specific `AGENTS/` file for your task:
-   - Adding a feature? → `AGENTS/04-feature-scaffold.md`
-   - Calling a Nuxeo API? → `AGENTS/02-nuxeo-apis.md` + `AGENTS/01-services.md`
-   - Writing tests? → `AGENTS/05-test-standards.md`
-   - Git/PR work? → `AGENTS/06-git-workflow.md`
-   - Security review? → `AGENTS/07-security.md` + `AGENTS/08-bug-patterns.md`
+## Read this first, in order
+
+1. **`AGENTS.md`** — architecture, service map, where things live.
+2. **`AGENTS/11-beta-program.md`** — the Beta contract. Section 3 is _verified facts_:
+   established first-hand, do not re-litigate. If you believe one is wrong, **prove it
+   before acting on it** — two phases contradicted a verified fact without proof and both
+   cost real time.
+3. **`docs/adf-hx-beta-plan.md`** — the plan of record: phases, timelines, risks,
+   decisions already taken. Supersedes `docs/adf-hx-poc-action-plan.md`.
+4. The `AGENTS/` file for your task — `01-services.md`, `02-nuxeo-apis.md`,
+   `05-test-standards.md`, `07-security.md`, `08-bug-patterns.md`.
+
+For Beta work also read `docs/extension-reference.md` (the registered-ID contract) and
+`libs/shared/adf-hx-bridge/ARCHITECTURE.md`.
+
+## Where the programme stands
+
+Branch `feature/adf-hx-browse-poc`, pushed, CI green. See the plan's **Programme status**
+section for the authoritative, dated position — that file is maintained; this line is not.
+
+Phases 0, 1 and 2 are complete. Phase 3 (adf-hx component adoption) is next and is the
+first phase that needs the `@alfresco` package registry.
+
+## Skills — read them, they are not auto-loaded
+
+The workflow lives in `.cursor/skills/`. They are plain Markdown; read the relevant one
+before starting.
+
+| Skill                             | Use for                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| `beta-phase/SKILL.md`             | Running any Beta phase end to end. **Start here.**         |
+| `verify-gate/SKILL.md`            | Getting to green without churning                          |
+| `capture-phase-evidence/SKILL.md` | Producing evidence that proves something                   |
+| `implement-api-port/SKILL.md`     | One of the twelve adf-hx API ports (Phase 3, ~10 of these) |
+| `adopt-adf-hx-component/SKILL.md` | Swapping a hand-written `hxp-*` for the real component     |
+| `add-extension-point/SKILL.md`    | Making something manifest-addressable                      |
+
+## The gate — six, not three
+
+```bash
+npm run beta:gate -- --phase <id>     # lockfile, guardrails, lint, test, build, typecheck
+npm run beta:gate -- --gates lockfile,guardrails,lint   # fast inner loop
+npm run beta:evidence -- <phase-id>   # exits non-zero if any check fails
+```
+
+Two traps that have each cost a phase:
+
+- **`test` does not typecheck.** Vitest strips types through esbuild. Only `build` and
+  `typecheck` catch a `TS` error, and they run last. A green `test` is not type safety.
+- **Nothing except the `lockfile` gate reads `package-lock.json`.** CI was red for the
+  whole of Phase 2 while every local gate was green.
+
+## Hard-won rules — the expensive ones
+
+- **A gate is not evidence until you have seen it fail on purpose.** Three gates this
+  programme were green while the thing they guarded was broken: an evidence check that
+  compared script `src` attributes instead of bundle bytes, a path check that was
+  tautological under the dev base href, and a lockfile gate that matched dependency names
+  but not versions. Break it deliberately, watch it go red, then trust it.
+- **Never run a bare `npm install` and commit the lockfile.** On macOS it prunes optional
+  platform entries Linux needs and `npm ci` refuses the tree. Restore a known-good lock and
+  merge new entries in.
+- **`npm ci` installs from each entry's `resolved` URL, not from `.npmrc`.** Changing a
+  scope's registry does nothing until the lock is regenerated.
+- **Evidence must assert the claim, not the pulse.** Every step records at least one check;
+  state which checks are load-bearing and which are negative, so a total is not read as all
+  meaningful. Anything asserting a _reloaded_ app needs a real `page.reload()` —
+  `withHashLocation()` makes `goto('/#/x')` same-document, so `APP_INITIALIZER` never re-runs.
+- **Do not present unfinished work as finished.** Registering descriptors nothing renders,
+  or documenting rules that always return `false`, inflates the apparent surface. Both
+  happened; both were caught in review.
+- **Independent adversarial review is mandatory** before a phase is signed off. Every phase
+  so far self-reported green and CI-green, and every one contained at least one overstated
+  or self-confirming claim. Phase 1's would have shipped a dead feature to every customer.
 
 ## Non-negotiable conventions
 
 - `standalone: true` on every component — no NgModules
 - `inject()` for DI — never constructor parameters
-- `signal()` for all mutable state — never BehaviorSubject for UI state
-- `takeUntilDestroyed()` on every `.subscribe()` call
+- `signal()` for mutable state — never `BehaviorSubject` for UI state
+- `takeUntilDestroyed()` on every `.subscribe()`
 - `templateUrl` always — no inline templates
-- Never `<img [src]="nuxeoUrl">` — always fetch via service and use blob URL
+- Never `<img [src]="nuxeoUrl">` — fetch via service, use a blob URL, revoke on destroy
 - Never cross-feature imports — shared logic goes in `libs/shared/`
+- Credentials from environment only; never hardcoded, never in a URL query string
+- **adf-hx types must never appear in our public API** — wrap them in `adf-hx-bridge`
+- Anything a customer might want to change goes through Layer 0 or 1, not a hardcoded value
+- **Hiding an action in a manifest is not a security control** — server-side Nuxeo
+  permissions still gate operations
 
-## Definition of done
+## Environment
 
-Every task must pass: `npx nx affected -t lint` + `build` + `test`
+- Nuxeo runs locally in Docker (container `nuxeo`, port 8080) with OpenSearch. The dev
+  server proxies to it via `apps/nuxeo-ui/proxy.conf.json`.
+- `npx nx serve nuxeo-ui` → `http://localhost:4200`.
+- Credentials from `NUXEO_USER`/`NUXEO_PASS`, default `Administrator`.
+- `SATORI_GH_READONLY_TOKEN` is required to install `@hylandsoftware` and `@alfresco`
+  packages from GitHub Packages.
+- Node is pinned to 20 (`.nvmrc`). On Node 22+ a built-in `localStorage` shadows jsdom's;
+  `npm run beta:gate` works around it, a bare `nx test` does not.
+- Playwright is installed with `--no-save` on purpose, so CI installs stay unaffected.
+- The AI backend is **not** in this repo — AI features are `AI.*` Nuxeo Automation
+  operations from a separate marketplace package. Absent package means HTTP 500, which is
+  expected, not a client defect.
+
+## Evidence
+
+Phase evidence and leadership review packages are written to
+`~/Desktop/agentic-ui-evidence/beta/` — **outside the repo**, so they do not travel with a
+clone. Anything load-bearing belongs in the repo docs. Do not commit evidence output.

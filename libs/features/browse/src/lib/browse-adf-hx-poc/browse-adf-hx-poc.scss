@@ -119,3 +119,46 @@ hxp-domain-hint {
     height: auto;
   }
 }
+
+// Preview button - sits next to the panel toggle
+.hxp-browse-page__preview-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--hxp-border);
+  border-radius: 4px;
+  background: var(--hxp-surface);
+  color: var(--hxp-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--hxp-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--hxp-primary);
+    outline-offset: 2px;
+  }
+}
+
+// Document viewer overlay - full-screen over everything
+.hxp-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: var(--hxp-surface, var(--mat-sys-surface, #fff));
+
+  // Upstream's viewer is a standalone component that manages its own layout
+  hxp-ui-document-viewer {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}

@@ -35,6 +35,18 @@
         >
           <hxp-icon [name]="panelOpen() ? 'info' : 'info-outline'" size="md" [decorative]="true" />
         </button>
+        @if (selectedDocument(); as doc) {
+          @if (!doc.sys_isFolderish) {
+            <button
+              type="button"
+              class="hxp-browse-page__preview-btn"
+              title="Preview document"
+              (click)="openViewer()"
+            >
+              Preview
+            </button>
+          }
+        }
       </div>
 
       <div class="hxp-browse-page__tab-content">
@@ -229,4 +241,18 @@
       />
     }
   </div>
+
+  <!-- Document viewer overlay -->
+  @if (viewerOpen(); as _open) {
+    @if (viewerDocument(); as doc) {
+      <div class="hxp-viewer-overlay">
+        <hxp-ui-document-viewer
+          [document]="doc"
+          [fullScreen]="false"
+          [showRightSidebar]="false"
+          (closeViewer)="closeViewer()"
+        />
+      </div>
+    }
+  }
 </section>

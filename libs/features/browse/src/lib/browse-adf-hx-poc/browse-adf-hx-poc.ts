@@ -60,8 +60,9 @@ import {
 import {
   HxpBreadcrumbComponent as UpstreamBreadcrumbComponent,
   HxpDocumentListComponent as UpstreamDocumentListComponent,
-  ManageVersionsSidebarComponent as UpstreamManageVersionsSidebarComponent,
   HxpPropertiesSidebarComponent as UpstreamPropertiesSidebarComponent,
+  HxpUiDocumentViewerComponent as UpstreamDocumentViewerComponent,
+  ManageVersionsSidebarComponent as UpstreamManageVersionsSidebarComponent,
 } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
 
@@ -124,6 +125,7 @@ const DATE_COLUMNS = new Set(['modified', 'created']);
     HxpBrowseToolbarComponent,
     UpstreamBreadcrumbComponent,
     UpstreamDocumentListComponent,
+    UpstreamDocumentViewerComponent,
     UpstreamManageVersionsSidebarComponent,
     UpstreamPropertiesSidebarComponent,
     HxpDocumentCardsComponent,
@@ -268,8 +270,25 @@ export class BrowseAdfHxPocComponent {
     return selection.length === 1 ? selection[0] : null;
   });
 
+  // ── Document viewer overlay ──
+  protected readonly viewerOpen = signal(false);
+  protected readonly viewerDocument = signal<Document | null>(null);
+
   protected onSelectedDocuments(documents: Document[]): void {
     this.selectedDocuments.set(documents);
+  }
+
+  protected openViewer(): void {
+    const doc = this.selectedDocument();
+    if (doc && !doc.sys_isFolderish) {
+      this.viewerDocument.set(doc);
+      this.viewerOpen.set(true);
+    }
+  }
+
+  protected closeViewer(): void {
+    this.viewerOpen.set(false);
+    this.viewerDocument.set(null);
   }
 
   /** Upstream's panel emits its own close; there is no drawer here, so fall back to View. */

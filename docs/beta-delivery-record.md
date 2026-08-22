@@ -33,7 +33,7 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 | 0 — Unblock and verify                  | **complete**                                           | `phase-0-baseline` 14/14 |
 | 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                    | `phase-1-config` 39/39   |
 | 2 — Layer 1: extension registry         | **complete**, carry-forward named                      | `phase-2-registry` 46/46 |
-| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 5 components adopted | `phase-3-adf-hx` 51/51   |
+| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 5 components adopted | `phase-3-adf-hx` 55/55   |
 | 4 — Layer 2: publishable platform       | not started                                            | —                        |
 | 5 — Layer 3: agent harness              | partial (the harness below exists)                     | —                        |
 | 6 — Beta quality bar                    | partial — coverage and a11y now _measured_             | `phase-6-a11y` 12/12     |
@@ -355,7 +355,7 @@ Nothing here is a surprise later.
    `ManageRetention` requires **both** of Nuxeo's `SetRetention` and `UnsetRetention`. An absent
    enricher yields `undefined` rather than `[]`, because "we did not ask" is not "no permissions".
    The children fetch now requests the enricher, which it never did before.
-3. **Three components remain**: permissions, document-viewer, search. Document list,
+3. **Two components remain**: permissions (still blocked on write-surface problem), search. Document list,
    breadcrumb, tree, manage-versions and the **properties panel** are done.
    The `MODEL` blocker is closed: the read side is implemented and the panel renders a document's
    real Nuxeo metadata with correct types.

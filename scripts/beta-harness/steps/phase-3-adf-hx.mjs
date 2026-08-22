@@ -45,6 +45,8 @@ const ENVIRONMENTAL_ERRORS = [
   '/agentic-ui-config/bootstrap.json',
   // sys_acl principal resolution: probes /group/ first for every principal, gets 404 for users
   /HTTP 404 \/nuxeo\/api\/v1\/group\//,
+  // adf-core viewer / pdfjs-dist passive event listener warning
+  /preventDefault inside passive event listener/,
 ];
 
 /** Where the versions fixture lives. Its own folder, so the list has one row to select. */
@@ -675,6 +677,40 @@ export default async function run(page, h) {
   await h.screenshot('properties-panel');
   
 
+
+  h.step('Adopted: upstream document viewer');
+  // The viewer opens in an overlay for the selected document. Testing just the open/close cycle
+  // and that it renders without error — full PDF rendering is adf-core's ViewerComponent and
+  // testing pdfjs-dist is not this phase's job.
+  const previewBtn = page.locator('.hxp-browse-page__preview-btn');
+  h.check('a Preview button appears for the selected document', (await previewBtn.count()) > 0);
+  
+  if ((await previewBtn.count()) > 0) {
+    await previewBtn.click();
+    await page.waitForTimeout(3000);
+    
+    const viewerOverlay = page.locator('.hxp-viewer-overlay');
+    h.check(
+      'clicking Preview opens the viewer overlay',
+      (await viewerOverlay.isVisible()) === true,
+    );
+    
+    const viewerComponent = page.locator('hxp-ui-document-viewer');
+    h.check(
+      'the upstream viewer component renders',
+      (await viewerComponent.count()) > 0,
+    );
+    
+    await h.screenshot('document-viewer');
+    
+    // Close via escape or button
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(1500);
+    h.check(
+      'pressing Escape closes the viewer',
+      (await viewerOverlay.isVisible()) === false,
+    );
+  }
 
   h.step('Health');
   // sys_acl assertions - principal lookups are async and complete after the properties panel renders
