@@ -52,7 +52,7 @@ export function nuxeoVersionLabel(doc: NuxeoDocument): string | undefined {
  *
  * Three deliberate gaps, all of them Nuxeo's rather than this mapper's:
  *
- * - **`sysver_description`** is upstream's *version comment*. Nuxeo does not store the
+ * - **`sysver_description`** — DEGRADED(adf-hx): D2 — always unset. It is upstream's *version comment*. Nuxeo does not store the
  *   check-in comment on the version document — it goes to the audit log as the
  *   `documentCheckedIn` event's `eventComment`. Mapping `dc:description` into it would show
  *   the *document's* description as if it were the version's comment, so it is left unset and

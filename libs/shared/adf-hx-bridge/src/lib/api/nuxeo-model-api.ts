@@ -22,6 +22,8 @@ import type { AxiosLikeResponse } from './nuxeo-version-api';
  * Both are recorded in `nuxeo-unmapped-api.spec.ts`, which was written because the opposite had
  * been claimed.
  *
+ * REFUSES: R2 — the `MODEL` write half is **unimplementable**, not unimplemented.
+ *
  * ## Why the write side still refuses
  *
  * HxPR treats the content model as a document it can `set` and `patch` wholesale, including

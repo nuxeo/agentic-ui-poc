@@ -28,6 +28,10 @@ export interface HxpPickableColumn {
  * where those come from and where they are persisted is the host's business, which is what
  * lets the host feed it Layer 1 descriptors instead of a hardcoded list.
  */
+/**
+ * MISSING(adf-hx): M1 — upstream's document list has no column picker. Driven by the Layer 1
+ * descriptors, so `Reset` returns to the manifest rather than a packaged constant.
+ */
 @Component({
   selector: 'hxp-column-picker',
   standalone: true,

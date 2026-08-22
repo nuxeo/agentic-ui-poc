@@ -80,6 +80,9 @@ hxp-domain-hint {
   flex-shrink: 0;
 }
 
+// WORKAROUND(adf-hx): W9 — ::ng-deep overrides, because the panels ship drawer-sized
+// ViewEncapsulation.None styles.
+//
 // Upstream's versions panel is built to be a drawer, not a tab body: it ships
 // `ViewEncapsulation.None` styles that give its list `height: 100vh` and its skeleton loader a
 // fixed 370px width. Inside a tab that pushes the page taller than the viewport.

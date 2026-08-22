@@ -98,6 +98,9 @@ function mapSchema(schema: NuxeoSchemaDefinition): Schema {
 }
 
 /**
+ * WORKAROUND(adf-hx): W11 — a synthesised `sys` pseudo-schema, because Nuxeo has none and
+ * upstream's default property panel is entirely `sys_*`.
+ *
  * The `sys` pseudo-schema, describing the fields **this bridge's own document mapper emits**.
  *
  * Nuxeo has no `sys` schema — its are `dublincore`, `common`, `uid`, `file` — so a faithfully
@@ -142,6 +145,8 @@ const SYS_SCHEMA_FIELDS: Readonly<Record<string, string>> = {
 const NUXEO_CONTENT_SCHEMA = 'file';
 
 /**
+ * WORKAROUND(adf-hx): W12 — Nuxeo facet names translated to HxPR mixin names.
+ *
  * A doctype's Nuxeo facets, plus the HxPR mixin adf-hx classifies types by.
  *
  * `DocumentModel.getFolderishTypes()` and `getFilishTypes()` filter on `SysFolderish` and
@@ -169,7 +174,7 @@ function hxMixinsForDoctype(facets: readonly string[], schemas: readonly string[
  *
  * Three things Nuxeo cannot answer, left **unset** rather than invented:
  *
- * - **`PrimaryType.subtypes`** — the types creatable *inside* a container. Nuxeo scopes that
+ * - **`PrimaryType.subtypes`** — DEGRADED(adf-hx): D3 — left unset. The types creatable *inside* a container. Nuxeo scopes that
  *   per document and exposes it through a document enricher, not through `/config/types`.
  *   Upstream already handles the gap: `getSubtypes` falls back to `getAllTypes()`. Synthesising
  *   it from `parent` would be wrong in a different way — that is the inheritance graph, not the

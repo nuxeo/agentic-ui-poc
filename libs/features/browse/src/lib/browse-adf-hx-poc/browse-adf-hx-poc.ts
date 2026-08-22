@@ -241,6 +241,10 @@ export class BrowseAdfHxPocComponent {
 
   // ── Per-document tabs: Properties and Versions ──
   //
+  // MISSING(adf-hx): M6 — deciding *which* document a per-document panel acts on. Upstream's
+  // panels each take one `[document]` and are built as drawers; choosing the target from a
+  // selection, and saying so when there is none, is the host's job.
+  //
   // Both belong to a document, not to the folder being browsed, so they act on the row
   // **selected** in the View tab rather than on `currentDocument()`. Binding Versions to the
   // folder would have looked like a working feature: upstream always prepends a "current

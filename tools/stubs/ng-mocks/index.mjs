@@ -1,4 +1,9 @@
 /**
+ * WORKAROUND(adf-hx): W1 — adf-hx's shipped `/ui` runtime bundle imports `ng-mocks`, a test-mocking
+ * library with two `eval()` calls, into a customer-facing chunk. This stub satisfies the import and
+ * throws if anything actually calls it. See `docs/adf-hx-upstream-findings.md` §1.1.
+ */
+/**
  * Stub for `ng-mocks`, installed in its place via a `file:` dependency.
  *
  * `@alfresco/adf-hx-content-services@7.20.0-automate.292` imports this test library

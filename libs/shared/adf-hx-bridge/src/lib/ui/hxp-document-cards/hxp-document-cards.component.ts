@@ -20,6 +20,10 @@ import { HxpIconComponent } from '../hxp-icon/hxp-icon.component';
  * markup and its selection behaviour in one testable place, and the host stays a
  * composition of list-or-cards rather than a fork of both.
  */
+/**
+ * MISSING(adf-hx): M2 — upstream offers a DataTable and no card view, so thumbnails have no home
+ * without this.
+ */
 @Component({
   selector: 'hxp-document-cards',
   standalone: true,

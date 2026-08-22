@@ -152,6 +152,27 @@ before debugging code.
   - A number moved? Update section 5.
   - A gap opened or closed? Section 6.
   - A claim turned out wrong? Section 7. Do not delete the original claim.
+- **Update `docs/adf-hx-workarounds.md`** for anything the phase added that exists only
+  because adf-hx or adf-core forces it. Put the marker at the site —
+  `WORKAROUND(adf-hx): W<n>`, `MISSING(adf-hx): M<n>`, `REFUSES: R<n>` or
+  `DEGRADED(adf-hx): D<n>` — **and** the row in the register. The two are gated against
+  each other by `guardrails`, in both directions, so a marker without a row or a row
+  without a marker fails the phase. Set the **Removable?** column honestly: structural
+  is not the same as future cleanup, and leadership reads the count.
+- **Update `docs/adf-hx-upstream-findings.md`** if the cause was upstream's. That file is
+  written to be sent to the adf-hx team, so every finding needs a version, a file path and
+  a reproduction. Keep our own environmental problems out of it — a Node global, a macOS
+  lockfile, an Angular config array. Including them weakens the real findings.
+- **Exhaustive is the standard, not brevity.** A phase's write-up is judged against the
+  work, not against a word count:
+  - **every** diversion, challenge and dead end gets **its own line** in section 10,
+    including work that was reverted. Reverted work leaves no trace in the diff, which
+    makes it the most expensive knowledge in the repo and the easiest to lose. Say what it
+    bought — a dead end that eliminated an option is not wasted.
+  - a claim that turned out wrong **moves to section 7**. Never delete it. The record of
+    what was believed is part of the record.
+  - a decision that is a human's to make goes to section 9 with its cost of delay, not
+    into a note nobody reads.
 - Add the phase's steps file to the table if it was new.
 - Report: what shipped, what the evidence proves, what is still open.
 

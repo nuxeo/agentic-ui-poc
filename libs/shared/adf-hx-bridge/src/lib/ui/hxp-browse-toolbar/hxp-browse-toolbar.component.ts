@@ -5,6 +5,10 @@ import { HxpSpinnerComponent } from '../hxp-spinner/hxp-spinner.component';
 
 export type HxpBrowseViewMode = 'list' | 'card';
 
+/**
+ * MISSING(adf-hx): M5 — upstream has no list-level filter toolbar. Its search-filters feature is a
+ * different surface.
+ */
 @Component({
   selector: 'hxp-browse-toolbar',
   standalone: true,

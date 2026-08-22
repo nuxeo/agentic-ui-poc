@@ -53,12 +53,20 @@ function mapNuxeoTypeToHxPrimaryType(nuxeoType: string): string {
   return nuxeoType === 'Root' ? SYS_ROOT : nuxeoType;
 }
 
+/**
+ * DEGRADED(adf-hx): D1 — hardcoded for every document. The last of five recorded bridge defects.
+ *
+ * Upstream's `hasPermission()` therefore answers from a constant. Hiding an action is **not** a
+ * security control: Nuxeo's server-side ACLs still gate every operation.
+ */
 function minimalEffectivePermissions(): string[] {
   return ['Browse', 'Read', 'ReadWrite', 'Everything'];
 }
 
 /**
  * A Nuxeo username as an HxPR `User`.
+ *
+ * DEGRADED(adf-hx): D4 — the username is shown where a display name belongs.
  *
  * Nuxeo's `dc:lastContributor` and `dc:creator` are **usernames**, not user records, so the
  * username is all the information the document itself carries. `email` stays unset: no

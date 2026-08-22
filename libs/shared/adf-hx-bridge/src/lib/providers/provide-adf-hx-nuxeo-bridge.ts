@@ -93,6 +93,8 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   AdfHxBrowseMediaService,
   AdfHxBrowseFolderService,
   NuxeoDocumentRouterService,
+  // WORKAROUND(adf-hx): W7 — pipes provided as services, because none carries `providedIn`.
+  //
   // adf-core's pipes, which upstream's arrays do **not** cover.
   //
   // adf-core declares these as pipes, so none carries `providedIn`, and `PropertyUtilService`
@@ -107,6 +109,8 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   DecimalNumberPipe,
   LocalizedDatePipe,
   FileSizePipe,
+  // WORKAROUND(adf-hx): W8 — upstream's router service hardcodes a route shape this app lacks.
+  //
   // adf-hx's own `DocumentRouterService` builds `/{repository}/documents/{id}`, a route
   // structure this application does not have, and its breadcrumb feeds the result straight
   // into `[routerLink]`. It carries no `providedIn`, which makes it an intended substitution
@@ -137,6 +141,8 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   // default section, and everything **not** `sys_`/`sysfile_blob`/`sysver_`/`sysgov_` in its
   // other section — which is precisely where Nuxeo's `dc_*`, `file_*` and `uid_*` properties
   // land. The `sys_*` and Nuxeo surfaces therefore appear once each rather than twice.
+  //
+  // DEGRADED(adf-hx): D5 — the editable metadata sidebar cannot be adopted at all.
   //
   // Turning the flag **on** needs one more provider that is deliberately absent here:
   // `HxpMetadataSidebarComponent` requires `HxpMetadataCacheService`, which carries no

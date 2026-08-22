@@ -59,9 +59,14 @@
           />
           <!-- The error path is a host responsibility now: upstream's document list has
                no error state, so it is rehomed here rather than lost. -->
-          <!-- Host responsibilities upstream's DataTable does not provide: the error path,
-               the empty state, the card view and the column picker. All four were in the
-               hand-written list and are rehomed here rather than lost. -->
+          <!-- MISSING(adf-hx): M4 — the error and retry path. Upstream's DataTable has no error
+               state, so a failed load renders as an empty list, indistinguishable from an empty
+               folder.
+               MISSING(adf-hx): M3 — the empty state. Upstream offers a template slot and no
+               default content.
+               All four host responsibilities upstream does not provide — error, empty, card view
+               and column picker — were in the hand-written list and are rehomed rather than
+               lost. -->
           @if (error()) {
             <div class="hxp-poc-error">
               <p role="alert">{{ error() }}</p>

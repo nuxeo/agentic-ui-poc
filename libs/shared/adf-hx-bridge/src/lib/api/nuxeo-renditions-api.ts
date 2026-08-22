@@ -14,6 +14,8 @@ import { assertDefaultRepository, type AxiosLikeResponse } from './nuxeo-version
  * Nuxeo can offer more per document type, but it has no endpoint through our services that
  * *enumerates* them, so listing a fixed set is honest where inventing a discovery call
  * would not be. `getRenditions` says as much rather than implying it enumerated anything.
+ *
+ * REFUSES: R4 — `getRenditions` returns a fixed pair; it is not a discovery call.
  */
 const SERVABLE_RENDITIONS = ['thumbnail', 'pdf'] as const;
 

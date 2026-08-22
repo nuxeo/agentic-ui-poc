@@ -9,6 +9,9 @@ import { mapNuxeoVersionsToHx } from '../mapping/nuxeo-to-hx-version.mapper';
 type AxiosLikeResponse<T> = { data: T };
 
 /**
+ * REFUSES: R3 — `getDocumentsByQuery` understands exactly one HXQL statement and refuses every
+ * other by name.
+ *
  * The one HXQL statement adf-hx builds and hands to `QUERY`.
  *
  * `DocumentVersionsService.getVersionsById` composes it by template literal, so this matches

@@ -1,6 +1,12 @@
 import { Injectable } from '@angular/core';
 
 /**
+ * REFUSES: R1 — the `UPLOAD` port refuses all six methods.
+ *
+ * DEGRADED(adf-hx): D6 — a refusing port whose consumer builds its observable in a constructor
+ * leaves an unhandled promise rejection in the console at injection time. See
+ * `nuxeo-model-api.spec.ts`, which pinned that behaviour while `MODEL` still refused.
+ *
  * The one API port whose Nuxeo equivalent is a **different protocol**, not a different
  * endpoint.
  *

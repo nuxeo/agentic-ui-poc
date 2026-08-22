@@ -39,6 +39,9 @@ interface TranslationFolder {
 }
 
 /**
+ * WORKAROUND(adf-hx): W6 — adf-hx's own i18n catalogues seeded, because its components register
+ * them too late for the registration to matter.
+ *
  * Catalogues seeded at construction, keyed by the name their owner registers under.
  *
  * adf-core's own loader seeds its folder in its constructor, and these are seeded for the same
@@ -74,6 +77,8 @@ const SEEDED_FOLDERS: readonly TranslationFolder[] = [
  * That second step is the Layer 0 point of this class: relabelling the product for a
  * customer is a manifest edit, not a rebuild. The English catalogue is also compiled in
  * as a fallback, so a failed fetch degrades to English rather than to raw keys.
+ *
+ * WORKAROUND(adf-hx): W2 — five undocumented loader methods duck-typed without importing adf-core.
  *
  * ## Why it implements five methods that are not on `TranslateLoader`
  *

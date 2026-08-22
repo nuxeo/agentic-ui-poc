@@ -10,6 +10,9 @@ export default defineConfig(() => ({
   plugins: [angular(), nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
   resolve: {
     alias: [
+      // WORKAROUND(adf-hx): W10 — alias + server.deps.inline, because adf-core does a directory
+      // import Node's ESM resolver rejects.
+      //
       // adf-core's fesm bundle does `import ... from 'date-fns/locale'` — a *directory*
       // import, which Node's ESM resolver rejects outright:
       //   Directory import '.../date-fns/locale' is not supported resolving ES modules
