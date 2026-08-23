@@ -9,6 +9,7 @@
     "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",
     "beta:fork": "node scripts/beta-harness/fork-simulation.mjs",
     "beta:gate": "node scripts/beta-harness/verify-gate.mjs",
+    "beta:slides": "node tools/video/export-pptx.mjs",
     "beta:state": "node scripts/beta-harness/state-check.mjs",
     "build": "nx build",
     "dev": "nx serve nuxeo-ui",
