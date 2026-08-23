@@ -71,32 +71,6 @@ export function insertAboveMarker(
   }
 }
 
-/**
- * Add an `import` after the last existing import, if that specifier is not already
- * imported.
- *
- * Deliberately additive and idempotent: running a generator twice with different
- * names must not produce a duplicate import, and must not reorder the ones already
- * there.
- */
-export function ensureImport(tree: Tree, file: string, statement: string): void {
-  const source = tree.read(file, 'utf-8');
-  if (source === null) throw new Error(`Cannot read ${file}.`);
-  if (source.includes(statement)) return;
-
-  const imports = [...source.matchAll(/^import .*?;$/gms)];
-  const last = imports.at(-1);
-  if (!last?.index) {
-    tree.write(file, `${statement}\n${source}`);
-    return;
-  }
-  const end = last.index + last[0].length;
-  tree.write(
-    tree.exists(file) ? file : file,
-    `${source.slice(0, end)}\n${statement}${source.slice(end)}`,
-  );
-}
-
 /** Guard against registering an ID that is already there. */
 export function assertIdAbsent(tree: Tree, file: string, id: string): void {
   const source = tree.read(file, 'utf-8') ?? '';
