@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <title>Nuxeo Satori — screencast deck</title>
+    <link rel="stylesheet" href="deck.css" />
+  </head>
+  <body class="viz-root">
+    <div id="slides"></div>
+    <div class="rail" id="rail" style="width: 0"></div>
+
+    <script type="module">
+      /**
+       * Slide renderer for the Beta screencasts.
+       *
+       * A renderer plus JSON decks rather than hand-written HTML per slide, so the
+       * three decks share one set of mark specs and one validated palette. The
+       * recorder drives it through `window.deck`.
+       *
+       * Every bar and stack segment is direct-labelled. That is not decoration: the
+       * validated palette's worst adjacent CVD separation is 8.4, which sits in the
+       * band where the dataviz rules require a secondary encoding, so identity never
+       * rests on colour alone.
+       */
+      const params = new URLSearchParams(location.search);
+      const deckName = params.get('deck');
+
+      const esc = (s) =>
+        String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+      /** Allows `**bold**` and `` `code` `` in deck copy without a markdown dep. */
+      const rich = (s) =>
+        esc(s)
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/`(.+?)`/g, '<code>$1</code>');
+
+      const head = (s) =>
+        `${s.eyebrow ? `<p class="slide__eyebrow">${esc(s.eyebrow)}</p>` : ''}` +
+        `${s.rule ? '<div class="slide__rule"></div>' : ''}` +
+        `${s.title ? `<h1 class="slide__title">${rich(s.title)}</h1>` : ''}` +
+        `${s.lede ? `<p class="slide__lede">${rich(s.lede)}</p>` : ''}`;
+
+      const foot = (s) => (s.footnote ? `<p class="slide__footnote">${rich(s.footnote)}</p>` : '');
+
+      const legend = (items) =>
+        !items
+          ? ''
+          : `<div class="legend">${items
+              .map(
+                (i) =>
+                  `<span class="legend__item" data-series="${esc(i.series ?? '')}">` +
+                  `<span class="legend__swatch"></span>${rich(i.label)}</span>`,
+              )
+              .join('')}</div>`;
+
+      /** Bars share one scale; `max` may be given so two slides stay comparable. */
+      function bars(s) {
+        const max = s.max ?? Math.max(...s.items.map((i) => i.value));
+        return (
+          `<div class="bars">${s.items
+            .map((i) => {
+              const pct = Math.max(0.4, (i.value / max) * 100);
+              return (
+                `<div class="bar" data-series="${esc(i.series ?? '')}">` +
+                `<div class="bar__label">${rich(i.label)}</div>` +
+                `<div class="bar__track">` +
+                `<div class="bar__fill" style="width:${pct}%"></div>` +
+                `<span class="bar__value">${esc(i.display ?? i.value.toLocaleString())}</span>` +
+                `${i.note ? `<span class="bar__note">${esc(i.note)}</span>` : ''}` +
+                `</div></div>`
+              );
+            })
+            .join('')}</div>` + legend(s.legend)
+        );
+      }
+
+      function stack(s) {
+        const total = s.items.reduce((n, i) => n + i.value, 0);
+        return (
+          `<div class="stack">${s.items
+            .map(
+              (i) =>
+                `<div class="stack__seg" data-series="${esc(i.series ?? '')}" ` +
+                `style="flex:${i.value}">${esc(i.value)}</div>`,
+            )
+            .join('')}</div>` +
+          `<div class="stack-legend">${s.items
+            .map(
+              (i) =>
+                `<span class="legend__item" data-series="${esc(i.series ?? '')}">` +
+                `<span class="legend__swatch"></span>${rich(i.label)} — ` +
+                `${((i.value / total) * 100).toFixed(0)}%</span>`,
+            )
+            .join('')}</div>`
+        );
+      }
+
+      const stats = (s) =>
+        `<div class="stats">${s.items
+          .map(
+            (i) =>
+              `<div class="stat" data-series="${esc(i.series ?? '')}">` +
+              `<div class="stat__accent"></div>` +
+              `<div class="stat__value">${esc(i.value)}` +
+              `${i.unit ? `<span class="stat__unit">${esc(i.unit)}</span>` : ''}</div>` +
+              `<div class="stat__label">${rich(i.label)}</div>` +
+              `${i.sub ? `<div class="stat__sub">${rich(i.sub)}</div>` : ''}` +
+              `</div>`,
+          )
+          .join('')}</div>`;
+
+      const split = (s) =>
+        `<div class="split">${s.panels
+          .map(
+            (p) =>
+              `<div class="panel" data-series="${esc(p.series ?? '')}">` +
+              `<div class="panel__head"><span class="panel__swatch"></span>` +
+              `<h2 class="panel__title">${rich(p.title)}</h2></div>` +
+              `${p.sub ? `<p class="panel__sub">${rich(p.sub)}</p>` : ''}` +
+              `<ul class="panel__list">${p.items
+                .map((i) => `<li>${rich(i)}</li>`)
+                .join('')}</ul></div>`,
+          )
+          .join('')}</div>`;
+
+      const steps = (s) =>
+        `<div class="steps">${s.items
+          .map(
+            (i, n) =>
+              `<div class="step" data-series="${esc(i.series ?? '')}">` +
+              `<div class="step__n">${n + 1}</div><div>` +
+              `<h3 class="step__title">${rich(i.title)}</h3>` +
+              `<p class="step__text">${rich(i.text)}</p></div></div>`,
+          )
+          .join('')}</div>`;
+
+      const code = (s) => `<div class="codeblock">${s.code}</div>`;
+
+      const banner = (s) =>
+        `<div class="banner ${s.tone ? `banner--${esc(s.tone)}` : ''}">${rich(s.text)}</div>`;
+
+      const RENDER = { bars, stack, stats, split, steps, code, banner };
+
+      function build(deck) {
+        const host = document.getElementById('slides');
+        host.innerHTML = deck.slides
+          .map((s) => {
+            const body = (s.blocks ?? []).map((b) => RENDER[b.type]?.(b) ?? '').join('');
+            return (
+              `<section class="slide ${s.kind === 'title' ? 'slide--title' : ''}">` +
+              head(s) +
+              (body ? `<div class="slide__body">${body}</div>` : '') +
+              foot(s) +
+              `</section>`
+            );
+          })
+          .join('');
+        return host.querySelectorAll('.slide');
+      }
+
+      const res = await fetch(`decks/${deckName}.json`);
+      const deck = await res.json();
+      const slides = build(deck);
+
+      /**
+       * Shrink a code block's type until it fits its box.
+       *
+       * Six slides were **clipping** their code: the worst lost 274px, which cut the
+       * closing braces off a `bootstrap.json` example so it read as truncated JSON.
+       * Nothing caught it, because an overflowing block still screenshots — it just
+       * screenshots the wrong thing.
+       *
+       * Stepping the font size rather than applying `transform: scale()` keeps the
+       * glyphs crisp at the 2x capture the PowerPoint export uses. Only blocks that
+       * actually overflow are touched, so the ones that fit stay at full size.
+       * Measurement has to happen while the slide is displayed — a `display: none`
+       * slide reports zero height.
+       */
+      const fitCode = (slide) => {
+        for (const block of slide.querySelectorAll('.codeblock')) {
+          block.style.fontSize = '';
+          block.style.lineHeight = '';
+          for (let size = 25; size >= 14; size -= 1) {
+            if (block.scrollHeight <= block.clientHeight + 1) break;
+            block.style.fontSize = `${size}px`;
+            block.style.lineHeight = size > 20 ? '1.6' : '1.5';
+          }
+        }
+      };
+
+      let index = -1;
+      const show = (i) => {
+        if (i < 0 || i >= slides.length) return;
+        slides.forEach((s) => s.setAttribute('data-active', 'false'));
+        slides[i].setAttribute('data-active', 'true');
+        fitCode(slides[i]);
+        index = i;
+        document.getElementById('rail').style.width = `${((i + 1) / slides.length) * 100}%`;
+      };
+
+      // The recorder's only interface. Kept deliberately small.
+      window.deck = {
+        title: deck.title,
+        count: slides.length,
+        show,
+        next: () => show(index + 1),
+      };
+
+      show(0);
+      document.body.setAttribute('data-ready', 'true');
+    </script>
+  </body>
+</html>
