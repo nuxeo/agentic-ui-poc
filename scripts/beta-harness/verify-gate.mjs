@@ -123,6 +123,17 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/fork-simulation.mjs'],
   },
+  // Phase 5 gate: the customer-facing extension reference must agree with the code.
+  // It is the only document whose audience is customers, and nothing checked it. When
+  // first measured it was wrong in both directions — it claimed `documentList` had
+  // nothing resolving it while both browse routes resolve twelve registered columns,
+  // and it used an ID that exists only in spec files as its security example.
+  {
+    id: 'reference-drift',
+    label: 'Extension reference drift',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/extension-reference-drift.mjs'],
+  },
 ];
 
 const requested = args.get('gates');

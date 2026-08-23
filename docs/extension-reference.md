@@ -14,7 +14,7 @@ Related: [`docs/adf-hx-beta-plan.md`](adf-hx-beta-plan.md) ·
 
 ### IDs are a public contract
 
-Every ID below follows `<owner>.<surface>.<name>` — `app.toolbar.delete`, `app.rules.canWrite`,
+Every ID below follows `<owner>.<surface>.<name>` — `app.bulkActions.delete`, `app.rules.canWrite`,
 `app.navbar.browse`. Use your own owner prefix for anything you contribute (`acme.navbar.contracts`).
 Once published, **renaming one of our IDs is a breaking change** and will only happen in a major
 version.
@@ -24,7 +24,7 @@ version.
 Layer 1 decides what the UI _offers_. It does not decide what the server _allows_. Nuxeo evaluates
 the real permission server-side on every operation, so:
 
-- hiding `app.toolbar.delete` does not stop a user who has `Remove` from deleting via the REST API;
+- hiding `app.bulkActions.delete` does not stop a user who has `Remove` from deleting via the REST API;
 - showing it does not grant anything — the operation still fails with 403 without the permission;
 - an **unregistered rule ID evaluates to `true`**, deliberately, so a typo or a manifest written
   against a newer release cannot silently strip working actions out of the UI. The exception is
@@ -77,11 +77,11 @@ carry packaged entries.
 | `navbar`       | Primary platform navigation entries     | **Populated** — packaged entries in section 3     |
 | `bulk-actions` | Actions over a multi-document selection | **Populated** — packaged entries in section 5     |
 | `sidebar`      | Drawer content behind a navbar entry    | Resolves; **no packaged entries** — see section 6 |
-| `routes`       | Application routes                      | Declared; **nothing resolves it** — see section 8 |
-| `toolbar`      | Document-detail and browse toolbar      | Declared; **nothing resolves it** — see section 8 |
+| `routes`       | Application routes                      | Declared; **nothing resolves it** — see section 9 |
+| `toolbar`      | Document-detail and browse toolbar      | Declared; **nothing resolves it** — see section 9 |
 | `contextMenu`  | Row-level menu on a document list       | Declared; **nothing resolves it**                 |
 | `tabs`         | Document-detail tab children            | Declared; **nothing resolves it**                 |
-| `documentList` | Document list columns                   | Declared; **nothing resolves it**                 |
+| `documentList` | Document list columns                   | **Populated** — 12 packaged columns, section 7    |
 
 Read the three states precisely, because they are different promises:
 
@@ -382,7 +382,50 @@ item whose ID follows the convention picks up a registered component with no fur
 
 ---
 
-## 7. `$references` — layering your JSON over ours
+## 7. `documentList` — the packaged columns
+
+Twelve columns, registered by the application and resolved by both the production
+browse and the adf-hx browse route. So `overrides` and `slots` entries here take
+effect on the rendered list.
+
+**Nine of the twelve ship `hiddenByDefault`.** That is not the same as `disabled`:
+a hidden column is still offered in the column picker, so a user can switch it on,
+whereas a `disabled` column is dropped from the resolved list and disappears from the
+picker too. Collapsing the two would make "hide by default" indistinguishable from
+"remove", and a manifest could then only ever delete a column, never pre-fold one.
+
+| ID                                 | Label            | Field             | Order | Sortable | Hidden by default |
+| ---------------------------------- | ---------------- | ----------------- | ----- | -------- | ----------------- |
+| `app.documentList.title`           | Title            | `title`           | 10    | yes      | no                |
+| `app.documentList.type`            | Type             | `type`            | 20    | yes      | yes               |
+| `app.documentList.modified`        | Modified         | `modified`        | 30    | yes      | no                |
+| `app.documentList.lastContributor` | Last Contributor | `lastContributor` | 40    | yes      | no                |
+| `app.documentList.state`           | State            | `state`           | 50    | yes      | yes               |
+| `app.documentList.version`         | Version          | `version`         | 60    | no       | yes               |
+| `app.documentList.created`         | Created          | `created`         | 70    | yes      | yes               |
+| `app.documentList.author`          | Author           | `author`          | 80    | yes      | yes               |
+| `app.documentList.nature`          | Nature           | `nature`          | 90    | no       | yes               |
+| `app.documentList.coverage`        | Coverage         | `coverage`        | 100   | no       | yes               |
+| `app.documentList.subjects`        | Subjects         | `subjects`        | 110   | no       | yes               |
+| `app.documentList.flags`           | Flags            | `flags`           | 120   | no       | yes               |
+
+Show a hidden column for everyone, move it, and rename it — all without a rebuild:
+
+```json
+{
+  "extensions": {
+    "overrides": {
+      "app.documentList.author": { "hiddenByDefault": false, "order": 35 },
+      "app.documentList.lastContributor": { "label": "Updated by" }
+    }
+  }
+}
+```
+
+`order` is spaced by ten so an entry can be inserted between two packaged columns
+without restating the list.
+
+## 8. `$references` — layering your JSON over ours
 
 Semantics are ACA's, implemented by merging through `mergeObjects` from `@alfresco/adf-extensions`
 rather than reimplemented, so behaviour matches the upstream documentation.
@@ -413,7 +456,7 @@ so nesting is ignored rather than half-honoured.
 
 ---
 
-## 8. What Beta does not yet address
+## 9. What Beta does not yet address
 
 Stated so nobody plans around a capability that is not there.
 
@@ -429,7 +472,7 @@ Stated so nobody plans around a capability that is not there.
 
 ---
 
-## 9. Registering from your own library (Layer 2)
+## 10. Registering from your own library (Layer 2)
 
 ```ts
 import {
