@@ -17,7 +17,22 @@
       "options": {
         "project": "libs/platform/ng-package.json",
         "tsConfig": "libs/platform/tsconfig.lib.json"
-      }
+      },
+      "dependsOn": ["sync-docs"]
+    },
+    "sync-docs": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/docs/extension-reference.md",
+        "{workspaceRoot}/scripts/sync-platform-docs.mjs"
+      ],
+      "outputs": ["{projectRoot}/extension-reference.md"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "node scripts/sync-platform-docs.mjs"
+      },
+      "$comment": "ng-packagr refuses assets from outside the package root, so the customer-facing docs are copied in before the build. The copies are gitignored \u2014 docs/ is the single source."
     }
   }
 }

@@ -134,6 +134,18 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/extension-reference-drift.mjs'],
   },
+  // Phase 5 gate: the guardrail we ship to customers, run against the reference
+  // extension library in this repo. A tool we hand customers and never run ourselves
+  // is a tool we would discover was broken from a customer's CI log.
+  {
+    id: 'customer-guardrails',
+    label: 'Customer extension guardrails',
+    cmd: 'node',
+    argv: [
+      'libs/platform/guardrails/check-extension-library.mjs',
+      'libs/extensions/acme-extensions',
+    ],
+  },
 ];
 
 const requested = args.get('gates');

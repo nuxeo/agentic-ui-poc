@@ -65,3 +65,6 @@ playwright-report/
 # Nuxeo server configuration (secrets, bind-mounted into the container)
 /nuxeo-conf/*.conf
 !/nuxeo-conf/*.sample.conf
+# Customer-facing docs copied into the platform package at build time by
+# scripts/sync-platform-docs.mjs. docs/ is the single source; these are generated.
+/libs/platform/extension-reference.md
