@@ -1,21 +1,34 @@
 # Publishing `@nuxeo-satori/platform` — what is left, and who decides
 
-**Status:** blocked on one human decision (risk **R10**). Everything else is done and
-verified.
+> **SUPERSEDED, for the scope decision only.** The scope is settled:
+> **`@nuxeo/satori-platform` on `https://packages.nuxeo.com/repository/npm-public/`**,
+> the registry `nuxeo-elements` already publishes to. The runbook and the secrets live
+> in **[`publishing-to-nuxeo-registry.md`](publishing-to-nuxeo-registry.md)**.
+>
+> Two claims in §1 below were wrong and are kept only so the reasoning is auditable:
+> it recommended GitHub Packages, and it called `@nuxeo` an actively published _public
+> npm_ scope. `@nuxeo` publishes to Nuxeo Nexus; public npm holds only a legacy
+> `3.0.13` from the 3.x era against a live `2025.18.0`. Checking the version number
+> would have caught it.
+>
+> §§2–5 — what a scope change costs, what is already proven, and what is deliberately
+> not done — remain accurate.
+
+**Status:** scope decided; publishing deliberately deferred to the final deployment
+stage. `"private": true` is still in place and nothing publishes.
 
 The package builds, installs from a tarball, resolves every subpath, and compiles a
-real application against its published types. The only thing standing between that and
-a registry is **which scope we own**, which is not a technical question.
+real application against its published types.
 
 ---
 
-## 1. The decision
+## 1. The decision — superseded, see the note above
 
 `@nuxeo-satori` is **unclaimed** on public npm — `npm view @nuxeo-satori/platform`
 returns 404 and no package exists under the scope. So nothing is blocked by a name
 collision; the question is which registry and scope the Beta should ship under.
 
-### Option A — GitHub Packages under an owned scope (recommended)
+### Option A — GitHub Packages under an owned scope (recommended at the time)
 
 ```jsonc
 // libs/platform/package.json
