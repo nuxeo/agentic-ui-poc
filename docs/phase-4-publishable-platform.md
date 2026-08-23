@@ -16,7 +16,7 @@ code, without forking it.
 | 1   | Libraries build to `dist/` as an installable package                    | **done** — `@nuxeo-satori/platform`, installed from a tarball and typechecked against |
 | 2   | Public API surface declared and pinned against accidental change        | **done** — `docs/api/platform.api.md`, 233 symbols, gated                             |
 | 3   | Registration API — our `setComponents` / `setEvaluators` / `setActions` | **done** — `provideSatoriExtensions()`, 8 specs, and the app uses it                  |
-| 4   | Thin forkable app template                                              | **done** — `apps/nuxeo-satori-template`, 387 kB, verified in a browser                |
+| 4   | Thin forkable app template                                              | **done** — `apps/nuxeo-satori-template`, 401 kB, a working Nuxeo client (§4)          |
 | 5   | Customer extension library starter                                      | **done** — Nx generator, output integrated with zero platform edits                   |
 
 ## 1. The package
@@ -122,21 +122,68 @@ the generator both do this and say why.
 `apps/nuxeo-satori-template` — a real Nx project, so `nx run-many` builds and
 typechecks it and it cannot rot into a template that no longer compiles.
 
-**387 kB initial / 104 kB compressed**, against the product's 3.5 MB. It imports only
-`/extensions` and `/app-config` — no adf-hx, no Angular Material — because a fork
-should not have to remove our design system before adding its own. The production
-budget is 400 kB warning / 700 kB error so a fork that pulls in something heavy is
-told at build time.
+**401 kB initial / 108 kB compressed**, against the product's 3.5 MB. No adf-hx, no
+Angular Material — because a fork should not have to remove our design system before
+adding its own. The production budget is 450 kB warning / 700 kB error so a fork that
+pulls in something heavy is told at build time.
+
+### It is a working Nuxeo client, not a diagnostics harness
+
+The first cut of the template did **not talk to Nuxeo at all**: its two pages were a
+diagnostics page and a demo panel, and its manifest request 404ed against nothing. It
+demonstrated the extension contract and nothing about building a content application,
+which is most of what a customer actually has to do.
+
+It now signs in and reads the repository, using `@nuxeo-satori/platform/nuxeo-client`
+and no adf-hx:
+
+| Route              | What it does                                                                     |
+| ------------------ | -------------------------------------------------------------------------------- |
+| sign-in (no route) | `GET /nuxeo/api/v1/me` with a typed credential; the shell gates the outlet on it |
+| `/documents`       | `BrowseService.getBrowseFolderContents()` — folders, breadcrumbs, Dublin Core    |
+| `/documents/:uid`  | `DocumentDetailService.getFullDocument()` plus `fetchBlob()` for the file body   |
+| `/search`          | `SearchService.search({ ecmFulltext })` — the `default_search` page provider     |
+| `/home`            | `inventory()` and `diagnostics()` — every registered ID, and what fell back      |
+
+Three things a fork has to get right, which the template now shows rather than
+describes:
+
+- **Authentication is the host's job.** `NuxeoApiBase` never sets an `Authorization`
+  header, because only the host knows whether it is doing Basic, SSO or a token.
+  `template-nuxeo-auth.interceptor.ts` is the one place this application signs a
+  request, and it filters on the resolved path so `bootstrap.json` — fetched before
+  sign-in, from the app's own origin — never carries a credential.
+- **The session must survive a reload**, or Layer 1 cannot work at all. The manifest
+  is fetched from Nuxeo during `provideAppInitializer`, before any component exists;
+  with no credential Nuxeo answers 403 and the manifest silently falls back. The
+  template keeps a session in `sessionStorage` for exactly this reason, and the shell
+  prints which source won.
+- **Layer 0 chooses where Nuxeo is.** `nuxeoApiOrigin` is provided as
+  `NUXEO_API_ORIGIN`. Empty means same-origin, which is correct behind
+  `proxy.conf.json` under `nx serve` and for a Nuxeo-served deployment. A cross-origin
+  value needs CORS on Nuxeo — the stock Docker image sends none, verified with
+  `curl -H 'Origin: …'`, so a statically served bundle must sit behind a proxy.
 
 | Layer | Where                                       | What it demonstrates                                   |
 | ----- | ------------------------------------------- | ------------------------------------------------------ |
-| 0     | `public/agentic-ui-config/bootstrap.json`   | branding and a real theme; edit and reload, no rebuild |
-| 1     | `manifest.example.json`                     | `overrides`, `slots`, a rule-gated toolbar action      |
+| 0     | `public/agentic-ui-config/bootstrap.json`   | branding, theme tokens and the API origin; reload only |
+| 1     | a Nuxeo document at `manifestDocumentPath`  | `overrides` relabel, reorder and hide navigation       |
 | 2     | `src/app/extensions/template-extensions.ts` | all five contribution kinds, in the factory form       |
 
+`manifest.example.json` is the Layer 1 payload to paste into that document; it is not
+loaded from the bundle.
+
 The nav is **resolved from the registry**, not written in the template — that is what
-makes it addressable. The home page renders `inventory()` and `diagnostics()`, so a
-fork can see every registered ID and which half of its config fell back and why.
+makes it addressable. The brand is read from Layer 0 too; it used to be the literal
+string "Nuxeo Satori" in `app.html`, so a rebrand changed the tab title and the
+palette while the one word a viewer looks at stayed put.
+
+### Running it against a local Nuxeo
+
+```bash
+node tools/video/mock-customer/seed-nuxeo.mjs   # writes the demo workspace + config doc
+npx nx serve nuxeo-satori-template              # proxies /nuxeo to localhost:8080
+```
 
 ### Does it fall back to a default if a customer has no design system?
 

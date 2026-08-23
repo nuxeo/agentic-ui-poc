@@ -1,4 +1,4 @@
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import {
   type ApplicationConfig,
   DestroyRef,
@@ -15,9 +15,11 @@ import { filter } from 'rxjs/operators';
 import { provideAcmeExtensions } from '@agentic-ui/acme-extensions';
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { ExtensionRuleContextService } from '@nuxeo-satori/platform/extensions';
+import { CURRENT_USERNAME, NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { routes } from './app.routes';
 import { provideTemplateExtensions } from './extensions/template-extensions';
+import { templateNuxeoAuthInterceptor } from './template-nuxeo-auth.interceptor';
 import { TemplateSessionService } from './template-session.service';
 import { TemplateThemeService } from './template-theme.service';
 
@@ -26,8 +28,41 @@ import { TemplateThemeService } from './template-theme.service';
  */
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(),
+    // Every Nuxeo request this application makes is signed by one interceptor.
+    // The platform's services never build an auth header themselves — they cannot,
+    // because only a host knows whether it is doing Basic, SSO or a token.
+    provideHttpClient(withInterceptors([templateNuxeoAuthInterceptor])),
     provideRouter(routes, withComponentInputBinding()),
+
+    /**
+     * Layer 0 decides where Nuxeo is.
+     *
+     * A one-shot read of the loaded configuration, which is safe only because
+     * `NuxeoApiBase` — the sole consumer — is constructed on first use by a page,
+     * long after `provideAppInitializer` has awaited the load. A *reactive* reader
+     * would be wrong here anyway: an API origin that changed under a live
+     * `HttpClient` would leave in-flight requests pointing somewhere else.
+     *
+     * Empty means "same origin", which is correct behind the dev proxy
+     * (`apps/nuxeo-satori-template/proxy.conf.json`) and in a production
+     * deployment served by Nuxeo itself. A cross-origin value also needs CORS
+     * configured on Nuxeo; the local Docker instance sends no CORS headers, so a
+     * statically served bundle must go through a proxy.
+     */
+    {
+      provide: NUXEO_API_ORIGIN,
+      useFactory: () => inject(AppConfigService).bootstrap().nuxeoApiOrigin,
+    },
+
+    // Lets platform services that record "who did this" (permissions, comments)
+    // see the real user without importing this application's session service.
+    {
+      provide: CURRENT_USERNAME,
+      useFactory: () => {
+        const session = inject(TemplateSessionService);
+        return () => session.username();
+      },
+    },
 
     // 1. Layer 0. Loads `bootstrap.json` from beside the bundle, then the Layer 1
     //    manifest from Nuxeo. Both halves fall back to packaged defaults rather
@@ -83,9 +118,12 @@ export const appConfig: ApplicationConfig = {
       const injector = inject(Injector);
       const destroyRef = inject(DestroyRef);
 
+      // The real Nuxeo principal, so `template.rules.isSignedIn` and any customer
+      // rule reading `context.user.username` see who is actually signed in rather
+      // than a placeholder.
       effect(
         () => {
-          ruleContext.username.set(session.isSignedIn() ? 'template-user' : null);
+          ruleContext.username.set(session.username());
         },
         { injector },
       );

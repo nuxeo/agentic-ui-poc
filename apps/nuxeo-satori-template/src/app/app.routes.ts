@@ -11,7 +11,29 @@ import { ExtensionOutletComponent } from '@nuxeo-satori/platform/extensions';
  * a route on its own and a host must map the path itself.
  */
 export const routes: Routes = [
-  { path: '', pathMatch: 'full', redirectTo: 'home' },
+  { path: '', pathMatch: 'full', redirectTo: 'documents' },
+  {
+    /**
+     * The repository browser.
+     *
+     * The folder is a **query parameter**, not a path segment, and that is a
+     * deliberate difference from the product's `/browse/:path` shape: a Nuxeo path
+     * contains slashes and spaces, and `?path=/default-domain/workspaces/acme` is
+     * readable in a URL bar while a doubly-encoded segment is not. Bound to the
+     * component's `path` input by `withComponentInputBinding()`.
+     */
+    path: 'documents',
+    loadComponent: () => import('./pages/documents/documents').then((m) => m.DocumentsComponent),
+  },
+  {
+    path: 'documents/:uid',
+    loadComponent: () =>
+      import('./pages/documents/document-detail').then((m) => m.DocumentDetailComponent),
+  },
+  {
+    path: 'search',
+    loadComponent: () => import('./pages/search/search').then((m) => m.SearchComponent),
+  },
   {
     path: 'home',
     loadComponent: () => import('./pages/home/home').then((m) => m.HomeComponent),
@@ -44,5 +66,5 @@ export const routes: Routes = [
     component: ExtensionOutletComponent,
     data: { componentId: 'acme.panel.acmeExtensions' },
   },
-  { path: '**', redirectTo: 'home' },
+  { path: '**', redirectTo: 'documents' },
 ];

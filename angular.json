@@ -175,7 +175,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "400kb",
+                  "maximumWarning": "450kb",
                   "maximumError": "700kb"
                 }
               ],
@@ -192,6 +192,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "apps/nuxeo-satori-template/proxy.conf.json"
+          },
           "configurations": {
             "production": {
               "buildTarget": "nuxeo-satori-template:build:production"

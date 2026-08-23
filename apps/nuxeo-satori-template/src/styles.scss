@@ -13,6 +13,14 @@
   --shell-fg: #1f2328;
   --shell-muted: #656d76;
   --shell-border: #d0d7de;
+  // Surfaces and the accent are read by the document pages. They are separate
+  // tokens rather than derived from `--shell-nav-*` because a rebrand routinely
+  // wants a dark navigation over a light content area, and deriving one from the
+  // other made that impossible from JSON.
+  --shell-surface: #ffffff;
+  --shell-surface-alt: #f6f8fa;
+  --shell-accent: #0969da;
+  --shell-accent-fg: #ffffff;
   --shell-nav-fg: #1f2328;
   --shell-nav-muted: #656d76;
   --shell-nav-bg: #f6f8fa;
@@ -30,4 +38,6 @@ html,
 body {
   margin: 0;
   padding: 0;
+  color: var(--shell-fg, #1f2328);
+  background: var(--shell-surface, #ffffff);
 }

@@ -20,10 +20,42 @@
 // links at the body text colour and renders dark-on-dark. A rebrand should not
 // be able to make the navigation unreadable from JSON alone.
 .shell__nav {
+  display: flex;
+  flex-direction: column;
   padding: 1.5rem 1rem;
   color: var(--shell-nav-fg, #1f2328);
   background: var(--shell-nav-bg, #f6f8fa);
   border-right: 1px solid var(--shell-border, #d0d7de);
+}
+
+// Pushed to the bottom of the nav column so the entry list stays where a user
+// expects it as entries are added or hidden by a manifest.
+.shell__session {
+  margin-top: auto;
+  padding-top: 1rem;
+  font-size: 0.8125rem;
+  border-top: 1px solid var(--shell-nav-hover, #eaeef2);
+}
+
+.shell__session-user {
+  margin: 0 0 0.25rem;
+}
+
+.shell__session-source {
+  margin: 0 0 0.625rem;
+  font-size: 0.75rem;
+  color: var(--shell-nav-muted, #656d76);
+}
+
+.shell__sign-out {
+  padding: 0.3125rem 0.625rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  color: inherit;
+  background: var(--shell-nav-hover, #eaeef2);
+  border: 1px solid var(--shell-nav-hover, #eaeef2);
+  border-radius: 6px;
 }
 
 .shell__brand {

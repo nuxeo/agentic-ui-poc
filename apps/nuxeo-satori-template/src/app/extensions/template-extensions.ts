@@ -47,18 +47,37 @@ import { TemplateSessionService } from '../template-session.service';
  */
 const NAV_ITEMS: readonly NavItemDescriptor[] = [
   {
+    // The customer's own document browser, reading the real repository. Gated on
+    // the session for the same reason as `reports`: with no credential every
+    // request 401s, and offering a link that can only fail is worse than hiding it.
+    id: 'template.navbar.documents',
+    label: 'Documents',
+    path: '/documents',
+    icon: 'folder',
+    order: 10,
+    rule: 'template.rules.isSignedIn',
+  },
+  {
+    id: 'template.navbar.search',
+    label: 'Search',
+    path: '/search',
+    icon: 'search',
+    order: 20,
+    rule: 'template.rules.isSignedIn',
+  },
+  {
     id: 'template.navbar.home',
-    label: 'Home',
+    label: 'Diagnostics',
     path: '/home',
     icon: 'home',
-    order: 10,
+    order: 30,
   },
   {
     id: 'template.navbar.reports',
     label: 'Reports',
     path: '/reports',
     icon: 'assessment',
-    order: 20,
+    order: 40,
     // Gated in code. A manifest can still hide it outright, reorder it or
     // relabel it without this file changing.
     rule: 'template.rules.isSignedIn',

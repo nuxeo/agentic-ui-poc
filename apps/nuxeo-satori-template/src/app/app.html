@@ -1,6 +1,7 @@
 <div class="shell">
   <nav class="shell__nav" aria-label="Main">
-    <p class="shell__brand">Nuxeo Satori</p>
+    <!-- Layer 0: `branding.applicationTitle`, applied on reload with no rebuild. -->
+    <p class="shell__brand">{{ brand() }}</p>
 
     <!--
       Rendered from the extension registry. Adding an entry is a manifest edit or
@@ -22,6 +23,16 @@
         <li class="shell__nav-empty">No navigation entries registered.</li>
       }
     </ul>
+
+    @if (signedIn()) {
+      <div class="shell__session">
+        <p class="shell__session-user">
+          Signed in as <strong>{{ username() }}</strong>
+        </p>
+        <p class="shell__session-source">Layer 1 manifest: {{ manifestSource() }}</p>
+        <button class="shell__sign-out" type="button" (click)="signOut()">Sign out</button>
+      </div>
+    }
   </nav>
 
   <main class="shell__content">
@@ -32,6 +43,14 @@
       </p>
     }
 
-    <router-outlet />
+    <!--
+      No route guard, deliberately. Guarding is a fork's decision, and gating the
+      whole outlet here means no page has to handle "signed out" itself.
+    -->
+    @if (signedIn()) {
+      <router-outlet />
+    } @else {
+      <app-sign-in />
+    }
   </main>
 </div>

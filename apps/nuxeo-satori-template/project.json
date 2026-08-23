@@ -6,6 +6,9 @@
   "prefix": "app",
   "tags": ["scope:template", "type:app"],
   "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
     "build": {
       "executor": "nx:run-commands",
       "outputs": ["{workspaceRoot}/dist/nuxeo-satori-template"],
