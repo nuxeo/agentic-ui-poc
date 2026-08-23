@@ -7,6 +7,7 @@
     "beta:backend": "node scripts/beta-harness/backend-preflight.mjs",
     "beta:coverage": "node scripts/beta-harness/coverage-gate.mjs",
     "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",
+    "beta:fork": "node scripts/beta-harness/fork-simulation.mjs",
     "beta:gate": "node scripts/beta-harness/verify-gate.mjs",
     "beta:state": "node scripts/beta-harness/state-check.mjs",
     "build": "nx build",

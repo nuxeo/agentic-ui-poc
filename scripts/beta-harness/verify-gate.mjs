@@ -113,6 +113,16 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/api-surface.mjs'],
   },
+  // Compiles the template against the **built** declarations instead of the source
+  // tree, which is the only gate that sees the resolution a customer actually gets.
+  // It is what found the platform package being compiled without `strictNullChecks`,
+  // shipping 27 wrongly non-nullable types while every other gate was green.
+  {
+    id: 'fork-simulation',
+    label: 'Fork simulation',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/fork-simulation.mjs'],
+  },
 ];
 
 const requested = args.get('gates');

@@ -108,85 +108,167 @@ function collectDeclarationFiles(entryFile, seen = new Set()) {
 }
 
 /**
- * Exported symbols from a set of declaration files, as `kind name signature`.
+ * Strip comments, so JSDoc is not part of the surface and braces inside prose
+ * cannot confuse the body scanner below.
+ */
+function stripComments(text) {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '')
+    .replace(/\/\/\/.*$/gm, '');
+}
+
+const BRACED_KINDS = new Set(['class', 'abstract class', 'interface', 'enum', 'namespace']);
+// Two forms, because a rolled-up `.d.ts` uses both. Values need `declare`;
+// `type` and `interface` are type-only and appear bare — `PlatformEntryPoint` is
+// emitted as `type PlatformEntryPoint = ...` with no `declare`, and requiring the
+// keyword left it unparsed.
+const DECLARATION = new RegExp(
+  '^(?:export\\s+)?(?:declare\\s+)?(abstract class|class|interface|function|const|let|var|enum|namespace|type)\\s+([A-Za-z_$][\\w$]*)([\\s\\S]*?)$',
+);
+
+/**
+ * Every declaration in a rolled-up `.d.ts`, keyed by name, with its **members**.
+ *
+ * ## The bug this replaces
+ *
+ * The first cut required declarations to start with `export`. In a rolled-up
+ * bundle they do not: ng-packagr emits `declare class Foo { ... }` and then a
+ * single `export { Foo, Bar, ... }` clause at the end. So every regex missed, and
+ * every symbol fell through to a name-only fallback. The snapshot listed 233
+ * *names* and not one signature — and it duly reported "no change" when a
+ * `strictNullChecks` misconfiguration altered 23 published types. A gate that
+ * cannot see a type change is not an API gate.
+ *
+ * ## Why bodies, not just declaration lines
+ *
+ * The interesting breakages are inside: a method losing an overload, a property
+ * turning nullable, a parameter becoming required. Recording `class Foo` would
+ * have missed all three. Bodies are captured by brace depth after comments are
+ * stripped, which is reliable on emitted declarations — they contain no
+ * expressions, no template literals and no regex literals to confuse it.
+ */
+function declarationsIn(text) {
+  const clean = stripComments(text);
+  const lines = clean.split('\n');
+  const found = new Map();
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = DECLARATION.exec(lines[index].trim());
+    if (!match) continue;
+    const [, kind, name, rest] = match;
+
+    if (!BRACED_KINDS.has(kind) || !/\{\s*$/.test(lines[index])) {
+      found.set(name, `${kind} ${name}${normalise(rest)}`);
+      continue;
+    }
+
+    // Walk to the matching close brace, then record each member on its own line so
+    // a diff points at the member that changed rather than the whole class.
+    let depth = 0;
+    const members = [];
+    for (let cursor = index; cursor < lines.length; cursor += 1) {
+      const line = lines[cursor];
+      depth += (line.match(/\{/g) ?? []).length;
+      depth -= (line.match(/\}/g) ?? []).length;
+      if (cursor > index) {
+        const member = line.trim();
+        if (member && member !== '}') members.push(`    ${member.replace(/\s+/g, ' ')}`);
+      }
+      if (depth <= 0) {
+        index = cursor;
+        break;
+      }
+    }
+    found.set(name, [`${kind} ${name}${normalise(rest)} {`, ...members, '}'].join('\n'));
+  }
+
+  return found;
+}
+
+/** The names a rolled-up `.d.ts` actually makes public. */
+function exportedNames(text) {
+  const clean = stripComments(text);
+  const names = new Set();
+
+  // `export declare class Foo` — the non-rolled-up form, still possible.
+  for (const m of clean.matchAll(
+    /^export\s+declare\s+(?:abstract class|class|interface|function|const|let|var|enum|namespace|type)\s+([A-Za-z_$][\w$]*)/gm,
+  )) {
+    names.add(m[1]);
+  }
+  for (const m of clean.matchAll(/^export\s+(?:type|interface)\s+([A-Za-z_$][\w$]*)/gm)) {
+    names.add(m[1]);
+  }
+  // `export { A, B as C }` and `export type { T }`, possibly spanning lines.
+  for (const m of clean.matchAll(/^export\s+(?:type\s+)?\{([\s\S]*?)\}\s*;?/gm)) {
+    for (const clause of m[1].split(',')) {
+      const parts = clause
+        .trim()
+        .replace(/^type\s+/, '')
+        .split(/\s+as\s+/);
+      const name = (parts[1] ?? parts[0])?.trim();
+      if (name) names.add(name);
+    }
+  }
+  return names;
+}
+
+/**
+ * The public surface of an entry point: every exported name with its full
+ * declaration.
  *
  * Regex over `.d.ts` rather than the TypeScript compiler API. Emitted
  * declarations are a far narrower language than source — no expressions, no
- * inference, one declaration per `export` — and the alternative is asking the gate
- * to depend on the compiler's own resolution, which is the thing being audited.
+ * inference — and the alternative is asking the gate to depend on the compiler's
+ * own resolution, which is part of what is being audited.
  */
 function surfaceOf(files) {
-  const symbols = new Map();
-  const unrecognised = [];
+  const declarations = new Map();
+  const exported = new Set();
 
   for (const file of [...files].sort()) {
     const text = readFileSync(file, 'utf8');
-
-    for (const m of text.matchAll(
-      /^export\s+declare\s+(abstract class|class|interface|function|const|let|var|enum|type|namespace)\s+([A-Za-z_$][\w$]*)(.*)$/gm,
-    )) {
-      const [, kind, name, rest] = m;
-      symbols.set(name, `${kind} ${name}${normalise(rest)}`);
-    }
-    for (const m of text.matchAll(/^export\s+(type|interface)\s+([A-Za-z_$][\w$]*)(.*)$/gm)) {
-      const [, kind, name, rest] = m;
-      symbols.set(name, `${kind} ${name}${normalise(rest)}`);
-    }
-    // `export { A, B as C }` and `export type { T }`. The `type` modifier sits
-    // between `export` and the brace, which an earlier cut of this regex did not
-    // allow — so `export type { PlatformEntryPoint };` was **silently omitted**
-    // from the snapshot, and its removal would not have been caught. A gate that
-    // quietly under-reports the surface is worse than no gate.
-    for (const m of text.matchAll(/^export\s+(?:type\s+)?\{([^}]*)\}\s*;?\s*$/gm)) {
-      for (const clause of m[1].split(',')) {
-        const parts = clause
-          .trim()
-          .replace(/^type\s+/, '')
-          .split(/\s+as\s+/);
-        const name = (parts[1] ?? parts[0])?.trim();
-        if (name && !symbols.has(name)) symbols.set(name, `reexport ${name}`);
-      }
-    }
-
-    // Self-audit. Any `export` statement this function did not classify is
-    // recorded and fails the run, so a declaration form nobody anticipated
-    // surfaces as a loud gap rather than a missing line in the snapshot.
-    for (const line of text.split('\n')) {
-      const trimmed = line.trim();
-      // `export` as a *word*, not a prefix. Without the boundary, class methods
-      // named `exportZip` and `exportXml` were reported as unrecognised exports.
-      if (!/^export\b/.test(trimmed)) continue;
-      if (/^export\s+(\*|(?:type\s+)?\{)/.test(trimmed)) continue;
-      if (
-        /^export\s+declare\s+(abstract class|class|interface|function|const|let|var|enum|type|namespace)\s/.test(
-          trimmed,
-        )
-      )
-        continue;
-      if (/^export\s+(type|interface)\s/.test(trimmed)) continue;
-      if (/^export\s+default\s/.test(trimmed)) continue;
-      unrecognised.push(`${file.replace(`${ROOT}/`, '')}: ${trimmed}`);
-    }
+    for (const [name, signature] of declarationsIn(text)) declarations.set(name, signature);
+    for (const name of exportedNames(text)) exported.add(name);
   }
 
-  if (unrecognised.length) {
+  if (exported.size === 0) {
     fail(
-      'This gate did not recognise the following `export` statement(s) in the built\n' +
-        'declarations, so it cannot claim to have captured the whole surface. Teach\n' +
-        '`surfaceOf()` about them before trusting a green run.\n\n' +
-        unrecognised
+      'No exported names were found in the built declarations. Either the build is\n' +
+        'broken or this gate has stopped understanding the emitted format — both of\n' +
+        'which must fail rather than report an empty surface as a pass.',
+    );
+  }
+
+  // Self-audit. An exported name with no captured declaration means the surface is
+  // being under-reported, which is exactly the failure that let 23 changed types
+  // through. Fail loudly rather than record a bare name.
+  const undeclared = [...exported].filter((name) => !declarations.has(name)).sort();
+  if (undeclared.length) {
+    fail(
+      `${undeclared.length} exported name(s) have no declaration this gate could parse,\n` +
+        'so their signatures are not being checked. Teach `declarationsIn()` about the\n' +
+        'form they use before trusting a green run.\n\n' +
+        undeclared
           .slice(0, 20)
-          .map((u) => `  ${u}`)
+          .map((n) => `  ${n}`)
           .join('\n'),
     );
   }
 
-  return [...symbols.values()].sort();
+  return [...exported]
+    .sort()
+    .map((name) => declarations.get(name))
+    .filter(Boolean);
 }
 
 /** Collapse whitespace so reformatting is not reported as an API change. */
 function normalise(fragment) {
-  return fragment.replace(/\s+/g, ' ').replace(/\s*\{\s*$/, '').trimEnd();
+  return fragment
+    .replace(/\s+/g, ' ')
+    .replace(/\s*\{\s*$/, '')
+    .trimEnd();
 }
 
 const entries = entryPoints();

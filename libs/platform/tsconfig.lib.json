@@ -6,7 +6,33 @@
     "declarationMap": true,
     "inlineSources": true,
     "sourceMap": true,
-    "types": []
+    "types": [],
+
+    // `tsconfig.base.json` does **not** set `strict`; every library sets it in its own
+    // `tsconfig.json`. This file extends the base directly, so without restating these
+    // the whole package was compiled with `strictNullChecks: false` — which silently
+    // collapsed `string | null` to `string` and shipped 8 wrong nullable types in the
+    // public API. A customer calling `ruleContext.username.set(null)` on sign-out got a
+    // compile error that our own source tree does not produce.
+    //
+    // Nothing caught it: `test` does not typecheck, `build` and `typecheck` run against
+    // the per-library configs which are strict, and the API snapshot recorded the wrong
+    // types as the baseline. Only `fork-simulation` — compiling the template against the
+    // built declarations — surfaced it. Keep these in step with
+    // `libs/shared/*/tsconfig.json`.
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "moduleResolution": "bundler"
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
   },
   "include": ["src/**/*.ts", "../shared/*/src/**/*.ts"],
   "exclude": ["**/*.spec.ts", "**/*.test.ts", "**/test-setup.ts"]
