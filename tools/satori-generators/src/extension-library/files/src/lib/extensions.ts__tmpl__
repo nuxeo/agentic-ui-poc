@@ -19,9 +19,18 @@ import { <%= baseName %>RulesService } from './rules.service';
  */
 export const <%= constantName %>_EXTENSION_IDS = Object.freeze({
   navbar: ['<%= owner %>.navbar.<%= propertyName %>'],
-  rules: ['<%= owner %>.rules.canUse<%= baseName %>'],
-  actions: ['<%= owner %>.actions.<%= propertyName %>Export'],
-  components: ['<%= owner %>.panel.<%= propertyName %>'],
+  rules: [
+    '<%= owner %>.rules.canUse<%= baseName %>',
+    // satori:ids:rules — `nx g ...:extension-rule` inserts here. Keep the marker.
+  ],
+  actions: [
+    '<%= owner %>.actions.<%= propertyName %>Export',
+    // satori:ids:actions — `nx g ...:extension-action` inserts here. Keep the marker.
+  ],
+  components: [
+    '<%= owner %>.panel.<%= propertyName %>',
+    // satori:ids:components — `nx g ...:extension-component` inserts here. Keep the marker.
+  ],
 } as const);
 
 /**
@@ -70,6 +79,7 @@ export function <%= providerName %>(): EnvironmentProviders {
 
       rules: {
         [<%= constantName %>_EXTENSION_IDS.rules[0]]: (context) => rules.canUse(context),
+        // satori:register:rules
       },
 
       /**
@@ -89,15 +99,15 @@ export function <%= providerName %>(): EnvironmentProviders {
         // Behind a dynamic import, so the chunk is only fetched if a manifest
         // actually places the panel somewhere.
         [<%= constantName %>_EXTENSION_IDS.components[0]]: () =>
-          import('./panel/<%= owner %>-panel').then(
-            (m) => m.<%= baseName %>PanelComponent,
-          ),
+          import('./panel/<%= owner %>-panel').then((m) => m.<%= baseName %>PanelComponent),
+        // satori:register:components
       },
 
       actions: {
         [<%= constantName %>_EXTENSION_IDS.actions[0]]: {
           execute: (context) => rules.exportSummary(context),
         },
+        // satori:register:actions
       },
     };
   });

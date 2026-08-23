@@ -1,0 +1,23 @@
+// Reads CSS custom properties with inline fallbacks, so the panel renders correctly
+// whether or not the host application defines a theme.
+.<%= owner %>-<%= fileName %> {
+  padding: 1.25rem;
+  border: 1px solid var(--shell-border, #d0d7de);
+  border-radius: 8px;
+
+  h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.075rem;
+  }
+
+  &__hint {
+    margin: 0.5rem 0 0;
+    color: var(--shell-muted, #656d76);
+    font-size: 0.875rem;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.9em;
+  }
+}

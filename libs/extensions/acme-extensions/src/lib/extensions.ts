@@ -19,9 +19,21 @@ import { AcmeRulesService } from './rules.service';
  */
 export const ACME_EXTENSIONS_EXTENSION_IDS = Object.freeze({
   navbar: ['acme.navbar.acmeExtensions'],
-  rules: ['acme.rules.canUseAcme'],
-  actions: ['acme.actions.acmeExtensionsExport'],
-  components: ['acme.panel.acmeExtensions'],
+  rules: [
+    'acme.rules.canUseAcme',
+    'acme.rules.isLegalTeam',
+    // satori:ids:rules — `nx g ...:extension-rule` inserts here. Keep the marker.
+  ],
+  actions: [
+    'acme.actions.acmeExtensionsExport',
+    'acme.actions.exportClaim',
+    // satori:ids:actions — `nx g ...:extension-action` inserts here. Keep the marker.
+  ],
+  components: [
+    'acme.panel.acmeExtensions',
+    'acme.panel.policySummary',
+    // satori:ids:components — `nx g ...:extension-component` inserts here. Keep the marker.
+  ],
 } as const);
 
 /**
@@ -70,6 +82,8 @@ export function provideAcmeExtensions(): EnvironmentProviders {
 
       rules: {
         [ACME_EXTENSIONS_EXTENSION_IDS.rules[0]]: (context) => rules.canUse(context),
+        'acme.rules.isLegalTeam': (context) => rules.isLegalTeam(context),
+        // satori:register:rules
       },
 
       /**
@@ -90,12 +104,19 @@ export function provideAcmeExtensions(): EnvironmentProviders {
         // actually places the panel somewhere.
         [ACME_EXTENSIONS_EXTENSION_IDS.components[0]]: () =>
           import('./panel/acme-panel').then((m) => m.AcmePanelComponent),
+        'acme.panel.policySummary': () =>
+          import('./policy-summary/policy-summary').then((m) => m.PolicySummaryComponent),
+        // satori:register:components
       },
 
       actions: {
         [ACME_EXTENSIONS_EXTENSION_IDS.actions[0]]: {
           execute: (context) => rules.exportSummary(context),
         },
+        'acme.actions.exportClaim': {
+          execute: (context) => rules.exportClaim(context),
+        },
+        // satori:register:actions
       },
     };
   });
