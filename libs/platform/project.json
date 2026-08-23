@@ -6,6 +6,10 @@
   "tags": ["scope:shared", "type:publishable"],
   "implicitDependencies": ["shared-extensions", "shared-app-config", "nuxeo-client", "ui"],
   "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "$comment": "@nx/eslint/plugin infers this as `eslint:lint`, which `nx affected -t lint` does NOT match \u2014 so the gate and CI never linted this project. Declaring it explicitly is what puts it under the gate."
+    },
     "build": {
       "executor": "@nx/angular:package",
       "outputs": ["{workspaceRoot}/dist/libs/platform"],
