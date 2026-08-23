@@ -15,7 +15,7 @@ of backwards compatibility.
 2 exported symbol(s).
 
 ```ts
-const PLATFORM_ENTRY_POINTS: readonly ['app-config', 'extensions', 'nuxeo-client', 'ui'];
+const PLATFORM_ENTRY_POINTS: readonly ["app-config", "extensions", "nuxeo-client", "ui"];
 type PlatformEntryPoint = (typeof PLATFORM_ENTRY_POINTS)[number];
 ```
 
@@ -24,118 +24,118 @@ type PlatformEntryPoint = (typeof PLATFORM_ENTRY_POINTS)[number];
 27 exported symbol(s).
 
 ```ts
-const APP_BOOTSTRAP_CONFIG_FILE = 'bootstrap.json';
+const APP_BOOTSTRAP_CONFIG_FILE = "bootstrap.json";
 const APP_BOOTSTRAP_CONFIG_URL: InjectionToken<string>;
-const APP_CONFIG_DIRECTORY = 'agentic-ui-config';
+const APP_CONFIG_DIRECTORY = "agentic-ui-config";
 interface AppARenderConfig {
-  readonly viewerOrigin: string;
-  readonly nuxeoInternalUrl: string;
+    readonly viewerOrigin: string;
+    readonly nuxeoInternalUrl: string;
 }
 interface AppBootstrapConfig {
-  readonly nuxeoApiOrigin: string;
-  readonly nuxeoServerUrl: string | null;
-  readonly aiBackendUrl: string;
-  readonly manifestDocumentPath: string;
-  readonly manifestDocumentProperty: string;
-  readonly branding: AppBrandingConfig;
-  readonly defaultThemeId: string;
-  readonly themes: readonly AppThemeConfig[];
-  readonly defaultLanguage: string;
-  readonly availableLanguages: readonly string[];
-  readonly integrations: AppIntegrationsConfig;
-  readonly session: AppSessionConfig;
-  readonly sso: AppSsoConfig;
+    readonly nuxeoApiOrigin: string;
+    readonly nuxeoServerUrl: string | null;
+    readonly aiBackendUrl: string;
+    readonly manifestDocumentPath: string;
+    readonly manifestDocumentProperty: string;
+    readonly branding: AppBrandingConfig;
+    readonly defaultThemeId: string;
+    readonly themes: readonly AppThemeConfig[];
+    readonly defaultLanguage: string;
+    readonly availableLanguages: readonly string[];
+    readonly integrations: AppIntegrationsConfig;
+    readonly session: AppSessionConfig;
+    readonly sso: AppSsoConfig;
 }
 interface AppBrandingConfig {
-  readonly applicationTitle: string;
-  readonly documentTitle: string;
+    readonly applicationTitle: string;
+    readonly documentTitle: string;
 }
 interface AppConfigDiagnostics {
-  readonly bootstrapSource: AppConfigSource;
-  readonly manifestSource: AppConfigSource;
-  readonly messages: readonly string[];
+    readonly bootstrapSource: AppConfigSource;
+    readonly manifestSource: AppConfigSource;
+    readonly messages: readonly string[];
 }
 class AppConfigService {
-  private readonly http;
-  private readonly bootstrapUrl;
-  private readonly bootstrapConfig;
-  private readonly runtimeManifest;
-  private readonly diagnosticsState;
-  readonly bootstrap: _angular_core.Signal<AppBootstrapConfig>;
-  readonly manifest: _angular_core.Signal<AppRuntimeManifest>;
-  readonly diagnostics: _angular_core.Signal<AppConfigDiagnostics>;
-  readonly themes: _angular_core.Signal<readonly AppThemeConfig[]>;
-  load(): Promise<void>;
-  loadBootstrap(): Promise<AppBootstrapConfig>;
-  loadManifest(): Promise<AppRuntimeManifest>;
-  resolveTheme(id: string | null): AppThemeConfig;
-  featureToggle(id: string, fallback: boolean): boolean;
-  private failure;
-  private note;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<AppConfigService, never>;
-  static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppConfigService>;
+    private readonly http;
+    private readonly bootstrapUrl;
+    private readonly bootstrapConfig;
+    private readonly runtimeManifest;
+    private readonly diagnosticsState;
+    readonly bootstrap: _angular_core.Signal<AppBootstrapConfig>;
+    readonly manifest: _angular_core.Signal<AppRuntimeManifest>;
+    readonly diagnostics: _angular_core.Signal<AppConfigDiagnostics>;
+    readonly themes: _angular_core.Signal<readonly AppThemeConfig[]>;
+    load(): Promise<void>;
+    loadBootstrap(): Promise<AppBootstrapConfig>;
+    loadManifest(): Promise<AppRuntimeManifest>;
+    resolveTheme(id: string | null): AppThemeConfig;
+    featureToggle(id: string, fallback: boolean): boolean;
+    private failure;
+    private note;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<AppConfigService, never>;
+    static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppConfigService>;
 }
 type AppConfigSource = 'packaged-default' | 'deployed-file' | 'nuxeo-document';
 interface AppIntegrationsConfig {
-  readonly arender: AppARenderConfig | null;
-  readonly knowledgeDiscoveryOperations: Readonly<Record<string, string>>;
-  readonly knowledgeEnrichmentOperations: Readonly<Record<string, string>>;
+    readonly arender: AppARenderConfig | null;
+    readonly knowledgeDiscoveryOperations: Readonly<Record<string, string>>;
+    readonly knowledgeEnrichmentOperations: Readonly<Record<string, string>>;
 }
 interface AppRuntimeManifest {
-  readonly version: number;
-  readonly navItems: readonly ManifestNavItem[];
-  readonly actions: Readonly<Record<string, ManifestAction>>;
-  readonly rules: Readonly<Record<string, boolean>>;
-  readonly presets: Readonly<Record<string, unknown>>;
-  readonly featureToggles: Readonly<Record<string, boolean>>;
-  readonly labels: Readonly<Record<string, string>>;
-  readonly extensions: Readonly<Record<string, unknown>>;
+    readonly version: number;
+    readonly navItems: readonly ManifestNavItem[];
+    readonly actions: Readonly<Record<string, ManifestAction>>;
+    readonly rules: Readonly<Record<string, boolean>>;
+    readonly presets: Readonly<Record<string, unknown>>;
+    readonly featureToggles: Readonly<Record<string, boolean>>;
+    readonly labels: Readonly<Record<string, string>>;
+    readonly extensions: Readonly<Record<string, unknown>>;
 }
 interface AppSessionConfig {
-  readonly idleTimeoutMs: number | null;
-  readonly warningBeforeMs: number | null;
+    readonly idleTimeoutMs: number | null;
+    readonly warningBeforeMs: number | null;
 }
 interface AppSsoConfig {
-  readonly endpoints: readonly AppSsoEndpointConfig[];
-  readonly postLoginPath: string | null;
-  readonly returnQueryParam: string | null;
+    readonly endpoints: readonly AppSsoEndpointConfig[];
+    readonly postLoginPath: string | null;
+    readonly returnQueryParam: string | null;
 }
 interface AppSsoEndpointConfig {
-  readonly id: string;
-  readonly label: string;
-  readonly path: string;
+    readonly id: string;
+    readonly label: string;
+    readonly path: string;
 }
 interface AppThemeConfig {
-  readonly id: string;
-  readonly label: string;
-  readonly base: string;
-  readonly preview: AppThemePreview;
-  readonly tokens: AppThemeTokens;
+    readonly id: string;
+    readonly label: string;
+    readonly base: string;
+    readonly preview: AppThemePreview;
+    readonly tokens: AppThemeTokens;
 }
 interface AppThemePreview {
-  readonly sidebar: string;
-  readonly surface: string;
-  readonly header: string;
-  readonly accent: string;
-  readonly tile: string;
+    readonly sidebar: string;
+    readonly surface: string;
+    readonly header: string;
+    readonly accent: string;
+    readonly tile: string;
 }
 type AppThemeTokens = Readonly<Record<string, string>>;
 const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig;
 const DEFAULT_APP_RUNTIME_MANIFEST: AppRuntimeManifest;
 const DEFAULT_APP_THEMES: readonly AppThemeConfig[];
 interface ManifestAction {
-  readonly visible: boolean;
-  readonly rule: string | null;
-  readonly label: string | null;
-  readonly order: number | null;
+    readonly visible: boolean;
+    readonly rule: string | null;
+    readonly label: string | null;
+    readonly order: number | null;
 }
 interface ManifestNavItem {
-  readonly id: string;
-  readonly label: string;
-  readonly route: string;
-  readonly icon: string;
-  readonly order: number;
-  readonly visible: boolean;
+    readonly id: string;
+    readonly label: string;
+    readonly route: string;
+    readonly icon: string;
+    readonly order: number;
+    readonly visible: boolean;
 }
 function mergeBootstrapConfig(base: AppBootstrapConfig, patch: unknown): AppBootstrapConfig;
 function mergeRuntimeManifest(base: AppRuntimeManifest, patch: unknown): AppRuntimeManifest;
@@ -231,7 +231,7 @@ type ExtensionLayerResolver = (name: string) => ExtensionConfig | null;
 class ExtensionOutletComponent {
     readonly componentId: _angular_core.InputSignal<string | null>;
     readonly componentType: _angular_core.InputSignal<Type<unknown> | null>;
-    readonly componentInputs: _angular_core.InputSignal<Readonly<Record<string, unknown>>>;
+    readonly componentInputs: _angular_core.InputSignal<Readonly<Record<string, unknown>> | null | undefined>;
     readonly loading: _angular_core.WritableSignal<boolean>;
     readonly unresolved: _angular_core.WritableSignal<boolean>;
     private outlet;
@@ -1746,455 +1746,281 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ```ts
 class ConfirmDialogComponent {
-  readonly data: ConfirmDialogData;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<ConfirmDialogComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    ConfirmDialogComponent,
-    'lib-confirm-dialog',
-    never,
-    {},
-    {},
-    never,
-    never,
-    true,
-    never
-  >;
+    readonly data: ConfirmDialogData;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<ConfirmDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<ConfirmDialogComponent, "lib-confirm-dialog", never, {}, {}, never, never, true, never>;
 }
 interface ConfirmDialogData {
-  title: string;
-  message: string;
-  confirmLabel?: string;
+    title: string;
+    message: string;
+    confirmLabel?: string;
 }
 class DocumentCompareDialogComponent {
-  private readonly detailService;
-  readonly data: DocumentCompareDialogData;
-  readonly leftId: _angular_core.WritableSignal<string>;
-  readonly rightId: _angular_core.WritableSignal<string>;
-  readonly viewAllData: _angular_core.WritableSignal<boolean>;
-  readonly unifiedView: _angular_core.WritableSignal<boolean>;
-  readonly loading: _angular_core.WritableSignal<boolean>;
-  readonly error: _angular_core.WritableSignal<string | null>;
-  readonly leftDoc: _angular_core.WritableSignal<NuxeoDocument | null>;
-  readonly rightDoc: _angular_core.WritableSignal<NuxeoDocument | null>;
-  readonly sections: _angular_core.Signal<_nuxeo_satori_platform_nuxeo_client.CompareSection[]>;
-  isIconRow(row: CompareRow): boolean;
-  constructor();
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<DocumentCompareDialogComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    DocumentCompareDialogComponent,
-    'lib-document-compare-dialog',
-    never,
-    {},
-    {},
-    never,
-    never,
-    true,
-    never
-  >;
+    private readonly detailService;
+    readonly data: DocumentCompareDialogData;
+    readonly leftId: _angular_core.WritableSignal<string>;
+    readonly rightId: _angular_core.WritableSignal<string>;
+    readonly viewAllData: _angular_core.WritableSignal<boolean>;
+    readonly unifiedView: _angular_core.WritableSignal<boolean>;
+    readonly loading: _angular_core.WritableSignal<boolean>;
+    readonly error: _angular_core.WritableSignal<string | null>;
+    readonly leftDoc: _angular_core.WritableSignal<NuxeoDocument | null>;
+    readonly rightDoc: _angular_core.WritableSignal<NuxeoDocument | null>;
+    readonly sections: _angular_core.Signal<_nuxeo_satori_platform_nuxeo_client.CompareSection[]>;
+    isIconRow(row: CompareRow): boolean;
+    constructor();
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<DocumentCompareDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<DocumentCompareDialogComponent, "lib-document-compare-dialog", never, {}, {}, never, never, true, never>;
 }
 interface DocumentCompareDialogData {
-  items: Array<{
+    items: Array<{
     id: string;
     name: string;
-  }>;
+    }>;
 }
 class DocumentViewerComponent {
-  readonly blobUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
-  readonly mimeType: _angular_core.InputSignal<string>;
-  readonly fileName: _angular_core.InputSignal<string>;
-  readonly fileSize: _angular_core.InputSignal<string>;
-  readonly loading: _angular_core.InputSignal<boolean>;
-  readonly noteContent: _angular_core.InputSignal<string | null>;
-  readonly noteHtml: _angular_core.InputSignal<SafeHtml | null>;
-  readonly videoSources: _angular_core.InputSignal<VideoSource[]>;
-  readonly storyboard: _angular_core.InputSignal<StoryboardItem[]>;
-  readonly posterUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
-  readonly hasPdfRendition: _angular_core.InputSignal<boolean>;
-  readonly previewUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
-  readonly pictureInfo: _angular_core.InputSignal<PictureInfo | null>;
-  readonly pictureViews: _angular_core.InputSignal<PictureView[]>;
-  readonly exifData: _angular_core.InputSignal<ExifData | null>;
-  readonly iptcData: _angular_core.InputSignal<IptcData | null>;
-  readonly videoInfo: _angular_core.InputSignal<VideoInfo | null>;
-  readonly arenderUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
-  readonly arenderReloadId: _angular_core.InputSignal<number>;
-  readonly viewerDocUid: _angular_core.InputSignal<string>;
-  readonly annotationsTab: _angular_core.InputSignal<boolean>;
-  readonly showMainFileControls: _angular_core.InputSignal<boolean>;
-  readonly mainFileActionInProgress: _angular_core.InputSignal<string | null>;
-  readonly downloadClicked: _angular_core.OutputEmitterRef<void>;
-  readonly openWithDriveClicked: _angular_core.OutputEmitterRef<void>;
-  readonly previewClicked: _angular_core.OutputEmitterRef<void>;
-  readonly replaceMainFileClicked: _angular_core.OutputEmitterRef<void>;
-  readonly removeMainFileClicked: _angular_core.OutputEmitterRef<void>;
-  readonly storyboardSeek: _angular_core.OutputEmitterRef<number>;
-  readonly formatDownload: _angular_core.OutputEmitterRef<string>;
-  readonly contentType: _angular_core.Signal<
-    | 'image'
-    | 'video'
-    | 'audio'
-    | 'markdown'
-    | 'html'
-    | 'xml'
-    | 'text'
-    | 'pdf'
-    | 'pdfRendition'
-    | 'preview'
-    | 'none'
-  >;
-  readonly showARenderViewer: _angular_core.Signal<boolean>;
-  readonly showImageToolbar: _angular_core.Signal<boolean>;
-  readonly showVideoStoryboard: _angular_core.Signal<boolean>;
-  readonly showPictureCards: _angular_core.Signal<boolean>;
-  readonly showVideoInfoCard: _angular_core.Signal<boolean>;
-  readonly arenderAvailable: _angular_core.Signal<boolean>;
-  readonly exifEntries: _angular_core.Signal<
-    {
-      label: string;
-      value: string;
-    }[]
-  >;
-  readonly iptcEntries: _angular_core.Signal<
-    {
-      label: string;
-      value: string;
-    }[]
-  >;
-  readonly zoom: _angular_core.WritableSignal<number>;
-  readonly rotation: _angular_core.WritableSignal<number>;
-  readonly fitMode: _angular_core.WritableSignal<'width' | 'real'>;
-  readonly transform: _angular_core.Signal<string>;
-  readonly videoRef: _angular_core.Signal<ElementRef<HTMLVideoElement> | undefined>;
-  zoomIn(): void;
-  zoomOut(): void;
-  toggleFit(): void;
-  rotateLeft(): void;
-  rotateRight(): void;
-  seekTo(timecode: number): void;
-  formatTimecode(seconds: number): string;
-  formatDuration(seconds: number): string;
-  isFiniteNumber(value: number | null | undefined): value is number;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<DocumentViewerComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    DocumentViewerComponent,
-    'lib-document-viewer',
-    never,
-    {
-      blobUrl: { alias: 'blobUrl'; required: false; isSignal: true };
-      mimeType: { alias: 'mimeType'; required: false; isSignal: true };
-      fileName: { alias: 'fileName'; required: false; isSignal: true };
-      fileSize: { alias: 'fileSize'; required: false; isSignal: true };
-      loading: { alias: 'loading'; required: false; isSignal: true };
-      noteContent: { alias: 'noteContent'; required: false; isSignal: true };
-      noteHtml: { alias: 'noteHtml'; required: false; isSignal: true };
-      videoSources: { alias: 'videoSources'; required: false; isSignal: true };
-      storyboard: { alias: 'storyboard'; required: false; isSignal: true };
-      posterUrl: { alias: 'posterUrl'; required: false; isSignal: true };
-      hasPdfRendition: { alias: 'hasPdfRendition'; required: false; isSignal: true };
-      previewUrl: { alias: 'previewUrl'; required: false; isSignal: true };
-      pictureInfo: { alias: 'pictureInfo'; required: false; isSignal: true };
-      pictureViews: { alias: 'pictureViews'; required: false; isSignal: true };
-      exifData: { alias: 'exifData'; required: false; isSignal: true };
-      iptcData: { alias: 'iptcData'; required: false; isSignal: true };
-      videoInfo: { alias: 'videoInfo'; required: false; isSignal: true };
-      arenderUrl: { alias: 'arenderUrl'; required: false; isSignal: true };
-      arenderReloadId: { alias: 'arenderReloadId'; required: false; isSignal: true };
-      viewerDocUid: { alias: 'viewerDocUid'; required: false; isSignal: true };
-      annotationsTab: { alias: 'annotationsTab'; required: false; isSignal: true };
-      showMainFileControls: { alias: 'showMainFileControls'; required: false; isSignal: true };
-      mainFileActionInProgress: {
-        alias: 'mainFileActionInProgress';
-        required: false;
-        isSignal: true;
-      };
-    },
-    {
-      downloadClicked: 'downloadClicked';
-      openWithDriveClicked: 'openWithDriveClicked';
-      previewClicked: 'previewClicked';
-      replaceMainFileClicked: 'replaceMainFileClicked';
-      removeMainFileClicked: 'removeMainFileClicked';
-      storyboardSeek: 'storyboardSeek';
-      formatDownload: 'formatDownload';
-    },
-    never,
-    never,
-    true,
-    never
-  >;
+    readonly blobUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
+    readonly mimeType: _angular_core.InputSignal<string>;
+    readonly fileName: _angular_core.InputSignal<string>;
+    readonly fileSize: _angular_core.InputSignal<string>;
+    readonly loading: _angular_core.InputSignal<boolean>;
+    readonly noteContent: _angular_core.InputSignal<string | null>;
+    readonly noteHtml: _angular_core.InputSignal<SafeHtml | null>;
+    readonly videoSources: _angular_core.InputSignal<VideoSource[]>;
+    readonly storyboard: _angular_core.InputSignal<StoryboardItem[]>;
+    readonly posterUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
+    readonly hasPdfRendition: _angular_core.InputSignal<boolean>;
+    readonly previewUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
+    readonly pictureInfo: _angular_core.InputSignal<PictureInfo | null>;
+    readonly pictureViews: _angular_core.InputSignal<PictureView[]>;
+    readonly exifData: _angular_core.InputSignal<ExifData | null>;
+    readonly iptcData: _angular_core.InputSignal<IptcData | null>;
+    readonly videoInfo: _angular_core.InputSignal<VideoInfo | null>;
+    readonly arenderUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
+    readonly arenderReloadId: _angular_core.InputSignal<number>;
+    readonly viewerDocUid: _angular_core.InputSignal<string>;
+    readonly annotationsTab: _angular_core.InputSignal<boolean>;
+    readonly showMainFileControls: _angular_core.InputSignal<boolean>;
+    readonly mainFileActionInProgress: _angular_core.InputSignal<string | null>;
+    readonly downloadClicked: _angular_core.OutputEmitterRef<void>;
+    readonly openWithDriveClicked: _angular_core.OutputEmitterRef<void>;
+    readonly previewClicked: _angular_core.OutputEmitterRef<void>;
+    readonly replaceMainFileClicked: _angular_core.OutputEmitterRef<void>;
+    readonly removeMainFileClicked: _angular_core.OutputEmitterRef<void>;
+    readonly storyboardSeek: _angular_core.OutputEmitterRef<number>;
+    readonly formatDownload: _angular_core.OutputEmitterRef<string>;
+    readonly contentType: _angular_core.Signal<"image" | "video" | "audio" | "markdown" | "html" | "xml" | "text" | "pdf" | "pdfRendition" | "preview" | "none">;
+    readonly showARenderViewer: _angular_core.Signal<boolean>;
+    readonly showImageToolbar: _angular_core.Signal<boolean>;
+    readonly showVideoStoryboard: _angular_core.Signal<boolean>;
+    readonly showPictureCards: _angular_core.Signal<boolean>;
+    readonly showVideoInfoCard: _angular_core.Signal<boolean>;
+    readonly arenderAvailable: _angular_core.Signal<boolean>;
+    readonly exifEntries: _angular_core.Signal<{
+    label: string;
+    value: string;
+    }[]>;
+    readonly iptcEntries: _angular_core.Signal<{
+    label: string;
+    value: string;
+    }[]>;
+    readonly zoom: _angular_core.WritableSignal<number>;
+    readonly rotation: _angular_core.WritableSignal<number>;
+    readonly fitMode: _angular_core.WritableSignal<"width" | "real">;
+    readonly transform: _angular_core.Signal<string>;
+    readonly videoRef: _angular_core.Signal<ElementRef<HTMLVideoElement> | undefined>;
+    zoomIn(): void;
+    zoomOut(): void;
+    toggleFit(): void;
+    rotateLeft(): void;
+    rotateRight(): void;
+    seekTo(timecode: number): void;
+    formatTimecode(seconds: number): string;
+    formatDuration(seconds: number): string;
+    isFiniteNumber(value: number | null | undefined): value is number;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<DocumentViewerComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<DocumentViewerComponent, "lib-document-viewer", never, { "blobUrl": { "alias": "blobUrl"; "required": false; "isSignal": true; }; "mimeType": { "alias": "mimeType"; "required": false; "isSignal": true; }; "fileName": { "alias": "fileName"; "required": false; "isSignal": true; }; "fileSize": { "alias": "fileSize"; "required": false; "isSignal": true; }; "loading": { "alias": "loading"; "required": false; "isSignal": true; }; "noteContent": { "alias": "noteContent"; "required": false; "isSignal": true; }; "noteHtml": { "alias": "noteHtml"; "required": false; "isSignal": true; }; "videoSources": { "alias": "videoSources"; "required": false; "isSignal": true; }; "storyboard": { "alias": "storyboard"; "required": false; "isSignal": true; }; "posterUrl": { "alias": "posterUrl"; "required": false; "isSignal": true; }; "hasPdfRendition": { "alias": "hasPdfRendition"; "required": false; "isSignal": true; }; "previewUrl": { "alias": "previewUrl"; "required": false; "isSignal": true; }; "pictureInfo": { "alias": "pictureInfo"; "required": false; "isSignal": true; }; "pictureViews": { "alias": "pictureViews"; "required": false; "isSignal": true; }; "exifData": { "alias": "exifData"; "required": false; "isSignal": true; }; "iptcData": { "alias": "iptcData"; "required": false; "isSignal": true; }; "videoInfo": { "alias": "videoInfo"; "required": false; "isSignal": true; }; "arenderUrl": { "alias": "arenderUrl"; "required": false; "isSignal": true; }; "arenderReloadId": { "alias": "arenderReloadId"; "required": false; "isSignal": true; }; "viewerDocUid": { "alias": "viewerDocUid"; "required": false; "isSignal": true; }; "annotationsTab": { "alias": "annotationsTab"; "required": false; "isSignal": true; }; "showMainFileControls": { "alias": "showMainFileControls"; "required": false; "isSignal": true; }; "mainFileActionInProgress": { "alias": "mainFileActionInProgress"; "required": false; "isSignal": true; }; }, { "downloadClicked": "downloadClicked"; "openWithDriveClicked": "openWithDriveClicked"; "previewClicked": "previewClicked"; "replaceMainFileClicked": "replaceMainFileClicked"; "removeMainFileClicked": "removeMainFileClicked"; "storyboardSeek": "storyboardSeek"; "formatDownload": "formatDownload"; }, never, never, true, never>;
 }
 interface ExifData {
-  dateTimeOriginal?: string;
-  orientation?: string;
-  fNumber?: string;
-  exposureTime?: string;
-  isoSpeedRatings?: string;
-  focalLength?: string;
-  [key: string]: string | undefined;
+    dateTimeOriginal?: string;
+    orientation?: string;
+    fNumber?: string;
+    exposureTime?: string;
+    isoSpeedRatings?: string;
+    focalLength?: string;
+    [key: string]: string | undefined;
 }
 class ExportDialogComponent {
-  private readonly dialogRef;
-  private readonly data;
-  readonly exporting: _angular_core.WritableSignal<ExportType | null>;
-  readonly options: ExportOption[];
-  onExport(type: ExportType): void;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExportDialogComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    ExportDialogComponent,
-    'lib-export-dialog',
-    never,
-    {},
-    {},
-    never,
-    never,
-    true,
-    never
-  >;
+    private readonly dialogRef;
+    private readonly data;
+    readonly exporting: _angular_core.WritableSignal<ExportType | null>;
+    readonly options: ExportOption[];
+    onExport(type: ExportType): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExportDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<ExportDialogComponent, "lib-export-dialog", never, {}, {}, never, never, true, never>;
 }
 interface ExportDialogData {
-  documentUid: string;
-  documentTitle: string;
-  exportFn: (type: ExportType, uid: string) => rxjs.Observable<Blob>;
+    documentUid: string;
+    documentTitle: string;
+    exportFn: (type: ExportType, uid: string) => rxjs.Observable<Blob>;
 }
 type ExportType = 'thumbnail' | 'pdf' | 'zip' | 'xml';
 interface IptcData {
-  copyright?: string;
-  rights?: string;
-  source?: string;
-  description?: string;
-  [key: string]: string | undefined;
+    copyright?: string;
+    rights?: string;
+    source?: string;
+    description?: string;
+    [key: string]: string | undefined;
 }
 interface PermissionEntry {
-  id: string;
-  userGroup: string;
-  right: string;
-  timeFrame: string;
-  grantedBy: string;
+    id: string;
+    userGroup: string;
+    right: string;
+    timeFrame: string;
+    grantedBy: string;
 }
 interface PictureInfo {
-  width: number;
-  height: number;
-  format: string;
-  colorSpace: string;
-  depth: number;
-  weight: string;
+    width: number;
+    height: number;
+    format: string;
+    colorSpace: string;
+    depth: number;
+    weight: string;
 }
 interface PictureView {
-  title: string;
-  width: number;
-  height: number;
-  fileSize: string;
-  format: string;
-  downloadUrl: string;
+    title: string;
+    width: number;
+    height: number;
+    fileSize: string;
+    format: string;
+    downloadUrl: string;
 }
 const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig>;
 class SavedSearchDialogComponent {
-  readonly dialogRef: MatDialogRef<any, any>;
-  readonly data: SavedSearchDialogData;
-  readonly name: _angular_core.WritableSignal<string>;
-  readonly canSave: () => boolean;
-  onInput(value: string): void;
-  save(): void;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<SavedSearchDialogComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    SavedSearchDialogComponent,
-    'lib-saved-search-dialog',
-    never,
-    {},
-    {},
-    never,
-    never,
-    true,
-    never
-  >;
+    readonly dialogRef: MatDialogRef<any, any>;
+    readonly data: SavedSearchDialogData;
+    readonly name: _angular_core.WritableSignal<string>;
+    readonly canSave: () => boolean;
+    onInput(value: string): void;
+    save(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<SavedSearchDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<SavedSearchDialogComponent, "lib-saved-search-dialog", never, {}, {}, never, never, true, never>;
 }
 interface SavedSearchDialogData {
-  title?: string;
-  placeholder?: string;
-  initialValue?: string;
+    title?: string;
+    placeholder?: string;
+    initialValue?: string;
 }
 class SelectionTopbarComponent {
-  private selectionPopupPanel?;
-  private lastFocusedElement;
-  readonly selectedCount: _angular_core.InputSignal<number>;
-  readonly selectedItems: _angular_core.InputSignal<
-    {
-      id: string;
-      name: string;
-      preview: SafeUrl | string | null;
-    }[]
-  >;
-  readonly cleared: _angular_core.OutputEmitterRef<void>;
-  readonly selectionPopupOpen: _angular_core.WritableSignal<boolean>;
-  private readonly extensions;
-  private readonly actions;
-  private readonly ruleContext;
-  readonly bulkActions: _angular_core.Signal<readonly ExtensionActionDescriptor[]>;
-  isEnabled(action: ExtensionActionDescriptor): boolean;
-  run(action: ExtensionActionDescriptor): void;
-  openSelectionPopup(): void;
-  closeSelectionPopup(): void;
-  onEscape(): void;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<SelectionTopbarComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    SelectionTopbarComponent,
-    'lib-selection-topbar',
-    never,
-    {
-      selectedCount: { alias: 'selectedCount'; required: true; isSignal: true };
-      selectedItems: { alias: 'selectedItems'; required: false; isSignal: true };
-    },
-    { cleared: 'cleared' },
-    never,
-    never,
-    true,
-    never
-  >;
+    private selectionPopupPanel?;
+    private lastFocusedElement;
+    readonly selectedCount: _angular_core.InputSignal<number>;
+    readonly selectedItems: _angular_core.InputSignal<{
+    id: string;
+    name: string;
+    preview: SafeUrl | string | null;
+    }[]>;
+    readonly cleared: _angular_core.OutputEmitterRef<void>;
+    readonly selectionPopupOpen: _angular_core.WritableSignal<boolean>;
+    private readonly extensions;
+    private readonly actions;
+    private readonly ruleContext;
+    readonly bulkActions: _angular_core.Signal<readonly ExtensionActionDescriptor[]>;
+    isEnabled(action: ExtensionActionDescriptor): boolean;
+    run(action: ExtensionActionDescriptor): void;
+    openSelectionPopup(): void;
+    closeSelectionPopup(): void;
+    onEscape(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<SelectionTopbarComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<SelectionTopbarComponent, "lib-selection-topbar", never, { "selectedCount": { "alias": "selectedCount"; "required": true; "isSignal": true; }; "selectedItems": { "alias": "selectedItems"; "required": false; "isSignal": true; }; }, { "cleared": "cleared"; }, never, never, true, never>;
 }
 class ShareDialogComponent {
-  readonly data: ShareDialogData;
-  private readonly dialogRef;
-  private readonly snackBar;
-  copyLink(): void;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareDialogComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    ShareDialogComponent,
-    'lib-share-dialog',
-    never,
-    {},
-    {},
-    never,
-    never,
-    true,
-    never
-  >;
+    readonly data: ShareDialogData;
+    private readonly dialogRef;
+    private readonly snackBar;
+    copyLink(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<ShareDialogComponent, "lib-share-dialog", never, {}, {}, never, never, true, never>;
 }
 interface ShareDialogData {
-  title: string;
-  url: string;
+    title: string;
+    url: string;
 }
 class ShareSavedSearchDialogComponent implements OnInit {
-  readonly dialogRef: MatDialogRef<any, any>;
-  readonly data: ShareSavedSearchDialogData;
-  private readonly dialog;
-  private readonly currentUsername;
-  private readonly userService;
-  private readonly detailService;
-  readonly permissions: _angular_core.WritableSignal<PermissionEntry[]>;
-  readonly inheritedPermissions: _angular_core.WritableSignal<PermissionSummary[]>;
-  readonly externalPermissions: _angular_core.WritableSignal<ExternalPermissionEntry[]>;
-  readonly isInheritanceBlocked: _angular_core.WritableSignal<boolean>;
-  readonly saving: _angular_core.WritableSignal<boolean>;
-  readonly loading: _angular_core.WritableSignal<boolean>;
-  private nextId;
-  ngOnInit(): void;
-  private loadPermissionsFromApi;
-  private parsePermissionsFromDocument;
-  openExternalPermissionDialog(): void;
-  editExternalPermission(row: ExternalPermissionEntry): void;
-  sendExternalNotification(row: ExternalPermissionEntry): void;
-  removeExternalPermission(row: ExternalPermissionEntry): void;
-  togglePermissionInheritance(): void;
-  private loadPermissionsFromCurrentUser;
-  private applyUserPermissions;
-  private toDisplayName;
-  openAddPermissionDialog(): void;
-  removeRow(id: string): void;
-  editRow(id: string): void;
-  save(): void;
-  private normalizePermissionForApi;
-  private parseTimeFrame;
-  private toTimeFrameLabel;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareSavedSearchDialogComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    ShareSavedSearchDialogComponent,
-    'lib-share-saved-search-dialog',
-    never,
-    {},
-    {},
-    never,
-    never,
-    true,
-    never
-  >;
+    readonly dialogRef: MatDialogRef<any, any>;
+    readonly data: ShareSavedSearchDialogData;
+    private readonly dialog;
+    private readonly currentUsername;
+    private readonly userService;
+    private readonly detailService;
+    readonly permissions: _angular_core.WritableSignal<PermissionEntry[]>;
+    readonly inheritedPermissions: _angular_core.WritableSignal<PermissionSummary[]>;
+    readonly externalPermissions: _angular_core.WritableSignal<ExternalPermissionEntry[]>;
+    readonly isInheritanceBlocked: _angular_core.WritableSignal<boolean>;
+    readonly saving: _angular_core.WritableSignal<boolean>;
+    readonly loading: _angular_core.WritableSignal<boolean>;
+    private nextId;
+    ngOnInit(): void;
+    private loadPermissionsFromApi;
+    private parsePermissionsFromDocument;
+    openExternalPermissionDialog(): void;
+    editExternalPermission(row: ExternalPermissionEntry): void;
+    sendExternalNotification(row: ExternalPermissionEntry): void;
+    removeExternalPermission(row: ExternalPermissionEntry): void;
+    togglePermissionInheritance(): void;
+    private loadPermissionsFromCurrentUser;
+    private applyUserPermissions;
+    private toDisplayName;
+    openAddPermissionDialog(): void;
+    removeRow(id: string): void;
+    editRow(id: string): void;
+    save(): void;
+    private normalizePermissionForApi;
+    private parseTimeFrame;
+    private toTimeFrameLabel;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareSavedSearchDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<ShareSavedSearchDialogComponent, "lib-share-saved-search-dialog", never, {}, {}, never, never, true, never>;
 }
 interface ShareSavedSearchDialogData {
-  title: string;
-  id: string;
+    title: string;
+    id: string;
 }
 interface StoryboardItem {
-  timecode: number;
-  thumbnailUrl: SafeResourceUrl;
-  label: string;
+    timecode: number;
+    thumbnailUrl: SafeResourceUrl;
+    label: string;
 }
 class UiComponent {
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    UiComponent,
-    'lib-ui',
-    never,
-    {},
-    {},
-    never,
-    never,
-    true,
-    never
-  >;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiComponent, "lib-ui", never, {}, {}, never, never, true, never>;
 }
 interface VideoInfo {
-  duration?: number;
-  width?: number;
-  height?: number;
-  format?: string;
-  videoCodec?: string;
-  audioCodec?: string;
-  frameRate?: number;
+    duration?: number;
+    width?: number;
+    height?: number;
+    format?: string;
+    videoCodec?: string;
+    audioCodec?: string;
+    frameRate?: number;
 }
 interface VideoSource {
-  url: SafeResourceUrl;
-  mimeType: string;
-  label?: string;
+    url: SafeResourceUrl;
+    mimeType: string;
+    label?: string;
 }
 class WidgetContainerComponent {
-  readonly title: _angular_core.InputSignal<string>;
-  readonly icon: _angular_core.InputSignal<string | undefined>;
-  readonly iconColor: _angular_core.InputSignal<string>;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<WidgetContainerComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    WidgetContainerComponent,
-    'lib-widget-container',
-    never,
-    {
-      title: { alias: 'title'; required: true; isSignal: true };
-      icon: { alias: 'icon'; required: false; isSignal: true };
-      iconColor: { alias: 'iconColor'; required: false; isSignal: true };
-    },
-    {},
-    never,
-    ['[widgetActions]', '*'],
-    true,
-    never
-  >;
+    readonly title: _angular_core.InputSignal<string>;
+    readonly icon: _angular_core.InputSignal<string | undefined>;
+    readonly iconColor: _angular_core.InputSignal<string>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<WidgetContainerComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetContainerComponent, "lib-widget-container", never, { "title": { "alias": "title"; "required": true; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; "iconColor": { "alias": "iconColor"; "required": false; "isSignal": true; }; }, {}, never, ["[widgetActions]", "*"], true, never>;
 }
 class WidgetGridComponent {
-  readonly columns: _angular_core.InputSignal<number>;
-  static ɵfac: _angular_core.ɵɵFactoryDeclaration<WidgetGridComponent, never>;
-  static ɵcmp: _angular_core.ɵɵComponentDeclaration<
-    WidgetGridComponent,
-    'lib-widget-grid',
-    never,
-    { columns: { alias: 'columns'; required: false; isSignal: true } },
-    {},
-    never,
-    ['*'],
-    true,
-    never
-  >;
+    readonly columns: _angular_core.InputSignal<number>;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<WidgetGridComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetGridComponent, "lib-widget-grid", never, { "columns": { "alias": "columns"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
 }
-function openDocumentCompareDialog(
-  dialog: MatDialog,
-  items: DocumentCompareDialogData['items'],
-): void;
+function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
 function trashDocumentConfirmData(title: string): ConfirmDialogData;
 function trashSelectedDocumentsConfirmData(count: number): ConfirmDialogData;
 ```

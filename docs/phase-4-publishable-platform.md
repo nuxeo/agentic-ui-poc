@@ -177,16 +177,26 @@ site says to delete it in a fork.
 
 Recorded because each was invisible to a green build.
 
-| #   | Defect                                                                                                                                                                  | How it was caught                           |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| 1   | `@agentic-ui/shared/extensions` is an **invalid npm name** — two slashes. Phase 4 was unshippable as specified, and no document recorded it.                            | Checking name validity before packaging     |
-| 2   | `@nx/angular:ng-packagr-lite` **ships a broken package** — skips FESM bundling while the exports map points at `./fesm2022/*.mjs`; all four subpaths were unresolvable. | `npm pack` → install → resolve              |
-| 3   | `npm install` **pruned the two Linux-only lock entries** named in CLAUDE.md, reproducing the fault that kept CI red for all of Phase 2.                                 | Diffing against a known-good lock           |
-| 4   | The API surface extractor **silently omitted `export type { T }`** declarations, so `PlatformEntryPoint` was absent and its removal would not have been caught.         | Reading the built `.d.ts` by hand           |
-| 5   | The template's `themes` / `defaultThemeId` were **inert** — both keys present, a comment claiming "no rebuild needed", nothing reading them.                            | Asking whether the default actually applies |
-| 6   | The template's `documentTitle` **never applied** — `provideAppInitializer` functions run concurrently, so it read config before `load()` resolved.                      | Browser probe                               |
-| 7   | The generated provider was named **`provideAcmeExtensionsExtensions`**, with a selector of `acme-acme-extensions-panel`.                                                | Running the generator                       |
-| 8   | Generated code was **not lint-clean** (`console.info` trips `no-console`).                                                                                              | `nx lint` on the output                     |
+| #   | Defect                                                                                                                                                                                                                                                                                                           | How it was caught                           |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| 1   | `@agentic-ui/shared/extensions` is an **invalid npm name** — two slashes. Phase 4 was unshippable as specified, and no document recorded it.                                                                                                                                                                     | Checking name validity before packaging     |
+| 2   | `@nx/angular:ng-packagr-lite` **ships a broken package** — skips FESM bundling while the exports map points at `./fesm2022/*.mjs`; all four subpaths were unresolvable.                                                                                                                                          | `npm pack` → install → resolve              |
+| 3   | `npm install` **pruned the two Linux-only lock entries** named in CLAUDE.md, reproducing the fault that kept CI red for all of Phase 2.                                                                                                                                                                          | Diffing against a known-good lock           |
+| 4   | The API surface extractor **silently omitted `export type { T }`** declarations, so `PlatformEntryPoint` was absent and its removal would not have been caught.                                                                                                                                                  | Reading the built `.d.ts` by hand           |
+| 5   | The template's `themes` / `defaultThemeId` were **inert** — both keys present, a comment claiming "no rebuild needed", nothing reading them.                                                                                                                                                                     | Asking whether the default actually applies |
+| 6   | The template's `documentTitle` **never applied** — `provideAppInitializer` functions run concurrently, so it read config before `load()` resolved.                                                                                                                                                               | Browser probe                               |
+| 7   | The generated provider was named **`provideAcmeExtensionsExtensions`**, with a selector of `acme-acme-extensions-panel`.                                                                                                                                                                                         | Running the generator                       |
+| 8   | Generated code was **not lint-clean** (`console.info` trips `no-console`).                                                                                                                                                                                                                                       | `nx lint` on the output                     |
+| 9   | The platform package was compiled **without `strictNullChecks`** — `libs/platform/tsconfig.lib.json` extends `tsconfig.base.json`, which does not set `strict`; every other library sets it in its own tsconfig. 27 public types shipped wrongly non-nullable.                                                   | `fork-simulation`, first run                |
+| 10  | The `api-surface` gate recorded **233 names and zero signatures**. Rolled-up `.d.ts` declarations carry no `export` prefix, so every regex missed and everything fell through to a name-only fallback — it reported `pass` while defect 9 changed 27 types.                                                      | Fixing 9, then watching the gate not notice |
+| 11  | The gate **corrupted its own baseline on the first commit**. The snapshot is a `.md` file, lint-staged runs prettier on `*.md`, and prettier rewrote quotes, indentation and long type-argument wrapping inside the fenced blocks — 476 lines "changed", none real.                                              | Running the gate after committing it        |
+| 12  | The generated library's navbar entry pointed at `/acme-extensions` with **nothing routed there**, so it fell through the wildcard to `/home` — a nav entry that goes nowhere.                                                                                                                                    | Clicking the link in the evidence run       |
+| 13  | `ExtensionOutletComponent` **crashed** with `Object.entries(undefined)` as a route component. `withComponentInputBinding()` sets every declared input from route data, passing `undefined` for omitted keys, which defeats the input's `{}` default. Reachable from the product too, which uses the same option. | Phase 4 evidence run, step 12               |
+
+Defects 9 to 11 compound, and that is the point worth keeping: a misconfigured
+tsconfig shipped 27 wrong types, the gate meant to catch surface changes could not see
+them, and the gate's own baseline was being rewritten by a formatter on every commit.
+Three green signals, one real defect underneath.
 
 ### One guardrail widened, and re-broken to prove it still bites
 
@@ -202,11 +212,28 @@ and an `rgba()` are both still caught.
 ## Verification
 
 ```bash
-npm run beta:gate -- --phase phase-4-platform     # 10/10 green
+npm run beta:gate -- --phase phase-4-signoff                    # 11/11 green
 npx nx run-many -t typecheck build test --all --skip-nx-cache   # 22 projects green
+npm run beta:state                                              # pass
+APP_URL=http://127.0.0.1:4321 npm run beta:evidence -- phase-4-platform   # 25/25
 ```
 
 22 projects, up from 20 — the template and the generated library are both under CI.
+
+**Signed off on evidence, not on prose.** `phase-4-platform/2026-08-23T03-22-29` —
+25 checks across 12 steps against the built template and the built package, with 3
+distinct screenshots. `.ai/state/phases.json` records it `complete` and `beta:state`
+passes; for two commits that file said `in-progress` while this document's header
+said COMPLETE, which is recorded as a deviation rather than quietly corrected.
+
+### CI now runs what the local gate runs
+
+Before this phase closed, `ci.yml` ran 5 checks against the local gate's 11 — so
+neither `api-surface` nor `fork-simulation` could protect `main`, and **`typecheck`
+never ran in CI at all**. Given that `test` strips types through esbuild and most
+libraries have no `build` target, a type error confined to a library reached `main`
+unless `nuxeo-ui`'s build happened to import it. All three are now CI steps, ordered
+before the bundle-size step because that step begins with `rm -rf dist`.
 
 ## What is deliberately not done
 

@@ -64,6 +64,29 @@ jobs:
           npx nx run browse:test --output-style=stream
           npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD --output-style=stream --parallel=1 --exclude=browse,document-detail,knowledge-discovery,search
 
+      # `test` does NOT typecheck — vitest strips types through esbuild — and most
+      # libraries have no `build` target, so before this step a type error confined to a
+      # library reached `main` unless `nuxeo-ui`'s build happened to import it.
+      - name: Typecheck affected projects
+        run: npx nx affected -t typecheck --base=$NX_BASE --head=$NX_HEAD
+
+      # The two checks that guard the published package. Run unconditionally rather than
+      # only when affected: they are ~10s in total, and they are the checks that catch
+      # the expensive class of defect — a `strictNullChecks` misconfiguration shipped 27
+      # wrongly non-nullable public types while every other gate here was green.
+      #
+      # MUST stay above "Check bundle size", which starts with `rm -rf dist` and would
+      # delete the platform build these two read.
+      - name: Verify published API surface and fork resolution
+        run: |
+          set -euo pipefail
+          npx nx build platform
+          # Fails if the built .d.ts surface no longer matches docs/api/platform.api.md.
+          npm run beta:api
+          # Compiles the template against the BUILT declarations instead of the source
+          # tree — the resolution a customer actually gets.
+          npm run beta:fork
+
       - name: Check bundle size (nuxeo-ui)
         shell: bash
         env:

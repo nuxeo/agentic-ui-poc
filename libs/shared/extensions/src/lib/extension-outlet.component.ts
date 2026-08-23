@@ -46,8 +46,18 @@ export class ExtensionOutletComponent {
   readonly componentId = input<string | null>(null);
   /** An already-imported component, for callers that have one in hand. */
   readonly componentType = input<Type<unknown> | null>(null);
-  /** Inputs to set on the rendered component. Unknown keys are ignored. */
-  readonly componentInputs = input<Readonly<Record<string, unknown>>>({});
+  /**
+   * Inputs to set on the rendered component. Unknown keys are ignored.
+   *
+   * The `?? {}` in the effect below is not defensive padding. `withComponentInputBinding()`
+   * sets **every declared input** from route data, passing `undefined` for keys the
+   * route does not supply — which overrides this default. So routing straight to this
+   * component with `data: { componentId: '...' }` made `componentInputs()` `undefined`
+   * and `Object.entries()` threw, blanking the route. Both this template and the
+   * product bootstrap with `withComponentInputBinding()`, so the crash was reachable
+   * from either.
+   */
+  readonly componentInputs = input<Readonly<Record<string, unknown>> | null | undefined>({});
 
   readonly loading = signal(false);
   /** True when nothing could be resolved, so the host can render a fallback. */
@@ -69,7 +79,7 @@ export class ExtensionOutletComponent {
     effect(() => {
       const id = this.componentId();
       const type = this.componentType();
-      const inputs = this.componentInputs();
+      const inputs = this.componentInputs() ?? {};
       const generation = ++this.generation;
 
       if (type) {

@@ -4,3 +4,13 @@
 /.nx/cache
 /.nx/workspace-data
 .angular
+
+# Generated API surface snapshot. Prettier reformats the TypeScript inside its fenced
+# code blocks — double quotes to single, reindenting members — which made the committed
+# baseline disagree with what `api-surface.mjs` produces on every single commit, since
+# lint-staged formats `*.md`. The first commit after adding the gate silently corrupted
+# it: 476 lines "changed", none of them a real API change.
+#
+# It is generated output that says "Do not edit by hand" in its own header, so the byte
+# comparison has to be against the generator, not against prettier's opinion of it.
+/docs/api/platform.api.md
