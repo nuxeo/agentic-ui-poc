@@ -11,6 +11,14 @@ import {
   parseBrowseNuxeoPathFromRouterUrl,
   toBrowseRouterUrl,
   topLevelNuxeoFolderPath,
+  isUserWorkspacePath,
+  userWorkspaceOwnerFromPath,
+  userWorkspaceRootFromPath,
+  shouldShowUserWorkspaceBreadcrumbs,
+  userWorkspaceBrowseRouterUrl,
+  postTrashBrowseRouterUrl,
+  documentNavigationUrl,
+  isCollectionDocument,
 } from './browse-path.utils';
 
 describe('browse-path.utils', () => {
@@ -137,6 +145,85 @@ describe('browse-path.utils', () => {
     it('encodes browse routes from repository paths', () => {
       expect(toBrowseRouterUrl('/domain-1/workspaces')).toBe('/browse/domain-1/workspaces');
       expect(toBrowseRouterUrl('/')).toBe('/browse');
+    });
+  });
+
+  describe('user workspace path helpers', () => {
+    const workspacePath = '/default-domain/UserWorkspaces/jdoe/Collections/demo';
+
+    it('detects user workspace paths', () => {
+      expect(isUserWorkspacePath(workspacePath)).toBe(true);
+      expect(isUserWorkspacePath('/default-domain/workspaces/demo')).toBe(false);
+    });
+
+    it('extracts workspace owner and root', () => {
+      expect(userWorkspaceOwnerFromPath(workspacePath)).toBe('jdoe');
+      expect(userWorkspaceRootFromPath(workspacePath)).toBe('/default-domain/UserWorkspaces/jdoe');
+    });
+
+    it('shouldShowUserWorkspaceBreadcrumbs hides other users for non-admins', () => {
+      expect(shouldShowUserWorkspaceBreadcrumbs(workspacePath, 'jdoe', false)).toBe(true);
+      expect(shouldShowUserWorkspaceBreadcrumbs(workspacePath, 'alice', false)).toBe(false);
+      expect(shouldShowUserWorkspaceBreadcrumbs(workspacePath, 'alice', true)).toBe(true);
+      expect(
+        shouldShowUserWorkspaceBreadcrumbs('/default-domain/workspaces/demo', 'alice', false),
+      ).toBe(true);
+    });
+
+    it('postTrashBrowseRouterUrl returns parent folder for personal collections', () => {
+      expect(postTrashBrowseRouterUrl(workspacePath)).toBe(
+        '/browse/default-domain/UserWorkspaces/jdoe/Collections',
+      );
+      expect(userWorkspaceBrowseRouterUrl(workspacePath)).toBe(
+        '/browse/default-domain/UserWorkspaces/jdoe',
+      );
+    });
+
+    it('postTrashBrowseRouterUrl uses parent when deleting directly under workspace', () => {
+      expect(postTrashBrowseRouterUrl('/default-domain/UserWorkspaces/jdoe/my-folder')).toBe(
+        '/browse/default-domain/UserWorkspaces/jdoe',
+      );
+    });
+
+    it('documentNavigationUrl routes Collection to collection view', () => {
+      expect(
+        documentNavigationUrl({
+          uid: 'col-1',
+          type: 'Collection',
+          path: '/default-domain/UserWorkspaces/jdoe/Collections/demo',
+        }),
+      ).toBe('/collections/col-1');
+    });
+
+    it('documentNavigationUrl uses docTypeHint when create response omits type', () => {
+      expect(
+        documentNavigationUrl(
+          {
+            uid: 'col-2',
+            type: '',
+            path: '/default-domain/UserWorkspaces/jdoe/Collections/demo-2',
+          },
+          'Collection',
+        ),
+      ).toBe('/collections/col-2');
+    });
+
+    it('documentNavigationUrl routes by Collection facet', () => {
+      expect(
+        documentNavigationUrl({
+          uid: 'col-3',
+          type: 'Document',
+          facets: ['Collection', 'Folderish'],
+          path: '/default-domain/UserWorkspaces/jdoe/Collections/demo-3',
+        }),
+      ).toBe('/collections/col-3');
+    });
+
+    it('isCollectionDocument detects type, facet, and hint', () => {
+      expect(isCollectionDocument({ type: 'Collection' })).toBe(true);
+      expect(isCollectionDocument({ type: 'File', facets: ['Collection'] })).toBe(true);
+      expect(isCollectionDocument({ type: 'File' }, 'Collection')).toBe(true);
+      expect(isCollectionDocument({ type: 'File' })).toBe(false);
     });
   });
 });

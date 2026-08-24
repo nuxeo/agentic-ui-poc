@@ -83,7 +83,7 @@ export const MAIN_BLOB_POLL_INTERVAL_MS = 500;
 export const MAIN_BLOB_POLL_MAX_ATTEMPTS = 30;
 
 /** True if documents can be created under this document. */
-export function isFolderishDocument(doc: NuxeoDocument | null): boolean {
+export function isFolderishDocument(doc: Pick<NuxeoDocument, 'type' | 'facets'> | null): boolean {
   if (!doc) return false;
   if (doc.facets?.includes('Folderish')) return true;
   return FOLDERISH_TYPES.has(doc.type);

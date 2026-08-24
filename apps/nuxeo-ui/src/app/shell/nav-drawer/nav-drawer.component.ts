@@ -46,6 +46,8 @@ import {
   nuxeoPathSegments,
   toBrowseRouterUrl,
   topLevelNuxeoFolderPath,
+  documentNavigationUrl,
+  isCollectionDocument,
   type SearchQueryParams,
   type AssetAggregations,
   canPasteClipboard,
@@ -221,6 +223,9 @@ export class NavDrawerComponent {
           const username = this.authService.username();
           if (item?.path === '/browse' && username) {
             this.refreshBrowseTree();
+          }
+          if (item?.path === '/personal-space') {
+            this.refreshPersonalSpaceTree();
           }
         });
       }
@@ -513,8 +518,8 @@ export class NavDrawerComponent {
   }
 
   openRecentlyViewedDoc(doc: NuxeoDocument): void {
-    if (doc.type === 'Collection') {
-      this.navigateKeepDrawer.emit(`/collections/${doc.uid}`);
+    if (isCollectionDocument(doc)) {
+      this.navigateKeepDrawer.emit(documentNavigationUrl(doc));
       return;
     }
 
@@ -1007,7 +1012,7 @@ export class NavDrawerComponent {
       const soleChild = node.children.length === 1 ? node.children[0] : null;
       if (soleChild && !soleChild.isRoot) {
         this.browseContext.setFromNuxeoPath(soleChild.doc.path);
-        this.navigateKeepDrawer.emit(toBrowseRouterUrl(soleChild.doc.path));
+        this.navigateKeepDrawer.emit(documentNavigationUrl(soleChild.doc));
         return;
       }
       this.browseContext.setFromNuxeoPath('/');
@@ -1016,7 +1021,7 @@ export class NavDrawerComponent {
     }
     const nuxeoPath = node.doc.path;
     this.browseContext.setFromNuxeoPath(nuxeoPath);
-    this.navigateKeepDrawer.emit(toBrowseRouterUrl(nuxeoPath));
+    this.navigateKeepDrawer.emit(documentNavigationUrl(node.doc));
   }
 
   nodeLabel(node: FolderNode): string {
