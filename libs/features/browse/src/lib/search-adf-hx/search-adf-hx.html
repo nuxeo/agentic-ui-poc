@@ -63,7 +63,19 @@
 
           <span class="hxp-search-page__page-info"> Page {{ currentPage() + 1 }} </span>
 
-          <button type="button" mat-icon-button (click)="nextPage()" aria-label="Next page">
+          <!--
+            Next was unbound, so it stayed enabled on the last page and clicking it
+            fetched an empty result set — which reads as broken search rather than the
+            end of the results. `hasNextPage` existed but nothing consumed it, and it
+            was `signal(true)` besides.
+          -->
+          <button
+            type="button"
+            mat-icon-button
+            [disabled]="!hasNextPage()"
+            (click)="nextPage()"
+            aria-label="Next page"
+          >
             <mat-icon>chevron_right</mat-icon>
           </button>
         </div>
