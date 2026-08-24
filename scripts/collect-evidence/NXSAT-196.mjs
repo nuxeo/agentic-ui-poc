@@ -79,22 +79,34 @@ export default async function collectEvidence(page, helpers, _outDir) {
   await helpers.screenshot('01-before-save-attachments-panel');
 
   helpers.step('Edit note content');
+  const evidenceSuffix = ` NXSAT-196 evidence ${Date.now()}`;
   const quillEditor = page.locator('.note-quill-editor .ql-editor');
-  const plainEditor = page.locator('.note-text-surface, .note-plain-editor').first();
   if (await quillEditor.isVisible({ timeout: 5000 }).catch(() => false)) {
     await quillEditor.click();
     await page.keyboard.press('Control+End');
-    await page.keyboard.type(` NXSAT-196 evidence ${Date.now()}`, { delay: 20 });
-  } else if (await plainEditor.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await plainEditor.click();
-    await page.keyboard.type(` NXSAT-196 evidence ${Date.now()}`, { delay: 20 });
+    await page.keyboard.type(evidenceSuffix, { delay: 20 });
   } else {
-    console.warn('     Note editor not found — continuing to save if button exists');
+    const editNoteBtn = page.getByRole('button', { name: 'Edit note' });
+    if (await editNoteBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await editNoteBtn.click();
+      await page.waitForTimeout(400);
+    }
+
+    const plainEditor = page.locator('.note-plain-editor, .note-text-surface').first();
+    if (await plainEditor.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await plainEditor.click();
+      await page.keyboard.type(evidenceSuffix, { delay: 20 });
+    } else {
+      console.warn('     Note editor not found — continuing to save if button exists');
+    }
   }
   await helpers.screenshot('02-note-edited');
 
   helpers.step('Save note (PUT response will carry permissions: [])');
-  const saveBtn = page.locator('.note-footer').getByRole('button', { name: 'Save' });
+  const saveBtn = page
+    .locator('.note-footer, .note-plain-actions')
+    .getByRole('button', { name: 'Save' })
+    .first();
   if (await saveBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
     await saveBtn.click();
     const snack = page.locator('.mat-mdc-snack-bar-container');

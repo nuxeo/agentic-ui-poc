@@ -3154,6 +3154,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!existing.contextParameters && !updated.contextParameters) {
       return updated;
     }
+    // Note PUT only: treat empty permissions/acls arrays from Nuxeo as absent (NXSAT-196).
     return mergeDocumentPermissionsContext(
       { ...updated, contextParameters: existing.contextParameters },
       updated,
