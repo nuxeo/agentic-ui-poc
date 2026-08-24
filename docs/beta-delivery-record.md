@@ -36,7 +36,7 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 | 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted | `phase-3-adf-hx` 55/55   |
 | 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded     | `phase-4-platform` 25/25 |
 | 5 — Layer 3: agent harness              | **complete**                             | `phase-5-harness` 27/27  |
-| 6 — Beta quality bar                    | **in progress** — steps 0-1 of 7         | `phase-6-a11y` 12/12     |
+| 6 — Beta quality bar                    | **in progress** — steps 0-2 of 7         | `phase-6-a11y` 12/12     |
 
 Branch `feature/adf-hx-browse-poc`, 103 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.
@@ -325,15 +325,48 @@ string — inventing API changes would be testing the invention, so sensitivity 
 the negative control instead. And it is static, so it proves the contract survives, not
 that the pixels arrive.
 
+**Step 2 — Playwright E2E, where there was none.** Twelve specs over four critical paths:
+browse, search, document detail and the route guards. Assertions are on repository _data_,
+never on a component merely rendering — an unauthenticated XHR draws `lib-browse` with no
+rows, which is visible and proves nothing. The document under test is discovered through
+the app's own proxy rather than pinned, so the suite does not pass on one machine and read
+as a product defect everywhere else.
+
+Sensitivity was measured, not assumed: **with bogus credentials 9 of 12 specs fail**, and
+the 3 that pass are the auth specs, which are deliberately credential-independent.
+
+It does **not** run in PR CI. It needs a Nuxeo container with OpenSearch plus a served app,
+and `verify-gate` has no precondition-not-met path — so it is a phase gate, and
+`e2e-preflight.mjs` exits 2 rather than let an absent stack read as thirteen product
+failures, or an _empty_ Nuxeo read as a pass. That it only runs when someone runs it is a
+real limitation and is recorded as one.
+
+Three corrections came out of this step, and two were defects in work from the day before:
+
+- The guard spec asserted that an unauthenticated visitor is redirected, and failed. The
+  cause was environmental, not a product defect: this Nuxeo has **anonymous authentication
+  enabled**, so `/me` answers 200 as `Anonymous` with no credentials and the app's
+  intentional SSO-detection path adopts that session. `authGuard` is sound. Now a verified
+  fact in the agent contract, because it makes a class of auth assertion untestable locally.
+  The product implication is carried forward: a customer deploying with anonymous auth on
+  gets an app that signs unauthenticated visitors in, so the **privilege** boundary is what
+  to test, not the sign-in boundary.
+- The upgrade rehearsal's check 4d ran `git status` and claimed to prove "no edits to our
+  sources were needed". It proved nothing — the script never touches the repo, so the claim
+  was true by construction — and what it actually detected was uncommitted work. Replaced
+  with a real invariant: the customer tree must import only published entry points.
+- That replacement then missed its own probe, because a bare side-effect import has neither
+  `from` nor parentheses. The shipped customer guardrail had the identical gap. Both fixed.
+
 **Still open, with the real numbers:**
 
-| Requirement         | State                                                                    |
-| ------------------- | ------------------------------------------------------------------------ |
-| Unit coverage ≥ 90% | 5 of 17 projects. `search` 22.76%, `document-detail` 29.8%               |
-| Playwright E2E      | **nothing exists.** The harness uses Playwright for capture, not testing |
-| WCAG 2.1 AA         | not met — 4 rule classes violated and _ratcheted_, visible not fixed     |
-| SAST                | **nothing.** SCA is `npm audit` only (1 low)                             |
-| Safari              | never run; Chromium only                                                 |
+| Requirement         | State                                                                          |
+| ------------------- | ------------------------------------------------------------------------------ |
+| Unit coverage ≥ 90% | 5 of 17 projects. `search` 22.76%, `document-detail` 29.8%                     |
+| Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo) |
+| WCAG 2.1 AA         | not met — 4 rule classes violated and _ratcheted_, visible not fixed           |
+| SAST                | **nothing.** SCA is `npm audit` only (1 low)                                   |
+| Safari              | never run; Chromium only                                                       |
 
 Coverage alone is most of the phase's 20-30 day estimate.
 

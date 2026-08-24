@@ -206,6 +206,27 @@ Treat them as settled; if you contradict one, prove it first.
   invariant directly: every non-optional dependency edge in the lock must resolve
   within the lock. It is the first gate because it is the failure the other five
   structurally cannot see.
+- **The local Nuxeo has anonymous authentication enabled, and that makes "unauthenticated"
+  untestable here.** `GET /nuxeo/api/v1/me` with **no credentials at all** returns HTTP 200
+  and `{ id: 'Anonymous' }`, both through the dev proxy and directly on :8080. With no
+  stored session, `AuthService.runHydration()` falls through to
+  `tryEstablishCookieSessionOnly()`, which probes `/me` — the intentional SSO-detection
+  path, since an SSO cookie is how a real deployment signs a user in without a form. The
+  server says "you are Anonymous", the app believes it, and `isAuthenticated()` is true.
+
+  So `authGuard` **is** sound and an E2E spec asserting "an unauthenticated visitor is
+  redirected to /login" will fail against this environment for reasons that have nothing to
+  do with the product. Removing Playwright's `httpCredentials` does not help: credentials
+  were never what made `/me` succeed. Assert the two behaviours that are observable
+  instead — an explicitly signed-out visitor **is** redirected (`runHydration()`
+  short-circuits on the sign-out flag), and Anonymous is **not** granted administration
+  access. `apps/nuxeo-ui-e2e/src/auth.spec.ts` carries both.
+
+  Product implication worth carrying into Beta: a customer who deploys with anonymous auth
+  enabled gets an app that signs unauthenticated visitors in as `Anonymous`. That is the
+  server's decision and the client reflects it faithfully, but it is not obvious from the
+  UI, so the privilege boundary is the thing to test rather than the sign-in boundary.
+
 - **The `test` gate does not typecheck.** Vitest transpiles through esbuild, so two
   real type errors in Phase 2 code passed 46 green unit tests and were caught only
   by `build`. Never treat a green `test` gate as evidence that types are sound.
