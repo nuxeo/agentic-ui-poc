@@ -98,8 +98,17 @@ jobs:
             rm -rf dist
             npx nx build nuxeo-ui --configuration=production
 
+            # Scoped to dist/nuxeo-ui, NOT `-path '*/nuxeo-ui/*'` under all of dist.
+            #
+            # That glob also matches `dist/out-tsc/apps/nuxeo-ui/**`, which is the
+            # `typecheck` target's ngc output, not the shipped bundle. It only measured
+            # the right thing here because this step does `rm -rf dist` first and CI
+            # happens to run typecheck before it without leaving output behind. Locally
+            # the same command reports 9.8 MB against a 5 MB ceiling — 345 files instead
+            # of 63 — so anyone reproducing a CI failure got a number that could not be
+            # reconciled with the one in the log.
             bundle_size_bytes=$(
-              find dist -type f \( -name '*.js' -o -name '*.css' \) -path '*/nuxeo-ui/*' -printf '%s\n' \
+              find dist/nuxeo-ui -type f \( -name '*.js' -o -name '*.css' \) -printf '%s\n' \
                 | awk '{ total += $1 } END { print total + 0 }'
             )
 
