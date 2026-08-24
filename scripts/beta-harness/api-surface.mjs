@@ -95,7 +95,9 @@ function collectDeclarationFiles(entryFile, seen = new Set()) {
   if (seen.has(entryFile) || !existsSync(entryFile)) return seen;
   seen.add(entryFile);
   const text = readFileSync(entryFile, 'utf8');
-  for (const match of text.matchAll(/export\s+(?:\*|\{[^}]*\})\s*(?:as\s+\w+\s*)?from\s*['"](\.[^'"]+)['"]/g)) {
+  for (const match of text.matchAll(
+    /export\s+(?:\*|\{[^}]*\})\s*(?:as\s+\w+\s*)?from\s*['"](\.[^'"]+)['"]/g,
+  )) {
     const target = resolve(join(entryFile, '..'), match[1]);
     for (const candidate of [`${target}.d.ts`, join(target, 'index.d.ts')]) {
       if (existsSync(candidate)) {
@@ -118,7 +120,36 @@ function stripComments(text) {
     .replace(/\/\/\/.*$/gm, '');
 }
 
-const BRACED_KINDS = new Set(['class', 'abstract class', 'interface', 'enum', 'namespace']);
+/**
+ * Whether a declaration's opening line leaves anything unclosed.
+ *
+ * This replaces a `BRACED_KINDS` allowlist of `class | abstract class | interface | enum |
+ * namespace`, which is where the gate's second blind spot lived. `const` and `type` were
+ * matched by {@link DECLARATION} but not in that set, so a multi-line one recorded only
+ * its opening line and its contents were invisible to the diff. The snapshot literally
+ * held
+ *
+ *     const EXTENSION_SLOTS:
+ *
+ * with nothing after the colon — and `EXTENSION_SLOTS` is the registry of slot ids every
+ * customer manifest is written against. Removing or renaming a slot would have been
+ * reported as "no change". `NOTE_FORMAT_OPTIONS` was recorded as
+ * `const NOTE_FORMAT_OPTIONS: readonly [` for the same reason.
+ *
+ * Balance-based rather than kind-based so the class of bug cannot come back for a kind
+ * nobody thought of: `[` matters as much as `{` — a `readonly [{ … }]` tuple opens with a
+ * bracket — and `(` matters for a multi-line function signature. Safe on emitted
+ * declarations, which contain no string, template or regex literals that could carry an
+ * unbalanced bracket; `stripComments` has already removed the only other source.
+ */
+function unclosedDepth(line) {
+  let depth = 0;
+  for (const char of line) {
+    if (char === '{' || char === '[' || char === '(') depth += 1;
+    else if (char === '}' || char === ']' || char === ')') depth -= 1;
+  }
+  return depth;
+}
 // Two forms, because a rolled-up `.d.ts` uses both. Values need `declare`;
 // `type` and `interface` are type-only and appear bare — `PlatformEntryPoint` is
 // emitted as `type PlatformEntryPoint = ...` with no `declare`, and requiring the
@@ -158,29 +189,37 @@ function declarationsIn(text) {
     if (!match) continue;
     const [, kind, name, rest] = match;
 
-    if (!BRACED_KINDS.has(kind) || !/\{\s*$/.test(lines[index])) {
+    if (unclosedDepth(lines[index]) <= 0) {
       found.set(name, `${kind} ${name}${normalise(rest)}`);
       continue;
     }
 
-    // Walk to the matching close brace, then record each member on its own line so
-    // a diff points at the member that changed rather than the whole class.
+    // Walk to the line that closes it, then record each member on its own line so a
+    // diff points at the member that changed rather than the whole declaration.
     let depth = 0;
     const members = [];
+    let closer = '}';
     for (let cursor = index; cursor < lines.length; cursor += 1) {
       const line = lines[cursor];
-      depth += (line.match(/\{/g) ?? []).length;
-      depth -= (line.match(/\}/g) ?? []).length;
+      depth += unclosedDepth(line);
       if (cursor > index) {
         const member = line.trim();
-        if (member && member !== '}') members.push(`    ${member.replace(/\s+/g, ' ')}`);
+        // The final line is the closer, and it is re-emitted below rather than kept as
+        // a member — but keep whatever punctuation it actually uses (`}`, `]`, `];`)
+        // so a tuple does not silently render as an object.
+        if (depth <= 0 && /^[}\])];]*$/.test(member)) closer = member;
+        else if (member) members.push(`    ${member.replace(/\s+/g, ' ')}`);
       }
       if (depth <= 0) {
         index = cursor;
         break;
       }
     }
-    found.set(name, [`${kind} ${name}${normalise(rest)} {`, ...members, '}'].join('\n'));
+    // `normalise` deliberately NOT used for the header: it strips a trailing `{`, which
+    // is what turned `const EXTENSION_SLOTS: {` into `const EXTENSION_SLOTS:` and made
+    // the opener — object vs tuple — invisible. Collapse whitespace only.
+    const header = `${kind} ${name}${rest.replace(/\s+/g, ' ').trimEnd()}`;
+    found.set(name, [header, ...members, closer].join('\n'));
   }
 
   return found;
@@ -333,7 +372,11 @@ const detail = [
   'breaking change and needs a major version.',
 ];
 if (removed.length) {
-  detail.push('', `REMOVED or CHANGED (${removed.length}):`, ...removed.slice(0, 25).map((l) => `  - ${l}`));
+  detail.push(
+    '',
+    `REMOVED or CHANGED (${removed.length}):`,
+    ...removed.slice(0, 25).map((l) => `  - ${l}`),
+  );
   if (removed.length > 25) detail.push(`  … and ${removed.length - 25} more`);
 }
 if (added.length) {

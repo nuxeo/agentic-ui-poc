@@ -30,6 +30,7 @@ const APP_CONFIG_DIRECTORY = "agentic-ui-config";
 interface AppARenderConfig {
     readonly viewerOrigin: string;
     readonly nuxeoInternalUrl: string;
+    }
 }
 interface AppBootstrapConfig {
     readonly nuxeoApiOrigin: string;
@@ -45,15 +46,18 @@ interface AppBootstrapConfig {
     readonly integrations: AppIntegrationsConfig;
     readonly session: AppSessionConfig;
     readonly sso: AppSsoConfig;
+    }
 }
 interface AppBrandingConfig {
     readonly applicationTitle: string;
     readonly documentTitle: string;
+    }
 }
 interface AppConfigDiagnostics {
     readonly bootstrapSource: AppConfigSource;
     readonly manifestSource: AppConfigSource;
     readonly messages: readonly string[];
+    }
 }
 class AppConfigService {
     private readonly http;
@@ -74,12 +78,14 @@ class AppConfigService {
     private note;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<AppConfigService, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppConfigService>;
+    }
 }
 type AppConfigSource = 'packaged-default' | 'deployed-file' | 'nuxeo-document';
 interface AppIntegrationsConfig {
     readonly arender: AppARenderConfig | null;
     readonly knowledgeDiscoveryOperations: Readonly<Record<string, string>>;
     readonly knowledgeEnrichmentOperations: Readonly<Record<string, string>>;
+    }
 }
 interface AppRuntimeManifest {
     readonly version: number;
@@ -90,20 +96,24 @@ interface AppRuntimeManifest {
     readonly featureToggles: Readonly<Record<string, boolean>>;
     readonly labels: Readonly<Record<string, string>>;
     readonly extensions: Readonly<Record<string, unknown>>;
+    }
 }
 interface AppSessionConfig {
     readonly idleTimeoutMs: number | null;
     readonly warningBeforeMs: number | null;
+    }
 }
 interface AppSsoConfig {
     readonly endpoints: readonly AppSsoEndpointConfig[];
     readonly postLoginPath: string | null;
     readonly returnQueryParam: string | null;
+    }
 }
 interface AppSsoEndpointConfig {
     readonly id: string;
     readonly label: string;
     readonly path: string;
+    }
 }
 interface AppThemeConfig {
     readonly id: string;
@@ -111,6 +121,7 @@ interface AppThemeConfig {
     readonly base: string;
     readonly preview: AppThemePreview;
     readonly tokens: AppThemeTokens;
+    }
 }
 interface AppThemePreview {
     readonly sidebar: string;
@@ -118,6 +129,7 @@ interface AppThemePreview {
     readonly header: string;
     readonly accent: string;
     readonly tile: string;
+    }
 }
 type AppThemeTokens = Readonly<Record<string, string>>;
 const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig;
@@ -128,6 +140,7 @@ interface ManifestAction {
     readonly rule: string | null;
     readonly label: string | null;
     readonly order: number | null;
+    }
 }
 interface ManifestNavItem {
     readonly id: string;
@@ -136,6 +149,7 @@ interface ManifestNavItem {
     readonly icon: string;
     readonly order: number;
     readonly visible: boolean;
+    }
 }
 function mergeBootstrapConfig(base: AppBootstrapConfig, patch: unknown): AppBootstrapConfig;
 function mergeRuntimeManifest(base: AppRuntimeManifest, patch: unknown): AppRuntimeManifest;
@@ -166,11 +180,21 @@ class AppExtensionsService {
     inventory(): Readonly<Record<string, readonly string[]>>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<AppExtensionsService, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppExtensionsService>;
+    }
 }
 const CORE_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>>;
 const DOCUMENT_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>>;
 const EMPTY_EXTENSION_RULE_CONTEXT: ExtensionRuleContext;
-const EXTENSION_SLOTS:
+const EXTENSION_SLOTS: {
+    readonly navbar: "navbar";
+    readonly sidebar: "sidebar";
+    readonly routes: "routes";
+    readonly toolbar: "toolbar";
+    readonly contextMenu: "contextMenu";
+    readonly 'bulk-actions': "bulk-actions";
+    readonly tabs: "tabs";
+    readonly documentList: "documentList";
+};
 interface ExtensionActionDescriptor extends ExtensionElement {
     readonly label: string;
     readonly icon?: string;
@@ -179,9 +203,11 @@ interface ExtensionActionDescriptor extends ExtensionElement {
     readonly enabledRule?: ExtensionRule;
     readonly overflow?: boolean;
     readonly action?: string;
+    }
 }
 interface ExtensionActionHandler {
     execute(context: ExtensionRuleContext): void;
+    }
 }
 class ExtensionActionRegistry {
     private readonly handlers;
@@ -192,6 +218,7 @@ class ExtensionActionRegistry {
     execute(descriptor: ExtensionActionDescriptor, context: ExtensionRuleContext): boolean;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionActionRegistry, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionActionRegistry>;
+    }
 }
 interface ExtensionColumnDescriptor extends ExtensionElement {
     readonly label: string;
@@ -199,6 +226,7 @@ interface ExtensionColumnDescriptor extends ExtensionElement {
     readonly sortable?: boolean;
     readonly rule?: ExtensionRule;
     readonly hiddenByDefault?: boolean;
+    }
 }
 class ExtensionComponentRegistry {
     private readonly sources;
@@ -211,6 +239,7 @@ class ExtensionComponentRegistry {
     resolve(id: string): Promise<Type<unknown> | null>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionComponentRegistry, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionComponentRegistry>;
+    }
 }
 type ExtensionComponentSource = Type<unknown> | (() => Promise<Type<unknown>>);
 interface ExtensionConfig {
@@ -221,11 +250,13 @@ interface ExtensionConfig {
     readonly $version?: string;
     readonly slots?: Readonly<Record<ExtensionSlotId, readonly ExtensionElement[]>>;
     readonly overrides?: Readonly<Record<string, ExtensionOverride>>;
+    }
 }
 interface ExtensionElement {
     readonly id: string;
     readonly disabled?: boolean;
     readonly order?: number;
+    }
 }
 type ExtensionLayerResolver = (name: string) => ExtensionConfig | null;
 class ExtensionOutletComponent {
@@ -245,12 +276,14 @@ class ExtensionOutletComponent {
     private clear;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionOutletComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ExtensionOutletComponent, "lib-extension-outlet", never, { "componentId": { "alias": "componentId"; "required": false; "isSignal": true; }; "componentType": { "alias": "componentType"; "required": false; "isSignal": true; }; "componentInputs": { "alias": "componentInputs"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
+    }
 }
 interface ExtensionOverride {
     readonly visible?: boolean;
     readonly order?: number | null;
     readonly label?: string | null;
     readonly rule?: ExtensionRule | null;
+    }
 }
 type ExtensionRule = string | ExtensionRuleRef;
 interface ExtensionRuleContext {
@@ -262,6 +295,7 @@ interface ExtensionRuleContext {
     readonly isAdministrator: boolean;
     };
     readonly url: string;
+    }
 }
 class ExtensionRuleContextService {
     readonly document: _angular_core.WritableSignal<NuxeoDocument | null>;
@@ -273,11 +307,13 @@ class ExtensionRuleContextService {
     readonly context: _angular_core.Signal<ExtensionRuleContext>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionRuleContextService, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionRuleContextService>;
+    }
 }
 type ExtensionRuleEvaluator = (context: ExtensionRuleContext, parameters: readonly unknown[], resolve: ExtensionRuleResolver) => boolean;
 interface ExtensionRuleRef {
     readonly type: string;
     readonly parameters?: readonly unknown[];
+    }
 }
 class ExtensionRuleRegistry {
     private readonly evaluators;
@@ -291,12 +327,14 @@ class ExtensionRuleRegistry {
     private evaluateRef;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionRuleRegistry, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionRuleRegistry>;
+    }
 }
 type ExtensionRuleResolver = (rule: ExtensionRule) => boolean;
 type ExtensionSlotId = string;
 interface ExtensionSlotOverrides {
     readonly byId: Readonly<Record<string, ExtensionOverride>>;
     readonly additions: Readonly<Record<ExtensionSlotId, readonly ExtensionElement[]>>;
+    }
 }
 class ExtensionSlotRegistry {
     private readonly rules;
@@ -308,10 +346,12 @@ class ExtensionSlotRegistry {
     private applyOverride;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionSlotRegistry, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionSlotRegistry>;
+    }
 }
 interface ExtensionTabDescriptor extends ExtensionElement {
     readonly label: string;
     readonly rule?: ExtensionRule;
+    }
 }
 const NO_EXTENSION_SLOT_OVERRIDES: ExtensionSlotOverrides;
 interface NavItemDescriptor extends ExtensionElement {
@@ -320,6 +360,7 @@ interface NavItemDescriptor extends ExtensionElement {
     readonly icon: string;
     readonly hasDrawer?: boolean;
     readonly rule?: ExtensionRule;
+    }
 }
 const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[];
 const PACKAGED_BULK_ACTIONS: readonly ExtensionActionDescriptor[];
@@ -328,6 +369,7 @@ interface ResolvedExtensionConfig {
     readonly config: ExtensionConfig;
     readonly applied: readonly string[];
     readonly missing: readonly string[];
+    }
 }
 const SECURITY_RELEVANT_RULE_IDS: readonly string[];
 interface SatoriExtensionContributions {
@@ -336,6 +378,7 @@ interface SatoriExtensionContributions {
     readonly failClosedRules?: readonly string[];
     readonly components?: Readonly<Record<string, ExtensionComponentSource>>;
     readonly actions?: Readonly<Record<string, ExtensionActionHandler>>;
+    }
 }
 type SatoriExtensionContributor = SatoriExtensionContributions | (() => SatoriExtensionContributions);
 function mergeExtensionConfigs(...layers: readonly ExtensionConfig[]): ExtensionConfig;
@@ -355,6 +398,7 @@ const ARENDER_CONFIG: InjectionToken<ARenderConfig>;
 interface ARenderConfig {
     viewerOrigin: string;
     nuxeoInternalUrl: string;
+    }
 }
 class ARenderService {
     private readonly cfg;
@@ -364,11 +408,13 @@ class ARenderService {
     isAvailable(): Observable<boolean>;
     static ɵfac: i0.ɵɵFactoryDeclaration<ARenderService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<ARenderService>;
+    }
 }
 interface AdminAccessChecks {
     isAdministrator: () => boolean;
     isPowerUser: () => boolean;
     hasAdministrationAccess: () => boolean;
+    }
 }
 class AdministrationService {
     private readonly api;
@@ -391,13 +437,16 @@ class AdministrationService {
     getDefaultDomainPath(): Observable<string>;
     static ɵfac: i0.ɵɵFactoryDeclaration<AdministrationService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<AdministrationService>;
+    }
 }
 interface AggregateBucket {
     key: string;
     docCount: number;
+    }
 }
 interface AggregateResult {
     buckets: AggregateBucket[];
+    }
 }
 class AssetAggregationService {
     readonly aggregations: i0.WritableSignal<AssetAggregations>;
@@ -408,6 +457,7 @@ class AssetAggregationService {
     markSavedSearchDirty(): void;
     static ɵfac: i0.ɵɵFactoryDeclaration<AssetAggregationService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<AssetAggregationService>;
+    }
 }
 interface AssetAggregations {
     system_primaryType_agg?: AggregateResult;
@@ -417,12 +467,14 @@ interface AssetAggregations {
     asset_width_agg?: AggregateResult;
     asset_height_agg?: AggregateResult;
     video_duration_agg?: AggregateResult;
+    }
 }
 interface AssetQueueItem {
     id: string;
     title: string;
     type: string;
     icon: string;
+    }
 }
 interface AssetSearchParams {
     pageIndex?: number;
@@ -437,15 +489,18 @@ interface AssetSearchParams {
     videoDurations?: string[];
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    }
 }
 interface AssetSearchResult extends NuxeoPaginatedList<NuxeoDocument> {
     aggregations?: AssetAggregations;
+    }
 }
 class AssetService {
     private readonly api;
     searchAssets(params?: AssetSearchParams): Observable<AssetSearchResult>;
     static ɵfac: i0.ɵɵFactoryDeclaration<AssetService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<AssetService>;
+    }
 }
 interface AuditEntry {
     id: number;
@@ -461,11 +516,13 @@ interface AuditEntry {
     eventDate: string;
     logDate: string;
     extended: Record<string, unknown>;
+    }
 }
 type AuditLogList = NuxeoPaginatedList<AuditEntry>;
 interface AuthorizedApplication {
     name: string;
     authorizationDate: string;
+    }
 }
 const BLOB_CLIENT_REASON_HEADER = "X-Client-Reason";
 const BLOB_CLIENT_REASON_PARAM = "clientReason";
@@ -490,6 +547,7 @@ class BrowseContextService {
     private setPath;
     static ɵfac: i0.ɵɵFactoryDeclaration<BrowseContextService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<BrowseContextService>;
+    }
 }
 type BrowseReturnMode = 'default' | 'adf-hx';
 class BrowseService {
@@ -536,6 +594,7 @@ class BrowseService {
     pollAndDownloadCsv(executionId: string): Observable<Blob>;
     static ɵfac: i0.ɵɵFactoryDeclaration<BrowseService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<BrowseService>;
+    }
 }
 const CLIPBOARD_STORAGE_KEY = "nuxeo_clipboard";
 const CONTENT_LAKE_INGEST_DOCUMENT_TYPES: Set<string>;
@@ -548,11 +607,13 @@ interface ClipboardDoc {
     uid: string;
     title: string;
     type?: string;
+    }
 }
 interface ClipboardPasteEvent {
     targetUid: string;
     documents: NuxeoDocument[];
     action: 'copy' | 'move';
+    }
 }
 class ClipboardTargetService {
     readonly target: i0.WritableSignal<NuxeoDocument | null>;
@@ -560,6 +621,7 @@ class ClipboardTargetService {
     clear(): void;
     static ɵfac: i0.ɵɵFactoryDeclaration<ClipboardTargetService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<ClipboardTargetService>;
+    }
 }
 class CollectionService {
     private readonly api;
@@ -572,6 +634,7 @@ class CollectionService {
     bulkDownload(collectionUid: string, filename?: string): Observable<Blob>;
     static ɵfac: i0.ɵɵFactoryDeclaration<CollectionService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<CollectionService>;
+    }
 }
 interface CompareRow {
     key: string;
@@ -579,11 +642,13 @@ interface CompareRow {
     left: string;
     right: string;
     differs: boolean;
+    }
 }
 interface CompareSection {
     id: string;
     label: string;
     fields: CompareRow[];
+    }
 }
 interface ConnectedAccount {
     serviceName: string;
@@ -591,19 +656,23 @@ interface ConnectedAccount {
     serviceLogin: string;
     creationDate: string;
     shared: boolean;
+    }
 }
 interface ContentLakeBackfillResult {
     doc: NuxeoDocument | null;
     presentInContentLake: boolean;
+    }
 }
 interface ContentLakeDuplicate {
     fileName: string;
     existingUid: string;
     existingTitle: string;
     existingPath: string;
+    }
 }
 interface ContentLakeIngestCommand {
     commandId: string;
+    }
 }
 class ContentLakeIngestService {
     private readonly api;
@@ -628,6 +697,7 @@ class ContentLakeIngestService {
     private isTerminal;
     static ɵfac: i0.ɵɵFactoryDeclaration<ContentLakeIngestService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<ContentLakeIngestService>;
+    }
 }
 interface ContentLakeIngestStatus {
     commandId: string;
@@ -635,6 +705,7 @@ interface ContentLakeIngestStatus {
     processed: number;
     error: boolean;
     errorCount: number;
+    }
 }
 class ContentModelService {
     private readonly api;
@@ -642,14 +713,17 @@ class ContentModelService {
     getContentModel(): Observable<NuxeoContentModel>;
     static ɵfac: i0.ɵɵFactoryDeclaration<ContentModelService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<ContentModelService>;
+    }
 }
 interface CreateBlobHoldingDocumentOptions {
     onProgress?: (progress: ImportProgress) => void;
+    }
 }
 interface CsvImportResult {
     created: NuxeoDocument[];
     skipped: string[];
     errors: string[];
+    }
 }
 interface CsvServerImportOptions {
     path: string;
@@ -657,6 +731,7 @@ interface CsvServerImportOptions {
     sendReport?: boolean;
     documentMode?: boolean;
     trim?: boolean;
+    }
 }
 const DEFAULT_IMPORT_PARENT_PATH = "/";
 const DEFAULT_VOCABULARY_ORDERING = 10000000;
@@ -667,6 +742,7 @@ interface DirectoryEntriesResponse {
     entries: DirectoryEntryRest[];
     currentPageIndex: number;
     isNextPageAvailable: boolean;
+    }
 }
 interface DirectoryEntry {
     id: string;
@@ -676,11 +752,13 @@ interface DirectoryEntry {
     ordering: number;
     obsolete: number;
     directoryName: string;
+    }
 }
 interface DirectoryEntryRest {
     id: string;
     directoryName: string;
     properties: Record<string, string | number | boolean | null | undefined>;
+    }
 }
 interface DirectoryMetadata {
     name: string;
@@ -688,6 +766,7 @@ interface DirectoryMetadata {
     idField?: string;
     parentDirectory?: string;
     type?: string;
+    }
 }
 class DirectoryService {
     private readonly api;
@@ -712,6 +791,7 @@ class DirectoryService {
     private buildEntryProperties;
     static ɵfac: i0.ɵɵFactoryDeclaration<DirectoryService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<DirectoryService>;
+    }
 }
 class DocumentDetailService {
     private readonly api;
@@ -860,6 +940,7 @@ class DocumentDetailService {
     deleteComment(uid: string, commentId: string): Observable<void>;
     static ɵfac: i0.ɵɵFactoryDeclaration<DocumentDetailService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<DocumentDetailService>;
+    }
 }
 class DocumentImportService {
     private readonly http;
@@ -891,6 +972,7 @@ class DocumentImportService {
     importFromCsvText(parentPath: string, csvText: string): Observable<CsvImportResult>;
     static ɵfac: i0.ɵɵFactoryDeclaration<DocumentImportService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<DocumentImportService>;
+    }
 }
 class DocumentService {
     private readonly api;
@@ -900,6 +982,7 @@ class DocumentService {
     getById(docId: string): Observable<NuxeoDocument>;
     static ɵfac: i0.ɵɵFactoryDeclaration<DocumentService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<DocumentService>;
+    }
 }
 const EXPIRED_DOCUMENTS_QUERY: string;
 const FALLBACK_DIRECTORY_NAMES: readonly ["continent", "country", "eventTypes", "eventCategories", "l10nsubjects", "l10ncoverage", "nature", "subtopic", "oauth2TokenTypes", "language"];
@@ -907,6 +990,7 @@ const FAVORITES_COLLECTION_QUERY: string;
 const FOLDERISH_TYPES: Set<string>;
 interface FetchBlobOptions {
     clientReason?: BlobClientReason;
+    }
 }
 interface GlobalSearchSuggestion {
     id: string;
@@ -923,21 +1007,25 @@ interface GlobalSearchSuggestion {
     documentUid?: string;
     path?: string;
     prefixedId?: string;
+    }
 }
 interface ImportFileEntry {
     file: File;
     docType: string;
     properties: Record<string, unknown>;
+    }
 }
 interface ImportFilesOptions {
     autoClassify?: boolean;
     onProgress?: (progress: ImportProgress) => void;
+    }
 }
 interface ImportProgress {
     phase: 'uploading' | 'creating';
     percent: number;
     fileIndex?: number;
     fileCount?: number;
+    }
 }
 interface L10nDirectoryEntry {
     id: string;
@@ -950,10 +1038,12 @@ interface L10nDirectoryEntry {
     label_en?: string;
     label_fr?: string;
     };
+    }
 }
 interface L10nOptionGroup {
     parentLabel: string;
     entries: L10nDirectoryEntry[];
+    }
 }
 interface LocalPermissionRow {
     documentTitle: string;
@@ -961,6 +1051,7 @@ interface LocalPermissionRow {
     right: string;
     timeFrame: string;
     grantedBy: string;
+    }
 }
 const MANAGE_DOCUMENT_PERMISSIONS = "Everything";
 interface ManagedDirectoryEntry {
@@ -971,9 +1062,23 @@ interface ManagedDirectoryEntry {
     obsolete: boolean;
     parent?: string;
     propertyKeys: string[];
+    }
 }
 const NON_CONTENT_DOCUMENT_TYPES: Set<string>;
-const NOTE_FORMAT_OPTIONS: readonly [
+const NOTE_FORMAT_OPTIONS: readonly [{
+    readonly value: "text/html";
+    readonly label: "HTML";
+    }, {
+    readonly value: "text/plain";
+    readonly label: "Text";
+    }, {
+    readonly value: "text/xml";
+    readonly label: "XML";
+    }, {
+    readonly value: "text/markdown";
+    readonly label: "Markdown";
+    }];
+}
 const NUXEO_API_ORIGIN: InjectionToken<string>;
 const NUXEO_POWERUSERS_GROUP = "powerusers";
 const NUXEO_SAML_LOGIN_ENDPOINTS: InjectionToken<NuxeoSamlLoginEndpoint[]>;
@@ -991,10 +1096,12 @@ interface NuxeoAce {
     begin: string | null;
     end: string | null;
     status: 'effective' | 'pending' | 'archived';
+    }
 }
 interface NuxeoAcl {
     name: string;
     aces: NuxeoAce[];
+    }
 }
 class NuxeoApiBase {
     private readonly http;
@@ -1007,6 +1114,7 @@ class NuxeoApiBase {
     nxqlSearch(query: string, pageSize: number, headers?: Record<string, string>): Observable<NuxeoDocumentList>;
     static ɵfac: i0.ɵɵFactoryDeclaration<NuxeoApiBase, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<NuxeoApiBase>;
+    }
 }
 interface NuxeoComment {
     id: string;
@@ -1016,6 +1124,7 @@ interface NuxeoComment {
     creationDate: string;
     modificationDate?: string;
     numberOfReplies?: number;
+    }
 }
 interface NuxeoCommentList {
     entries: NuxeoComment[];
@@ -1023,24 +1132,29 @@ interface NuxeoCommentList {
     currentPageSize: number;
     currentPageIndex: number;
     numberOfPages: number;
+    }
 }
 interface NuxeoComplexField {
     type?: string;
     fields?: Record<string, NuxeoFieldType>;
+    }
 }
 interface NuxeoContentModel {
     doctypes: Record<string, NuxeoDoctypeDefinition>;
     facets: NuxeoFacetDefinition[];
     schemas: NuxeoSchemaDefinition[];
+    }
 }
 interface NuxeoCreateDocumentTemplate {
     name?: string;
     properties?: Record<string, unknown>;
+    }
 }
 interface NuxeoDoctypeDefinition {
     parent?: string;
     facets?: string[];
     schemas?: string[];
+    }
 }
 interface NuxeoDocument {
     uid: string;
@@ -1068,6 +1182,7 @@ interface NuxeoDocument {
     subscribedNotifications?: string[];
     [key: string]: unknown;
     };
+    }
 }
 type NuxeoDocumentList = NuxeoPaginatedList<NuxeoDocument>;
 class NuxeoDriveService {
@@ -1083,10 +1198,12 @@ class NuxeoDriveService {
     openDriveUrl(url: string): void;
     static ɵfac: i0.ɵɵFactoryDeclaration<NuxeoDriveService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<NuxeoDriveService>;
+    }
 }
 interface NuxeoFacetDefinition {
     name: string;
     schemas?: NuxeoSchemaDefinition[];
+    }
 }
 type NuxeoFieldType = string | NuxeoComplexField;
 interface NuxeoGroup {
@@ -1095,6 +1212,7 @@ interface NuxeoGroup {
     grouplabel: string;
     memberUsers?: string[];
     memberGroups?: string[];
+    }
 }
 interface NuxeoGroupList {
     'entity-type': 'groups';
@@ -1106,6 +1224,7 @@ interface NuxeoGroupList {
     numberOfPages?: number;
     isPaginable?: boolean;
     isNextPageAvailable?: boolean;
+    }
 }
 interface NuxeoOAuth2Provider {
     entityType?: string;
@@ -1115,6 +1234,7 @@ interface NuxeoOAuth2Provider {
     enabled?: boolean;
     isEnabled?: boolean;
     [key: string]: unknown;
+    }
 }
 interface NuxeoOAuth2ServiceProvider {
     'entity-type': 'nuxeoOAuth2ServiceProvider';
@@ -1126,10 +1246,12 @@ interface NuxeoOAuth2ServiceProvider {
     userAuthorizationURL?: string | null;
     scopes?: string[];
     enabled?: boolean;
+    }
 }
 interface NuxeoOAuth2ServiceProviderList {
     'entity-type': 'nuxeoOAuth2ServiceProviders';
     entries: NuxeoOAuth2ServiceProvider[];
+    }
 }
 interface NuxeoOAuth2Token {
     'entity-type': 'nuxeoOAuth2Token';
@@ -1140,10 +1262,12 @@ interface NuxeoOAuth2Token {
     isShared: boolean;
     sharedWith?: string[];
     creationDate: string;
+    }
 }
 interface NuxeoOAuth2TokenList {
     'entity-type': 'nuxeoOAuth2Tokens';
     entries: NuxeoOAuth2Token[];
+    }
 }
 interface NuxeoPaginatedList<T> {
     entries: T[];
@@ -1153,20 +1277,24 @@ interface NuxeoPaginatedList<T> {
     currentPageIndex: number;
     numberOfPages: number;
     isNextPageAvailable?: boolean;
+    }
 }
 interface NuxeoSamlLoginEndpoint {
     id: string;
     label: string;
     path: string;
+    }
 }
 interface NuxeoSchemaDefinition {
     name: string;
     '@prefix'?: string;
     fields?: Record<string, NuxeoFieldType>;
+    }
 }
 interface NuxeoSubtypeEntry {
     type: string;
     facets?: string[];
+    }
 }
 interface NuxeoTask {
     id: string;
@@ -1206,11 +1334,13 @@ interface NuxeoTask {
     }[];
     };
     targetDocTitle?: string;
+    }
 }
 type NuxeoTaskList = NuxeoPaginatedList<NuxeoTask>;
 interface NuxeoTypesConfig {
     doctypes?: Record<string, NuxeoDoctypeDefinition>;
     schemas?: Record<string, Record<string, NuxeoFieldType>>;
+    }
 }
 interface NuxeoUser {
     'entity-type': 'user';
@@ -1226,6 +1356,7 @@ interface NuxeoUser {
     };
     isAdministrator?: boolean;
     isAnonymous?: boolean;
+    }
 }
 interface NuxeoUserList {
     'entity-type': 'users';
@@ -1237,6 +1368,7 @@ interface NuxeoUserList {
     numberOfPages?: number;
     isPaginable?: boolean;
     isNextPageAvailable?: boolean;
+    }
 }
 interface NuxeoWorkflow {
     'entity-type': 'workflow';
@@ -1251,20 +1383,24 @@ interface NuxeoWorkflow {
     }[];
     variables: Record<string, unknown>;
     graphResource?: string;
+    }
 }
 interface NuxeoWorkflowList {
     'entity-type': 'workflows';
     entries: NuxeoWorkflow[];
+    }
 }
 interface NuxeoWorkflowModel {
     'entity-type': 'workflowModel';
     name: string;
     title: string;
     graphResource?: string;
+    }
 }
 interface NuxeoWorkflowModelList {
     'entity-type': 'workflowModels';
     entries: NuxeoWorkflowModel[];
+    }
 }
 const PERMISSION_DENIED_MESSAGE = "You do not have permission to perform this action";
 const PERMISSION_NOTIFICATION_MAIL_HINT = "Requires outbound mail (SMTP) configured on the Nuxeo server.";
@@ -1276,11 +1412,13 @@ interface PaginatedListMeta {
     currentPageSize?: number;
     currentPageIndex?: number;
     isNextPageAvailable?: boolean;
+    }
 }
 interface PermissionWithNotificationResult {
     document: NuxeoDocument;
     notificationSent: boolean;
     notificationError?: string;
+    }
 }
 interface PrincipalPermissionPage {
     rows: PrincipalPermissionRow[];
@@ -1288,6 +1426,7 @@ interface PrincipalPermissionPage {
     numberOfPages: number;
     currentPageIndex: number;
     currentPageSize: number;
+    }
 }
 interface PrincipalPermissionRow {
     documentUid: string;
@@ -1298,6 +1437,7 @@ interface PrincipalPermissionRow {
     end: string | null;
     grantedBy: string | null;
     acePrincipal: string;
+    }
 }
 class PrincipalPermissionsService {
     private readonly admin;
@@ -1307,6 +1447,7 @@ class PrincipalPermissionsService {
     private fetchPage;
     static ɵfac: i0.ɵɵFactoryDeclaration<PrincipalPermissionsService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<PrincipalPermissionsService>;
+    }
 }
 const READ_WRITE_DOCUMENT = "ReadWrite";
 const RECENTLY_EDITED_QUERY: string;
@@ -1317,11 +1458,13 @@ interface SavedSearch {
     uid: string;
     title: string;
     params: Record<string, unknown>;
+    }
 }
 interface SavedSearchOption {
     id: string;
     title: string;
     query?: string;
+    }
 }
 class SearchAggregationService {
     readonly aggregations: i0.WritableSignal<SearchAggregations>;
@@ -1333,6 +1476,7 @@ class SearchAggregationService {
     markSavedSearchDirty(): void;
     static ɵfac: i0.ɵɵFactoryDeclaration<SearchAggregationService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<SearchAggregationService>;
+    }
 }
 interface SearchAggregations {
     dc_modified_agg?: AggregateResult;
@@ -1342,6 +1486,7 @@ interface SearchAggregations {
     dc_coverage_agg?: AggregateResult;
     dc_subjects_agg?: AggregateResult;
     common_size_agg?: AggregateResult;
+    }
 }
 interface SearchQueryParams {
     q?: string;
@@ -1359,10 +1504,12 @@ interface SearchQueryParams {
     size?: string;
     pageIndex?: number;
     pageSize?: number;
+    }
 }
 interface SearchResponse {
     items: SearchResultItem[];
     aggregations: SearchAggregations;
+    }
 }
 interface SearchResultItem {
     id: string;
@@ -1386,6 +1533,7 @@ interface SearchResultItem {
     collectionKey: string;
     tags: string[];
     icon: string;
+    }
 }
 class SearchService {
     private readonly api;
@@ -1417,6 +1565,7 @@ class SearchService {
     private asString;
     static ɵfac: i0.ɵɵFactoryDeclaration<SearchService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<SearchService>;
+    }
 }
 class SelectionService {
     private readonly documentDetailService;
@@ -1440,6 +1589,7 @@ class SelectionService {
     deleteSelected(): Observable<NuxeoDocument[]>;
     static ɵfac: i0.ɵɵFactoryDeclaration<SelectionService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<SelectionService>;
+    }
 }
 class SettingsService {
     private readonly api;
@@ -1457,18 +1607,22 @@ class SettingsService {
     private extractLocalPermissionRows;
     static ɵfac: i0.ɵɵFactoryDeclaration<SettingsService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<SettingsService>;
+    }
 }
 interface StageFileInBatchOptions {
     onProgress?: (percent: number) => void;
+    }
 }
 interface StagedBatchFile {
     batchId: string;
     fileIndex: number;
+    }
 }
 interface SynchronizationRootRow {
     id: string;
     title: string;
     path: string;
+    }
 }
 class TagService {
     private readonly api;
@@ -1478,6 +1632,7 @@ class TagService {
     searchTags(term: string): Observable<string[]>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TagService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<TagService>;
+    }
 }
 class TaskService {
     private readonly api;
@@ -1492,6 +1647,7 @@ class TaskService {
     delegateTask(taskId: string, delegatedActors: string[], comment?: string): Observable<void>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TaskService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<TaskService>;
+    }
 }
 class TrashFilterService {
     readonly filters: i0.WritableSignal<TrashFilters>;
@@ -1509,18 +1665,21 @@ class TrashFilterService {
     markSavedSearchDirty(): void;
     static ɵfac: i0.ɵɵFactoryDeclaration<TrashFilterService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<TrashFilterService>;
+    }
 }
 interface TrashFilters {
     fullText: string;
     path: string;
     author: string;
     sizeRanges: string[];
+    }
 }
 type TrashLayoutMode = 'filters' | 'results';
 interface TrashResultItem {
     uid: string;
     title: string;
     type: string;
+    }
 }
 interface TrashSearchParams {
     fullText?: string;
@@ -1531,6 +1690,7 @@ interface TrashSearchParams {
     sortOrder?: 'asc' | 'desc';
     pageSize?: number;
     currentPageIndex?: number;
+    }
 }
 class TrashService {
     private readonly api;
@@ -1545,6 +1705,7 @@ class TrashService {
     private sizeRangeToClause;
     static ɵfac: i0.ɵɵFactoryDeclaration<TrashService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<TrashService>;
+    }
 }
 interface UserGroupSuggestion {
     id: string;
@@ -1554,6 +1715,7 @@ interface UserGroupSuggestion {
     username?: string;
     groupname?: string;
     email?: string;
+    }
 }
 class UserService {
     private readonly api;
@@ -1599,6 +1761,7 @@ class UserService {
     deleteGroup(groupname: string): Observable<void>;
     static ɵfac: i0.ɵɵFactoryDeclaration<UserService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<UserService>;
+    }
 }
 interface VocabularyEntryFormValues {
     id: string;
@@ -1606,6 +1769,7 @@ interface VocabularyEntryFormValues {
     ordering: number;
     obsolete: boolean;
     parent?: string;
+    }
 }
 const WORKSPACE_CONTENT_TYPE_ORDER: readonly ["Audio", "Collection", "File", "Folder", "Note", "OrderedFolder", "Picture", "Video", "Workspace"];
 const WRITE_DOCUMENT = "Write";
@@ -1623,6 +1787,7 @@ class WorkflowService {
     getWorkflowModelGraph(modelName: string): Observable<unknown>;
     static ɵfac: i0.ɵɵFactoryDeclaration<WorkflowService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<WorkflowService>;
+    }
 }
 const administrationAccessGuard: CanActivateFn;
 const administrationLandingGuard: CanActivateFn;
@@ -1640,14 +1805,19 @@ function canPasteClipboard(items: ClipboardDoc[], target: NuxeoDocument | null |
 function canRemoveDocument(doc: NuxeoDocument | null | undefined): boolean;
 function canViewDocumentAuditLog(doc: NuxeoDocument | null | undefined): boolean;
 function canWriteDocument(doc: NuxeoDocument | null | undefined): boolean;
-function createExpiresErrorStateMatcher(isInvalid: () => boolean):
+function createExpiresErrorStateMatcher(isInvalid: () => boolean): {
+    isErrorState: () => boolean;
+};
 function cumulativeNuxeoPathPrefixes(nuxeoPath: string): string[];
 function decodeNuxeoPathSegment(segment: string): string;
 function defaultNoteContent(mimeType: string): string;
 function defaultVocabularyLabel(directoryName: string, id: string): string;
 function directoryAdminTableLabel(entry: Pick<ManagedDirectoryEntry, 'label'>): string;
 function directoryEntryDisplayLabel(entry: Pick<ManagedDirectoryEntry, 'id' | 'label'>): string;
-function directoryPickerLabel(entry: Pick<DirectoryEntry, 'id' | 'label' | 'displayLabel'> &
+function directoryPickerLabel(entry: Pick<DirectoryEntry, 'id' | 'label' | 'displayLabel'> & {
+    absoluteLabel?: string;
+    }): string;
+}
 function directoryShowsParentField(directoryName: string, metadata?: DirectoryMetadata): boolean;
 function directoryUsesL10nLabel(directoryName: string): boolean;
 function docTypeIcon(type: string): string;
@@ -1749,11 +1919,13 @@ class ConfirmDialogComponent {
     readonly data: ConfirmDialogData;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ConfirmDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ConfirmDialogComponent, "lib-confirm-dialog", never, {}, {}, never, never, true, never>;
+    }
 }
 interface ConfirmDialogData {
     title: string;
     message: string;
     confirmLabel?: string;
+    }
 }
 class DocumentCompareDialogComponent {
     private readonly detailService;
@@ -1771,12 +1943,14 @@ class DocumentCompareDialogComponent {
     constructor();
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<DocumentCompareDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<DocumentCompareDialogComponent, "lib-document-compare-dialog", never, {}, {}, never, never, true, never>;
+    }
 }
 interface DocumentCompareDialogData {
     items: Array<{
     id: string;
     name: string;
     }>;
+    }
 }
 class DocumentViewerComponent {
     readonly blobUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
@@ -1840,6 +2014,7 @@ class DocumentViewerComponent {
     isFiniteNumber(value: number | null | undefined): value is number;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<DocumentViewerComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<DocumentViewerComponent, "lib-document-viewer", never, { "blobUrl": { "alias": "blobUrl"; "required": false; "isSignal": true; }; "mimeType": { "alias": "mimeType"; "required": false; "isSignal": true; }; "fileName": { "alias": "fileName"; "required": false; "isSignal": true; }; "fileSize": { "alias": "fileSize"; "required": false; "isSignal": true; }; "loading": { "alias": "loading"; "required": false; "isSignal": true; }; "noteContent": { "alias": "noteContent"; "required": false; "isSignal": true; }; "noteHtml": { "alias": "noteHtml"; "required": false; "isSignal": true; }; "videoSources": { "alias": "videoSources"; "required": false; "isSignal": true; }; "storyboard": { "alias": "storyboard"; "required": false; "isSignal": true; }; "posterUrl": { "alias": "posterUrl"; "required": false; "isSignal": true; }; "hasPdfRendition": { "alias": "hasPdfRendition"; "required": false; "isSignal": true; }; "previewUrl": { "alias": "previewUrl"; "required": false; "isSignal": true; }; "pictureInfo": { "alias": "pictureInfo"; "required": false; "isSignal": true; }; "pictureViews": { "alias": "pictureViews"; "required": false; "isSignal": true; }; "exifData": { "alias": "exifData"; "required": false; "isSignal": true; }; "iptcData": { "alias": "iptcData"; "required": false; "isSignal": true; }; "videoInfo": { "alias": "videoInfo"; "required": false; "isSignal": true; }; "arenderUrl": { "alias": "arenderUrl"; "required": false; "isSignal": true; }; "arenderReloadId": { "alias": "arenderReloadId"; "required": false; "isSignal": true; }; "viewerDocUid": { "alias": "viewerDocUid"; "required": false; "isSignal": true; }; "annotationsTab": { "alias": "annotationsTab"; "required": false; "isSignal": true; }; "showMainFileControls": { "alias": "showMainFileControls"; "required": false; "isSignal": true; }; "mainFileActionInProgress": { "alias": "mainFileActionInProgress"; "required": false; "isSignal": true; }; }, { "downloadClicked": "downloadClicked"; "openWithDriveClicked": "openWithDriveClicked"; "previewClicked": "previewClicked"; "replaceMainFileClicked": "replaceMainFileClicked"; "removeMainFileClicked": "removeMainFileClicked"; "storyboardSeek": "storyboardSeek"; "formatDownload": "formatDownload"; }, never, never, true, never>;
+    }
 }
 interface ExifData {
     dateTimeOriginal?: string;
@@ -1849,6 +2024,7 @@ interface ExifData {
     isoSpeedRatings?: string;
     focalLength?: string;
     [key: string]: string | undefined;
+    }
 }
 class ExportDialogComponent {
     private readonly dialogRef;
@@ -1858,11 +2034,13 @@ class ExportDialogComponent {
     onExport(type: ExportType): void;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExportDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ExportDialogComponent, "lib-export-dialog", never, {}, {}, never, never, true, never>;
+    }
 }
 interface ExportDialogData {
     documentUid: string;
     documentTitle: string;
     exportFn: (type: ExportType, uid: string) => rxjs.Observable<Blob>;
+    }
 }
 type ExportType = 'thumbnail' | 'pdf' | 'zip' | 'xml';
 interface IptcData {
@@ -1871,6 +2049,7 @@ interface IptcData {
     source?: string;
     description?: string;
     [key: string]: string | undefined;
+    }
 }
 interface PermissionEntry {
     id: string;
@@ -1878,6 +2057,7 @@ interface PermissionEntry {
     right: string;
     timeFrame: string;
     grantedBy: string;
+    }
 }
 interface PictureInfo {
     width: number;
@@ -1886,6 +2066,7 @@ interface PictureInfo {
     colorSpace: string;
     depth: number;
     weight: string;
+    }
 }
 interface PictureView {
     title: string;
@@ -1894,6 +2075,7 @@ interface PictureView {
     fileSize: string;
     format: string;
     downloadUrl: string;
+    }
 }
 const SAVED_SEARCH_DIALOG_OPTIONS: Partial<MatDialogConfig>;
 class SavedSearchDialogComponent {
@@ -1905,11 +2087,13 @@ class SavedSearchDialogComponent {
     save(): void;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<SavedSearchDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<SavedSearchDialogComponent, "lib-saved-search-dialog", never, {}, {}, never, never, true, never>;
+    }
 }
 interface SavedSearchDialogData {
     title?: string;
     placeholder?: string;
     initialValue?: string;
+    }
 }
 class SelectionTopbarComponent {
     private selectionPopupPanel?;
@@ -1933,6 +2117,7 @@ class SelectionTopbarComponent {
     onEscape(): void;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<SelectionTopbarComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<SelectionTopbarComponent, "lib-selection-topbar", never, { "selectedCount": { "alias": "selectedCount"; "required": true; "isSignal": true; }; "selectedItems": { "alias": "selectedItems"; "required": false; "isSignal": true; }; }, { "cleared": "cleared"; }, never, never, true, never>;
+    }
 }
 class ShareDialogComponent {
     readonly data: ShareDialogData;
@@ -1941,10 +2126,12 @@ class ShareDialogComponent {
     copyLink(): void;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ShareDialogComponent, "lib-share-dialog", never, {}, {}, never, never, true, never>;
+    }
 }
 interface ShareDialogData {
     title: string;
     url: string;
+    }
 }
 class ShareSavedSearchDialogComponent implements OnInit {
     readonly dialogRef: MatDialogRef<any, any>;
@@ -1980,19 +2167,23 @@ class ShareSavedSearchDialogComponent implements OnInit {
     private toTimeFrameLabel;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareSavedSearchDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ShareSavedSearchDialogComponent, "lib-share-saved-search-dialog", never, {}, {}, never, never, true, never>;
+    }
 }
 interface ShareSavedSearchDialogData {
     title: string;
     id: string;
+    }
 }
 interface StoryboardItem {
     timecode: number;
     thumbnailUrl: SafeResourceUrl;
     label: string;
+    }
 }
 class UiComponent {
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<UiComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<UiComponent, "lib-ui", never, {}, {}, never, never, true, never>;
+    }
 }
 interface VideoInfo {
     duration?: number;
@@ -2002,11 +2193,13 @@ interface VideoInfo {
     videoCodec?: string;
     audioCodec?: string;
     frameRate?: number;
+    }
 }
 interface VideoSource {
     url: SafeResourceUrl;
     mimeType: string;
     label?: string;
+    }
 }
 class WidgetContainerComponent {
     readonly title: _angular_core.InputSignal<string>;
@@ -2014,11 +2207,13 @@ class WidgetContainerComponent {
     readonly iconColor: _angular_core.InputSignal<string>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<WidgetContainerComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetContainerComponent, "lib-widget-container", never, { "title": { "alias": "title"; "required": true; "isSignal": true; }; "icon": { "alias": "icon"; "required": false; "isSignal": true; }; "iconColor": { "alias": "iconColor"; "required": false; "isSignal": true; }; }, {}, never, ["[widgetActions]", "*"], true, never>;
+    }
 }
 class WidgetGridComponent {
     readonly columns: _angular_core.InputSignal<number>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<WidgetGridComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<WidgetGridComponent, "lib-widget-grid", never, { "columns": { "alias": "columns"; "required": false; "isSignal": true; }; }, {}, never, ["*"], true, never>;
+    }
 }
 function openDocumentCompareDialog(dialog: MatDialog, items: DocumentCompareDialogData['items']): void;
 function trashDocumentConfirmData(title: string): ConfirmDialogData;
