@@ -114,7 +114,13 @@
             matTooltipPosition="below"
             aria-label="Already in Content Lake"
           >
-            <button mat-icon-button type="button" disabled tabindex="-1">
+            <button
+              mat-icon-button
+              type="button"
+              disabled
+              tabindex="-1"
+              aria-label="Already ingested to Content Lake"
+            >
               <mat-icon>cloud_done</mat-icon>
             </button>
           </span>
@@ -808,6 +814,7 @@
                             [category]="avatarColor(entry.principalName)"
                             size="24"
                             [borderless]="true"
+                            aria-hidden="true"
                           />
                           <span>{{ entry.principalName }}</span>
                         </div>
@@ -1481,6 +1488,7 @@
                       [category]="avatarColor(creator()!)"
                       size="24"
                       [borderless]="true"
+                      aria-hidden="true"
                     />
                     <span class="creator-name">{{ creator() }}</span>
                   </span>
@@ -1498,6 +1506,7 @@
                           [category]="avatarColor(c)"
                           size="24"
                           [borderless]="true"
+                          aria-hidden="true"
                         />
                         <span class="contributor-name">{{ c }}</span>
                       </span>
@@ -1639,16 +1648,23 @@
                     <button
                       mat-icon-button
                       matTooltip="Open in Nuxeo Drive"
+                      aria-label="Open in Nuxeo Drive"
                       (click)="openDriveDialog()"
                     >
                       <mat-icon>open_in_new</mat-icon>
                     </button>
-                    <button mat-icon-button matTooltip="Preview" (click)="previewAttachment(att)">
+                    <button
+                      mat-icon-button
+                      matTooltip="Preview"
+                      aria-label="Preview"
+                      (click)="previewAttachment(att)"
+                    >
                       <mat-icon>visibility</mat-icon>
                     </button>
                     <button
                       mat-icon-button
                       matTooltip="Download"
+                      aria-label="Download"
                       (click)="downloadAttachment(att.url, att.name)"
                     >
                       <mat-icon>download</mat-icon>
@@ -1744,6 +1760,7 @@
                       [category]="avatarColor(comment.author)"
                       size="28"
                       [borderless]="true"
+                      aria-hidden="true"
                     />
                     <span class="comment-author">{{ comment.author }}</span>
                     <span class="comment-time">{{ relativeTime(comment.creationDate) }}</span>
@@ -1760,6 +1777,7 @@
                         mat-icon-button
                         [matMenuTriggerFor]="commentMenu"
                         class="comment-menu-btn"
+                        aria-label="Comment actions"
                       >
                         <mat-icon>more_vert</mat-icon>
                       </button>
@@ -1786,10 +1804,16 @@
                         (click)="saveEditComment()"
                         [disabled]="commentSaving()"
                         matTooltip="Save"
+                        aria-label="Save"
                       >
                         <mat-icon>check</mat-icon>
                       </button>
-                      <button mat-icon-button (click)="cancelEditComment()" matTooltip="Cancel">
+                      <button
+                        mat-icon-button
+                        (click)="cancelEditComment()"
+                        matTooltip="Cancel"
+                        aria-label="Cancel"
+                      >
                         <mat-icon>close</mat-icon>
                       </button>
                     </div>
@@ -1828,6 +1852,7 @@
                               [category]="avatarColor(reply.author)"
                               size="24"
                               [borderless]="true"
+                              aria-hidden="true"
                             />
                             <span class="comment-author">{{ reply.author }}</span>
                             <span class="comment-time">{{ relativeTime(reply.creationDate) }}</span>
@@ -1866,6 +1891,7 @@
                                 (click)="saveEditComment()"
                                 [disabled]="commentSaving()"
                                 matTooltip="Save"
+                                aria-label="Save"
                               >
                                 <mat-icon>check</mat-icon>
                               </button>
@@ -1873,6 +1899,7 @@
                                 mat-icon-button
                                 (click)="cancelEditComment()"
                                 matTooltip="Cancel"
+                                aria-label="Cancel"
                               >
                                 <mat-icon>close</mat-icon>
                               </button>
@@ -1900,10 +1927,16 @@
                           (click)="submitReply(comment.id)"
                           [disabled]="commentSaving()"
                           matTooltip="Submit"
+                          aria-label="Submit"
                         >
                           <mat-icon>check</mat-icon>
                         </button>
-                        <button mat-icon-button (click)="cancelReply()" matTooltip="Cancel">
+                        <button
+                          mat-icon-button
+                          (click)="cancelReply()"
+                          matTooltip="Cancel"
+                          aria-label="Cancel"
+                        >
                           <mat-icon>close</mat-icon>
                         </button>
                       }
@@ -1932,10 +1965,16 @@
                       (click)="submitComment()"
                       [disabled]="commentSaving()"
                       matTooltip="Submit"
+                      aria-label="Submit"
                     >
                       <mat-icon>check</mat-icon>
                     </button>
-                    <button mat-icon-button (click)="cancelNewComment()" matTooltip="Cancel">
+                    <button
+                      mat-icon-button
+                      (click)="cancelNewComment()"
+                      matTooltip="Cancel"
+                      aria-label="Cancel"
+                    >
                       <mat-icon>close</mat-icon>
                     </button>
                   }
@@ -1960,6 +1999,7 @@
                     [category]="avatarColor(entry.principalName)"
                     size="28"
                     [borderless]="true"
+                    aria-hidden="true"
                   />
                   <div class="activity-info">
                     <span class="activity-user">{{ entry.principalName }}</span>

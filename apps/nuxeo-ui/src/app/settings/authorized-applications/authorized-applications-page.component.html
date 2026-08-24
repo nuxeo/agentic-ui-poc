@@ -26,7 +26,10 @@
                   </td>
                 </tr>
               } @else {
-                @for (application of applications(); track application.name + application.authorizationDate) {
+                @for (
+                  application of applications();
+                  track application.name + application.authorizationDate
+                ) {
                   <tr>
                     <td>{{ application.name }}</td>
                     <td>{{ application.authorizationDate }}</td>

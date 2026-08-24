@@ -10,7 +10,13 @@
         {{ item.label }}
       </div>
       @if (isTasksPanel) {
-        <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
+        <button
+          mat-icon-button
+          (click)="loadTasks()"
+          matTooltip="Refresh"
+          aria-label="Refresh"
+          class="refresh-btn"
+        >
           <mat-icon>refresh</mat-icon>
         </button>
       }
@@ -19,13 +25,20 @@
           mat-icon-button
           (click)="refreshRecentlyViewed()"
           matTooltip="Refresh"
+          aria-label="Refresh"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>
         </button>
       }
       @if (isExpiredQueue) {
-        <button mat-icon-button (click)="refreshExpired()" matTooltip="Refresh" class="refresh-btn">
+        <button
+          mat-icon-button
+          (click)="refreshExpired()"
+          matTooltip="Refresh"
+          aria-label="Refresh"
+          class="refresh-btn"
+        >
           <mat-icon>refresh</mat-icon>
         </button>
       }
@@ -34,6 +47,7 @@
           mat-icon-button
           (click)="refreshBrowseTree()"
           matTooltip="Refresh"
+          aria-label="Refresh"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>
@@ -44,6 +58,7 @@
           mat-icon-button
           (click)="refreshPersonalSpaceTree()"
           matTooltip="Refresh"
+          aria-label="Refresh"
           class="refresh-btn"
         >
           <mat-icon>refresh</mat-icon>

@@ -5,10 +5,10 @@
     <div class="field-label">Email</div>
     <div class="readonly-value">{{ email }}</div>
   } @else {
-  <mat-form-field appearance="outline" class="full-width">
-    <mat-label>Email *</mat-label>
-    <input matInput type="email" placeholder="name@company.com" [(ngModel)]="email" required />
-  </mat-form-field>
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Email *</mat-label>
+      <input matInput type="email" placeholder="name@company.com" [(ngModel)]="email" required />
+    </mat-form-field>
   }
 
   <mat-form-field appearance="outline" class="full-width">
@@ -54,11 +54,21 @@
   <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
   <span class="spacer"></span>
   @if (!isEditMode) {
-  <button mat-flat-button color="primary" [disabled]="!isValid() || saving()" (click)="create(true)">
-    Create And Add Another
-  </button>
+    <button
+      mat-flat-button
+      color="primary"
+      [disabled]="!isValid() || saving()"
+      (click)="create(true)"
+    >
+      Create And Add Another
+    </button>
   }
-  <button mat-flat-button color="primary" [disabled]="!isValid() || saving()" (click)="create(false)">
+  <button
+    mat-flat-button
+    color="primary"
+    [disabled]="!isValid() || saving()"
+    (click)="create(false)"
+  >
     {{ isEditMode ? 'Update' : 'Create' }}
   </button>
 </mat-dialog-actions>

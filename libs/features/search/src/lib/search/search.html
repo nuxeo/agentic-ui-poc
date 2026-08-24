@@ -42,6 +42,7 @@
             <button
               mat-icon-button
               class="ai-search-go"
+              aria-label="Run AI search"
               (click)="executeAiSearch()"
               [disabled]="!aiQuery().trim()"
             >
@@ -143,14 +144,28 @@
     </div>
 
     <div class="toolbar-actions">
-      <button mat-icon-button matTooltip="Export CSV" (click)="exportCsv()" class="toolbar-btn">
+      <button
+        mat-icon-button
+        matTooltip="Export CSV"
+        aria-label="Export CSV"
+        (click)="exportCsv()"
+        class="toolbar-btn"
+      >
         <mat-icon>download</mat-icon>
       </button>
 
+      <!--
+        The label is static and the *state* is carried by `aria-pressed`, rather than folding
+        both into a conditional tooltip. The tooltip below is deliberately empty for the active
+        view — sensible for a sighted user, but as an accessible name it left the selected
+        button with no name at all, which is the `button-name` violation this fixes.
+      -->
       <button
         mat-icon-button
         [class.active]="viewMode() === 'grid'"
         [matTooltip]="viewMode() !== 'grid' ? 'Switch to Grid View' : ''"
+        aria-label="Grid view"
+        [attr.aria-pressed]="viewMode() === 'grid'"
         (click)="setViewMode('grid')"
         class="toolbar-btn"
       >
@@ -161,6 +176,8 @@
         mat-icon-button
         [class.active]="viewMode() === 'table'"
         [matTooltip]="viewMode() !== 'table' ? 'Switch to Table View' : ''"
+        aria-label="Table view"
+        [attr.aria-pressed]="viewMode() === 'table'"
         (click)="setViewMode('table')"
         class="toolbar-btn"
       >
@@ -172,6 +189,8 @@
         class="toolbar-btn list-view-btn"
         [class.active]="viewMode() === 'list'"
         [matTooltip]="viewMode() !== 'list' ? 'Switch to List view' : ''"
+        aria-label="List view"
+        [attr.aria-pressed]="viewMode() === 'list'"
         (click)="setViewMode('list')"
       >
         <mat-icon>format_list_bulleted</mat-icon>
@@ -206,6 +225,7 @@
           <button
             mat-icon-button
             matTooltip="Revert sort order"
+            aria-label="Revert sort order"
             (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
             class="action-btn"
           >
@@ -225,6 +245,7 @@
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(row.id)"
+                [aria-label]="'Select ' + row.name"
                 (change)="toggleSelection(row.id)"
                 (click)="$event.stopPropagation()"
               ></mat-checkbox>
@@ -245,6 +266,7 @@
                 <button
                   mat-icon-button
                   matTooltip="Add to favorites"
+                  aria-label="Add to favorites"
                   class="action-btn"
                   [disabled]="favoritePendingIds().has(row.id)"
                   (click)="toggleFavorite(row.id, $event)"
@@ -257,6 +279,7 @@
                   <button
                     mat-icon-button
                     matTooltip="Download"
+                    aria-label="Download"
                     class="action-btn"
                     (click)="downloadDocument(row.id, row.name, $event)"
                   >
@@ -335,6 +358,7 @@
               mat-icon-button
               class="gear-btn"
               matTooltip="Manage columns"
+              aria-label="Manage columns"
               (click)="openColumnPanel()"
             >
               <mat-icon>tune</mat-icon>
@@ -353,6 +377,7 @@
             <span class="col-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(row.id)"
+                [aria-label]="'Select ' + row.name"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(row.id)"
               ></mat-checkbox>
@@ -402,6 +427,7 @@
         <button
           mat-icon-button
           matTooltip="Revert sort order"
+          aria-label="Revert sort order"
           (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
           class="action-btn"
         >
@@ -427,6 +453,7 @@
             <span class="simple-list-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(row.id)"
+                [aria-label]="'Select ' + row.name"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(row.id)"
               ></mat-checkbox>
@@ -441,6 +468,7 @@
               <button
                 mat-icon-button
                 matTooltip="Add to favorites"
+                aria-label="Add to favorites"
                 class="action-btn"
                 [disabled]="favoritePendingIds().has(row.id)"
                 (click)="toggleFavorite(row.id, $event)"
@@ -453,6 +481,7 @@
                 <button
                   mat-icon-button
                   matTooltip="Download"
+                  aria-label="Download"
                   class="action-btn"
                   (click)="downloadDocument(row.id, row.name, $event)"
                 >

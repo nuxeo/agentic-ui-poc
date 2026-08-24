@@ -46,13 +46,21 @@
     }
 
     <div class="toolbar-actions">
-      <button mat-icon-button matTooltip="Export CSV" (click)="exportCsv()" class="toolbar-btn">
+      <button
+        mat-icon-button
+        matTooltip="Export CSV"
+        aria-label="Export CSV"
+        (click)="exportCsv()"
+        class="toolbar-btn"
+      >
         <mat-icon>download</mat-icon>
       </button>
 
       <button
         mat-icon-button
         [matTooltip]="viewMode() === 'list' ? 'Switch to Grid View' : ''"
+        aria-label="Grid view"
+        [attr.aria-pressed]="viewMode() === 'grid'"
         [class.active]="viewMode() === 'grid'"
         (click)="setViewMode('grid')"
         class="toolbar-btn"
@@ -63,6 +71,8 @@
       <button
         mat-icon-button
         [matTooltip]="viewMode() === 'grid' ? 'Switch to Table View' : ''"
+        aria-label="Table view"
+        [attr.aria-pressed]="viewMode() === 'list'"
         [class.active]="viewMode() === 'list'"
         (click)="setViewMode('list')"
         class="toolbar-btn"
@@ -100,6 +110,7 @@
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isAssetSelected(asset.id)"
+                [aria-label]="'Select ' + asset.name"
                 (click)="$event.stopPropagation()"
                 (change)="toggleAssetSelection(asset.id)"
               ></mat-checkbox>
@@ -182,6 +193,7 @@
                 mat-icon-button
                 class="gear-btn"
                 matTooltip="Manage columns"
+                aria-label="Manage columns"
                 (click)="openColumnPanel()"
               >
                 <mat-icon>tune</mat-icon>
@@ -200,6 +212,7 @@
               <span class="col-checkbox">
                 <mat-checkbox
                   [checked]="isAssetSelected(asset.id)"
+                  [aria-label]="'Select ' + asset.name"
                   (click)="$event.stopPropagation()"
                   (change)="toggleAssetSelection(asset.id)"
                 ></mat-checkbox>

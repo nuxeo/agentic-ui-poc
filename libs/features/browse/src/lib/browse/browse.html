@@ -23,23 +23,38 @@
           Create / Import
         </button>
       }
-      <button mat-icon-button matTooltip="Upload with Nuxeo Drive" (click)="openDriveDialog()">
+      <button
+        mat-icon-button
+        matTooltip="Upload with Nuxeo Drive"
+        aria-label="Upload with Nuxeo Drive"
+        (click)="openDriveDialog()"
+      >
         <mat-icon>cloud_upload</mat-icon>
       </button>
       @if (canWriteCurrentDoc()) {
-        <button mat-icon-button matTooltip="Edit" (click)="openEditDialog()">
+        <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
           <mat-icon>edit</mat-icon>
         </button>
       }
       @if (canRemoveCurrentDoc()) {
-        <button mat-icon-button matTooltip="Delete" (click)="deleteDocument()">
+        <button mat-icon-button matTooltip="Delete" aria-label="Delete" (click)="deleteDocument()">
           <mat-icon>delete</mat-icon>
         </button>
       }
-      <button mat-icon-button matTooltip="Download All" (click)="downloadAll()">
+      <button
+        mat-icon-button
+        matTooltip="Download All"
+        aria-label="Download All"
+        (click)="downloadAll()"
+      >
         <mat-icon>download</mat-icon>
       </button>
-      <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More actions">
+      <button
+        mat-icon-button
+        [matMenuTriggerFor]="moreMenu"
+        matTooltip="More actions"
+        aria-label="More actions"
+      >
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #moreMenu="matMenu">
@@ -168,6 +183,7 @@
                 <button
                   mat-icon-button
                   matTooltip="Export CSV"
+                  aria-label="Export CSV"
                   (click)="exportCsv()"
                   [disabled]="csvExporting()"
                 >
@@ -180,6 +196,7 @@
                 <button
                   mat-icon-button
                   matTooltip="List view"
+                  aria-label="List view"
                   [class.active-view]="viewMode() === 'list'"
                   (click)="setViewMode('list')"
                 >
@@ -188,6 +205,7 @@
                 <button
                   mat-icon-button
                   matTooltip="Card view"
+                  aria-label="Card view"
                   [class.active-view]="viewMode() === 'card'"
                   (click)="setViewMode('card')"
                 >
@@ -270,6 +288,7 @@
                             mat-icon-button
                             class="gear-btn"
                             matTooltip="Manage columns"
+                            aria-label="Manage columns"
                             (click)="openColumnPanel()"
                           >
                             <mat-icon>tune</mat-icon>
@@ -288,7 +307,7 @@
                           <td class="cell-checkbox">
                             <mat-checkbox
                               [checked]="isSelected(doc.uid)"
-                              [attr.aria-label]="selectionAriaLabel(doc)"
+                              [aria-label]="selectionAriaLabel(doc)"
                               (change)="toggleSelection(doc.uid)"
                               (click)="$event.stopPropagation()"
                             ></mat-checkbox>
@@ -320,6 +339,7 @@
                                     [category]="avatarColor(lastContributor(doc))"
                                     size="24"
                                     [borderless]="true"
+                                    aria-hidden="true"
                                   />
                                   {{ lastContributor(doc) }}
                                 </span>
@@ -345,7 +365,7 @@
                     <div class="grid-card-checkbox">
                       <mat-checkbox
                         [checked]="isSelected(doc.uid)"
-                        [attr.aria-label]="selectionAriaLabel(doc)"
+                        [aria-label]="selectionAriaLabel(doc)"
                         (change)="toggleSelection(doc.uid)"
                         (click)="$event.stopPropagation()"
                       ></mat-checkbox>
@@ -417,6 +437,7 @@
                                   [category]="avatarColor(displayUsername(ace))"
                                   size="24"
                                   [borderless]="true"
+                                  aria-hidden="true"
                                 />
                                 {{ displayUsername(ace) }}
                               </span>
@@ -429,6 +450,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Edit"
+                                  aria-label="Edit"
                                   type="button"
                                   (click)="editPermission(ace)"
                                 >
@@ -437,6 +459,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Delete"
+                                  aria-label="Delete"
                                   type="button"
                                   (click)="deletePermission(ace)"
                                 >
@@ -504,6 +527,7 @@
                                   [category]="avatarColor(displayUsername(ace))"
                                   size="24"
                                   [borderless]="true"
+                                  aria-hidden="true"
                                 />
                                 {{ displayUsername(ace) }}
                               </span>
@@ -569,6 +593,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Edit"
+                                  aria-label="Edit"
                                   type="button"
                                   (click)="editExternalPermission(ace)"
                                 >
@@ -577,6 +602,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Send notification email"
+                                  aria-label="Send notification email"
                                   type="button"
                                   [disabled]="actionInProgress() === 'notify-' + ace.id"
                                   (click)="sendNotificationEmail(ace)"
@@ -586,6 +612,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Delete"
+                                  aria-label="Delete"
                                   type="button"
                                   (click)="deletePermission(ace)"
                                 >
@@ -676,6 +703,7 @@
                             [category]="avatarColor(row.principalName)"
                             size="24"
                             [borderless]="true"
+                            aria-hidden="true"
                           />
                           {{ row.principalName }}
                         </span>
@@ -871,6 +899,7 @@
                     [category]="avatarColor(docCreator(doc))"
                     size="24"
                     [borderless]="true"
+                    aria-hidden="true"
                   />
                   {{ docCreator(doc) }}
                 </span>
@@ -883,6 +912,7 @@
                     [category]="avatarColor(lastContributor(doc))"
                     size="24"
                     [borderless]="true"
+                    aria-hidden="true"
                   />
                   {{ lastContributor(doc) }}
                 </span>
@@ -966,6 +996,7 @@
                     [category]="avatarColor(entry.principalName)"
                     size="28"
                     [borderless]="true"
+                    aria-hidden="true"
                   />
                   <div class="activity-text">
                     <span class="activity-user">{{ entry.principalName }}</span>

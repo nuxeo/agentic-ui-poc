@@ -320,6 +320,7 @@
             <button
               mat-icon-button
               class="ai-chat-send"
+              aria-label="Send message"
               (click)="sendAiMessage()"
               [disabled]="!aiChatInput().trim() || aiChat.loading()"
             >

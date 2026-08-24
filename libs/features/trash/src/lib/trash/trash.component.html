@@ -38,19 +38,21 @@
           <mat-icon>bookmark</mat-icon>
           Save
         </button>
-          <button
-            mat-icon-button
-            type="button"
-            [matMenuTriggerFor]="resultsActionsMenu"
-            aria-label="Results actions"
-          >
-            <mat-icon>more_vert</mat-icon>
+        <button
+          mat-icon-button
+          type="button"
+          [matMenuTriggerFor]="resultsActionsMenu"
+          aria-label="Results actions"
+        >
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #resultsActionsMenu="matMenu">
+          <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
+          <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
+          <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">
+            Delete
           </button>
-          <mat-menu #resultsActionsMenu="matMenu">
-            <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
-            <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
-            <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">Delete</button>
-          </mat-menu>
+        </mat-menu>
       }
     </div>
   </div>
@@ -63,7 +65,13 @@
     </div>
 
     <div class="toolbar-actions">
-      <button mat-icon-button matTooltip="Export CSV" (click)="exportCsv()" class="toolbar-btn">
+      <button
+        mat-icon-button
+        matTooltip="Export CSV"
+        aria-label="Export CSV"
+        (click)="exportCsv()"
+        class="toolbar-btn"
+      >
         <mat-icon>download</mat-icon>
       </button>
 
@@ -71,6 +79,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'grid'"
         matTooltip="Grid View"
+        aria-label="Grid View"
         (click)="setViewMode('grid')"
         class="toolbar-btn"
       >
@@ -81,6 +90,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'table'"
         matTooltip="Table View"
+        aria-label="Table View"
         (click)="setViewMode('table')"
         class="toolbar-btn"
       >
@@ -91,6 +101,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'list'"
         matTooltip="List View"
+        aria-label="List View"
         (click)="setViewMode('list')"
         class="toolbar-btn"
       >
@@ -117,6 +128,7 @@
           <mat-checkbox
             [checked]="isAllSelected()"
             [indeterminate]="isIndeterminate()"
+            aria-label="Select all"
             [disabled]="resultCount() === 0"
             matTooltip="Select all"
             (change)="toggleAll()"
@@ -137,6 +149,7 @@
           <button
             mat-icon-button
             matTooltip="Revert sort order"
+            aria-label="Revert sort order"
             (click)="toggleSortDir()"
             class="action-btn"
           >
@@ -156,6 +169,7 @@
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
+                [aria-label]="'Select ' + doc.title"
                 (change)="toggleSelection(doc.uid)"
                 (click)="$event.stopPropagation()"
               ></mat-checkbox>
@@ -217,6 +231,7 @@
             <mat-checkbox
               [checked]="isAllSelected()"
               [indeterminate]="isIndeterminate()"
+              aria-label="Select all"
               (change)="toggleAll()"
             ></mat-checkbox>
           </span>
@@ -239,6 +254,7 @@
               mat-icon-button
               class="gear-btn"
               matTooltip="Manage columns"
+              aria-label="Manage columns"
               (click)="openColumnPanel()"
             >
               <mat-icon>tune</mat-icon>
@@ -257,6 +273,7 @@
             <span class="col-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
+                [aria-label]="'Select ' + doc.title"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>
@@ -281,6 +298,7 @@
               <button
                 mat-icon-button
                 matTooltip="Restore"
+                aria-label="Restore"
                 class="action-btn"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="restoreDocument(doc.uid, $event)"
@@ -290,6 +308,7 @@
               <button
                 mat-icon-button
                 matTooltip="Delete permanently"
+                aria-label="Delete permanently"
                 class="action-btn action-danger"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="permanentlyDelete(doc.uid, $event)"
@@ -314,6 +333,7 @@
         <mat-checkbox
           [checked]="isAllSelected()"
           [indeterminate]="isIndeterminate()"
+          aria-label="Select all"
           [disabled]="resultCount() === 0"
           matTooltip="Select all"
           (change)="toggleAll()"
@@ -335,6 +355,7 @@
         <button
           mat-icon-button
           matTooltip="Revert sort order"
+          aria-label="Revert sort order"
           (click)="toggleSortDir()"
           class="action-btn"
         >
@@ -360,6 +381,7 @@
             <span class="simple-list-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
+                [aria-label]="'Select ' + doc.title"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>
@@ -374,6 +396,7 @@
               <button
                 mat-icon-button
                 matTooltip="Restore"
+                aria-label="Restore"
                 class="action-btn"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="restoreDocument(doc.uid, $event)"
@@ -383,6 +406,7 @@
               <button
                 mat-icon-button
                 matTooltip="Delete permanently"
+                aria-label="Delete permanently"
                 class="action-btn action-danger"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="permanentlyDelete(doc.uid, $event)"

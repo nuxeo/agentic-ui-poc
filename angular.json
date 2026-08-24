@@ -46,6 +46,11 @@
                 "glob": "**/*",
                 "input": "node_modules/@alfresco/adf-hx-content-services/services/assets",
                 "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@hylandsoftware/satori-ui/i18n",
+                "output": "assets/satori-ui/i18n"
               }
             ],
             "styles": ["apps/nuxeo-ui/src/styles.scss"]
@@ -109,6 +114,11 @@
                   "glob": "**/*",
                   "input": "node_modules/@alfresco/adf-hx-content-services/services/assets",
                   "output": "assets"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@hylandsoftware/satori-ui/i18n",
+                  "output": "assets/satori-ui/i18n"
                 }
               ]
             }

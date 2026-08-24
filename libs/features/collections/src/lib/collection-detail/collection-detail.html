@@ -9,7 +9,10 @@
         </div>
         @if (breadcrumbItems().length) {
           <div class="header-path-row">
-            <sat-breadcrumbs [items]="breadcrumbItems()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
+            <sat-breadcrumbs
+              [items]="breadcrumbItems()"
+              (click)="onBreadcrumbClick($event)"
+            ></sat-breadcrumbs>
           </div>
         }
       </div>
@@ -448,6 +451,7 @@
                       [category]="avatarColor(entry.principalName)"
                       size="24"
                       [borderless]="true"
+                      aria-hidden="true"
                     />
                     <span>{{ entry.principalName }}</span>
                   </div>

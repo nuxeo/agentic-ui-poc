@@ -300,6 +300,7 @@
                   mat-icon-button
                   class="format-download-btn"
                   matTooltip="Download {{ view.title }}"
+                  attr.aria-label="Download {{ view.title }}"
                   (click)="formatDownload.emit(view.downloadUrl)"
                 >
                   <mat-icon>download</mat-icon>

@@ -7,7 +7,16 @@
     <ng-content select="[widgetActions]" />
   </div>
 
-  <div class="widget-body">
+  <!--
+    `tabindex="0"` because `.widget-body` sets `overflow-y: auto`: a mouse user can scroll it
+    and a keyboard user could not reach the content that overflowed. That is WCAG 2.1.1, and
+    axe reports it as `scrollable-region-focusable`.
+
+    It carries `role="group"` and the widget's own title as its name, so the resulting tab stop
+    announces *which* widget it belongs to. A bare focusable div would satisfy the rule while
+    announcing nothing, which is the sort of fix that passes an audit and helps no one.
+  -->
+  <div class="widget-body" tabindex="0" role="group" [attr.aria-label]="title()">
     <ng-content />
   </div>
 </div>

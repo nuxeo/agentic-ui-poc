@@ -1,10 +1,4 @@
 {
-  "sat": {
-    "platform-nav": {
-      "expand": "",
-      "collapse": ""
-    }
-  },
   "app": {
     "title": "Hyland Nuxeo",
     "nav": {

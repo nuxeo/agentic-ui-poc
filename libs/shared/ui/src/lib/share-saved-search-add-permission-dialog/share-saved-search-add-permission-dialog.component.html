@@ -23,7 +23,9 @@
         } @else {
           @for (suggestion of suggestions(); track suggestion.id) {
             <mat-option [value]="suggestion">
-              <mat-icon class="suggestion-icon">{{ suggestion.type === 'USER_TYPE' ? 'person' : 'groups' }}</mat-icon>
+              <mat-icon class="suggestion-icon">{{
+                suggestion.type === 'USER_TYPE' ? 'person' : 'groups'
+              }}</mat-icon>
               <span>{{ suggestion.displayLabel }}</span>
               <span class="suggestion-id">{{ suggestion.id }}</span>
             </mat-option>
@@ -58,14 +60,24 @@
   <div class="date-fields">
     <mat-form-field appearance="outline">
       <mat-label>From</mat-label>
-      <input matInput [matDatepicker]="fromPicker" [(ngModel)]="beginDate" [disabled]="timeFrameMode === 'permanent'" />
+      <input
+        matInput
+        [matDatepicker]="fromPicker"
+        [(ngModel)]="beginDate"
+        [disabled]="timeFrameMode === 'permanent'"
+      />
       <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
       <mat-datepicker #fromPicker />
     </mat-form-field>
 
     <mat-form-field appearance="outline">
       <mat-label>To</mat-label>
-      <input matInput [matDatepicker]="toPicker" [(ngModel)]="endDate" [disabled]="timeFrameMode === 'permanent'" />
+      <input
+        matInput
+        [matDatepicker]="toPicker"
+        [(ngModel)]="endDate"
+        [disabled]="timeFrameMode === 'permanent'"
+      />
       <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
       <mat-datepicker #toPicker />
     </mat-form-field>
@@ -93,9 +105,15 @@
   <button mat-stroked-button type="button" (click)="cancel()">Cancel</button>
   <span class="spacer"></span>
   @if (isEditMode) {
-    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">Update</button>
+    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">
+      Update
+    </button>
   } @else {
-    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(true)">Create And Add Another</button>
-    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">Create</button>
+    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(true)">
+      Create And Add Another
+    </button>
+    <button mat-flat-button color="primary" [disabled]="isSubmitDisabled()" (click)="create(false)">
+      Create
+    </button>
   }
 </mat-dialog-actions>

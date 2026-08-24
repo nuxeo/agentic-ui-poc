@@ -69,6 +69,27 @@ const SEEDED_FOLDERS: readonly TranslationFolder[] = [
     name: 'adf-enterprise-adf-hx-content-services-services',
     path: 'assets/adf-enterprise-adf-hx-content-services-services',
   },
+  /**
+   * `@hylandsoftware/satori-ui` — the `sat.*` keys. Added 2026-08-24, and this one was not a
+   * cosmetic omission: it was **the most widespread accessibility violation in the product**.
+   *
+   * `sat-platform-nav` binds `[attr.aria-label]="'sat.platform-nav.expand' | translate"`. With
+   * the catalogue absent the pipe yields an empty string, so the button rendered
+   * `aria-label=""` — an empty accessible name, which axe reports as `button-name`
+   * (**critical**) on *every* surface in the application, seven of seven. Its `matTooltip`
+   * resolved to empty too, so the attribute was not even present in the DOM.
+   *
+   * Untranslated adf strings were visible as raw keys and got noticed. An empty `aria-label` is
+   * invisible to anyone not using a screen reader, which is why it survived to a WCAG audit.
+   *
+   * Upstream ships `provideAndConfigureSatoriUITranslations`, and we deliberately do not use it:
+   * it calls `provideTranslateService` with its own `MultiTranslateHttpLoader`, which would
+   * replace this loader and take the manifest `labels` layering — a shipped Layer 0 capability —
+   * with it. Seeding the folder gets the strings with no such trade.
+   *
+   * The name matches upstream's own `satoriUITranslationPath` constant.
+   */
+  { name: '@hylandsoftware/satori-ui', path: 'assets/satori-ui' },
 ];
 
 /**
