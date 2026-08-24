@@ -234,7 +234,7 @@ render.
 | `tasks`, `assets`            | Zero specs. Reported a spurious 100% until 2026-08-24; the gate now calls them unmeasurable and fails on a baseline entry       |
 | The AI operations themselves | Implemented in another package                                                                                                  |
 | Performance                  | No runtime performance testing. Bundle size only                                                                                |
-| Security                     | **No SAST.** SCA is `npm audit`                                                                                                 |
+| Security                     | SAST is CodeQL (`security-and-quality`, push + weekly). SCA is the `supply-chain` gate. Neither covers runtime pen-testing      |
 | Cross-browser                | **Chromium only.** WebKit is Phase 6 step 5 and is deliberately not registered in the config rather than registered-and-skipped |
 | Rollback                     | The upgrade path is tested; rollback is not                                                                                     |
 

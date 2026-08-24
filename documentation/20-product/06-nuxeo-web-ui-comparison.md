@@ -109,7 +109,7 @@ Each verifiable in this repository:
 3. **The upgrade promise is tested.** `npm run beta:upgrade` installs, customises across
    Layers 0–2, bumps the version, reinstalls, and asserts the customisation survived —
    including that every slot the JSON manifest names still exists.
-4. **Modern stack, modern tooling.** Angular 20 signals, Nx, 15 gates, real module
+4. **Modern stack, modern tooling.** Angular 20 signals, Nx, 16 gates, real module
    boundaries.
 5. **A customer's AI agent is a first-class user.** Generators and a runnable guardrail ship
    inside the package.
@@ -159,7 +159,7 @@ The RFC's own retrospective on the POC that preceded this work:
 > code-level defects, eleven tests for 2,949 lines of bridge source, and a branch that had
 > never been compiled by CI.
 
-That is the _before_ picture. The 15 gates, the evidence harness and the adversarial review
+That is the _before_ picture. The 16 gates, the evidence harness and the adversarial review
 process all exist because of it. When comparing developer experience, the relevant claim is
 not "AI wrote it fast" — it is **"the verification apparatus is now strong enough that fast
 authoring is safe"**, and that apparatus is the transferable asset.

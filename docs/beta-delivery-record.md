@@ -36,7 +36,7 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 | 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted | `phase-3-adf-hx` 55/55   |
 | 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded     | `phase-4-platform` 25/25 |
 | 5 — Layer 3: agent harness              | **complete**                             | `phase-5-harness` 27/27  |
-| 6 — Beta quality bar                    | **in progress** — steps 0-3 of 7         | `phase-6-a11y` 27/27     |
+| 6 — Beta quality bar                    | **in progress** — steps 0-4 of 7         | `phase-6-a11y` 27/27     |
 
 Branch `feature/adf-hx-browse-poc`, 103 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.
@@ -360,13 +360,13 @@ Three corrections came out of this step, and two were defects in work from the d
 
 **Still open, with the real numbers:**
 
-| Requirement         | State                                                                                                                                                                                                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit coverage ≥ 90% | **3 of 15** measurable projects, substantively. `search` 22.76%, `document-detail` 29.8%. Was recorded as "5 of 17" until 2026-08-24, when the gate stopped scoring 0/0 statements as 100% — `assets` and `tasks` are untested, not perfect             |
-| Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo)                                                                                                                                                                          |
-| WCAG 2.1 AA         | **met** on the 15 cases scanned — 7 rule classes fixed, `KNOWN_VIOLATIONS` empty. One violation remains and it is `@alfresco/adf-core`'s (finding 1.2), excluded on that one surface. Dialogs, upload, dark mode and pre-auth login are **not** covered |
-| SAST                | **nothing.** SCA is `npm audit` only (1 low)                                                                                                                                                                                                            |
-| Safari              | never run; Chromium only                                                                                                                                                                                                                                |
+| Requirement         | State                                                                                                                                                                                                                                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit coverage ≥ 90% | **3 of 15** measurable projects, substantively. `search` 22.76%, `document-detail` 29.8%. Was recorded as "5 of 17" until 2026-08-24, when the gate stopped scoring 0/0 statements as 100% — `assets` and `tasks` are untested, not perfect                                                                         |
+| Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo)                                                                                                                                                                                                                                      |
+| WCAG 2.1 AA         | **met** on the 15 cases scanned — 7 rule classes fixed, `KNOWN_VIOLATIONS` empty. One violation remains and it is `@alfresco/adf-core`'s (finding 1.2), excluded on that one surface. Dialogs, upload, dark mode and pre-auth login are **not** covered                                                             |
+| SAST                | **done** — CodeQL `security-and-quality`, on push and weekly. SCA is now the `supply-chain` gate: fails on a production high/critical, on an expired acceptance, and on an unimported production dependency. Production audit is 1 low (quill, accepted until 2026-11-30); dev-inclusive 9 high, reported not gated |
+| Safari              | never run; Chromium only                                                                                                                                                                                                                                                                                            |
 
 Coverage alone is most of the phase's 20-30 day estimate.
 

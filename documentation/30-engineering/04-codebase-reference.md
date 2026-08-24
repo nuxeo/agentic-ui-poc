@@ -32,7 +32,7 @@ If you read six files, read these.
 | [`libs/shared/extensions/src/lib/extension-slots.ts`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/libs/shared/extensions/src/lib/extension-slots.ts)             |   ~60 | The customisation contract. 8 slots                                                                   |
 | [`libs/shared/extensions/src/lib/extension-rules.ts`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/libs/shared/extensions/src/lib/extension-rules.ts)             |  ~261 | Rule evaluation, fail-open/fail-closed, depth-bounded recursion. Heavily commented with the reasoning |
 | [`nuxeo-agentic-ui-package/src/main/resources/install.xml`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/nuxeo-agentic-ui-package/src/main/resources/install.xml) |   ~25 | The upgrade-safety guarantee, and why the obvious destination is wrong                                |
-| [`scripts/beta-harness/verify-gate.mjs`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/scripts/beta-harness/verify-gate.mjs)                                       |   368 | The 15 gates, each with a comment saying what it caught                                               |
+| [`scripts/beta-harness/verify-gate.mjs`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/scripts/beta-harness/verify-gate.mjs)                                       |   368 | The 16 gates, each with a comment saying what it caught                                               |
 
 ---
 

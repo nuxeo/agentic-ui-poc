@@ -69,7 +69,7 @@ support boundary, the upgrade path and any certification claim.
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | **WCAG 2.1 AA met** on 15 scanned cases — 7 rule classes, 77 nodes fixed   | Removes a procurement blocker. One violation remains and it is `adf-core`'s, not ours           |
 | **3 of 15 measurable projects meet the 90% coverage bar substantively**    | The two highest-traffic features are the least tested (`search` 22.8%, `document-detail` 29.8%) |
-| **No SAST**; SCA is `npm audit` only                                       | Security assurance gap                                                                          |
+| **SAST added 2026-08-24** (CodeQL); SCA is now a gate, not a manual audit  | Assurance gap closed. 4 unused production dependencies removed with it                          |
 | **No production observability** — no APM, structured logging or metrics    | We could not diagnose a customer incident                                                       |
 | **4 of 8 extension slots are reserved** — nothing reads them               | Less addressable surface than the slot list implies (RFC risk R8)                               |
 | **The AI features need a separate backend package** not in this repository | "AI-powered" is not true out of the box                                                         |
@@ -118,7 +118,7 @@ binding constraint.
 > is why the realistic calendar figure is 3 to 4 months rather than 2 to 3."
 
 **The governing conclusion:** _agents move cost from authoring to verification rather than
-removing it._ Everything expensive in this repository — 15 gates, ~20k lines of harness
+removing it._ Everything expensive in this repository — 16 gates, ~20k lines of harness
 scripts, adversarial review before every sign-off — is that verification cost made systematic.
 
 ---

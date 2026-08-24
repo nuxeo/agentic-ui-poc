@@ -34,7 +34,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/2026-08-21T11-47-33",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/2026-08-24T09-29-42-all-phases-signoff"
+        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
       },
       "deviations": [],
       "notCovered": [
@@ -49,7 +49,7 @@
       "evidence": {
         "manifest": "phase-1-config/2026-08-21T11-47-45",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/2026-08-24T09-29-42-all-phases-signoff"
+        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -66,7 +66,7 @@
       "evidence": {
         "manifest": "phase-2-registry/2026-08-21T11-51-02",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/2026-08-24T09-29-42-all-phases-signoff"
+        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -91,7 +91,7 @@
         "manifest": "phase-3-adf-hx/2026-08-24T03-03-48",
         "searchManifest": "phase-3-search/2026-08-24T02-58-00",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/2026-08-24T09-29-42-all-phases-signoff"
+        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
       },
       "deviations": [
         "CORRECTED: this file previously recorded that DocumentModelService \"calls getModel() from its CONSTRUCTOR, so anything injecting it fails to construct\". The eager call is real; the consequence was not. An async method that throws returns a rejected promise, so the service constructs. Established by writing the test rather than by reasoning about it, after the reasoning had already been written into three files.",
@@ -197,7 +197,7 @@
       "evidence": {
         "manifest": "phase-4-platform/2026-08-23T03-22-29",
         "gate": "gates/2026-08-23T03-47-19-phase-4-signoff",
-        "regate": "gates/2026-08-24T09-29-42-all-phases-signoff"
+        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
       },
       "deviations": [
         "Merged from two duplicate entries. `phase-4-layer2` and `phase-4-platform` both carried the title \"Layer 2 — publishable platform\"; the latter was a stub whose notCovered read \"everything\". Kept the id the gate reports and the evidence directory use.",
@@ -229,7 +229,7 @@
       "evidence": {
         "manifest": "phase-5-harness/2026-08-24T03-08-47",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/2026-08-24T09-29-42-all-phases-signoff"
+        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
       },
       "deviations": [
         "Departed from the plan's wording deliberately, and measured first. The plan said 'split the AGENTS/ knowledge base'; 50 files carry 185 references to AGENTS/ paths, and .github/workflows/staleness-check.yml asserts AGENTS/01-services.md and AGENTS/${i}-*.md exist — so a split breaks CI and every skill. Measuring the content settled it too: 3,177 lines, of which only 3 of 13 files mention extensions, slots or the Layers. libs/platform/AGENTS.md is therefore authored for the audience, not extracted.",
@@ -250,7 +250,7 @@
       "title": "Beta quality bar and proof",
       "status": "in-progress",
       "evidence": {
-        "gate": "gates/2026-08-24T14-43-08-phase-6-quality",
+        "gate": "gates/2026-08-24T15-54-19-phase-6-quality",
         "manifest": "phase-6-a11y/2026-08-24T14-40-16"
       },
       "deviations": [
@@ -269,7 +269,15 @@
         "nested-interactive could not be fixed without changing behaviour, and lint enforced that. Eight clickable rows and cards were <button> elements wrapping a mat-checkbox and action buttons. The checkboxes are in-flow grid children revealed on hover, not absolute overlays, so they cannot be lifted out as siblings. The row is now a container whose title is the one control, with a stretched ::after hit area preserving row-click for mouse users. A focusable div with key handlers would reintroduce the nesting, and @angular-eslint's interactive-supports-focus and click-events-have-key-events rejected the middle ground on the first attempt.",
         "One violation remains and it is not ours: aria-required-children, 3 nodes, @alfresco/adf-core@9.0.0 emits role=\"row\" whose direct children are plain divs and a bare mat-checkbox. Excluded on the adf-hx step ALONE rather than in KNOWN_VIOLATIONS, so the same rule failing on a surface we own still fails the capture. Reported with the template quoted as finding 1.2, and listed second in what we most want fixed because no host can work around it without patching upstream DOM.",
         "Scope stated rather than implied: fifteen cases over eight routes. Dialogs, the upload flow, dark mode and the pre-auth login surface are NOT covered. Login is a harness limitation - the runner sets httpCredentials, so the app authenticates before the login page can render.",
-        "The step-3 negative controls are on disk as failed manifests, not just asserted: phase-6-a11y/2026-08-24T14-37-37 (13 failures - the empty sat.* override re-introduced, every surface red), 2026-08-24T14-38-22 (the shipped catalogue blanking one key), and 2026-08-24T14-39-21 (the compiled-in fallback blanking one key). A fourth control removed the satori-ui asset glob from the 'development' configuration only and the check caught 1 of 2 asset arrays, which is the Angular replaces-rather-than-merges trap already recorded in the workarounds register. 2026-08-24T14-40-16 is the restored pass."
+        "The step-3 negative controls are on disk as failed manifests, not just asserted: phase-6-a11y/2026-08-24T14-37-37 (13 failures - the empty sat.* override re-introduced, every surface red), 2026-08-24T14-38-22 (the shipped catalogue blanking one key), and 2026-08-24T14-39-21 (the compiled-in fallback blanking one key). A fourth control removed the satori-ui asset glob from the 'development' configuration only and the check caught 1 of 2 asset arrays, which is the Angular replaces-rather-than-merges trap already recorded in the workarounds register. 2026-08-24T14-40-16 is the restored pass.",
+        "Step 4 added the 16th gate, supply-chain, and SAST via CodeQL. Before this the repository had NO static application security testing at all; its security assurance was `npm audit` (dependencies, not our code) plus human review - and human review is what found all nine security defects fixed after the Phase 5 adversarial review. Tooling found none of them because there was no tooling.",
+        "The SCA gate deliberately gates on `npm audit --omit=dev`, not the full audit. Dev-inclusive is 9 high and 13 moderate, none of which reaches a customer; gating on that total would be permanently red and therefore bypassed, the same reasoning as the coverage ratchet. The dev total is REPORTED on every run so it cannot be quietly forgotten either.",
+        "Accepting a finding now expires. The one production advisory (quill, low, XSS via HTML export) is allowlisted with a reason and an `expires` date, and an expired entry FAILS. An allowlist entry for an advisory the audit no longer reports also fails, because a standing acceptance of a fixed problem reads as coverage it does not provide. Six negative controls, all confirmed red: expired entry, missing entry, an unused dependency reappearing, an exception for an undeclared package, an acceptance of a non-existent advisory, and a blocking severity that the allowlist must not excuse.",
+        "The gate's fourth check found TWO MORE unused production dependencies than were recorded as debt. `openai` and `express` were known; `cors` and `dotenv` were not. All four are removed. This is not tidiness: `openai` in `dependencies` is the clearest single reason a reader concludes this application makes direct LLM calls, which it does not.",
+        "Removing them exposed the lockfile hazard from the other direction. `npm install --package-lock-only` pruned two unrelated nested @emnapi entries and the lockfile gate caught it immediately - 2 unresolvable edges. Restored the known-good lock and removed only the three root entries by hand, per the repo rule. All 225 platform-tagged entries preserved and `npm ci --dry-run` clean.",
+        "Two bugs in my own gate, both self-inflicted and both instructive. It read package.json when scanning for references, so every dependency matched its own declaration and the check found nothing. Then, with substring matching, `tslib` counted as referenced because THIS GATE'S OWN DOC COMMENT contains the string `\"tslib\": \"^2.8.1\"` while explaining the first bug. Now matched as real module specifiers only, including the bare side-effect `import 'x';` form whose omission has been a defect twice before in this repo.",
+        "A new guardrail, checkSanitizerPairing, enforces that every `bypassSecurityTrustHtml` has a DOMPurify.sanitize() or escapeHtml() in the same class member. All nine calls were already safe, but that safety is a PAIRING and nothing enforced it: deleting one sanitize() call would leave a compiling, passing, stored-XSS hole on a path that renders `note:note`, which any user with write access can author. It also underwrites the quill allowlist entry, whose stated reason is exactly that every render path sanitises. Falsified three ways including a vacuous-pass control.",
+        "Adding the 16th gate turned beta:state red again, because all six completed phases cited a 15/15 re-gate. Re-gated at 16/16 and re-cited rather than relaxing the check. This is the THIRD time adding a gate has done that, and all three times the gate was right."
       ],
       "notCovered": [
         "Unit coverage above 90%: 3 of 15 measurable projects meet it substantively (shared-app-config, shared-extensions, permission-dialogs). search 22.76%, document-detail 29.8%, browse 56.72%. The single largest item in the phase and barely started. Recorded as '5 of 17' until 2026-08-24: the gate scored 0/0 statements as 100%, so assets and tasks — zero specs — counted as meeting the bar. core meets it truthfully over 7 statements and is flagged as thin.",

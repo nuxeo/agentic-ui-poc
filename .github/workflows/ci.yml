@@ -50,12 +50,12 @@ jobs:
       - name: Run review guardrails
         run: npm run review:guardrails -- --base=$NX_BASE --head=$NX_HEAD
 
-      # Three static checks that `beta:gate` has run locally since Phase 5 and that had
+      # Four static checks that `beta:gate` has run locally since Phase 5 and that had
       # never run here. They are seconds each and they close a specific hole: the local
       # gate and CI were two different gates, so "green locally" and "green in CI" made
       # different claims and neither said so. A check that only ever runs on one
       # developer's machine is a check that stops running the day they stop running it.
-      - name: Static beta gates (evidence, reference drift, customer guardrails)
+      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain)
         run: |
           set -euo pipefail
           # Fails if an evidence step asserts something it cannot observe. Phase 1 shipped
@@ -67,6 +67,12 @@ jobs:
           # The guardrail we hand customers, run against our own reference library — so we
           # do not learn it is broken from a customer's CI log.
           npm run beta:customer-guardrails
+          # SCA. Fails on a high or critical in the PRODUCTION tree, and on an accepted
+          # advisory whose review date has expired. Gating on the dev-inclusive total
+          # instead would be permanently red (9 high, none shipped) and so bypassed.
+          # Also fails on a production dependency nothing imports — which is how `cors`
+          # and `dotenv` were found, two beyond the two already recorded as debt.
+          npm run beta:supply-chain
 
       - name: Lint affected projects
         run: npx nx affected -t lint --base=$NX_BASE --head=$NX_HEAD

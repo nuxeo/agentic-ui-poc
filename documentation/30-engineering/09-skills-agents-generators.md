@@ -224,14 +224,14 @@ the architecture.
 
 ### Tier 2 — continuous quality, claimed as GitHub Actions (6 named)
 
-| Catalog entry            | Status                                   | Evidence                                                                            |
-| ------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------- |
-| Bundle Size              | **Implemented**, not as its own workflow | `ci.yml` "Check bundle size", 6 MiB ceiling                                         |
-| Dependency Vulnerability | **Implemented** differently              | [`.github/dependabot.yml`](../../.github/dependabot.yml) + `npm audit`. **No SAST** |
-| API Drift                | **Implemented**, not as its own workflow | `beta:api` gate, in `ci.yml`                                                        |
-| Broken Link              | **Not implemented**                      | No workflow, no script                                                              |
-| Accessibility            | **Partially**                            | `phase-6-a11y.mjs` axe scans — but **not in CI**, needs a live backend              |
-| Performance              | **Not implemented**                      | Bundle size only; no runtime performance measurement                                |
+| Catalog entry            | Status                                   | Evidence                                                                                                                |
+| ------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Bundle Size              | **Implemented**, not as its own workflow | `ci.yml` "Check bundle size", 6 MiB ceiling                                                                             |
+| Dependency Vulnerability | **Implemented** differently              | [`.github/dependabot.yml`](../../.github/dependabot.yml), the `supply-chain` gate, and CodeQL for SAST since 2026-08-24 |
+| API Drift                | **Implemented**, not as its own workflow | `beta:api` gate, in `ci.yml`                                                                                            |
+| Broken Link              | **Not implemented**                      | No workflow, no script                                                                                                  |
+| Accessibility            | **Partially**                            | `phase-6-a11y.mjs` axe scans — but **not in CI**, needs a live backend                                                  |
+| Performance              | **Not implemented**                      | Bundle size only; no runtime performance measurement                                                                    |
 
 ### Tier 3 — scheduled & maintenance (6 named)
 

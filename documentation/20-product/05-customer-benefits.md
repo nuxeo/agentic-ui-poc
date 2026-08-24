@@ -83,7 +83,7 @@ The programme's own history is the evidence, from RFC §7.1: the POC produced ~1
 quickly, and with them **seven code-level defects, eleven tests for 2,949 lines of bridge
 source, and a branch never compiled by CI**.
 
-What exists now instead: 15 gates, 10 commit-time guardrails, a falsifiability audit over 257
+What exists now instead: 16 gates, 10 commit-time guardrails, a falsifiability audit over 257
 evidence assertions, two read-only review agents, and a requirement for adversarial review
 before any phase is signed off. That apparatus found, in already-signed-off work:
 

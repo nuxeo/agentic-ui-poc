@@ -171,9 +171,7 @@ Every CIC op returns the same envelope:
 
 ```json
 {
-  "response": {
-    /* upstream JSON body */
-  },
+  "response": {/* upstream JSON body */},
   "responseCode": 200,
   "responseMessage": "OK"
 }

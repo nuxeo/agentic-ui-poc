@@ -43,7 +43,7 @@ described below has a recorded negative control.
 
 ---
 
-## 2. The 15 gates
+## 2. The 16 gates
 
 ```bash
 npm run beta:gate -- --phase <id>                      # all 15, cheapest first, stop at first failure
@@ -53,23 +53,24 @@ npm run beta:gate -- --gates lockfile,guardrails,lint  # fast inner loop
 Ordered deliberately: a lint error usually explains the test failure that would follow, and
 running the full set on a known-broken tree wastes minutes per iteration.
 
-| #   | Gate                  | Asserts                                                                               | Why it exists                                                                                                                                                                   |
-| --- | --------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `node`                | The runtime is one whose results mean anything                                        | An agent on the wrong Node major gets a red indistinguishable from a code defect, and the obvious response — edit the failing spec — damages working code. That happened        |
-| 2   | `lockfile`            | Every non-optional dependency edge resolves **within the lock**                       | The failure the other gates structurally cannot see. `npm ci --dry-run` only demands what the current platform resolves, so on macOS it never looks at the pruned Linux subtree |
-| 3   | `guardrails`          | 10 repo invariants — see §3                                                           |                                                                                                                                                                                 |
-| 4   | `assertions`          | Every evidence assertion is **capable of failing**                                    | Phase 1 shipped a defect past two checks that "certified properties they could not observe"                                                                                     |
-| 5   | `lint`                | Affected ESLint, incl. real module boundaries                                         |                                                                                                                                                                                 |
-| 6   | `test`                | Affected unit tests                                                                   | **Does not typecheck** — vitest strips types through esbuild                                                                                                                    |
-| 7   | `build`               | Affected builds                                                                       |                                                                                                                                                                                 |
-| 8   | `typecheck`           | `ngc` per library                                                                     | Most libraries have no `build` target, so before this a type error confined to a library reached `main`                                                                         |
-| 9   | `bundle`              | Banned symbols absent; required assets present **and non-empty**                      | Found adf-hx importing `ng-mocks` — a test library — into the shipped runtime bundle, with two `eval()` calls                                                                   |
-| 10  | `api-surface`         | The published `.d.ts` matches a 2,221-line snapshot                                   |                                                                                                                                                                                 |
-| 11  | `publishability`      | A real `npm publish --dry-run`, generators resolve, declarations typecheck standalone |                                                                                                                                                                                 |
-| 12  | `fork-simulation`     | The template compiles against the **built** package                                   |                                                                                                                                                                                 |
-| 13  | `upgrade-rehearsal`   | A Layer 0/1/2 customisation survives a version bump                                   | The only gate that crosses a version boundary                                                                                                                                   |
-| 14  | `reference-drift`     | The customer-facing extension reference agrees with the code                          | The only customer-facing document nothing checked                                                                                                                               |
-| 15  | `customer-guardrails` | The guardrail we ship, run against our own reference library                          | A tool we hand customers and never run ourselves is one we would learn was broken from a customer's CI log                                                                      |
+| #   | Gate                  | Asserts                                                                                                       | Why it exists                                                                                                                                                                   |
+| --- | --------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `node`                | The runtime is one whose results mean anything                                                                | An agent on the wrong Node major gets a red indistinguishable from a code defect, and the obvious response — edit the failing spec — damages working code. That happened        |
+| 2   | `lockfile`            | Every non-optional dependency edge resolves **within the lock**                                               | The failure the other gates structurally cannot see. `npm ci --dry-run` only demands what the current platform resolves, so on macOS it never looks at the pruned Linux subtree |
+| 3   | `supply-chain`        | No production `high`/`critical`; every acceptance is dated and unexpired; no unimported production dependency | SCA was a human running `npm audit` and writing the number into a document. It also found `cors` and `dotenv` — two unused production dependencies nobody had recorded          |
+| 4   | `guardrails`          | 11 repo invariants — see §3                                                                                   |                                                                                                                                                                                 |
+| 5   | `assertions`          | Every evidence assertion is **capable of failing**                                                            | Phase 1 shipped a defect past two checks that "certified properties they could not observe"                                                                                     |
+| 6   | `lint`                | Affected ESLint, incl. real module boundaries                                                                 |                                                                                                                                                                                 |
+| 7   | `test`                | Affected unit tests                                                                                           | **Does not typecheck** — vitest strips types through esbuild                                                                                                                    |
+| 8   | `build`               | Affected builds                                                                                               |                                                                                                                                                                                 |
+| 9   | `typecheck`           | `ngc` per library                                                                                             | Most libraries have no `build` target, so before this a type error confined to a library reached `main`                                                                         |
+| 10  | `bundle`              | Banned symbols absent; required assets present **and non-empty**                                              | Found adf-hx importing `ng-mocks` — a test library — into the shipped runtime bundle, with two `eval()` calls                                                                   |
+| 11  | `api-surface`         | The published `.d.ts` matches a 2,221-line snapshot                                                           |                                                                                                                                                                                 |
+| 12  | `publishability`      | A real `npm publish --dry-run`, generators resolve, declarations typecheck standalone                         |                                                                                                                                                                                 |
+| 13  | `fork-simulation`     | The template compiles against the **built** package                                                           |                                                                                                                                                                                 |
+| 14  | `upgrade-rehearsal`   | A Layer 0/1/2 customisation survives a version bump                                                           | The only gate that crosses a version boundary                                                                                                                                   |
+| 15  | `reference-drift`     | The customer-facing extension reference agrees with the code                                                  | The only customer-facing document nothing checked                                                                                                                               |
+| 16  | `customer-guardrails` | The guardrail we ship, run against our own reference library                                                  | A tool we hand customers and never run ourselves is one we would learn was broken from a customer's CI log                                                                      |
 
 ### Two traps that have each cost a phase
 
@@ -95,7 +96,7 @@ running the full set on a known-broken tree wastes minutes per iteration.
 
 ## 3. The commit-time guardrails
 
-[`scripts/review-guardrails.mjs`](../../scripts/review-guardrails.mjs), 10 checks, run by
+[`scripts/review-guardrails.mjs`](../../scripts/review-guardrails.mjs), 11 checks, run by
 the gate and by CI.
 
 | Check                     | Enforces                                                                               |
@@ -110,6 +111,7 @@ the gate and by CI.
 | `checkAngularDevAssets`   | Dev-only assets do not ship                                                            |
 | `checkAdfHxWorkaroundIds` | A `WORKAROUND(adf-hx): W<n>` marker has a register row **and vice versa**              |
 | `checkNoAdfHxInPublicApi` | No adf-hx type reachable through a library barrel, walking the re-export graph         |
+| `checkSanitizerPairing`   | Every `bypassSecurityTrustHtml` has a sanitiser in the **same class member**           |
 
 Two of these were **diff-scoped** until 2026-08-24, meaning every violation predating the
 check was permanently exempt — not a rule, a rule for new code. Four real blob-URL leaks
@@ -118,6 +120,15 @@ lived behind that exemption while the gate reported pass on every run.
 `checkNoAdfHxInPublicApi` walks the barrel's re-export graph to **depth**, because the leak
 that cost 0.95 MB of initial bundle was two hops away: the barrel exported a providers file
 which imported adf-hx.
+
+`checkSanitizerPairing` exists because the safety of the nine `bypassSecurityTrustHtml` calls is a
+**pairing**, not a property of either half. All nine were already correct — DOMPurify or an
+escape-then-build — but nothing enforced it, and deleting one `sanitize()` call would have left a
+compiling, passing, stored-XSS hole on a path that renders `note:note`, which any user with write
+access can author. It also underwrites the `quill` entry in the supply-chain allowlist, whose stated
+reason is exactly that every render path sanitises. It is scoped to the enclosing class member, so a
+sanitiser in a neighbouring method cannot vouch for a bypass, and it fails if it finds **zero**
+calls — a glob change must not read as a pass.
 
 ---
 
@@ -283,12 +294,13 @@ Two consequences worth separating, from `nx graph`:
 | **Phase evidence**                                              |     ✅     |  ❌   | Needs a live backend                                     |
 | Bundle **size** ceiling                                         |     —      |  ✅   | 6 MiB total shipped JS+CSS                               |
 
-Until 2026-08-24, CI ran 8 of 15 gates, so "green locally" and "green in CI" made different
-claims and neither disclosed it.
+Earlier on 2026-08-24, CI ran **8 of the then-15** gates, so "green locally" and "green in CI"
+made different claims and neither disclosed it. Four were added to CI that day, and
+`supply-chain` with it, so CI now runs 9 of 16.
 
 ---
 
-## 8. GitHub Actions — 8 workflows
+## 8. GitHub Actions — 9 workflows
 
 | Workflow                | Trigger                                  | Does                                                                                  |
 | ----------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------- |

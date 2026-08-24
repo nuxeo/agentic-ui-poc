@@ -756,6 +756,77 @@ function checkNoAdfHxInPublicApi() {
   }
 }
 
+/**
+ * Every `bypassSecurityTrustHtml` must be paired with a sanitiser in the same member.
+ *
+ * `DomSanitizer.bypassSecurityTrustHtml` disables Angular's XSS protection for that string. There
+ * are nine calls in this repository and all nine are currently safe, because each one is preceded
+ * by either `DOMPurify.sanitize()` or an escape-then-build step:
+ *
+ *   - `ai-markdown.pipe.ts` escapes `& < > "` and then inserts only its own fixed tags
+ *   - `document-detail.ts` x2 and `note-editor.ts` x2 run `DOMPurify.sanitize()`
+ *   - `kd-citation-dialog.ts` x3 escape every interpolated segment
+ *
+ * That safety is a **pairing**, not a property of either half, and nothing enforced it. Deleting one
+ * `DOMPurify.sanitize()` call would leave a compiling, passing, stored-XSS vulnerability on a path
+ * that renders `note:note` — content any user with write access can author.
+ *
+ * It also underwrites a real decision: the production `npm audit` has one finding, a Quill XSS via
+ * HTML export, and `.ai/state/supply-chain-allowlist.json` accepts it *on the grounds that* every
+ * render path sanitises. This check is what makes that reasoning durable rather than a snapshot.
+ *
+ * The search is confined to the enclosing class member rather than a fixed line window, so a
+ * sanitiser call in an unrelated neighbouring method cannot vouch for a bypass.
+ */
+function checkSanitizerPairing() {
+  const files = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((file) => /^(libs|apps)\/.+\.ts$/.test(file) && !/\.spec\.ts$/.test(file));
+
+  const SANITISERS = /DOMPurify\.sanitize\s*\(|\bescapeHtml\s*\(|\bsanitizeHtml\s*\(/;
+  let calls = 0;
+
+  for (const file of files) {
+    if (!fileExists(file)) continue;
+    const body = read(file);
+    if (!body.includes('bypassSecurityTrustHtml')) continue;
+    const lines = body.split('\n');
+
+    lines.forEach((line, index) => {
+      if (!line.includes('bypassSecurityTrustHtml')) return;
+      calls += 1;
+
+      // Walk back to the start of the enclosing member: the nearest line at class-member
+      // indentation that opens a method, a getter, or an arrow-function property.
+      let start = 0;
+      for (let i = index; i >= 0; i -= 1) {
+        if (/^ {2}(?:(?:readonly|private|public|protected|static|async|get)\s+)*[\w$]+\s*[=(]/.test(lines[i])) {
+          start = i;
+          break;
+        }
+      }
+      const member = lines.slice(start, index + 1).join('\n');
+      if (SANITISERS.test(member)) return;
+
+      fail(
+        `${file}:${index + 1} calls bypassSecurityTrustHtml with no DOMPurify.sanitize() or\n` +
+          '    escapeHtml() in the same member. That disables Angular\'s XSS protection on a string\n' +
+          '    this code did not sanitise. Note bodies come from `note:note`, which any user with\n' +
+          '    write access can author, so an unsanitised render path is stored XSS.',
+      );
+    });
+  }
+
+  // A glob or rename that finds nothing must not read as a pass. There are nine calls today; if
+  // this ever reports zero, the check stopped looking rather than the risk going away.
+  if (calls === 0) {
+    fail(
+      'checkSanitizerPairing found no bypassSecurityTrustHtml calls at all, so it asserted ' +
+        'nothing. There were nine. Check the file glob before trusting a pass.',
+    );
+  }
+}
+
 checkThemeTokens();
 checkDocsNumbering();
 checkVitestProjects();
@@ -766,6 +837,7 @@ checkHardcodedSecrets();
 checkAngularDevAssets();
 checkAdfHxWorkaroundIds();
 checkNoAdfHxInPublicApi();
+checkSanitizerPairing();
 
 if (warnings.length) {
   console.warn('\nReview guardrail warnings:');

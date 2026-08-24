@@ -95,14 +95,30 @@ phase had self-reported green while containing at least one overstated claim**.
 are expensive to reverse — public API, action descriptor shape, anything touching
 authentication, credentials or blob lifecycle.
 
-### H4 · No SAST; SCA is `npm audit` only
+### H4 · SAST and SCA — closed 2026-08-24
 
-No static application security testing exists. Dependency scanning is `npm audit` plus
-Dependabot. Current: 1 low (`quill` XSS), 0 high, 0 critical.
+CodeQL now runs the `security-and-quality` query suite on every push and weekly, and SCA is the
+16th gate rather than a manual `npm audit` written into a document. It fails on a high or critical
+in the **production** tree, on an accepted advisory whose review date has expired, and on a
+production dependency nothing imports.
 
-Given nine real security defects were found by adversarial review — blob-URL leaks, unguarded
-subscriptions, an `<img [src]>` bypassing the HTTP interceptor, and an HXQL injection — the
-absence of automated security analysis is a material gap.
+Current production audit: **1 low** (`quill` XSS via HTML export), 0 high, 0 critical. That one is
+accepted until 2026-11-30 on the grounds that every path rendering note HTML sanitises through
+DOMPurify first — and a guardrail, `checkSanitizerPairing`, now fails the build if that pairing is
+ever broken, so the acceptance rests on an enforced invariant rather than a snapshot.
+
+The dev-inclusive audit is **9 high and 13 moderate**, all build-time only. Deliberately reported
+and **not** gated: gating on a total that no customer is exposed to would be permanently red, and a
+gate that cannot pass gets bypassed and then ignored. It is still worth reducing.
+
+Two things this closed that were not on anyone's list: `cors` and `dotenv` were unused production
+dependencies nobody had recorded, alongside the known `openai` and `express`. All four removed.
+
+**Residual risk, and it is the honest part:** nine real security defects were found by _adversarial
+review_ — blob-URL leaks, unguarded subscriptions, an `<img [src]>` bypassing the HTTP interceptor,
+an HXQL injection — and CodeQL would very likely have found none of them. They are architectural
+and lifecycle defects, not the taint-flow patterns a generic query suite is good at. SAST closes a
+class of gap; it does not replace the review that has actually been finding things here.
 
 ### H5 · No production observability
 
@@ -163,7 +179,7 @@ devDependency (types-only import), but the adf-core surface remains.
 | `selection` rule context                     | Two documented rules permanently `false`         | Small–medium — needs a fetch per selected row         |
 | Zero-statement 100% coverage artefact        | Inflated reporting                               | Small — treat a zero-statement report as unmeasured   |
 | 12 unwatched `AGENTS/` files                 | Silent drift                                     | Small per file — extend the staleness pattern         |
-| No SAST                                      | Undetected vulnerability classes                 | Small — add CodeQL                                    |
+| ~~No SAST~~ **closed 2026-08-24**            | CodeQL on push and weekly; SCA is the 16th gate  | Done                                                  |
 | Unused `openai` / `express`                  | Lockfile weight, audit surface                   | Trivial — remove                                      |
 | E2E absent from CI                           | Regressions reach `main`                         | Medium — needs Nuxeo in CI                            |
 
@@ -187,7 +203,7 @@ storage, governance, merge semantics — is done.
 
 ### O3 · Productise the verification apparatus
 
-The 15 gates, evidence assertions and adversarial review pattern are **product-independent** and
+The 16 gates, evidence assertions and adversarial review pattern are **product-independent** and
 address the industry's live question: how do you ship AI-written code safely? Potentially more
 broadly valuable than Satori itself, either internally across product lines or externally.
 

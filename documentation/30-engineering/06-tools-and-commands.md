@@ -54,7 +54,8 @@ Recovery: restore a known-good lock, merge only the new entries, run
 
 | Command                                                 | Purpose                                                      |
 | ------------------------------------------------------- | ------------------------------------------------------------ |
-| `npm run beta:gate -- --phase <id>`                     | All 15 gates, cheapest first, stop at first failure          |
+| `npm run beta:gate -- --phase <id>`                     | All 16 gates, cheapest first, stop at first failure          |
+| `npm run beta:supply-chain`                             | SCA: production audit, dated acceptances, unimported deps    |
 | `npm run beta:gate -- --gates lockfile,guardrails,lint` | Fast inner loop                                              |
 | `npm run beta:gate -- --gates <id>`                     | Any subset. An unknown id prints the valid list              |
 | `npm run beta:gate -- --base <ref>`                     | Change the affected-calculation base (default `origin/main`) |

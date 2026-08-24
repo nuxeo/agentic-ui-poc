@@ -71,6 +71,24 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/lockfile-integrity.mjs'],
   },
+  // Phase 6 step 4 gate: SCA with teeth, next to `lockfile` because both read the dependency
+  // tree — one asks whether it resolves, this one asks whether it is safe to ship.
+  //
+  // It gates on `npm audit --omit=dev`, not the full audit. The dev-inclusive total is 9 high
+  // and 13 moderate, none of which reaches a customer; gating on that would be permanently red,
+  // and a gate that cannot pass gets bypassed and then ignored. The dev total is reported on
+  // every run so it cannot be quietly forgotten either.
+  //
+  // Needs network access to the registry, which is why it sits early enough to fail fast rather
+  // than after eight minutes of builds.
+  {
+    id: 'supply-chain',
+    label: 'Supply chain',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/supply-chain.mjs'],
+    // The accepted-advisory notes and the dev-inclusive total are the evidence, not noise.
+    echoOnPass: true,
+  },
   {
     id: 'guardrails',
     label: 'Review guardrails',
