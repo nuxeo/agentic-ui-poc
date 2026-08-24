@@ -5,6 +5,7 @@
     "beta:api": "node scripts/beta-harness/api-surface.mjs",
     "beta:audit": "node scripts/beta-harness/assertion-audit.mjs",
     "beta:backend": "node scripts/beta-harness/backend-preflight.mjs",
+    "beta:bundle": "node scripts/beta-harness/no-test-libs-in-bundle.mjs",
     "beta:coverage": "node scripts/beta-harness/coverage-gate.mjs",
     "beta:customer-guardrails": "node libs/platform/guardrails/check-extension-library.mjs libs/extensions/acme-extensions",
     "beta:evidence": "node scripts/beta-harness/phase-runner.mjs",

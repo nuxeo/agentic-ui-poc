@@ -50,6 +50,24 @@ jobs:
       - name: Run review guardrails
         run: npm run review:guardrails -- --base=$NX_BASE --head=$NX_HEAD
 
+      # Three static checks that `beta:gate` has run locally since Phase 5 and that had
+      # never run here. They are seconds each and they close a specific hole: the local
+      # gate and CI were two different gates, so "green locally" and "green in CI" made
+      # different claims and neither said so. A check that only ever runs on one
+      # developer's machine is a check that stops running the day they stop running it.
+      - name: Static beta gates (evidence, reference drift, customer guardrails)
+        run: |
+          set -euo pipefail
+          # Fails if an evidence step asserts something it cannot observe. Phase 1 shipped
+          # a dead feature past two checks that certified properties they could not see.
+          npm run beta:audit
+          # The only customer-facing document nothing checked. When first measured it was
+          # wrong in both directions.
+          npm run beta:reference
+          # The guardrail we hand customers, run against our own reference library — so we
+          # do not learn it is broken from a customer's CI log.
+          npm run beta:customer-guardrails
+
       - name: Lint affected projects
         run: npx nx affected -t lint --base=$NX_BASE --head=$NX_HEAD
 
@@ -122,6 +140,19 @@ jobs:
           if npx nx show projects --affected --base=$NX_BASE --head=$NX_HEAD --plain | grep -q "^nuxeo-ui$"; then
             rm -rf dist
             npx nx build nuxeo-ui --configuration=production
+
+            # Bundle *contents*, not just its size — and this is the first commit in which
+            # it runs here at all. It is the gate that found adf-hx importing a test
+            # library from its shipped runtime bundle, putting ng-mocks' implementation and
+            # two `eval()` calls into a customer-facing chunk. It needs the production
+            # build, which is why it lives in this step rather than with the static gates
+            # above, and it must come before the size measurement so a contents failure is
+            # not reported as a size pass.
+            #
+            # Invoked directly rather than through `beta:gate --gates bundle`: the gate
+            # runner writes its report under the evidence root on the developer's Desktop,
+            # which does not exist on a runner.
+            npm run beta:bundle
 
             # Scoped to dist/nuxeo-ui, NOT `-path '*/nuxeo-ui/*'` under all of dist.
             #
