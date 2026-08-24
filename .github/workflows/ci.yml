@@ -70,21 +70,29 @@ jobs:
       - name: Typecheck affected projects
         run: npx nx affected -t typecheck --base=$NX_BASE --head=$NX_HEAD
 
-      # The two checks that guard the published package. Run unconditionally rather than
-      # only when affected: they are ~10s in total, and they are the checks that catch
-      # the expensive class of defect — a `strictNullChecks` misconfiguration shipped 27
-      # wrongly non-nullable public types while every other gate here was green.
+      # The three checks that guard the published package. Run unconditionally rather
+      # than only when affected: they are ~30s in total, and they are the checks that
+      # catch the expensive class of defect — both of the ones below were configuration
+      # *absent* rather than wrong, so no compiler reported either, and every other gate
+      # in this file was green through both.
       #
       # MUST stay above "Check bundle size", which starts with `rm -rf dist` and would
-      # delete the platform build these two read.
-      - name: Verify published API surface and fork resolution
+      # delete the platform build these three read.
+      - name: Verify the published package
         run: |
           set -euo pipefail
           npx nx build platform
           # Fails if the built .d.ts surface no longer matches docs/api/platform.api.md.
+          # Caught nothing on its own until it was rewritten — it reported PASS across 27
+          # changed types because the rolled-up .d.ts has no `export` prefix to match.
           npm run beta:api
+          # Runs a real `npm publish --dry-run`, the only check that executes the
+          # `prepublishOnly` script. Phase 4 shipped a package that could not be
+          # published at all, for want of `compilationMode: partial`.
+          npm run beta:publishable
           # Compiles the template against the BUILT declarations instead of the source
-          # tree — the resolution a customer actually gets.
+          # tree — the resolution a customer actually gets. Found the platform being
+          # compiled without `strictNullChecks`, shipping 27 wrong public types.
           npm run beta:fork
 
       - name: Check bundle size (nuxeo-ui)

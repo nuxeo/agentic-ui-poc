@@ -12,7 +12,10 @@
  *
  * Options:
  *   --phase <id>     label the report, e.g. phase-3-document-list
- *   --gates <list>   comma separated subset of: node,lockfile,guardrails,lint,test,build,typecheck
+ *   --gates <list>   comma separated subset of the ids in ALL_GATES below. Passing an
+ *                    unknown one prints the full current list, so that is the
+ *                    authoritative enumeration rather than this line, which went stale
+ *                    twice while gates were added.
  *   --base <ref>     git base for affected calculation (default origin/main)
  *   --tail <n>       lines of failing output to show (default 40)
  *
@@ -68,7 +71,12 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/lockfile-integrity.mjs'],
   },
-  { id: 'guardrails', label: 'Review guardrails', cmd: 'node', argv: ['scripts/review-guardrails.mjs', '--base', base] },
+  {
+    id: 'guardrails',
+    label: 'Review guardrails',
+    cmd: 'node',
+    argv: ['scripts/review-guardrails.mjs', '--base', base],
+  },
   // Static, so it belongs with the cheap gates — and it guards the one thing the
   // other six structurally cannot. Lint, test, build and typecheck all check the
   // *application*; nothing checked whether the *evidence* was capable of failing.
@@ -81,15 +89,35 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/assertion-audit.mjs'],
   },
-  { id: 'lint', label: 'Affected lint', cmd: 'npx', argv: ['nx', 'affected', '-t', 'lint', `--base=${base}`] },
-  { id: 'test', label: 'Affected tests', cmd: 'npx', argv: ['nx', 'affected', '-t', 'test', `--base=${base}`] },
-  { id: 'build', label: 'Affected build', cmd: 'npx', argv: ['nx', 'affected', '-t', 'build', `--base=${base}`] },
+  {
+    id: 'lint',
+    label: 'Affected lint',
+    cmd: 'npx',
+    argv: ['nx', 'affected', '-t', 'lint', `--base=${base}`],
+  },
+  {
+    id: 'test',
+    label: 'Affected tests',
+    cmd: 'npx',
+    argv: ['nx', 'affected', '-t', 'test', `--base=${base}`],
+  },
+  {
+    id: 'build',
+    label: 'Affected build',
+    cmd: 'npx',
+    argv: ['nx', 'affected', '-t', 'build', `--base=${base}`],
+  },
   // Libraries have no `build` target — Nx's module-boundary rule forbids a
   // buildable library from importing a non-buildable one, and nothing in
   // `libs/` is buildable until Phase 4 gives them ng-packagr. `typecheck` runs
   // the Angular compiler over a library on its own, so a change confined to one
   // is checked directly rather than only wherever `nuxeo-ui` happens to use it.
-  { id: 'typecheck', label: 'Affected typecheck', cmd: 'npx', argv: ['nx', 'affected', '-t', 'typecheck', `--base=${base}`] },
+  {
+    id: 'typecheck',
+    label: 'Affected typecheck',
+    cmd: 'npx',
+    argv: ['nx', 'affected', '-t', 'typecheck', `--base=${base}`],
+  },
   // Last, because it reads the artifact `build` produces. It asks the only question
   // the other gates cannot: what does a customer actually receive? Phase 3's spike
   // found adf-hx importing a test library from its shipped runtime bundle, which put
@@ -112,6 +140,19 @@ const ALL_GATES = [
     label: 'API surface',
     cmd: 'node',
     argv: ['scripts/beta-harness/api-surface.mjs'],
+  },
+  // The gate that asserts the package can be *published*, by running a real
+  // `npm publish --dry-run` on a copy of the built bytes. Nothing above it runs a
+  // publish, so for the whole of Phase 4 `@nuxeo-satori/platform` was unpublishable —
+  // ng-packagr had written a `prepublishOnly` that hard-fails full-mode packages — while
+  // every gate here was green and the phase claimed "an upgrade is an npm version bump".
+  {
+    id: 'publishability',
+    label: 'Package publishability',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/publishability.mjs'],
+    // Names which of its five checks are load-bearing; that belongs in the log.
+    echoOnPass: true,
   },
   // Compiles the template against the **built** declarations instead of the source
   // tree, which is the only gate that sees the resolution a customer actually gets.
@@ -168,7 +209,9 @@ const notRequested = ALL_GATES.filter((g) => !selected.includes(g)).map((g) => g
 
 console.log(`\nBeta verification gate — ${phase}`);
 console.log(`  base   ${base}`);
-console.log(`  gates  ${selected.map((g) => g.id).join(' -> ')}  (${selected.length} of ${ALL_GATES.length})`);
+console.log(
+  `  gates  ${selected.map((g) => g.id).join(' -> ')}  (${selected.length} of ${ALL_GATES.length})`,
+);
 if (notRequested.length) {
   console.log(`  NOT REQUESTED  ${notRequested.join(', ')} — this run cannot speak for them`);
 }
@@ -264,7 +307,9 @@ if (allPassed && full) {
 } else if (allPassed) {
   console.log(`verdict  PASS (PARTIAL) — ${results.length} of ${ALL_GATES.length} gates green`);
   console.log(`         NOT RUN: ${notRequested.join(', ')}`);
-  console.log('         A partial run is a fast inner loop, not a phase gate. Do not sign off on this.');
+  console.log(
+    '         A partial run is a fast inner loop, not a phase gate. Do not sign off on this.',
+  );
 } else {
   console.log(`verdict  FAIL — first failing gate: ${firstFailure.id}`);
   if (skipped.length) {

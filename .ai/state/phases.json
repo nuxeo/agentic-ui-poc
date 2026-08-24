@@ -34,7 +34,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/2026-08-21T11-47-33",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/2026-08-24T03-05-47-all-phases-signoff"
+        "regate": "gates/2026-08-24T07-13-53-all-phases-signoff"
       },
       "deviations": [],
       "notCovered": [
@@ -49,7 +49,7 @@
       "evidence": {
         "manifest": "phase-1-config/2026-08-21T11-47-45",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/2026-08-24T03-05-47-all-phases-signoff"
+        "regate": "gates/2026-08-24T07-13-53-all-phases-signoff"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -66,7 +66,7 @@
       "evidence": {
         "manifest": "phase-2-registry/2026-08-21T11-51-02",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/2026-08-24T03-05-47-all-phases-signoff"
+        "regate": "gates/2026-08-24T07-13-53-all-phases-signoff"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -91,7 +91,7 @@
         "manifest": "phase-3-adf-hx/2026-08-24T03-03-48",
         "searchManifest": "phase-3-search/2026-08-24T02-58-00",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/2026-08-24T03-05-47-all-phases-signoff"
+        "regate": "gates/2026-08-24T07-13-53-all-phases-signoff"
       },
       "deviations": [
         "CORRECTED: this file previously recorded that DocumentModelService \"calls getModel() from its CONSTRUCTOR, so anything injecting it fails to construct\". The eager call is real; the consequence was not. An async method that throws returns a rejected promise, so the service constructs. Established by writing the test rather than by reasoning about it, after the reasoning had already been written into three files.",
@@ -197,7 +197,7 @@
       "evidence": {
         "manifest": "phase-4-platform/2026-08-23T03-22-29",
         "gate": "gates/2026-08-23T03-47-19-phase-4-signoff",
-        "regate": "gates/2026-08-24T03-05-47-all-phases-signoff"
+        "regate": "gates/2026-08-24T07-13-53-all-phases-signoff"
       },
       "deviations": [
         "Merged from two duplicate entries. `phase-4-layer2` and `phase-4-platform` both carried the title \"Layer 2 — publishable platform\"; the latter was a stub whose notCovered read \"everything\". Kept the id the gate reports and the evidence directory use.",
@@ -206,7 +206,10 @@
         "The platform package was built without `strictNullChecks` because libs/platform/tsconfig.lib.json extends tsconfig.base.json, which does not set `strict` — every other library sets it in its own tsconfig. 27 public types shipped wrongly non-nullable. Found by fork-simulation, not by any pre-existing gate.",
         "The first commit after adding the api-surface gate silently corrupted its own baseline: the snapshot is a .md file, lint-staged runs prettier on *.md, and prettier rewrote quotes, indentation and long type-argument wrapping inside the fenced code blocks. Added to .prettierignore.",
         "The generated extension library contributed a navbar entry pointing at /acme-extensions while nothing routed there, so it fell through the wildcard to /home — a nav entry that goes nowhere. The template now maps the path and ExtensionOutletComponent resolves the component by id.",
-        "ExtensionOutletComponent crashed with `Object.entries(undefined)` when used as a route component. `withComponentInputBinding()` sets every declared input from route data, passing undefined for omitted keys, which defeats the input's `{}` default. Both this template and the product bootstrap with that option, so the crash was reachable from either. Fixed and pinned by a spec that was watched failing."
+        "ExtensionOutletComponent crashed with `Object.entries(undefined)` when used as a route component. `withComponentInputBinding()` sets every declared input from route data, passing undefined for omitted keys, which defeats the input's `{}` default. Both this template and the product bootstrap with that option, so the crash was reachable from either. Fixed and pinned by a spec that was watched failing.",
+        "B2, found by adversarial review after Phase 5 and fixed 2026-08-24: the package could not be published at all. It was compiled in Angular full compilation mode, so ng-packagr wrote a prepublishOnly script into the built package.json whose only job is to hard-fail npm publish — invalidating the phase's central claim that a customer upgrade is an npm version bump. Same root cause as the strictNullChecks deviation above: @nx/angular:package given a tsConfig REPLACES ng-packagr's bundled conf/tsconfig.ngc.json rather than layering onto it, and that file is the only place compilationMode: partial is set. Two defects from one misunderstanding. Now gated by scripts/beta-harness/publishability.mjs, which runs a real npm publish --dry-run — the only check that executes prepublishOnly — watched failing against a deliberately reverted config.",
+        "The guardrail script we tell customers to run was absent from the tarball for the whole of Phase 4, and no shipped doc mentioned it at all: the instruction existed only in the script's own header comment. Added to ng-package.json assets and documented in libs/platform/AGENTS.md §4; publishability check 5 now derives the advertised paths from the shipped docs and fails if any is missing.",
+        "docs/publish-readiness.md §4 step 5 prescribed npm publish --dry-run and was never run, because publishing was deferred — so the one procedure step that exercised this failure was the step the deferral skipped. Recorded there: a procedure step is not a check until something runs it."
       ],
       "notCovered": [
         "PEER INSTALLABILITY: nothing resolves the ten declared peerDependencies from a registry at the versions declared. fork-simulation compiles the template against the built declarations offline, which proves type resolution and says nothing about whether `npm install` succeeds. The first real publish must use --tag alpha for this reason.",
@@ -226,7 +229,7 @@
       "evidence": {
         "manifest": "phase-5-harness/2026-08-24T03-08-47",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/2026-08-24T03-05-47-all-phases-signoff"
+        "regate": "gates/2026-08-24T07-13-53-all-phases-signoff"
       },
       "deviations": [
         "Departed from the plan's wording deliberately, and measured first. The plan said 'split the AGENTS/ knowledge base'; 50 files carry 185 references to AGENTS/ paths, and .github/workflows/staleness-check.yml asserts AGENTS/01-services.md and AGENTS/${i}-*.md exist — so a split breaks CI and every skill. Measuring the content settled it too: 3,177 lines, of which only 3 of 13 files mention extensions, slots or the Layers. libs/platform/AGENTS.md is therefore authored for the audience, not extracted.",

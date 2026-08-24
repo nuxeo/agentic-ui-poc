@@ -134,6 +134,25 @@ npx nx lint <library>
 `typecheck` is not redundant. Vitest strips types through esbuild, so a green `test`
 says nothing about type safety.
 
+### Run the shipped guardrail in your own CI
+
+Those three targets check that your code compiles and that your own assertions hold. They
+cannot tell you that you have made one of the five mistakes below, because each one is
+green code. This package ships the check as an executable:
+
+```bash
+node node_modules/@nuxeo-satori/platform/guardrails/check-extension-library.mjs libs/<your-library>
+```
+
+It exits non-zero on: an ID registered under a prefix you do not own, an import that
+reaches past a published entry point, a library with no spec touching a registry, a
+gating rule missing from `failClosedRules`, and a component exported from your barrel.
+Every one of those corresponds to a mistake made in this codebase, not a hypothetical —
+and every one passes `lint`, `test` and `typecheck`.
+
+We run it against our own reference library on every build, so you are not the first to
+find out when it breaks.
+
 ### Assert against the registry, not against your own call
 
 The failure this contract exists to prevent is a library that registers descriptors

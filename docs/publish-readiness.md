@@ -12,13 +12,14 @@
 > would have caught it.
 >
 > §§2–5 — what a scope change costs, what is already proven, and what is deliberately
-> not done — remain accurate.
+> not done — remain accurate, with one correction recorded in §3.
 
 **Status:** scope decided; publishing deliberately deferred to the final deployment
 stage. `"private": true` is still in place and nothing publishes.
 
-The package builds, installs from a tarball, resolves every subpath, and compiles a
-real application against its published types.
+The package builds, installs from a tarball, resolves every subpath, compiles a real
+application against its published types, and — since 2026-08-24 — **survives an actual
+`npm publish --dry-run`**. Until that date it did not: see §3.
 
 ---
 
@@ -104,6 +105,32 @@ across 190 sites — the same operation already done once, verified by running
 | A real app compiles against published types      | `npm run beta:fork` — the template, resolved to `dist/`                             |
 | The surface cannot change by accident            | `npm run beta:api` — 2026 lines of signatures, watched failing                      |
 | Peers are declared                               | 10 peers; every specifier in the emitted `.d.ts` is a peer or a sibling entry point |
+| **`npm publish` is not refused**                 | `npm run beta:publishable` — a real `--dry-run` on a copy of the built bytes        |
+
+### The row that was missing, and what it cost
+
+Every row above was true when written, and the package was still **impossible to
+publish**. It was compiled in Angular's _full_ compilation mode, so ng-packagr wrote a
+`prepublishOnly` script into the built `package.json` whose only job is to hard-fail
+`npm publish`. Phase 4 was signed off on the claim that a customer upgrade is an
+`npm version` bump, and that claim had no working vehicle.
+
+Two things are worth keeping from it:
+
+- **§4 step 5 below would have caught this.** It says to run `npm publish --dry-run`
+  before publishing. It was written and never run, because publishing was deferred — so
+  the one step that exercised the failure was the one step the deferral skipped. A
+  procedure step is not a check until something runs it; `beta:publishable` now does, in
+  the gate and in CI, and it is the only check that executes `prepublishOnly`.
+- **The cause was configuration _absent_, not wrong.** `@nx/angular:package` given a
+  `tsConfig` replaces ng-packagr's bundled `conf/tsconfig.ngc.json` rather than layering
+  onto it, and that bundled file is the only place `compilationMode: partial` is set.
+  The identical omission had already shipped 27 wrongly non-nullable public types by
+  leaving out `strict`. `libs/platform/tsconfig.lib.json` is the entire compiler
+  configuration for this package, not a set of overrides.
+
+Fixed 2026-08-24; the gate was watched failing against a deliberately reverted config
+before being trusted.
 
 ## 4. What flipping the switch requires
 

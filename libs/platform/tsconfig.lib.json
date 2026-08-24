@@ -29,6 +29,28 @@
     "moduleResolution": "bundler"
   },
   "angularCompilerOptions": {
+    // Partial ("linked") compilation — Angular's library distribution format. It emits
+    // `ɵɵngDeclareComponent` calls that the consuming application's linker lowers to the
+    // `ɵɵdefineComponent` of *its own* Angular version, which is what lets one published
+    // tarball work across minor versions.
+    //
+    // This is the SAME root cause as the `strict` block above, and that is the lesson:
+    // `@nx/angular:package` with a `tsConfig` option calls
+    // `parseRemappedTsConfigAndMergeDefaults`, which despite its name merges only eight
+    // hardcoded options and otherwise REPLACES ng-packagr's bundled
+    // `ng-packagr/src/lib/ts/conf/tsconfig.ngc.json`. That bundled file is the only place
+    // `compilationMode: partial` is set; Angular's own default is `FULL`. So this file is
+    // not a layer on top of sensible defaults — it is the entire configuration, and
+    // anything it fails to restate is lost.
+    //
+    // The consequence was not subtle and still went unnoticed for a whole phase:
+    // ng-packagr writes a `prepublishOnly` script that hard-fails `npm publish` for any
+    // full-mode package, so `@nuxeo-satori/platform` could not be published at all —
+    // while Phase 4's central claim was that a customer upgrade is an `npm version` bump.
+    // `scripts/beta-harness/publishability.mjs` is the gate that now runs a real
+    // `npm publish --dry-run` against the built bytes, which is the only check that
+    // executes the `prepublishOnly` script this omission caused ng-packagr to write.
+    "compilationMode": "partial",
     "enableI18nLegacyMessageIdFormat": false,
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
