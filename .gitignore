@@ -81,3 +81,6 @@ playwright-report/
 # Staging dir for the upgrade rehearsal. Always removed in a finally block; ignored so
 # an interrupted run cannot be committed.
 /.tmp-upgrade-rehearsal/
+
+# Playwright E2E output: JSON results, traces, videos and failure screenshots.
+/dist/e2e/

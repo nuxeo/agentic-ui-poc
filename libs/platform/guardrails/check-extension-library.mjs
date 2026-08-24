@@ -144,13 +144,17 @@ const PUBLISHED = new Set([
 /**
  * `from '…'`, `import('…')` and `require('…')`.
  *
+ * `from '…'`, `import('…')`, `require('…')` **and a bare `import '…'`**.
+ *
  * The first cut matched only the static `from` form, so
  * `import('@nuxeo-satori/platform/extensions/internal/secret')` — a deep path into
- * internals, the exact thing this check exists to reject — passed. Confirmed against this
- * script before fixing.
+ * internals, the exact thing this check exists to reject — passed. The second cut added the
+ * call forms and still missed a **bare side-effect import**, which has neither `from` nor
+ * parentheses; that was found when a probe against `upgrade-rehearsal.mjs`, which carried
+ * the same regex, used precisely that form and was not caught.
  */
 const SPECIFIER =
-  /(?:from\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)['"](@nuxeo-satori\/platform[^'"]*)['"]/g;
+  /(?:from\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s*)['"](@nuxeo-satori\/platform[^'"]*)['"]/g;
 
 for (const [file, text] of sources) {
   for (const m of text.matchAll(SPECIFIER)) {

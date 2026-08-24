@@ -242,23 +242,73 @@ try {
     );
   }
 
-  // 4d. Nothing in OUR sources had to change to make the upgrade work.
-  const dirty = execFileSync('git', ['status', '--porcelain', 'libs', 'apps'], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  }).trim();
-  if (dirty) {
+  /**
+   * 4d. The customer reaches the platform only through published entry points.
+   *
+   * ## What this check used to be, and why that was wrong
+   *
+   * It ran `git status --porcelain libs apps` and failed on a dirty tree, claiming to prove
+   * that "no edits to our sources were needed to make the upgrade work". It proved nothing
+   * of the kind. This script works entirely inside a staging directory and never touches
+   * the repository, so that claim is true **by construction** — unfalsifiable, which is the
+   * defect this repository has paid for more than once. What the check actually detected was
+   * uncommitted work, which says nothing about an upgrade and turned the gate red for anyone
+   * mid-change. It was noticed exactly that way, on the commit that added the E2E project.
+   *
+   * ## What survives an upgrade, and therefore what is worth asserting
+   *
+   * A deep import into platform internals. `@nuxeo-satori/platform/extensions` is supported
+   * and will still resolve next version; a path into its guts is not, and is precisely what
+   * breaks when the internals move — the failure this phase's claim depends on not
+   * happening. So the staged customer tree is checked for specifiers outside the published
+   * `exports` map, against the map of the **upgraded** package rather than a hardcoded list.
+   */
+  const published = new Set(
+    Object.keys(pkg.exports ?? {})
+      .filter((s) => s !== './package.json')
+      .map((s) => s.replace(/^\./, pkg.name)),
+  );
+  // Four forms, and the fourth was missing until a probe used it. A **bare side-effect
+  // import** — `import '@nuxeo-satori/platform/extensions/internal/x';` — has no `from` and
+  // no parentheses, so the first version of this regex sailed straight past the exact shape
+  // the check exists to reject. `\\bimport\\s*['"]` is that case.
+  const SPECIFIER = new RegExp(
+    `(?:from\\s*|\\bimport\\s*\\(\\s*|\\brequire\\s*\\(\\s*|\\bimport\\s*)['"](${pkg.name.replace('/', '\\/')}[^'"]*)['"]`,
+    'g',
+  );
+
+  let inspected = 0;
+  const deep = [];
+  for (const [file] of after) {
+    if (!/\.(ts|mts|js|mjs)$/.test(file)) continue;
+    inspected += 1;
+    const text = readFileSync(join(customerRoot, file), 'utf8');
+    for (const m of text.matchAll(SPECIFIER)) {
+      if (!published.has(m[1])) deep.push(`${file} -> ${m[1]}`);
+    }
+  }
+
+  if (inspected === 0) {
     fail(
-      'Platform and app sources are dirty, so this run cannot claim the upgrade needed no\n' +
-        '    edits to our code. Commit or stash first:\n' +
-        dirty
-          .split('\n')
+      'No TypeScript or JavaScript was staged, so check 4d inspected nothing. The customer\n' +
+        '    surfaces list is probably wrong.',
+    );
+  } else if (deep.length) {
+    fail(
+      `The customer imports ${deep.length} path(s) outside the published exports map:\n` +
+        deep
           .slice(0, 6)
-          .map((l) => `      ${l}`)
-          .join('\n'),
+          .map((d) => `      ${d}`)
+          .join('\n') +
+        `\n    Published: ${[...published].join(', ')}\n` +
+        '    A deep path into internals is what actually breaks on an upgrade, because the\n' +
+        '    internals are free to move without that being a breaking change.',
     );
   } else {
-    notes.push('no edits to platform or app sources were needed');
+    notes.push(
+      `${inspected} customer source file(s) import only published entry points ` +
+        `(${published.size} available)`,
+    );
   }
 } finally {
   rmSync(STAGE, { recursive: true, force: true });
