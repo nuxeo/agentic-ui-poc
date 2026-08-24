@@ -4,7 +4,7 @@
   "sourceRoot": "libs/features/administration/src",
   "prefix": "lib",
   "projectType": "library",
-  "tags": [],
+  "tags": ["scope:features", "type:feature"],
   "targets": {
     "test": {
       "executor": "@nx/vitest:test",

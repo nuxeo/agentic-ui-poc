@@ -21,6 +21,14 @@ Nuxeo Server           ← Via proxy in dev, same-origin in prod
 
 **Critical rules:** Features never import each other · Services in `libs/shared/nuxeo-client/` · All components standalone · All templates external · `inject()` not constructor · `signal()` not BehaviorSubject · `takeUntilDestroyed()` on every subscription
 
+The arrows above are enforced by `@nx/enforce-module-boundaries` `depConstraints` in
+`eslint.config.mjs`, and only since 2026-08-24 — until then the constraint was Nx's
+scaffolded `sourceTag: '*' → onlyDependOnLibsWithTags: ['*']`, which permits every edge
+in the graph. The rule was `error` the whole time and had never rejected anything. Four
+violations had accumulated, including a `libs/shared/` library that depended on two
+feature libraries. Every project now carries `scope:` and `type:` tags; **an untagged
+project cannot depend on anything**, so a new library needs tags before it can import.
+
 → Full detail: `AGENTS/00-architecture.md`
 
 ---

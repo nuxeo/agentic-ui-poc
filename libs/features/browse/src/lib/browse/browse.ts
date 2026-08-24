@@ -106,7 +106,7 @@ import {
   DeletePermissionDialogData,
   ShareExternalDialogComponent,
   ShareExternalDialogData,
-} from '@agentic-ui/feature-collections';
+} from '@agentic-ui/shared-permission-dialogs';
 
 import {
   AppExtensionsService,

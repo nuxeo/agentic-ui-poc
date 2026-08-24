@@ -6,10 +6,10 @@ import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
 
 export default defineConfig(() => ({
   root: __dirname,
-  cacheDir: '../../../node_modules/.vite/libs/shared/drawers',
+  cacheDir: '../../../node_modules/.vite/libs/shared/permission-dialogs',
   plugins: [angular(), nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
   test: {
-    name: 'drawers',
+    name: 'permission-dialogs',
     watch: false,
     passWithNoTests: true,
     globals: true,
@@ -18,7 +18,7 @@ export default defineConfig(() => ({
     setupFiles: ['src/test-setup.ts'],
     reporters: ['default'],
     coverage: {
-      reportsDirectory: '../../../coverage/libs/shared/drawers',
+      reportsDirectory: '../../../coverage/libs/shared/permission-dialogs',
       provider: 'v8' as const,
     },
   },

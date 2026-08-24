@@ -61,19 +61,13 @@ import {
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
-} from '../add-permission-dialog/add-permission-dialog';
-import {
-  UpdatePermissionDialogComponent,
-  UpdatePermissionDialogData,
-} from '../update-permission-dialog/update-permission-dialog';
-import {
   DeletePermissionDialogComponent,
   DeletePermissionDialogData,
-} from '../delete-permission-dialog/delete-permission-dialog';
-import {
   ShareExternalDialogComponent,
   ShareExternalDialogData,
-} from '../share-external-dialog/share-external-dialog';
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
+} from '@agentic-ui/shared-permission-dialogs';
 
 @Component({
   selector: 'lib-collection-detail',

@@ -12,7 +12,7 @@
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint",
-      "$comment": "@nx/eslint/plugin infers this as `eslint:lint`, which `nx affected -t lint` does NOT match \u2014 so the gate and CI never linted this project. Declaring it explicitly is what puts it under the gate."
+      "$comment": "@nx/eslint/plugin infers this as `eslint:lint`, which `nx affected -t lint` does NOT match — so the gate and CI never linted this project. Declaring it explicitly is what puts it under the gate."
     },
     "build": {
       "executor": "nx:run-commands",
@@ -65,5 +65,6 @@
         "command": "ngc -p apps/nuxeo-ui/tsconfig.app.json --outDir dist/out-tsc/apps/nuxeo-ui"
       }
     }
-  }
+  },
+  "tags": ["scope:app", "type:app"]
 }

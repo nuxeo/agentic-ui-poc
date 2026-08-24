@@ -1,21 +1,16 @@
 {
-  "name": "drawers",
+  "name": "permission-dialogs",
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/shared/drawers/src",
+  "sourceRoot": "libs/shared/permission-dialogs/src",
   "prefix": "lib",
   "projectType": "library",
-  "tags": [
-    "scope:shared",
-    "type:ui"
-  ],
+  "tags": ["scope:shared", "type:ui"],
   "targets": {
     "test": {
       "executor": "@nx/vitest:test",
-      "outputs": [
-        "{options.reportsDirectory}"
-      ],
+      "outputs": ["{options.reportsDirectory}"],
       "options": {
-        "reportsDirectory": "coverage/libs/shared/drawers"
+        "reportsDirectory": "coverage/libs/shared/permission-dialogs"
       }
     },
     "lint": {

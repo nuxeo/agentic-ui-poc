@@ -171,7 +171,7 @@ import {
   ShareExternalDialogData,
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
-} from '@agentic-ui/feature-collections';
+} from '@agentic-ui/shared-permission-dialogs';
 
 export interface SectionNode {
   doc: NuxeoDocument;

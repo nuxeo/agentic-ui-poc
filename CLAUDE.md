@@ -89,7 +89,10 @@ Two traps that have each cost a phase:
 - `takeUntilDestroyed()` on every `.subscribe()`
 - `templateUrl` always — no inline templates
 - Never `<img [src]="nuxeoUrl">` — fetch via service, use a blob URL, revoke on destroy
-- Never cross-feature imports — shared logic goes in `libs/shared/`
+- Never cross-feature imports — shared logic goes in `libs/shared/`. Enforced since
+  2026-08-24 by real `depConstraints` in `eslint.config.mjs`; before that the rule was
+  `error` with Nx's permissive default and could not reject a single edge, and four
+  violations had accumulated
 - Credentials from environment only; never hardcoded, never in a URL query string
 - **adf-hx types must never appear in our public API** — wrap them in `adf-hx-bridge`
 - Anything a customer might want to change goes through Layer 0 or 1, not a hardcoded value
