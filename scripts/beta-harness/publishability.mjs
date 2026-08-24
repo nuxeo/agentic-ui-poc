@@ -29,13 +29,36 @@
  *
  * ## What is load-bearing here
  *
- * Check 3 is the real one: it runs `npm publish --dry-run`, which is the only thing that
- * executes `prepublishOnly`. Checks 1, 2, 4 and 5 are cheap corroborations that name the
- * specific failure when 3 goes red, and cover things a dry run does not look at.
+ * Two checks do the real work, for different failures.
  *
- * Verified to fail on purpose: re-adding the full-mode `prepublishOnly` to the built
- * `package.json` turns checks 1 and 3 red, and reverting `compilationMode` in
- * `libs/platform/tsconfig.lib.json` turns 1, 2 and 3 red together.
+ * **Check 3** runs `npm publish --dry-run`, the only thing that executes `prepublishOnly`.
+ * Checks 1, 2 and 4 are cheap corroborations that name the specific cause when 3 goes red.
+ *
+ * **Check 7** typechecks the shipped `.d.ts` files with `skipLibCheck: false`. `beta:fork`
+ * compiles the app *template* against them, which only exercises the types the template
+ * happens to touch — so `avatarColor` shipped as `(name: string) => SatAvatarCategory` with
+ * that name declared nowhere in the file, and every gate was green.
+ *
+ * Checks 5 and 6 assert that what the shipped docs tell a customer to run is actually in
+ * the package: the guardrail script, and the four Nx generators.
+ *
+ * ## Every check here has been watched failing on purpose
+ *
+ * Re-adding the full-mode `prepublishOnly` turns 1 and 3 red; reverting `compilationMode`
+ * turns 1, 2 and 3 red together; deleting a generator factory or the `generators` field
+ * turns 6 red; reintroducing the dangling type turns 7 red.
+ *
+ * **Check 7 silently passed three times before it worked**, and each way is guarded now,
+ * because a check that reports success having done nothing is worse than no check:
+ *
+ * 1. `--types ''` made tsc abort with `TS6044`, and the path filter discarded it. Guarded
+ *    by failing on any `TS5xxx`/`TS6xxx` configuration diagnostic.
+ * 2. A malformed `paths` entry (`pkg/nuxeo-clientindex.d.ts`, a missing separator) meant no
+ *    entry point resolved. `TS2307` is attributed to the importing file, so the filter
+ *    discarded that too. Guarded by failing on any unresolved module.
+ * 3. Compiling from a temp directory outside the repo meant `node_modules` could not be
+ *    reached, producing twenty peer-resolution errors that were the harness's fault. It now
+ *    stages inside the repo and imports via the package specifiers a customer writes.
  *
  * ## Safety
  *
@@ -265,6 +288,170 @@ try {
     }
     if (names.length > 0) {
       notes.push(`${names.length} Nx generator(s) resolve from the package: ${names.join(', ')}`);
+    }
+  }
+
+  // ------------------------------- 7. the shipped declarations typecheck on their own ----
+
+  /**
+   * `tsc --noEmit` over every published `.d.ts`.
+   *
+   * `beta:fork` compiles the *app template* against these declarations, which only exercises
+   * the types the template happens to touch. That left a real hole: `avatarColor` was
+   * published as `(name: string) => SatAvatarCategory` with `SatAvatarCategory` **declared
+   * nowhere in the file** — ng-packagr's rollup had dropped the import of a third-party type
+   * — so any customer annotating that result got `TS2304: Cannot find name`. The template
+   * never calls `avatarColor`, so `beta:fork` was green, and the API snapshot had recorded
+   * the broken signature as its baseline.
+   *
+   * Compiling the declarations themselves needs no consumer and covers every symbol.
+   *
+   * Diagnostics are filtered to files **inside the package**. `skipLibCheck` has to be off
+   * for this to mean anything, and with it off `@alfresco/adf-extensions`' shipped
+   * `index.d.ts` contributes six intrinsic `TS2411` errors — a documented upstream fact, not
+   * ours. Filtering by path keeps the check honest without turning off the thing that makes
+   * it work.
+   */
+  const entryDeclarations = Object.values(pkg.exports ?? {})
+    .map((conditions) => conditions?.types)
+    .filter((path) => typeof path === 'string');
+
+  if (entryDeclarations.length === 0) {
+    fail('No entry point declares a `types` condition, so check 7 typechecked nothing.');
+  } else {
+    /**
+     * Compiled from a directory **inside the repository**, against `dist/`, not against the
+     * temp copy.
+     *
+     * Two reasons, both learned by getting it wrong. Node resolution walks *up* from the
+     * file being compiled, so a probe under the OS temp directory cannot see the repo's
+     * `node_modules` — the first attempt produced twenty `TS2307: Cannot find module
+     * '@angular/core'` errors that were the harness's fault, not the package's. And the
+     * entry points import each other by package specifier
+     * (`@nuxeo-satori/platform/nuxeo-client`), so without a path mapping to `dist/` the
+     * siblings do not resolve either.
+     *
+     * Imports use the **package specifiers a customer writes**, which makes the probe the
+     * shape of real consumption rather than a relative-path approximation.
+     */
+    const stage = join(process.cwd(), '.tmp-publishability');
+    const subpaths = Object.keys(pkg.exports ?? {}).filter((s) => s !== './package.json');
+    try {
+      cpSync(join(process.cwd(), 'dist/libs/platform'), join(stage, 'pkg'), { recursive: true });
+      writeFileSync(
+        join(stage, 'tsconfig.json'),
+        `${JSON.stringify(
+          {
+            compilerOptions: {
+              noEmit: true,
+              strict: true,
+              // OFF is the whole point: `true` is what lets a broken declaration ship.
+              skipLibCheck: false,
+              module: 'esnext',
+              moduleResolution: 'bundler',
+              target: 'es2022',
+              types: [],
+              baseUrl: '.',
+              // Built with `join`, not string concatenation: the first cut produced
+              // `./pkg/nuxeo-clientindex.d.ts` for `./nuxeo-client` — a missing separator
+              // — and the resulting "Cannot find module" was attributed to `probe.ts`,
+              // which the diagnostic filter below then discarded. The check passed while
+              // resolving nothing. See the `unresolved` guard.
+              paths: Object.fromEntries(
+                subpaths.map((s) => [
+                  s.replace(/^\./, pkg.name),
+                  [`./${join('pkg', s.replace(/^\.\/?/, ''), 'index.d.ts')}`],
+                ]),
+              ),
+            },
+            files: ['probe.ts'],
+          },
+          null,
+          2,
+        )}\n`,
+      );
+      writeFileSync(
+        join(stage, 'probe.ts'),
+        `${subpaths
+          .map((s, i) => `import type * as e${i} from '${s.replace(/^\./, pkg.name)}';`)
+          .join(
+            '\n',
+          )}\nexport type Probed = [${subpaths.map((_, i) => `typeof e${i}`).join(', ')}];\n`,
+      );
+
+      var diagnostics = '';
+      try {
+        execFileSync('npx', ['tsc', '-p', join(stage, 'tsconfig.json')], {
+          cwd: process.cwd(),
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'pipe'],
+        });
+      } catch (error) {
+        diagnostics = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+      }
+    } finally {
+      rmSync(stage, { recursive: true, force: true });
+    }
+
+    const errors = diagnostics.split('\n').filter((line) => /error TS/.test(line));
+
+    /**
+     * A configuration or invocation error means the compile never happened, and filtering
+     * by path would then discard the only evidence and report a pass.
+     *
+     * This is not hypothetical — it is how the first version of this check behaved. It
+     * passed `--types ''`, which tsc rejects with `TS6044: Compiler option 'types' expects
+     * an argument`; the path filter dropped that line, `ours` came back empty, and the gate
+     * reported "declarations typecheck standalone" having compiled nothing. Caught by
+     * reintroducing the dangling type it was written for and seeing it stay green.
+     */
+    const cannotRun = errors.filter((line) => /error TS[56]\d{3}/.test(line));
+    if (cannotRun.length > 0) {
+      fail(
+        'The declaration typecheck could not run, so it asserted nothing:\n' +
+          cannotRun
+            .slice(0, 4)
+            .map((l) => `      ${l.trim()}`)
+            .join('\n'),
+      );
+    }
+
+    /**
+     * A module the probe cannot resolve is also a failure, and must be reported separately
+     * from a type error *inside* the package.
+     *
+     * TS2307 is attributed to the **importing** file — `probe.ts` — not to the package, so
+     * the path filter below discards it. That is exactly how the first two versions of this
+     * check passed while typechecking nothing: once because `--types ''` aborted tsc, and
+     * once because a malformed path mapping meant no entry point resolved. Both times the
+     * gate printed "declarations typecheck standalone".
+     */
+    const unresolved = errors.filter((line) => /error TS2307/.test(line));
+    if (unresolved.length > 0) {
+      fail(
+        'The probe could not resolve the published entry points, so nothing was\n' +
+          '    typechecked. This is a fault in the check, not necessarily in the package:\n' +
+          unresolved
+            .slice(0, 4)
+            .map((l) => `      ${l.trim()}`)
+            .join('\n'),
+      );
+    }
+
+    // The staged copy is `.tmp-publishability/pkg`, so that is what a package-owned
+    // diagnostic points at. Filtered so an unrelated repo file cannot fail this check.
+    const ours = errors.filter((line) => line.includes(join('.tmp-publishability', 'pkg')));
+
+    if (ours.length > 0) {
+      fail(
+        `${ours.length} type error(s) in the SHIPPED declarations. A customer sees these:\n` +
+          ours
+            .slice(0, 8)
+            .map((l) => `      ${l.trim()}`)
+            .join('\n'),
+      );
+    } else {
+      notes.push(`${entryDeclarations.length} entry point declaration(s) typecheck standalone`);
     }
   }
 

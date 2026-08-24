@@ -19,8 +19,34 @@ export const appConfig: ApplicationConfig = {
 };
 ```
 
-That is the whole integration. **No edits to any `@nuxeo-satori/platform` library**
-are required, which is the property this library exists to demonstrate.
+**No edits to any `@nuxeo-satori/platform` library** are required, which is the property
+this library exists to demonstrate.
+
+## But add the route too, or the navbar entry goes nowhere
+
+The provider registers a navbar entry pointing at `/<%= fileName %>`. Registering a path
+does not create a route — so until your application maps it, clicking that entry falls
+through your wildcard route and quietly lands on the wrong page. This happened in the
+reference application and shipped for two commits.
+
+```ts
+import { ExtensionOutletComponent } from '@nuxeo-satori/platform/extensions';
+
+// in your app.routes.ts
+{
+  path: '<%= fileName %>',
+  component: ExtensionOutletComponent,
+  data: { componentId: '<%= owner %>.panel.<%= propertyName %>' },
+}
+```
+
+The **host** maps the path, deliberately: this library exports only its provider and its
+ID list, never the component class, so the class stays free to be renamed without that
+being a breaking change for you. `ExtensionOutletComponent` resolves it from the registry
+by ID.
+
+Alternatively, drop the navbar entry from `src/lib/extensions.ts` if you only want the
+component available to a slot elsewhere.
 
 ## What it registers
 

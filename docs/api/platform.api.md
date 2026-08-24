@@ -389,7 +389,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-274 exported symbol(s).
+275 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -524,6 +524,7 @@ interface AuthorizedApplication {
     authorizationDate: string;
     }
 }
+type AvatarColor = 'purple' | 'blue' | 'pink' | 'teal' | 'yellow' | 'green' | 'red' | 'orange';
 const BLOB_CLIENT_REASON_HEADER = "X-Client-Reason";
 const BLOB_CLIENT_REASON_PARAM = "clientReason";
 const BLOB_HOLDING_DOC_TYPES: ReadonlySet<string>;
@@ -1793,7 +1794,7 @@ const administrationAccessGuard: CanActivateFn;
 const administrationLandingGuard: CanActivateFn;
 function auditActivityLabel(entry: AuditEntry, eventTypeLabels?: Map<string, string> | Record<string, string>): string;
 function auditActivityLabelKey(entry: AuditEntry): string;
-function avatarColor(name: string): SatAvatarCategory;
+function avatarColor(name: string): AvatarColor;
 function browseTreeContextPath(doc: NuxeoDocument): string;
 function buildContentLakeIngestMarker(blobDigest: string): string;
 function buildDocumentCompareRows(left: NuxeoDocument, right: NuxeoDocument, viewAll: boolean): CompareRow[];

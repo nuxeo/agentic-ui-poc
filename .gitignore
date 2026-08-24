@@ -73,3 +73,7 @@ playwright-report/
 # scripts/build-platform-generators.mjs. tools/satori-generators/ is the single source.
 /libs/platform/generators/
 /libs/platform/generators.json
+
+# Staging dir for the publishability gate's declaration typecheck. Always removed in a
+# finally block; ignored so an interrupted run cannot be committed.
+/.tmp-publishability/

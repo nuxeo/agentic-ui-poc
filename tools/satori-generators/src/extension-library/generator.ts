@@ -153,6 +153,19 @@ It is inert until an application opts in. Add one line to your app config:
   import { ${providerName} } from '${importPath}';
   // providers: [ ..., ${providerName}() ]
 
+TWO STEPS, not one. The navbar entry points at /${name.fileName} and NOTHING ROUTES
+THERE YET, so it falls through your wildcard to /home — a menu item that silently goes
+to the wrong page. Add the route to your app as well:
+
+  import { ExtensionOutletComponent } from '@nuxeo-satori/platform/extensions';
+
+  { path: '${name.fileName}',
+    component: ExtensionOutletComponent,
+    data: { componentId: '${options.owner}.panel.${name.propertyName}' } }
+
+The host maps the path on purpose: this library exports only its provider and its ID
+list, so the component class stays free to be renamed without breaking you.
+
 Then verify nothing is registered by accident:
 
   npx nx test ${name.fileName}

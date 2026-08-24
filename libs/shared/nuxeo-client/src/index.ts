@@ -226,6 +226,7 @@ export {
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { avatarColor } from './lib/constants/avatar-colors';
+export type { AvatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
 export { NON_CONTENT_DOCUMENT_TYPES } from './lib/constants/non-content-document-types';
 export {
