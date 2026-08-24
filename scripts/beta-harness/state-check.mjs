@@ -33,7 +33,9 @@ const asJson = process.argv.includes('--json');
 // fixtures. A gate nobody has watched go red is not evidence.
 const stateArg = process.argv[process.argv.indexOf('--state') + 1];
 const statePath =
-  process.argv.includes('--state') && stateArg ? resolve(process.cwd(), stateArg) : resolve(repoRoot, '.ai/state/phases.json');
+  process.argv.includes('--state') && stateArg
+    ? resolve(process.cwd(), stateArg)
+    : resolve(repoRoot, '.ai/state/phases.json');
 const betaRoot = resolve(EVIDENCE_ROOT, 'beta');
 
 /** A phase claiming one of these must have a passing manifest behind it. */
@@ -46,7 +48,9 @@ const EVIDENCE_REQUIRED = new Set(['complete', 'complete-with-deviations']);
 const CURRENT_GATE_COUNT = await countGates();
 
 if (!existsSync(statePath)) {
-  console.error(`state-check: ${statePath} does not exist. Nothing to verify, so this is not a pass.`);
+  console.error(
+    `state-check: ${statePath} does not exist. Nothing to verify, so this is not a pass.`,
+  );
   process.exit(1);
 }
 
@@ -66,7 +70,11 @@ for (const p of state.phases ?? []) {
     // mirror image of the false-completion this script exists to prevent, and equally
     // misleading to a reader. Enforcement still happens only for the statuses above.
     if (p.status === 'blocked' && !(p.blockedOn?.length > 0)) {
-      problems.push({ phase: p.id, severity: 'fail', message: 'is `blocked` but does not say what blocks it.' });
+      problems.push({
+        phase: p.id,
+        severity: 'fail',
+        message: 'is `blocked` but does not say what blocks it.',
+      });
     }
     if (p.evidence?.manifest) {
       const partial = await resolveManifest(p.evidence.manifest);
@@ -131,15 +139,41 @@ for (const p of state.phases ?? []) {
     });
     continue;
   }
+  // An integrity check, not a logic check. `phase-runner.mjs` derives `verdict` from
+  // `failedChecks.length`, so it cannot itself emit `pass` alongside `failed > 0`. What
+  // can is a hand-edited manifest — and evidence lives under
+  // `~/Desktop/agentic-ui-evidence/`, outside the repo, unversioned and writable, which is
+  // exactly the material this script exists to be sceptical about. Reading only `verdict`
+  // meant one word decided whether a phase counted as done.
+  const failed = resolved.manifest.totals?.failed ?? 0;
+  if (failed > 0) {
+    problems.push({
+      phase: p.id,
+      severity: 'fail',
+      message:
+        `cites ${resolved.rel} with verdict \`pass\` but \`totals.failed\` is ${failed}. ` +
+        'The runner cannot produce that combination, so the manifest has been edited ' +
+        'after the fact. Re-run the phase rather than reconciling the numbers.',
+    });
+    continue;
+  }
 
   // The quality gate, not just the capture. `pass-partial` is rejected on purpose:
   // two reports in this corpus read `"verdict": "pass"` having run one gate of six.
   if (p.evidence.gate) {
     const gate = await resolveGate(p.evidence.gate);
-    const ranCount = gate.ok ? (gate.report.results?.length ?? gate.report.gates?.ran?.length ?? 0) : 0;
-    row.gate = gate.ok ? `${gate.report.verdict} (${ranCount} of ${CURRENT_GATE_COUNT} gates) — ${gate.rel}` : null;
+    const ranCount = gate.ok
+      ? (gate.report.results?.length ?? gate.report.gates?.ran?.length ?? 0)
+      : 0;
+    row.gate = gate.ok
+      ? `${gate.report.verdict} (${ranCount} of ${CURRENT_GATE_COUNT} gates) — ${gate.rel}`
+      : null;
     if (!gate.ok) {
-      problems.push({ phase: p.id, severity: 'fail', message: `cites a gate report but ${gate.detail}` });
+      problems.push({
+        phase: p.id,
+        severity: 'fail',
+        message: `cites a gate report but ${gate.detail}`,
+      });
     } else if (gate.report.verdict === 'pass-partial') {
       problems.push({
         phase: p.id,
@@ -196,7 +230,8 @@ for (const p of state.phases ?? []) {
     problems.push({
       phase: p.id,
       severity: 'warn',
-      message: 'is complete with an empty `notCovered`. Silence reads as full coverage; state the gaps.',
+      message:
+        'is complete with an empty `notCovered`. Silence reads as full coverage; state the gaps.',
     });
   }
   const audit = resolved.manifest.screenshotAudit;
@@ -228,21 +263,31 @@ async function resolveManifest(ref) {
     const entries = [];
     for (const name of await readdir(dir)) {
       const full = resolve(dir, name);
-      if ((await stat(full)).isDirectory() && existsSync(resolve(full, 'manifest.json'))) entries.push(name);
+      if ((await stat(full)).isDirectory() && existsSync(resolve(full, 'manifest.json')))
+        entries.push(name);
     }
     // Timestamped names sort lexicographically in chronological order.
     entries.sort();
     chosen = entries.at(-1);
-    if (!chosen) return { ok: false, detail: `\`${phaseDir}\` contains no run with a manifest.json.` };
+    if (!chosen)
+      return { ok: false, detail: `\`${phaseDir}\` contains no run with a manifest.json.` };
   }
 
   const file = resolve(dir, chosen, 'manifest.json');
-  if (!existsSync(file)) return { ok: false, detail: `${phaseDir}/${chosen}/manifest.json does not exist.` };
+  if (!existsSync(file))
+    return { ok: false, detail: `${phaseDir}/${chosen}/manifest.json does not exist.` };
 
   try {
-    return { ok: true, rel: `${phaseDir}/${chosen}`, manifest: JSON.parse(await readFile(file, 'utf8')) };
+    return {
+      ok: true,
+      rel: `${phaseDir}/${chosen}`,
+      manifest: JSON.parse(await readFile(file, 'utf8')),
+    };
   } catch (err) {
-    return { ok: false, detail: `${phaseDir}/${chosen}/manifest.json is not readable JSON: ${err}` };
+    return {
+      ok: false,
+      detail: `${phaseDir}/${chosen}/manifest.json is not readable JSON: ${err}`,
+    };
   }
 }
 
@@ -260,7 +305,8 @@ async function resolveManifest(ref) {
  */
 async function resolveGate(ref) {
   const dir = resolve(betaRoot, 'gates');
-  if (!existsSync(dir)) return { ok: false, detail: `no gates directory exists under ${betaRoot}.` };
+  if (!existsSync(dir))
+    return { ok: false, detail: `no gates directory exists under ${betaRoot}.` };
 
   const name = ref.split('/').slice(1).join('/');
   const files = (await readdir(dir)).filter((f) => f.endsWith('.json')).sort();
@@ -276,12 +322,20 @@ async function resolveGate(ref) {
         /* skip an unreadable report rather than fail the lookup on it */
       }
     }
-    return { ok: false, detail: `no gate report is labelled \`${label}\`. Run: npm run beta:gate -- --phase ${label}` };
+    return {
+      ok: false,
+      detail: `no gate report is labelled \`${label}\`. Run: npm run beta:gate -- --phase ${label}`,
+    };
   }
 
   if (!name || name === 'latest') {
     const f = files.at(-1);
-    return { ok: true, rel: `gates/${f}`, report: JSON.parse(await readFile(resolve(dir, f), 'utf8')), imprecise: true };
+    return {
+      ok: true,
+      rel: `gates/${f}`,
+      report: JSON.parse(await readFile(resolve(dir, f), 'utf8')),
+      imprecise: true,
+    };
   }
 
   const file = resolve(dir, name.endsWith('.json') ? name : `${name}.json`);
@@ -318,7 +372,9 @@ function report() {
 
   console.log(`\nPhase state check — ${statePath.replace(`${repoRoot}/`, '')}\n`);
   for (const r of rows) {
-    const ev = r.manifest ? `${r.verdict} (${r.checks} checks) — ${r.manifest}` : 'no evidence cited';
+    const ev = r.manifest
+      ? `${r.verdict} (${r.checks} checks) — ${r.manifest}`
+      : 'no evidence cited';
     console.log(`  ${r.id.padEnd(20)} ${String(r.status).padEnd(12)} ${ev}`);
     if (r.gate) console.log(`  ${' '.repeat(20)} ${' '.repeat(12)} gate: ${r.gate}`);
   }
@@ -328,7 +384,9 @@ function report() {
   if (problems.length) console.log('');
 
   if (fails.length) {
-    console.log(`state-check: FAIL — ${fails.length} phase(s) claim more than the evidence on disk supports.`);
+    console.log(
+      `state-check: FAIL — ${fails.length} phase(s) claim more than the evidence on disk supports.`,
+    );
   } else {
     console.log(
       `state-check: pass — every completed phase cites a manifest that exists and passed` +

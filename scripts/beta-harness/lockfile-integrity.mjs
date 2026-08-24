@@ -86,21 +86,40 @@ try {
 for (const [path, entry] of Object.entries(entries)) {
   // A `link` entry is a workspace symlink; its real content lives at `resolved`.
   if (entry.link) continue;
-  for (const [name, spec] of Object.entries(entry.dependencies ?? {})) {
-    checked += 1;
-    const found = resolveFrom(path, name);
-    if (!found) {
-      problems.push({ dependent: path || '<root>', missing: name, spec, reason: 'absent from the lock' });
-      continue;
-    }
-    const actual = entries[found].version;
-    if (actual && !satisfiesSpec(actual, spec)) {
-      problems.push({
-        dependent: path || '<root>',
-        missing: name,
-        spec,
-        reason: `resolves to ${found} at ${actual}, which does not satisfy "${spec}"`,
-      });
+  // `devDependencies` as well as `dependencies`, and the omission mattered: the root
+  // entry declares 52 dev edges that this gate never resolved. `npm ci` refuses a tree
+  // with a pruned devDependency exactly as it refuses a pruned production one, and
+  // "npm ci will not refuse this tree on Linux" is the only claim this gate makes. All 52
+  // resolve today, so this closes a hole rather than fixing a live break — but the hole
+  // is the same shape as the one that kept CI red for the whole of Phase 2.
+  //
+  // Still excluded, both deliberately:
+  //   - `optionalDependencies` — npm legitimately omits an optional package no platform
+  //     in the tree needs; demanding them would fail on a correct lock.
+  //   - `peerDependencies` — npm permits an unmet peer. Requiring them would report
+  //     hundreds of false problems on a tree `npm ci` installs without complaint.
+  for (const kind of ['dependencies', 'devDependencies']) {
+    for (const [name, spec] of Object.entries(entry[kind] ?? {})) {
+      checked += 1;
+      const found = resolveFrom(path, name);
+      if (!found) {
+        problems.push({
+          dependent: path || '<root>',
+          missing: name,
+          spec,
+          reason: `absent from the lock (declared in ${kind})`,
+        });
+        continue;
+      }
+      const actual = entries[found].version;
+      if (actual && !satisfiesSpec(actual, spec)) {
+        problems.push({
+          dependent: path || '<root>',
+          missing: name,
+          spec,
+          reason: `resolves to ${found} at ${actual}, which does not satisfy "${spec}" (${kind})`,
+        });
+      }
     }
   }
 }
