@@ -164,6 +164,19 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/fork-simulation.mjs'],
   },
+  // Phase 6 gate, and the only one that crosses a version boundary. Every gate above tests
+  // a single version in isolation, so none of them can see the failure the whole four-layer
+  // contract depends on: an upgrade that compiles cleanly and silently drops the customer's
+  // customisations. Proven sensitive by removing a manifest-only slot id — the compile stays
+  // green and this is the only check that goes red.
+  {
+    id: 'upgrade-rehearsal',
+    label: 'Upgrade rehearsal',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/upgrade-rehearsal.mjs'],
+    // The per-assertion notes are the evidence; they belong in the log.
+    echoOnPass: true,
+  },
   // Phase 5 gate: the customer-facing extension reference must agree with the code.
   // It is the only document whose audience is customers, and nothing checked it. When
   // first measured it was wrong in both directions — it claimed `documentList` had

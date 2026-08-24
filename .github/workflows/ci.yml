@@ -112,6 +112,11 @@ jobs:
           # tree — the resolution a customer actually gets. Found the platform being
           # compiled without `strictNullChecks`, shipping 27 wrong public types.
           npm run beta:fork
+          # The only check that crosses a version boundary: installs the package, applies a
+          # Layer 0/1/2 customisation, upgrades, and proves the customisation survived. The
+          # three above each test a single version, so none of them can see an upgrade that
+          # compiles cleanly and silently breaks a customer's JSON manifest.
+          npm run beta:upgrade
 
       - name: Check bundle size (nuxeo-ui)
         shell: bash

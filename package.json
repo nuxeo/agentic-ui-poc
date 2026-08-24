@@ -15,6 +15,7 @@
     "beta:reference": "node scripts/beta-harness/extension-reference-drift.mjs",
     "beta:slides": "node tools/video/export-pptx.mjs",
     "beta:state": "node scripts/beta-harness/state-check.mjs",
+    "beta:upgrade": "node scripts/beta-harness/upgrade-rehearsal.mjs",
     "beta:sync-docs": "node scripts/sync-platform-docs.mjs",
     "build": "nx build",
     "dev": "nx serve nuxeo-ui",
