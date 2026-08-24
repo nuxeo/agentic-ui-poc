@@ -50,12 +50,6 @@
       "branches": 57.14,
       "functions": 16.25
     },
-    "drawers": {
-      "lines": 100,
-      "statements": 100,
-      "branches": 100,
-      "functions": 100
-    },
     "knowledge-discovery": {
       "lines": 64.77,
       "statements": 64.77,
@@ -109,6 +103,12 @@
       "statements": 68.2,
       "branches": 73.47,
       "functions": 68.97
+    },
+    "permission-dialogs": {
+      "lines": 93.85,
+      "statements": 93.85,
+      "branches": 62.65,
+      "functions": 85.29
     }
   }
 }

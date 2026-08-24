@@ -72,11 +72,20 @@ if (runTests) {
   // with `Expected a single value for option "--coverage "`.
   const r = spawnSync(
     'npx',
-    ['nx', 'run-many', '-t', 'test', `--projects=${vitest.map((p) => p.name).join(',')}`, '--coverage.enabled=true'],
+    [
+      'nx',
+      'run-many',
+      '-t',
+      'test',
+      `--projects=${vitest.map((p) => p.name).join(',')}`,
+      '--coverage.enabled=true',
+    ],
     { stdio: 'inherit', env: { ...process.env, ...webstorageOptOut() } },
   );
   if (r.status !== 0) {
-    console.error('\ncoverage-gate: tests failed, so coverage numbers would be meaningless. Fix the tests first.');
+    console.error(
+      '\ncoverage-gate: tests failed, so coverage numbers would be meaningless. Fix the tests first.',
+    );
     process.exit(1);
   }
 }
@@ -110,32 +119,72 @@ const rows = [];
 const regressions = [];
 const rises = [];
 
+/** Measured this run but absent from the baseline, so nothing ratchets them. */
+const unratcheted = [];
+
 for (const m of measured) {
   const was = baseline.projects?.[m.project];
   const delta = was === undefined ? null : round(m.lines - was.lines);
   rows.push({ ...m, was: was?.lines ?? null, delta, target: round(TARGET - m.lines) });
-  if (was === undefined) continue;
-  if (delta < -TOLERANCE) regressions.push({ project: m.project, was: was.lines, now: m.lines, delta });
-  else if (delta > TOLERANCE) rises.push({ project: m.project, was: was.lines, now: m.lines, delta });
+  if (was === undefined) {
+    // A `continue` alone is how a new project escaped the ratchet silently: it was
+    // printed as `new` in the table and then excluded from every check, so its coverage
+    // could fall to zero on the next commit without a word. `permission-dialogs` was in
+    // exactly that state — 93.84%, entirely unguarded — from the moment it was created.
+    unratcheted.push(m.project);
+    continue;
+  }
+  if (delta < -TOLERANCE)
+    regressions.push({ project: m.project, was: was.lines, now: m.lines, delta });
+  else if (delta > TOLERANCE)
+    rises.push({ project: m.project, was: was.lines, now: m.lines, delta });
 }
 
-// Projects in the baseline that produced no report this run. Not a failure — the
-// affected set is usually a subset — but silently dropping them would let coverage
-// vanish unnoticed.
-const unmeasured = Object.keys(baseline.projects ?? {}).filter((p) => !measured.some((m) => m.project === p));
+/**
+ * Baseline entries with no coverage report this run, split by **why**.
+ *
+ * These were one undifferentiated list, reported as "outside the affected set" — which is
+ * usually true and is not a failure. But it also absorbed entries for projects that no
+ * longer exist, and those never come back: `drawers` was deleted on 2026-08-24 and its
+ * baseline entry would have printed "not measured, unchanged" on every run forever, a
+ * permanent line of reassurance about a library that is gone. Worse, its recorded 100% was
+ * meaningless — it was an empty barrel with `passWithNoTests`.
+ *
+ * A baseline naming a project the workspace does not have is stale data in the file this
+ * gate's authority rests on, so it fails.
+ */
+const projectNames = new Set(projects.map((p) => p.name));
+const baselineNames = Object.keys(baseline.projects ?? {});
+const unmeasured = baselineNames.filter(
+  (p) => !measured.some((m) => m.project === p) && projectNames.has(p),
+);
+const orphaned = baselineNames.filter((p) => !projectNames.has(p));
 
 if (updateBaseline) {
   const merged = { ...baseline.projects };
-  for (const m of measured) merged[m.project] = { lines: m.lines, statements: m.statements, branches: m.branches, functions: m.functions };
+  for (const m of measured)
+    merged[m.project] = {
+      lines: m.lines,
+      statements: m.statements,
+      branches: m.branches,
+      functions: m.functions,
+    };
+  // Orphans are pruned here as well as reported. Without this, `--update-baseline`
+  // preserved an entry for a deleted project indefinitely — the one command a
+  // maintainer would reach for to fix the complaint could not fix it.
+  for (const p of orphaned) delete merged[p];
   await write(
     Object.entries(merged).map(([project, v]) => ({ project, ...v })),
-    `updated from ${measured.length} project(s)`,
+    `updated from ${measured.length} project(s)` +
+      (orphaned.length
+        ? `, pruned ${orphaned.length} orphaned entr(ies): ${orphaned.join(', ')}`
+        : ''),
   );
   process.exit(0);
 }
 
 report();
-process.exit(regressions.length ? 1 : 0);
+process.exit(regressions.length || orphaned.length || unratcheted.length ? 1 : 0);
 
 /* ---------- collection ---------- */
 
@@ -268,18 +317,37 @@ async function write(list, why) {
   console.log(`coverage-gate: baseline written (${why}) -> ${relative(repoRoot, baselinePath)}`);
   for (const [p, v] of Object.entries(projects).sort()) {
     const gap = round(TARGET - v.lines);
-    console.log(`  ${p.padEnd(28)} ${String(v.lines).padStart(6)}%  ${gap > 0 ? `${gap}pp short of ${TARGET}%` : `meets ${TARGET}%`}`);
+    console.log(
+      `  ${p.padEnd(28)} ${String(v.lines).padStart(6)}%  ${gap > 0 ? `${gap}pp short of ${TARGET}%` : `meets ${TARGET}%`}`,
+    );
   }
 }
 
 function report() {
   if (asJson) {
-    console.log(JSON.stringify({ ok: regressions.length === 0, target: TARGET, rows, regressions, rises, unmeasured }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ok: regressions.length === 0 && orphaned.length === 0 && unratcheted.length === 0,
+          target: TARGET,
+          rows,
+          regressions,
+          rises,
+          unmeasured,
+          orphaned,
+          unratcheted,
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
 
   console.log(`\nCoverage ratchet — ${rows.length} project(s) measured, Beta target ${TARGET}%\n`);
-  console.log(`  ${'project'.padEnd(28)} ${'lines'.padStart(7)} ${'was'.padStart(7)} ${'delta'.padStart(7)}   gap to ${TARGET}%`);
+  console.log(
+    `  ${'project'.padEnd(28)} ${'lines'.padStart(7)} ${'was'.padStart(7)} ${'delta'.padStart(7)}   gap to ${TARGET}%`,
+  );
   for (const r of rows) {
     const was = r.was === null ? '  new' : `${r.was}%`;
     const delta = r.delta === null ? '    -' : `${r.delta > 0 ? '+' : ''}${r.delta}`;
@@ -293,15 +361,48 @@ function report() {
     console.log('  Their baseline entries are unchanged; this run says nothing about them.');
   }
 
+  if (orphaned.length) {
+    console.log(`\n  Baseline names ${orphaned.length} project(s) this workspace does not have:`);
+    for (const p of orphaned) console.log(`    ${p}`);
+  }
+
+  if (unratcheted.length) {
+    console.log(`\n  Measured but absent from the baseline, so nothing guards them:`);
+    for (const p of unratcheted) console.log(`    ${p}`);
+  }
+
   if (rises.length) {
     console.log('\n  Improved — run --update-baseline to lock these in:');
     for (const r of rises) console.log(`    ${r.project}  ${r.was}% -> ${r.now}%  (+${r.delta}pp)`);
   }
 
   console.log('');
+  if (orphaned.length || unratcheted.length) {
+    const parts = [];
+    if (orphaned.length) parts.push(`${orphaned.length} orphaned baseline entr(ies)`);
+    if (unratcheted.length) parts.push(`${unratcheted.length} unratcheted project(s)`);
+    console.log(`coverage-gate: FAIL — ${parts.join(' and ')}.`);
+    if (orphaned.length) {
+      console.log(
+        `\n  Remove ${orphaned.join(', ')} from .ai/state/coverage-baseline.json.\n` +
+          '  A baseline entry for a project that no longer exists prints "not measured,\n' +
+          '  unchanged" on every run forever — a permanent line of reassurance about\n' +
+          "  nothing. This gate's authority rests on that file being true.",
+      );
+    }
+    if (unratcheted.length) {
+      console.log(
+        `\n  Add ${unratcheted.join(', ')} with --update-baseline. Until then they are\n` +
+          '  printed as `new` and excluded from every check, so their coverage could fall\n' +
+          '  to zero without this gate saying a word.',
+      );
+    }
+    return;
+  }
   if (regressions.length) {
     console.log(`coverage-gate: FAIL — ${regressions.length} project(s) lost coverage:`);
-    for (const r of regressions) console.log(`  ${r.project}  ${r.was}% -> ${r.now}%  (${r.delta}pp)`);
+    for (const r of regressions)
+      console.log(`  ${r.project}  ${r.was}% -> ${r.now}%  (${r.delta}pp)`);
     console.log(
       '\n  Add the missing tests. Do not run --update-baseline to make this pass —\n' +
         '  that is the same move as weakening a test, one file further away.',
@@ -310,7 +411,9 @@ function report() {
     console.log(`coverage-gate: pass — no project regressed by more than ${TOLERANCE}pp.`);
     const worst = [...rows].sort((a, b) => b.target - a.target)[0];
     if (worst && worst.target > 0) {
-      console.log(`  Furthest from the Beta bar: ${worst.project} at ${worst.lines}% (${worst.target}pp short of ${TARGET}%).`);
+      console.log(
+        `  Furthest from the Beta bar: ${worst.project} at ${worst.lines}% (${worst.target}pp short of ${TARGET}%).`,
+      );
     }
   }
 }
@@ -323,5 +426,9 @@ function round(n) {
 function webstorageOptOut() {
   const major = Number(process.versions.node.split('.')[0]);
   if (major < 22) return {};
-  return { NODE_OPTIONS: [process.env['NODE_OPTIONS'], '--no-experimental-webstorage'].filter(Boolean).join(' ') };
+  return {
+    NODE_OPTIONS: [process.env['NODE_OPTIONS'], '--no-experimental-webstorage']
+      .filter(Boolean)
+      .join(' '),
+  };
 }
