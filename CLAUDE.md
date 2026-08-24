@@ -23,11 +23,20 @@ For Beta work also read `docs/extension-reference.md` (the registered-ID contrac
 
 ## Where the programme stands
 
-Branch `feature/adf-hx-browse-poc`, pushed, CI green. See the plan's **Programme status**
-section for the authoritative, dated position — that file is maintained; this line is not.
+**Do not read the position from this file.** The two authoritative sources are:
 
-Phases 0, 1 and 2 are complete. Phase 3 (adf-hx component adoption) is next and is the
-first phase that needs the `@alfresco` package registry.
+```bash
+npm run beta:state        # per-phase status, checked against the evidence on disk
+```
+
+and the **Programme status** section of `docs/adf-hx-beta-plan.md`, which is dated.
+
+That instruction is here because the paragraph it replaces said "Phases 0, 1 and 2 are
+complete, Phase 3 is next" for weeks after Phases 3, 4 and 5 had shipped, and pointed at
+a **Programme status** section that did not exist in the plan at all. A prose summary of
+mutable state in the file every agent reads first is a summary that goes stale silently
+and is believed anyway. `beta:state` cannot: it is red whenever a phase claims more than
+its evidence supports.
 
 ## Skills — read them, they are not auto-loaded
 

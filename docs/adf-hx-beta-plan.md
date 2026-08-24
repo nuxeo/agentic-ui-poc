@@ -1,12 +1,50 @@
 # adf-hx Beta Deliverable — Plan
 
-**Status:** current plan of record · **Last verified:** 20 August 2026
+**Status:** current plan of record · **Last verified:** 24 August 2026
+**Position:** see [Programme status](#programme-status) below, or `npm run beta:state`
 **Tickets:** [NXENG-619](https://hyland.atlassian.net/browse/NXENG-619) under [NXENG-615](https://hyland.atlassian.net/browse/NXENG-615)
 **RFC:** "RFC: Nuxeo Satori Beta - Component Platform and Customer Extensibility Model"
 **Agent contract:** [`AGENTS/11-beta-program.md`](../AGENTS/11-beta-program.md) · **Harness:** [`scripts/beta-harness/`](../scripts/beta-harness/)
 
 Supersedes [`docs/adf-hx-poc-action-plan.md`](adf-hx-poc-action-plan.md), which was written before the
 four-layer extensibility model and before the dependency questions were settled.
+
+---
+
+## Programme status
+
+**As at 24 August 2026.** `CLAUDE.md` points here for the authoritative position, and for
+weeks there was no such section — so that pointer dangled while `CLAUDE.md`'s own summary
+claimed Phase 3 was next, three phases after it had shipped.
+
+Run `npm run beta:state` for the machine-checked version. It reads
+`.ai/state/phases.json`, resolves each cited evidence manifest and gate report, and is red
+whenever a phase claims more than the artifacts support. **Prefer it to this table**, which
+is a human summary and can go stale exactly as its predecessor did.
+
+| Phase                            | Status          | Evidence  |
+| -------------------------------- | --------------- | --------- |
+| 0 — Verify and unblock           | complete        | 14 checks |
+| 1 — Layer 0 config               | complete        | 39 checks |
+| 2 — Layer 1 extension registry   | complete        | 46 checks |
+| 3 — adf-hx adoption              | complete        | 55 checks |
+| 4 — Layer 2 publishable platform | complete        | 25 checks |
+| 5 — Layer 3 agent harness        | complete        | 27 checks |
+| 6 — Beta quality bar and proof   | **not started** | —         |
+
+All six completed phases are re-gated against the current 14-gate pipeline, not only the
+smaller pipeline that existed when each was signed off — Phases 0–2 were originally gated
+on 4–6 gates. The re-gate matters: two of the gates added since found real defects in
+already-signed-off work.
+
+**Deviations are recorded per phase in `.ai/state/phases.json`, not here.** Phase 4 carries
+ten, including the one that mattered most: the published package could not be published at
+all for the whole phase. Read them before treating a phase as settled.
+
+An independent adversarial review after Phase 5 found defects in every phase, and the
+remediation is in git history from `0ccf3f0` onward — publishability, module boundaries,
+five defeated gates, and nine security defects across blob-URL lifecycles, subscription
+teardown and one `<img [src]>` bypassing the HTTP interceptor.
 
 ---
 
@@ -141,7 +179,7 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 
 ---
 
-## Phase 0 — Verify and unblock (1-2 d remaining)
+## Phase 0 — Verify and unblock (**complete**)
 
 1. ~~Obtain a `read:packages` token.~~ Done. **Provision it as a long-lived CI secret** — CI still
    cannot install without it.
@@ -162,7 +200,7 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
    the surface grows once adf-core arrives.
 6. Delete the unused Material `hxp-document-tree` and open a draft PR so CI runs at all.
 
-## Phase 1 — Layer 0: upgrade-safe configuration (**core delivered**, remainder 4-7 d)
+## Phase 1 — Layer 0: upgrade-safe configuration (**complete**)
 
 Gates: quality gate **PASS** (4/4 green) · evidence gate **PASS** (38/38 checks, exit 0), after the
 remediation below.
@@ -238,7 +276,7 @@ Two properties worth stating explicitly:
 Phase 6 should test the ACL-denied path: a user without Read must still get a working application on
 the default configuration.
 
-## Phase 2 — Layer 1: extension registry (**closed**; toolbar/tabs/columns carried to Phase 3)
+## Phase 2 — Layer 1: extension registry (**complete**; toolbar/tabs/columns carried to Phase 3)
 
 Gates: quality gate **PASS** (6/6 green, including the new lockfile and typecheck gates) ·
 evidence gate **PASS**.
@@ -324,7 +362,7 @@ Not attempted, and carried into the phase that adopts the components:
   documents, so `app.rules.canWriteSelection` and `app.rules.canRemoveSelection` still
   answer `false`. Making them live costs a fetch per selected row.
 
-## Phase 3 — adf-hx adoption (30-45 d)
+## Phase 3 — adf-hx adoption (**complete**)
 
 **Real components, not imitations.** Swap in one at a time behind `/#/browse-adf-hx`, deleting each
 hand-written `hxp-*` equivalent in the same change. Order: `document-list`, `breadcrumb`,
@@ -355,7 +393,7 @@ Fix the bridge defects in the same phase, since adf-hx components consume the ma
 hardcoded `sys_effectivePermissions`, the silently dropped sort, the overwritten `totalCount`, the
 50-child ceiling with no pager, and the `browse_column_settings` localStorage collision.
 
-## Phase 4 — Layer 2: publishable platform (18-26 d)
+## Phase 4 — Layer 2: publishable platform (**complete**, 10 deviations recorded)
 
 - Give the libraries real build targets with ng-packagr. Today every `project.json` has only `lint`
   and `test`, and the only artifact is a prebuilt SPA zip — there is nothing for a customer to
@@ -366,7 +404,7 @@ hardcoded `sys_effectivePermissions`, the silently dropped sort, the overwritten
   `setAuthGuards` — so customer code can contribute by ID.
 - Build the thin forkable app template and a customer extension-library starter.
 
-## Phase 5 — Layer 3: agent harness (4-6 d remaining)
+## Phase 5 — Layer 3: agent harness (**complete**)
 
 Largely built. Remaining:
 
@@ -375,7 +413,7 @@ Largely built. Remaining:
 - Add Nx generators for "new extension component", "new action", "new rule".
 - Package the guardrail script for customer use.
 
-## Phase 6 — Beta quality bar and proof (20-30 d)
+## Phase 6 — Beta quality bar and proof (**not started**, 20-30 d)
 
 - NXENG-615's checklist, assessed against the slice: unit coverage above 90% (the bridge has 11
   tests for 2,949 lines today), Playwright E2E on critical paths, WCAG 2.1 AA, SAST and SCA clean,

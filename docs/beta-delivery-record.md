@@ -20,7 +20,7 @@ If this file disagrees with §3 or `phases.json` on a fact, **they win and this 
 Nine cross-document contradictions accumulated earlier in this programme — including two
 reviews disagreeing about whether CI had ever run — so the precedence above is deliberate.
 
-Last updated: 2026-08-23.
+Last updated: 2026-08-24.
 
 Updating this file is **step 10 of the `beta-phase` skill**, not an optional courtesy.
 
@@ -28,18 +28,23 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 
 ## 1. Where the programme stands
 
-| Phase                                   | Status                                                 | Evidence                 |
-| --------------------------------------- | ------------------------------------------------------ | ------------------------ |
-| 0 — Unblock and verify                  | **complete**                                           | `phase-0-baseline` 14/14 |
-| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below                    | `phase-1-config` 39/39   |
-| 2 — Layer 1: extension registry         | **complete**, carry-forward named                      | `phase-2-registry` 46/46 |
-| 3 — adf-hx adoption                     | **in progress** — 12 ports bound, 5 components adopted | `phase-3-adf-hx` 55/55   |
-| 4 — Layer 2: publishable platform       | not started                                            | —                        |
-| 5 — Layer 3: agent harness              | partial (the harness below exists)                     | —                        |
-| 6 — Beta quality bar                    | partial — coverage and a11y now _measured_             | `phase-6-a11y` 12/12     |
+| Phase                                   | Status                                       | Evidence                 |
+| --------------------------------------- | -------------------------------------------- | ------------------------ |
+| 0 — Unblock and verify                  | **complete**                                 | `phase-0-baseline` 14/14 |
+| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below          | `phase-1-config` 39/39   |
+| 2 — Layer 1: extension registry         | **complete**, carry-forward named            | `phase-2-registry` 46/46 |
+| 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted     | `phase-3-adf-hx` 55/55   |
+| 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded         | `phase-4-platform` 25/25 |
+| 5 — Layer 3: agent harness              | **complete**                                 | `phase-5-harness` 27/27  |
+| 6 — Beta quality bar                    | **not started** — coverage and a11y measured | `phase-6-a11y` 12/12     |
 
-Branch `feature/adf-hx-browse-poc`, 49 commits ahead of `main`, **draft PR #145**. CI is
+Branch `feature/adf-hx-browse-poc`, 103 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.
+
+This table was three phases stale for a day — it read Phase 3 "in progress", Phase 4 "not
+started", Phase 5 "partial" after all three had shipped. `npm run beta:state` is the
+machine-checked version and is red whenever a phase claims more than its evidence supports;
+prefer it to this table.
 
 **Phase 1's caveat:** it is recorded complete, but i18n extraction covers only three
 templates. That is real remaining work sitting inside a closed phase, and it should be
@@ -219,10 +224,72 @@ watched fail on purpose.
   specs went red. One of the two survivors was a real false green — it asserted a
   rule evaluated `true`, which an _unregistered_ rule also does. Rewritten to
   assert `false`, which only a registered evaluator can return.
-- **Still not delivered, and named**: the libraries do not build as packages.
-  `ng-packagr` is absent from `package.json` and `node_modules`, so
-  deliverable 1 of Phase 4 has not started; the `ng-package.json` committed
-  earlier configures a tool that is not installed.
+- **Delivered since**: at the time of writing the libraries did not build as packages —
+  `ng-packagr` was absent and the committed `ng-package.json` configured a tool that was
+  not installed. That is closed; see the next section.
+
+---
+
+### Phase 4: the shipped package
+
+`@nuxeo-satori/platform` builds with `@nx/angular:package` — one publishable library with
+four secondary entry points, `./app-config`, `./extensions`, `./nuxeo-client` and `./ui`,
+pointing at the existing shared library sources. A 347 kB tarball of 25 files: FESM
+bundles, rolled-up declarations, the customer `AGENTS.md`, the extension reference, and the
+guardrail script a customer runs in their own CI. Ten peers declared; nothing bundled.
+
+Four things guard it, and each was added because something got past the ones before it:
+
+- **`beta:api`** — the public `.d.ts` surface against a 2,221-line snapshot. Its first
+  version reported PASS across 27 changed types, because a rolled-up bundle has no
+  `export` prefix for its regex to match. Its second recorded
+  `const EXTENSION_SLOTS:` and nothing after the colon — the slot ids every customer
+  manifest is written against — because multi-line `const` and `type` were outside its
+  body-capture allowlist.
+- **`beta:publishable`** — a real `npm publish --dry-run`, which is the only check that
+  executes `prepublishOnly`. **The package could not be published at all for the whole of
+  Phase 4.** It was compiled in Angular's full compilation mode, so ng-packagr wrote a
+  script whose only job is to hard-fail `npm publish`, and the phase was signed off on the
+  claim that a customer upgrade is an `npm version` bump.
+- **`beta:fork`** — compiles the app template against the **built** declarations, which is
+  the resolution a customer actually gets. It is what found the package being compiled
+  without `strictNullChecks`.
+- **`beta:customer-guardrails`** — the shipped guardrail, run against our own reference
+  extension library, so we do not learn it is broken from a customer's CI log.
+
+**Publishing is deliberately deferred.** `private: true` is still set; the scope and
+registry are decided (`@nuxeo/satori-platform` on Nuxeo Nexus) and the runbook is
+`docs/publishing-to-nuxeo-registry.md`. Flipping it is a documented, small change — see
+`docs/publish-readiness.md` §4.
+
+---
+
+### After Phase 5: an independent adversarial review
+
+Every phase self-reported green and CI-green, and the review found defects in every one.
+The remediation is in git history from `0ccf3f0` onward. What it changed, honestly
+characterised:
+
+| Found                                                               | Was it a live defect?                            |
+| ------------------------------------------------------------------- | ------------------------------------------------ |
+| Package unpublishable (full compilation mode)                       | **Yes** — Phase 4's central claim had no vehicle |
+| Module boundaries unenforced; 4 real cross-boundary imports         | **Yes** — including a `shared/` lib on features  |
+| API snapshot blind to `const`/`type` bodies                         | **Yes** — a renamed slot id read as "no change"  |
+| 4 blob-URL leaks + the same 4 subscriptions unguarded               | **Yes**                                          |
+| `<img [src]>` bound to a Nuxeo URL, bypassing the interceptor       | **Yes**                                          |
+| i18n catalogue check asserted existence, not content                | Hole — an empty catalogue passed                 |
+| Drift gate treated a comment as code                                | Hole — 3 generators had already exploited it     |
+| 3 of 5 customer guardrail checks satisfiable without doing the work | Hole — all three probed and closed               |
+| Lockfile gate skipped 52 devDependency edges                        | Hole — all 52 resolve today                      |
+| `state-check` read `verdict` and not `totals.failed`                | Hole — reachable only by a doctored manifest     |
+| 4 local gates never ran in CI, `bundle` among them                  | Hole — "green locally" ≠ "green in CI"           |
+
+Every fix was watched failing on purpose before being trusted, in both directions where
+the old behaviour could still be run. Two review claims did **not** reproduce and were
+not acted on: 14 "unfalsifiable" evidence assertions (all 180 assertion conditions compare
+against measured runtime values), and the Node gate being "non-strict" (deliberate, with
+the hazard printed on every run, a `BETA_GATE_NODE_STRICT=1` override, and CI on the
+pinned major).
 
 ---
 

@@ -56,6 +56,19 @@ Treat them as settled; if you contradict one, prove it first.
   `--no-experimental-webstorage` workaround; the repo pins Node 20 and CI uses it.
   A local green is necessary, not sufficient.
 
+  **So check it, every time you push.** This rule was stated here and then broken over
+  twenty consecutive pushes while "CI green" was reported from local gates alone; CI was
+  red for sixteen of those runs. The push does not tell you:
+
+  ```bash
+  gh run list --branch feature/adf-hx-browse-poc --limit 3 \
+    --json status,conclusion,headSha,event
+  ```
+
+  Note that `concurrency.cancel-in-progress` is on, so pushing again **cancels** the
+  previous run. A `cancelled` conclusion on an earlier commit is expected, not a failure —
+  but it also means only the newest run has actually verified anything.
+
 - `@alfresco/adf-hx-content-services` **is installable** with a `read:packages`
   token. 648 published versions. `latest` = `7.20.0-automate.292`,
   `beta` = `7.21.0-automate.86`.
@@ -123,11 +136,17 @@ Treat them as settled; if you contradict one, prove it first.
   dispatch; it would undo the property the Beta addressable-surface decision
   rests on. `rules` was removed from `EXTENSION_SLOTS`: rules are not descriptors
   and live in `ExtensionRuleRegistry`, so `slots.rules` was silently inert.
-- **A slot id existing does not mean anything reads it.** Of the eight, only
-  `navbar` and `bulk-actions` have packaged descriptors and a host that renders
-  them; `sidebar` is resolved but has none; `routes`, `toolbar`, `contextMenu`,
-  `tabs` and `documentList` are reserved and **nothing reads them**. Do not
-  describe a reserved id as an extension point.
+- **A slot id existing does not mean anything reads it.** The principle stands; the
+  inventory below it was **wrong about `documentList` from Phase 3 onwards** and is
+  corrected here. `documentList` is registered with twelve packaged columns in
+  `provide-app-extensions.ts` and resolved by **both** browse routes. `navbar` and
+  `bulk-actions` have packaged descriptors and a host; `sidebar` is resolved but has no
+  packaged descriptor; `routes`, `toolbar`, `contextMenu` and `tabs` are reserved and
+  nothing reads them. Do not describe a reserved id as an extension point — and do not
+  trust this list either: `npm run beta:reference` checks every slot-state claim in
+  `docs/extension-reference.md` against the source, which is why the drift was found. A
+  hand-maintained inventory in a "do not re-litigate" section is the worst place for a
+  fact that changes every phase.
 - **An unregistered rule id fails open, except for a declared list.** A manifest
   naming a rule this build does not have leaves the entry visible; Layer 1
   visibility is not an authorisation boundary, and failing closed would let a
@@ -150,12 +169,37 @@ Treat them as settled; if you contradict one, prove it first.
   `canWriteSelection` and `canRemoveSelection` still answer `false`. Do not
   collapse `selectionCount` into `selection.length`; that is what keeps the
   distinction honest.
-- **No library under `libs/` has a `build` target, and adding one to a single
-  library fails lint.** `@nx/enforce-module-boundaries` forbids a buildable
-  library importing a non-buildable one, so the first `build` target cascades
-  through the whole dependency chain. Direct typechecking is a `typecheck`
-  target instead, and the gate runs it. Real build targets are Phase 4's
-  ng-packagr work.
+- **~~No library under `libs/` has a `build` target~~ — superseded by Phase 4.**
+  `libs/platform` and `libs/shared/util` both have one today. The original fact was
+  true when written and the _reason_ still holds:
+  `@nx/enforce-module-boundaries`'s `enforceBuildableLibDependency` forbids a buildable
+  library importing a non-buildable one, so a `build` target cascades through the
+  dependency chain. Phase 4 resolved it the other way — `libs/platform` is a
+  single buildable package whose four secondary entry points point _at_ the shared
+  library sources, so nothing under `libs/shared/` needs a target of its own.
+  `typecheck` remains the per-library gate, and still catches what `test` cannot.
+- **`libs/platform/tsconfig.lib.json` is the _entire_ compiler configuration for the
+  published package, not a set of overrides.** `@nx/angular:package` given a `tsConfig`
+  option calls `parseRemappedTsConfigAndMergeDefaults`, which despite its name merges
+  eight hardcoded options and otherwise **replaces** ng-packagr's bundled
+  `conf/tsconfig.ngc.json`. Anything that file does not restate is lost, and Angular's own
+  defaults are not the library-appropriate ones. This has produced two separate defects,
+  both configuration _absent_ rather than wrong, so no compiler reported either:
+  - omitting `strict` shipped 27 wrongly non-nullable public types;
+  - omitting `compilationMode: "partial"` made the package **unpublishable** —
+    ng-packagr writes a `prepublishOnly` that hard-fails `npm publish` for a full-mode
+    build — for the whole of Phase 4, while the phase claimed an upgrade is an
+    `npm version` bump.
+
+  `npm run beta:publishable` runs a real `npm publish --dry-run` and is the only check
+  that executes `prepublishOnly`. If you touch that tsconfig, run it.
+
+- **A `depConstraints` of `sourceTag: '*' → onlyDependOnLibsWithTags: ['*']` enforces
+  nothing.** That was Nx's scaffolded default and sat in `eslint.config.mjs` at severity
+  `error` for the whole programme without rejecting a single edge, while CLAUDE.md listed
+  "never cross-feature imports" as non-negotiable. Four violations accumulated. Real
+  constraints are in place now, and **an untagged project cannot depend on anything** — a
+  new library needs `scope:` and `type:` tags before it can import.
 - **`npm ci` is not what catches a macOS-pruned lockfile.** `npm ci --dry-run`
   only demands the entries the current platform resolves, so on macOS it never
   looks at the pruned Linux subtree and passes. The `lockfile` gate checks the
