@@ -308,6 +308,7 @@ export class NavDrawerComponent {
     this.destroyRef.onDestroy(() => {
       window.removeEventListener('clipboard-changed', onClipboardChanged);
       window.removeEventListener('favorites-changed', onFavoritesChanged);
+      this.revokeThumbnails();
     });
   }
 
@@ -1151,10 +1152,14 @@ export class NavDrawerComponent {
       if (this.thumbnailMap()[uid]) continue;
       this.detailService
         .fetchThumbnail(uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
@@ -1269,15 +1274,35 @@ export class NavDrawerComponent {
     });
   }
 
+  /**
+   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
+   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out.
+   *
+   * One array for both loaders — `loadThumbnailsForIds` (clipboard) and
+   * `loadThumbnails` (favourites) — because they share `thumbnailMap` and so share its
+   * lifetime. The drawer is long-lived, and neither loader revoked anything, so a
+   * session accumulated one un-revoked blob per document ever shown in it.
+   */
+  private readonly thumbnailBlobUrls: string[] = [];
+
+  private revokeThumbnails(): void {
+    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
+    this.thumbnailBlobUrls.length = 0;
+  }
+
   private loadThumbnails(docs: NuxeoDocument[]): void {
     for (const doc of docs) {
       if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),

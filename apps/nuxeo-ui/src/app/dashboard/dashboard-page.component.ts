@@ -81,6 +81,8 @@ export class DashboardPageComponent {
   readonly aiInsightsError = signal<string | null>(null);
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.revokeThumbnails());
+
     const userId = this.auth.username() ?? 'Administrator';
 
     this.docService.getRecentlyEdited(10).subscribe({
@@ -280,15 +282,39 @@ export class DashboardPageComponent {
       if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        // Both operators are load-bearing and both were missing. Without
+        // `takeUntilDestroyed` the subscription outlives the component and writes to a
+        // dead signal; without tracking the url for `revokeObjectURL` the blob is pinned
+        // in memory for the life of the document. `loadThumbnails` is called from three
+        // separate responses here, so a dashboard left open accumulated one un-revoked
+        // blob per document per refresh.
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
           }));
         });
     }
+  }
+
+  /**
+   * Every blob url handed to the template, so each can be revoked.
+   *
+   * A plain array rather than deriving them from `thumbnailMap`: that map holds
+   * `SafeUrl` values from `bypassSecurityTrustUrl`, whose underlying string is not
+   * readable back out. Tracking at creation is the only point where the raw url exists.
+   */
+  private readonly thumbnailBlobUrls: string[] = [];
+
+  private revokeThumbnails(): void {
+    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
+    this.thumbnailBlobUrls.length = 0;
   }
 }

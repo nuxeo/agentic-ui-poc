@@ -36,13 +36,8 @@
             </div>
           } @else if (targetDoc()) {
             <div class="doc-banner-content">
-              @if (hasVisualPreview() && docPreviewUrl()) {
-                <img
-                  class="doc-preview-img"
-                  [src]="docPreviewUrl()"
-                  [alt]="targetDoc()!.title"
-                  (error)="$any($event.target).style.display = 'none'"
-                />
+              @if (docPreviewUrl()) {
+                <img class="doc-preview-img" [src]="docPreviewUrl()" [alt]="targetDoc()!.title" />
               }
               <div class="doc-banner-info">
                 <div class="doc-banner-title">

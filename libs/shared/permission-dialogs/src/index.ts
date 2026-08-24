@@ -5,8 +5,8 @@
  * ## Why they are here and not in `collections`
  *
  * They used to live in `libs/features/collections`, and `browse` and `document-detail`
- * imported them across the feature boundary. That is the one import shape CLAUDE.md calls
- * out as never allowed — shared logic goes in `libs/shared/` — and it went unnoticed
+ * imported them across the feature boundary. CLAUDE.md forbids exactly that shape —
+ * shared logic goes in `libs/shared/` — and it went unnoticed
  * because `enforce-module-boundaries` was configured with `sourceTag: '*'` →
  * `onlyDependOnLibsWithTags: ['*']`, which permits every edge in the graph. The rule was
  * on; it just could not say no.

@@ -198,9 +198,13 @@ function checkVitestProjects() {
 
     const projectRoot = dirname(projectFile);
     const sourceRoot = project.sourceRoot || join(projectRoot, 'src');
-    const hasViteConfig = ['vite.config.ts', 'vite.config.mts', 'vite.config.js', 'vitest.config.ts', 'vitest.config.mts'].some(
-      (config) => fileExists(join(projectRoot, config)),
-    );
+    const hasViteConfig = [
+      'vite.config.ts',
+      'vite.config.mts',
+      'vite.config.js',
+      'vitest.config.ts',
+      'vitest.config.mts',
+    ].some((config) => fileExists(join(projectRoot, config)));
     if (!hasViteConfig) {
       fail(`${projectFile} has an @nx/vitest:test target but no Vite/Vitest config file.`);
       continue;
@@ -208,26 +212,143 @@ function checkVitestProjects() {
 
     const specs = walk(sourceRoot, (file) => /\.(spec|test)\.(ts|tsx|js|jsx|mts|mjs)$/.test(file));
     if (specs.length === 0) {
-      const viteConfig = ['vite.config.ts', 'vite.config.mts', 'vite.config.js', 'vitest.config.ts', 'vitest.config.mts']
+      const viteConfig = [
+        'vite.config.ts',
+        'vite.config.mts',
+        'vite.config.js',
+        'vitest.config.ts',
+        'vitest.config.mts',
+      ]
         .map((config) => join(projectRoot, config))
         .find(fileExists);
       const configText = viteConfig ? read(viteConfig) : '';
       if (!/passWithNoTests:\s*true/.test(configText)) {
-        fail(`${projectFile} has no specs under ${sourceRoot}; add tests or set passWithNoTests: true.`);
+        fail(
+          `${projectFile} has no specs under ${sourceRoot}; add tests or set passWithNoTests: true.`,
+        );
       }
     }
   }
 }
 
+/**
+ * Every file that creates an object URL must also revoke one — repo-wide, not diff-wide.
+ *
+ * ## Why this stopped being diff-scoped
+ *
+ * It used to iterate `addedLinesByFile`, so it only ever looked at files whose *added*
+ * lines contained `URL.createObjectURL`. That makes every violation predating the check
+ * permanently exempt: it is not a rule, it is a rule for new code. Four real leaks lived
+ * behind that exemption — two in `nav-drawer.component.ts`, one in
+ * `dashboard-page.component.ts`, one in `collection-detail.ts`, none of which revoked
+ * anything at all — while this gate reported pass on every run. CLAUDE.md states the
+ * blob-URL lifecycle as a non-negotiable; a check that cannot see existing code cannot
+ * hold it.
+ *
+ * Repo-wide is affordable because the population is tiny (18 files today) and the check is
+ * a substring test.
+ *
+ * ## What it deliberately does not claim
+ *
+ * Granularity is the **file**, not the call site. A file that revokes on destroy but leaks
+ * on a mid-life reset still passes — which is a real bug shape, and
+ * `collection-detail.ts` had exactly it: `thumbnailMap.set({})` dropped a batch of
+ * `SafeUrl`s without revoking the blobs behind them. Proving that by regex is not
+ * possible, so it is stated here rather than implied by a green tick.
+ */
 function checkBlobUrlLifecycle() {
-  for (const [file, lines] of addedLinesByFile) {
-    if (!file.endsWith('.ts') || !fileExists(file)) continue;
-    const addsObjectUrl = lines.some(({ text }) => text.includes('URL.createObjectURL'));
-    if (!addsObjectUrl) continue;
+  const files = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((file) => /^(libs|apps)\/.+\.ts$/.test(file) && !/\.(spec|test)\.ts$/.test(file));
+
+  if (files.length === 0) {
+    fail('No TypeScript sources found, so the blob-URL lifecycle gate cannot verify anything.');
+    return;
+  }
+
+  let creators = 0;
+  for (const file of files) {
+    if (!fileExists(file)) continue;
     const content = read(file);
+    if (!content.includes('URL.createObjectURL')) continue;
+    creators += 1;
     if (!content.includes('URL.revokeObjectURL')) {
-      fail(`${file} creates Blob/Object URLs but does not revoke them.`);
+      fail(
+        `${file} creates Blob/Object URLs but never revokes one.\n` +
+          '    Track the raw url at creation — a SafeUrl from bypassSecurityTrustUrl cannot be\n' +
+          '    read back — and revoke in destroyRef.onDestroy and on any reset.',
+      );
     }
+  }
+
+  if (creators === 0) {
+    fail(
+      'No file creates an object URL, so this gate asserted nothing. If that is genuinely ' +
+        'true the check should be removed deliberately rather than left passing empty.',
+    );
+  }
+}
+
+/**
+ * The other half of the same rule: `<img [src]>` must never be handed a Nuxeo URL.
+ *
+ * CLAUDE.md states it — "Never `<img [src]="nuxeoUrl">` — fetch via service, use a blob
+ * URL, revoke on destroy" — and nothing checked it. `task-detail.component.html` bound
+ * `[src]="docPreviewUrl()"` where the component returned
+ * `nuxeoApi.apiUrl('/nuxeo/api/v1/id/…/@rendition/thumbnail')`, so the browser issued that
+ * request itself: no HTTP interceptor, no `Authorization` header, working only on an
+ * ambient session cookie, with an internal API URL sitting in the DOM. Its sibling
+ * `tasks-page.component.ts` in the same library already did it correctly.
+ *
+ * Matched on the **component**, not the template, because the template only shows a getter
+ * name — `[src]="thumb"` is correct when `thumb` is a blob URL and wrong when it is not,
+ * and only the `.ts` says which. So: for each expression bound to `[src]`, find its
+ * declaration in the sibling component and fail if that declaration builds a Nuxeo URL.
+ *
+ * Two limits, stated rather than implied: it looks only at the sibling `.ts` of the same
+ * base name, and it reads four lines from the declaration. A getter that delegates to a
+ * helper elsewhere would slip through. It catches the shape that actually occurred.
+ */
+function checkNoNuxeoUrlInImgSrc() {
+  const templates = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
+
+  let bindings = 0;
+  for (const template of templates) {
+    if (!fileExists(template)) continue;
+    const component = template.replace(/\.html$/, '.ts');
+    if (!fileExists(component)) continue;
+    const body = read(component);
+
+    for (const match of read(template).matchAll(/\[src\]="([^"]+)"/g)) {
+      // `foo()` and `foo` both reduce to the member name `foo`.
+      const member = match[1]
+        .replace(/\(.*$/, '')
+        .replace(/^this\./, '')
+        .trim();
+      if (!/^[A-Za-z_$][\w$]*$/.test(member)) continue;
+      bindings += 1;
+
+      const declaration = new RegExp(`^\\s*(?:readonly\\s+)?${member}\\b[^\\n]*$`, 'm').exec(body);
+      if (!declaration) continue;
+      const window = body.slice(declaration.index).split('\n').slice(0, 5).join('\n');
+      if (/apiUrl\(|['"`]\/nuxeo\//.test(window)) {
+        fail(
+          `${template} binds [src]="${match[1]}", and ${component} builds that from a Nuxeo URL.\n` +
+            '    The browser fetches it directly, so it bypasses the HTTP interceptor and carries\n' +
+            '    no Authorization header. Fetch the blob through a service, hand the template a\n' +
+            '    blob URL, and revoke it on destroy.',
+        );
+      }
+    }
+  }
+
+  if (bindings === 0) {
+    fail(
+      'No [src] bindings were found in any template, so this gate asserted nothing. ' +
+        'Check the template glob before trusting a pass.',
+    );
   }
 }
 
@@ -236,7 +357,9 @@ function checkTypeSafetyEscapes() {
     if (!file.endsWith('.ts')) continue;
     for (const { line, text } of lines) {
       if (/\bas unknown as\b|\bas never\b/.test(text)) {
-        warn(`${file}:${line} uses a broad type escape. Prefer a typed adapter or runtime narrowing.`);
+        warn(
+          `${file}:${line} uses a broad type escape. Prefer a typed adapter or runtime narrowing.`,
+        );
       }
     }
   }
@@ -312,7 +435,12 @@ function checkHardcodedSecrets() {
     if (CREDENTIAL_CONFIG.test(file) || file.endsWith('.npmrc')) {
       return trimmed.startsWith('#') || trimmed.startsWith(';');
     }
-    return trimmed.startsWith('#') || trimmed.startsWith('//') || trimmed.startsWith(';') || trimmed.startsWith('*');
+    return (
+      trimmed.startsWith('#') ||
+      trimmed.startsWith('//') ||
+      trimmed.startsWith(';') ||
+      trimmed.startsWith('*')
+    );
   };
 
   const inspect = (file, lineNo, text, origin) => {
@@ -444,8 +572,14 @@ function checkAdfHxWorkaroundIds() {
     return;
   }
 
-  const KIND_BY_LETTER = { W: 'WORKAROUND(adf-hx)', M: 'MISSING(adf-hx)', R: 'REFUSES', D: 'DEGRADED(adf-hx)' };
-  const MARKER = /(WORKAROUND\(adf-hx\)|MISSING\(adf-hx\)|REFUSES|DEGRADED\(adf-hx\)):\s*([WMRD]\d+)/g;
+  const KIND_BY_LETTER = {
+    W: 'WORKAROUND(adf-hx)',
+    M: 'MISSING(adf-hx)',
+    R: 'REFUSES',
+    D: 'DEGRADED(adf-hx)',
+  };
+  const MARKER =
+    /(WORKAROUND\(adf-hx\)|MISSING\(adf-hx\)|REFUSES|DEGRADED\(adf-hx\)):\s*([WMRD]\d+)/g;
 
   // ---- the register's rows ----
   /** @type {Map<string, { configOnly: boolean, line: number }>} */
@@ -562,7 +696,7 @@ function checkNoAdfHxInPublicApi() {
   const ALLOWED = new Map([
     [
       'libs/shared/adf-hx-bridge/src/lib/ui/hxp-browse-nav-drawer/hxp-browse-nav-drawer.component.ts',
-      'The app shell\'s nav drawer renders adf-hx\'s document tree, so the shell genuinely needs ' +
+      "The app shell's nav drawer renders adf-hx's document tree, so the shell genuinely needs " +
         'adf-hx eagerly. This is a product decision, not a barrel accident, and it means the eager ' +
         'bundle has TWO causes — this and CONTEXT_MENU_ACTIONS_PROVIDERS in app.config.ts. Removing ' +
         'it requires deferring the tree behind an outlet, which is Phase 4 work.',
@@ -626,6 +760,7 @@ checkThemeTokens();
 checkDocsNumbering();
 checkVitestProjects();
 checkBlobUrlLifecycle();
+checkNoNuxeoUrlInImgSrc();
 checkTypeSafetyEscapes();
 checkHardcodedSecrets();
 checkAngularDevAssets();

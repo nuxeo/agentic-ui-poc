@@ -215,6 +215,8 @@ export class CollectionDetailComponent {
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.revokeThumbnails());
+
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.collectionUid = params.get('uid') ?? '';
       this.historyLoaded = false;
@@ -282,21 +284,41 @@ export class CollectionDetailComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
+    // The reset that made the leak unbounded: `thumbnailMap.set({})` dropped the last
+    // batch's `SafeUrl`s without revoking the blobs behind them, so every navigation to
+    // another collection pinned another batch in memory for the life of the document.
+    this.revokeThumbnails();
     this.thumbnailMap.set({});
     for (const doc of docs) {
       if (!this.canLoadThumbnail(doc)) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
           }));
         });
     }
+  }
+
+  /**
+   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
+   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out. This is
+   * the only point where the raw url exists.
+   */
+  private readonly thumbnailBlobUrls: string[] = [];
+
+  private revokeThumbnails(): void {
+    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
+    this.thumbnailBlobUrls.length = 0;
   }
 
   private canLoadThumbnail(doc: NuxeoDocument): boolean {
