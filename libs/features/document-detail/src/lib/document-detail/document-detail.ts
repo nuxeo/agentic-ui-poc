@@ -485,6 +485,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
   readonly noteFormatDisplay = computed(() => noteFormatLabel(this.mimeType()));
   readonly noteEditorBody = computed(() => this.noteContent() ?? '');
+  /** Parent folder for note RTE image uploads (Web UI stores uploaded pictures in the repository). */
+  readonly noteImageUploadParentPath = computed(() => {
+    const path = this.doc()?.path;
+    if (!path) return null;
+    const slash = path.lastIndexOf('/');
+    return slash > 0 ? path.slice(0, slash) : '/';
+  });
 
   readonly isImage = computed(() => this.mimeType().startsWith('image/'));
   readonly isPdf = computed(() => this.mimeType() === 'application/pdf');
@@ -3081,6 +3088,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.toast('Document updated');
         this.loadDocument(this.docUid);
       });
+  }
+
+  /** Toolbar Edit opens metadata; note-surface pencil focuses inline content (Web UI parity). */
+  onEditClick(): void {
+    this.openEditDialog();
   }
 
   saveNote(body: string): void {

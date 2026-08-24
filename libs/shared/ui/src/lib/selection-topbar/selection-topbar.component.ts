@@ -3,6 +3,7 @@ import {
   ElementRef,
   HostListener,
   ViewChild,
+  effect,
   input,
   output,
   signal,
@@ -29,6 +30,7 @@ export class SelectionTopbarComponent {
   readonly selectedItems = input<
     Array<{ id: string; name: string; preview: SafeUrl | string | null }>
   >([]);
+  readonly clearOnly = input(false);
   readonly cleared = output<void>();
   readonly publishRequested = output<void>();
   readonly addToClipboardRequested = output<void>();
@@ -37,6 +39,12 @@ export class SelectionTopbarComponent {
   readonly compareRequested = output<void>();
   readonly deleted = output<void>();
   readonly selectionPopupOpen = signal(false);
+
+  private readonly closePopupInClearOnlyMode = effect(() => {
+    if (this.clearOnly()) {
+      this.selectionPopupOpen.set(false);
+    }
+  });
 
   openSelectionPopup(): void {
     this.lastFocusedElement = document.activeElement as HTMLElement | null;

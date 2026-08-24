@@ -296,6 +296,14 @@ export {
   permissionUpdateMailFailureMessage,
   type PermissionWithNotificationResult,
 } from './lib/utils/permission-notification';
+export {
+  buildNoteDocumentPickerNxql,
+  filterInsertablePictureDocuments,
+  hasInsertablePictureBlob,
+  NOTE_DOCUMENT_PICKER_HEADERS,
+  NOTE_DOCUMENT_PICKER_PROVIDER,
+  normalizeDocumentPickerList,
+} from './lib/utils/note-document-picker-search';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
 export { escapeNxqlLiteral } from './lib/utils/nxql.utils';

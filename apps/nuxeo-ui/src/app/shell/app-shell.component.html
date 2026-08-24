@@ -3,6 +3,7 @@
     class="selection-topbar--sticky"
     [selectedCount]="selectionService.selectedCount()"
     [selectedItems]="selectionService.selectedItems()"
+    [clearOnly]="selectionService.clearOnlyMode()"
     (cleared)="selectionService.clear()"
     (publishRequested)="onPublishSelected()"
     (addToClipboardRequested)="onAddSelectedToClipboard()"

@@ -312,6 +312,26 @@ describe('DocumentDetailComponent', () => {
     });
   });
 
+  describe('onEditClick (NXSAT-193)', () => {
+    it('opens metadata dialog for Note documents (toolbar Edit properties)', () => {
+      component.doc.set(NOTE_DOC);
+      const openEditSpy = vi.spyOn(component, 'openEditDialog').mockImplementation(() => undefined);
+
+      component.onEditClick();
+
+      expect(openEditSpy).toHaveBeenCalled();
+    });
+
+    it('opens metadata dialog for non-note documents', () => {
+      component.doc.set(STUB_DOC);
+      const openEditSpy = vi.spyOn(component, 'openEditDialog').mockImplementation(() => undefined);
+
+      component.onEditClick();
+
+      expect(openEditSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('text classification', () => {
     // docUid is set by the route paramMap mock; no private-field access needed.
 
