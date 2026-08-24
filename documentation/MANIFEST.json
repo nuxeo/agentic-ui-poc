@@ -1,0 +1,29 @@
+{
+  "$comment": "Publishing manifest for the Confluence tree. Consumed by scripts/publish-confluence.mjs. Page order and parentage are declared here rather than inferred from filenames, so a rename cannot silently reparent a page.",
+  "space": "~71202090f2a61ef96d4f57a5104efe296c1f5b",
+  "rootFolderId": "4264100072",
+  "rootFolderTitle": "Nuxeo-Satori-Beta",
+  "repoCommit": "77265f9",
+  "branch": "feature/adf-hx-browse-poc",
+  "lastReviewed": "2026-08-24",
+  "sections": [
+    {
+      "dir": "10-leadership",
+      "title": "Executive / Leadership"
+    },
+    {
+      "dir": "20-product",
+      "title": "Product"
+    },
+    {
+      "dir": "30-engineering",
+      "title": "Engineering"
+    },
+    {
+      "dir": "40-governance",
+      "title": "Governance"
+    }
+  ],
+  "spaceId": "3624665219",
+  "rootFolderParentPageId": "3624665687"
+}
