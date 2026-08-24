@@ -90,7 +90,24 @@ jobs:
       - name: Check bundle size (nuxeo-ui)
         shell: bash
         env:
-          NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES: 5242880
+          # 6 MiB of TOTAL shipped JS+CSS — distinct from the Angular *initial* budget
+          # in angular.json (4 MB), which measures only the eager entry point.
+          #
+          # Raised from 5 MiB on 2026-08-24. The 5 MiB figure was set on 2026-04-21,
+          # before adf-hx adoption was planned, and was never revisited — while the
+          # Angular initial ceiling was deliberately raised twice during the Beta with
+          # the reasoning recorded. This one had no owner, so a 0.60% breach kept CI red
+          # for 16 consecutive runs without anyone understanding why.
+          #
+          # What moved it: putting the adf-hx bridge in the root injector makes adf-core
+          # eager (+1.15 MB, accepted in Phase 3 — 11 upstream services are
+          # `providedIn: 'root'` and providing the ports on a component instead fails
+          # one NG0201 at a time). Then the viewer +60 kB and search +10 kB.
+          #
+          # Headroom at 6 MiB is ~1.0 MB, roughly 14 more components at the recent rate.
+          # This DEFERS the real fix rather than making it: adf-core should be lazy. Do
+          # not raise this again without attempting that first.
+          NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES: 6291456
         run: |
           set -euo pipefail
 
