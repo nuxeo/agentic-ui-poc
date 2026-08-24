@@ -32,10 +32,11 @@ running**, plus deterministic scripts those tools invoke. The intelligence is th
 developer's tool; the repository supplies the knowledge and the gates.
 
 ```mermaid
-flowchart TD
-  dev["Developer + their AI tool<br/>Claude Code · Cursor · Windsurf · Copilot"]
+flowchart LR
+  dev["Developer + their AI tool<br/>Claude Code · Cursor<br/>Windsurf · Copilot"]
   subgraph repo["What this repository supplies"]
-    ctx["Context<br/>AGENTS.md · AGENTS/*.md · CLAUDE.md · .cursor/rules · .windsurfrules"]
+    direction TB
+    ctx["Context<br/>AGENTS.md · AGENTS/*.md<br/>CLAUDE.md · .cursor/rules"]
     skills["Skills — procedures<br/>.cursor/skills/*/SKILL.md"]
     agents["Review subagents<br/>.claude/agents/*.md"]
     gen["Generators<br/>tools/satori-generators"]
@@ -46,7 +47,7 @@ flowchart TD
   dev -->|spawns| agents
   dev -->|invokes| gen
   dev -->|must pass| gates
-  gates -->|red/green| dev
+  gates -->|"red / green"| dev
 ```
 
 The value is not in an agent framework. It is that **an agent's claim of success is

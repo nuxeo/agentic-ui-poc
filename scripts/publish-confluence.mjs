@@ -31,11 +31,12 @@
  *   node scripts/publish-confluence.mjs --verify      # re-read every published page
  */
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, resolve, relative } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const DOCS = join(ROOT, 'documentation');
+const DIAGRAMS = join(ROOT, 'dist', 'documentation-diagrams');
 const BASE = 'https://hyland.atlassian.net/wiki';
 
 const argv = process.argv.slice(2);
@@ -89,16 +90,50 @@ async function api(path, init = {}) {
   return body;
 }
 
+/**
+ * Every documentation page, keyed by its path relative to `documentation/`, mapped to its
+ * Confluence title.
+ *
+ * This exists because the first version rewrote **every** relative link to a GitHub blob URL,
+ * including links between these pages. On the index that was 50 of 70 links, and each was
+ * wrong twice: it sent a Confluence reader to GitHub, and the URL 404'd because the path had
+ * lost its `documentation/` prefix. A documentation set whose internal navigation is broken is
+ * not a documentation set.
+ *
+ * A link to another page in the set now becomes an `ac:link` resolved by page **title**, which
+ * is how Confluence links pages and survives a page being moved.
+ */
+const pageTitles = new Map();
+{
+  const scan = (dir, prefix) => {
+    for (const entry of readdirSync(dir)) {
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) {
+        scan(full, prefix ? `${prefix}/${entry}` : entry);
+      } else if (entry.endsWith('.md')) {
+        const rel = prefix ? `${prefix}/${entry}` : entry;
+        const m = /^---\n([\s\S]*?)\n---/.exec(readFileSync(full, 'utf8'));
+        const title = m && /^title:\s*(.*)$/m.exec(m[1])?.[1]?.trim();
+        if (title) pageTitles.set(rel, title.replace(/^["']|["']$/g, ''));
+      }
+    }
+  };
+  scan(DOCS, '');
+}
+
 /* ------------------------------------------------------------ markdown → storage ---- */
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** The inverse of `esc`, for text that must reach the page raw — i.e. inside CDATA. */
+const unesc = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
 /**
  * Inline formatting. Order matters: code spans are extracted first and restored last, so
  * `**` or `_` inside backticks is not treated as emphasis — the mistake that turns a code
  * sample into mangled bold text.
  */
-function inline(text) {
+function inline(text, relPath = '') {
   const codes = [];
   let s = text.replace(/`([^`]+)`/g, (_, c) => {
     codes.push(c);
@@ -109,9 +144,40 @@ function inline(text) {
   // Markdown links → Confluence external links. Repo-relative links are rewritten to the
   // GitHub blob URL so they resolve for a reader who is not looking at a clone.
   s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
-    const url = /^https?:/.test(href)
-      ? href
-      : `https://github.com/nuxeo/agentic-ui-poc/blob/${manifest.branch}/${href.replace(/^(\.\.\/)+/, '')}`;
+    if (/^https?:/.test(href)) return `<a href="${esc(href)}">${label}</a>`;
+
+    // Resolve the link against the page it appears on, so `../20-product/x.md` from
+    // `30-engineering/y.md` lands on `20-product/x.md`.
+    const [pathPart, anchorPart] = href.split('#');
+    const from = relPath.includes('/') ? relPath.slice(0, relPath.lastIndexOf('/')) : '';
+    const segments = (from ? `${from}/${pathPart}` : pathPart).split('/');
+    const stack = [];
+    for (const seg of segments) {
+      if (seg === '..') stack.pop();
+      else if (seg && seg !== '.') stack.push(seg);
+    }
+    const target = stack.join('/');
+
+    // Another page in this set → a real Confluence page link, resolved by title.
+    const title = pageTitles.get(target);
+    if (title) {
+      // The label is UNESCAPED here. `esc()` has already run over the whole string, so a
+      // label like "Cost & TCO" arrives as "Cost &amp; TCO" — and CDATA preserves text
+      // verbatim, so it would render to the reader as a literal "Cost &amp; TCO". Caught by
+      // reading the rendered view rather than the storage format.
+      const raw = unesc(label).replace(/]]>/g, ']]]]><![CDATA[>');
+      return (
+        `<ac:link${anchorPart ? ` ac:anchor="${esc(anchorPart)}"` : ''}>` +
+        `<ri:page ri:content-title="${esc(title)}" />` +
+        `<ac:plain-text-link-body><![CDATA[${raw}]]></ac:plain-text-link-body>` +
+        `</ac:link>`
+      );
+    }
+
+    // Anything else is a file in the repository. Relative to the repo root, which is one level
+    // above `documentation/`.
+    const repoPath = target.replace(/^documentation\//, '');
+    const url = `https://github.com/nuxeo/agentic-ui-poc/blob/${manifest.branch}/${repoPath}`;
     return `<a href="${esc(url)}">${label}</a>`;
   });
   s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
@@ -155,7 +221,8 @@ function panel(kind, body) {
  * diagram that silently fails to render is worse than a readable source block. The ASCII
  * diagrams in these documents are there for the same reason.
  */
-function toStorage(md) {
+function toStorage(md, relPath = '', attachments = []) {
+  let mermaidSeen = 0;
   // Strip YAML frontmatter — it is publishing metadata, not content.
   const body = md.replace(/^---\n[\s\S]*?\n---\n/, '');
   const lines = body.split('\n');
@@ -176,9 +243,9 @@ function toStorage(md) {
     if (!rows.length) return;
     const [head, ...rest] = rows;
     out.push('<table><tbody>');
-    out.push('<tr>' + head.map((c) => `<th>${inline(c)}</th>`).join('') + '</tr>');
+    out.push('<tr>' + head.map((c) => `<th>${inline(c, relPath)}</th>`).join('') + '</tr>');
     for (const r of rest)
-      out.push('<tr>' + r.map((c) => `<td>${inline(c)}</td>`).join('') + '</tr>');
+      out.push('<tr>' + r.map((c) => `<td>${inline(c, relPath)}</td>`).join('') + '</tr>');
     out.push('</tbody></table>');
   };
 
@@ -196,7 +263,7 @@ function toStorage(md) {
         out.push(`</${tag}>`);
         depth -= 1;
       }
-      out.push(`<li>${inline(content)}</li>`);
+      out.push(`<li>${inline(content, relPath)}</li>`);
       i += 1;
     }
     while (depth-- > 0) out.push(`</${tag}>`);
@@ -212,7 +279,12 @@ function toStorage(md) {
       const buf = [];
       while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
       i += 1;
-      out.push(codeMacro(lang, buf.join('\n')));
+      if (lang === 'mermaid') {
+        mermaidSeen += 1;
+        out.push(mermaidBlock(relPath, mermaidSeen, buf.join('\n'), attachments));
+      } else {
+        out.push(codeMacro(lang, buf.join('\n')));
+      }
       continue;
     }
 
@@ -229,7 +301,7 @@ function toStorage(md) {
     if (/^>/.test(line)) {
       const buf = [];
       while (i < lines.length && /^>/.test(lines[i])) buf.push(lines[i++].replace(/^>\s?/, ''));
-      out.push(panel('info', `<p>${inline(buf.join(' '))}</p>`));
+      out.push(panel('info', `<p>${inline(buf.join(' '), relPath)}</p>`));
       continue;
     }
 
@@ -241,7 +313,7 @@ function toStorage(md) {
         i += 1;
         continue;
       }
-      out.push(`<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`);
+      out.push(`<h${h[1].length}>${inline(h[2], relPath)}</h${h[1].length}>`);
       i += 1;
       continue;
     }
@@ -266,10 +338,100 @@ function toStorage(md) {
     ) {
       buf.push(lines[i++]);
     }
-    out.push(`<p>${inline(buf.join(' '))}</p>`);
+    out.push(`<p>${inline(buf.join(' '), relPath)}</p>`);
   }
 
   return out.join('\n');
+}
+
+/**
+ * A Mermaid diagram as a rendered image, with its source in a collapsed panel beneath.
+ *
+ * Confluence renders Mermaid only with a marketplace app, and no page in this space uses one.
+ * The first version of this publisher emitted the Mermaid as a code block instead, reasoning
+ * that a diagram which silently fails to render is worse than readable source. The outcome
+ * proved that wrong: the Architecture page showed forty lines of `flowchart TD` where a diagram
+ * belonged. Neither option was readable.
+ *
+ * So the image is attached to the page by `scripts/render-mermaid.mjs` and referenced here.
+ * The source travels with it in an `expand` macro, so a reader can see how it is built and a
+ * maintainer can copy it out — but the Markdown in this repository remains the single source of
+ * truth, and re-running the renderer is what refreshes the picture.
+ *
+ * If the PNG is missing, this falls back to a code block **and records the miss** so the
+ * publisher can warn. It never silently ships the worse rendering.
+ *
+ * `ac:width` is set and `ac:original-*` is NOT. The first version declared
+ * `ac:original-height="0" ac:original-width="0"`, which Confluence passed through as
+ * `data-height="0" data-width="0"` on the rendered image — a zero-sized picture. Confluence
+ * infers the intrinsic size from the attachment; all it needs from us is the display width,
+ * and 900px fits a page while remaining clickable to full size.
+ */
+function mermaidBlock(relPath, index, source, attachments) {
+  const slug = relPath
+    .replace(/\.md$/, '')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .toLowerCase();
+  const filename = `${slug}-diagram-${index}.png`;
+  const abs = join(DIAGRAMS, filename);
+
+  if (!existsSync(abs)) {
+    attachments.push({ filename, missing: true });
+    return codeMacro('text', source);
+  }
+  attachments.push({ filename, path: abs, bytes: statSync(abs).size });
+
+  return (
+    `<p><ac:image ac:align="center" ac:layout="center" ac:width="900" ` +
+    `ac:alt="Diagram: ${esc(relPath)} #${index}">` +
+    `<ri:attachment ri:filename="${esc(filename)}" /></ac:image></p>` +
+    `<ac:structured-macro ac:name="expand" ac:schema-version="1">` +
+    `<ac:parameter ac:name="title">Diagram source (Mermaid)</ac:parameter>` +
+    `<ac:rich-text-body>${codeMacro('text', source)}</ac:rich-text-body>` +
+    `</ac:structured-macro>`
+  );
+}
+
+/**
+ * Upload a file as a page attachment.
+ *
+ * `POST .../child/attachment` creates; it rejects a duplicate filename, so on conflict the
+ * existing attachment's id is looked up and its data replaced. Without that second path,
+ * re-running the publisher would fail on every page that already has diagrams — which would
+ * make the whole thing single-use.
+ */
+async function upload(pageId, filename, absPath) {
+  const body = new FormData();
+  body.append('file', new Blob([readFileSync(absPath)], { type: 'image/png' }), filename);
+  body.append('minorEdit', 'true');
+
+  const post = await fetch(`${BASE}/rest/api/content/${pageId}/child/attachment`, {
+    method: 'POST',
+    headers: { Authorization: auth, 'X-Atlassian-Token': 'no-check' },
+    body,
+  });
+  if (post.ok) return 'created';
+
+  const list = await api(
+    `/rest/api/content/${pageId}/child/attachment?filename=${encodeURIComponent(filename)}`,
+  );
+  const existing = list.results?.[0];
+  if (!existing) throw new Error(`upload ${filename}: ${post.status} and no existing attachment`);
+
+  const again = new FormData();
+  again.append('file', new Blob([readFileSync(absPath)], { type: 'image/png' }), filename);
+  again.append('minorEdit', 'true');
+  const put = await fetch(
+    `${BASE}/rest/api/content/${pageId}/child/attachment/${existing.id}/data`,
+    {
+      method: 'POST',
+      headers: { Authorization: auth, 'X-Atlassian-Token': 'no-check' },
+      body: again,
+    },
+  );
+  if (!put.ok)
+    throw new Error(`replace ${filename}: ${put.status} ${(await put.text()).slice(0, 200)}`);
+  return 'replaced';
 }
 
 /* ----------------------------------------------------------------------- publishing ---- */
@@ -366,10 +528,15 @@ if (dryRun) {
   for (const p of pages) {
     const md = readFileSync(join(DOCS, p.file), 'utf8');
     const fm = frontmatter(md);
-    const storage = toStorage(md);
+    const atts = [];
+    const storage = toStorage(md, p.file, atts);
     total += storage.length;
+    const missing = atts.filter((a) => a.missing).length;
     console.log(
-      `  ${String(storage.length).padStart(7)} chars  ${(fm.title ?? '(NO TITLE)').padEnd(46)} ${p.file}`,
+      `  ${String(storage.length).padStart(7)} chars  ${(fm.title ?? '(NO TITLE)').padEnd(46)} ${p.file}` +
+        (atts.length
+          ? `  [${atts.length} diagram(s)${missing ? `, ${missing} NOT RENDERED` : ''}]`
+          : ''),
     );
     if (!fm.title) console.log(`           ^ MISSING frontmatter title — would be skipped`);
   }
@@ -380,6 +547,8 @@ if (dryRun) {
 const sid = await resolveSpaceId();
 const sectionParents = new Map();
 const results = [];
+const warnings = [];
+let uploaded = 0;
 
 for (const p of pages) {
   const md = readFileSync(join(DOCS, p.file), 'utf8');
@@ -406,9 +575,28 @@ for (const p of pages) {
   }
 
   try {
-    const r = await upsert(fm.title, toStorage(md), parentId, sid);
+    const atts = [];
+    const storage = toStorage(md, p.file, atts);
+    const r = await upsert(fm.title, storage, parentId, sid);
     results.push({ ...p, ...r, title: fm.title });
-    console.log(`  ${r.action.padEnd(7)} ${fm.title.padEnd(46)} ${r.id}`);
+
+    let note = '';
+    const renderable = atts.filter((a) => !a.missing);
+    for (const a of renderable) {
+      const how = await upload(r.id, a.filename, a.path);
+      uploaded += 1;
+      void how;
+    }
+    const missing = atts.filter((a) => a.missing);
+    if (renderable.length) note += `  [${renderable.length} diagram(s) attached]`;
+    if (missing.length) {
+      note += `  [${missing.length} DIAGRAM(S) NOT RENDERED - shown as source]`;
+      warnings.push(
+        `${p.file}: ${missing.length} diagram(s) fell back to a code block. ` +
+          `Run \`node scripts/render-mermaid.mjs\` and publish again.`,
+      );
+    }
+    console.log(`  ${r.action.padEnd(7)} ${fm.title.padEnd(46)} ${r.id}${note}`);
   } catch (error) {
     console.error(`  FAILED  ${fm.title}\n    ${error.message}`);
     process.exitCode = 1;
@@ -417,6 +605,8 @@ for (const p of pages) {
 
 console.log(
   `\npublish-confluence: ${results.filter((r) => r.action === 'created').length} created, ` +
-    `${results.filter((r) => r.action === 'updated').length} updated`,
+    `${results.filter((r) => r.action === 'updated').length} updated, ` +
+    `${uploaded} diagram(s) attached`,
 );
+for (const w of warnings) console.warn(`  WARNING ${w}`);
 console.log(`  ${BASE}/spaces/${manifest.space}/folder/${manifest.rootFolderId}`);

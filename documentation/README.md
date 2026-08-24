@@ -1,5 +1,5 @@
 ---
-title: Nuxeo Satori Beta — Documentation Home
+title: Nuxeo Satori — Documentation Home
 parent: null
 order: 0
 last_reviewed: 2026-08-24
@@ -8,7 +8,7 @@ branch: feature/adf-hx-browse-poc
 audience: all
 ---
 
-# Nuxeo Satori Beta — Documentation Home
+# Nuxeo Satori — Documentation Home
 
 > **Last reviewed:** 2026-08-24 · **Repository:** `77265f9` on `feature/adf-hx-browse-poc`
 > (111 commits ahead of `main`, draft PR #145)

@@ -154,7 +154,7 @@ Three consequences worth knowing before you touch startup:
 ## 4. Request lifecycle
 
 ```mermaid
-flowchart LR
+flowchart TD
   A["Component<br/>signal()-driven"] --> B["Feature service<br/>libs/features/*"]
   B --> C["Shared client<br/>libs/shared/nuxeo-client"]
   C --> D["HttpClient"]
@@ -248,7 +248,7 @@ point.
 ## 7. Deployment architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
   subgraph build["Build"]
     ng["nx build nuxeo-ui<br/>--configuration=production"]
     mvn["mvn package"]
