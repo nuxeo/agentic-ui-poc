@@ -107,14 +107,29 @@ export default async function collectEvidence(page, helpers, _outDir) {
     .locator('.note-footer, .note-plain-actions')
     .getByRole('button', { name: 'Save' })
     .first();
-  if (await saveBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await saveBtn.click();
-    const snack = page.locator('.mat-mdc-snack-bar-container');
-    await snack.waitFor({ state: 'visible', timeout: 20_000 }).catch(() => undefined);
-    await page.waitForTimeout(1200);
-  } else {
-    console.warn('     Save button not visible — note may be read-only');
+  const saveVisible = await saveBtn.isVisible({ timeout: 5000 }).catch(() => false);
+  if (!saveVisible) {
+    throw new Error('Save button not visible — note may be read-only or editor not in edit mode');
   }
+
+  const putUrlFragment = `/nuxeo/api/v1/id/${docUid}`;
+  const putResponsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response.url().includes(putUrlFragment) &&
+      response.ok(),
+    { timeout: 20_000 },
+  );
+
+  await saveBtn.click();
+  try {
+    await putResponsePromise;
+  } catch {
+    throw new Error(`Note save PUT to ${putUrlFragment} did not complete successfully`);
+  }
+
+  await page.getByText('Note saved').waitFor({ state: 'visible', timeout: 10_000 });
+  await page.waitForTimeout(1200);
   await helpers.screenshot('03-after-save-snackbar');
 
   helpers.step('Scroll to Attachments section — after save');
@@ -124,12 +139,15 @@ export default async function collectEvidence(page, helpers, _outDir) {
   console.log(`     Upload attachment visible after save: ${uploadVisibleAfter}`);
   await helpers.screenshot('04-after-save-attachments-panel');
 
-  if (uploadVisibleBefore && !uploadVisibleAfter) {
-    console.log('\n❌  BUG REPRODUCED: Upload attachment disappeared after save.\n');
-  } else if (uploadVisibleBefore && uploadVisibleAfter) {
-    console.log('\n✅  FIX VERIFIED: Upload attachment still visible after save.\n');
-  } else if (!uploadVisibleBefore) {
+  if (!uploadVisibleBefore) {
     console.warn('\n⚠️  Upload attachment was not visible before save — check permissions or panel scroll.\n');
+    return;
+  }
+
+  if (!uploadVisibleAfter) {
+    console.log('\n❌  BUG REPRODUCED: Upload attachment disappeared after save.\n');
+  } else {
+    console.log('\n✅  FIX VERIFIED: Upload attachment still visible after save.\n');
   }
 }
 
