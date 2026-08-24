@@ -34,7 +34,8 @@
     "start": "nx serve",
     "test": "nx test",
     "watch": "nx build --watch --configuration development",
-    "beta:supply-chain": "node scripts/beta-harness/supply-chain.mjs"
+    "beta:supply-chain": "node scripts/beta-harness/supply-chain.mjs",
+    "beta:code-scanning": "node scripts/beta-harness/code-scanning.mjs"
   },
   "lint-staged": {
     "*.ts": [

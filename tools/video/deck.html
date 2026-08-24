@@ -25,8 +25,13 @@
       const params = new URLSearchParams(location.search);
       const deckName = params.get('deck');
 
+      // `"` and `'` included: `esc()` output lands inside double-quoted attributes such as
+      // `data-series="…"`, where omitting them lets a value close the attribute and inject markup.
       const esc = (s) =>
-        String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+        String(s).replace(
+          /[&<>"']/g,
+          (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+        );
       /** Allows `**bold**` and `` `code` `` in deck copy without a markdown dep. */
       const rich = (s) =>
         esc(s)

@@ -51,6 +51,19 @@ const failures = [];
 const fail = (message) => failures.push(message);
 
 /** Every non-spec TypeScript file under the source roots. */
+/**
+ * Escape every regex metacharacter, not just the four this file used to.
+ *
+ * The previous inline escape covered `.`, `[`, `]` and `'` — CodeQL's `js/incomplete-sanitization`,
+ * three times. The tokens are our own slot constants, so nothing hostile reaches it, but this is a
+ * **gate**: an unescaped `$` or `(` makes the pattern match something other than the token, and a
+ * gate that matches the wrong thing is worse than one that fails.
+ * @param {string} s
+ */
+function reEscape(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function sourceFiles() {
   const found = [];
   const walk = (dir) => {
@@ -192,11 +205,11 @@ for (const claim of slotClaims()) {
   // `register(<slot>, …)` call. Resolved: it appears inside a `resolve(` call.
   const isRegistered = [...sources].some(
     ([, text]) =>
-      new RegExp(`\\[${token.replace(/[.[\]']/g, '\\$&')}\\]\\s*:`).test(text) ||
-      new RegExp(`register\\(\\s*${token.replace(/[.[\]']/g, '\\$&')}`).test(text),
+      new RegExp(`\\[${reEscape(token)}\\]\\s*:`).test(text) ||
+      new RegExp(`register\\(\\s*${reEscape(token)}`).test(text),
   );
   const isResolved = [...sources].some(([, text]) =>
-    new RegExp(`resolve[^)]*${token.replace(/[.[\]']/g, '\\$&')}`, 's').test(text),
+    new RegExp(`resolve[^)]*${reEscape(token)}`, 's').test(text),
   );
 
   if (claim.state === 'inert' && isResolved) {

@@ -123,10 +123,32 @@ const pageTitles = new Map();
 
 /* ------------------------------------------------------------ markdown → storage ---- */
 
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// `"` and `'` are escaped because almost every call site puts the result inside a
+// double-quoted XML attribute — `ac:alt="…"`, `href="…"`, `ri:content-title="…"`. Without them a
+// title containing a quote closes the attribute early and injects the rest as markup. CodeQL's
+// `js/incomplete-html-attribute-sanitization` flagged fourteen call sites of this one function.
+const esc = (s) =>
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
-/** The inverse of `esc`, for text that must reach the page raw — i.e. inside CDATA. */
-const unesc = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+/**
+ * The inverse of `esc`, for text that must reach the page raw — i.e. inside CDATA.
+ *
+ * `&amp;` must be undone LAST or `&amp;quot;` would decode to `"` in two steps rather than to
+ * `&quot;` — the double-unescaping mirror of the double-escaping bug that put `Cost &amp;amp; TCO`
+ * on a published page.
+ */
+const unesc = (s) =>
+  s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&');
 
 /**
  * Inline formatting. Order matters: code spans are extracted first and restored last, so
@@ -466,7 +488,11 @@ function collect() {
 
 async function findByTitle(title) {
   const q = new URLSearchParams({
-    cql: `space="${manifest.space}" and type=page and title="${title.replace(/"/g, '\\"')}"`,
+    // Backslash FIRST, then quote: escaping the quote first would leave `\` unescaped, so a
+    // title ending in a backslash escapes the closing quote and the rest of the title becomes CQL.
+    cql:
+      `space="${manifest.space}" and type=page and ` +
+      `title="${title.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`,
     limit: '5',
   });
   const r = await api(`/rest/api/content/search?${q}`);

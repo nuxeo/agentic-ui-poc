@@ -176,7 +176,12 @@ try {
     // is exactly what a careless rename looks like to a customer's manifest.
     const decl = join(installedNew, 'extensions', 'index.d.ts');
     const text = readFileSync(decl, 'utf8');
-    const stripped = text.replace(new RegExp(`\\s*readonly ${breakSlot}: "${breakSlot}";`), '');
+    // `breakSlot` comes from `--break-slot` on the command line, so it is interpolated into the
+    // pattern escaped. Unescaped it is regex injection (CodeQL `js/regex-injection`): a slot name
+    // containing `.` or `(` would match something other than itself, and the negative control
+    // would then "pass" against a slot that was never there.
+    const slotRe = breakSlot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const stripped = text.replace(new RegExp(`\\s*readonly ${slotRe}: "${slotRe}";`), '');
     if (stripped === text) {
       throw new Error(`--break-slot ${breakSlot}: that slot is not in the shipped declarations.`);
     }

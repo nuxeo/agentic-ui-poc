@@ -13,6 +13,13 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege, explicitly. Without this block the job inherits the repository default, which
+# can be read/write on `contents` — a workflow that only needs to read the code would be able to
+# push to it. Flagged by CodeQL's `actions/missing-workflow-permissions`, and this was the only
+# workflow of the nine that lacked it.
+permissions:
+  contents: read
+
 jobs:
   lint-build-test:
     runs-on: ubuntu-latest
