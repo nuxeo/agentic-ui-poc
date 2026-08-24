@@ -66,6 +66,7 @@ otherwise. The customer-facing AI features are always called "runtime AI feature
 | [AI Harness Strategy](10-leadership/05-ai-harness-strategy.md)                     | Why the harness is strategically valuable, and what it demands |
 | [Scalability & Operations](10-leadership/06-scalability-and-operations.md)         | How does this scale and who supports it?                       |
 | [Risks & Opportunities](10-leadership/07-risks-and-opportunities.md)               | Ranked risks, technical debt, and where the upside is          |
+| [Roadmap Recommendations](10-leadership/08-roadmap-recommendations.md)             | What to do next, and what not to                               |
 
 ### Product
 
