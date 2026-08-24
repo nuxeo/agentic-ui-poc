@@ -13,6 +13,9 @@ export * from './lib/mapping/nuxeo-to-hx-version.mapper';
 export * from './lib/mapping/nuxeo-to-hx-model.mapper';
 export * from './lib/api/nuxeo-document-api';
 export * from './lib/api/nuxeo-query-api';
+// Escaping for values interpolated into an HXQL literal. Exported because the search
+// page composes its own query and must not do this by hand.
+export { escapeHxqlLiteral, containsHxqlLiteralBreak } from './lib/api/hxql-literal';
 // `adf-hx-document.service` is NOT exported here: it imports upstream's API tokens from
 // `@alfresco/adf-hx-content-services/api`. It is in `@agentic-ui/shared/adf-hx-bridge/providers`.
 export * from './lib/services/adf-hx-browse-context.service';

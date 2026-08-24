@@ -122,6 +122,16 @@ export const CORE_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluato
 };
 
 /**
+ * How deeply a rule reference may nest before the evaluator stops descending.
+ *
+ * Generous, because legitimate nesting is shallow — `core.every(core.some(a, b), c)` is
+ * depth 2 — and the limit exists to stop pathological input, not to police style. A
+ * manifest nesting 32 deep is either a mistake or an attack, and either way the honest
+ * answer is the same one an unregistered rule gets.
+ */
+const MAX_RULE_DEPTH = 32;
+
+/**
  * Rule ids that must fail **closed** when they are not registered.
  *
  * Fail-open is right for the general case — a manifest typo must not strip
@@ -206,26 +216,46 @@ export class ExtensionRuleRegistry {
    */
   evaluate(rule: ExtensionRule | null | undefined, context: ExtensionRuleContext): boolean {
     if (rule === null || rule === undefined) return true;
-    return this.evaluateRef(asRuleRef(rule), context, new Set<string>());
+    return this.evaluateRef(asRuleRef(rule), context, 0);
   }
 
+  /**
+   * Recursion is bounded by **depth**, not by which rule types have been seen.
+   *
+   * It used to carry a `Set<string>` of visited rule *types* and `return true` on a
+   * repeat. That misread ordinary nesting as a cycle: re-using a composite at two
+   * depths is a normal manifest shape, and `docs/extension-reference.md` advertises the
+   * ACA-compatible `core.*` composites that make it normal. An adversarial review
+   * reproduced the consequence —
+   *
+   *   core.some('app.rules.hasAdministrationAccess', core.some('app.rules.isPowerUser'))
+   *
+   * returned `true` for a user who is neither, while the flat equivalent correctly
+   * returned `false`. A security gate opening because a rule appeared twice.
+   *
+   * Depth is the right bound because a *cycle* is not expressible in the data: the
+   * manifest is JSON, and JSON cannot describe one. What is reachable is deep nesting
+   * from a large manifest, and genuine infinite recursion from a **Layer 2 evaluator**
+   * that resolves its own id — both of which a depth limit stops and type-tracking
+   * did not distinguish from legitimate re-use.
+   *
+   * On exceeding the limit the answer is `!failClosed.has(type)`, matching the
+   * unregistered-rule branch: unknown answers permit, except where the id is declared
+   * security-relevant. The old code returned a bare `true` even for those.
+   */
   private evaluateRef(
     ref: ExtensionRuleRef,
     context: ExtensionRuleContext,
-    seen: Set<string>,
+    depth: number,
   ): boolean {
     const evaluator = this.evaluators.get(ref.type);
     if (!evaluator) return !this.failClosed.has(ref.type);
 
-    // A manifest is customer-authored data, so a composite that references
-    // itself is a reachable input, not a hypothetical. Break the cycle rather
-    // than overflow the stack.
-    if (seen.has(ref.type)) return true;
-    const guarded = new Set(seen).add(ref.type);
+    if (depth >= MAX_RULE_DEPTH) return !this.failClosed.has(ref.type);
 
     const parameters = ref.parameters ?? [];
     return evaluator(context, parameters, (nested) =>
-      this.evaluateRef(asRuleRef(nested), context, guarded),
+      this.evaluateRef(asRuleRef(nested), context, depth + 1),
     );
   }
 }

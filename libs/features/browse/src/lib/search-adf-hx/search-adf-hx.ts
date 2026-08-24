@@ -11,6 +11,7 @@ import { SearchService } from '@alfresco/adf-hx-content-services/services';
 import { HxpDocumentListComponent } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
 import { catchError, debounceTime, distinctUntilChanged, of, switchMap, Subject } from 'rxjs';
+import { escapeHxqlLiteral } from '@agentic-ui/shared/adf-hx-bridge';
 import { PACKAGED_BROWSE_COLUMNS } from '@nuxeo-satori/platform/extensions';
 
 import { toDataColumns } from '../adf-hx-columns';
@@ -92,9 +93,22 @@ export class SearchAdfHxComponent {
           const term = this.searchTerm().trim();
           const offset = this.currentPage() * this.pageSize();
 
-          // Build HXQL query
+          /**
+           * The term is **escaped**, not interpolated raw.
+           *
+           * It was raw, and an adversarial review closed the literal and the enclosing
+           * parenthesis to reach a top-level `OR`:
+           *
+           *   zzznope') OR (ecm:uuid IS NOT NULL) OR (ecm:fulltext = 'q
+           *
+           * That defeated both hygiene filters the query api adds unconditionally and
+           * returned 155 documents where the plain term returned 0. Nuxeo's ACLs bounded
+           * it to seeing versions and trashed documents rather than data disclosure, but
+           * the query structure was the user's to choose.
+           */
           const query = term
-            ? `SELECT * FROM SysContent WHERE sys_fulltext = '${term}*' ORDER BY sys_modified DESC`
+            ? `SELECT * FROM SysContent WHERE sys_fulltext = '${escapeHxqlLiteral(term)}*' ` +
+              `ORDER BY sys_modified DESC`
             : `SELECT * FROM SysContent ORDER BY sys_modified DESC`;
 
           return this.searchService.getDocumentsByQuery(query, {
