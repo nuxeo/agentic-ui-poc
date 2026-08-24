@@ -30,7 +30,7 @@
  */
 
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
@@ -100,9 +100,22 @@ const UPSTREAM_MARKERS = ['adf-datatable', 'adf-enterprise-adf-hx'];
  * started before the glob was added keeps 404ing the file — and the build is the
  * authority.
  */
+/**
+ * Each entry carries a `key` or `contains`, because **existence was the wrong assertion**.
+ *
+ * This list was checked with `existsSync` alone until 2026-08-24 — while the comment below
+ * describes the failure mode as the loader "catches the 404 and returns `{}`". An empty
+ * catalogue is therefore precisely the silent failure the check exists to prevent, and an
+ * empty catalogue passed. So did a truncated one, and so did a 0-byte file.
+ *
+ * `key` is a dotted path that must resolve to a non-empty string. Each one is a key the
+ * application actually renders, not the first key in the file: `MANAGE_VERSIONS.DIALOG.TITLE`
+ * is the heading that shipped raw and is the reason two of these entries exist at all.
+ */
 const REQUIRED_FILES = [
   {
     path: 'assets/adf-core/i18n/en.json',
+    key: 'CORE.PAGINATION.ITEMS_PER_PAGE',
     why: "adf-core's own translation catalogue; without it adf-hx components render raw keys.",
     fix: 'Check the asset glob for node_modules/@alfresco/adf-core/bundles/assets/adf-core in angular.json.',
   },
@@ -112,16 +125,21 @@ const REQUIRED_FILES = [
   // loader catches the 404 and returns `{}`. Nothing else in the pipeline notices.
   {
     path: 'assets/adf-enterprise-adf-hx-content-services-ui/i18n/en.json',
+    key: 'MANAGE_VERSIONS.DIALOG.TITLE',
     why: "adf-hx's UI catalogue — MANAGE_VERSIONS, DOCUMENT_LIST, DOCUMENT_TREE and the rest.",
     fix: 'Check the asset glob for node_modules/@alfresco/adf-hx-content-services/ui/assets in angular.json.',
   },
   {
     path: 'assets/adf-enterprise-adf-hx-content-services-services/i18n/en.json',
+    key: 'PERMISSION_LEVEL.LABEL.READ',
     why: "adf-hx's services catalogue — DOWNLOAD_STATUS, PERMISSION_LEVEL.",
     fix: 'Check the asset glob for node_modules/@alfresco/adf-hx-content-services/services/assets in angular.json.',
   },
   {
     path: 'assets/images/Folder.svg',
+    // Not JSON, so assert the markup instead. A 0-byte or HTML-error-page SVG renders as
+    // a broken image, which is the same class of silent failure as an empty catalogue.
+    contains: '<svg',
     why: "adf-hx's own icon set, referenced by the document tree and list as assets/images/*.svg.",
     fix: 'Check the asset glob for node_modules/@alfresco/adf-hx-content-services/icons/assets in angular.json.',
   },
@@ -161,7 +179,36 @@ for await (const file of walk(distDir)) {
 /** @type {string[]} */
 const missingFiles = [];
 for (const required of REQUIRED_FILES) {
-  if (!existsSync(resolve(distDir, required.path))) missingFiles.push(required.path);
+  const full = resolve(distDir, required.path);
+  if (!existsSync(full)) {
+    missingFiles.push(`${required.path} — absent`);
+    continue;
+  }
+  // Content, not existence. See the note on REQUIRED_FILES: the documented failure mode is
+  // a catalogue that resolves to `{}`, which existence cannot distinguish from a good one.
+  const text = readFileSync(full, 'utf8');
+  if (required.contains && !text.includes(required.contains)) {
+    missingFiles.push(
+      `${required.path} — present (${text.length} bytes) but does not contain \`${required.contains}\``,
+    );
+    continue;
+  }
+  if (required.key) {
+    let value;
+    try {
+      value = required.key.split('.').reduce((o, part) => o?.[part], JSON.parse(text));
+    } catch (error) {
+      missingFiles.push(`${required.path} — present but is not valid JSON (${error.message})`);
+      continue;
+    }
+    if (typeof value !== 'string' || value === '') {
+      missingFiles.push(
+        `${required.path} — present (${text.length} bytes) but \`${required.key}\` is ` +
+          `${value === undefined ? 'absent' : JSON.stringify(value)}, so the catalogue is ` +
+          'empty or truncated and the UI renders raw keys',
+      );
+    }
+  }
 }
 
 if (filesScanned === 0) {
@@ -182,8 +229,14 @@ for (const required of REQUIRED_FILES) {
 }
 
 if (hits.length === 0 && missingFiles.length === 0) {
-  console.log(`no-test-libs-in-bundle: pass — none of ${BANNED.map((b) => b.id).join(', ')} reached the bundle.`);
-  console.log(`  ${REQUIRED_FILES.length} required asset(s) present.`);
+  console.log(
+    `no-test-libs-in-bundle: pass — none of ${BANNED.map((b) => b.id).join(', ')} reached the bundle.`,
+  );
+  console.log(
+    `  ${REQUIRED_FILES.length} required asset(s) present AND non-empty ` +
+      `(${REQUIRED_FILES.filter((r) => r.key).length} catalogues checked by key, ` +
+      `${REQUIRED_FILES.filter((r) => r.contains).length} by markup).`,
+  );
   // A green here means nothing unless adf-hx is actually in the bundle: the banned
   // symbols arrive *through* it. Until an adoption lands, this passes trivially, and
   // saying so is the difference between a gate and a decoration.

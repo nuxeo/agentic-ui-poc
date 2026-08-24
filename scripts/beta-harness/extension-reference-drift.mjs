@@ -76,8 +76,32 @@ function sourceFiles() {
   return found;
 }
 
+/**
+ * Comments removed before anything is matched against source.
+ *
+ * Every check below decides "does the code do X?" by searching source text, and a
+ * commented-out `resolve(EXTENSION_SLOTS.tabs)` — or a doc comment quoting one as an
+ * example, which is the far more likely case — satisfied that search exactly as well as
+ * real code. So a slot the reference calls live could be proven live by its own
+ * explanatory comment.
+ *
+ * This is not hypothetical in this repository. Three generators spliced every
+ * registration *inside a comment*, reported success, printed the IDs they had
+ * "registered", and passed lint, typecheck and six specs — because nothing distinguished
+ * code from prose about code. The same blind spot in a gate whose entire job is to catch
+ * a document that overstates the product would have hidden the identical failure.
+ *
+ * Deliberately naive: a `//` inside a string literal (`'https://x'`) truncates that line.
+ * That can only ever *remove* text, so it can make a check miss a real occurrence — a
+ * false alarm, loud and investigable — and never invent one. The failure direction that
+ * matters here is the silent one, and this closes it.
+ */
+function stripComments(text) {
+  return text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
 const files = sourceFiles();
-const sources = new Map(files.map((f) => [f, readFileSync(f, 'utf8')]));
+const sources = new Map(files.map((f) => [f, stripComments(readFileSync(f, 'utf8'))]));
 const allSource = [...sources.values()].join('\n');
 const reference = readFileSync(REFERENCE, 'utf8');
 
