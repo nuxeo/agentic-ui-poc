@@ -33,9 +33,13 @@ async function installEmptyPermissionsInterceptor(page, docUid) {
       permissions: [],
     };
 
+    const headers = { ...response.headers() };
+    delete headers['content-length'];
+    delete headers['content-encoding'];
+
     await route.fulfill({
       status: response.status(),
-      headers: response.headers(),
+      headers,
       contentType: 'application/json',
       body: JSON.stringify(body),
     });

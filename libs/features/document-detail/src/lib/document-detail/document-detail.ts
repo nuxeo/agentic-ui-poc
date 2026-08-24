@@ -3146,15 +3146,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Keeps enricher data (permissions, ACLs) when a PUT response omits contextParameters. */
+  /**
+   * Keeps enricher data when a Note PUT omits contextParameters or returns empty
+   * permissions/acls arrays (NXSAT-196). Permission refresh GETs use the default merge.
+   */
   private mergeUpdatedDocument(existing: NuxeoDocument, updated: NuxeoDocument): NuxeoDocument {
     if (!existing.contextParameters && !updated.contextParameters) {
       return updated;
     }
-    // mergeDocumentPermissionsContext also treats empty permissions/acls arrays as absent.
     return mergeDocumentPermissionsContext(
       { ...updated, contextParameters: existing.contextParameters },
       updated,
+      { treatEmptyEnricherAsAbsent: true },
     );
   }
 

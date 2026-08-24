@@ -144,11 +144,35 @@ describe('ace-principal', () => {
       contextParameters: { permissions: [] },
     };
 
-    const merged = mergeDocumentPermissionsContext(existing, updated);
+    const merged = mergeDocumentPermissionsContext(existing, updated, {
+      treatEmptyEnricherAsAbsent: true,
+    });
 
     expect(merged.properties['note:note']).toBe('<p>hello</p>');
     expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
     expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: false });
+  });
+
+  it('mergeDocumentPermissionsContext replaces permissions with empty array on permission refresh', () => {
+    const existing: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Doc',
+      type: 'File',
+      path: '/a/b',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: {
+        permissions: ['Read', 'WriteProperties'],
+      },
+    };
+    const updated: NuxeoDocument = {
+      ...existing,
+      contextParameters: { permissions: [] },
+    };
+
+    const merged = mergeDocumentPermissionsContext(existing, updated);
+
+    expect(merged.contextParameters?.['permissions']).toEqual([]);
   });
 
   it('mergeDocumentPermissionsContext preserves other enrichers from updated response', () => {

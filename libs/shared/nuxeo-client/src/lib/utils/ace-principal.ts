@@ -41,24 +41,47 @@ export function preferEnricherValue<T>(
   return updated ?? existing;
 }
 
-/** Merges ACL + permissions enrichers from a permissions fetch into an existing document. */
+function mergeEnricherValue<T>(
+  updated: T | undefined,
+  existing: T | undefined,
+  treatEmptyAsAbsent: boolean,
+): T | undefined {
+  if (treatEmptyAsAbsent) {
+    return preferEnricherValue(updated, existing);
+  }
+  return updated !== undefined ? updated : existing;
+}
+
+export type MergeDocumentPermissionsContextOptions = {
+  /** When true, empty `permissions`/`acls` arrays are treated as absent (Note PUT merge). */
+  treatEmptyEnricherAsAbsent?: boolean;
+};
+
+/**
+ * Merges context enrichers from a permissions fetch or document update into an existing document.
+ * Spreads enrichers from `updated`, then overlays `acls` and `permissions`.
+ */
 export function mergeDocumentPermissionsContext(
   existing: NuxeoDocument,
   updated: NuxeoDocument,
+  options?: MergeDocumentPermissionsContextOptions,
 ): NuxeoDocument {
+  const treatEmptyAsAbsent = options?.treatEmptyEnricherAsAbsent ?? false;
   const normalized = normalizeDocumentAcls(updated);
   return {
     ...existing,
     contextParameters: {
       ...existing.contextParameters,
       ...normalized.contextParameters,
-      acls: preferEnricherValue(
+      acls: mergeEnricherValue(
         normalized.contextParameters?.['acls'],
         existing.contextParameters?.['acls'],
+        treatEmptyAsAbsent,
       ),
-      permissions: preferEnricherValue(
+      permissions: mergeEnricherValue(
         normalized.contextParameters?.['permissions'],
         existing.contextParameters?.['permissions'],
+        treatEmptyAsAbsent,
       ),
     },
   };
