@@ -59,7 +59,8 @@ import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-clien
 
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
-import { AppNavItem, PLATFORM_NAV_ITEMS, SETTINGS_DRAWER_ITEMS } from '../platform-nav-items';
+import { AppNavItem, PLATFORM_NAV_ITEMS, visibleSettingsDrawerItems } from '../platform-nav-items';
+import { ThemingFeatureFlagService } from '../theme/theming-feature-flag.service';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
 
@@ -111,6 +112,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
+  readonly themingFlags = inject(ThemingFeatureFlagService);
 
   readonly aiChatOpen = this.aiChat.panelOpen;
   readonly aiChatInput = signal('');
@@ -170,9 +172,10 @@ export class AppShellComponent implements OnDestroy {
       };
       return titles[seg] ?? 'Administration';
     }
-    const match = [...PLATFORM_NAV_ITEMS, ...SETTINGS_DRAWER_ITEMS].find(
-      (item) => url === item.path || url.startsWith(item.path + '/'),
-    );
+    const match = [
+      ...PLATFORM_NAV_ITEMS,
+      ...visibleSettingsDrawerItems(this.themingFlags.themingEnabled()),
+    ].find((item) => url === item.path || url.startsWith(item.path + '/'));
     return match?.label ?? 'Hyland Nuxeo';
   });
 

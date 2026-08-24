@@ -60,10 +60,11 @@ import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import {
   AppNavItem,
-  SETTINGS_DRAWER_ITEMS,
+  visibleSettingsDrawerItems,
   ADMINISTRATION_DRAWER_ITEMS,
   POWERUSER_ADMINISTRATION_DRAWER_ITEMS,
 } from '../../platform-nav-items';
+import { ThemingFeatureFlagService } from '../../theme/theming-feature-flag.service';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -112,7 +113,10 @@ export class NavDrawerComponent {
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
   readonly signOutSelected = output<void>();
-  readonly settingsItems = SETTINGS_DRAWER_ITEMS;
+  private readonly themingFlags = inject(ThemingFeatureFlagService);
+  readonly settingsItems = computed(() =>
+    visibleSettingsDrawerItems(this.themingFlags.themingEnabled()),
+  );
   readonly administrationItems = computed(() =>
     this.authService.isAdministrator()
       ? ADMINISTRATION_DRAWER_ITEMS
