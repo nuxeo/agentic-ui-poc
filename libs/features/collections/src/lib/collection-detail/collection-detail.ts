@@ -35,12 +35,24 @@ import {
   docTypeIcon,
   avatarColor,
   canViewDocumentAuditLog,
+  canWriteDocument,
+  canRemoveDocument,
+  canShowWriteDocumentAction,
+  canShowRemoveDocumentAction,
+  hasDocumentPermissionsEnricher,
+  PERMISSION_DENIED_MESSAGE,
+  isPermissionDeniedError,
   NON_CONTENT_DOCUMENT_TYPES,
   isMailSendError,
   mailSendFailureMessage,
   readClipboardDocs,
   writeClipboardDocs,
   type ClipboardDoc,
+  CURRENT_USERNAME,
+  ADMIN_ACCESS_CHECKS,
+  shouldShowUserWorkspaceBreadcrumbs,
+  postTrashBrowseRouterUrl,
+  BrowseContextService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -53,11 +65,9 @@ import {
   ExportType,
   ConfirmDialogComponent,
   ConfirmDialogData,
-} from '@agentic-ui/shared/ui';
-import {
   EditCollectionDialogComponent,
   EditCollectionDialogData,
-} from '../edit-collection-dialog/edit-collection-dialog';
+} from '@agentic-ui/shared/ui';
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
@@ -114,6 +124,8 @@ export class CollectionDetailComponent {
   private readonly dialog = inject(MatDialog);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly currentUsername = inject(CURRENT_USERNAME);
+  private readonly adminAccess = inject(ADMIN_ACCESS_CHECKS);
 
   readonly collection = signal<NuxeoDocument | null>(null);
   readonly members = signal<NuxeoDocument[]>([]);
@@ -166,6 +178,11 @@ export class CollectionDetailComponent {
     this.clipboardDocs().some((d) => d.uid === this.collectionUid),
   );
 
+  readonly canEditCollection = computed(() => canShowWriteDocumentAction(this.collection()));
+  readonly canDeleteCollection = computed(() => canShowRemoveDocumentAction(this.collection()));
+
+  private readonly browseContext = inject(BrowseContextService);
+
   readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
     const col = this.collection();
     if (!col?.path) return [];
@@ -183,6 +200,16 @@ export class CollectionDetailComponent {
       return { label: decodeURIComponent(s), href: accumulated };
     });
     return this.breadcrumbItemsCache;
+  });
+
+  readonly showBreadcrumbs = computed(() => {
+    const col = this.collection();
+    if (!col?.path) return false;
+    return shouldShowUserWorkspaceBreadcrumbs(
+      col.path,
+      this.currentUsername(),
+      this.adminAccess.isAdministrator(),
+    );
   });
 
   onBreadcrumbClick(event: MouseEvent): void {
@@ -332,18 +359,26 @@ export class CollectionDetailComponent {
   editCollection(): void {
     const col = this.collection();
     if (!col) return;
+    if (hasDocumentPermissionsEnricher(col) && !canWriteDocument(col)) {
+      this.toast(PERMISSION_DENIED_MESSAGE);
+      return;
+    }
 
     const dialogRef = this.dialog.open(EditCollectionDialogComponent, {
       data: { document: col } satisfies EditCollectionDialogData,
       width: '560px',
     });
 
-    dialogRef.afterClosed().subscribe((updatedDoc: NuxeoDocument | undefined) => {
-      if (updatedDoc) {
-        this.collection.set(updatedDoc);
-        this.toast('Collection updated');
-      }
-    });
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((updatedDoc: NuxeoDocument | undefined) => {
+        if (updatedDoc) {
+          this.collection.set(updatedDoc);
+          this.browseContext.requestTreeRefresh();
+          this.toast('Collection updated');
+        }
+      });
   }
 
   toggleLock(): void {
@@ -390,7 +425,12 @@ export class CollectionDetailComponent {
   }
 
   deleteCollection(): void {
+    const col = this.collection();
     if (this.actionInProgress()) return;
+    if (col && hasDocumentPermissionsEnricher(col) && !canRemoveDocument(col)) {
+      this.toast(PERMISSION_DENIED_MESSAGE);
+      return;
+    }
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Delete Collection',
@@ -399,22 +439,35 @@ export class CollectionDetailComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe((confirmed) => {
-      if (!confirmed) return;
-      this.actionInProgress.set('trash');
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((confirmed) => {
+        if (!confirmed) return;
+        this.actionInProgress.set('trash');
 
-      this.detailService.trashDocument(this.collectionUid).subscribe({
-        next: () => {
-          this.actionInProgress.set(null);
-          this.toast('Collection moved to trash');
-          void this.router.navigateByUrl('/collections');
-        },
-        error: () => {
-          this.actionInProgress.set(null);
-          this.toast('Failed to delete collection');
-        },
+        this.detailService
+          .trashDocument(this.collectionUid)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.actionInProgress.set(null);
+              this.toast('Collection moved to trash');
+              this.browseContext.requestTreeRefresh();
+              const col = this.collection();
+              const redirectUrl = col?.path ? postTrashBrowseRouterUrl(col.path) : '/collections';
+              void this.router.navigateByUrl(redirectUrl);
+            },
+            error: (err) => {
+              this.actionInProgress.set(null);
+              this.toast(
+                isPermissionDeniedError(err)
+                  ? PERMISSION_DENIED_MESSAGE
+                  : 'Failed to delete collection',
+              );
+            },
+          });
       });
-    });
   }
 
   toggleClipboard(): void {

@@ -133,7 +133,12 @@
 
       @if (!isTrashed()) {
         @if (canWriteDoc()) {
-          <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
+          <button
+            mat-icon-button
+            [matTooltip]="isNoteDocument() ? 'Edit properties' : 'Edit'"
+            [attr.aria-label]="isNoteDocument() ? 'Edit properties' : 'Edit'"
+            (click)="onEditClick()"
+          >
             <mat-icon>edit</mat-icon>
           </button>
         }
@@ -367,6 +372,7 @@
                 <lib-note-editor
                   [content]="noteEditorBody()"
                   [mimeType]="mimeType()"
+                  [uploadParentPath]="noteImageUploadParentPath()"
                   [loading]="viewerLoading()"
                   [saving]="noteSaving()"
                   [autoFocus]="focusNoteEditor()"

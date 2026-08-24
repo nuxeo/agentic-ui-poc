@@ -1,12 +1,20 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 
 import { APP_THEME_STORAGE_KEY, AppThemeId, isAppThemeId, migrateLegacyThemeId } from './app-theme';
+import { ThemingFeatureFlagService } from './theming-feature-flag.service';
 
 @Injectable({ providedIn: 'root' })
 export class AppThemeService {
+  private readonly themingFlags = inject(ThemingFeatureFlagService);
+
   readonly themeId = signal<AppThemeId>('nuxeo');
 
   applyStoredOrDefault(): void {
+    if (!this.themingFlags.themingEnabled()) {
+      this.setTheme('nuxeo', false);
+      return;
+    }
+
     try {
       const raw = localStorage.getItem(APP_THEME_STORAGE_KEY);
       const hasValidStoredTheme = raw !== null && isAppThemeId(raw);

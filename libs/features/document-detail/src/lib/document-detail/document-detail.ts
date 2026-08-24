@@ -79,6 +79,7 @@ import {
   isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
+  isCollectionDocument,
   BrowseContextService,
   documentHasPersistedMainBlob,
   noteFormatLabel,
@@ -484,6 +485,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
   readonly noteFormatDisplay = computed(() => noteFormatLabel(this.mimeType()));
   readonly noteEditorBody = computed(() => this.noteContent() ?? '');
+  /** Parent folder for note RTE image uploads (Web UI stores uploaded pictures in the repository). */
+  readonly noteImageUploadParentPath = computed(() => {
+    const path = this.doc()?.path;
+    if (!path) return null;
+    const slash = path.lastIndexOf('/');
+    return slash > 0 ? path.slice(0, slash) : '/';
+  });
 
   readonly isImage = computed(() => this.mimeType().startsWith('image/'));
   readonly isPdf = computed(() => this.mimeType() === 'application/pdf');
@@ -606,8 +614,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (directMime) return directMime;
 
     const pictureViews = d.properties['picture:views'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     const pictureContent = pictureViews?.[0]?.['content'] as Record<string, unknown> | undefined;
     return (pictureContent?.['mime-type'] as string) ?? '';
   });
@@ -646,8 +653,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     if (!d) return [];
     const cols = d.contextParameters?.['collections'] as
-      | Array<{ uid: string; title: string; path: string; type?: string }>
-      | undefined;
+      Array<{ uid: string; title: string; path: string; type?: string }> | undefined;
     // Web UI uses contextParameters.favorites for the star; collections enricher
     // also lists the Favorites folder (type Favorites) — exclude it here.
     return (cols ?? []).filter((col) => col.type !== 'Favorites');
@@ -826,8 +832,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshBlobNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      | { freshBlobDocument?: boolean }
-      | undefined;
+      { freshBlobDocument?: boolean } | undefined;
     if (fromCurrent?.freshBlobDocument === true) {
       return true;
     }
@@ -837,8 +842,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshNoteNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      | { freshNote?: boolean }
-      | undefined;
+      { freshNote?: boolean } | undefined;
     if (fromCurrent?.freshNote === true) {
       return true;
     }
@@ -1492,7 +1496,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
-          if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
+          if (isCollectionDocument(doc)) {
+            void this.router.navigate(['/collections', doc.uid], { replaceUrl: true });
+            return;
+          }
+          if (isFolderishDocument(doc) && doc.path) {
             this.browseContext.setFromDocument(doc);
             void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
             return;
@@ -1669,8 +1677,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     if (transcodedVideos && transcodedVideos.length > 0) {
       this.loadVideoSources(doc, transcodedVideos, generation);
       this.extractVideoInfo(doc);
@@ -1874,8 +1881,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     this.extractVideoInfo(doc);
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     if (transcodedVideos?.length && this.videoSources().length === 0 && !this.blobUrl()) {
       this.loadVideoSources(doc, transcodedVideos, this.blobLoadGeneration);
     }
@@ -3076,6 +3082,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.toast('Document updated');
         this.loadDocument(this.docUid);
       });
+  }
+
+  /** Toolbar Edit opens metadata; note-surface pencil focuses inline content (Web UI parity). */
+  onEditClick(): void {
+    this.openEditDialog();
   }
 
   saveNote(body: string): void {

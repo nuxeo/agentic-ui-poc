@@ -6,6 +6,7 @@ import {
   ActivatedRoute,
   convertToParamMap,
   provideRouter,
+  Router,
   withDisabledInitialNavigation,
 } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
@@ -333,6 +334,26 @@ describe('DocumentDetailComponent', () => {
     });
   });
 
+  describe('onEditClick (NXSAT-193)', () => {
+    it('opens metadata dialog for Note documents (toolbar Edit properties)', () => {
+      component.doc.set(NOTE_DOC);
+      const openEditSpy = vi.spyOn(component, 'openEditDialog').mockImplementation(() => undefined);
+
+      component.onEditClick();
+
+      expect(openEditSpy).toHaveBeenCalled();
+    });
+
+    it('opens metadata dialog for non-note documents', () => {
+      component.doc.set(STUB_DOC);
+      const openEditSpy = vi.spyOn(component, 'openEditDialog').mockImplementation(() => undefined);
+
+      component.onEditClick();
+
+      expect(openEditSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('text classification', () => {
     // docUid is set by the route paramMap mock; no private-field access needed.
 
@@ -580,6 +601,76 @@ describe('DocumentDetailComponent', () => {
       });
 
       expect(component.hasCollections()).toBe(true);
+    });
+  });
+
+  describe('collection routing (NXSAT-204)', () => {
+    let navigateSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(async () => {
+      mockDocumentDetailService.getFullDocument = vi.fn(() =>
+        of({
+          uid: 'col-resolved-uid',
+          title: 'My Collection',
+          type: 'Collection',
+          path: '/default-domain/collections/my-collection',
+          lastModified: '2026-01-01T00:00:00Z',
+          properties: {},
+        } as NuxeoDocument),
+      );
+
+      await TestBed.resetTestingModule();
+      snackBarOpenSpy = vi.fn();
+      await TestBed.configureTestingModule({
+        imports: [DocumentDetailComponent],
+        providers: [
+          provideExperimentalZonelessChangeDetection(),
+          provideRouter([], withDisabledInitialNavigation()),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              paramMap: of(convertToParamMap({ uid: 'alias-uid' })),
+              queryParamMap: of(convertToParamMap({})),
+              snapshot: { queryParamMap: convertToParamMap({}) },
+            },
+          },
+          { provide: DocumentDetailService, useValue: mockDocumentDetailService },
+          { provide: BrowseService, useValue: mockBrowseService },
+          { provide: DirectoryService, useValue: mockDirectoryService },
+          {
+            provide: KeClientService,
+            useValue: { enrich: (): Observable<KeEnrichmentResult> => of(keResult('')) },
+          },
+          { provide: TaskService, useValue: mockTaskService },
+          { provide: WorkflowService, useValue: mockWorkflowService },
+          { provide: ARenderService, useValue: mockARenderService },
+          { provide: TagService, useValue: mockTagService },
+          { provide: AiGatewayService, useValue: mockAiGatewayService },
+          { provide: AiChatService, useValue: mockAiChatService },
+          { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
+          { provide: NuxeoApiBase, useValue: mockNuxeoApiBase },
+          { provide: CURRENT_USERNAME, useValue: () => 'tester' },
+          { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
+        ],
+      })
+        .overrideComponent(DocumentDetailComponent, {
+          set: { imports: [], template: '<div></div>' },
+        })
+        .compileComponents();
+
+      fixture = TestBed.createComponent(DocumentDetailComponent);
+      component = fixture.componentInstance;
+      navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      fixture.detectChanges();
+      await Promise.resolve();
+    });
+
+    it('redirects to collection view using fetched document uid', () => {
+      expect(navigateSpy).toHaveBeenCalledWith(['/collections', 'col-resolved-uid'], {
+        replaceUrl: true,
+      });
     });
   });
 });

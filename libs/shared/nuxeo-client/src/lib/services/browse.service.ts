@@ -17,6 +17,8 @@ import { catchError } from 'rxjs/operators';
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 import { resolveCreatableSubtypes } from '../utils/creatable-subtypes';
+import { isUserWorkspacePath } from '../utils/browse-path.utils';
+import { escapeNxqlLiteral } from '../utils/nxql.utils';
 import { isFolderishDocument, isBrowsableNavNode } from './document-import.service';
 
 export interface NavTreeBootstrap {
@@ -273,6 +275,17 @@ export class BrowseService {
         })),
       );
     }
+    // User workspaces expose Favorites (type Favorites) via @children; tree_children omits it
+    // once a Collections folder exists (NXSAT-204).
+    if (parent.type === 'Workspace' && isUserWorkspacePath(parent.path ?? '')) {
+      const safePath = parent.path?.replace(/\/+$/, '') ?? '';
+      return this.getChildren(safePath, pageSize).pipe(
+        map((list) => ({
+          ...list,
+          entries: (list.entries ?? []).filter((doc) => isBrowsableNavNode(doc)),
+        })),
+      );
+    }
     return this.getTreeChildrenWithPathFallback(parent, pageSize);
   }
 
@@ -447,6 +460,17 @@ export class BrowseService {
       return [res as NuxeoDocument];
     }
     return [];
+  }
+
+  /** True when the Collections folder still has at least one non-trashed child collection. */
+  hasChildCollections(collectionsFolderUid: string): Observable<boolean> {
+    const parentId = escapeNxqlLiteral(collectionsFolderUid);
+    const query =
+      `SELECT * FROM Document WHERE ecm:parentId = '${parentId}' ` +
+      `AND ecm:primaryType = 'Collection' AND ecm:isTrashed = 0 AND ecm:isVersion = 0`;
+    return this.api
+      .nxqlSearch(query, 1)
+      .pipe(map((list) => (list.entries?.length ?? 0) > 0 || (list.totalSize ?? 0) > 0));
   }
 
   getTrashedChildren(parentUid: string, pageSize = 50): Observable<NuxeoDocumentList> {

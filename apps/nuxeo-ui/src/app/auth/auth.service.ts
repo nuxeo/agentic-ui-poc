@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 import {
   Observable,
@@ -17,6 +17,7 @@ import {
   readShareTokenFromBrowserUrl,
   stripShareTokenFromBrowserUrl,
 } from './share-token.util';
+import { NUXEO_ESTABLISH_BROWSER_SESSION } from './nuxeo-auth.context';
 
 import {
   BrowseContextService,
@@ -183,6 +184,26 @@ export class AuthService {
     });
   }
 
+  /**
+   * After password login or hydration, establish a same-origin Nuxeo browser session
+   * (JSESSIONID) so embedded note `<img src="/nuxeo/nxfile/...">` loads without headers.
+   */
+  private establishBasicAuthBrowserSession(): Observable<void> {
+    if (this.state()?.kind !== 'basic') {
+      return of(undefined);
+    }
+    return this.http
+      .get(this.apiUrl('/nuxeo/api/v1/me'), {
+        headers: { Accept: 'application/json' },
+        withCredentials: true,
+        context: new HttpContext().set(NUXEO_ESTABLISH_BROWSER_SESSION, true),
+      })
+      .pipe(
+        map(() => undefined),
+        catchError(() => of(undefined)),
+      );
+  }
+
   private isInvalidBasicAuthResponse(err: unknown): boolean {
     return err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403);
   }
@@ -306,6 +327,7 @@ export class AuthService {
         return this.clearStaleNuxeoCookieSession().pipe(
           switchMap(() => this.fetchMe()),
           tap((me) => this.applyBasicSessionFromMe(existing, me)),
+          switchMap(() => this.establishBasicAuthBrowserSession()),
           map(() => undefined),
           catchError((err) => {
             if (this.isInvalidBasicAuthResponse(err)) {
@@ -479,6 +501,7 @@ export class AuthService {
               this.clearSignedOut();
               this.hydration$ = of(undefined).pipe(shareReplay(1));
             }),
+            switchMap(() => this.establishBasicAuthBrowserSession()),
             map(() => undefined),
             catchError((err) =>
               throwError(
@@ -513,7 +536,7 @@ export class AuthService {
 
   private clearUserScopedUiState(): void {
     // Resolve lazily — eager inject() here would create a DI cycle via CURRENT_USERNAME.
-    this.injector.get(SelectionService).clear();
+    this.injector.get(SelectionService).resetUiState();
     this.injector.get(BrowseContextService).resetContext();
     this.injector.get(ClipboardTargetService).clear();
   }

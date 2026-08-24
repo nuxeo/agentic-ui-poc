@@ -1,12 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { of } from 'rxjs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import {
   CollectionService,
   DirectoryService,
+  PERMISSION_DENIED_MESSAGE,
   type L10nDirectoryEntry,
   type NuxeoDocument,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -41,6 +43,7 @@ const mockDirectoryService = {
 };
 
 const mockCollectionService = { updateProperties: vi.fn(() => of({} as NuxeoDocument)) };
+const snackBarOpenSpy = vi.fn();
 
 const document: NuxeoDocument = {
   uid: 'col-1',
@@ -71,6 +74,7 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
         { provide: MAT_DIALOG_DATA, useValue: { document } },
         { provide: DirectoryService, useValue: mockDirectoryService },
         { provide: CollectionService, useValue: mockCollectionService },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
       ],
     })
       .overrideComponent(EditCollectionDialogComponent, {
@@ -101,5 +105,61 @@ describe('EditCollectionDialogComponent (NXSAT-192)', () => {
   it('renders the selected child coverage as Parent/Child', () => {
     component.coverage = 'tanzania';
     expect(component.coveragePillLabel('tanzania')).toBe('Africa/Tanzania');
+  });
+
+  it('save shows permission denied when update returns 403', () => {
+    mockCollectionService.updateProperties.mockReturnValue(throwError(() => ({ status: 403 })));
+    component.title = 'Updated title';
+
+    component.save();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith(PERMISSION_DENIED_MESSAGE, 'OK', {
+      duration: 4000,
+    });
+    expect(component.saving()).toBe(false);
+    expect(mockDialogRef.close).not.toHaveBeenCalled();
+  });
+
+  it('save shows generic failure when update fails for non-auth errors', () => {
+    mockCollectionService.updateProperties.mockReturnValue(throwError(() => ({ status: 500 })));
+    component.title = 'Updated title';
+
+    component.save();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith('Failed to update collection', 'OK', {
+      duration: 4000,
+    });
+    expect(component.saving()).toBe(false);
+  });
+
+  it('shows snackbar when vocabulary directories fail to load on init', async () => {
+    vi.clearAllMocks();
+    mockDirectoryService.getEntries.mockReturnValue(throwError(() => new Error('fail')));
+    mockDirectoryService.getAllL10nEntries.mockReturnValue(of([]));
+
+    await TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [EditCollectionDialogComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: MAT_DIALOG_DATA, useValue: { document } },
+        { provide: DirectoryService, useValue: mockDirectoryService },
+        { provide: CollectionService, useValue: mockCollectionService },
+        { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
+      ],
+    })
+      .overrideComponent(EditCollectionDialogComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
+
+    const failureFixture = TestBed.createComponent(EditCollectionDialogComponent);
+    failureFixture.detectChanges();
+    await flushAsync();
+
+    expect(snackBarOpenSpy).toHaveBeenCalledWith('Failed to load vocabulary options', 'OK', {
+      duration: 4000,
+    });
   });
 });

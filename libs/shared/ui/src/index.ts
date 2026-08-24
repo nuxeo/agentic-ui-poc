@@ -41,6 +41,10 @@ export {
   type ConfirmDialogData,
 } from './lib/confirm-dialog/confirm-dialog.component';
 export {
+  EditCollectionDialogComponent,
+  type EditCollectionDialogData,
+} from './lib/edit-collection-dialog/edit-collection-dialog';
+export {
   trashDocumentConfirmData,
   trashSelectedDocumentsConfirmData,
 } from './lib/confirm-dialog/trash-confirm.utils';
