@@ -1,4 +1,15 @@
-import { readProjectConfiguration, names, type Tree } from '@nx/devkit';
+import { readProjectConfiguration, names, type ProjectConfiguration, type Tree } from '@nx/devkit';
+
+/**
+ * `ProjectConfiguration` plus `prefix`.
+ *
+ * `prefix` is a real `project.json` field — Nx's own Angular generators write it and every
+ * generated library here carries one — but it is absent from the `ProjectConfiguration`
+ * type in this Nx version. Declared rather than cast: these files were never typechecked
+ * (the project has a `lint` target and no `typecheck`), so both uses of `prefix` were type
+ * errors that nothing reported until the generators had to compile in order to ship.
+ */
+export type SatoriProjectConfiguration = ProjectConfiguration & { prefix?: string };
 
 /**
  * Everything the three "add one contribution" generators need about the library
@@ -51,7 +62,7 @@ export function libraryContext(tree: Tree, projectName: string): LibraryContext 
     );
   }
 
-  const owner = project.prefix;
+  const owner = (project as SatoriProjectConfiguration).prefix;
   if (!owner) {
     throw new Error(
       `"${projectName}" has no \`prefix\` in its project.json, and that is where the ` +

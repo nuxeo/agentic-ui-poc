@@ -9,6 +9,8 @@ import {
 } from '@nx/devkit';
 import { join } from 'node:path';
 
+import type { SatoriProjectConfiguration } from '../util/library-context';
+
 export interface ExtensionLibrarySchema {
   name: string;
   owner: string;
@@ -92,7 +94,11 @@ export default async function extensionLibraryGenerator(
     ? updateProjectConfiguration
     : addProjectConfiguration;
 
-  configure(tree, name.fileName, {
+  // Declared as a variable, not passed as a literal: `prefix` is a real project.json
+  // field that `library-context.ts` reads back as the owner segment of every registered
+  // ID, but it is absent from `ProjectConfiguration` in this Nx version, and TypeScript's
+  // excess-property check only fires on a fresh literal.
+  const config: SatoriProjectConfiguration = {
     root: projectRoot,
     projectType: 'library',
     sourceRoot: `${projectRoot}/src`,
@@ -116,7 +122,8 @@ export default async function extensionLibraryGenerator(
         },
       },
     },
-  });
+  };
+  configure(tree, name.fileName, config);
 
   generateFiles(tree, join(__dirname, 'files'), projectRoot, substitutions);
 

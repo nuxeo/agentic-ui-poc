@@ -216,6 +216,58 @@ try {
       );
     }
   }
+  // ---------------------------------- 6. the Nx generators resolve from the package ----
+
+  /**
+   * Layer 3 is "the differentiator" per the plan, and the generators that make it real were
+   * not in the tarball at all. `AGENTS.md` section 2 told customers to run
+   * `npx nx g ./tools/satori-generators:extension-library` — a path inside *our* repository
+   * — so the first instruction in the shipped guide could not be run by its audience.
+   *
+   * Asserted from `package.json`'s `generators` field outward, the way Nx resolves a
+   * plugin, so this fails if the manifest is missing, malformed, or names a factory or
+   * schema that was not shipped. A factory path has no extension in the manifest, exactly
+   * as Nx `require()`s it.
+   */
+  const manifestPath = pkg.generators;
+  if (typeof manifestPath !== 'string') {
+    fail(
+      'package.json has no `generators` field, so Nx cannot see this package as a plugin\n' +
+        '    and `nx g @nuxeo-satori/platform:…` fails with "Cannot find generator".',
+    );
+  } else if (!existsSync(join(copy, manifestPath))) {
+    fail(`package.json points at \`${manifestPath}\`, which is not in the package.`);
+  } else {
+    let generators = {};
+    try {
+      generators = JSON.parse(readFileSync(join(copy, manifestPath), 'utf8')).generators ?? {};
+    } catch (error) {
+      fail(`${manifestPath} is not valid JSON (${error.message}).`);
+    }
+    const names = Object.keys(generators);
+    if (names.length === 0) {
+      fail(
+        `${manifestPath} declares no generators, so check 6 asserted nothing. The package is\n` +
+          '    meant to ship four: extension-library, -rule, -action and -component.',
+      );
+    }
+    for (const [name, generator] of Object.entries(generators)) {
+      // Nx requires the factory without an extension; the compiled file is `.js`.
+      if (!existsSync(join(copy, `${generator.factory}.js`))) {
+        fail(
+          `generator \`${name}\` names factory \`${generator.factory}\`, which is not in the\n` +
+            '    package. `nx g` reports "Cannot find module" at the point a customer runs it.',
+        );
+      }
+      if (generator.schema && !existsSync(join(copy, generator.schema))) {
+        fail(`generator \`${name}\` names schema \`${generator.schema}\`, which is not shipped.`);
+      }
+    }
+    if (names.length > 0) {
+      notes.push(`${names.length} Nx generator(s) resolve from the package: ${names.join(', ')}`);
+    }
+  }
+
   if (advertised.size === 0) {
     fail(
       `None of the ${docs.length} shipped doc(s) reference a \`node_modules/@nuxeo-satori/platform/…\`\n` +

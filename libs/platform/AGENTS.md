@@ -27,15 +27,28 @@ raising rather than a reason to fork.
 
 ## 2. Start with a generator
 
+The four generators ship **inside this package** — `generators.json` at its root, so Nx
+resolves them from `node_modules` like any other plugin. Nothing to clone.
+
 ```bash
 # once, per library
-npx nx g ./tools/satori-generators:extension-library acme-extensions --owner=acme
+npx nx g @nuxeo-satori/platform:extension-library acme-extensions --owner=acme
 
 # then, per contribution
-npx nx g ./tools/satori-generators:extension-rule      is-legal-team --library=acme-extensions
-npx nx g ./tools/satori-generators:extension-action    export-claim  --library=acme-extensions
-npx nx g ./tools/satori-generators:extension-component claim-summary --library=acme-extensions
+npx nx g @nuxeo-satori/platform:extension-rule      is-legal-team --library=acme-extensions
+npx nx g @nuxeo-satori/platform:extension-action    export-claim  --library=acme-extensions
+npx nx g @nuxeo-satori/platform:extension-component claim-summary --library=acme-extensions
 ```
+
+> These commands used to read `npx nx g ./tools/satori-generators:…` — a path inside the
+> platform repository, which you do not have. The first instruction in this guide could not
+> be run by its audience, and the generators were not in the tarball at all. Both fixed:
+> `beta:publishable` now fails if any generator's factory or schema is missing from the
+> built package.
+
+`--library` takes the project name, and the library defaults to `libs/extensions/<name>`.
+Pass `--directory` to place it elsewhere — note it is the **parent**, so
+`--directory=libs/custom` yields `libs/custom/<name>`.
 
 The library is **inert until an application opts in**. One line:
 

@@ -30,6 +30,7 @@
       ],
       "@agentic-ui/feature-tasks": ["libs/features/tasks/src/index.ts"],
       "@agentic-ui/feature-trash": ["libs/features/trash/src/index.ts"],
+      "@agentic-ui/shared-permission-dialogs": ["libs/shared/permission-dialogs/src/index.ts"],
       "@agentic-ui/shared/adf-hx-bridge": ["libs/shared/adf-hx-bridge/src/index.ts"],
       "@agentic-ui/shared/adf-hx-bridge/providers": ["libs/shared/adf-hx-bridge/src/providers.ts"],
       "@agentic-ui/shared/ai-client": ["libs/shared/ai-client/src/index.ts"],
@@ -40,8 +41,7 @@
       "@nuxeo-satori/platform/app-config": ["libs/shared/app-config/src/index.ts"],
       "@nuxeo-satori/platform/extensions": ["libs/shared/extensions/src/index.ts"],
       "@nuxeo-satori/platform/nuxeo-client": ["libs/shared/nuxeo-client/src/index.ts"],
-      "@nuxeo-satori/platform/ui": ["libs/shared/ui/src/index.ts"],
-      "@agentic-ui/shared-permission-dialogs": ["libs/shared/permission-dialogs/src/index.ts"]
+      "@nuxeo-satori/platform/ui": ["libs/shared/ui/src/index.ts"]
     }
   }
 }

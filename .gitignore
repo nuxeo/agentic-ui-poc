@@ -68,3 +68,8 @@ playwright-report/
 # Customer-facing docs copied into the platform package at build time by
 # scripts/sync-platform-docs.mjs. docs/ is the single source; these are generated.
 /libs/platform/extension-reference.md
+
+# Nx generators compiled into the platform package at build time by
+# scripts/build-platform-generators.mjs. tools/satori-generators/ is the single source.
+/libs/platform/generators/
+/libs/platform/generators.json

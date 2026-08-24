@@ -5,7 +5,17 @@
     "README.md",
     "extension-reference.md",
     "AGENTS.md",
-    { "glob": "**/*.mjs", "input": "guardrails", "output": "guardrails" }
+    "generators.json",
+    {
+      "glob": "**/*.mjs",
+      "input": "guardrails",
+      "output": "guardrails"
+    },
+    {
+      "glob": "**/*",
+      "input": "generators",
+      "output": "generators"
+    }
   ],
   "lib": {
     "entryFile": "src/index.ts"
