@@ -72,46 +72,7 @@ import {
   type ExtensionColumnDescriptor,
 } from '@nuxeo-satori/platform/extensions';
 
-/**
- * Layer 1 column `field` -> HxPR `Document` property.
- *
- * Only the columns the packaged set switches on by default are mapped, because those are
- * the ones with a known HxPR equivalent. An unmapped field passes through unchanged, which
- * renders an empty column rather than throwing — visibly wrong at a glance, and better
- * than inventing a property name that silently resolves to nothing.
- *
- * The gaps are real: HxPR has no `lastContributor`, so it maps to `sys_name` as the
- * nearest honest stand-in is **not** available and the column would otherwise be blank.
- * Left unmapped deliberately — see the note in the phase-3 evidence.
- */
-const HXP_FIELD_BY_COLUMN: Readonly<Record<string, string>> = {
-  title: 'sys_title',
-  type: 'sys_typeLabel',
-  modified: 'sys_modified',
-  created: 'sys_created',
-  // adf-core's `ObjectUtils.getValue` resolves a dotted path, so a nested `User` is
-  // addressable. Nuxeo carries only the username, so that is what shows — see
-  // `userFromNuxeoUsername` in the mapper for why no name is invented.
-  lastContributor: 'sys_lastContributor.username',
-  author: 'sys_creator.username',
-  state: 'sys_lifecycleState',
-  // Three columns that shipped hidden and rendered empty when switched on, because no HxPR
-  // field held their value. The mapper now emits Nuxeo's own properties as `prefix_field`, so
-  // they resolve. `version` stays unmapped deliberately: Nuxeo holds it as two integers
-  // (`uid_major_version`, `uid_minor_version`) and the DataTable reads a single key.
-  nature: 'dc_nature',
-  coverage: 'dc_coverage',
-  subjects: 'dc_subjects',
-};
-
-/**
- * Columns adf-core should render as dates rather than raw strings.
- *
- * Without this the DataTable prints `2026-07-03T08:33:42.275Z`, where the hand-written list
- * showed `Jul 3, 2026`. A visible regression from the swap, and cheap to close: adf-core's
- * `DataColumn` already takes a `type` and a `format`.
- */
-const DATE_COLUMNS = new Set(['modified', 'created']);
+import { toDataColumns } from '../adf-hx-columns';
 
 @Component({
   selector: 'lib-browse-adf-hx-poc',
@@ -220,25 +181,24 @@ export class BrowseAdfHxPocComponent {
     }
   }
 
-  protected readonly schema = computed<DataColumn[]>(
-    () =>
+  /**
+   * Upstream's `[schema]`, translated by the shared `toDataColumns`.
+   *
+   * The translation used to live here inline, and the search page — which needed the
+   * identical mapping — was written without it and rendered empty rows. One copy now,
+   * in `adf-hx-columns.ts`, so a third surface cannot repeat that.
+   *
+   * `pickableColumns.key` *is* `ExtensionColumnDescriptor.field`, so the visible subset
+   * is mapped straight back onto descriptor shape for the translator.
+   */
+  protected readonly schema = computed<DataColumn[]>(() => {
+    const visible = new Set(
       this.pickableColumns()
         .filter((column) => column.visible)
-        .map((column) => ({
-          ...(DATE_COLUMNS.has(column.key)
-            ? { type: 'date' as const, format: 'mediumDate' }
-            : { type: 'text' as const }),
-          // adf-core's DataTable reads `row.obj[key]`, so `key` has to be an HxPR
-          // `Document` property. `ExtensionColumnDescriptor.field` holds the browse
-          // view-model key instead — `title`, `modified` — which is what
-          // `packaged-columns.ts` says it holds and why it warns that migrating to real
-          // property paths is Phase 3's job. Without this translation the table renders
-          // the right headers over empty rows, which is exactly what it did.
-          key: HXP_FIELD_BY_COLUMN[column.key] ?? column.key,
-          title: column.label,
-          sortable: true,
-        })) as DataColumn[],
-  );
+        .map((column) => column.key),
+    );
+    return toDataColumns(this.columnDescriptors().filter((c) => visible.has(c.field)));
+  });
 
   /** Row click, previously the local component's own `onRowClick`. */
   protected onUpstreamRowClicked(document: Document): void {
