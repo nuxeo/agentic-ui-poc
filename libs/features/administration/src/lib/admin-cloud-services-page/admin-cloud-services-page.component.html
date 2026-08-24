@@ -13,7 +13,7 @@
           </button>
         </div>
         @if (loading()) {
-          <div class="cloud-center"><mat-spinner diameter="36" /></div>
+          <div class="cloud-center"><mat-spinner diameter="36" aria-label="Loading" /></div>
         } @else {
           <div class="table-wrap mat-elevation-z1">
             <table mat-table [dataSource]="providers()" class="cloud-table">

@@ -40,14 +40,22 @@ benefit claim in the product documentation is mechanical rather than observed.
 
 **Mitigation:** a design partner, framed as the Beta ask.
 
-### C3 · Accessibility non-compliance
+### C3 · Accessibility — closed 2026-08-24, with a stated scope
 
-**WCAG 2.1 AA is not met.** Four rule classes violated and _ratcheted_ — visible, not fixed —
-including `button-name` (critical) on the platform nav title icon **on every screen**, plus
-`label` on two checkboxes, `color-contrast`, and `role-img-alt` on avatars and folder icons.
+**WCAG 2.1 AA is met on the fifteen cases scanned.** Seven rule classes and 77 nodes fixed, and
+`KNOWN_VIOLATIONS` is empty, so the capture's verdict is unconditional rather than ratcheted.
 
-A procurement blocker in public-sector and large-enterprise accounts. Ratcheting was the right
-engineering call — a gate that cannot pass gets bypassed — but the debt is real and named.
+The finding worth carrying forward is how the worst one arose. `button-name` (critical) fired on the
+nav toggle on **every** screen because our own catalogue set the upstream translation key to the
+empty string — deliberately, to suppress a tooltip — and upstream binds that one string to both the
+tooltip and the accessible name. An empty accessible name is invisible unless you use a screen
+reader, so it outlived every other kind of review.
+
+**Residual risk, and it is real:** one violation remains and it is `@alfresco/adf-core@9.0.0`'s —
+`role="row"` with non-cell children, reported as finding 1.2 and not fixable by a host. And the scan
+covers 8 routes plus view-mode and panel states; **dialogs, the upload flow, dark mode and the
+pre-auth login surface are not covered**. "AA met" is a claim about what was scanned, and an
+accessibility-obligated customer will ask for exactly that scope.
 
 **Mitigation:** Phase 6 step 3. Self-contained and demoable.
 
@@ -115,7 +123,7 @@ devDependency (types-only import), but the adf-core surface remains.
 
 | ID  | Risk                                     | Detail                                                                                                                                                                                      |
 | --- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| M1  | **Coverage in the highest-traffic code** | 3 of 17 projects genuinely ≥90%. `search` 22.8%, `document-detail` 29.8% — the two surfaces users touch most                                                                                |
+| M1  | **Coverage in the highest-traffic code** | 3 of 15 measurable projects ≥90% substantively. `search` 22.8%, `document-detail` 29.8% — the two surfaces users touch most                                                                 |
 | M2  | **Coverage numbers overstate**           | `tasks`, `assets`, `core` report **100% with zero spec files** (0/0 statements). Any "N of 17 meet the bar" figure is inflated until fixed                                                  |
 | M3  | **Knowledge-base decay**                 | 13 `AGENTS/` files, ~3.1k lines. Exactly **one** has an automated staleness check                                                                                                           |
 | M4  | **Gates rot**                            | Seven were found asserting less than they claimed. Gates are software                                                                                                                       |

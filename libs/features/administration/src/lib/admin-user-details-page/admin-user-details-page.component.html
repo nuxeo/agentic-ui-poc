@@ -7,7 +7,7 @@
   </div>
 
   @if (loading()) {
-    <div class="ud-center"><mat-spinner diameter="36" /></div>
+    <div class="ud-center"><mat-spinner diameter="36" aria-label="Loading" /></div>
   } @else if (error()) {
     <p class="ud-error">{{ error() }}</p>
   } @else if (user()) {
@@ -90,7 +90,7 @@
           <div class="ud-section-heading" role="heading" aria-level="2">Local Permissions</div>
         </header>
         @if (localPermLoading()) {
-          <div class="ud-center"><mat-spinner diameter="32" /></div>
+          <div class="ud-center"><mat-spinner diameter="32" aria-label="Loading" /></div>
         } @else if (localPerm()) {
           @if (localPerm(); as lp) {
             <table mat-table [dataSource]="lp.rows" class="ud-table ud-perm-table">
@@ -156,7 +156,7 @@
             </div>
           </header>
           @if (isGroupPermLoading(g.id)) {
-            <div class="ud-center"><mat-spinner diameter="32" /></div>
+            <div class="ud-center"><mat-spinner diameter="32" aria-label="Loading" /></div>
           } @else if (groupPermPage(g.id)) {
             @if (groupPermPage(g.id); as gp) {
               <table mat-table [dataSource]="gp.rows" class="ud-table ud-perm-table">

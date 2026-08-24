@@ -18,7 +18,7 @@
     <section class="kd-citation-dialog__viewer" aria-label="Source document preview">
       @if (loadingDocument()) {
         <div class="kd-citation-dialog__state">
-          <mat-spinner diameter="32" />
+          <mat-spinner diameter="32" aria-label="Loading" />
           <p>Loading source document…</p>
         </div>
       } @else if (documentError()) {

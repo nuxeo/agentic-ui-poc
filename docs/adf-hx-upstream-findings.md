@@ -64,6 +64,58 @@ this is fixed.
 genuinely needs a mock at runtime, it should be behind a separate entry point that production code
 does not reach.
 
+### 1.2 `DataTableComponent` emits `role="row"` with children that are not cells — a WCAG 2.1 AA failure
+
+**Package:** `@alfresco/adf-core@9.0.0`
+**File:** `fesm2022/adf-core.mjs`, the `DataTableComponent` template
+**Rule:** axe-core `aria-required-children` (**critical**), WCAG 4.1.2 / ARIA 1.2 `grid` structure
+
+`<adf-datatable-row role="row">` contains, as **direct children**, elements that the `row` role does
+not permit. `role="row"` requires children of role `cell`, `gridcell`, `columnheader` or `rowheader`.
+The template supplies plain `<div>`s and a bare `mat-checkbox`:
+
+```html
+<adf-datatable-row ... class="adf-datatable-row" role="row">
+  @if (enableDragRows) {
+    <div class="adf-datatable-cell-header adf-drag-column">…</div>
+  }
+  @if (multiselect) {
+    <div class="adf-datatable-cell-header adf-datatable-checkbox">
+      <mat-checkbox …>
+    </div>
+  }
+</adf-datatable-row>
+```
+
+None of the `adf-datatable-cell-header` divs carries `role="columnheader"`, and body rows
+additionally place a `<span aria-live>` directly in the row.
+
+**Reproduce**
+
+```bash
+# any host rendering hxp-document-list, with multiselect on (the default)
+npm install --no-save @axe-core/playwright
+# scan the page with tags wcag2a,wcag2aa,wcag21a,wcag21aa
+# -> aria-required-children, 3 nodes:
+#    "Element has children which are not allowed: mat-checkbox[aria-describedby]"
+#    "Element has children which are not allowed: span[aria-live]"  (x2, one per body row)
+```
+
+**Impact.** It is the **only** WCAG 2.1 AA violation left anywhere in our application after a
+fifteen-case audit, and it is not fixable by a host. A screen-reader user gets a grid whose
+structure does not parse. WCAG 2.1 AA is a named procurement requirement for us, so a component we
+cannot make compliant is a component we cannot ship into an accessibility-gated tender.
+
+**Our mitigation: none, deliberately.** The only host-side fix is to patch `role` attributes onto
+your DOM children after render, which is DOM surgery on another library's internals and would break
+silently on any template change. We have instead scoped an exclusion to the single surface that
+renders this component and pointed it at this finding, so the debt is attributed to its owner rather
+than absorbed.
+
+**Ask:** add `role="columnheader"` to the header cell divs and `role="gridcell"` to the body cell
+divs, and move the `aria-live` announcer out of the row (a sibling `<span aria-live>` outside the
+grid is the usual pattern). This is an attribute-level change to one template.
+
 ---
 
 ## Severity 2 — dependency and contract problems that break a clean install
@@ -320,15 +372,48 @@ consumer expecting it to typecheck cleanly against Angular 20 will not find that
 
 **Ask:** confirm the supported Angular range and publish types that check against it.
 
+### 4.6 `sat-platform-nav` uses one translation key for both the tooltip and the accessible name
+
+**Package:** `@hylandsoftware/satori-ui@0.2.0`
+**Component:** `SatPlatformNav`, the rail toggle `#sat-platform-nav-title-icon`
+
+The same translated string is bound to both purposes:
+
+```html
+[matTooltip]="(service.collapsed() ? 'sat.platform-nav.expand' : '…collapse') | translate"
+[attr.aria-label]="(service.collapsed() ? 'sat.platform-nav.expand' : '…collapse') | translate"
+```
+
+A host that wants to suppress the tooltip — reasonable, because it duplicates the visible label
+when the rail is expanded — has only one lever: blank the key. Doing so also empties `aria-label`,
+so the button becomes a control with **no accessible name**: axe `button-name`, critical.
+
+We did exactly that, deliberately, and it stood for some time. `aria-label=""` is invisible unless
+you use a screen reader, so nothing surfaced it until a WCAG audit. Untranslated adf strings get
+noticed because they render as raw keys; an empty accessible name renders as nothing.
+
+**Reproduce:** set `sat.platform-nav.expand` and `sat.platform-nav.collapse` to `""` in any
+catalogue that wins precedence, then scan any page. `button-name` fires on every surface that
+renders the nav.
+
+**Our mitigation.** We restored the strings and accepted the tooltip, and we now assert the
+accessible name is non-empty in our accessibility capture so it cannot regress.
+
+**Ask:** separate the two. Either use distinct keys (`…expand.tooltip` / `…expand.label`), or take
+the accessible name from an `@Input()` that a host can set without touching the tooltip. An empty
+tooltip string should not be able to produce an unnamed control.
+
 ---
 
 ## What we would most like fixed, in order
 
-1. **`ng-mocks` out of the runtime bundle** (1.1). It is the only finding here that ships to
-   customers.
-2. **Bounded peer ranges** (2.1) and **declared imports** (2.2). Together they are the difference
+1. **`ng-mocks` out of the runtime bundle** (1.1). It ships to customers.
+2. **Valid `role` structure in `DataTableComponent`** (1.2). An attribute-level change to one
+   template, and it is the single remaining WCAG 2.1 AA violation in our entire application. It is
+   the only finding here that no host can work around without patching your DOM.
+3. **Bounded peer ranges** (2.1) and **declared imports** (2.2). Together they are the difference
    between a clean install working and not.
-3. **Ports resolvable outside the root injector** (3.1). This is worth 1.79 MB of initial bundle to
+4. **Ports resolvable outside the root injector** (3.1). This is worth 1.79 MB of initial bundle to
    us and no host can fix it.
-4. **A sufficient exported provider array, documented** (3.3). Cheap to do, and it removes an entire
+5. **A sufficient exported provider array, documented** (3.3). Cheap to do, and it removes an entire
    class of onboarding failure.

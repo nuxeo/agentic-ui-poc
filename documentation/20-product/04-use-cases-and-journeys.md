@@ -198,6 +198,6 @@ negative control instead. It proves the _mechanism_, not that any future upgrade
 | Use the AI features                                  | Need a **separate backend package**                                                    |
 | Place an action on the document toolbar via manifest | `toolbar` is **reserved** — nothing reads it. Same for `contextMenu`, `tabs`, `routes` |
 | Gate a bulk action on write permission               | `selection` rule context is empty                                                      |
-| Meet an accessibility procurement requirement        | WCAG 2.1 AA **not met**                                                                |
+| Meet an accessibility procurement requirement        | WCAG 2.1 AA **met** on 15 scanned cases; scope stated                                  |
 | Configure Layer 0/1 through a UI                     | Text editing of JSON only                                                              |
 | Migrate a customised Web UI                          | **Not verified in repository** — nothing addresses it                                  |

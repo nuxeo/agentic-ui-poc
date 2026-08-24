@@ -5,7 +5,7 @@
 
   <div class="voc-card mat-elevation-z1">
     @if (loadingList()) {
-      <div class="voc-center"><mat-spinner diameter="36" /></div>
+      <div class="voc-center"><mat-spinner diameter="36" aria-label="Loading" /></div>
     } @else {
       <mat-form-field appearance="outline" class="voc-select" subscriptSizing="dynamic">
         <mat-label>Vocabulary</mat-label>
@@ -34,7 +34,7 @@
       }
 
       @if (loading() || mutating()) {
-        <div class="voc-center"><mat-spinner diameter="36" /></div>
+        <div class="voc-center"><mat-spinner diameter="36" aria-label="Loading" /></div>
       } @else {
         <div class="voc-table-wrap">
           <table mat-table [dataSource]="entries()" class="voc-table">

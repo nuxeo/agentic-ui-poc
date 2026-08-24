@@ -142,7 +142,7 @@ In rough order of cost:
 | Have one PS engineer build a real customisation using only the published package and its generators | That the Layer 3 story works for someone who did not build it |
 | Instrument that engagement: hours by layer, defects found, review time                              | The first real effort numbers. **None exist today**           |
 | Publish the package and have a customer install it from a registry                                  | The distribution path end to end                              |
-| Fix the 4 ratcheted accessibility rule classes                                                      | Removes a procurement blocker                                 |
+| ~~Fix the ratcheted accessibility rule classes~~ **done 2026-08-24** — 7 classes, 77 nodes          | Procurement blocker removed                                   |
 
 Until at least the first two are done, the harness's customer value is **a well-engineered
 hypothesis** — and it should be presented as one.

@@ -7,7 +7,9 @@
         <p>Select a task from the <strong>Tasks</strong> panel on the left</p>
       </div>
     } @else if (taskLoading()) {
-      <div class="loading-detail"><mat-spinner diameter="36" /><span>Loading…</span></div>
+      <div class="loading-detail">
+        <mat-spinner diameter="36" aria-label="Loading" /><span>Loading…</span>
+      </div>
     } @else {
       <!-- Document Header Bar (title + breadcrumb) — spans full width -->
       <div class="doc-header-bar">
@@ -251,7 +253,9 @@
                 </div>
 
                 @if (graphLoading()) {
-                  <div class="graph-loading"><mat-spinner diameter="24" /></div>
+                  <div class="graph-loading">
+                    <mat-spinner diameter="24" aria-label="Loading" />
+                  </div>
                 } @else if (graphNodes().length > 0) {
                   <div class="graph-nodes">
                     @for (node of graphNodes(); track node.id; let i = $index; let last = $last) {
@@ -422,7 +426,7 @@
                 </button>
               }
               @if (submitting()) {
-                <mat-spinner diameter="20" />
+                <mat-spinner diameter="20" aria-label="Loading" />
               }
             </div>
 

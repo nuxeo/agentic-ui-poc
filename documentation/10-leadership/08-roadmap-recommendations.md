@@ -50,13 +50,13 @@ should widen Layer 1 before Beta rather than discover the problem in an engageme
 
 Already planned; sequenced by what unblocks a customer conversation.
 
-| #      | Recommendation                                                                   | Unblocks                                                                                    |
-| ------ | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| **X1** | **Meet WCAG 2.1 AA.** Fix the 4 ratcheted rule classes; empty `KNOWN_VIOLATIONS` | A named procurement blocker. Self-contained and demoable                                    |
-| **X2** | **SAST + a real SCA gate.** CodeQL, and `npm audit --omit=dev` as a gate         | Security assurance. Nine real security defects were found by human review, not tooling      |
-| **X3** | **Coverage, worst-first** — `search` 22.8%, `document-detail` 29.8%              | The two highest-traffic surfaces are the least tested. Most of the phase's remaining effort |
-| **X4** | **Safari/WebKit**                                                                | "Chrome and Safari verified" is in the Beta checklist                                       |
-| **X5** | **Remove the two unused production dependencies**                                | Trivial; removes the main reason someone concludes we make direct LLM calls                 |
+| #          | Recommendation                                                                                                                | Unblocks                                                                                    |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| ~~**X1**~~ | ~~**Meet WCAG 2.1 AA.**~~ **Done 2026-08-24** — 7 rule classes and 77 nodes fixed, `KNOWN_VIOLATIONS` empty, 15 cases scanned | Procurement blocker removed. The one remaining violation is `adf-core`'s (finding 1.2)      |
+| **X2**     | **SAST + a real SCA gate.** CodeQL, and `npm audit --omit=dev` as a gate                                                      | Security assurance. Nine real security defects were found by human review, not tooling      |
+| **X3**     | **Coverage, worst-first** — `search` 22.8%, `document-detail` 29.8%                                                           | The two highest-traffic surfaces are the least tested. Most of the phase's remaining effort |
+| **X4**     | **Safari/WebKit**                                                                                                             | "Chrome and Safari verified" is in the Beta checklist                                       |
+| **X5**     | **Remove the two unused production dependencies**                                                                             | Trivial; removes the main reason someone concludes we make direct LLM calls                 |
 
 ---
 

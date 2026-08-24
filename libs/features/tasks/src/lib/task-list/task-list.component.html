@@ -8,7 +8,7 @@
 
   @if (loading()) {
     <div class="task-loading">
-      <mat-spinner diameter="36" />
+      <mat-spinner diameter="36" aria-label="Loading" />
       <span>Loading tasks…</span>
     </div>
   } @else if (error()) {

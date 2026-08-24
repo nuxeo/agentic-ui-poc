@@ -93,7 +93,7 @@
           [disabled]="nlLoading()"
         />
         @if (nlLoading()) {
-          <mat-spinner diameter="20" class="ai-nl-search__spinner" />
+          <mat-spinner diameter="20" class="ai-nl-search__spinner" aria-label="Loading" />
         } @else {
           <button
             type="button"
@@ -203,7 +203,7 @@
       </div>
       @if (summaryLoading()) {
         <div class="ai-summary-panel__loading">
-          <mat-spinner diameter="28" />
+          <mat-spinner diameter="28" aria-label="Loading" />
           <span>Analyzing {{ entries().length }} entries…</span>
         </div>
       } @else if (auditSummary()) {
@@ -253,7 +253,7 @@
 
   <!-- ═══════ Audit Table ═══════ -->
   @if (loading()) {
-    <div class="audit-center"><mat-spinner diameter="40" /></div>
+    <div class="audit-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
   } @else {
     <div class="audit-table-wrap mat-elevation-z1">
       <table mat-table [dataSource]="entries()" class="audit-table">

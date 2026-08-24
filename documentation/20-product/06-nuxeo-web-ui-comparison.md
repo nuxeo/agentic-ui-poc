@@ -57,7 +57,7 @@ and that is worth saying to a prospect rather than hiding.
 | **Accessibility**                       | **Not verified**                                     | Measured, **AA not met** — 4 rule classes ratcheted                                                                                      | Satori: verified                                                    |
 | **Maturity**                            | Production, years of customers                       | **Beta in progress. Zero customers.** Phases 0–5 done, Phase 6 at 2 of 7                                                                 | Verified                                                            |
 | **Operational model**                   | Marketplace package                                  | Marketplace package — same install path                                                                                                  | Verified                                                            |
-| **Test coverage**                       | **Not verified**                                     | 3 of 17 projects genuinely ≥90%; 12 E2E specs                                                                                            | Verified                                                            |
+| **Test coverage**                       | **Not verified**                                     | 3 of 15 measurable projects ≥90% substantively; 12 E2E specs                                                                             | Verified                                                            |
 
 ---
 
@@ -123,14 +123,15 @@ Stated plainly, because a comparison that finds no weaknesses is not credible.
 1. **Breadth.** The Web UI is the mature product. Satori is a slice, and workflow is out of
    scope.
 2. **Maturity and proof.** Years of production customers versus **zero**.
-3. **Accessibility.** Satori has _measured_ itself and **does not meet WCAG 2.1 AA**. The Web
-   UI's position is **Not verified** — but "we measured and we fail" is a weaker sales
-   position than an unmeasured incumbent, and a customer with accessibility obligations will
-   ask.
+3. **Accessibility.** Satori has _measured_ itself and **meets WCAG 2.1 AA on the fifteen cases
+   scanned** (2026-08-24). The Web UI's position is **Not verified**. This is now a strength
+   rather than a weakness — but the honest form of the claim names its scope: dialogs, the upload
+   flow, dark mode and the pre-auth login surface are not covered, and one remaining violation
+   belongs to `@alfresco/adf-core`.
 4. **Studio integration.** Nuxeo Studio's relationship to Satori is **Not verified in
    repository** — no Studio integration exists here. For a customer whose configuration lives
    in Studio, this is a material open question.
-5. **Test coverage.** 3 of 17 Satori projects genuinely meet the 90% bar.
+5. **Test coverage.** 3 of 15 measurable Satori projects meet the 90% bar substantively.
 6. **No AI backend in the box.** The 12 `AI.*` operations need a separate package.
 
 ---

@@ -36,7 +36,7 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 | 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted | `phase-3-adf-hx` 55/55   |
 | 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded     | `phase-4-platform` 25/25 |
 | 5 — Layer 3: agent harness              | **complete**                             | `phase-5-harness` 27/27  |
-| 6 — Beta quality bar                    | **in progress** — steps 0-2 of 7         | `phase-6-a11y` 12/12     |
+| 6 — Beta quality bar                    | **in progress** — steps 0-3 of 7         | `phase-6-a11y` 27/27     |
 
 Branch `feature/adf-hx-browse-poc`, 103 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.
@@ -360,13 +360,13 @@ Three corrections came out of this step, and two were defects in work from the d
 
 **Still open, with the real numbers:**
 
-| Requirement         | State                                                                                                                                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unit coverage ≥ 90% | **3 of 15** measurable projects, substantively. `search` 22.76%, `document-detail` 29.8%. Was recorded as "5 of 17" until 2026-08-24, when the gate stopped scoring 0/0 statements as 100% — `assets` and `tasks` are untested, not perfect |
-| Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo)                                                                                                                                                              |
-| WCAG 2.1 AA         | not met — 4 rule classes violated and _ratcheted_, visible not fixed                                                                                                                                                                        |
-| SAST                | **nothing.** SCA is `npm audit` only (1 low)                                                                                                                                                                                                |
-| Safari              | never run; Chromium only                                                                                                                                                                                                                    |
+| Requirement         | State                                                                                                                                                                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit coverage ≥ 90% | **3 of 15** measurable projects, substantively. `search` 22.76%, `document-detail` 29.8%. Was recorded as "5 of 17" until 2026-08-24, when the gate stopped scoring 0/0 statements as 100% — `assets` and `tasks` are untested, not perfect             |
+| Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo)                                                                                                                                                                          |
+| WCAG 2.1 AA         | **met** on the 15 cases scanned — 7 rule classes fixed, `KNOWN_VIOLATIONS` empty. One violation remains and it is `@alfresco/adf-core`'s (finding 1.2), excluded on that one surface. Dialogs, upload, dark mode and pre-auth login are **not** covered |
+| SAST                | **nothing.** SCA is `npm audit` only (1 low)                                                                                                                                                                                                            |
+| Safari              | never run; Chromium only                                                                                                                                                                                                                                |
 
 Coverage alone is most of the phase's 20-30 day estimate.
 
@@ -487,18 +487,51 @@ A **ratchet** gate stops these worsening; closing the gap is Phase 6 and it is l
 `nuxeo-ui` is excluded — its Karma builder takes a different coverage flag — and says so on
 every run.
 
-### Accessibility, measured for the first time
+### Accessibility — the bar is met, and the baseline was wrong
 
-WCAG 2.1 AA is **not met**. Four rules violated across every surface:
+WCAG 2.1 AA is **met on the fifteen cases scanned**, with one upstream exception. The number that
+matters more than the fixes: the previous capture scanned **three** surfaces and ratcheted **four**
+rule ids. Widening it to fifteen cases found **seven** rule classes and **77** violating nodes.
+Three of the classes existed only in view-mode and column-panel states that a single visit per route
+never reaches — so the ratchet was reporting "no new violations" over a scan that could not see half
+the violations.
 
-| Rule             | Impact   | Where                                                       |
-| ---------------- | -------- | ----------------------------------------------------------- |
-| `button-name`    | critical | 11 nodes, incl. the platform nav title icon on every screen |
-| `label`          | critical | two Material checkboxes in production browse                |
-| `color-contrast` | serious  | `.header-doc-type`, `.result-count`, breadcrumb current     |
-| `role-img-alt`   | serious  | contributor avatars, folder-row icons                       |
+| Rule                          | Nodes | Now | Owner                                        |
+| ----------------------------- | ----- | --- | -------------------------------------------- |
+| `label`                       | 42    | 0   | ours                                         |
+| `nested-interactive`          | 40    | 0   | ours                                         |
+| `button-name`                 | 21    | 0   | ours                                         |
+| `role-img-alt`                | 12    | 0   | ours                                         |
+| `color-contrast`              | 7     | 0   | ours                                         |
+| `scrollable-region-focusable` | 2     | 0   | ours                                         |
+| `aria-progressbar-name`       | 2     | 0   | ours                                         |
+| `aria-required-children`      | 3     | 3   | **`@alfresco/adf-core@9.0.0`** — finding 1.2 |
 
-Also ratcheted, so a **new** violation fails while the existing gap is visible.
+Three findings worth more than the counts:
+
+- **The most widespread violation was deliberate.** `sat-platform-nav` binds one translated string
+  to _both_ `matTooltip` and `[attr.aria-label]`. Our catalogues set that key to `''` on purpose, to
+  suppress a tooltip duplicating the visible label — and thereby gave the nav toggle
+  `aria-label=""` on **every** surface, critical, for as long as the key had been blank. An empty
+  accessible name is invisible unless you use a screen reader. Reported upstream as finding 4.6.
+- **Two accessibility fixes already in the code did not work.** Browse carried
+  `[attr.aria-label]` on its row checkboxes and axe still flagged them: Material declares
+  `aria-label` as an _input_ and forwards it to the inner native control, so the `attr.` form
+  leaves that control unnamed. Separately, `z-index` sat on `position: static` wrappers, where it
+  does nothing.
+- **The first regression check for this was itself defeated.** It read `aria-label` off the live
+  element; re-introducing the empty override turned all twelve axe assertions red and that check
+  still said pass. Replaced with deterministic assertions on the three files that constitute the
+  mechanism, each falsified on its own. Fixing it exposed the half of the original fix that had
+  been missed — `en-fallback.ts` still carried the empty strings, so a failed catalogue fetch would
+  have silently restored the defect.
+
+`KNOWN_VIOLATIONS` is now **empty**. The one exclusion is scoped to the adf-hx step alone, so the
+same rule failing on a surface we own still fails the capture.
+
+**Not covered, stated rather than implied:** dialogs, the upload flow, dark mode, and the pre-auth
+login surface — the last a harness limitation, because the runner sets `httpCredentials` and the app
+authenticates before login can render.
 
 ### Security
 

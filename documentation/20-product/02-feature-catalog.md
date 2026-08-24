@@ -167,15 +167,15 @@ HTTP 500, which is expected. Feature-flagged client-side
 
 ## 9. Cross-cutting
 
-| Feature                                                                            | Status                                                                   |
-| ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Authentication — Basic, SSO-cookie detection, share tokens, session-expiry warning | **Shipped**                                                              |
-| Authorisation — route guards, admin guard, power-user detection                    | **Shipped**                                                              |
-| i18n — `@ngx-translate`, layered catalogues incl. adf-core and adf-hx              | **Shipped**                                                              |
-| Runtime theming from Layer 0 tokens                                                | **Shipped**                                                              |
-| Accessibility                                                                      | **Shipped, limited** — WCAG 2.1 AA **not met**; 4 rule classes ratcheted |
-| Notification email on permission grant                                             | **Shipped** — Mailpit locally                                            |
-| Marketplace packaging with upgrade-safe config                                     | **Shipped**                                                              |
+| Feature                                                                            | Status                                                                      |
+| ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Authentication — Basic, SSO-cookie detection, share tokens, session-expiry warning | **Shipped**                                                                 |
+| Authorisation — route guards, admin guard, power-user detection                    | **Shipped**                                                                 |
+| i18n — `@ngx-translate`, layered catalogues incl. adf-core and adf-hx              | **Shipped**                                                                 |
+| Runtime theming from Layer 0 tokens                                                | **Shipped**                                                                 |
+| Accessibility                                                                      | **Shipped** — WCAG 2.1 AA met on 15 scanned cases; `KNOWN_VIOLATIONS` empty |
+| Notification email on permission grant                                             | **Shipped** — Mailpit locally                                               |
+| Marketplace packaging with upgrade-safe config                                     | **Shipped**                                                                 |
 
 ---
 

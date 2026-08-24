@@ -197,17 +197,31 @@ travel with a clone. **Anything load-bearing belongs in the repo docs.**
 by default; everything is recorded at every impact so the debt is visible rather than filtered
 away. If `@axe-core/playwright` is missing it is a **failed check**, never a silent skip.
 
-Current state — **AA not met**, 4 rule classes ratcheted via `KNOWN_VIOLATIONS`:
+Current state — **AA met on the fifteen cases scanned**, `KNOWN_VIOLATIONS` **empty** (2026-08-24):
 
-| Rule             | Impact   | Where                                                           |
-| ---------------- | -------- | --------------------------------------------------------------- |
-| `button-name`    | critical | 11 nodes, incl. the platform nav title icon **on every screen** |
-| `label`          | critical | Two Material checkboxes in production browse                    |
-| `color-contrast` | serious  | `.header-doc-type`, `.result-count`, breadcrumb current         |
-| `role-img-alt`   | serious  | Contributor avatars, folder-row icons                           |
+| Rule                          | Nodes | Now | Owner                                        |
+| ----------------------------- | ----- | --- | -------------------------------------------- |
+| `label`                       | 42    | 0   | ours                                         |
+| `nested-interactive`          | 40    | 0   | ours                                         |
+| `button-name`                 | 21    | 0   | ours                                         |
+| `role-img-alt`                | 12    | 0   | ours                                         |
+| `color-contrast`              | 7     | 0   | ours                                         |
+| `scrollable-region-focusable` | 2     | 0   | ours                                         |
+| `aria-progressbar-name`       | 2     | 0   | ours                                         |
+| `aria-required-children`      | 3     | 3   | **`@alfresco/adf-core@9.0.0`** — finding 1.2 |
 
-Ratcheted means a **new** violation fails while the existing gap stays visible. Phase 6 step 3 is
-to empty that list.
+The lesson is about the **baseline**, not the fixes. The previous capture scanned **three** surfaces
+and ratcheted **four** rule ids. Widening it to fifteen cases found **seven** classes and 77 nodes,
+and three of the classes lived only in view-mode and column-panel states a single visit per route
+never reaches. A ratchet over an under-sampled scan reports "no new violations" while the ones it
+cannot see accumulate — the same failure mode as a gate nobody has watched go red.
+
+The single exclusion is scoped to the **adf-hx step alone**, not to `KNOWN_VIOLATIONS`, so the same
+rule failing on a surface we own still fails the capture.
+
+**Not covered:** dialogs, the upload flow, dark mode, and the pre-auth login surface. The last is a
+harness limitation — the runner sets `httpCredentials`, so the app authenticates before login can
+render.
 
 ---
 
@@ -217,7 +231,7 @@ to empty that list.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `libs/shared/ai-client`      | 457 lines, **0 specs, no `test` target** — invisible to the ratchet                                                             |
 | `libs/features/trash`        | 2,866 lines, no `test` target                                                                                                   |
-| `tasks`, `assets`            | Zero specs, reporting a spurious 100%                                                                                           |
+| `tasks`, `assets`            | Zero specs. Reported a spurious 100% until 2026-08-24; the gate now calls them unmeasurable and fails on a baseline entry       |
 | The AI operations themselves | Implemented in another package                                                                                                  |
 | Performance                  | No runtime performance testing. Bundle size only                                                                                |
 | Security                     | **No SAST.** SCA is `npm audit`                                                                                                 |

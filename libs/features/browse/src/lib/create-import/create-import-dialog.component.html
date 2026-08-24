@@ -45,7 +45,7 @@
   >
     @if (resolvingPath()) {
       <div class="state-row">
-        <mat-spinner diameter="32" />
+        <mat-spinner diameter="32" aria-label="Loading" />
         <span>Resolving target folder…</span>
       </div>
     } @else if (pathError()) {
@@ -53,7 +53,7 @@
     } @else {
       @if (busy()) {
         <div class="state-row">
-          <mat-spinner diameter="32" />
+          <mat-spinner diameter="32" aria-label="Loading" />
           <span>Working…</span>
         </div>
       }
@@ -81,7 +81,7 @@
               @if (locationDropdownOpen()) {
                 @if (loadingLocationSuggestions()) {
                   <div class="location-dropdown location-dropdown--loading">
-                    <mat-spinner diameter="20" />
+                    <mat-spinner diameter="20" aria-label="Loading" />
                     <span>Loading folders…</span>
                   </div>
                 } @else if (locationSuggestions().length > 0) {
@@ -117,7 +117,7 @@
             @if (!locationRestricted()) {
               @if (loadingContext()) {
                 <div class="state-row state-row--compact">
-                  <mat-spinner diameter="24" />
+                  <mat-spinner diameter="24" aria-label="Loading" />
                   <span>Loading document types…</span>
                 </div>
               } @else if (typesLoadError()) {
@@ -340,7 +340,7 @@
                   @if (locationDropdownOpen()) {
                     @if (loadingLocationSuggestions()) {
                       <div class="location-dropdown location-dropdown--loading">
-                        <mat-spinner diameter="20" />
+                        <mat-spinner diameter="20" aria-label="Loading" />
                         <span>Loading folders…</span>
                       </div>
                     } @else if (locationSuggestions().length > 0) {

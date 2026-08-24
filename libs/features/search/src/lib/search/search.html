@@ -37,7 +37,7 @@
             [matAutocomplete]="aiAutoComplete"
           />
           @if (aiLoading()) {
-            <mat-spinner diameter="20" class="ai-search-spinner"></mat-spinner>
+            <mat-spinner diameter="20" class="ai-search-spinner" aria-label="Loading"></mat-spinner>
           } @else {
             <button
               mat-icon-button
@@ -200,7 +200,7 @@
 
   @if (loading()) {
     <div class="results-loading">
-      <mat-spinner diameter="32" />
+      <mat-spinner diameter="32" aria-label="Loading" />
     </div>
   }
 

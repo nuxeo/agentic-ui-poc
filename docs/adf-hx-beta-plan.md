@@ -30,7 +30,7 @@ is a human summary and can go stale exactly as its predecessor did.
 | 3 — adf-hx adoption              | complete        | 55 checks                  |
 | 4 — Layer 2 publishable platform | complete        | 25 checks                  |
 | 5 — Layer 3 agent harness        | complete        | 27 checks                  |
-| 6 — Beta quality bar and proof   | **in progress** | steps 0-2 of 7; gate 15/15 |
+| 6 — Beta quality bar and proof   | **in progress** | steps 0-3 of 7; gate 15/15 |
 
 All six completed phases are re-gated against the current 14-gate pipeline, not only the
 smaller pipeline that existed when each was signed off — Phases 0–2 were originally gated
@@ -413,7 +413,7 @@ Largely built. Remaining:
 - Add Nx generators for "new extension component", "new action", "new rule".
 - Package the guardrail script for customer use.
 
-## Phase 6 — Beta quality bar and proof (**in progress**, steps 0-2 of 7 done)
+## Phase 6 — Beta quality bar and proof (**in progress**, steps 0-3 of 7 done)
 
 - NXENG-615's checklist, assessed against the slice: unit coverage above 90% (the bridge has 11
   tests for 2,949 lines today), ~~Playwright E2E on critical paths~~ (**done** — `npm run beta:e2e`,
@@ -434,7 +434,7 @@ Largely built. Remaining:
 | 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                       |
 | 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                |
 | 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                          |
-| 3 — WCAG 2.1 AA met         | not started; 4 rule classes violated and ratcheted                                         |
+| 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned     |
 | 4 — SAST + SCA              | not started; SCA is `npm audit` only, SAST absent                                          |
 | 5 — Safari/WebKit           | not started; Chromium only                                                                 |
 | 6 — coverage to 90%         | barely started; **3 of 15** measurable projects meet it substantively, `search` 67pp short |

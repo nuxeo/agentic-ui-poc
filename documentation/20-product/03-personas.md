@@ -30,13 +30,13 @@ power-user check and a `scope:customer` library all encode a view of who is on t
 
 ### 1. Knowledge Worker — "I need to find and work with content"
 
-|                             |                                                                                                                                                     |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Does**                    | Browses, searches, opens documents, reads metadata, comments, uploads, organises into collections and favorites                                     |
-| **Needs**                   | Speed, findability, not to be taught a query language                                                                                               |
-| **Evidence in code**        | The whole browse/search/document-detail slice. `recently-viewed`, `favorites`, `personal-space` routes exist specifically for this pattern          |
-| **What would delight them** | `AI.NlToNxql` — natural-language search. **Backend absent**, so today they still need to think in filters                                           |
-| **Blocked by**              | WCAG 2.1 AA not met — 4 rule classes, including `button-name` on the nav title icon **on every screen**, which affects screen-reader users directly |
+|                             |                                                                                                                                                                                                             |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Does**                    | Browses, searches, opens documents, reads metadata, comments, uploads, organises into collections and favorites                                                                                             |
+| **Needs**                   | Speed, findability, not to be taught a query language                                                                                                                                                       |
+| **Evidence in code**        | The whole browse/search/document-detail slice. `recently-viewed`, `favorites`, `personal-space` routes exist specifically for this pattern                                                                  |
+| **What would delight them** | `AI.NlToNxql` — natural-language search. **Backend absent**, so today they still need to think in filters                                                                                                   |
+| **Blocked by**              | ~~WCAG 2.1 AA~~ — **met 2026-08-24** on the 15 cases scanned. `button-name` on the nav toggle, which affected screen-reader users on every screen, is fixed. Dialogs, upload and dark mode remain unscanned |
 
 ### 2. Content Contributor / Editor — "I need to get content in and keep it right"
 

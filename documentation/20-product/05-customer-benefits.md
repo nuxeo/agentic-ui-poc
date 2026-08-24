@@ -62,16 +62,16 @@ commercial case rests on.
 
 Honest, and each has an owner in Phase 6 or a decision.
 
-| Blocked benefit                               | Blocker                                                                                                                            | Where it is tracked                                                           |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Any AI-powered end-user capability            | The 12 `AI.*` operations need a **separate backend package**                                                                       | [Runtime AI Features](../30-engineering/10-runtime-ai-features.md)            |
-| Accessibility compliance                      | **WCAG 2.1 AA not met.** 4 rule classes violated and ratcheted — including `button-name` on the nav title icon on **every** screen | Phase 6 step 3                                                                |
-| Install from a registry                       | `private: true`; publishing deliberately deferred                                                                                  | `docs/publishing-to-nuxeo-registry.md`                                        |
-| Manifest-driven toolbar / context-menu / tabs | Those 3 slots plus `routes` are **reserved — nothing reads them**                                                                  | [Extensibility Contract](../30-engineering/07-extensibility-contract.md)      |
-| Permission-gated bulk actions                 | The `selection` rule context carries ids, not documents                                                                            | `docs/extension-reference.md`                                                 |
-| Confidence from test coverage                 | 3 of 17 projects genuinely ≥90%; the two highest-traffic features are the least tested                                             | Phase 6 step 6                                                                |
-| Security assurance                            | **No SAST.** SCA is `npm audit` only                                                                                               | Phase 6 step 4                                                                |
-| Production diagnosability                     | No APM, structured logging, metrics or error reporting                                                                             | [Scalability & Operations](../10-leadership/06-scalability-and-operations.md) |
+| Blocked benefit                               | Blocker                                                                                                                                                                                                           | Where it is tracked                                                           |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Any AI-powered end-user capability            | The 12 `AI.*` operations need a **separate backend package**                                                                                                                                                      | [Runtime AI Features](../30-engineering/10-runtime-ai-features.md)            |
+| Accessibility compliance                      | **WCAG 2.1 AA met** on the 15 cases scanned (2026-08-24). 7 rule classes, 77 nodes — including `button-name` on the nav toggle on **every** screen. Dialogs, upload, dark mode and pre-auth login are not covered | **Done** — Phase 6 step 3                                                     |
+| Install from a registry                       | `private: true`; publishing deliberately deferred                                                                                                                                                                 | `docs/publishing-to-nuxeo-registry.md`                                        |
+| Manifest-driven toolbar / context-menu / tabs | Those 3 slots plus `routes` are **reserved — nothing reads them**                                                                                                                                                 | [Extensibility Contract](../30-engineering/07-extensibility-contract.md)      |
+| Permission-gated bulk actions                 | The `selection` rule context carries ids, not documents                                                                                                                                                           | `docs/extension-reference.md`                                                 |
+| Confidence from test coverage                 | 3 of 15 measurable projects ≥90% substantively; the two highest-traffic features are the least tested                                                                                                             | Phase 6 step 6                                                                |
+| Security assurance                            | **No SAST.** SCA is `npm audit` only                                                                                                                                                                              | Phase 6 step 4                                                                |
+| Production diagnosability                     | No APM, structured logging, metrics or error reporting                                                                                                                                                            | [Scalability & Operations](../10-leadership/06-scalability-and-operations.md) |
 
 ---
 
@@ -103,14 +103,14 @@ is the reusable part. The RFC's conclusion is the honest sentence to use:
 
 ## E. How to talk about benefits externally
 
-| Do                                                                                                   | Don't                                         |
-| ---------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| "Rebranding is a configuration change, and we test that it survives upgrades"                        | "Customisation is free"                       |
-| "Customer code lives in your repository against a versioned API"                                     | "No development needed"                       |
-| "We measured accessibility and we do not yet meet AA; here is the plan"                              | Stay silent and hope procurement does not ask |
-| "The AI features require the AI backend package"                                                     | "AI-powered out of the box"                   |
-| "Layers 0 and 1 are designed to cover most requests — we want to validate that against your backlog" | "Most requests need no code"                  |
-| "No customer has used this yet; we are looking for a design partner"                                 | Imply production adoption                     |
+| Do                                                                                                       | Don't                                                   |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| "Rebranding is a configuration change, and we test that it survives upgrades"                            | "Customisation is free"                                 |
+| "Customer code lives in your repository against a versioned API"                                         | "No development needed"                                 |
+| "We measured accessibility, we meet AA on every surface we scanned, and here is exactly what we scanned" | Claim blanket compliance and hope nobody asks for scope |
+| "The AI features require the AI backend package"                                                         | "AI-powered out of the box"                             |
+| "Layers 0 and 1 are designed to cover most requests — we want to validate that against your backlog"     | "Most requests need no code"                            |
+| "No customer has used this yet; we are looking for a design partner"                                     | Imply production adoption                               |
 
 The last row is the most important. **Zero customers** is the single biggest gap in every
 benefit claim on this page, and framing the Beta as a design-partner search converts that

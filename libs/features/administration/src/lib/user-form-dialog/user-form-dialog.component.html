@@ -1,7 +1,7 @@
 <div class="dialog-shell">
   @if (saving()) {
     <div class="dialog-busy" aria-busy="true" aria-live="polite">
-      <mat-spinner diameter="40" />
+      <mat-spinner diameter="40" aria-label="Loading" />
     </div>
   }
   <div mat-dialog-title class="dialog-title" role="heading" aria-level="2">
@@ -10,7 +10,7 @@
   <mat-dialog-content class="form">
     @if (loadingGroups) {
       <div class="spinner-wrap">
-        <mat-spinner diameter="36" />
+        <mat-spinner diameter="36" aria-label="Loading" />
       </div>
     }
     <mat-form-field appearance="outline" class="full first-field">

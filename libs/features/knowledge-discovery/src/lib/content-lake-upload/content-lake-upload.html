@@ -22,7 +22,7 @@
         placeholder="/default-domain/workspaces/MyWorkspace"
       />
       @if (loadingSubfolders()) {
-        <mat-spinner matSuffix diameter="18" />
+        <mat-spinner matSuffix diameter="18" aria-label="Loading" />
       }
       <mat-autocomplete
         #folderAuto="matAutocomplete"
@@ -142,7 +142,7 @@
 
   @if (phase() === 'ingesting') {
     <div class="kd-content-lake-upload__progress">
-      <mat-spinner diameter="18" />
+      <mat-spinner diameter="18" aria-label="Loading" />
       <span>Ingesting into Content Lake...</span>
     </div>
   }

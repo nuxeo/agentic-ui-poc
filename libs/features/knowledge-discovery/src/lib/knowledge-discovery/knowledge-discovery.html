@@ -113,7 +113,7 @@
 
           @if (isAwaitingResponse()) {
             <span class="kd-inline-status">
-              <mat-spinner diameter="16" />
+              <mat-spinner diameter="16" aria-label="Loading" />
               Waiting for answer
             </span>
           } @else {
@@ -166,7 +166,7 @@
         @if (isAwaitingResponse()) {
           <div class="kd-progress-card">
             <div class="kd-progress-card__icon">
-              <mat-spinner diameter="18" />
+              <mat-spinner diameter="18" aria-label="Loading" />
             </div>
             <div class="kd-progress-card__content">
               <p class="kd-progress-card__title">{{ loadingTitle() }}</p>
@@ -223,7 +223,7 @@
             @if (isAwaitingResponse() && !currentAnswer.answer) {
               <div class="kd-answer__loading">
                 <div class="kd-answer__loading-header">
-                  <mat-spinner diameter="20" />
+                  <mat-spinner diameter="20" aria-label="Loading" />
                   <div>
                     <p class="kd-answer__loading-title">{{ loadingTitle() }}</p>
                     <p class="kd-answer__loading-copy">{{ loadingMessage() }}</p>
@@ -306,7 +306,7 @@
         </div>
 
         @if (loadingAgents()) {
-          <div class="kd-state"><mat-spinner diameter="20" /></div>
+          <div class="kd-state"><mat-spinner diameter="20" aria-label="Loading" /></div>
         } @else if (agents().length === 0) {
           <p class="kd-empty">
             No agents yet. Create one in the
@@ -372,7 +372,7 @@
         </div>
 
         @if (loadingHistory()) {
-          <div class="kd-state"><mat-spinner diameter="20" /></div>
+          <div class="kd-state"><mat-spinner diameter="20" aria-label="Loading" /></div>
         } @else if (history().length === 0) {
           <p class="kd-empty">No recent questions.</p>
         } @else {
@@ -398,7 +398,7 @@
         </div>
 
         @if (loadingReferenceData()) {
-          <div class="kd-state"><mat-spinner diameter="20" /></div>
+          <div class="kd-state"><mat-spinner diameter="20" aria-label="Loading" /></div>
         } @else if (models().length === 0) {
           <p class="kd-empty">No models loaded.</p>
         } @else {

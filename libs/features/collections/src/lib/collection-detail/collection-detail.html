@@ -99,7 +99,7 @@
       <div class="tab-content">
         @if (loading()) {
           <div class="tab-loading">
-            <mat-spinner diameter="36" />
+            <mat-spinner diameter="36" aria-label="Loading" />
           </div>
         } @else if (error()) {
           <div class="tab-error">
@@ -414,7 +414,7 @@
         <!-- Table -->
         @if (auditLoading()) {
           <div class="history-loading">
-            <mat-spinner diameter="32" />
+            <mat-spinner diameter="32" aria-label="Loading" />
           </div>
         } @else if (filteredAuditEntries().length === 0) {
           <div class="history-empty">

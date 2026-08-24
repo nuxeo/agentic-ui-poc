@@ -71,7 +71,7 @@
     <div class="folder-tree">
       @if (rootLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (rootNodes().length === 0) {
         <div class="tree-empty">No folders found</div>
@@ -95,7 +95,7 @@
     <div class="folder-tree">
       @if (personalSpaceLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (personalSpaceError()) {
         <div class="tree-empty error">
@@ -118,7 +118,7 @@
     <!-- Recently Viewed panel -->
     @if (recentlyViewedLoading()) {
       <div class="tree-loading">
-        <mat-spinner diameter="24" />
+        <mat-spinner diameter="24" aria-label="Loading" />
       </div>
     } @else if (recentlyViewedError()) {
       <div class="tree-empty error">{{ recentlyViewedError() }}</div>
@@ -153,7 +153,7 @@
   } @else if (isExpiredQueue) {
     @if (expiredLoading()) {
       <div class="tree-loading">
-        <mat-spinner diameter="24" />
+        <mat-spinner diameter="24" aria-label="Loading" />
       </div>
     } @else if (expiredError()) {
       <div class="tree-empty error">{{ expiredError() }}</div>
@@ -190,7 +190,7 @@
     <div class="collections-panel">
       @if (collectionsLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (collections().length === 0) {
         <div class="tree-empty">No collections found</div>
@@ -230,7 +230,7 @@
     <div class="tasks-panel-wrap">
       @if (tasksLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (tasksError()) {
         <div class="tree-empty error">
@@ -290,7 +290,7 @@
     <div class="favorites-panel">
       @if (favoritesLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (favorites().length === 0) {
         <div class="tree-empty">
@@ -368,7 +368,7 @@
           <p class="clipboard-tip">Browse to a container to paste or move clipboard content.</p>
           @if (clipboardActionLoading()) {
             <div class="clipboard-loading">
-              <mat-spinner diameter="24" />
+              <mat-spinner diameter="24" aria-label="Loading" />
             </div>
           }
           <div class="clipboard-primary-actions">
@@ -444,7 +444,7 @@
     @if (hasChildren(node)) {
       <button class="tree-toggle" (click)="toggleNode(node)" type="button">
         @if (node.loading) {
-          <mat-spinner diameter="14" />
+          <mat-spinner diameter="14" aria-label="Loading" />
         } @else {
           <mat-icon class="tree-arrow" [class.tree-arrow--expanded]="node.expanded">
             chevron_right

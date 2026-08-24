@@ -3,7 +3,7 @@
 <mat-dialog-content class="picker-body">
   @if (loading()) {
     <div class="picker-state">
-      <mat-spinner diameter="36" />
+      <mat-spinner diameter="36" aria-label="Loading" />
       <span>Loading folders…</span>
     </div>
   } @else if (error()) {

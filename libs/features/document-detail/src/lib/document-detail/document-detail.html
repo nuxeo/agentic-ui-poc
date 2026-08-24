@@ -1,6 +1,6 @@
 @if (loading()) {
   <div class="detail-loading">
-    <mat-spinner diameter="40" />
+    <mat-spinner diameter="40" aria-label="Loading" />
   </div>
 } @else if (error()) {
   <div class="detail-error">
@@ -104,7 +104,7 @@
             "
             aria-busy="true"
           >
-            <mat-spinner diameter="24" />
+            <mat-spinner diameter="24" aria-label="Loading" />
           </span>
         } @else if (showsContentLakeIngested()) {
           <span
@@ -321,7 +321,7 @@
 
       @if (workflowsLoading()) {
         <div class="start-process-loading">
-          <mat-spinner diameter="28" />
+          <mat-spinner diameter="28" aria-label="Loading" />
         </div>
       } @else if (availableWorkflows().length === 0) {
         <p class="start-process-empty">No workflow models available.</p>
@@ -347,7 +347,7 @@
             (click)="startProcess()"
           >
             @if (startingWorkflow()) {
-              <mat-spinner diameter="18" class="inline-spinner" />
+              <mat-spinner diameter="18" class="inline-spinner" aria-label="Loading" />
             }
             Start
           </button>
@@ -459,7 +459,7 @@
           <mat-tab label="Permissions">
             <div class="permissions-container">
               @if (permissionsLoading()) {
-                <div class="perm-loading"><mat-spinner diameter="28" /></div>
+                <div class="perm-loading"><mat-spinner diameter="28" aria-label="Loading" /></div>
               }
               <!-- Permissions defined locally -->
               <section class="perm-section perm-section--local">
@@ -777,7 +777,7 @@
               <!-- Table -->
               @if (auditLoading()) {
                 <div class="history-loading">
-                  <mat-spinner diameter="32" />
+                  <mat-spinner diameter="32" aria-label="Loading" />
                 </div>
               } @else if (filteredAuditEntries().length === 0) {
                 <div class="history-empty">
@@ -878,7 +878,7 @@
                       (click)="unpublishAll()"
                     >
                       @if (actionInProgress() === 'unpublish-all') {
-                        <mat-spinner diameter="16" />
+                        <mat-spinner diameter="16" aria-label="Loading" />
                       } @else {
                         Unpublish All
                       }
@@ -887,7 +887,7 @@
                 </div>
                 @if (publishLoading()) {
                   <div class="publish-loading">
-                    <mat-spinner diameter="24" />
+                    <mat-spinner diameter="24" aria-label="Loading" />
                   </div>
                 } @else if (publishedDocs().length === 0) {
                   <div class="publish-empty">
@@ -972,7 +972,7 @@
                     (click)="publishToSection()"
                   >
                     @if (publishing()) {
-                      <mat-spinner diameter="18" />
+                      <mat-spinner diameter="18" aria-label="Loading" />
                     } @else {
                       <ng-container>
                         <mat-icon>publish</mat-icon>
@@ -992,7 +992,7 @@
 
                 @if (sectionsLoading()) {
                   <div class="publish-loading">
-                    <mat-spinner diameter="24" />
+                    <mat-spinner diameter="24" aria-label="Loading" />
                   </div>
                 } @else if (sectionTree().length === 0) {
                   <div class="publish-empty">
@@ -1046,7 +1046,7 @@
                       <div class="ai-card-title">Document Summary</div>
                       @if (aiSummaryLoading()) {
                         <button mat-flat-button class="ai-btn-primary ai-btn-sm" disabled>
-                          <mat-spinner diameter="16"></mat-spinner>
+                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
                         </button>
                       } @else {
                         <button
@@ -1137,7 +1137,7 @@
                     <div class="ai-card-actions">
                       @if (aiTagsLoading()) {
                         <button mat-stroked-button class="ai-btn-outline" disabled>
-                          <mat-spinner diameter="16"></mat-spinner>
+                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
                           Suggest Tags
                         </button>
                       } @else {
@@ -1213,7 +1213,7 @@
                     <div class="ai-card-actions">
                       @if (aiClassifyLoading()) {
                         <button mat-flat-button class="ai-btn-primary ai-btn-full" disabled>
-                          <mat-spinner diameter="16"></mat-spinner>
+                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
                           Classify
                         </button>
                       } @else {
@@ -1245,11 +1245,11 @@
                       @if (aiSimilarLoading()) {
                         <div class="ai-doc-thumbs">
                           <div class="ai-doc-thumb ai-doc-thumb--skeleton">
-                            <mat-spinner diameter="20"></mat-spinner>
+                            <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
                             <span>Scanning Archive...</span>
                           </div>
                           <div class="ai-doc-thumb ai-doc-thumb--skeleton">
-                            <mat-spinner diameter="20"></mat-spinner>
+                            <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
                             <span>Scanning Archive...</span>
                           </div>
                         </div>
@@ -1284,7 +1284,7 @@
                     <div class="ai-card-actions">
                       @if (aiSimilarLoading()) {
                         <button mat-stroked-button class="ai-btn-outline" disabled>
-                          <mat-spinner diameter="16"></mat-spinner>
+                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
                           Find Connections
                         </button>
                       } @else {
@@ -1391,7 +1391,7 @@
                         <div class="version-dropdown">
                           @if (versionsLoading()) {
                             <div class="version-dropdown-loading">
-                              <mat-spinner diameter="20" />
+                              <mat-spinner diameter="20" aria-label="Loading" />
                             </div>
                           } @else {
                             @if (doc()?.isCheckedOut && canWriteDoc()) {
@@ -1720,7 +1720,7 @@
           <div class="panel-body comments-panel">
             @if (commentsLoading()) {
               <div class="panel-loading">
-                <mat-spinner diameter="28" />
+                <mat-spinner diameter="28" aria-label="Loading" />
               </div>
             } @else {
               <!-- AI Sentiment Analysis -->
@@ -1732,7 +1732,7 @@
                     [disabled]="aiSentimentLoading()"
                   >
                     @if (aiSentimentLoading()) {
-                      <mat-spinner diameter="16" />
+                      <mat-spinner diameter="16" aria-label="Loading" />
                     } @else {
                       <mat-icon>psychology</mat-icon>
                     }
@@ -1989,7 +1989,7 @@
           <div class="panel-body activity-panel">
             @if (panelActivityLoading()) {
               <div class="panel-loading">
-                <mat-spinner diameter="28" />
+                <mat-spinner diameter="28" aria-label="Loading" />
               </div>
             } @else {
               @for (entry of panelActivity(); track $index) {

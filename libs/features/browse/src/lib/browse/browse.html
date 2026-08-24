@@ -188,7 +188,7 @@
                   [disabled]="csvExporting()"
                 >
                   @if (csvExporting()) {
-                    <mat-spinner diameter="18" />
+                    <mat-spinner diameter="18" aria-label="Loading" />
                   } @else {
                     <mat-icon>download</mat-icon>
                   }
@@ -216,7 +216,7 @@
 
             @if (loading()) {
               <div class="browse-loading">
-                <mat-spinner diameter="36" />
+                <mat-spinner diameter="36" aria-label="Loading" />
               </div>
             } @else if (error()) {
               <div class="browse-error">
@@ -393,7 +393,7 @@
           <mat-tab label="Permissions">
             <div class="permissions-container">
               @if (permissionsLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" /></div>
+                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
               } @else {
                 <!-- Permissions defined locally -->
                 <section class="perm-section">
@@ -672,7 +672,7 @@
               </div>
 
               @if (auditLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" /></div>
+                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
               } @else if (filteredAuditEntries().length === 0) {
                 <div class="history-empty">No audit entries found.</div>
               } @else {
@@ -772,7 +772,7 @@
           <mat-tab label="Trash">
             <div class="trash-container">
               @if (trashLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" /></div>
+                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
               } @else if (trashedDocs().length === 0) {
                 <div class="browse-empty">
                   <mat-icon class="empty-icon">delete_outline</mat-icon>
@@ -987,7 +987,7 @@
         @if (panelSubTab() === 'activity') {
           <div class="panel-body">
             @if (activityLoading()) {
-              <div class="panel-loading"><mat-spinner diameter="20" /></div>
+              <div class="panel-loading"><mat-spinner diameter="20" aria-label="Loading" /></div>
             } @else {
               @for (entry of activityEntries(); track entry.id) {
                 <div class="activity-item">

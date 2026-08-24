@@ -60,7 +60,7 @@
 
 .header-doc-type {
   font-size: 12px;
-  color: #888;
+  color: var(--mat-sys-on-surface-variant, #474551);
 }
 
 .header-actions {
@@ -373,7 +373,7 @@ sat-breadcrumbs {
 
 .result-count {
   font-size: 12px;
-  color: #888;
+  color: var(--mat-sys-on-surface-variant, #474551);
   white-space: nowrap;
 }
 
@@ -797,7 +797,7 @@ sat-breadcrumbs {
 .card-type {
   display: block;
   font-size: 11px;
-  color: #888;
+  color: var(--mat-sys-on-surface-variant, #474551);
   margin-top: 2px;
 }
 

@@ -67,8 +67,8 @@ support boundary, the upgrade path and any certification claim.
 
 | Gap                                                                        | Consequence                                                                                     |
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| **WCAG 2.1 AA not met** — 4 rule classes violated and ratcheted            | A procurement blocker in some accounts                                                          |
-| **3 of 17 projects genuinely meet the 90% coverage bar**                   | The two highest-traffic features are the least tested (`search` 22.8%, `document-detail` 29.8%) |
+| **WCAG 2.1 AA met** on 15 scanned cases — 7 rule classes, 77 nodes fixed   | Removes a procurement blocker. One violation remains and it is `adf-core`'s, not ours           |
+| **3 of 15 measurable projects meet the 90% coverage bar substantively**    | The two highest-traffic features are the least tested (`search` 22.8%, `document-detail` 29.8%) |
 | **No SAST**; SCA is `npm audit` only                                       | Security assurance gap                                                                          |
 | **No production observability** — no APM, structured logging or metrics    | We could not diagnose a customer incident                                                       |
 | **4 of 8 extension slots are reserved** — nothing reads them               | Less addressable surface than the slot list implies (RFC risk R8)                               |

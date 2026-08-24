@@ -14,7 +14,7 @@
 <mat-dialog-content>
   @if (loading()) {
     <div class="loading-container">
-      <mat-spinner diameter="40"></mat-spinner>
+      <mat-spinner diameter="40" aria-label="Loading"></mat-spinner>
       <p>Loading permissions...</p>
     </div>
   } @else {

@@ -1,7 +1,7 @@
 <div class="task-detail-page">
   @if (loading()) {
     <div class="task-loading">
-      <mat-spinner diameter="36" />
+      <mat-spinner diameter="36" aria-label="Loading" />
       <span>Loading task…</span>
     </div>
   } @else if (error()) {
@@ -31,7 +31,7 @@
         <div class="document-banner">
           @if (docLoading()) {
             <div class="doc-banner-loading">
-              <mat-spinner diameter="20" />
+              <mat-spinner diameter="20" aria-label="Loading" />
               <span>Loading document…</span>
             </div>
           } @else if (targetDoc()) {
@@ -180,7 +180,7 @@
 
         @if (submitting()) {
           <div class="task-submitting">
-            <mat-spinner diameter="24" />
+            <mat-spinner diameter="24" aria-label="Loading" />
             <span>Processing…</span>
           </div>
         }
