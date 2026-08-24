@@ -20,7 +20,7 @@ If this file disagrees with §3 or `phases.json` on a fact, **they win and this 
 Nine cross-document contradictions accumulated earlier in this programme — including two
 reviews disagreeing about whether CI had ever run — so the precedence above is deliberate.
 
-Last updated: 2026-08-24.
+Last updated: 2026-08-24 (Phase 6 opened).
 
 Updating this file is **step 10 of the `beta-phase` skill**, not an optional courtesy.
 
@@ -28,15 +28,15 @@ Updating this file is **step 10 of the `beta-phase` skill**, not an optional cou
 
 ## 1. Where the programme stands
 
-| Phase                                   | Status                                       | Evidence                 |
-| --------------------------------------- | -------------------------------------------- | ------------------------ |
-| 0 — Unblock and verify                  | **complete**                                 | `phase-0-baseline` 14/14 |
-| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below          | `phase-1-config` 39/39   |
-| 2 — Layer 1: extension registry         | **complete**, carry-forward named            | `phase-2-registry` 46/46 |
-| 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted     | `phase-3-adf-hx` 55/55   |
-| 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded         | `phase-4-platform` 25/25 |
-| 5 — Layer 3: agent harness              | **complete**                                 | `phase-5-harness` 27/27  |
-| 6 — Beta quality bar                    | **not started** — coverage and a11y measured | `phase-6-a11y` 12/12     |
+| Phase                                   | Status                                   | Evidence                 |
+| --------------------------------------- | ---------------------------------------- | ------------------------ |
+| 0 — Unblock and verify                  | **complete**                             | `phase-0-baseline` 14/14 |
+| 1 — Layer 0: upgrade-safe configuration | **complete**, with one caveat below      | `phase-1-config` 39/39   |
+| 2 — Layer 1: extension registry         | **complete**, carry-forward named        | `phase-2-registry` 46/46 |
+| 3 — adf-hx adoption                     | **complete** — 12 ports bound, 5 adopted | `phase-3-adf-hx` 55/55   |
+| 4 — Layer 2: publishable platform       | **complete**, 10 deviations recorded     | `phase-4-platform` 25/25 |
+| 5 — Layer 3: agent harness              | **complete**                             | `phase-5-harness` 27/27  |
+| 6 — Beta quality bar                    | **in progress** — steps 0-1 of 7         | `phase-6-a11y` 12/12     |
 
 Branch `feature/adf-hx-browse-poc`, 103 commits ahead of `main`, **draft PR #145**. CI is
 green on both the `push` and `pull_request` paths.
@@ -290,6 +290,52 @@ not acted on: 14 "unfalsifiable" evidence assertions (all 180 assertion conditio
 against measured runtime values), and the Node gate being "non-strict" (deliberate, with
 the hazard printed on every run, a `BETA_GATE_NODE_STRICT=1` override, and CI on the
 pinned major).
+
+---
+
+### Phase 6: opened, two steps done of seven
+
+The quality bar itself is barely started and the record should not imply otherwise. What
+exists after step 1:
+
+**Step 0 — the coverage ratchet was lying in two directions.** Both were created by the
+previous day's library changes and neither presented as a failure. An entry for the
+deleted `drawers` library was reported forever as "not measured, unchanged" — a permanent
+line of reassurance about a library that is gone, whose recorded 100% was meaningless
+anyway (an empty barrel with `passWithNoTests`). And a project _absent_ from the baseline
+was printed as `new` and then excluded from every check, so `permission-dialogs` sat at
+93.85% completely unguarded from creation. Both now fail; `--update-baseline` prunes
+orphans too, without which the one command a maintainer would reach for could not fix the
+complaint.
+
+**Step 1 — the upgrade rehearsal**, the 15th gate and the only one that crosses a version
+boundary. It installs the tarball, stages the reference customer's Layer 0/1/2 surfaces,
+bumps the version, reinstalls, and asserts eight things — 21 customer files byte-identical,
+the app still compiles through the unpacked `exports` map, no edits to our sources, and
+**every slot the JSON manifest names still present in the upgraded package**.
+
+That last assertion is the point, and it is demonstrated rather than argued.
+`--break-slot toolbar` removes a slot named only in the JSON manifest and referenced by no
+TypeScript: the compile stays **green** and that check alone goes red. A clean build and a
+broken customer. `api-surface` would notice the declaration moved, but that reads as
+"update the snapshot", not "every manifest naming this slot is now inert".
+
+Honest limits, from the script's own header: the two versions differ only in their version
+string — inventing API changes would be testing the invention, so sensitivity comes from
+the negative control instead. And it is static, so it proves the contract survives, not
+that the pixels arrive.
+
+**Still open, with the real numbers:**
+
+| Requirement         | State                                                                    |
+| ------------------- | ------------------------------------------------------------------------ |
+| Unit coverage ≥ 90% | 5 of 17 projects. `search` 22.76%, `document-detail` 29.8%               |
+| Playwright E2E      | **nothing exists.** The harness uses Playwright for capture, not testing |
+| WCAG 2.1 AA         | not met — 4 rule classes violated and _ratcheted_, visible not fixed     |
+| SAST                | **nothing.** SCA is `npm audit` only (1 low)                             |
+| Safari              | never run; Chromium only                                                 |
+
+Coverage alone is most of the phase's 20-30 day estimate.
 
 ---
 

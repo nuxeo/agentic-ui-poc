@@ -22,15 +22,15 @@ Run `npm run beta:state` for the machine-checked version. It reads
 whenever a phase claims more than the artifacts support. **Prefer it to this table**, which
 is a human summary and can go stale exactly as its predecessor did.
 
-| Phase                            | Status          | Evidence  |
-| -------------------------------- | --------------- | --------- |
-| 0 — Verify and unblock           | complete        | 14 checks |
-| 1 — Layer 0 config               | complete        | 39 checks |
-| 2 — Layer 1 extension registry   | complete        | 46 checks |
-| 3 — adf-hx adoption              | complete        | 55 checks |
-| 4 — Layer 2 publishable platform | complete        | 25 checks |
-| 5 — Layer 3 agent harness        | complete        | 27 checks |
-| 6 — Beta quality bar and proof   | **not started** | —         |
+| Phase                            | Status          | Evidence                   |
+| -------------------------------- | --------------- | -------------------------- |
+| 0 — Verify and unblock           | complete        | 14 checks                  |
+| 1 — Layer 0 config               | complete        | 39 checks                  |
+| 2 — Layer 1 extension registry   | complete        | 46 checks                  |
+| 3 — adf-hx adoption              | complete        | 55 checks                  |
+| 4 — Layer 2 publishable platform | complete        | 25 checks                  |
+| 5 — Layer 3 agent harness        | complete        | 27 checks                  |
+| 6 — Beta quality bar and proof   | **in progress** | steps 0-1 of 7; gate 15/15 |
 
 All six completed phases are re-gated against the current 14-gate pipeline, not only the
 smaller pipeline that existed when each was signed off — Phases 0–2 were originally gated
@@ -413,15 +413,33 @@ Largely built. Remaining:
 - Add Nx generators for "new extension component", "new action", "new rule".
 - Package the guardrail script for customer use.
 
-## Phase 6 — Beta quality bar and proof (**not started**, 20-30 d)
+## Phase 6 — Beta quality bar and proof (**in progress**, steps 0-1 of 7 done)
 
 - NXENG-615's checklist, assessed against the slice: unit coverage above 90% (the bridge has 11
   tests for 2,949 lines today), Playwright E2E on critical paths, WCAG 2.1 AA, SAST and SCA clean,
   Chrome and Safari verified.
 - **Reference customer extension** exercising Layers 0-2 — a nav item, a rule-gated action, a custom
   component and a rebrand — with zero edits to our libraries.
-- **Upgrade rehearsal:** install, customise, upgrade, and verify configuration and extensions both
-  survive. This is the test that actually proves the model.
+- ~~**Upgrade rehearsal:** install, customise, upgrade, and verify configuration and extensions
+  both survive.~~ **Done** — `npm run beta:upgrade`, gate `upgrade-rehearsal`. Eight assertions
+  across Layers 0-2. The decisive one is that every slot the JSON manifest names still exists in
+  the upgraded package: nothing type-checks JSON, so a renamed slot leaves the build green and the
+  customer's entries silently gone. `--break-slot toolbar` demonstrates exactly that.
+
+**Progress, and what each step still needs**
+
+| Step                        | State                                                         |
+| --------------------------- | ------------------------------------------------------------- |
+| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail          |
+| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                   |
+| 2 — Playwright E2E          | not started; **no E2E exists at all**                         |
+| 3 — WCAG 2.1 AA met         | not started; 4 rule classes violated and ratcheted            |
+| 4 — SAST + SCA              | not started; SCA is `npm audit` only, SAST absent             |
+| 5 — Safari/WebKit           | not started; Chromium only                                    |
+| 6 — coverage to 90%         | barely started; 5 of 17 projects meet it, `search` 67pp short |
+
+Step 6 is most of the 20-30 day estimate on its own. `document-detail` and `search` are the two
+largest files in the repository and are 60pp short each.
 
 ---
 

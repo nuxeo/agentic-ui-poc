@@ -92,6 +92,24 @@ for (const p of state.phases ?? []) {
         });
       }
     }
+    // The same reasoning applied to a cited **gate**. This branch resolved `manifest` only,
+    // so an in-progress phase citing a real 15-of-15 green gate still printed "no evidence
+    // cited" — understating the work for exactly the reason the comment above gives. A phase
+    // legitimately reaches green gates before it has a phase-wide evidence manifest, which
+    // is precisely the state Phase 6 is in.
+    if (p.evidence?.gate) {
+      const gate = await resolveGate(p.evidence.gate);
+      if (gate.ok) {
+        const ran = gate.report.results?.length ?? gate.report.gates?.ran?.length ?? 0;
+        row.gate = `${gate.report.verdict} (${ran} of ${CURRENT_GATE_COUNT} gates) — ${gate.rel}`;
+      } else {
+        problems.push({
+          phase: p.id,
+          severity: 'warn',
+          message: `cites a gate report that does not resolve: ${gate.detail}`,
+        });
+      }
+    }
     rows.push(row);
     continue;
   }

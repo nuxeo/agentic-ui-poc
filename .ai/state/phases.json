@@ -248,10 +248,24 @@
     {
       "id": "phase-6-quality",
       "title": "Beta quality bar and proof",
-      "status": "not-started",
-      "evidence": null,
-      "deviations": [],
-      "notCovered": ["everything"]
+      "status": "in-progress",
+      "evidence": {
+        "gate": "gates/2026-08-24T09-29-42-all-phases-signoff"
+      },
+      "deviations": [
+        "Step 0 found two defects in the coverage ratchet created by the previous day's library changes, neither of which presented as a failure: an orphaned baseline entry for the deleted drawers library, reported forever as \"not measured, unchanged\"; and a silent escape hatch where a project absent from the baseline was printed as new and then excluded from every check, leaving permission-dialogs at 93.85% entirely unguarded. Both now fail. --update-baseline also prunes orphans, without which the one command a maintainer would reach for could not fix the complaint.",
+        "Step 1 delivered the upgrade rehearsal. Its decisive assertion is that every slot the Layer 1 JSON manifest names still exists in the upgraded package: --break-slot toolbar leaves the compile GREEN and only that check goes red, because toolbar is named in JSON and referenced by no TypeScript. That is a clean build and a broken customer, and nothing else in the pipeline sees it.",
+        "The rehearsal compares two builds that differ only in their version string. Inventing API changes would be testing the invention, so sensitivity comes from the negative control instead. Stated in the script header rather than glossed.",
+        "Adding the 15th gate correctly turned beta:state red, because all six completed phases cited a 14/14 re-gate. Re-gated at 15/15 and re-cited rather than relaxing the check. This is the second time adding a gate has done that, and both times the gate was right."
+      ],
+      "notCovered": [
+        "Unit coverage above 90%: 5 of 17 projects meet it. search 22.76%, document-detail 29.8%, browse 56.72%. The single largest item in the phase and barely started.",
+        "Playwright E2E on critical paths: nothing exists. The harness uses Playwright for evidence capture, which is not a test suite.",
+        "WCAG 2.1 AA: not met. button-name, label, color-contrast and role-img-alt are violated and RATCHETED — visible, not fixed.",
+        "SAST: nothing. SCA is npm audit only (1 low, quill XSS).",
+        "Safari/WebKit: never run. Chromium only.",
+        "A phase-6 evidence manifest covering the whole phase. phase-6-a11y/2026-08-24 exists and passes 12/12, but it covers accessibility alone."
+      ]
     }
   ]
 }
