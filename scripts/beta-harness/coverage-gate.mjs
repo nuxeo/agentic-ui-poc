@@ -16,6 +16,17 @@
  * write, rather than requiring `json-summary` — Nx swallows `--coverage.reporter`,
  * and adding it to seventeen vite configs to satisfy one script is the wrong trade.
  *
+ * ## Three states, not two
+ *
+ * A project is **measured**, or it is **unmeasurable** — a coverage report that measures
+ * nothing. The distinction is the whole point of the 2026-08-24 fix: `0/0` statements scored
+ * as `100%`, so `assets` and `tasks`, which have no spec files at all, were recorded in the
+ * baseline as meeting the Beta bar. That inflated count reached the plan, the delivery record
+ * and a leadership page as "5 of 17 projects meet 90%" when the true figure was 3.
+ *
+ * Unmeasurable is neither a pass nor a fail: it is *untested*. A baseline entry for one
+ * **fails** this gate, because the entry is itself the defect.
+ *
  * Usage:
  *   node scripts/beta-harness/coverage-gate.mjs                    # check the ratchet
  *   node scripts/beta-harness/coverage-gate.mjs --update-baseline  # re-record after a rise
@@ -48,6 +59,16 @@ const TARGET = 90;
  * people to bypass it. Anything larger is a real regression.
  */
 const TOLERANCE = 0.5;
+/**
+ * Below this many statements, a coverage percentage carries no information about quality.
+ * `libs/core` is an untouched Nx scaffold — one placeholder component, an empty template and
+ * the generated `should create` spec — and scores a perfectly truthful 100% over 7
+ * statements. The figure is not wrong; it is just not evidence of anything.
+ *
+ * The number is a judgement call, so it does **not** exclude a project from the count. It
+ * only makes the gate say which of its own passes are thin, next to the count it reports.
+ */
+const THIN_STATEMENTS = 20;
 
 const projects = await discoverProjects();
 const vitest = projects.filter((p) => p.kind === 'vitest');
@@ -89,6 +110,12 @@ if (runTests) {
     process.exit(1);
   }
 }
+
+/**
+ * Projects that emitted a coverage report carrying no usable measurement — see
+ * `collect()`. Populated by `collect()`, so it must be declared before the call.
+ */
+const vacuous = [];
 
 const measured = await collect();
 
@@ -155,10 +182,27 @@ for (const m of measured) {
  */
 const projectNames = new Set(projects.map((p) => p.name));
 const baselineNames = Object.keys(baseline.projects ?? {});
+const vacuousNames = new Set(vacuous.map((v) => v.project));
 const unmeasured = baselineNames.filter(
-  (p) => !measured.some((m) => m.project === p) && projectNames.has(p),
+  (p) =>
+    !measured.some((m) => m.project === p) &&
+    projectNames.has(p) &&
+    // Not "outside the affected set" — these DID run, and produced nothing to measure.
+    // Reporting them as unmeasured-but-unchanged is how the false 100% stayed invisible.
+    !vacuousNames.has(p),
 );
 const orphaned = baselineNames.filter((p) => !projectNames.has(p));
+
+/**
+ * The defect this check exists for: a project with nothing measurable that nevertheless
+ * carries a percentage in the baseline. Every such entry is a claim the gate cannot support,
+ * and each one inflates the "projects meeting the Beta bar" count that leadership reads.
+ *
+ * It fails rather than warns because the file is this gate's entire authority. A warning
+ * would have left the same three false 100%s in place, which is exactly what happened for
+ * as long as they sat there unnoticed.
+ */
+const falseCredit = vacuous.filter((v) => baselineNames.includes(v.project));
 
 if (updateBaseline) {
   const merged = { ...baseline.projects };
@@ -173,18 +217,27 @@ if (updateBaseline) {
   // preserved an entry for a deleted project indefinitely — the one command a
   // maintainer would reach for to fix the complaint could not fix it.
   for (const p of orphaned) delete merged[p];
+  // Same reasoning for vacuous entries: the command a maintainer reaches for to fix the
+  // complaint has to be able to fix it, or the gate is telling them to hand-edit the file
+  // it is asking them to trust.
+  for (const v of vacuous) delete merged[v.project];
   await write(
     Object.entries(merged).map(([project, v]) => ({ project, ...v })),
     `updated from ${measured.length} project(s)` +
       (orphaned.length
         ? `, pruned ${orphaned.length} orphaned entr(ies): ${orphaned.join(', ')}`
+        : '') +
+      (vacuous.length
+        ? `, pruned ${vacuous.length} unmeasurable entr(ies): ${vacuous.map((v) => v.project).join(', ')}`
         : ''),
   );
   process.exit(0);
 }
 
 report();
-process.exit(regressions.length || orphaned.length || unratcheted.length ? 1 : 0);
+process.exit(
+  regressions.length || orphaned.length || unratcheted.length || falseCredit.length ? 1 : 0,
+);
 
 /* ---------- collection ---------- */
 
@@ -207,7 +260,24 @@ async function collect() {
       continue;
     }
     const s = summarise(data);
-    if (s.files > 0) out.push({ project: p.name, ...s });
+    if (s.files === 0) continue;
+    const specs = await countSpecs(p.root);
+    // Two ways to produce a number that is not coverage. Both are separated out here rather
+    // than filtered away, so the gate can name them instead of silently shrinking its scope.
+    if (s.sTotal === 0) {
+      vacuous.push({ project: p.name, files: s.files, specs, why: 'zero measurable statements' });
+      continue;
+    }
+    if (specs === 0) {
+      vacuous.push({
+        project: p.name,
+        files: s.files,
+        specs,
+        why: `${s.sTotal} statement(s) but no spec files`,
+      });
+      continue;
+    }
+    out.push({ project: p.name, specs, ...s });
   }
   return out.sort((a, b) => a.project.localeCompare(b.project));
 }
@@ -229,11 +299,12 @@ async function discoverProjects() {
     }
     const t = j.targets?.test;
     if (!t) continue;
-    const name = j.name ?? relative(repoRoot, resolve(file, '..'));
+    const root = relative(repoRoot, resolve(file, '..'));
+    const name = j.name ?? root;
     if (t.executor === '@nx/vitest:test' && t.options?.reportsDirectory) {
-      found.push({ name, kind: 'vitest', reportsDirectory: t.options.reportsDirectory });
+      found.push({ name, root, kind: 'vitest', reportsDirectory: t.options.reportsDirectory });
     } else {
-      found.push({ name, kind: 'other' });
+      found.push({ name, root, kind: 'other' });
     }
   }
   return found.sort((a, b) => a.name.localeCompare(b.name));
@@ -270,14 +341,47 @@ function summarise(data) {
       if (hits > 0) fCovered += 1;
     }
   }
+  // `t === 0 -> 100` is defensible for branches and functions: a file with no branches
+  // really is fully branch-covered, and that is what istanbul's own summary reports.
+  //
+  // It is NOT defensible for statements, and the previous version applied it there too.
+  // `tasks` and `assets` emit reports with files but *zero* statements, so 0/0 scored 100
+  // and both were recorded in the baseline as meeting the 90% Beta bar. That number reached
+  // the plan, the delivery record and a leadership page as "5 of 17 projects meet 90%",
+  // when the true count was 3. A gate that reports full coverage for a project with no
+  // measurable code does not overstate by a rounding error — it inverts the answer.
+  //
+  // So statement/line coverage of nothing is `null` — *unmeasurable*, a third state
+  // distinct from both pass and fail — and `sTotal` is returned so the caller can say why.
   const pct = (c, t) => (t === 0 ? 100 : round((c / t) * 100));
+  const stmts = sTotal === 0 ? null : round((sCovered / sTotal) * 100);
   return {
     files,
-    statements: pct(sCovered, sTotal),
+    sTotal,
+    statements: stmts,
     branches: pct(bCovered, bTotal),
     functions: pct(fCovered, fTotal),
-    lines: pct(sCovered, sTotal),
+    lines: stmts,
   };
+}
+
+/**
+ * Count `*.spec.ts` under a project root.
+ *
+ * Zero statements is not the only way to be vacuous. `core` reports 100% from **7**
+ * statements and **no spec files at all** — incidental execution during module import,
+ * not coverage. A project with no specs has not been tested, whatever the percentage
+ * says, so it must not be counted towards the Beta bar either.
+ * @param {string} root
+ */
+async function countSpecs(root) {
+  const abs = resolve(repoRoot, root);
+  if (!existsSync(abs)) return 0;
+  let n = 0;
+  for await (const f of walk(abs, ['node_modules', 'dist', 'coverage', '.nx'])) {
+    if (/\.spec\.ts$/.test(f)) n += 1;
+  }
+  return n;
 }
 
 async function* walk(dir, skip = []) {
@@ -328,14 +432,21 @@ function report() {
     console.log(
       JSON.stringify(
         {
-          ok: regressions.length === 0 && orphaned.length === 0 && unratcheted.length === 0,
+          ok:
+            regressions.length === 0 &&
+            orphaned.length === 0 &&
+            unratcheted.length === 0 &&
+            falseCredit.length === 0,
           target: TARGET,
           rows,
+          meetingTarget: rows.filter((r) => r.target <= 0).map((r) => r.project),
           regressions,
           rises,
           unmeasured,
           orphaned,
           unratcheted,
+          vacuous,
+          falseCredit,
         },
         null,
         2,
@@ -345,20 +456,64 @@ function report() {
   }
 
   console.log(`\nCoverage ratchet — ${rows.length} project(s) measured, Beta target ${TARGET}%\n`);
+  // `stmts` and `specs` are shown because a percentage without its denominator is what made
+  // this gate wrong in the first place. `core` reports a truthful 100% over **7** statements
+  // from one generated "should create" spec; printed as a bare `100%` it reads identically to
+  // `shared-app-config`'s 100% over 428. The column is the difference between the two.
   console.log(
-    `  ${'project'.padEnd(28)} ${'lines'.padStart(7)} ${'was'.padStart(7)} ${'delta'.padStart(7)}   gap to ${TARGET}%`,
+    `  ${'project'.padEnd(28)} ${'lines'.padStart(7)} ${'was'.padStart(7)} ${'delta'.padStart(7)} ${'stmts'.padStart(6)} ${'specs'.padStart(5)}   gap to ${TARGET}%`,
   );
   for (const r of rows) {
     const was = r.was === null ? '  new' : `${r.was}%`;
     const delta = r.delta === null ? '    -' : `${r.delta > 0 ? '+' : ''}${r.delta}`;
     console.log(
-      `  ${r.project.padEnd(28)} ${`${r.lines}%`.padStart(7)} ${was.padStart(7)} ${delta.padStart(7)}   ${r.target > 0 ? `${r.target}pp short` : 'met'}`,
+      `  ${r.project.padEnd(28)} ${`${r.lines}%`.padStart(7)} ${was.padStart(7)} ${delta.padStart(7)} ` +
+        `${String(r.sTotal ?? '-').padStart(6)} ${String(r.specs ?? '-').padStart(5)}   ` +
+        `${r.target > 0 ? `${r.target}pp short` : 'met'}`,
+    );
+  }
+
+  // The headline number, printed rather than left to be counted by hand. "5 of 17 meet 90%"
+  // reached three documents because nothing ever stated the figure the gate itself supported.
+  const meeting = rows.filter((r) => r.target <= 0);
+  const thin = meeting.filter((r) => r.sTotal < THIN_STATEMENTS);
+  console.log(
+    `\n  ${meeting.length} of ${rows.length} measured project(s) meet ${TARGET}%` +
+      (meeting.length ? `: ${meeting.map((r) => r.project).join(', ')}` : ''),
+  );
+  if (thin.length) {
+    // Reported, not excluded. Dropping these from the count would be a second arbitrary
+    // rule to argue about; naming them lets the reader apply their own judgement.
+    console.log(
+      `  Of those, ${thin.length} clear${thin.length === 1 ? 's' : ''} the bar over fewer than ` +
+        `${THIN_STATEMENTS} statements — ${thin.map((r) => `${r.project} (${r.sTotal})`).join(', ')}.\n` +
+        `  Truthful, but it says nothing about quality. Substantively covered: ` +
+        `${meeting.length - thin.length}.`,
+    );
+  }
+  if (vacuous.length) {
+    console.log(
+      `  ${vacuous.length} further project(s) produced a report with nothing measurable —` +
+        ' excluded from that count, listed below.',
     );
   }
 
   if (unmeasured.length) {
     console.log(`\n  Not measured this run (outside the affected set): ${unmeasured.join(', ')}`);
     console.log('  Their baseline entries are unchanged; this run says nothing about them.');
+  }
+
+  if (vacuous.length) {
+    console.log('\n  Unmeasurable — a report was produced, but it measures nothing:');
+    for (const v of vacuous) {
+      console.log(
+        `    ${v.project.padEnd(26)} ${v.files} file(s), ${v.specs} spec file(s) — ${v.why}`,
+      );
+    }
+    console.log(
+      '    These previously scored 100% (0/0 statements) and were recorded as meeting the\n' +
+        '    Beta bar. They are neither passing nor failing: they are untested.',
+    );
   }
 
   if (orphaned.length) {
@@ -377,11 +532,27 @@ function report() {
   }
 
   console.log('');
-  if (orphaned.length || unratcheted.length) {
+  if (orphaned.length || unratcheted.length || falseCredit.length) {
     const parts = [];
     if (orphaned.length) parts.push(`${orphaned.length} orphaned baseline entr(ies)`);
     if (unratcheted.length) parts.push(`${unratcheted.length} unratcheted project(s)`);
-    console.log(`coverage-gate: FAIL — ${parts.join(' and ')}.`);
+    if (falseCredit.length) parts.push(`${falseCredit.length} unmeasurable baseline entr(ies)`);
+    console.log(`coverage-gate: FAIL — ${parts.join(', ')}.`);
+    if (falseCredit.length) {
+      const names = falseCredit.map((v) => v.project);
+      console.log(
+        `\n  ${names.join(', ')} carr${names.length === 1 ? 'ies' : 'y'} a recorded percentage in\n` +
+          '  .ai/state/coverage-baseline.json but ha' +
+          (names.length === 1 ? 's' : 've') +
+          ' nothing measurable. Remove the\n' +
+          '  entr' +
+          (names.length === 1 ? 'y' : 'ies') +
+          ' with --update-baseline, or write the tests that make the number real.\n' +
+          '  A recorded 100% here is not a harmless placeholder: it is counted as meeting the\n' +
+          `  ${TARGET}% Beta bar, and that inflated count has already reached the plan, the\n` +
+          '  delivery record and a leadership page.',
+      );
+    }
     if (orphaned.length) {
       console.log(
         `\n  Remove ${orphaned.join(', ')} from .ai/state/coverage-baseline.json.\n` +

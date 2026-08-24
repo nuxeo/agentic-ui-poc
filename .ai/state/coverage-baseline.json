@@ -20,12 +20,6 @@
       "branches": 67.16,
       "functions": 61.22
     },
-    "assets": {
-      "lines": 100,
-      "statements": 100,
-      "branches": 100,
-      "functions": 100
-    },
     "browse": {
       "lines": 56.72,
       "statements": 56.72,
@@ -91,12 +85,6 @@
       "statements": 70.85,
       "branches": 66.67,
       "functions": 90.48
-    },
-    "tasks": {
-      "lines": 100,
-      "statements": 100,
-      "branches": 100,
-      "functions": 100
     },
     "ui": {
       "lines": 68.2,

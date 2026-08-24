@@ -360,13 +360,13 @@ Three corrections came out of this step, and two were defects in work from the d
 
 **Still open, with the real numbers:**
 
-| Requirement         | State                                                                          |
-| ------------------- | ------------------------------------------------------------------------------ |
-| Unit coverage ≥ 90% | 5 of 17 projects. `search` 22.76%, `document-detail` 29.8%                     |
-| Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo) |
-| WCAG 2.1 AA         | not met — 4 rule classes violated and _ratcheted_, visible not fixed           |
-| SAST                | **nothing.** SCA is `npm audit` only (1 low)                                   |
-| Safari              | never run; Chromium only                                                       |
+| Requirement         | State                                                                                                                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit coverage ≥ 90% | **3 of 15** measurable projects, substantively. `search` 22.76%, `document-detail` 29.8%. Was recorded as "5 of 17" until 2026-08-24, when the gate stopped scoring 0/0 statements as 100% — `assets` and `tasks` are untested, not perfect |
+| Playwright E2E      | **done** — 12 specs, 9 credential-sensitive; not in PR CI (needs Docker Nuxeo)                                                                                                                                                              |
+| WCAG 2.1 AA         | not met — 4 rule classes violated and _ratcheted_, visible not fixed                                                                                                                                                                        |
+| SAST                | **nothing.** SCA is `npm audit` only (1 low)                                                                                                                                                                                                |
+| Safari              | never run; Chromium only                                                                                                                                                                                                                    |
 
 Coverage alone is most of the phase's 20-30 day estimate.
 

@@ -229,16 +229,44 @@ It also fails on:
   `new` and then excluded from every check, so a new library's coverage could fall to zero
   silently.
 
-### A known defect in the numbers
+### A defect in the numbers — fixed 2026-08-24
 
-`tasks`, `assets` and `core` have **zero spec files** yet are recorded at **100%**. Their
-coverage reports contain 4–5 files and **0 total statements**, so the summariser computes
-0/0 as 100%.
+`tasks` and `assets` have **zero spec files** and were recorded at **100%**. Their coverage
+reports contain 4–5 files and **0 total statements**, and the summariser computed 0/0 as 100%,
+so both were counted as meeting the Beta bar.
 
-So of 17 projects, 6 read as ≥90% but only **3 genuinely are** (`shared-app-config`,
-`shared-extensions`, `permission-dialogs`). Any statement of the form "5 of 17 meet the bar"
-— including one written into the plan and delivery record on 2026-08-24 — **overstates**.
-The fix is to treat a zero-statement report as unmeasured. **Open at `77265f9`.**
+`core` was reported alongside them as having no specs. **That was wrong** — it has one, the
+generated `should create` spec, and its 100% is truthful. It is simply an untouched Nx scaffold:
+a placeholder component with an empty template, **7 statements**, imported by nothing.
+
+The gate now distinguishes three states rather than two:
+
+| State            | Meaning                                              | Counted towards the bar |
+| ---------------- | ---------------------------------------------------- | ----------------------- |
+| **measured**     | a real percentage over real statements               | yes                     |
+| **thin**         | meets the bar over fewer than 20 statements — `core` | yes, but flagged        |
+| **unmeasurable** | a report with zero statements, or no specs at all    | **no**, and it fails    |
+
+A baseline entry for an unmeasurable project now **fails** the gate, because that entry is the
+defect: `--update-baseline` prunes it, and until then the gate names it. The table also prints
+the **statement count and spec count** next to every percentage — a percentage without its
+denominator is what made this possible, and `core`'s 100% over 7 statements read identically to
+`shared-app-config`'s 100% over 428.
+
+**The true figure: 15 projects are measurable, 4 meet 90%, and 3 do so substantively**
+(`shared-app-config` 428 statements, `shared-extensions` 480, `permission-dialogs` 439). Any
+statement of the form "5 of 17 meet the bar" — including one written into the plan and delivery
+record on 2026-08-24 — **overstated**, and `assets` and `tasks` are untested rather than
+perfect. Both documents are corrected.
+
+Two consequences worth separating, from `nx graph`:
+
+- **`assets` and `tasks` are consumed by `nuxeo-ui`.** They are shipping features with **no
+  tests at all** — a worse finding than the reporting defect that concealed them, and squarely
+  Phase 6 step 6 work.
+- **`core` has no inbound dependencies.** Nothing in the workspace imports `@agentic-ui/core`.
+  It is a generated scaffold that was never used, and deleting it would remove the only thin
+  entry from the table. Left in place for now, recorded as debt rather than quietly pruned.
 
 ---
 

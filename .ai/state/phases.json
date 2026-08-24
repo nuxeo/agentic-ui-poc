@@ -263,7 +263,7 @@
         "That replacement check then failed to catch its own probe. A bare side-effect import has neither `from` nor parentheses, and the regex handled only from/import(/require(. The shipped customer guardrail carried the identical gap, its second cut having added the call forms and still missed this one. Both fixed and both re-probed with that exact form."
       ],
       "notCovered": [
-        "Unit coverage above 90%: 5 of 17 projects meet it. search 22.76%, document-detail 29.8%, browse 56.72%. The single largest item in the phase and barely started.",
+        "Unit coverage above 90%: 3 of 15 measurable projects meet it substantively (shared-app-config, shared-extensions, permission-dialogs). search 22.76%, document-detail 29.8%, browse 56.72%. The single largest item in the phase and barely started. Recorded as '5 of 17' until 2026-08-24: the gate scored 0/0 statements as 100%, so assets and tasks — zero specs — counted as meeting the bar. core meets it truthfully over 7 statements and is flagged as thin.",
         "WCAG 2.1 AA: not met. button-name, label, color-contrast and role-img-alt are violated and RATCHETED \u2014 visible, not fixed.",
         "SAST: nothing. SCA is npm audit only (1 low, quill XSS).",
         "Safari/WebKit: never run. Chromium only, and the E2E config registers no webkit project on purpose rather than skipping one.",

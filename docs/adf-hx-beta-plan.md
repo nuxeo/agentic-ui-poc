@@ -429,15 +429,15 @@ Largely built. Remaining:
 
 **Progress, and what each step still needs**
 
-| Step                        | State                                                         |
-| --------------------------- | ------------------------------------------------------------- |
-| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail          |
-| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                   |
-| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate             |
-| 3 — WCAG 2.1 AA met         | not started; 4 rule classes violated and ratcheted            |
-| 4 — SAST + SCA              | not started; SCA is `npm audit` only, SAST absent             |
-| 5 — Safari/WebKit           | not started; Chromium only                                    |
-| 6 — coverage to 90%         | barely started; 5 of 17 projects meet it, `search` 67pp short |
+| Step                        | State                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------ |
+| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                       |
+| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                |
+| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                          |
+| 3 — WCAG 2.1 AA met         | not started; 4 rule classes violated and ratcheted                                         |
+| 4 — SAST + SCA              | not started; SCA is `npm audit` only, SAST absent                                          |
+| 5 — Safari/WebKit           | not started; Chromium only                                                                 |
+| 6 — coverage to 90%         | barely started; **3 of 15** measurable projects meet it substantively, `search` 67pp short |
 
 Step 6 is most of the 20-30 day estimate on its own. `document-detail` and `search` are the two
 largest files in the repository and are 60pp short each.
