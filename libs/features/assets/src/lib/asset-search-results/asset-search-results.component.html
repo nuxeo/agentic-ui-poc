@@ -101,12 +101,7 @@
     @if (!loading() && !error() && viewMode() === 'grid' && resultCount() > 0) {
       <div class="asset-grid">
         @for (asset of gridAssets(); track asset.id) {
-          <button
-            type="button"
-            class="asset-card"
-            [class.selected]="isAssetSelected(asset.id)"
-            (click)="openAsset(asset)"
-          >
+          <div class="asset-card" [class.selected]="isAssetSelected(asset.id)">
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isAssetSelected(asset.id)"
@@ -124,11 +119,18 @@
             </div>
             <div class="asset-card-body">
               <div class="asset-card-head">
-                <p class="asset-card-name" [title]="asset.name">{{ asset.name }}</p>
+                <button
+                  type="button"
+                  class="asset-card-name"
+                  [title]="asset.name"
+                  (click)="openAsset(asset); $event.stopPropagation()"
+                >
+                  {{ asset.name }}
+                </button>
                 <span class="asset-type-pill" [title]="asset.type">{{ asset.type }}</span>
               </div>
             </div>
-          </button>
+          </div>
         }
       </div>
     }
@@ -202,12 +204,10 @@
           </div>
 
           @for (asset of sortedAssets(); track asset.id) {
-            <button
-              type="button"
+            <div
               class="list-row"
               [class.selected]="isAssetSelected(asset.id)"
               [style.grid-template-columns]="gridTemplate()"
-              (click)="openAsset(asset)"
             >
               <span class="col-checkbox">
                 <mat-checkbox
@@ -225,14 +225,21 @@
                     } @else {
                       <mat-icon class="row-icon">{{ asset.icon }}</mat-icon>
                     }
-                    <span class="row-name-text" [title]="asset.name">{{ asset.name }}</span>
+                    <button
+                      type="button"
+                      class="row-name-text"
+                      [title]="asset.name"
+                      (click)="openAsset(asset); $event.stopPropagation()"
+                    >
+                      {{ asset.name }}
+                    </button>
                   </span>
                 } @else {
                   <span>{{ getCellValue(asset, col.key) }}</span>
                 }
               }
               <span></span>
-            </button>
+            </div>
           }
 
           @if (!loading() && resultCount() === 0) {

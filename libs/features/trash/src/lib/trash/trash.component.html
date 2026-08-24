@@ -160,12 +160,7 @@
 
       <div class="result-grid">
         @for (doc of documents(); track doc.uid) {
-          <button
-            type="button"
-            class="result-card"
-            (click)="openDocument(doc.uid)"
-            [class.selected]="isSelected(doc.uid)"
-          >
+          <div class="result-card" [class.selected]="isSelected(doc.uid)">
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
@@ -182,10 +177,17 @@
               }
             </div>
             <div class="result-card-body">
-              <p class="result-name" [title]="doc.title">{{ doc.title }}</p>
+              <button
+                type="button"
+                class="result-name"
+                [title]="doc.title"
+                (click)="openDocument(doc.uid); $event.stopPropagation()"
+              >
+                {{ doc.title }}
+              </button>
               <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
             </div>
-          </button>
+          </div>
         }
 
         @if (resultCount() === 0) {
@@ -263,12 +265,10 @@
         </div>
 
         @for (doc of documents(); track doc.uid) {
-          <button
-            type="button"
+          <div
             class="list-row"
             [class.selected]="isSelected(doc.uid)"
             [style.grid-template-columns]="gridTemplate()"
-            (click)="openDocument(doc.uid)"
           >
             <span class="col-checkbox col-hover-select">
               <mat-checkbox
@@ -286,7 +286,14 @@
                   } @else {
                     <mat-icon class="row-icon">{{ docIcon(doc) }}</mat-icon>
                   }
-                  <span class="row-name-text" [title]="doc.title">{{ doc.title }}</span>
+                  <button
+                    type="button"
+                    class="row-name-text"
+                    [title]="doc.title"
+                    (click)="openDocument(doc.uid); $event.stopPropagation()"
+                  >
+                    {{ doc.title }}
+                  </button>
                 </span>
               } @else if (col.key === 'modified' || col.key === 'created') {
                 <span>{{ getCellValue(doc, col.key) | date: 'medium' }}</span>
@@ -316,7 +323,7 @@
                 <mat-icon class="action-icon">delete_forever</mat-icon>
               </button>
             </span>
-          </button>
+          </div>
         }
 
         @if (resultCount() === 0) {
@@ -366,12 +373,7 @@
 
     <div class="simple-list">
       @for (doc of documents(); track doc.uid) {
-        <button
-          type="button"
-          class="simple-list-item"
-          [class.selected]="isSelected(doc.uid)"
-          (click)="openDocument(doc.uid)"
-        >
+        <div class="simple-list-item" [class.selected]="isSelected(doc.uid)">
           <div class="simple-list-thumb-wrap">
             @if (thumbnailMap()[doc.uid]; as thumb) {
               <img class="simple-list-thumb" [src]="thumb" alt="" />
@@ -389,7 +391,14 @@
           </div>
           <div class="simple-list-body">
             <div class="simple-list-header">
-              <p class="simple-list-title" [title]="doc.title">{{ doc.title }}</p>
+              <button
+                type="button"
+                class="simple-list-title"
+                [title]="doc.title"
+                (click)="openDocument(doc.uid); $event.stopPropagation()"
+              >
+                {{ doc.title }}
+              </button>
               <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
             </div>
             <div class="simple-list-actions col-hover-actions">
@@ -415,7 +424,7 @@
               </button>
             </div>
           </div>
-        </button>
+        </div>
       }
 
       @if (resultCount() === 0) {

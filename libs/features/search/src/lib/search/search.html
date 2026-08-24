@@ -236,12 +236,7 @@
 
       <div class="result-grid">
         @for (row of displayResults(); track row.id) {
-          <button
-            type="button"
-            class="result-card"
-            (click)="openDocument(row.id)"
-            [class.selected]="isSelected(row.id)"
-          >
+          <div class="result-card" [class.selected]="isSelected(row.id)">
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(row.id)"
@@ -259,7 +254,14 @@
             </div>
             <div class="result-card-body">
               <div class="result-head">
-                <p class="result-name" [title]="row.name">{{ row.name }}</p>
+                <button
+                  type="button"
+                  class="result-name"
+                  [title]="row.name"
+                  (click)="openDocument(row.id); $event.stopPropagation()"
+                >
+                  {{ row.name }}
+                </button>
                 <span class="result-type-pill" [title]="row.type">{{ row.type }}</span>
               </div>
               <div class="grid-card-actions col-hover-actions">
@@ -288,7 +290,7 @@
                 }
               </div>
             </div>
-          </button>
+          </div>
         }
 
         @if (resultCount() === 0) {
@@ -367,12 +369,10 @@
         </div>
 
         @for (row of sortedResults(); track row.id) {
-          <button
-            type="button"
+          <div
             class="list-row"
             [class.selected]="isSelected(row.id)"
             [style.grid-template-columns]="gridTemplate()"
-            (click)="openDocument(row.id)"
           >
             <span class="col-checkbox col-hover-select">
               <mat-checkbox
@@ -390,14 +390,21 @@
                   } @else {
                     <mat-icon class="row-icon">{{ row.icon }}</mat-icon>
                   }
-                  <span class="row-name-text" [title]="row.name">{{ row.name }}</span>
+                  <button
+                    type="button"
+                    class="row-name-text"
+                    [title]="row.name"
+                    (click)="openDocument(row.id); $event.stopPropagation()"
+                  >
+                    {{ row.name }}
+                  </button>
                 </span>
               } @else {
                 <span>{{ getCellValue(row, col.key) }}</span>
               }
             }
             <span class="col-gear"></span>
-          </button>
+          </div>
         }
 
         @if (resultCount() === 0) {
@@ -438,12 +445,7 @@
 
     <div class="simple-list">
       @for (row of displayResults(); track row.id) {
-        <button
-          type="button"
-          class="simple-list-item"
-          [class.selected]="isSelected(row.id)"
-          (click)="openDocument(row.id)"
-        >
+        <div class="simple-list-item" [class.selected]="isSelected(row.id)">
           <div class="simple-list-thumb-wrap">
             @if (thumbnailMap()[row.id]; as thumb) {
               <img class="simple-list-thumb" [src]="thumb" alt="" />
@@ -461,7 +463,14 @@
           </div>
           <div class="simple-list-body">
             <div class="simple-list-header">
-              <p class="simple-list-title" [title]="row.name">{{ row.name }}</p>
+              <button
+                type="button"
+                class="simple-list-title"
+                [title]="row.name"
+                (click)="openDocument(row.id); $event.stopPropagation()"
+              >
+                {{ row.name }}
+              </button>
               <span class="simple-list-type-badge" [title]="row.type">{{ row.type }}</span>
             </div>
             <div class="simple-list-actions col-hover-actions">
@@ -490,7 +499,7 @@
               }
             </div>
           </div>
-        </button>
+        </div>
       }
 
       @if (resultCount() === 0) {
