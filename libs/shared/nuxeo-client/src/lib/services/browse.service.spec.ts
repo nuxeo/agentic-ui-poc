@@ -841,6 +841,29 @@ describe('BrowseService', () => {
     expect(result[0].title).toBe('Moved');
   });
 
+  it('updateDocument requests permissions enricher on PUT (NXSAT-196)', async () => {
+    const uid = 'note-uid-1';
+    const result$ = firstValueFrom(
+      service.updateDocument(uid, { 'note:note': '<p>updated</p>' }, { enrichPermissions: true }),
+    );
+
+    const req = httpMock.expectOne((r) => r.url === `/nuxeo/api/v1/id/${uid}`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.headers.get('enrichers.document')).toBe('permissions');
+    expect(req.request.headers.get('properties')).toBe('*');
+    req.flush({
+      uid,
+      title: 'Note',
+      type: 'Note',
+      path: '/a/note',
+      properties: { 'note:note': '<p>updated</p>' },
+      contextParameters: { permissions: ['Read', 'WriteProperties'] },
+    } satisfies NuxeoDocument);
+
+    const result = await result$;
+    expect(result.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
+  });
+
   it('hasChildCollections returns true when NXQL finds a child collection', async () => {
     const parentUid = 'cols-folder-uid';
     const result$ = firstValueFrom(service.hasChildCollections(parentUid));

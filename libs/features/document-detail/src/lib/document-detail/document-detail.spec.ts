@@ -312,6 +312,28 @@ describe('DocumentDetailComponent', () => {
     });
   });
 
+  describe('saveNote (NXSAT-196)', () => {
+    it('preserves write permissions when update response returns an empty permissions array', async () => {
+      component.doc.set(NOTE_DOC);
+      mockBrowseService.updateDocument.mockReturnValue(
+        of({
+          ...NOTE_DOC,
+          properties: {
+            'note:note': '<p>updated</p>',
+            'note:mime_type': 'text/html',
+          },
+          contextParameters: { permissions: [] },
+        }),
+      );
+
+      component.saveNote('<p>updated</p>');
+      await fixture.whenStable();
+
+      expect(component.canWriteDoc()).toBe(true);
+      expect(component.doc()?.contextParameters?.['permissions']).toEqual(['Read', 'Write']);
+    });
+  });
+
   describe('onEditClick (NXSAT-193)', () => {
     it('opens metadata dialog for Note documents (toolbar Edit properties)', () => {
       component.doc.set(NOTE_DOC);

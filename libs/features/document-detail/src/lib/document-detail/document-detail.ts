@@ -614,8 +614,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (directMime) return directMime;
 
     const pictureViews = d.properties['picture:views'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     const pictureContent = pictureViews?.[0]?.['content'] as Record<string, unknown> | undefined;
     return (pictureContent?.['mime-type'] as string) ?? '';
   });
@@ -654,8 +653,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     if (!d) return [];
     const cols = d.contextParameters?.['collections'] as
-      | Array<{ uid: string; title: string; path: string; type?: string }>
-      | undefined;
+      Array<{ uid: string; title: string; path: string; type?: string }> | undefined;
     // Web UI uses contextParameters.favorites for the star; collections enricher
     // also lists the Favorites folder (type Favorites) — exclude it here.
     return (cols ?? []).filter((col) => col.type !== 'Favorites');
@@ -834,8 +832,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshBlobNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      | { freshBlobDocument?: boolean }
-      | undefined;
+      { freshBlobDocument?: boolean } | undefined;
     if (fromCurrent?.freshBlobDocument === true) {
       return true;
     }
@@ -845,8 +842,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshNoteNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      | { freshNote?: boolean }
-      | undefined;
+      { freshNote?: boolean } | undefined;
     if (fromCurrent?.freshNote === true) {
       return true;
     }
@@ -1681,8 +1677,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     if (transcodedVideos && transcodedVideos.length > 0) {
       this.loadVideoSources(doc, transcodedVideos, generation);
       this.extractVideoInfo(doc);
@@ -1886,8 +1881,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     this.extractVideoInfo(doc);
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
     if (transcodedVideos?.length && this.videoSources().length === 0 && !this.blobUrl()) {
       this.loadVideoSources(doc, transcodedVideos, this.blobLoadGeneration);
     }
@@ -3102,10 +3096,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.noteSaving.set(true);
     const mime = this.mimeType();
     this.browseService
-      .updateDocument(doc.uid, {
-        'note:note': body,
-        'note:mime_type': mime,
-      })
+      .updateDocument(
+        doc.uid,
+        {
+          'note:note': body,
+          'note:mime_type': mime,
+        },
+        { enrichPermissions: true },
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -3148,21 +3146,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Keeps enricher data (permissions, ACLs) when a PUT response omits contextParameters. */
+  /**
+   * Keeps enricher data when a Note PUT omits contextParameters or returns empty
+   * permissions/acls arrays (NXSAT-196). Permission refresh GETs use the default merge.
+   */
   private mergeUpdatedDocument(existing: NuxeoDocument, updated: NuxeoDocument): NuxeoDocument {
     if (!existing.contextParameters && !updated.contextParameters) {
       return updated;
     }
-    return {
-      ...updated,
-      contextParameters: {
-        ...existing.contextParameters,
-        ...updated.contextParameters,
-        acls: updated.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
-        permissions:
-          updated.contextParameters?.['permissions'] ?? existing.contextParameters?.['permissions'],
-      },
-    };
+    // Note PUT only: treat empty permissions/acls arrays from Nuxeo as absent (NXSAT-196).
+    return mergeDocumentPermissionsContext(
+      { ...updated, contextParameters: existing.contextParameters },
+      updated,
+      { treatEmptyEnricherAsAbsent: true },
+    );
   }
 
   private requireWritePermission(): boolean {
