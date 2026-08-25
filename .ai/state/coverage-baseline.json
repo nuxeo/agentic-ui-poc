@@ -33,12 +33,12 @@
       "sCovered": 1561
     },
     "collections": {
-      "lines": 62.12,
-      "statements": 62.12,
-      "branches": 81.67,
-      "functions": 50.67,
+      "lines": 95.78,
+      "statements": 95.78,
+      "branches": 87.61,
+      "functions": 88.37,
       "sTotal": 829,
-      "sCovered": 515
+      "sCovered": 794
     },
     "core": {
       "lines": 100,
@@ -97,12 +97,12 @@
       "sCovered": 461
     },
     "shared-kd-client": {
-      "lines": 88.08,
-      "statements": 88.08,
+      "lines": 88.1,
+      "statements": 88.1,
       "branches": 72.18,
       "functions": 93.65,
-      "sTotal": 713,
-      "sCovered": 628
+      "sTotal": 714,
+      "sCovered": 629
     },
     "shared-ke-client": {
       "lines": 70.85,

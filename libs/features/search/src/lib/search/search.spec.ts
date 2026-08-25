@@ -6,12 +6,13 @@ import {
   provideRouter,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { of } from 'rxjs';
+import { of, type Observable } from 'rxjs';
 import { vi } from 'vitest';
 
 import { SearchComponent } from './search';
 import {
   DocumentDetailService,
+  type SearchResultItem,
   NuxeoApiBase,
   SearchAggregationService,
   SearchService,
@@ -32,9 +33,16 @@ const mockSearchAggregationService = {
 };
 
 const mockDocumentDetailService = {
-  fetchThumbnail: vi.fn(() => of(null)),
+  fetchThumbnail: vi.fn((): Observable<Blob | null> => of(null)),
+  fetchBlob: vi.fn((): Observable<Blob> => of(new Blob())),
+  addToFavorites: vi.fn((): Observable<void> => of(undefined)),
+  removeFromFavorites: vi.fn((): Observable<void> => of(undefined)),
 };
 
+// Full surface declared up front, with explicit return types. `vi.fn(() => of(null))`
+// infers `Observable<null>`, and TypeScript fixes an object literal's shape at declaration —
+// so both `mockReturnValue(of(aDocument))` and a later `mock.someMethod = vi.fn()` fail to
+// typecheck. Neither shows up under `nx test`, which strips types through esbuild.
 const mockSelectionService = {
   selectedCount: vi.fn(() => 0),
   isAllSelected: vi.fn(() => false),
@@ -43,6 +51,7 @@ const mockSelectionService = {
   toggle: vi.fn(),
   clear: vi.fn(),
   selectAll: vi.fn(),
+  deleteSelected: vi.fn((): Observable<void> => of(undefined)),
 };
 
 const mockAiGatewayService = {
@@ -58,9 +67,65 @@ const mockNuxeoApiBase = {
   nxqlSearch: vi.fn(() => of({ entries: [] })),
 };
 
+/**
+ * Complete fixtures, not partial objects cast into place.
+ *
+ * `{ id, type, title } as SearchResultItem` does not compile without `as unknown as`, and
+ * forcing it through would defeat the point: the cast would keep compiling if the type gained
+ * a required field, so the fixture would drift away from what the component is really handed.
+ * Filling every field costs a few lines once and keeps these tests honest.
+ */
+function resultItem(over: Partial<SearchResultItem> = {}): SearchResultItem {
+  return {
+    id: 'doc1',
+    title: 'Test Doc',
+    type: 'File',
+    modifiedDate: '2026-08-24',
+    lastContributor: 'admin',
+    state: 'project',
+    version: '1.0',
+    createdDate: '2026-08-20',
+    author: 'admin',
+    authorKey: 'admin',
+    nature: 'article',
+    coverage: 'global',
+    subjects: 'test',
+    collection: '',
+    collectionKey: '',
+    tags: [],
+    flags: '',
+    icon: 'description',
+    isFavorite: false,
+    ...over,
+  } as SearchResultItem;
+}
+
 describe('SearchComponent', () => {
   let component: SearchComponent;
   let fixture: ComponentFixture<SearchComponent>;
+  /** The component's own row view-model, kept tied to the component rather than restated. */
+  type Row = ReturnType<typeof SearchComponent.prototype.displayResults>[number];
+
+  function row(over: Partial<Row> = {}): Row {
+    return {
+      id: 'doc1',
+      name: 'Test Doc',
+      imageUrl: '/images/Login-background.svg',
+      type: 'File',
+      modifiedDate: '2026-08-24',
+      lastContributor: 'admin',
+      state: 'project',
+      version: '1.0',
+      createdDate: '2026-08-20',
+      author: 'admin',
+      nature: 'article',
+      coverage: 'global',
+      subjects: 'test,demo',
+      flags: 'urgent',
+      icon: 'description',
+      ...over,
+    } as Row;
+  }
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -135,17 +200,16 @@ describe('SearchComponent', () => {
 
   describe('openDocument', () => {
     beforeEach(() => {
-      // Mock results signal
       vi.spyOn(component, 'results').mockReturnValue([
-        { id: 'doc1', type: 'File', title: 'Test Doc', path: '/default-domain/workspaces' } as any,
-        { id: 'coll1', type: 'Collection', title: 'Test Collection', path: null } as any,
-        {
+        resultItem({ id: 'doc1', path: '/default-domain/workspaces' }),
+        resultItem({ id: 'coll1', type: 'Collection', title: 'Test Collection', path: undefined }),
+        resultItem({
           id: 'fold1',
           type: 'Workspace',
           title: 'Test Folder',
           path: '/default-domain/workspaces/test',
-        } as any,
-      ]);
+        }),
+      ] as ReturnType<typeof component.results>);
     });
 
     it('should navigate to /doc/:uid for regular documents', async () => {
@@ -175,9 +239,7 @@ describe('SearchComponent', () => {
 
   describe('selection', () => {
     it('should toggle individual selection', () => {
-      vi.spyOn(component, 'displayResults').mockReturnValue([
-        { id: 'doc1', name: 'Test Doc' } as any,
-      ]);
+      vi.spyOn(component, 'displayResults').mockReturnValue([row()]);
       component.toggleSelection('doc1');
       expect(mockSelectionService.toggle).toHaveBeenCalledWith('doc1', 'Test Doc', null);
     });
@@ -191,8 +253,8 @@ describe('SearchComponent', () => {
     it('should select all when none selected', () => {
       mockSelectionService.isAllSelected.mockReturnValue(false);
       vi.spyOn(component, 'displayResults').mockReturnValue([
-        { id: 'doc1', name: 'Doc 1' } as any,
-        { id: 'doc2', name: 'Doc 2' } as any,
+        row({ id: 'doc1', name: 'Doc 1' }),
+        row({ id: 'doc2', name: 'Doc 2' }),
       ]);
       component.toggleAll();
       expect(mockSelectionService.selectAll).toHaveBeenCalledWith(
@@ -217,7 +279,7 @@ describe('SearchComponent', () => {
   describe('deleteSelected', () => {
     it('should call SelectionService.deleteSelected and navigate on success', () => {
       const navigateSpy = vi.spyOn(component['router'], 'navigate');
-      mockSelectionService.deleteSelected = vi.fn(() => of(undefined));
+      mockSelectionService.deleteSelected.mockReturnValue(of(undefined));
 
       component.deleteSelected();
 
@@ -312,20 +374,7 @@ describe('SearchComponent', () => {
   });
 
   describe('getCellValue', () => {
-    const mockRow: any = {
-      name: 'Test Doc',
-      type: 'File',
-      modifiedDate: '2026-08-24',
-      lastContributor: 'admin',
-      author: 'admin',
-      state: 'project',
-      version: '1.0',
-      createdDate: '2026-08-20',
-      nature: 'article',
-      coverage: 'global',
-      subjects: 'test,demo',
-      flags: 'urgent',
-    };
+    const mockRow = row();
 
     it('should return correct values for each column', () => {
       expect(component.getCellValue(mockRow, 'name')).toBe('Test Doc');
@@ -336,7 +385,15 @@ describe('SearchComponent', () => {
     });
 
     it('should return em dash for missing optional fields', () => {
-      const rowWithNulls: any = { name: 'Test', type: 'File' };
+      const rowWithNulls = row({
+        state: undefined,
+        version: undefined,
+        createdDate: undefined,
+        nature: undefined,
+        coverage: undefined,
+        subjects: undefined,
+        flags: undefined,
+      });
       expect(component.getCellValue(rowWithNulls, 'state')).toBe('—');
       expect(component.getCellValue(rowWithNulls, 'version')).toBe('—');
       expect(component.getCellValue(rowWithNulls, 'created')).toBe('—');
@@ -367,35 +424,35 @@ describe('SearchComponent', () => {
     });
 
     it('should add to favorites when not favorited', () => {
-      mockDocumentDetailService.addToFavorites = vi.fn(() => of(undefined));
+      mockDocumentDetailService.addToFavorites.mockReturnValue(of(undefined));
       component.favoriteIds.set(new Set());
       component.toggleFavorite('doc1');
       expect(mockDocumentDetailService.addToFavorites).toHaveBeenCalledWith('doc1');
     });
 
     it('should remove from favorites when favorited', () => {
-      mockDocumentDetailService.removeFromFavorites = vi.fn(() => of(undefined));
+      mockDocumentDetailService.removeFromFavorites.mockReturnValue(of(undefined));
       component.favoriteIds.set(new Set(['doc1']));
       component.toggleFavorite('doc1');
       expect(mockDocumentDetailService.removeFromFavorites).toHaveBeenCalledWith('doc1');
     });
 
     it('should do nothing when id is empty', () => {
-      mockDocumentDetailService.addToFavorites = vi.fn();
+      mockDocumentDetailService.addToFavorites.mockClear();
       component.toggleFavorite('');
       expect(mockDocumentDetailService.addToFavorites).not.toHaveBeenCalled();
     });
 
     it('should do nothing when operation is pending', () => {
       component.favoritePendingIds.set(new Set(['doc1']));
-      mockDocumentDetailService.addToFavorites = vi.fn();
+      mockDocumentDetailService.addToFavorites.mockClear();
       component.toggleFavorite('doc1');
       expect(mockDocumentDetailService.addToFavorites).not.toHaveBeenCalled();
     });
 
     it('should stop event propagation', () => {
-      mockDocumentDetailService.addToFavorites = vi.fn(() => of(undefined));
-      const event = { stopPropagation: vi.fn() } as any;
+      mockDocumentDetailService.addToFavorites.mockReturnValue(of(undefined));
+      const event = { stopPropagation: vi.fn() } as unknown as Event;
       component.toggleFavorite('doc1', event);
       expect(event.stopPropagation).toHaveBeenCalled();
     });
@@ -409,7 +466,7 @@ describe('SearchComponent', () => {
     });
 
     it('should not download when id is empty', () => {
-      mockDocumentDetailService.fetchBlob = vi.fn();
+      mockDocumentDetailService.fetchBlob.mockClear();
       component.downloadDocument('', 'test.pdf');
       expect(mockDocumentDetailService.fetchBlob).not.toHaveBeenCalled();
     });
@@ -558,10 +615,7 @@ describe('SearchComponent', () => {
 
   describe('computed signals', () => {
     it('should compute resultCount', () => {
-      vi.spyOn(component, 'displayResults').mockReturnValue([
-        { id: '1' } as any,
-        { id: '2' } as any,
-      ]);
+      vi.spyOn(component, 'displayResults').mockReturnValue([row({ id: '1' }), row({ id: '2' })]);
       expect(component.resultCount()).toBe(2);
     });
 
