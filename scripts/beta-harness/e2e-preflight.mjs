@@ -25,16 +25,46 @@ const problems = [];
 const ok = [];
 
 /** 1. Playwright, which is deliberately not a tracked dependency. */
+let playwright = null;
 try {
-  await import('@playwright/test');
+  playwright = await import('@playwright/test');
   ok.push('@playwright/test is importable');
 } catch {
   problems.push(
     '`@playwright/test` is not installed. It is intentionally not a tracked dependency,\n' +
       '  so CI installs stay unaffected by a browser download:\n\n' +
-      '    npm install --no-save @playwright/test\n' +
-      '    npx playwright install chromium',
+      '    npm install --no-save @playwright/test @axe-core/playwright\n' +
+      '    npx playwright install chromium webkit\n\n' +
+      '  Both packages in ONE command: `npm install --no-save X` prunes anything previously\n' +
+      '  installed with --no-save, so installing them separately removes the first.',
   );
+}
+
+/**
+ * 1b. Both browser engines, because the suite has run on two since Phase 6 step 5.
+ *
+ * Checked by launching rather than by looking for a directory: a partially extracted download
+ * leaves the path in place and fails at launch, and "the folder exists" is not the claim. A
+ * missing engine otherwise surfaces as every WebKit spec failing, which reads as seventeen
+ * product defects rather than one absent browser.
+ */
+if (playwright) {
+  for (const name of ['chromium', 'webkit']) {
+    try {
+      const browser = await playwright[name].launch();
+      const v = browser.version();
+      await browser.close();
+      ok.push(`${name} launches (${v})`);
+    } catch (err) {
+      problems.push(
+        `\`${name}\` will not launch: ${(err instanceof Error ? err.message : String(err)).split('\n')[0]}\n\n` +
+          `    npx playwright install ${name}\n\n` +
+          '  The Beta checklist asks for Chrome AND Safari. Running only the engine that happens\n' +
+          '  to be installed, and reporting a pass, is how "cross-browser verified" stops meaning\n' +
+          'anything.',
+      );
+    }
+  }
 }
 
 /** 2. The app, served. */

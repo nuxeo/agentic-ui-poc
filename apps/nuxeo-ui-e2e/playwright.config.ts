@@ -69,8 +69,14 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    // WebKit is Phase 6 step 5 ("Chrome and Safari verified") and is deliberately absent
-    // until then: registering it now would either fail the suite or need skips, and a
-    // skipped project reads as coverage it is not.
+    // Phase 6 step 5: "Chrome and Safari verified" from the Beta checklist. WebKit is the
+    // engine Safari ships, so this is the closest verifiable proxy — it is not Safari itself,
+    // and that distinction is recorded rather than blurred: WebKit-on-macOS via Playwright
+    // shares Safari's engine but not its UI, its extensions, or iOS's stricter storage rules.
+    //
+    // Registered only once the suite passed on it. A project that needs `test.skip` per spec
+    // reads as coverage it is not, which is why it was absent until now rather than added
+    // early and quietly annotated.
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
 });
