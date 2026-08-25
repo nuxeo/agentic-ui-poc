@@ -409,18 +409,51 @@ picker too. Collapsing the two would make "hide by default" indistinguishable fr
 | `app.documentList.subjects`        | Subjects         | `subjects`        | 110   | no       | yes               |
 | `app.documentList.flags`           | Flags            | `flags`           | 120   | no       | yes               |
 
-Show a hidden column for everyone, move it, and rename it — all without a rebuild:
+Move a column and rename it, without a rebuild:
 
 ```json
 {
   "extensions": {
     "overrides": {
-      "app.documentList.author": { "hiddenByDefault": false, "order": 35 },
-      "app.documentList.lastContributor": { "label": "Updated by" }
+      "app.documentList.lastContributor": { "label": "Updated by", "order": 5 },
+      "app.documentList.modified": { "visible": false }
     }
   }
 }
 ```
+
+**`overrides` honours exactly four keys: `order`, `label`, `rule`, `visible`.** Anything
+else in an override is silently dropped — see `applyOverride` in
+`extension-slot-registry.service.ts`. This example previously used
+`"hiddenByDefault": false` in an `overrides` block, which does nothing at all: the
+column stayed hidden and the manifest looked correct. Corrected 2026-08-25 after it
+was run against a live instance.
+
+To change `hiddenByDefault`, `disabled`, `sortable` or `field`, contribute the
+descriptor through `slots` instead. Re-stating an id in `slots.documentList` merges
+over the packaged descriptor:
+
+```json
+{
+  "extensions": {
+    "slots": {
+      "documentList": [
+        { "id": "app.documentList.author", "hiddenByDefault": false },
+        { "id": "app.documentList.state", "disabled": true }
+      ]
+    }
+  }
+}
+```
+
+Verified behaviour of those two, in the user's own column picker:
+
+- `disabled` removes the column from the picker entirely, so a stored user preference
+  cannot resurrect it.
+- `hiddenByDefault` only sets the starting state; the column is still offered,
+  unchecked, and a user may switch it on. The preference lives in
+  `localStorage.browse_column_settings` as a flat array of `field` keys, and `[]`
+  means the user switched everything off.
 
 `order` is spaced by ten so an entry can be inserted between two packaged columns
 without restating the list.
