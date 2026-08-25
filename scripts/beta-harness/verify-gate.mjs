@@ -89,6 +89,20 @@ const ALL_GATES = [
     // The accepted-advisory notes and the dev-inclusive total are the evidence, not noise.
     echoOnPass: true,
   },
+  // Phase 6 step 4 gate: read the SAST results. Registered on 2026-08-25, after the 21 alerts it
+  // found were fixed and it could be shown green rather than asserted.
+  //
+  // Sits next to `supply-chain` because they answer the two halves of the same question — is what
+  // we depend on safe, and is what we wrote safe. Needs `gh` and network access, so it is the only
+  // gate with an explicit skip (`BETA_SKIP_CODE_SCANNING=1`), which prints NOT RUN rather than pass.
+  {
+    id: 'code-scanning',
+    label: 'Code scanning (CodeQL)',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/code-scanning.mjs'],
+    // The ref, the analysis count and the alert count are the evidence.
+    echoOnPass: true,
+  },
   {
     id: 'guardrails',
     label: 'Review guardrails',

@@ -95,30 +95,53 @@ phase had self-reported green while containing at least one overstated claim**.
 are expensive to reverse — public API, action descriptor shape, anything touching
 authentication, credentials or blob lifecycle.
 
-### H4 · SAST and SCA — closed 2026-08-24
+### H4 · SAST and SCA — closed, and the finding is not the one we expected
 
-CodeQL now runs the `security-and-quality` query suite on every push and weekly, and SCA is the
-16th gate rather than a manual `npm audit` written into a document. It fails on a high or critical
-in the **production** tree, on an accepted advisory whose review date has expired, and on a
-production dependency nothing imports.
+**The premise was wrong.** Every document here said "No SAST". CodeQL **default setup** had been
+configured since 2026-07-24, analysing every push with 87 JavaScript/TypeScript rules — and it was
+reporting **21 open alerts, 6 of them high**.
 
-Current production audit: **1 low** (`quill` XSS via HTML export), 0 high, 0 critical. That one is
-accepted until 2026-11-30 on the grounds that every path rendering note HTML sanitises through
-DOMPurify first — and a guardrail, `checkSanitizerPairing`, now fails the build if that pairing is
-ever broken, so the acceptance rests on an enforced invariant rather than a snapshot.
+Nobody saw them for two compounding reasons: default setup analyses the **pull-request** ref, so the
+alerts sat under `refs/pull/145/head` while the obvious query — alerts for the repository — reports
+on the default branch and returned zero; and nothing in the gate pipeline, the phase evidence or CI
+ever asked. **The gap was never the tool. A tool ran, found real defects, and no process consumed
+the output.**
 
-The dev-inclusive audit is **9 high and 13 moderate**, all build-time only. Deliberately reported
-and **not** gated: gating on a total that no customer is exposed to would be permanently red, and a
-gate that cannot pass gets bypassed and then ignored. It is still worth reducing.
+That is the more uncomfortable finding, and it generalises: this programme's failure mode is not
+missing instrumentation, it is instrumentation whose output nobody is obliged to read.
 
-Two things this closed that were not on anyone's list: `cors` and `dotenv` were unused production
-dependencies nobody had recorded, alongside the known `openai` and `express`. All four removed.
+All 21 are fixed. All were in scripts and tooling, not the shipped application, and **fourteen came
+from one function** — an HTML escaper that handled `&`, `<` and `>` but not the double quote, whose
+output goes into double-quoted XML attributes. Two were in **gates**, where a regex that matches the
+wrong thing is worse than one that fails.
 
-**Residual risk, and it is the honest part:** nine real security defects were found by _adversarial
-review_ — blob-URL leaks, unguarded subscriptions, an `<img [src]>` bypassing the HTTP interceptor,
-an HXQL injection — and CodeQL would very likely have found none of them. They are architectural
-and lifecycle defects, not the taint-flow patterns a generic query suite is good at. SAST closes a
-class of gap; it does not replace the review that has actually been finding things here.
+What now exists:
+
+| Layer           | Gate                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| Dependencies    | `supply-chain` — production `high`/`critical` fails; acceptances are dated and **expire**      |
+| Our code        | `code-scanning` — reads the CodeQL alerts, and fails if the ref was **never analysed**         |
+| Repo invariants | `checkSanitizerPairing` — every `bypassSecurityTrustHtml` needs a sanitiser in the same member |
+
+Current production audit: **1 low** (`quill` XSS via HTML export), accepted until 2026-11-30 because
+every note-rendering path sanitises through DOMPurify — and that acceptance now rests on an enforced
+invariant rather than a snapshot. Dev-inclusive is **9 high, 13 moderate**, all build-time only:
+reported deliberately, not gated, because gating on a total no customer is exposed to would be
+permanently red and therefore bypassed.
+
+**Residual risk, three parts:**
+
+- **`code-scanning` is not in CI.** Alerts are keyed to a ref and CodeQL runs in parallel with CI,
+  so on a fresh push it would fail on the previous commit's alerts — including ones that push fixes.
+  It runs in the phase gate instead. Wiring it in properly means waiting on the CodeQL check, and
+  that is a deliberate CI change, not a side effect.
+- **The query suite is `default`, not `security-and-quality`.** Raising it is a repository setting;
+  an advanced workflow cannot coexist with default setup, so this is a decision for whoever owns
+  that setting.
+- **CodeQL would likely have found none of the nine defects adversarial review found.** Blob-URL
+  lifecycles, unguarded subscriptions, an `<img [src]>` bypassing the HTTP interceptor — those are
+  architectural and lifecycle defects, not taint flow. SAST closes a class of gap; it does not
+  replace the review that has actually been finding things here.
 
 ### H5 · No production observability
 
@@ -171,17 +194,17 @@ devDependency (types-only import), but the adf-core surface remains.
 
 ## 5. Technical debt register
 
-| Debt                                         | Cost of carrying                                 | Cost of fixing                                        |
-| -------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------- |
-| Coverage gap in `search` / `document-detail` | Regressions in the highest-traffic paths         | Large — the two biggest files in the repo, ~60pp each |
-| 4 reserved extension slots                   | Over-promising; narrower surface than advertised | Medium — each needs a host that resolves it           |
-| Eager adf-core (+1.15 MB)                    | Slower first load for every user                 | Medium — defer behind an outlet                       |
-| `selection` rule context                     | Two documented rules permanently `false`         | Small–medium — needs a fetch per selected row         |
-| Zero-statement 100% coverage artefact        | Inflated reporting                               | Small — treat a zero-statement report as unmeasured   |
-| 12 unwatched `AGENTS/` files                 | Silent drift                                     | Small per file — extend the staleness pattern         |
-| ~~No SAST~~ **closed 2026-08-24**            | CodeQL on push and weekly; SCA is the 16th gate  | Done                                                  |
-| Unused `openai` / `express`                  | Lockfile weight, audit surface                   | Trivial — remove                                      |
-| E2E absent from CI                           | Regressions reach `main`                         | Medium — needs Nuxeo in CI                            |
+| Debt                                         | Cost of carrying                                                   | Cost of fixing                                        |
+| -------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------- |
+| Coverage gap in `search` / `document-detail` | Regressions in the highest-traffic paths                           | Large — the two biggest files in the repo, ~60pp each |
+| 4 reserved extension slots                   | Over-promising; narrower surface than advertised                   | Medium — each needs a host that resolves it           |
+| Eager adf-core (+1.15 MB)                    | Slower first load for every user                                   | Medium — defer behind an outlet                       |
+| `selection` rule context                     | Two documented rules permanently `false`                           | Small–medium — needs a fetch per selected row         |
+| Zero-statement 100% coverage artefact        | Inflated reporting                                                 | Small — treat a zero-statement report as unmeasured   |
+| 12 unwatched `AGENTS/` files                 | Silent drift                                                       | Small per file — extend the staleness pattern         |
+| ~~No SAST~~ **premise was wrong**            | CodeQL ran since 2026-07-24; 21 alerts unread, now fixed and gated | Done                                                  |
+| Unused `openai` / `express`                  | Lockfile weight, audit surface                                     | Trivial — remove                                      |
+| E2E absent from CI                           | Regressions reach `main`                                           | Medium — needs Nuxeo in CI                            |
 
 ---
 
@@ -203,7 +226,7 @@ storage, governance, merge semantics — is done.
 
 ### O3 · Productise the verification apparatus
 
-The 16 gates, evidence assertions and adversarial review pattern are **product-independent** and
+The 17 gates, evidence assertions and adversarial review pattern are **product-independent** and
 address the industry's live question: how do you ship AI-written code safely? Potentially more
 broadly valuable than Satori itself, either internally across product lines or externally.
 

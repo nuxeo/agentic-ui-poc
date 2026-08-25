@@ -91,7 +91,7 @@ otherwise. The customer-facing AI features are always called "runtime AI feature
 | [Technology Stack](30-engineering/05-technology-stack.md)                           | Every technology, why it is here                      |
 | [Tools & Commands](30-engineering/06-tools-and-commands.md)                         | Complete command reference                            |
 | [Extensibility Contract](30-engineering/07-extensibility-contract.md)               | The four layers, and the 52 registered IDs            |
-| [Dev Harness & Gates](30-engineering/08-dev-harness-and-gates.md)                   | The 16 gates and the evidence system                  |
+| [Dev Harness & Gates](30-engineering/08-dev-harness-and-gates.md)                   | The 17 gates and the evidence system                  |
 | [Skills, Agents & Generators](30-engineering/09-skills-agents-generators.md)        | What the AI tooling actually consists of              |
 | [Runtime AI Features](30-engineering/10-runtime-ai-features.md)                     | The 12 `AI.*` operations and their backend            |
 | [Code KT](30-engineering/11-code-kt.md)                                             | "Where do I make this change?"                        |

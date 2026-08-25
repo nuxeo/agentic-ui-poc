@@ -34,7 +34,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/2026-08-21T11-47-33",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
+        "regate": "gates/2026-08-25T02-42-51-all-phases-signoff"
       },
       "deviations": [],
       "notCovered": [
@@ -49,7 +49,7 @@
       "evidence": {
         "manifest": "phase-1-config/2026-08-21T11-47-45",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
+        "regate": "gates/2026-08-25T02-42-51-all-phases-signoff"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -66,7 +66,7 @@
       "evidence": {
         "manifest": "phase-2-registry/2026-08-21T11-51-02",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
+        "regate": "gates/2026-08-25T02-42-51-all-phases-signoff"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -91,7 +91,7 @@
         "manifest": "phase-3-adf-hx/2026-08-24T03-03-48",
         "searchManifest": "phase-3-search/2026-08-24T02-58-00",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
+        "regate": "gates/2026-08-25T02-42-51-all-phases-signoff"
       },
       "deviations": [
         "CORRECTED: this file previously recorded that DocumentModelService \"calls getModel() from its CONSTRUCTOR, so anything injecting it fails to construct\". The eager call is real; the consequence was not. An async method that throws returns a rejected promise, so the service constructs. Established by writing the test rather than by reasoning about it, after the reasoning had already been written into three files.",
@@ -197,7 +197,7 @@
       "evidence": {
         "manifest": "phase-4-platform/2026-08-23T03-22-29",
         "gate": "gates/2026-08-23T03-47-19-phase-4-signoff",
-        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
+        "regate": "gates/2026-08-25T02-42-51-all-phases-signoff"
       },
       "deviations": [
         "Merged from two duplicate entries. `phase-4-layer2` and `phase-4-platform` both carried the title \"Layer 2 — publishable platform\"; the latter was a stub whose notCovered read \"everything\". Kept the id the gate reports and the evidence directory use.",
@@ -229,7 +229,7 @@
       "evidence": {
         "manifest": "phase-5-harness/2026-08-24T03-08-47",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/2026-08-24T15-50-56-all-phases-signoff"
+        "regate": "gates/2026-08-25T02-42-51-all-phases-signoff"
       },
       "deviations": [
         "Departed from the plan's wording deliberately, and measured first. The plan said 'split the AGENTS/ knowledge base'; 50 files carry 185 references to AGENTS/ paths, and .github/workflows/staleness-check.yml asserts AGENTS/01-services.md and AGENTS/${i}-*.md exist — so a split breaks CI and every skill. Measuring the content settled it too: 3,177 lines, of which only 3 of 13 files mention extensions, slots or the Layers. libs/platform/AGENTS.md is therefore authored for the audience, not extracted.",
@@ -250,7 +250,7 @@
       "title": "Beta quality bar and proof",
       "status": "in-progress",
       "evidence": {
-        "gate": "gates/2026-08-24T15-54-19-phase-6-quality",
+        "gate": "gates/2026-08-25T02-45-52-phase-6-quality",
         "manifest": "phase-6-a11y/2026-08-24T14-40-16"
       },
       "deviations": [
@@ -277,7 +277,15 @@
         "Removing them exposed the lockfile hazard from the other direction. `npm install --package-lock-only` pruned two unrelated nested @emnapi entries and the lockfile gate caught it immediately - 2 unresolvable edges. Restored the known-good lock and removed only the three root entries by hand, per the repo rule. All 225 platform-tagged entries preserved and `npm ci --dry-run` clean.",
         "Two bugs in my own gate, both self-inflicted and both instructive. It read package.json when scanning for references, so every dependency matched its own declaration and the check found nothing. Then, with substring matching, `tslib` counted as referenced because THIS GATE'S OWN DOC COMMENT contains the string `\"tslib\": \"^2.8.1\"` while explaining the first bug. Now matched as real module specifiers only, including the bare side-effect `import 'x';` form whose omission has been a defect twice before in this repo.",
         "A new guardrail, checkSanitizerPairing, enforces that every `bypassSecurityTrustHtml` has a DOMPurify.sanitize() or escapeHtml() in the same class member. All nine calls were already safe, but that safety is a PAIRING and nothing enforced it: deleting one sanitize() call would leave a compiling, passing, stored-XSS hole on a path that renders `note:note`, which any user with write access can author. It also underwrites the quill allowlist entry, whose stated reason is exactly that every render path sanitises. Falsified three ways including a vacuous-pass control.",
-        "Adding the 16th gate turned beta:state red again, because all six completed phases cited a 15/15 re-gate. Re-gated at 16/16 and re-cited rather than relaxing the check. This is the THIRD time adding a gate has done that, and all three times the gate was right."
+        "Adding the 16th gate turned beta:state red again, because all six completed phases cited a 15/15 re-gate. Re-gated at 16/16 and re-cited rather than relaxing the check. This is the THIRD time adding a gate has done that, and all three times the gate was right.",
+        "CORRECTION to the step 4 entries above: SAST was NOT absent. GitHub CodeQL default setup was configured on 2026-07-24 and had analysed every push since - 87 JS/TS rules, weekly plus on-push - and was reporting 21 open alerts, 6 of them high. Every document in the repository said 'No SAST', and I repeated that claim before checking the Security tab. The gap was never the tool: a tool ran, found things, and no process consumed the output.",
+        "Two compounding reasons the alerts were invisible. Default setup analyses the PULL-REQUEST ref, so they live under refs/pull/145/head; GET /code-scanning/alerts with no `ref` reports on the default branch, where there are none, so the obvious query returned a reassuring zero - I made that exact mistake first. And nothing in the gate pipeline, the phase evidence or CI ever asked.",
+        "The advanced CodeQL workflow I added could not run at all: 'CodeQL analyses from advanced configurations cannot be processed when the default setup is enabled'. Default setup is a repository-level setting, so it was removed rather than switching that off unilaterally. Its `security-and-quality` suite would add queries over the `default` suite in use; raising the suite is a repo setting and is recorded as a decision for whoever owns it.",
+        "All 21 alerts are in scripts and tooling, not the shipped application, and all 21 are fixed. Fourteen came from ONE function: `esc()` in publish-confluence.mjs escaped & < > but not the double quote, and its output goes into double-quoted XML attributes, so a page title containing a quote closes the attribute and injects markup. Also fixed: CQL injection in findByTitle (escaped the quote but not the backslash), the same missing characters in tools/video/deck.html, regex injection from --break-slot in upgrade-rehearsal.mjs, three incomplete regex escapes in extension-reference-drift.mjs, a single-pass tag stripper in verify-confluence.mjs, and a missing permissions block in ci.yml - the only one of nine workflows without one.",
+        "Two of those were in GATES. An unescaped `$` or `(` makes a pattern match something other than the token it names, and a gate that matches the wrong thing is worse than one that fails. The upgrade rehearsal's negative control was re-verified afterwards: --break-slot toolbar still goes red on exactly one check.",
+        "The durable fix is the 17th gate, code-scanning, which reads the alerts. Its most important assertion is that a ref with no analyses is NOT a clean ref - the precise trap above, where 0 open alerts from an unscanned ref is indistinguishable from clean. Falsified four ways: an unanalysed ref via --ref, an acceptance matching no open alert, the explicit skip printing NOT RUN rather than pass, and the blocking-severity path, which was observed failing on all 6 real highs before they were fixed rather than on a synthetic case.",
+        "Stated limitation, not papered over: alerts are keyed to a ref and CodeQL runs in parallel with CI, so the newest analysis can predate HEAD. The gate prints the analysis timestamp for that reason, and it is deliberately NOT in CI - on a fresh push it would fail on the previous commit's alerts, including ones the push fixes, and a gate that goes red for work already done is one people learn to ignore. It runs in the phase gate. Wiring it into CI means waiting on the CodeQL check first, which is a deliberate CI change rather than a side effect of this step.",
+        "Adding the 17th gate turned beta:state red for the fourth time. Re-gated at 17/17 and re-cited."
       ],
       "notCovered": [
         "Unit coverage above 90%: 3 of 15 measurable projects meet it substantively (shared-app-config, shared-extensions, permission-dialogs). search 22.76%, document-detail 29.8%, browse 56.72%. The single largest item in the phase and barely started. Recorded as '5 of 17' until 2026-08-24: the gate scored 0/0 statements as 100%, so assets and tasks — zero specs — counted as meeting the bar. core meets it truthfully over 7 statements and is flagged as thin.",

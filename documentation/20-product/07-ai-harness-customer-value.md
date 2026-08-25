@@ -121,7 +121,7 @@ And the RFC's conclusion, which is the honest framing for any customer conversat
 
 > **Agents move cost from authoring to verification rather than removing it.**
 
-Everything in the harness — the 16 gates, the evidence assertions, the adversarial review, the
+Everything in the harness — the 17 gates, the evidence assertions, the adversarial review, the
 5 customer checks — is that verification cost, made systematic. A customer adopting the
 agentic workflow inherits both halves: the speed **and** the obligation to verify.
 

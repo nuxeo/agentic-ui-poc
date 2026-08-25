@@ -26,6 +26,19 @@
  * for a ref CodeQL had never looked at, and "0 open alerts" reads exactly like "clean". A gate that
  * cannot tell those apart is worse than none, because it manufactures confidence.
  *
+ * ## Two limitations, stated because they bound what a pass means
+ *
+ * 1. **The analysis lags the commit.** Alerts are keyed to a ref, not a commit, and CodeQL runs in
+ *    parallel with CI. So the newest analysis for a ref can predate `HEAD`, and this gate then
+ *    reports on the previous commit's code. The run below prints the analysis timestamp for exactly
+ *    that reason — read it, do not assume it covers what you just wrote.
+ * 2. **It is therefore NOT in CI.** On a fresh push CodeQL has usually not finished, so CI would
+ *    fail on the previous commit's alerts — including ones the pushed commit fixes. A gate that
+ *    goes red for work already done is a gate people learn to ignore. It runs in the phase gate,
+ *    which is the sign-off path, and the honest cost is that it is not enforced per-push. Wiring it
+ *    in properly means waiting on the CodeQL check to complete first, which is a CI change worth
+ *    making deliberately rather than as a side effect of this step.
+ *
  * ## Why it can be skipped, and why that is not a hole
  *
  * This gate reads GitHub state, not the working tree, so it needs `gh` and network access and is
@@ -37,6 +50,7 @@
  *   node scripts/beta-harness/code-scanning.mjs
  *   node scripts/beta-harness/code-scanning.mjs --json
  *   node scripts/beta-harness/code-scanning.mjs --today 2027-01-01   # test allowlist expiry
+ *   node scripts/beta-harness/code-scanning.mjs --ref refs/heads/main  # test an unanalysed ref
  *   BETA_SKIP_CODE_SCANNING=1 node scripts/beta-harness/code-scanning.mjs
  *
  * Exit 1 on a high/critical alert, an unallowlisted or expired medium/low, a stale allowlist entry,
@@ -109,7 +123,14 @@ const slug = slugRes.ok ? slugRes.data.nameWithOwner : null;
  */
 let ref = null;
 let refKind = null;
-if (slug) {
+const refArg = argv.includes('--ref') ? argv[argv.indexOf('--ref') + 1] : null;
+if (refArg) {
+  // Present so the zero-is-not-clean assertion below can be tested against a ref that has never
+  // been analysed. Without it that check is unfalsifiable, which is exactly the property this
+  // repository keeps discovering it cannot afford in a gate.
+  ref = refArg;
+  refKind = `--ref ${refArg}`;
+} else if (slug) {
   const pr = gh(['pr', 'view', '--json', 'number,state']);
   if (pr.ok && pr.data?.number && pr.data.state === 'OPEN') {
     ref = `refs/pull/${pr.data.number}/head`;

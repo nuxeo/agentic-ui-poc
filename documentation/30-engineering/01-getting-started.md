@@ -175,7 +175,7 @@ Full list: `grep -rhoE "process\.env\[?'?\"?[A-Z_]+" apps libs scripts tools`.
 npm run beta:gate -- --gates lockfile,guardrails,lint
 ```
 
-### The full gate — 16 gates
+### The full gate — 17 gates
 
 ```bash
 npm run beta:gate -- --phase my-change

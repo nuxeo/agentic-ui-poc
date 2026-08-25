@@ -30,7 +30,7 @@ is a human summary and can go stale exactly as its predecessor did.
 | 3 — adf-hx adoption              | complete        | 55 checks                  |
 | 4 — Layer 2 publishable platform | complete        | 25 checks                  |
 | 5 — Layer 3 agent harness        | complete        | 27 checks                  |
-| 6 — Beta quality bar and proof   | **in progress** | steps 0-4 of 7; gate 16/16 |
+| 6 — Beta quality bar and proof   | **in progress** | steps 0-4 of 7; gate 17/17 |
 
 All six completed phases are re-gated against the current 14-gate pipeline, not only the
 smaller pipeline that existed when each was signed off — Phases 0–2 were originally gated
@@ -429,15 +429,15 @@ Largely built. Remaining:
 
 **Progress, and what each step still needs**
 
-| Step                        | State                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------ |
-| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                       |
-| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                |
-| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                          |
-| 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned     |
-| 4 — SAST + SCA              | **done** — CodeQL (`security-and-quality`, weekly + push) and a 16th gate, `supply-chain`  |
-| 5 — Safari/WebKit           | not started; Chromium only                                                                 |
-| 6 — coverage to 90%         | barely started; **3 of 15** measurable projects meet it substantively, `search` 67pp short |
+| Step                        | State                                                                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0 — coverage ratchet repair | **done** — orphaned and unratcheted entries now fail                                                                                              |
+| 1 — upgrade rehearsal       | **done** — 15th gate, in CI                                                                                                                       |
+| 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                                                                                 |
+| 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned                                                            |
+| 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning` |
+| 5 — Safari/WebKit           | not started; Chromium only                                                                                                                        |
+| 6 — coverage to 90%         | barely started; **3 of 15** measurable projects meet it substantively, `search` 67pp short                                                        |
 
 Step 6 is most of the 20-30 day estimate on its own. `document-detail` and `search` are the two
 largest files in the repository and are 60pp short each.

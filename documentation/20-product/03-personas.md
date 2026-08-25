@@ -100,7 +100,7 @@ ships artifacts whose only consumer is an AI coding tool.
 ### 7. Satori Engineer
 
 Needs: to not re-make a bug already made. Served by `AGENTS/08-bug-patterns.md` (413 lines),
-the 16 gates and 13 skills. See [Getting Started](../30-engineering/01-getting-started.md).
+the 17 gates and 13 skills. See [Getting Started](../30-engineering/01-getting-started.md).
 
 ### 8. Reviewer
 

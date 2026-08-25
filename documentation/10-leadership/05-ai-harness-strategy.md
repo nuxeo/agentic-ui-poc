@@ -29,7 +29,7 @@ And the conclusion the RFC draws, which is the strategic sentence:
 
 > **Agents move cost from authoring to verification rather than removing it.**
 
-Every expensive thing in this repository — 16 gates, ~20k lines of harness scripts, 10
+Every expensive thing in this repository — 17 gates, ~20k lines of harness scripts, 10
 commit-time guardrails, mandatory adversarial review — is that verification cost, made
 systematic instead of hoped for.
 
