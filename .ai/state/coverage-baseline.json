@@ -49,12 +49,12 @@
       "sCovered": 7
     },
     "document-detail": {
-      "lines": 29.8,
-      "statements": 29.8,
-      "branches": 57.14,
-      "functions": 16.25,
+      "lines": 59.71,
+      "statements": 59.71,
+      "branches": 74.83,
+      "functions": 61.88,
       "sTotal": 4205,
-      "sCovered": 1253
+      "sCovered": 2511
     },
     "knowledge-discovery": {
       "lines": 64.77,

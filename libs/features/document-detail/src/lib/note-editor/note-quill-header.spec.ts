@@ -7,8 +7,16 @@ type QuillHeaderTestDouble = Pick<
   'formatLine' | 'setSelection' | 'getLine' | 'getIndex' | 'getSelection' | 'insertText'
 >;
 
-function quillDouble(partial: QuillHeaderTestDouble): Quill {
-  return partial as Quill;
+/**
+ * `Partial`, not the full `Pick`: each test stubs only the Quill methods its own path calls, and
+ * requiring all six made a test that never inserts text carry an unused `insertText` stub. The
+ * `as unknown as Quill` is confined to this one helper so no test body needs a cast.
+ *
+ * Both of these were type errors in committed code that `nx test` could not see — Vitest strips
+ * types through esbuild, so the suite was green while `tsc` had two errors here.
+ */
+function quillDouble(partial: Partial<QuillHeaderTestDouble>): Quill {
+  return partial as unknown as Quill;
 }
 
 describe('note-quill-header', () => {
@@ -47,7 +55,12 @@ describe('note-quill-header', () => {
     const insertText = vi.fn();
     const setSelection = vi.fn();
     const line = { length: () => 1, domNode: { textContent: 'Hello' } };
-    const getLine = vi.fn(() => [line, 5]);
+    // Two problems in one line, both invisible to `nx test`: `() => [line, 5]` widens to an
+    // array rather than the 2-tuple Quill declares, and `line` is a minimal stand-in for a
+    // `Block` with 26+ members. `applyHeaderFormatSelectionOnly` reads only `length()` and
+    // `domNode.textContent`, so the double stays minimal and the cast is confined to here.
+    type LineTuple = ReturnType<Quill['getLine']>;
+    const getLine = vi.fn((): LineTuple => [line, 5] as unknown as LineTuple);
     const getIndex = vi.fn(() => 0);
     const getSelection = vi.fn(() => ({ index: 5, length: 0 }));
 
