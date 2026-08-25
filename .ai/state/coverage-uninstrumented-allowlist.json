@@ -1,0 +1,119 @@
+{
+  "$comment": [
+    "Source files that exist but appear in no coverage report, because no spec imports them.",
+    "v8 does not report such a file as 0% — it omits it from the denominator, so untested code",
+    "is invisible rather than failing. The coverage gate fails on any entry here that is absent",
+    "or expired, so this debt is dated and visible instead of silently absorbed.",
+    "",
+    "An entry is NOT permission to leave the file untested. It is a record that the file is",
+    "untested, with a date by which that stops being acceptable. Deleting the entry and adding",
+    "a spec is the intended way out; extending the date is a decision someone has to make",
+    "deliberately and defend.",
+    "",
+    "Discovered 2026-08-25 while investigating what looked like a coverage regression in",
+    "`collections` and turned out to be the first honest measurement of that project since its",
+    "permission dialogs were extracted."
+  ],
+  "files": {
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-checkin-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port with no spec anywhere in the repo. Phase 3 shipped twelve of these as its deliverable and adf-hx-bridge reported 65.61% without any of them in the denominator. Ports are thin adapters over NuxeoApiBase, which is itself well covered — but 'thin' is an assertion no test currently makes."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-copy-move-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port, no spec references. Copy/move are destructive operations; the absence of a test is worse here than on a read path."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-download-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port, no spec references. Touches blob handling, where this repo has already had nine security defects around blob-URL lifecycles."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-model-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port, no spec references."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-renditions-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port, no spec references."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-unmapped-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port, no spec references."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-user-group-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port, no spec references. User and group resolution feeds permission surfaces."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/nuxeo-version-api.ts": {
+      "until": "2026-10-31",
+      "reason": "adf-hx API port, no spec references."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/api/hxql-literal.ts": {
+      "until": "2026-10-31",
+      "reason": "Two specs reference this module, but they live outside adf-hx-bridge, so it is instrumented under another project's report and absent from this one. Query-literal escaping is exactly the class of code where a wrong pattern is worse than none — the same phase fixed CQL and regex injection in three gate scripts — so it should be covered by a spec inside its own project."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/mapping/nuxeo-to-hx-model.mapper.ts": {
+      "until": "2026-10-31",
+      "reason": "Mapper between Nuxeo and adf-hx shapes, no spec. Mappers fail silently by emitting a wrong-but-valid object."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/mapping/nuxeo-to-hx-version.mapper.ts": {
+      "until": "2026-10-31",
+      "reason": "Mapper between Nuxeo and adf-hx shapes, no spec."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/services/nuxeo-acl.service.ts": {
+      "until": "2026-10-31",
+      "reason": "ACL service with no spec. Client-side permission logic is not a security control — Nuxeo gates server-side — but a wrong ACL read still shows a user actions they cannot perform."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/services/nuxeo-principal-resolver.service.ts": {
+      "until": "2026-10-31",
+      "reason": "Principal resolution with no spec."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/ui/hxp-browse-pager/hxp-browse-pager.component.ts": {
+      "until": "2026-11-30",
+      "reason": "Presentational component, no spec. Lower risk than the API ports, hence the later date."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/ui/hxp-column-picker/hxp-column-picker.component.ts": {
+      "until": "2026-11-30",
+      "reason": "Presentational component, no spec."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/ui/hxp-document-cards/hxp-document-cards.component.ts": {
+      "until": "2026-11-30",
+      "reason": "Presentational component, no spec."
+    },
+    "libs/shared/adf-hx-bridge/src/lib/utils/hxp-document.predicates.ts": {
+      "until": "2026-10-31",
+      "reason": "Pure predicates with no spec — the cheapest possible thing to test, which is why the date is early."
+    },
+    "libs/shared/adf-hx-bridge/src/providers.ts": {
+      "until": "2026-11-30",
+      "reason": "Provider wiring. Exercised indirectly wherever the bridge is configured, but nothing imports it under this project's own tests."
+    },
+    "libs/features/browse/src/adf-hx-poc.ts": {
+      "until": "2026-11-30",
+      "reason": "Proof-of-concept entry point retained from the pre-Beta spike. A candidate for deletion rather than a spec — if nothing ships it, it should not be in the tree."
+    },
+    "libs/features/browse/src/search-adf-hx.ts": {
+      "until": "2026-11-30",
+      "reason": "Barrel for the adf-hx search surface; no test reaches it."
+    },
+    "libs/features/browse/src/lib/adf-hx-columns.ts": {
+      "until": "2026-11-30",
+      "reason": "Column definitions for the adf-hx browse surface, no spec."
+    },
+    "libs/features/browse/src/lib/search-adf-hx/search-adf-hx.ts": {
+      "until": "2026-11-30",
+      "reason": "adf-hx search surface component, no spec."
+    },
+    "libs/shared/extensions/src/lib/provide-satori-extensions.ts": {
+      "until": "2026-10-31",
+      "reason": "Provider function in a project reporting 96.04% — one of only four counted as meeting the Beta bar. That count is read by leadership, so an uncovered provider in a bar-clearing project is the most misleading entry in this file."
+    },
+    "libs/shared/nuxeo-client/src/lib/models/content-model.model.ts": {
+      "until": "2026-11-30",
+      "reason": "Model types with little executable code; kept dated rather than excluded so the judgement is recorded."
+    },
+    "libs/shared/nuxeo-client/src/lib/services/content-model.service.ts": {
+      "until": "2026-10-31",
+      "reason": "Service with no spec in a project otherwise at 78.39% across 29 spec files."
+    }
+  }
+}

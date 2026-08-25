@@ -146,6 +146,13 @@ const rows = [];
 const regressions = [];
 const rises = [];
 
+/**
+ * Percentage fell, but strictly more statements are covered than before — the denominator
+ * grew because previously uninstrumented code entered the measurement. Reported prominently
+ * and not failed; see the classification in the loop below.
+ */
+const expanded = [];
+
 /** Measured this run but absent from the baseline, so nothing ratchets them. */
 const unratcheted = [];
 
@@ -161,9 +168,40 @@ for (const m of measured) {
     unratcheted.push(m.project);
     continue;
   }
-  if (delta < -TOLERANCE)
-    regressions.push({ project: m.project, was: was.lines, now: m.lines, delta });
-  else if (delta > TOLERANCE)
+  if (delta < -TOLERANCE) {
+    // A percentage drop has two very different causes, and failing both punishes the wrong one.
+    //
+    //   (a) tests were deleted or weakened            -> fewer statements covered  -> REGRESSION
+    //   (b) an uninstrumented file entered the report -> more  statements covered  -> not one
+    //
+    // In (b) nothing that was tested became untested; the denominator grew because code that
+    // was invisible is now measured. `collections` was exactly this: adding the first spec for
+    // `collection-detail.ts` covered 64.6% of its 635 statements, took covered statements from
+    // ~105 to ~515, and the *reported* figure fell from 81.67% to 62.12%.
+    //
+    // Failing that would make the gate punish honest measurement and reward leaving files
+    // uninstrumented — the precise hole `findUninstrumented()` was just added to close. So the
+    // absolute count decides, and only when the baseline actually recorded one.
+    const haveCounts =
+      typeof was.sCovered === 'number' &&
+      typeof was.sTotal === 'number' &&
+      typeof m.sCovered === 'number';
+    const expandedHonestly = haveCounts && m.sCovered > was.sCovered && m.sTotal > was.sTotal;
+    if (expandedHonestly) {
+      expanded.push({
+        project: m.project,
+        was: was.lines,
+        now: m.lines,
+        delta,
+        wasTotal: was.sTotal,
+        nowTotal: m.sTotal,
+        wasCovered: was.sCovered,
+        nowCovered: m.sCovered,
+      });
+    } else {
+      regressions.push({ project: m.project, was: was.lines, now: m.lines, delta });
+    }
+  } else if (delta > TOLERANCE)
     rises.push({ project: m.project, was: was.lines, now: m.lines, delta });
 }
 
@@ -204,15 +242,54 @@ const orphaned = baselineNames.filter((p) => !projectNames.has(p));
  */
 const falseCredit = vacuous.filter((v) => baselineNames.includes(v.project));
 
+/**
+ * Uninstrumented source files, checked against a dated allowlist.
+ *
+ * See `findUninstrumented()` for what this catches and why the percentage alone could not.
+ * The allowlist is dated on purpose: an undated exception is indistinguishable from an
+ * oversight six weeks later, and this repository has already had gates whose exceptions
+ * outlived their reasons.
+ *
+ * Three failure modes, all blocking:
+ *   1. a file is uninstrumented and not in the allowlist  — new untested code
+ *   2. a file is uninstrumented and its entry has expired — accepted debt, now due
+ *   3. the allowlist names a file that is now instrumented or gone — stale entry, so the
+ *      file is deleted from the list rather than left as false reassurance
+ */
+const uninstrumentedAllowlistPath = resolve(
+  repoRoot,
+  '.ai/state/coverage-uninstrumented-allowlist.json',
+);
+const uninstrumentedAllowlist = existsSync(uninstrumentedAllowlistPath)
+  ? JSON.parse(await readFile(uninstrumentedAllowlistPath, 'utf8')).files ?? {}
+  : {};
+const todayArg = argv[argv.indexOf('--today') + 1];
+const today =
+  argv.includes('--today') && todayArg ? todayArg : new Date().toISOString().slice(0, 10);
+
+const uninstrumentedAll = measured.flatMap((m) =>
+  (m.uninstrumented ?? []).map((file) => ({ project: m.project, file })),
+);
+const unlisted = [];
+const expired = [];
+for (const { project, file } of uninstrumentedAll) {
+  const entry = uninstrumentedAllowlist[file];
+  if (!entry) {
+    unlisted.push({ project, file });
+    continue;
+  }
+  if (!entry.until || entry.until < today) {
+    expired.push({ project, file, until: entry.until ?? '(none)' });
+  }
+}
+const uninstrumentedNow = new Set(uninstrumentedAll.map((u) => u.file));
+const staleAllowlist = Object.keys(uninstrumentedAllowlist).filter(
+  (f) => !uninstrumentedNow.has(f),
+);
+
 if (updateBaseline) {
   const merged = { ...baseline.projects };
-  for (const m of measured)
-    merged[m.project] = {
-      lines: m.lines,
-      statements: m.statements,
-      branches: m.branches,
-      functions: m.functions,
-    };
+  for (const m of measured) merged[m.project] = entryFor(m);
   // Orphans are pruned here as well as reported. Without this, `--update-baseline`
   // preserved an entry for a deleted project indefinitely — the one command a
   // maintainer would reach for to fix the complaint could not fix it.
@@ -235,8 +312,30 @@ if (updateBaseline) {
 }
 
 report();
+/**
+ * Every blocking category, in one place.
+ *
+ * The uninstrumented checks were added to `report()` and to the FAIL banner but not here, so
+ * they printed "coverage-gate: FAIL" and then exited 0 — and with `--json`, emitted
+ * `ok: false` alongside a zero exit. CI reads the exit code, so the gate would have announced
+ * a failure and been recorded as a pass.
+ *
+ * It was missed because the first negative controls appeared to work: they ran while
+ * `collections` still carried its stale baseline, so a regression was already forcing exit 1
+ * and every control inherited it. The controls were confirming a failure they had not caused.
+ * That is the specific way a control can lie, and the fix is to re-run them from a green
+ * starting state — which is how this surfaced.
+ */
 process.exit(
-  regressions.length || orphaned.length || unratcheted.length || falseCredit.length ? 1 : 0,
+  regressions.length ||
+    orphaned.length ||
+    unratcheted.length ||
+    falseCredit.length ||
+    unlisted.length ||
+    expired.length ||
+    staleAllowlist.length
+    ? 1
+    : 0,
 );
 
 /* ---------- collection ---------- */
@@ -262,6 +361,7 @@ async function collect() {
     const s = summarise(data);
     if (s.files === 0) continue;
     const specs = await countSpecs(p.root);
+    const uninstrumented = await findUninstrumented(p.root, data);
     // Two ways to produce a number that is not coverage. Both are separated out here rather
     // than filtered away, so the gate can name them instead of silently shrinking its scope.
     if (s.sTotal === 0) {
@@ -277,9 +377,59 @@ async function collect() {
       });
       continue;
     }
-    out.push({ project: p.name, specs, ...s });
+    out.push({ project: p.name, specs, uninstrumented, ...s });
   }
   return out.sort((a, b) => a.project.localeCompare(b.project));
+}
+
+/**
+ * Source files that exist on disk but appear nowhere in the project's coverage report.
+ *
+ * ## The hole this closes
+ *
+ * v8 only instruments a file some test actually imports. A source file no spec reaches is
+ * therefore not reported as 0% — it is **absent from the denominator entirely**, so it cannot
+ * drag the percentage down. Untested code is invisible rather than failing, which is the
+ * inverse of what a coverage gate is for.
+ *
+ * This is the same defect family as the `0/0 = 100%` bug (N5) fixed earlier in Phase 6. That
+ * one caught a project with *nothing* measurable; this one catches a project with *something*
+ * measurable that quietly omits the rest of itself.
+ *
+ * ## What it actually found
+ *
+ * 25 files across four projects, and two of the findings are load-bearing:
+ *
+ * - **`adf-hx-bridge` reported 65.61% with 18 of its 49 files outside the measurement**,
+ *   including nine `nuxeo-*-api.ts` ports. Eight of those nine have **no spec reference
+ *   anywhere in the repo**. The ports are Phase 3's entire deliverable, and the coverage
+ *   figure for the library that holds them never included them.
+ * - **`collections` reported 81.67%** while `collection-detail.ts` — 635 statements, its
+ *   largest file — was absent. The number was also inherited: it was measured over the four
+ *   permission dialogs that have since moved to `libs/shared/permission-dialogs`, and
+ *   reconciles to the digit (633 statements, 81.67%) against that old file set. Adding a spec
+ *   for `collection-detail.ts` put 635 statements into the denominator for the first time and
+ *   the reported figure *fell*, which the ratchet then called a regression. It was not one.
+ *   The measurement had become honest.
+ *
+ * @param {string} root project root, repo-relative
+ * @param {Record<string, unknown>} data the parsed `coverage-final.json`
+ * @returns {Promise<string[]>} repo-relative paths, sorted
+ */
+async function findUninstrumented(root, data) {
+  const abs = resolve(repoRoot, root);
+  if (!existsSync(abs)) return [];
+  // Report keys are absolute paths already, but resolve anyway: a relative key would
+  // otherwise never match and flag every file in the project.
+  const reported = new Set(Object.keys(data).map((f) => resolve(repoRoot, f)));
+  const missing = [];
+  for await (const f of walk(abs, ['node_modules', 'dist', 'coverage', '.nx'])) {
+    if (!f.endsWith('.ts')) continue;
+    // Specs, type-only declarations and the test harness carry no shippable statements.
+    if (/\.spec\.ts$|\.d\.ts$|(^|\/)test-setup\.ts$/.test(f)) continue;
+    if (!reported.has(f)) missing.push(relative(repoRoot, f));
+  }
+  return missing.sort();
 }
 
 /**
@@ -358,6 +508,10 @@ function summarise(data) {
   return {
     files,
     sTotal,
+    // Returned so the ratchet can compare absolute counts, not only percentages. A
+    // percentage alone cannot tell "tests were deleted" from "a previously uninstrumented
+    // file entered the denominator" — see the comparability check in the main flow.
+    sCovered,
     statements: stmts,
     branches: pct(bCovered, bTotal),
     functions: pct(fCovered, fTotal),
@@ -395,15 +549,37 @@ async function* walk(dir, skip = []) {
 
 /* ---------- output ---------- */
 
+/**
+ * The shape of one baseline entry.
+ *
+ * Extracted because it was written out in **two** places — here and in the `--update-baseline`
+ * merge — and they drifted the moment absolute counts were added: the merge kept building
+ * percentage-only objects, `write()` read `m.sTotal` as `undefined`, and `JSON.stringify`
+ * dropped the key. The baseline then looked correctly updated while silently omitting the very
+ * field the update was for. One definition, so the two cannot disagree again.
+ *
+ * `sTotal`/`sCovered` are the absolute counts. Recording percentages alone is what let
+ * `collections` carry 81.67% — earned over 633 statements belonging to four permission dialogs
+ * that have since moved to `libs/shared/permission-dialogs` — into a project whose current
+ * contents measure 829. That figure reconciles to the digit against the old file set and to
+ * nothing at all against the new one, and the gate could not tell, because it never stored the
+ * size of what it measured.
+ */
+function entryFor(m) {
+  return {
+    lines: m.lines,
+    statements: m.statements,
+    branches: m.branches,
+    functions: m.functions,
+    sTotal: m.sTotal,
+    sCovered: m.sCovered,
+  };
+}
+
 async function write(list, why) {
   const projects = {};
   for (const m of list) {
-    projects[m.project] = {
-      lines: m.lines,
-      statements: m.statements,
-      branches: m.branches,
-      functions: m.functions,
-    };
+    projects[m.project] = entryFor(m);
   }
   await mkdir(resolve(repoRoot, '.ai/state'), { recursive: true });
   const body = {
@@ -432,21 +608,38 @@ function report() {
     console.log(
       JSON.stringify(
         {
+          // `ok` must agree with the exit code, so every blocking category belongs in it.
+          // The uninstrumented checks were reported to a human and omitted here first, which
+          // would have let an evidence manifest record a clean pass while the gate had failed.
           ok:
             regressions.length === 0 &&
             orphaned.length === 0 &&
             unratcheted.length === 0 &&
-            falseCredit.length === 0,
+            falseCredit.length === 0 &&
+            unlisted.length === 0 &&
+            expired.length === 0 &&
+            staleAllowlist.length === 0,
           target: TARGET,
           rows,
           meetingTarget: rows.filter((r) => r.target <= 0).map((r) => r.project),
           regressions,
           rises,
+          // A percentage drop that is not a regression: the denominator grew because
+          // uninstrumented files entered the measurement. Recorded so the drop is explicable
+          // to anyone reading the evidence later rather than looking like a silent loosening.
+          expanded,
           unmeasured,
           orphaned,
           unratcheted,
           vacuous,
           falseCredit,
+          uninstrumented: {
+            total: uninstrumentedAll.length,
+            allowed: uninstrumentedAll.length - unlisted.length - expired.length,
+            unlisted,
+            expired,
+            staleAllowlist,
+          },
         },
         null,
         2,
@@ -531,12 +724,63 @@ function report() {
     for (const r of rises) console.log(`    ${r.project}  ${r.was}% -> ${r.now}%  (+${r.delta}pp)`);
   }
 
+  if (expanded.length) {
+    console.log(
+      '\n  Percentage fell but coverage did not — the denominator grew as uninstrumented\n' +
+        '  files entered the measurement. Not a regression:',
+    );
+    for (const e of expanded) {
+      console.log(
+        `    ${e.project}  ${e.was}% -> ${e.now}%  (${e.delta}pp)  ` +
+          `covered ${e.wasCovered} -> ${e.nowCovered} of ${e.wasTotal} -> ${e.nowTotal} statements`,
+      );
+    }
+    console.log(
+      '    Strictly more statements are covered than before, so nothing that was tested\n' +
+        '    became untested. Run --update-baseline to record the honest figure.',
+    );
+  }
+
+  if (uninstrumentedAll.length) {
+    const allowed = uninstrumentedAll.length - unlisted.length - expired.length;
+    console.log(
+      `\n  Uninstrumented — ${uninstrumentedAll.length} source file(s) in no coverage report at all:`,
+    );
+    const byProject = {};
+    for (const u of uninstrumentedAll) (byProject[u.project] ??= []).push(u.file);
+    for (const [project, files] of Object.entries(byProject)) {
+      console.log(`    ${project} (${files.length})`);
+    }
+    console.log(
+      '    v8 only instruments a file some test imports, so these are absent from the\n' +
+        '    denominator rather than reported as 0% — untested code is invisible here, not\n' +
+        `    failing. ${allowed} dated/unexpired, ${unlisted.length} unlisted, ${expired.length} expired.`,
+    );
+  }
+
+  if (staleAllowlist.length) {
+    console.log(
+      `\n  Stale allowlist — ${staleAllowlist.length} entr(ies) name a file that is now covered or gone:`,
+    );
+    for (const f of staleAllowlist) console.log(`    ${f}`);
+  }
+
   console.log('');
-  if (orphaned.length || unratcheted.length || falseCredit.length) {
+  if (
+    orphaned.length ||
+    unratcheted.length ||
+    falseCredit.length ||
+    unlisted.length ||
+    expired.length ||
+    staleAllowlist.length
+  ) {
     const parts = [];
     if (orphaned.length) parts.push(`${orphaned.length} orphaned baseline entr(ies)`);
     if (unratcheted.length) parts.push(`${unratcheted.length} unratcheted project(s)`);
     if (falseCredit.length) parts.push(`${falseCredit.length} unmeasurable baseline entr(ies)`);
+    if (unlisted.length) parts.push(`${unlisted.length} unlisted uninstrumented file(s)`);
+    if (expired.length) parts.push(`${expired.length} expired uninstrumented entr(ies)`);
+    if (staleAllowlist.length) parts.push(`${staleAllowlist.length} stale allowlist entr(ies)`);
     console.log(`coverage-gate: FAIL — ${parts.join(', ')}.`);
     if (falseCredit.length) {
       const names = falseCredit.map((v) => v.project);
@@ -566,6 +810,35 @@ function report() {
         `\n  Add ${unratcheted.join(', ')} with --update-baseline. Until then they are\n` +
           '  printed as `new` and excluded from every check, so their coverage could fall\n' +
           '  to zero without this gate saying a word.',
+      );
+    }
+    if (unlisted.length) {
+      console.log(
+        `\n  ${unlisted.length} source file(s) are in no coverage report and not in\n` +
+          '  .ai/state/coverage-uninstrumented-allowlist.json:',
+      );
+      for (const u of unlisted) console.log(`    ${u.project}  ${u.file}`);
+      console.log(
+        '\n  Write a spec, or add a dated entry saying why not. Do not leave it unlisted:\n' +
+          '  a file no test imports is omitted from the denominator, so it cannot lower the\n' +
+          '  percentage. That is how adf-hx-bridge reported 65.61% with eight untested API\n' +
+          "  ports — Phase 3's deliverable — outside the measurement entirely.",
+      );
+    }
+    if (expired.length) {
+      console.log(`\n  ${expired.length} uninstrumented file(s) whose acceptance has expired:`);
+      for (const e of expired) console.log(`    ${e.file}  (until ${e.until})`);
+      console.log(
+        '\n  The date has passed. Write the spec, or move the date and say why in the entry —\n' +
+          '  deliberately, as a decision someone can be held to, not as a quiet edit.',
+      );
+    }
+    if (staleAllowlist.length) {
+      console.log(
+        `\n  Remove ${staleAllowlist.length} stale entr(ies) from the uninstrumented allowlist —\n` +
+          '  those files are now instrumented or deleted. An exception that outlives the problem\n' +
+          '  it described is false reassurance, and it makes the remaining entries look reviewed\n' +
+          '  when they have not been.',
       );
     }
     return;
