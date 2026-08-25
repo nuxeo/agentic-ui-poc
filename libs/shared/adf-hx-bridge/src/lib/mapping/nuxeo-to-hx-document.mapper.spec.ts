@@ -45,7 +45,12 @@ describe('nuxeo-to-hx-document.mapper', () => {
     const hx = mapNuxeoDocumentToHx(file);
     expect(hx.sys_isFolderish).toBe(false);
     expect(hx.sys_primaryType).toBe('File');
-    expect(hx.sys_contentType).toBe('application/pdf');
+    // Bracket access because `sys_contentType` is not a declared field on upstream's
+    // `Document` — it reaches it through the `[key: string]: any` index signature, and
+    // `noPropertyAccessFromIndexSignature` rejects the dotted form (TS4111). The suite ran
+    // green on the dotted form for weeks because Vitest strips types through esbuild; only
+    // `tsc --noEmit` sees it.
+    expect(hx['sys_contentType']).toBe('application/pdf');
   });
 
   it('keeps SysRoot for the repository root, which is not a Nuxeo document', () => {

@@ -38,7 +38,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 
@@ -116,6 +116,27 @@ if (runTests) {
  * `collect()`. Populated by `collect()`, so it must be declared before the call.
  */
 const vacuous = [];
+
+/**
+ * Projects whose `coverage-final.json` is older than their newest source or spec file.
+ *
+ * This gate reads artifacts off disk rather than measuring anything itself, so it is only as
+ * truthful as the freshness of what it reads — and a stale report is not merely imprecise, it
+ * asserts things that are no longer so. Two real cases, hours apart:
+ *
+ * - `collections` was reported at 81.67% from a report predating the extraction of its four
+ *   permission dialogs. The figure reconciled exactly against a file set that had moved out,
+ *   and the ratchet then called the first honest measurement a 19.55pp regression.
+ * - The uninstrumented allowlist was authored from reports predating twelve `adf-hx-bridge`
+ *   specs, so it listed `hxql-literal.ts` as having no in-project spec while
+ *   `hxql-literal.spec.ts` sat beside it, committed in `a0528ab`. Nine of eighteen entries
+ *   were wrong on the day they were written.
+ *
+ * Both were mistakes of the same shape, made twice in one session, which is what a check is
+ * for. Compared against every `.ts` under the project root: a source file edited after the
+ * report was written means the report does not describe the code on disk.
+ */
+const stale = [];
 
 const measured = await collect();
 
@@ -260,32 +281,46 @@ const uninstrumentedAllowlistPath = resolve(
   repoRoot,
   '.ai/state/coverage-uninstrumented-allowlist.json',
 );
-const uninstrumentedAllowlist = existsSync(uninstrumentedAllowlistPath)
-  ? JSON.parse(await readFile(uninstrumentedAllowlistPath, 'utf8')).files ?? {}
+const rawAllowlist = existsSync(uninstrumentedAllowlistPath)
+  ? JSON.parse(await readFile(uninstrumentedAllowlistPath, 'utf8'))
   : {};
+/** Dated debt: files with real code that no test reaches. */
+const datedAllowlist = rawAllowlist.files ?? {};
+/**
+ * Permanent exemptions for files that genuinely contain no executable statements — pure type
+ * declarations, `export *` barrels, constant tables. A deadline for these would be a lie, since
+ * there is nothing to test. Self-policing: if one ever gains a statement its entry is stale, so
+ * the list cannot quietly become a dumping ground.
+ */
+const noStatementsAllowlist = new Set(Object.keys(rawAllowlist.noStatements ?? {}));
+
 const todayArg = argv[argv.indexOf('--today') + 1];
 const today =
   argv.includes('--today') && todayArg ? todayArg : new Date().toISOString().slice(0, 10);
 
-const uninstrumentedAll = measured.flatMap((m) =>
-  (m.uninstrumented ?? []).map((file) => ({ project: m.project, file })),
+const unmeasuredAll = measured.flatMap((m) =>
+  (m.unmeasured ?? []).map((u) => ({ project: m.project, ...u })),
 );
 const unlisted = [];
 const expired = [];
-for (const { project, file } of uninstrumentedAll) {
-  const entry = uninstrumentedAllowlist[file];
+for (const item of unmeasuredAll) {
+  if (noStatementsAllowlist.has(item.file)) continue;
+  const entry = datedAllowlist[item.file];
   if (!entry) {
-    unlisted.push({ project, file });
+    unlisted.push(item);
     continue;
   }
   if (!entry.until || entry.until < today) {
-    expired.push({ project, file, until: entry.until ?? '(none)' });
+    expired.push({ ...item, until: entry.until ?? '(none)' });
   }
 }
-const uninstrumentedNow = new Set(uninstrumentedAll.map((u) => u.file));
-const staleAllowlist = Object.keys(uninstrumentedAllowlist).filter(
-  (f) => !uninstrumentedNow.has(f),
-);
+const unmeasuredNow = new Set(unmeasuredAll.map((u) => u.file));
+const staleAllowlist = [
+  ...Object.keys(datedAllowlist).filter((f) => !unmeasuredNow.has(f)),
+  // A `noStatements` entry is stale the moment the file starts producing statements: the
+  // exemption said there was nothing to measure, and now there is.
+  ...[...noStatementsAllowlist].filter((f) => !unmeasuredNow.has(f)),
+];
 
 if (updateBaseline) {
   const merged = { ...baseline.projects };
@@ -327,7 +362,8 @@ report();
  * starting state — which is how this surfaced.
  */
 process.exit(
-  regressions.length ||
+  stale.length ||
+    regressions.length ||
     orphaned.length ||
     unratcheted.length ||
     falseCredit.length ||
@@ -352,6 +388,15 @@ async function collect() {
     // project names rather than a directory basename guessed from the path.
     const file = resolve(repoRoot, p.reportsDirectory, 'coverage-final.json');
     if (!existsSync(file)) continue;
+    const reportAge = (await stat(file)).mtimeMs;
+    const newestSource = await newestSourceMtime(p.root);
+    if (newestSource > reportAge) {
+      stale.push({
+        project: p.name,
+        report: new Date(reportAge).toISOString(),
+        source: new Date(newestSource).toISOString(),
+      });
+    }
     let data;
     try {
       data = JSON.parse(await readFile(file, 'utf8'));
@@ -361,7 +406,7 @@ async function collect() {
     const s = summarise(data);
     if (s.files === 0) continue;
     const specs = await countSpecs(p.root);
-    const uninstrumented = await findUninstrumented(p.root, data);
+    const unmeasured = await findUnmeasured(p.root, data);
     // Two ways to produce a number that is not coverage. Both are separated out here rather
     // than filtered away, so the gate can name them instead of silently shrinking its scope.
     if (s.sTotal === 0) {
@@ -377,66 +422,67 @@ async function collect() {
       });
       continue;
     }
-    out.push({ project: p.name, specs, uninstrumented, ...s });
+    out.push({ project: p.name, specs, unmeasured, ...s });
   }
   return out.sort((a, b) => a.project.localeCompare(b.project));
 }
 
 /**
- * Source files that exist on disk but appear nowhere in the project's coverage report.
+ * Source files that contribute **zero measured statements**, so they sit outside the denominator.
  *
- * ## The hole this closes
+ * ## Two ways to be invisible, one consequence
  *
- * v8 only instruments a file some test actually imports. A source file no spec reaches is
- * therefore not reported as 0% — it is **absent from the denominator entirely**, so it cannot
- * drag the percentage down. Untested code is invisible rather than failing, which is the
- * inverse of what a coverage gate is for.
+ * 1. **Absent from the report.** v8 only instruments a file some test imports, so a file no spec
+ *    reaches is not reported as 0% — it is missing entirely.
+ * 2. **Present with an empty statement map.** The report lists the file and records no statements
+ *    at all. `search-filters-drawer.component.ts` is 1303 lines with ~465 executable lines and
+ *    appears this way; the `search` project therefore reported 56.49% over 848 statements while
+ *    its largest component contributed nothing to either side of that fraction.
  *
- * This is the same defect family as the `0/0 = 100%` bug (N5) fixed earlier in Phase 6. That
- * one caught a project with *nothing* measurable; this one catches a project with *something*
- * measurable that quietly omits the rest of itself.
+ * Only case 1 was checked before. Case 2 passed every check: the file IS in the report, so the
+ * absent-file test is satisfied, and the project has plenty of statements, so the project-level
+ * `sTotal === 0` vacuous test is satisfied too. Repo-wide, case 2 hides **67 files with
+ * executable code** — including inside `shared-extensions` (96.04%) and `permission-dialogs`
+ * (93.85%), two of the five projects counted as meeting the Beta bar.
  *
- * ## What it actually found
+ * The cause differs between the two; the consequence does not. Untested code is invisible rather
+ * than failing, so both are reported the same way and allowlisted the same way.
  *
- * 25 files across four projects, and two of the findings are load-bearing:
+ * ## The `noStatements` category
  *
- * - **`adf-hx-bridge` reported 65.61% with 18 of its 49 files outside the measurement**,
- *   including nine `nuxeo-*-api.ts` ports. Eight of those nine have **no spec reference
- *   anywhere in the repo**. The ports are Phase 3's entire deliverable, and the coverage
- *   figure for the library that holds them never included them.
- * - **`collections` reported 81.67%** while `collection-detail.ts` — 635 statements, its
- *   largest file — was absent. The number was also inherited: it was measured over the four
- *   permission dialogs that have since moved to `libs/shared/permission-dialogs`, and
- *   reconciles to the digit (633 statements, 81.67%) against that old file set. Adding a spec
- *   for `collection-detail.ts` put 635 statements into the denominator for the first time and
- *   the reported figure *fell*, which the ratchet then called a regression. It was not one.
- *   The measurement had become honest.
+ * 63 zero-statement files legitimately have none — pure type declarations, `export *` barrels,
+ * constant tables. Those cannot be "tested" and a dated deadline for them would be a lie, so they
+ * get a permanent exemption in a separate list. It is self-policing: if such a file ever gains a
+ * statement, its entry is reported stale and must be removed, which is what stops the permanent
+ * list becoming a dumping ground.
  *
  * @param {string} root project root, repo-relative
  * @param {Record<string, unknown>} data the parsed `coverage-final.json`
- * @returns {Promise<string[]>} repo-relative paths, sorted
+ * @returns {Promise<{file: string, why: 'absent'|'empty'}[]>} sorted by path
  */
-async function findUninstrumented(root, data) {
+async function findUnmeasured(root, data) {
   const abs = resolve(repoRoot, root);
   if (!existsSync(abs)) return [];
-  // Report keys are absolute paths already, but resolve anyway: a relative key would
-  // otherwise never match and flag every file in the project.
-  const reported = new Set(Object.keys(data).map((f) => resolve(repoRoot, f)));
-  const missing = [];
+  // Report keys are absolute already, but resolve anyway: a relative key would never match and
+  // would flag every file in the project.
+  const statementsByFile = new Map(
+    Object.entries(data).map(([f, d]) => [
+      resolve(repoRoot, f),
+      Object.keys((d ?? {}).s ?? {}).length,
+    ]),
+  );
+  const out = [];
   for await (const f of walk(abs, ['node_modules', 'dist', 'coverage', '.nx'])) {
     if (!f.endsWith('.ts')) continue;
     // Specs, type-only declarations and the test harness carry no shippable statements.
     if (/\.spec\.ts$|\.d\.ts$|(^|\/)test-setup\.ts$/.test(f)) continue;
-    if (!reported.has(f)) missing.push(relative(repoRoot, f));
+    const n = statementsByFile.get(f);
+    if (n === undefined) out.push({ file: relative(repoRoot, f), why: 'absent' });
+    else if (n === 0) out.push({ file: relative(repoRoot, f), why: 'empty' });
   }
-  return missing.sort();
+  return out.sort((a, b) => a.file.localeCompare(b.file));
 }
 
-/**
- * Read every `project.json` and classify its `test` target. Reading from disk beats
- * shelling out to `nx show project` eighteen times.
- * @returns {Promise<{ name: string, kind: 'vitest'|'other', reportsDirectory?: string }[]>}
- */
 async function discoverProjects() {
   const found = [];
   for await (const file of walk(repoRoot, ['node_modules', 'dist', '.git', 'coverage', '.nx'])) {
@@ -476,16 +522,30 @@ function summarise(data) {
     files = 0;
   for (const entry of Object.values(data)) {
     files += 1;
+    // Skip the branch/function tallies for a file with no statements.
+    //
+    // v8 gives a never-imported file an entry with an empty `statementMap` PLUS a synthetic
+    // `fnMap`/`branchMap` pair named `(empty-report)`, both recorded as HIT — `f: {0: 1}`,
+    // `b: {0: [1]}`. So every untested file donated one free covered function and one free
+    // covered branch with no uncovered counterpart, inflating both percentages by exactly the
+    // number of unmeasured files. `adf-hx-bridge` had eighteen such files.
+    //
+    // Statements and lines were never affected, which is why this hid: the headline number the
+    // ratchet acts on was right while the two beside it were not.
+    const hasStatements = Object.keys(entry.s ?? {}).length > 0;
     for (const hits of Object.values(entry.s ?? {})) {
       sTotal += 1;
       if (hits > 0) sCovered += 1;
     }
-    for (const arr of Object.values(entry.b ?? {})) {
-      for (const hits of arr ?? []) {
-        bTotal += 1;
-        if (hits > 0) bCovered += 1;
+    if (hasStatements) {
+      for (const arr of Object.values(entry.b ?? {})) {
+        for (const hits of arr ?? []) {
+          bTotal += 1;
+          if (hits > 0) bCovered += 1;
+        }
       }
     }
+    if (!hasStatements) continue;
     for (const hits of Object.values(entry.f ?? {})) {
       fTotal += 1;
       if (hits > 0) fCovered += 1;
@@ -528,6 +588,22 @@ function summarise(data) {
  * says, so it must not be counted towards the Beta bar either.
  * @param {string} root
  */
+/**
+ * The newest mtime among a project's `.ts` files, so `collect()` can tell whether the coverage
+ * report it is about to trust predates the code it claims to describe.
+ */
+async function newestSourceMtime(root) {
+  const abs = resolve(repoRoot, root);
+  if (!existsSync(abs)) return 0;
+  let newest = 0;
+  for await (const f of walk(abs, ['node_modules', 'dist', 'coverage', '.nx'])) {
+    if (!f.endsWith('.ts')) continue;
+    const m = (await stat(f)).mtimeMs;
+    if (m > newest) newest = m;
+  }
+  return newest;
+}
+
 async function countSpecs(root) {
   const abs = resolve(repoRoot, root);
   if (!existsSync(abs)) return 0;
@@ -612,6 +688,7 @@ function report() {
           // The uninstrumented checks were reported to a human and omitted here first, which
           // would have let an evidence manifest record a clean pass while the gate had failed.
           ok:
+            stale.length === 0 &&
             regressions.length === 0 &&
             orphaned.length === 0 &&
             unratcheted.length === 0 &&
@@ -619,6 +696,7 @@ function report() {
             unlisted.length === 0 &&
             expired.length === 0 &&
             staleAllowlist.length === 0,
+          stale,
           target: TARGET,
           rows,
           meetingTarget: rows.filter((r) => r.target <= 0).map((r) => r.project),
@@ -633,9 +711,11 @@ function report() {
           unratcheted,
           vacuous,
           falseCredit,
-          uninstrumented: {
-            total: uninstrumentedAll.length,
-            allowed: uninstrumentedAll.length - unlisted.length - expired.length,
+          unmeasured: {
+            total: unmeasuredAll.length,
+            absent: unmeasuredAll.filter((u) => u.why === 'absent').length,
+            empty: unmeasuredAll.filter((u) => u.why === 'empty').length,
+            exempt: unmeasuredAll.filter((u) => noStatementsAllowlist.has(u.file)).length,
             unlisted,
             expired,
             staleAllowlist,
@@ -741,20 +821,42 @@ function report() {
     );
   }
 
-  if (uninstrumentedAll.length) {
-    const allowed = uninstrumentedAll.length - unlisted.length - expired.length;
+  if (unmeasuredAll.length) {
+    const exempt = unmeasuredAll.filter((u) => noStatementsAllowlist.has(u.file)).length;
+    const debt = unmeasuredAll.length - exempt;
+    const allowed = debt - unlisted.length - expired.length;
+    const absent = unmeasuredAll.filter((u) => u.why === 'absent').length;
+    const empty = unmeasuredAll.length - absent;
     console.log(
-      `\n  Uninstrumented — ${uninstrumentedAll.length} source file(s) in no coverage report at all:`,
+      `\n  Unmeasured — ${unmeasuredAll.length} source file(s) contribute zero statements ` +
+        `(${absent} absent from the report, ${empty} present with an empty statement map):`,
     );
     const byProject = {};
-    for (const u of uninstrumentedAll) (byProject[u.project] ??= []).push(u.file);
+    for (const u of unmeasuredAll) {
+      if (noStatementsAllowlist.has(u.file)) continue;
+      (byProject[u.project] ??= []).push(u.file);
+    }
     for (const [project, files] of Object.entries(byProject)) {
       console.log(`    ${project} (${files.length})`);
     }
     console.log(
-      '    v8 only instruments a file some test imports, so these are absent from the\n' +
-        '    denominator rather than reported as 0% — untested code is invisible here, not\n' +
-        `    failing. ${allowed} dated/unexpired, ${unlisted.length} unlisted, ${expired.length} expired.`,
+      '    Either way the code is outside the denominator, so it cannot lower the percentage —\n' +
+        '    untested code is invisible here, not failing.\n' +
+        `    ${exempt} exempt (no statements to measure), ${allowed} dated/unexpired, ` +
+        `${unlisted.length} unlisted, ${expired.length} expired.`,
+    );
+  }
+
+  if (stale.length) {
+    console.log(
+      `\n  STALE REPORTS — ${stale.length} project(s) have source newer than their coverage report:`,
+    );
+    for (const t of stale) {
+      console.log(`    ${t.project.padEnd(24)} report ${t.report}  source ${t.source}`);
+    }
+    console.log(
+      '    These numbers describe code that has since changed, so nothing below can be\n' +
+        '    trusted for them. Re-run the tests with coverage before reading this.',
     );
   }
 
@@ -767,6 +869,7 @@ function report() {
 
   console.log('');
   if (
+    stale.length ||
     orphaned.length ||
     unratcheted.length ||
     falseCredit.length ||
@@ -775,6 +878,7 @@ function report() {
     staleAllowlist.length
   ) {
     const parts = [];
+    if (stale.length) parts.push(`${stale.length} stale coverage report(s)`);
     if (orphaned.length) parts.push(`${orphaned.length} orphaned baseline entr(ies)`);
     if (unratcheted.length) parts.push(`${unratcheted.length} unratcheted project(s)`);
     if (falseCredit.length) parts.push(`${falseCredit.length} unmeasurable baseline entr(ies)`);
@@ -814,15 +918,19 @@ function report() {
     }
     if (unlisted.length) {
       console.log(
-        `\n  ${unlisted.length} source file(s) are in no coverage report and not in\n` +
-          '  .ai/state/coverage-uninstrumented-allowlist.json:',
+        `\n  ${unlisted.length} source file(s) contribute zero statements and are in neither\n` +
+          '  list in .ai/state/coverage-uninstrumented-allowlist.json:',
       );
-      for (const u of unlisted) console.log(`    ${u.project}  ${u.file}`);
+      for (const u of unlisted) console.log(`    ${u.project}  [${u.why}]  ${u.file}`);
       console.log(
-        '\n  Write a spec, or add a dated entry saying why not. Do not leave it unlisted:\n' +
-          '  a file no test imports is omitted from the denominator, so it cannot lower the\n' +
-          '  percentage. That is how adf-hx-bridge reported 65.61% with eight untested API\n' +
-          "  ports — Phase 3's deliverable — outside the measurement entirely.",
+        '\n  Write a spec; or add a dated entry under `files` if it has code that is not\n' +
+          '  tested yet; or add it under `noStatements` if it genuinely has nothing to measure\n' +
+          '  (types, an `export *` barrel, a constant table).\n\n' +
+          '  A file contributing zero statements is omitted from the denominator, so it cannot\n' +
+          '  lower the percentage. `[absent]` means no test imports it — that is how adf-hx-bridge\n' +
+          "  reported 65.61% with eight untested API ports, Phase 3's deliverable, outside the\n" +
+          '  measurement. `[empty]` means the report lists it with no statements at all — that is\n' +
+          '  how search reported 56.49% while its 1303-line filters drawer counted for nothing.',
       );
     }
     if (expired.length) {
