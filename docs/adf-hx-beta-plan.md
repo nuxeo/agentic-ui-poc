@@ -13,7 +13,7 @@ four-layer extensibility model and before the dependency questions were settled.
 
 ## Programme status
 
-**As at 24 August 2026.** `CLAUDE.md` points here for the authoritative position, and for
+**As at 25 August 2026.** `CLAUDE.md` points here for the authoritative position, and for
 weeks there was no such section — so that pointer dangled while `CLAUDE.md`'s own summary
 claimed Phase 3 was next, three phases after it had shipped.
 
@@ -30,7 +30,7 @@ is a human summary and can go stale exactly as its predecessor did.
 | 3 — adf-hx adoption              | complete        | 55 checks                  |
 | 4 — Layer 2 publishable platform | complete        | 25 checks                  |
 | 5 — Layer 3 agent harness        | complete        | 27 checks                  |
-| 6 — Beta quality bar and proof   | **in progress** | steps 0-4 of 7; gate 17/17 |
+| 6 — Beta quality bar and proof   | **in progress** | steps 0-5 of 7; gate 17/17 |
 
 All six completed phases are re-gated against the current 14-gate pipeline, not only the
 smaller pipeline that existed when each was signed off — Phases 0–2 were originally gated
@@ -436,7 +436,7 @@ Largely built. Remaining:
 | 2 — Playwright E2E          | **done** — 12 specs, 4 critical paths, phase gate                                                                                                 |
 | 3 — WCAG 2.1 AA met         | **done** — 7 rule classes fixed (77 nodes), `KNOWN_VIOLATIONS` empty, 15 cases scanned                                                            |
 | 4 — SAST + SCA              | **done** — but SAST already existed and was reporting 21 unread alerts, 6 high. Two gates now read the output: `supply-chain` and `code-scanning` |
-| 5 — Safari/WebKit           | not started; Chromium only                                                                                                                        |
+| 5 — Safari/WebKit           | **done** — 34 specs (17 × 2 engines), 5 new specs target engine divergence; WebKit not Safari, distinction recorded                               |
 | 6 — coverage to 90%         | barely started; **3 of 15** measurable projects meet it substantively, `search` 67pp short                                                        |
 
 Step 6 is most of the 20-30 day estimate on its own. `document-detail` and `search` are the two
