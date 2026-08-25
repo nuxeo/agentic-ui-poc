@@ -460,11 +460,19 @@ so nesting is ignored rather than half-honoured.
 
 Stated so nobody plans around a capability that is not there.
 
-- **Toolbar, overflow menu, tabs, context menu and document-list columns.** `bulk-actions` is done —
-  see section 5 — but `document-detail.html` still holds its toolbar, its seven-item overflow menu
-  and its five tab children in markup, and browse still holds its row menu and column set in markup.
-  Those four slot IDs are reserved and the registry accepts entries, but **no code reads them**, so
-  contributing to one has no effect. A manifest cannot yet hide, reorder or gate a toolbar action.
+- **Toolbar, tabs, context menu and routes.** `document-detail.html` still holds its toolbar, its
+  seven-item overflow menu and its five tab children in markup, and browse still holds its row menu
+  in markup. Those four slot IDs — `toolbar`, `tabs`, `contextMenu`, `routes` — are reserved and the
+  registry accepts entries, but **no code reads them**, so contributing to one has no effect. A
+  manifest cannot yet hide, reorder or gate a toolbar action.
+
+  `bulk-actions` and `documentList` were once in this list and are **not** any more: both are
+  Populated per the table in section 2, and hiding, reordering or relabelling a browse column by id
+  is a supported manifest edit today (section 7). This bullet still named document-list columns after
+  the consumer landed, which is the kind of stale exclusion that gets a working capability left out of
+  a demo. The table in section 2 is the authoritative statement of slot state and is gated by
+  `npm run beta:reference`; this prose is not.
+
 - **The two selection permission rules**, for the reason given in section 4.
 - **Route contributions.** Feature libraries export `Routes` arrays, but `app.routes.ts` still
   imports them directly.

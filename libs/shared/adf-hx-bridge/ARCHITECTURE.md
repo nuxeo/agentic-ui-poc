@@ -77,40 +77,78 @@ Helpers (in `@nuxeo-satori/platform/nuxeo-client`):
 
 ## UI layer (`hxp-*`)
 
-All POC UI lives in `libs/shared/adf-hx-bridge/src/lib/ui/`. No `mat-*`, no `sat-*` in bridge or POC feature code.
+> **Provenance — read this before describing any surface as "adf-hx".**
+>
+> An `hxp-*` tag says nothing about who wrote the component. Six are **upstream's**, fourteen are
+> **ours**, and the two sets share a prefix. This section previously listed `hxp-document-list` and
+> `hxp-breadcrumb` as ours — both are upstream's, and `hxp-document-list` is the single most
+> important real-adf-hx surface in the product. It also listed `hxp-browse-nav-tree` and
+> `HxpBrowseNavTreeService`, neither of which exists anywhere in the repository. Corrected
+> 2026-08-25 while preparing a customer demo, where the error would have been stated out loud.
+>
+> The reliable test is the import, not the tag: our POC feature code aliases every upstream
+> component as `Upstream*` on import (see `browse-adf-hx-poc.ts:60-66`).
+
+### Real adf-hx — upstream components we render
+
+Imported from `@alfresco/adf-hx-content-services/ui`. Nothing in this library defines them.
+
+| Selector                      | Rendered by                                |
+| ----------------------------- | ------------------------------------------ |
+| `hxp-document-list`           | `browse-adf-hx-poc.ts`, `search-adf-hx.ts` |
+| `hxp-breadcrumb`              | `browse-adf-hx-poc.ts`                     |
+| `hxp-properties-sidebar`      | `browse-adf-hx-poc.ts` (Properties tab)    |
+| `hxp-ui-document-viewer`      | `browse-adf-hx-poc.ts`                     |
+| `hxp-manage-versions-sidebar` | `browse-adf-hx-poc.ts` (Versions tab)      |
+| `hxp-document-tree`           | wrapped by our `hxp-browse-nav-drawer`     |
+
+`hxp-properties-sidebar` and `hxp-manage-versions-sidebar` both require a **row checkbox tick**;
+a row click leaves them showing "Select a single document in the View tab."
+
+### Ours — this library's own components
+
+All under `libs/shared/adf-hx-bridge/src/lib/ui/`. No `mat-*`, no `sat-*` in bridge or POC code.
 
 | Component                  | Role                                                                      |
 | -------------------------- | ------------------------------------------------------------------------- |
 | `hxp-folder-header`        | Title, type, header actions (Create, Drive, Edit, Delete, Download, More) |
-| `hxp-breadcrumb`           | Folder breadcrumbs                                                        |
 | `hxp-domain-hint`          | Domain / repository root guidance                                         |
 | `hxp-browse-tabs`          | View · Permissions · History · Trash (native `<button role="tab">`)       |
 | `hxp-browse-toolbar`       | Filters, view toggle, CSV export                                          |
-| `hxp-document-list`        | List/card views, columns, selection, thumbnails                           |
-| `hxp-browse-permissions`   | Permissions tab content                                                   |
-| `hxp-browse-history`       | Audit log tab                                                             |
+| `hxp-browse-pager`         | Paging controls for the upstream list                                     |
+| `hxp-column-picker`        | Column visibility, extracted when upstream's list took over               |
+| `hxp-document-cards`       | Card view, extracted when upstream's list took over                       |
+| `hxp-browse-permissions`   | Permissions tab content (reads Nuxeo ACLs)                                |
+| `hxp-browse-history`       | Audit log tab (reads the Nuxeo audit log)                                 |
 | `hxp-browse-trash`         | Trashed children tab                                                      |
 | `hxp-browse-details-panel` | Side panel: Info · Tags · Activity                                        |
-| `hxp-browse-nav-drawer`    | Shell drawer wrapper                                                      |
-| `hxp-browse-nav-tree`      | Side nav folder tree                                                      |
+| `hxp-browse-nav-drawer`    | Shell drawer wrapper around upstream's tree                               |
 | `hxp-icon` / `hxp-spinner` | Icons and loading                                                         |
 
-The legacy `hxp-document-tree` (a Material `mat-tree`) and its `AdfHxDocumentTreeDatabaseService`
+Permissions, History and Trash are **ours**, reading real Nuxeo APIs. Do not attribute them to adf-hx.
+
+Our own legacy `hxp-document-tree` (a Material `mat-tree`) and its `AdfHxDocumentTreeDatabaseService`
 data source were **deleted in Phase 0**. They were unused, and they were the last thing keeping
-`@angular/material` in this library's dependency graph and public surface.
+`@angular/material` in this library's dependency graph and public surface. The `hxp-document-tree`
+rendered today is **upstream's**, which is a different component that happens to share the selector.
 
 ---
 
 ## Services
 
-| Service                      | Purpose                                                |
-| ---------------------------- | ------------------------------------------------------ |
-| `AdfHxDocumentService`       | getByPath/id, children, ancestors; Hx `Document` model |
-| `AdfHxBrowseContextService`  | `contextPath` signal, `treeRefreshTick`                |
-| `AdfHxBrowseMediaService`    | Thumbnails (blob URLs), CSV export, ZIP download       |
-| `AdfHxBrowseFolderService`   | Permissions doc, audit log, trash, tag search          |
-| `HxpBrowseNavTreeService`    | Nav tree load, expand, sync to path                    |
-| `NuxeoDocumentRouterService` | Navigate to doc (sets `browseReturn=adf-hx`) or folder |
+| Service                         | Purpose                                                |
+| ------------------------------- | ------------------------------------------------------ |
+| `AdfHxDocumentService`          | getByPath/id, children, ancestors; Hx `Document` model |
+| `AdfHxBrowseContextService`     | `contextPath` signal, `treeRefreshTick`                |
+| `AdfHxBrowseMediaService`       | Thumbnails (blob URLs), CSV export, ZIP download       |
+| `AdfHxBrowseFolderService`      | Permissions doc, audit log, trash, tag search          |
+| `NuxeoDocumentRouterService`    | Navigate to doc (sets `browseReturn=adf-hx`) or folder |
+| `NuxeoAclService`               | ACL reads for the Permissions tab                      |
+| `NuxeoPrincipalResolverService` | Resolves usernames for display                         |
+
+`HxpBrowseNavTreeService` was listed here and does not exist — the nav tree is upstream's
+`hxp-document-tree` with upstream's `DocumentTreeDatabaseService`, wrapped by
+`hxp-browse-nav-drawer`. Removed 2026-08-25.
 
 Write methods on `NuxeoDocumentApi` throw _"not implemented in Scope A"_ until Scope B.
 
