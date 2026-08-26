@@ -23,7 +23,7 @@ import { WidgetGridComponent, WidgetContainerComponent } from '@nuxeo-satori/pla
         <lib-widget-container title="This Week">
           <div style="text-align: center; padding: 2rem;">
             <div style="font-size: 3rem; font-weight: 500;">
-              {{ recentDocs() ?? '...' }}
+              {{ recentDocs }}
             </div>
           </div>
         </lib-widget-container>
@@ -31,7 +31,7 @@ import { WidgetGridComponent, WidgetContainerComponent } from '@nuxeo-satori/pla
         <lib-widget-container title="My Documents">
           <div style="text-align: center; padding: 2rem;">
             <div style="font-size: 3rem; font-weight: 500;">
-              {{ myDocs() ?? '...' }}
+              {{ myDocs }}
             </div>
           </div>
         </lib-widget-container>
@@ -42,9 +42,9 @@ import { WidgetGridComponent, WidgetContainerComponent } from '@nuxeo-satori/pla
 export class StatsComponent {
   private search = inject(SearchService);
 
-  private totalResult = toSignal(this.search.search({ pageSize: 0 }));
+  private totalResult = toSignal(this.search.search({ pageSize: 40 }));
 
-  protected totalDocs = computed(() => this.totalResult()?.totalSize);
-  protected recentDocs = computed(() => 0); // TODO: Add date filter
-  protected myDocs = computed(() => 0); // TODO: Add user filter
+  protected totalDocs = computed(() => this.totalResult()?.items.length);
+  protected recentDocs = 0; // TODO: Add date filter
+  protected myDocs = 0; // TODO: Add user filter
 }
