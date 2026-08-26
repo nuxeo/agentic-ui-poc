@@ -5,27 +5,12 @@
 // be a single block here — or, better, Layer 0 `themes[].tokens`, which applies
 // without a rebuild.
 
-// Angular Material theme - required for Material components to render properly.
+// Angular Material prebuilt theme - required for Material components to render properly.
 // This is imported here (not in app.scss) because it's a global dependency for
 // any page using @nuxeo-satori/platform/ui components, which are built on Material.
-@use '@angular/material' as mat;
-@include mat.core();
-
-// Define a light theme for the template
-$template-primary: mat.define-palette(mat.$blue-palette);
-$template-accent: mat.define-palette(mat.$blue-palette, A200, A100, A400);
-$template-theme: mat.define-light-theme(
-  (
-    color: (
-      primary: $template-primary,
-      accent: $template-accent,
-    ),
-    typography: mat.define-typography-config(),
-    density: 0,
-  )
-);
-
-@include mat.all-component-themes($template-theme);
+// Using the prebuilt indigo-pink theme for simplicity. Customers can replace this
+// with their own custom Material theme if needed.
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
 
 // These are the *packaged* defaults. Layer 0 `themes[].tokens` overwrites any of
 // them on `<html>` at runtime via `TemplateThemeService`, and `<html>` wins over
