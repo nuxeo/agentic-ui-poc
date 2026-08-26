@@ -73,6 +73,13 @@ const NAV_ITEMS: readonly NavItemDescriptor[] = [
     order: 25,
   },
   {
+    id: 'template.navbar.stats',
+    label: 'Statistics',
+    path: '/stats',
+    icon: 'bar_chart',
+    order: 22,
+  },
+  {
     id: 'template.navbar.home',
     label: 'Diagnostics',
     path: '/home',
