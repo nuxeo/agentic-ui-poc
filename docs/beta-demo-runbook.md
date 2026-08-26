@@ -39,10 +39,6 @@ curl -s -o /dev/null -w '%{http_code}\n' http://localhost:8080/nuxeo/runningstat
 ### 0.2 The app
 
 ```bash
-npx nx serve nuxeo-ui --configuration=development --port=4200
-```
-
-```bash
 curl -s -o /dev/null -w '4200: %{http_code}\n' http://localhost:4200                      # → 200
 curl -s -o /dev/null -w 'proxy: %{http_code}\n' -u Administrator:Administrator \
   http://localhost:4200/nuxeo/api/v1/path/default-domain                                  # → 200
@@ -183,7 +179,7 @@ single document in the View tab."_ This one detail is the difference between you
 and an empty panel.
 
 The wrapping rule — _adf-hx types never appear in our public API_ — is **enforced, not just
-documented**: `scripts/review-guardrails.mjs` fails the build if an `@alfresco/adf-hx-*` import is
+documented**: `scripts/review-guardrails.mjs` fails the build if an `@alfresco/adf-hx-`* import is
 reachable from a library's public barrel. `@alfresco/adf-extensions` is a deliberate exception and
 is a declared peer dependency, so customers do install that one.
 
@@ -235,7 +231,7 @@ real decision with a stated failure mode, not a diagram.
 |                           |                                                                                                                                                                                                              |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Customer depends on       | `@nuxeo-satori/platform` + peers: Angular 20.3, Material/CDK 20.2, `@alfresco/adf-extensions ^9`, `@hylandsoftware/satori-ui ^0.2`, `rxjs ^7.8`                                                              |
-| Customer **cannot** reach | `libs/shared/adf-hx-bridge` is **internal** — not published, no build target, absent from the package. All twelve API ports, the Nuxeo↔Hx mappers and all fourteen of our `hxp-*` components are unreachable |
+| Customer **cannot** reach | `libs/shared/adf-hx-bridge` is **internal** — not published, no build target, absent from the package. All twelve API ports, the Nuxeo↔Hx mappers and all fourteen of our `hxp-`* components are unreachable |
 
 **The line for leadership:** adf-hx is an implementation detail of the product, not part of the
 customer contract. Customers get the Layer 0/1/2 extensibility surface and are insulated from
@@ -312,7 +308,7 @@ Edit `nuxeo-agentic-ui-package/src/main/config/bootstrap.json`:
 Hard-reload, open `/#/settings/themes`. The audience sees the **browser tab title** change, a
 fifth theme card "Acme Brand", and the purple accent applied.
 
-**Demo `documentTitle`, not `applicationTitle`** — see F2. And say "product name and colour",
+**Demo** `documentTitle`**, not** `applicationTitle` — see F2. And say "product name and colour",
 never "logo" — see F1.
 
 The strongest version of this beat: point out that the JavaScript bundle is byte-identical before
@@ -369,10 +365,112 @@ at index 3, directly between `app.navbar.browse` and `app.navbar.recentlyViewed`
 > and a new entry shows only as an icon — measured: every item's `innerText` is empty while
 > `textContent` reads correctly. Expand or hover so the audience can read "Contracts".
 
-**Then type `/#/browse-adf-hx` in the address bar. The page still loads.** Do this deliberately.
+**Then type** `/#/browse-adf-hx` **in the address bar. The page still loads.** Do this deliberately.
 It is your honest answer to _"so I can hide admin actions from users?"_ — **no.** Hiding is
 presentation; Nuxeo's server-side ACLs are authorisation. Volunteering this earns more trust than
 being caught by it.
+
+### Beat 5a — Custom page for a nav entry (5 min, optional)
+
+**This beat shows creating a custom page with widgets for the Contracts entry.** Skip this if time is
+tight; Beats 5-7 already demonstrate the extensibility story.
+
+**1. Create the component:**
+
+```bash
+cat > apps/nuxeo-ui/src/app/features/contracts/contracts-page.component.ts <<'TS'
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-contracts-page',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <div style="padding: 2rem;">
+      <h1>Contracts Dashboard</h1>
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;">
+        <div style="padding: 1.5rem; border: 1px solid #ddd; border-radius: 8px;">
+          <h3>Active Contracts</h3>
+          <p style="font-size: 2rem; margin: 1rem 0;">24</p>
+          <p style="color: #666;">Updated 2 hours ago</p>
+        </div>
+        <div style="padding: 1.5rem; border: 1px solid #ddd; border-radius: 8px;">
+          <h3>Expiring Soon</h3>
+          <p style="font-size: 2rem; margin: 1rem 0; color: #f57c00;">3</p>
+          <p style="color: #666;">Next 30 days</p>
+        </div>
+        <div style="padding: 1.5rem; border: 1px solid #ddd; border-radius: 8px;">
+          <h3>Total Value</h3>
+          <p style="font-size: 2rem; margin: 1rem 0;">$2.4M</p>
+          <p style="color: #666;">Current quarter</p>
+        </div>
+      </div>
+      <div style="margin-top: 2rem; padding: 1.5rem; border: 1px solid #ddd; border-radius: 8px;">
+        <h3>Recent Activity</h3>
+        <ul>
+          <li style="padding: 0.5rem 0;">Contract ABC-123 renewed - 2 days ago</li>
+          <li style="padding: 0.5rem 0;">Contract XYZ-789 pending review - 3 days ago</li>
+          <li style="padding: 0.5rem 0;">Contract DEF-456 signed - 1 week ago</li>
+        </ul>
+      </div>
+    </div>
+  `
+})
+export class ContractsPageComponent {}
+TS
+```
+
+**2. Add the route** in `apps/nuxeo-ui/src/app/app.routes.ts`:
+
+```typescript
+// Add this import at the top
+import { ContractsPageComponent } from './features/contracts/contracts-page.component';
+
+// Add this route in the routes array (after the browse routes)
+{
+  path: 'contracts',
+  component: ContractsPageComponent,
+  canActivate: [authGuard]
+},
+```
+
+**3. Update the manifest** to point to the custom route:
+
+```json
+{
+  "version": 1,
+  "extensions": {
+    "$name": "acme-demo",
+    "overrides": { "app.navbar.browseAdfHx": { "visible": false } },
+    "slots": {
+      "navbar": [
+        {
+          "id": "acme.navbar.contracts",
+          "label": "Contracts",
+          "path": "/contracts",
+          "icon": "folder",
+          "order": 35
+        }
+      ]
+    }
+  }
+}
+```
+
+Apply: `./apply-manifest.sh /tmp/beat5a.json`, hard-reload, click **Contracts** in the nav.
+
+**The audience sees** a custom dashboard with stat tiles (Active: 24, Expiring: 3, Total: $2.4M) and
+recent activity. This demonstrates that **manifest-driven nav entries can point to custom code**
+without forking — the component is added to the product app, and the manifest wires it up.
+
+**Clean up after the beat** (if you showed it):
+
+```bash
+rm apps/nuxeo-ui/src/app/features/contracts/contracts-page.component.ts
+# Revert the route addition in app.routes.ts
+git checkout -- apps/nuxeo-ui/src/app/app.routes.ts
+```
 
 ### Beat 6 — Columns (3 min)
 
@@ -468,7 +566,7 @@ the upgraded package no longer has: toolbar."_
 Run the failing form **second**. The tool prints its own justification: a pass means nothing until
 you have watched it fail.
 
-### Beat 9 — A customer's own code (6 min) — **on `:4310`**
+### Beat 9 — A customer's own code (6 min) — **on** `:4310`
 
 1. `http://localhost:4310/` signed out — sidebar reads **"Acme Insurance"**, and only
    **"Diagnostics"** is in the nav. The other four entries are rule-gated **fail-closed**, so they
@@ -517,7 +615,7 @@ internal one the same graph edge. This script is what actually enforces it.
 
 `apps/nuxeo-satori-template` is a complete working Nuxeo UI — browse, document detail, search,
 sign-in, theming, diagnostics — in **1,401 lines of TypeScript** plus ~1,000 of template/style,
-built **only** on published entry points. Zero imports from `libs/shared/*`, `libs/features/*` or
+built **only** on published entry points. Zero imports from `libs/shared/`*, `libs/features/*` or
 the product app. It ships no Angular Material at all. Production build: 402 kB initial.
 
 ```bash
@@ -584,22 +682,22 @@ properties panel renders instead.
 
 ## Part 6 — Do NOT demo these
 
-| #       | What                                                                                 | Why                                                                                                                                                                                                                                                                                                              |
-| ------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **F0**  | **The customer extension on `:4200`**                                                | `nuxeo-ui` never registers `acme.*`. No manifest can add it — Layer 1 only addresses IDs that code registered. Layer 2 lives on `:4310`.                                                                                                                                                                         |
-| **F1**  | **A logo change**                                                                    | `AppBrandingConfig` has only `applicationTitle` and `documentTitle`. No logo, favicon or image key exists. Not achievable at Layer 0 or 1.                                                                                                                                                                       |
-| **F2**  | **`applicationTitle` in the header**                                                 | The route label wins. With the brand set, `/#/browse` still reads "Browse". It only surfaces on a route no nav entry matches. Demo `documentTitle` — the browser tab — which changes everywhere.                                                                                                                 |
-| **F3**  | **Branding via the Nuxeo document**                                                  | Two separate stores. Branding is the `bootstrap.json` file.                                                                                                                                                                                                                                                      |
-| **F4**  | **`overrides` with `hiddenByDefault` / `sortable` / `field`**                        | Silently dropped; `overrides` honours only `order`, `label`, `rule`, `visible`. Use `slots.documentList`. The doc example was wrong and is now fixed.                                                                                                                                                            |
-| **F5**  | **`labels` to rename nav entries**                                                   | Nav labels are literal strings on descriptors. Use `overrides.<id>.label`.                                                                                                                                                                                                                                       |
-| **F6**  | **`toolbar`, `contextMenu`, `tabs`, `routes` slots**                                 | Reserved and inert. Verified in-browser with marker labels: nothing renders, and `/#/zzz-marker` creates no route.                                                                                                                                                                                               |
-| **F7**  | **`app.rules.canWriteSelection` / `canRemoveSelection`**                             | Still inert, always `false`, so they hide whatever you gate on them.                                                                                                                                                                                                                                             |
-| **F8**  | **`npm run beta:evidence -- showcase-adf-hx` live**                                  | It **fails** (21/22). Three of ten screenshots are byte-identical duplicates, and steps 8-10 photograph the repository root, so panels captioned "reads real Nuxeo ACLs" show "no local permissions" and "No audit entries found." Use only `02-agentic-ui-production-browse.png` + `03-adf-hx-browse-list.png`. |
-| **F9**  | **`/#/search-adf-hx` with an empty box**                                             | Shows repository plumbing: personal workspaces, `My Favorites`, rows titled `1783067622304`. Type a term first. Use `test 01` (5 results), **not** `Domain` (104 of 137 — looks broken). It also has **no nav entry**; bookmark the URL.                                                                         |
-| **F10** | **`acme.panel.policySummary`, `acme.actions.exportClaim`, `acme.rules.isLegalTeam`** | Registered but never placed. Nothing renders them.                                                                                                                                                                                                                                                               |
-| **F11** | **A statically served production build past sign-in**                                | Stock Docker Nuxeo sends no CORS headers, so a static bundle cannot authenticate. Use `nx serve`. The rebrand _is_ demoable statically, because brand and tab title render pre-sign-in.                                                                                                                          |
-| **F12** | **Layer 1 on the template app**                                                      | `/default-domain/config/satori-template` exists but its `note:note` is **empty** — deliberately, so the "before" state is honest. `manifest.example.json` will not be visible unless someone pastes it in first. There is no one-command way.                                                                    |
-| **F13** | **"The marketplace package builds"**                                                 | Unverified. Nobody ran Maven.                                                                                                                                                                                                                                                                                    |
+| #       | What                                                                                     | Why                                                                                                                                                                                                                                                                                                              |
+| ------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **F0**  | **The customer extension on** `:4200`                                                    | `nuxeo-ui` never registers `acme.`*. No manifest can add it — Layer 1 only addresses IDs that code registered. Layer 2 lives on `:4310`.                                                                                                                                                                         |
+| **F1**  | **A logo change**                                                                        | `AppBrandingConfig` has only `applicationTitle` and `documentTitle`. No logo, favicon or image key exists. Not achievable at Layer 0 or 1.                                                                                                                                                                       |
+| **F2**  | `applicationTitle` **in the header**                                                     | The route label wins. With the brand set, `/#/browse` still reads "Browse". It only surfaces on a route no nav entry matches. Demo `documentTitle` — the browser tab — which changes everywhere.                                                                                                                 |
+| **F3**  | **Branding via the Nuxeo document**                                                      | Two separate stores. Branding is the `bootstrap.json` file.                                                                                                                                                                                                                                                      |
+| **F4**  | `overrides` **with** `hiddenByDefault` **/** `sortable` **/** `field`                    | Silently dropped; `overrides` honours only `order`, `label`, `rule`, `visible`. Use `slots.documentList`. The doc example was wrong and is now fixed.                                                                                                                                                            |
+| **F5**  | `labels` **to rename nav entries**                                                       | Nav labels are literal strings on descriptors. Use `overrides.<id>.label`.                                                                                                                                                                                                                                       |
+| **F6**  | `toolbar`**,** `contextMenu`**,** `tabs`**,** `routes` **slots**                         | Reserved and inert. Verified in-browser with marker labels: nothing renders, and `/#/zzz-marker` creates no route.                                                                                                                                                                                               |
+| **F7**  | `app.rules.canWriteSelection` **/** `canRemoveSelection`                                 | Still inert, always `false`, so they hide whatever you gate on them.                                                                                                                                                                                                                                             |
+| **F8**  | `npm run beta:evidence -- showcase-adf-hx` **live**                                      | It **fails** (21/22). Three of ten screenshots are byte-identical duplicates, and steps 8-10 photograph the repository root, so panels captioned "reads real Nuxeo ACLs" show "no local permissions" and "No audit entries found." Use only `02-agentic-ui-production-browse.png` + `03-adf-hx-browse-list.png`. |
+| **F9**  | `/#/search-adf-hx` **with an empty box**                                                 | Shows repository plumbing: personal workspaces, `My Favorites`, rows titled `1783067622304`. Type a term first. Use `test 01` (5 results), **not** `Domain` (104 of 137 — looks broken). It also has **no nav entry**; bookmark the URL.                                                                         |
+| **F10** | `acme.panel.policySummary`**,** `acme.actions.exportClaim`**,** `acme.rules.isLegalTeam` | Registered but never placed. Nothing renders them.                                                                                                                                                                                                                                                               |
+| **F11** | **A statically served production build past sign-in**                                    | Stock Docker Nuxeo sends no CORS headers, so a static bundle cannot authenticate. Use `nx serve`. The rebrand _is_ demoable statically, because brand and tab title render pre-sign-in.                                                                                                                          |
+| **F12** | **Layer 1 on the template app**                                                          | `/default-domain/config/satori-template` exists but its `note:note` is **empty** — deliberately, so the "before" state is honest. `manifest.example.json` will not be visible unless someone pastes it in first. There is no one-command way.                                                                    |
+| **F13** | **"The marketplace package builds"**                                                     | Unverified. Nobody ran Maven.                                                                                                                                                                                                                                                                                    |
 
 ### Cosmetic things a sharp audience will notice
 

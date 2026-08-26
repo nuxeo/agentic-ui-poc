@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { adminGuard } from './auth/admin.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
+import { ContractsPageComponent } from './features/contracts/contracts-page.component';
 
 const placeholder = () =>
   import('./placeholder-page.component').then((m) => m.PlaceholderPageComponent);
@@ -36,6 +37,11 @@ export const routes: Routes = [
       {
         path: 'browse',
         loadChildren: () => import('@agentic-ui/feature-browse').then((m) => m.browseRoutes),
+      },
+      {
+        path: 'contracts',
+        component: ContractsPageComponent,
+        canActivate: [authGuard],
       },
       {
         path: 'recently-viewed',
