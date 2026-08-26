@@ -66,6 +66,13 @@ const NAV_ITEMS: readonly NavItemDescriptor[] = [
     rule: 'template.rules.isSignedIn',
   },
   {
+    id: 'template.navbar.components',
+    label: 'UI Components',
+    path: '/components',
+    icon: 'widgets',
+    order: 25,
+  },
+  {
     id: 'template.navbar.home',
     label: 'Diagnostics',
     path: '/home',

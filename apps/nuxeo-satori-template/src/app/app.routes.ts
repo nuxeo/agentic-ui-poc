@@ -39,6 +39,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/home/home').then((m) => m.HomeComponent),
   },
   {
+    path: 'components',
+    loadComponent: () =>
+      import('./pages/components/components').then((m) => m.ComponentsShowcaseComponent),
+  },
+  {
     path: 'reports',
     loadComponent: () =>
       import('./pages/reports/reports-panel').then((m) => m.ReportsPanelComponent),
