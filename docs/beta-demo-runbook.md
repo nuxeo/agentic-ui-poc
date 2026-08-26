@@ -639,6 +639,109 @@ not one"** and hands you the route, because a nav entry alone would fall through
 
 **Be honest if asked:** the three contribution generators write registrations but **no specs**.
 
+### Beat 13 — AI-Assisted Development (8 min, optional)
+
+**Purpose:** Show customers they can clone the repo and use AI agents (Claude, GitHub Copilot, etc.)
+to build features immediately, leveraging `@nuxeo-satori/platform` components and the extension system.
+
+**What to demonstrate:** An AI agent can read the codebase, understand the architecture, and build
+complete features using the platform APIs and UI components. This is not theoretical — the showcase
+pages you've seen were built with AI assistance.
+
+#### Example Prompt 1: Build a Dashboard Widget (5 min)
+
+Clone a fresh copy and give this prompt to an AI coding agent:
+
+> "Create a new dashboard page in `apps/nuxeo-satori-template` at `/dashboard` that shows:
+>
+> - A 3-column grid using `WidgetGridComponent` from `@nuxeo-satori/platform/ui`
+> - Three stat tiles: Active Documents (fetch count via `DocumentService`), Recent Uploads (last 7 days), Storage Used
+> - A Recent Activity section using `WidgetContainerComponent`
+> - Add it to the navbar with order 15
+>
+> Follow the existing patterns in the template app. Use the same imports and styling approach."
+
+**Expected outcome:**
+
+- Agent reads `apps/nuxeo-satori-template/src/app/pages/` for patterns
+- Creates `dashboard/dashboard.ts`, `.html`, `.scss` following template conventions
+- Imports from `@nuxeo-satori/platform/ui` and `@nuxeo-satori/platform/nuxeo-client`
+- Adds route to `app.routes.ts`
+- Adds nav entry to `extensions/template-extensions.ts`
+- Working page in 2-3 minutes
+
+**Why this works:** The codebase has clear patterns, documented APIs in `AGENTS.md`, and the
+platform package exports are well-typed. The AI can see how `components.ts` uses the widgets
+and replicate the pattern.
+
+#### Example Prompt 2: Add a Custom Action (3 min)
+
+> "Add a custom bulk action to the template app called 'Export to CSV'. It should:
+>
+> - Be registered in `template-extensions.ts` as `template.actions.exportCsv`
+> - Show a toast notification with the count of selected items
+> - Be available in the `browse-toolbar-actions` slot
+> - Follow the same pattern as the existing `template.actions.exportSummary` action"
+
+**Expected outcome:**
+
+- Agent finds the existing action in `template-extensions.ts`
+- Adds the new action with proper signature: `execute: (context) => { ... }`
+- Uses the selection count from context
+- Follows the template's code style and conventions
+
+#### Example Prompt 3: Fetch Real Data (Optional, if time)
+
+> "Update the dashboard stat tiles to show real data:
+>
+> - Active Documents: Use `SearchService.search()` to get total count
+> - Recent Uploads: Search with `dc:created` filter for last 7 days
+> - Storage Used: Sum `file:content.length` from search results
+>
+> Handle loading states and errors properly."
+
+**Expected outcome:**
+
+- Agent reads `SearchService` from `@nuxeo-satori/platform/nuxeo-client`
+- Sees the existing `search/search.ts` page for patterns
+- Implements signal-based state management
+- Adds `toSignal()` and RxJS operators correctly
+
+#### Key Message for Customers
+
+"You don't need to learn every API before starting. Clone the repo, point an AI agent at it,
+describe what you want in plain English, and the agent will:
+
+1. **Read the architecture** — `AGENTS.md`, `ARCHITECTURE.md`, the component showcase
+2. **Follow existing patterns** — it sees how we use signals, services, and widgets
+3. **Use the right imports** — `@nuxeo-satori/platform/*` entry points are discoverable
+4. **Generate working code** — not pseudocode, actual components that compile and run
+
+The platform is designed for this workflow: clear conventions, typed APIs, documented extension
+points, and plenty of working examples to learn from."
+
+#### What to Show on Screen
+
+1. Open the template app's `components.ts` page — "This was built with AI assistance"
+2. Show the import statements: `from '@nuxeo-satori/platform/ui'`
+3. Open `AGENTS.md` — "The AI reads this to understand the architecture"
+4. Show a split screen: AI prompt on left, generated code on right
+5. Run the generated feature: `npx nx serve nuxeo-satori-template --port 4310`
+
+#### Talking Points
+
+- **"The codebase is the documentation."** Every page in the template is a working example.
+- **"AI knows the patterns."** It reads how we use signals, services, and Material components.
+- **"Iteration is fast."** Ask for changes, the agent updates the code, HMR reloads, you see it.
+- **"No framework lock-in."** The AI uses standard Angular patterns — signals, standalone components, inject().
+
+#### Caveats to Mention
+
+- **AI output needs review** — always check what it generates, especially security-sensitive code
+- **Tests aren't automatic** — the generators don't write specs; you'll want to add them
+- **Nuxeo API knowledge helps** — the AI can't invent document types or workflow states
+- **The first prompt matters** — be specific about which patterns to follow and where to look
+
 ---
 
 ## Part 5 — Questions you will be asked
