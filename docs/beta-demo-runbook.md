@@ -613,6 +613,9 @@ internal one the same graph edge. This script is what actually enforces it.
 
 ### Beat 11 — From scratch (4 min)
 
+> **Detailed walkthrough:** See `docs/demo-beat-11-12-walkthrough.md` for a complete
+> step-by-step demo script with talking points, live coding examples, and Q&A.
+
 `apps/nuxeo-satori-template` is a complete working Nuxeo UI — browse, document detail, search,
 sign-in, theming, diagnostics — in **1,401 lines of TypeScript** plus ~1,000 of template/style,
 built **only** on published entry points. Zero imports from `libs/shared/`*, `libs/features/*` or
