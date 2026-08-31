@@ -10,6 +10,7 @@ import { CURRENT_USERNAME, ADMIN_ACCESS_CHECKS } from '@nuxeo-satori/platform/nu
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
 import { provideAppConfig } from './config/provide-app-config';
+import { provideManifestRefresh } from './config/provide-manifest-refresh';
 import { provideAppExtensions } from './extensions/provide-app-extensions';
 import { provideAdfHxNuxeoBridge } from '@agentic-ui/shared/adf-hx-bridge/providers';
 import {
@@ -34,6 +35,9 @@ export const appConfig: ApplicationConfig = {
     // Layer 1: registers the application's slot, rule and component IDs. Must
     // follow `provideAppConfig()`, which loads the manifest they are merged with.
     ...provideAppExtensions(),
+    // The manifest document needs a session, which does not exist during
+    // `provideAppConfig()`'s initializer. Re-fetch it once the user signs in.
+    ...provideManifestRefresh(),
     // The adf-hx API ports belong in the **root** injector, because that is what upstream
     // is built for: eleven of its services are `providedIn: 'root'` and resolve the port
     // tokens from the root injector — `SingleItemCopyService`, `SingleItemMoveService`,

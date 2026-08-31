@@ -603,6 +603,12 @@ export class NavDrawerComponent {
   // ── Browse tree ──
 
   private loadRootTree(): void {
+    // The effect that calls this can fire again before the request settles, and a second
+    // load would race the first for `rootNodes`.
+    if (this.rootLoading()) {
+      return;
+    }
+
     const loadGen = ++this.browseTreeLoadGen;
     const username = this.authService.username();
     this.rootLoading.set(true);
@@ -637,7 +643,11 @@ export class NavDrawerComponent {
           this.pendingBrowseSyncPath = null;
           this.syncBrowseTreeToPath(syncPath);
         },
-        error: () => {
+        error: (error) => {
+          // The only signal this failed: the handler clears the spinner and leaves an empty
+          // tree, which is indistinguishable from a user with no accessible folders.
+          console.error('Failed to load the browse navigation tree', error);
+
           if (loadGen !== this.browseTreeLoadGen || username !== this.authService.username()) {
             return;
           }

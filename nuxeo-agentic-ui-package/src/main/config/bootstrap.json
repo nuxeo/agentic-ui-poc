@@ -1,6 +1,6 @@
 {
   "$schema": "Layer 0 bootstrap configuration. Every key is optional; anything omitted falls back to the value compiled into the application, so an untouched file behaves exactly like no file at all.",
-  "$upgrade": "This file is installed with overwrite=\"false\" into nxserver/web/nuxeo.war/agentic-ui-config, which is outside the directory the installer replaces. Edits made here survive a marketplace package upgrade. Do not move it into the agentic-ui bundle directory.",
+  "$upgrade": "This file is installed with overwrite=\"false\" into nxserver/nuxeo.war/agentic-ui-config, a sibling of the nxserver/web tree the installer replaces. Edits made here survive a marketplace package upgrade. Do not move it into nxserver/web or into the agentic-ui bundle directory, both of which are overwritten.",
 
   "$nuxeoApiOrigin": "Origin for Nuxeo REST calls. Leave empty for same-origin deployments.",
   "nuxeoApiOrigin": "",
