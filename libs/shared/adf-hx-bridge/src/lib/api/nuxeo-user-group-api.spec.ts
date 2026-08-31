@@ -89,6 +89,52 @@ describe('NuxeoUserApi', () => {
       .flush({}, { status: 500, statusText: 'Server Error' });
     await expect(pending).rejects.toBeDefined();
   });
+
+  it('refuses an empty user id before issuing a request', async () => {
+    // Without the guard the URL becomes `/user/`, which Nuxeo answers with the directory
+    // listing — a different and far more expensive call than the caller made.
+    await expect(api.getUserById('')).rejects.toThrow('getUserById requires a user id');
+    httpMock.expectNone(() => true);
+  });
+
+  it('propagates a 404 for a user that does not exist', async () => {
+    const pending = api.getUserById('ghost');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/user/ghost'))
+      .flush('No such user', { status: 404, statusText: 'Not Found' });
+    await expect(pending).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('maps every hit in a search, applying the same name fallbacks', async () => {
+    const pending = api.searchUsersByName('a');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/user/search'))
+      .flush({
+        'entity-type': 'users',
+        entries: [
+          {
+            'entity-type': 'user',
+            id: 'jdoe',
+            properties: { username: 'jdoe', firstName: 'Jane', lastName: 'Doe' },
+          },
+          { 'entity-type': 'user', id: 'bare', properties: {} },
+        ],
+      });
+
+    const { data } = await pending;
+    expect(data).toHaveLength(2);
+    expect(data[0]).toMatchObject({ id: 'jdoe', firstName: 'Jane', lastName: 'Doe' });
+    // No `properties.username` at all, so the id is the only name available.
+    expect(data[1]).toMatchObject({ id: 'bare', username: 'bare', firstName: 'bare' });
+  });
+
+  it('returns an empty list for a search that matched nothing', async () => {
+    const pending = api.searchUsersByName('zzz');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/user/search'))
+      .flush({ 'entity-type': 'users', entries: [] });
+    expect((await pending).data).toEqual([]);
+  });
 });
 
 describe('NuxeoGroupApi', () => {
@@ -124,5 +170,45 @@ describe('NuxeoGroupApi', () => {
       .flush({ 'entity-type': 'group', groupname: 'raw', grouplabel: '' });
 
     expect((await pending).data.name).toBe('raw');
+  });
+
+  it('refuses an empty group id and an empty search term before requesting', async () => {
+    await expect(api.getGroupById('')).rejects.toThrow('getGroupById requires a group id');
+    await expect(api.searchGroups('')).rejects.toThrow('searchGroups requires a search term');
+    httpMock.expectNone(() => true);
+  });
+
+  it('propagates a 404 for a group that does not exist', async () => {
+    const pending = api.getGroupById('ghosts');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/group/ghosts'))
+      .flush('No such group', { status: 404, statusText: 'Not Found' });
+    await expect(pending).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('maps every hit in a group search with the same label fallback', async () => {
+    const pending = api.searchGroups('admin');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/group/search'))
+      .flush({
+        'entity-type': 'groups',
+        entries: [
+          { 'entity-type': 'group', groupname: 'administrators', grouplabel: 'Administrators' },
+          { 'entity-type': 'group', groupname: 'unlabelled', grouplabel: '' },
+        ],
+      });
+
+    expect((await pending).data).toEqual([
+      { id: 'administrators', name: 'Administrators' },
+      { id: 'unlabelled', name: 'unlabelled' },
+    ]);
+  });
+
+  it('surfaces a group search failure rather than resolving with an empty list', async () => {
+    const pending = api.searchGroups('admin');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/group/search'))
+      .flush({}, { status: 503, statusText: 'Service Unavailable' });
+    await expect(pending).rejects.toMatchObject({ status: 503 });
   });
 });

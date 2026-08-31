@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { RedirectCommand, Router, type UrlTree, provideRouter } from '@angular/router';
+import { isObservable } from 'rxjs';
 import { describe, expect, it, afterEach } from 'vitest';
 
 import { ADMIN_ACCESS_CHECKS, type AdminAccessChecks } from './admin-access.token';
@@ -12,11 +13,23 @@ import {
 function runGuard(
   guard: typeof administrationAccessGuard,
   checks: AdminAccessChecks,
-): boolean | import('@angular/router').UrlTree {
+): boolean | UrlTree {
   TestBed.configureTestingModule({
     providers: [provideRouter([]), { provide: ADMIN_ACCESS_CHECKS, useValue: checks }],
   });
-  return TestBed.runInInjectionContext(() => guard({} as never, {} as never));
+  const result = TestBed.runInInjectionContext(() => guard({} as never, {} as never));
+
+  // Angular's `CanActivateFn` returns `MaybeAsync<GuardResult>`, which now also admits a
+  // `RedirectCommand` and an async result. These three guards are synchronous, so the
+  // helper narrows rather than casting — a guard that became async would fail here
+  // instead of being silently unwrapped into a truthy object.
+  if (result instanceof Promise || isObservable(result)) {
+    throw new Error('These guards are synchronous; the helper cannot unwrap an async result.');
+  }
+  if (result instanceof RedirectCommand) {
+    throw new Error('These guards return a UrlTree, not a RedirectCommand.');
+  }
+  return result;
 }
 
 describe('administrationAccessGuard', () => {

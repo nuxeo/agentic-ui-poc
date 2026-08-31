@@ -78,7 +78,11 @@ const NUXEO_SORT_FIELD: Readonly<Record<string, string>> = {
 function toNuxeoSort(sort: readonly string[]): { sortBy: string; sortOrder: 'ASC' | 'DESC' }[] {
   return sort.map((entry) => {
     const [key, direction = 'asc'] = entry.trim().split(/\s+/);
-    const sortBy = NUXEO_SORT_FIELD[key];
+    // `Object.hasOwn`, because a bare index read resolves through the prototype chain: a key
+    // of `constructor` produced a truthy `Function`, sailed past the refusal below and was
+    // sent to Nuxeo as a `sortBy`. Nuxeo answers an unusable `sortBy` with HTTP 200 and zero
+    // entries, which is the exact empty-folder failure this refusal exists to prevent.
+    const sortBy = Object.hasOwn(NUXEO_SORT_FIELD, key) ? NUXEO_SORT_FIELD[key] : undefined;
     if (!sortBy) {
       throw new Error(
         `Cannot sort by "${key}": no Nuxeo property corresponds to it. Nuxeo answers an ` +

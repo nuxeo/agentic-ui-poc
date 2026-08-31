@@ -199,7 +199,14 @@ export function directoryEntryDisplayLabel(
  * absoluteLabel → displayLabel → formatted id for i18n keys).
  */
 export function directoryPickerLabel(
-  entry: Pick<DirectoryEntry, 'id' | 'label' | 'displayLabel'> & { absoluteLabel?: string },
+  // `label` is optional because a `SuggestEntries` payload omits it, which the body has
+  // always tolerated via `entry.label?.trim()`. Requiring it here made the signature
+  // stricter than both the implementation and the server, and rejected a legitimate
+  // caller; no gate typechecked the spec that proved it.
+  entry: Pick<DirectoryEntry, 'id' | 'displayLabel'> & {
+    label?: string;
+    absoluteLabel?: string;
+  },
 ): string {
   const absolute = entry.absoluteLabel?.trim();
   if (absolute && !isDirectoryI18nKey(absolute)) return absolute;

@@ -216,6 +216,147 @@ describe('NuxeoQueryApi', () => {
         } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
       ).rejects.toThrow('direction must be asc or desc');
     });
+
+    it('refuses a sort key inherited from Object.prototype', async () => {
+      // Regression: `NUXEO_SORT_FIELD[key]` resolved through the prototype chain, so
+      // `constructor` produced a truthy `Function`, escaped this refusal entirely and was
+      // sent to Nuxeo as a `sortBy` — which answers HTTP 200 with zero entries, rendering
+      // an empty folder. The absence of any HTTP request is half the assertion.
+      await expect(
+        api.getDocumentsByNamedQuery({
+          queryName: 'advanced_document_content',
+          parameters: { parentId: 'ws-1' },
+          sort: ['constructor asc'],
+        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
+      ).rejects.toThrow('Cannot sort by "constructor"');
+      httpMock.expectNone(() => true);
+    });
+
+    it('defaults an omitted sort direction to ascending', async () => {
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        limit: 50,
+        sort: ['sys_title'],
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+      await flushParentLookup();
+
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      expect(children.request.params.get('sortOrder')).toBe('ASC');
+      children.flush({ entries: [], resultsCount: -2 });
+      await pending;
+    });
+
+    it('resolves a parent given as a path without an extra id lookup', async () => {
+      // `resolvePath` short-circuits on a leading slash. Without that, every folder fetch
+      // would spend a round trip re-reading a document whose path it already had — so the
+      // absence of any `/id/` request is the assertion.
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: '/default-domain/workspaces/ws' },
+        limit: 25,
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+      await tick();
+
+      httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/id/'));
+      httpMock
+        .expectOne((r) => r.url.includes('/nuxeo/api/v1/path/default-domain/workspaces/ws'))
+        .flush(workspace);
+      await tick();
+
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      children.flush({ entries: [], resultsCount: -2 });
+      await pending;
+    });
+
+    it('answers an unrecognised named query with an empty page rather than throwing', async () => {
+      // Upstream calls named queries this binding does not implement. An empty page keeps
+      // the component rendering; the `limit`/`offset` echo is what lets its pager behave.
+      const result = (
+        await api.getDocumentsByNamedQuery({
+          queryName: 'some_unimplemented_query',
+          limit: 30,
+          offset: 60,
+        })
+      ).data;
+      expect(result.documents).toEqual([]);
+      expect(result.totalCount).toBe(0);
+      expect(result.count).toBe(0);
+      expect(result.limit).toBe(30);
+      expect(result.offset).toBe(60);
+    });
+
+    it('serves tree_children for a non-root parent through the tree page provider', async () => {
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'tree_children',
+        parameters: { parentId: 'ws-1' },
+        limit: 50,
+      });
+
+      httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/id/ws-1')).flush(workspace);
+      await tick();
+
+      const tree = httpMock.expectOne((r) => r.url.includes('/search/pp/tree_children/execute'));
+      tree.flush({
+        entries: [
+          {
+            uid: 'child-1',
+            title: 'Child',
+            type: 'Folder',
+            path: '/default-domain/workspaces/ws/child',
+            lastModified: '2026-02-01T00:00:00.000Z',
+            properties: {},
+          },
+        ],
+        totalSize: 1,
+      });
+
+      const result = (await pending).data;
+      expect(result.documents?.map((d) => d.sys_title)).toEqual(['Child']);
+      expect(result.totalCount).toBe(1);
+    });
+
+    it('serves advanced_document_content at the root from the nav bootstrap, not @children', async () => {
+      // The synthetic root has no Nuxeo path to list, so the main listing at `/` has to come
+      // from the same bootstrap the tree uses. Asserting no `/@children` request is what
+      // distinguishes the two paths.
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: ROOT_DOCUMENT.sys_id },
+        limit: 50,
+      });
+
+      httpMock
+        .expectOne((r) => r.url.includes('/nuxeo/api/v1/path/'))
+        .flush({
+          uid: 'root-uid',
+          title: 'Root',
+          type: 'Root',
+          path: '/',
+          lastModified: '2026-01-01T00:00:00.000Z',
+          properties: {},
+        });
+      httpMock
+        .expectOne((r) => r.url.includes('/search/pp/tree_children/execute'))
+        .flush({
+          entries: [
+            {
+              uid: 'domain-1',
+              title: 'Default Domain',
+              type: 'Domain',
+              path: '/default-domain',
+              lastModified: '2026-01-01T00:00:00.000Z',
+              properties: {},
+            },
+          ],
+          totalSize: 1,
+        });
+
+      const result = (await pending).data;
+      expect(result.documents?.map((d) => d.sys_title)).toEqual(['Default Domain']);
+      expect(result.totalCount).toBe(1);
+      httpMock.expectNone((r) => r.url.includes('/@children'));
+    });
   });
 
   /**

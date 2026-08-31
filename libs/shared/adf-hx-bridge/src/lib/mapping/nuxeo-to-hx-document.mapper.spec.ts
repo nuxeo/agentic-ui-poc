@@ -266,6 +266,20 @@ describe('nuxeo-to-hx-document.mapper', () => {
       ).toBeUndefined();
     });
 
+    it('contains only strings when Nuxeo names a permission that shadows an Object key', () => {
+      // Regression: `HX_PERMISSION_FROM_NUXEO[permission]` resolved through the prototype
+      // chain, so a granted permission named `constructor` was truthy and put a **function**
+      // into `sys_effectivePermissions`, an array declared `string[]`. Permission names come
+      // from server configuration, so the set is not ours to bound.
+      const hx = mapNuxeoDocumentToHx(
+        withPermissions(['Read', 'constructor', 'toString', 'hasOwnProperty']),
+      );
+      expect(hx.sys_effectivePermissions).toEqual(['Read']);
+      for (const granted of hx.sys_effectivePermissions ?? []) {
+        expect(typeof granted).toBe('string');
+      }
+    });
+
     it('states what the synthetic root supports rather than borrowing a document default', () => {
       // Not a Nuxeo document, so no enricher can describe it. It can be listed and it contains
       // domains; nothing more is claimed.

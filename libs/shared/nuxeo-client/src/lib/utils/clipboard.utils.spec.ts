@@ -14,6 +14,7 @@ function folderWithSubtypes(types: string[]): NuxeoDocument {
     title: 'Folder',
     type: 'Folder',
     path: '/default-domain/workspaces/folder',
+    lastModified: '2026-01-01T00:00:00.000Z',
     properties: {},
     contextParameters: {
       subtypes: types.map((type) => ({ type })),
@@ -53,6 +54,7 @@ describe('canPasteClipboard', () => {
       title: 'File',
       type: 'File',
       path: '/file',
+      lastModified: '2026-01-01T00:00:00.000Z',
       properties: {},
     };
     expect(canPasteClipboard(items, file)).toBe(false);
@@ -64,6 +66,7 @@ describe('canPasteClipboard', () => {
       title: 'Folder',
       type: 'Folder',
       path: '/folder',
+      lastModified: '2026-01-01T00:00:00.000Z',
       properties: {},
     };
     expect(canPasteClipboard(items, folder)).toBe(true);

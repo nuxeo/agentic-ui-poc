@@ -120,7 +120,7 @@ describe('BrowseService', () => {
     const nxqlReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes('FROM Domain'),
+        r.params.get('query')?.includes('FROM Domain') === true,
     );
     expect(nxqlReq.request.params.get('pageSize')).toBe('50');
     nxqlReq.flush({
@@ -156,7 +156,7 @@ describe('BrowseService', () => {
     const nxqlReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes('FROM Domain'),
+        r.params.get('query')?.includes('FROM Domain') === true,
     );
     nxqlReq.flush({
       entries: [
@@ -207,7 +207,7 @@ describe('BrowseService', () => {
     const nxqlReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes('FROM Domain'),
+        r.params.get('query')?.includes('FROM Domain') === true,
     );
     nxqlReq.flush({
       entries: [
@@ -291,7 +291,7 @@ describe('BrowseService', () => {
     const nxqlReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes('FROM Domain'),
+        r.params.get('query')?.includes('FROM Domain') === true,
     );
     nxqlReq.flush({
       entries: [
@@ -368,7 +368,7 @@ describe('BrowseService', () => {
     const domainNxqlReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes('FROM Domain'),
+        r.params.get('query')?.includes('FROM Domain') === true,
     );
     domainNxqlReq.flush({
       entries: [],
@@ -395,7 +395,7 @@ describe('BrowseService', () => {
     const navNodesReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes("ecm:primaryType IN ('Domain', 'Workspace'"),
+        r.params.get('query')?.includes("ecm:primaryType IN ('Domain', 'Workspace'") === true,
     );
     navNodesReq.flush({
       entries: [
@@ -567,7 +567,7 @@ describe('BrowseService', () => {
     const domainNxqlReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes('FROM Domain'),
+        r.params.get('query')?.includes('FROM Domain') === true,
     );
     domainNxqlReq.flush({
       entries: [],
@@ -594,7 +594,7 @@ describe('BrowseService', () => {
     const navNodesReq = httpMock.expectOne(
       (r) =>
         r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
-        r.params.get('query')?.includes("ecm:primaryType IN ('Domain', 'Workspace'"),
+        r.params.get('query')?.includes("ecm:primaryType IN ('Domain', 'Workspace'") === true,
     );
     navNodesReq.flush({
       entries: [

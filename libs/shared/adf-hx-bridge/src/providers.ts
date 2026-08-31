@@ -41,4 +41,5 @@ export * from './lib/api/nuxeo-renditions-api';
 export * from './lib/api/nuxeo-model-api';
 export * from './lib/api/nuxeo-unmapped-api';
 export * from './lib/services/adf-hx-document.service';
+export * from './lib/services/nuxeo-identity-user.service';
 export * from './lib/providers/provide-adf-hx-nuxeo-bridge';

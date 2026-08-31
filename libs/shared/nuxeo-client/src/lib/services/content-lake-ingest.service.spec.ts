@@ -104,7 +104,7 @@ describe('ContentLakeIngestService', () => {
     const searchReq = httpMock.expectOne(
       (req) =>
         req.url.includes('/nuxeo/api/v1/search/lang/NXQL/execute') &&
-        req.params.get('query')?.includes("file:content/name = 'sample.pdf'"),
+        req.params.get('query')?.includes("file:content/name = 'sample.pdf'") === true,
     );
     expect(searchReq.request.method).toBe('GET');
     searchReq.flush({

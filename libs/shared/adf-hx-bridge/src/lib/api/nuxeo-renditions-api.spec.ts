@@ -46,4 +46,37 @@ describe('NuxeoRenditionsApi', () => {
   it('refuses a non-default repository', async () => {
     await expect(api.getRenditions('doc-1', 'other')).rejects.toThrow('serves only "default"');
   });
+
+  it('serves the pdf rendition from the Nuxeo @rendition adapter', async () => {
+    const pending = api.getRendition('doc-1', 'pdf');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/id/doc-1/@rendition/pdf'))
+      .flush(new Blob(['%PDF-1.4']));
+    expect((await pending).data).toBeInstanceOf(Blob);
+  });
+
+  it('refuses an empty document id rather than requesting /@rendition on nothing', async () => {
+    await expect(api.getRendition('', 'thumbnail')).rejects.toThrow(
+      'getRendition requires a document id',
+    );
+    await expect(api.getRenditions('')).rejects.toThrow('getRenditions requires a document id');
+    httpMock.expectNone(() => true);
+  });
+
+  it('refuses a non-default repository on getRendition too, before any request', async () => {
+    await expect(api.getRendition('doc-1', 'thumbnail', 'other')).rejects.toThrow(
+      'serves only "default"',
+    );
+    httpMock.expectNone(() => true);
+  });
+
+  it('propagates a rendition fetch failure instead of resolving with an empty blob', async () => {
+    // A resolved empty blob renders as a broken thumbnail with no error anywhere; the
+    // rejection is what lets the caller fall back to a type icon.
+    const pending = api.getRendition('doc-1', 'thumbnail');
+    httpMock
+      .expectOne((r) => r.url.includes('/@rendition/thumbnail'))
+      .flush(new Blob(['no rendition']), { status: 404, statusText: 'Not Found' });
+    await expect(pending).rejects.toMatchObject({ status: 404 });
+  });
 });

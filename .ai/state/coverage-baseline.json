@@ -9,12 +9,12 @@
   "tolerance": 0.5,
   "projects": {
     "adf-hx-bridge": {
-      "lines": 73.37,
-      "statements": 73.37,
-      "branches": 87.32,
-      "functions": 56.28,
-      "sTotal": 2084,
-      "sCovered": 1529
+      "lines": 89.1,
+      "statements": 89.1,
+      "branches": 92.8,
+      "functions": 81.04,
+      "sTotal": 2100,
+      "sCovered": 1871
     },
     "administration": {
       "lines": 62.08,
@@ -65,12 +65,12 @@
       "sCovered": 673
     },
     "nuxeo-client": {
-      "lines": 78.14,
-      "statements": 78.14,
-      "branches": 75.33,
-      "functions": 75.82,
+      "lines": 94.66,
+      "statements": 94.66,
+      "branches": 83.45,
+      "functions": 96.49,
       "sTotal": 3934,
-      "sCovered": 3074
+      "sCovered": 3724
     },
     "search": {
       "lines": 91.16,

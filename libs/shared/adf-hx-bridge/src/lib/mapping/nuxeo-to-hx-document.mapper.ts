@@ -110,6 +110,10 @@ function effectivePermissions(doc: NuxeoDocument): string[] | undefined {
   const nuxeo = new Set(granted.filter((p): p is string => typeof p === 'string'));
   const mapped = new Set<string>();
   for (const permission of nuxeo) {
+    // `Object.hasOwn`, because a bare index read resolves through the prototype chain: a
+    // Nuxeo permission named `constructor` yielded a truthy `Function` and put it into
+    // `sys_effectivePermissions`, an array declared `string[]`.
+    if (!Object.hasOwn(HX_PERMISSION_FROM_NUXEO, permission)) continue;
     const hx = HX_PERMISSION_FROM_NUXEO[permission];
     if (hx) mapped.add(hx);
   }
