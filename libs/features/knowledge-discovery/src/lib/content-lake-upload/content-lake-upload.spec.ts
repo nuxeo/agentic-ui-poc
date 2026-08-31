@@ -84,6 +84,43 @@ const mockSnackBar = {
   open: vi.fn(),
 };
 
+class SelectedFileList implements FileList {
+  [index: number]: File;
+  readonly length: number;
+
+  constructor(private readonly files: readonly File[]) {
+    this.length = files.length;
+    files.forEach((file, index) => {
+      this[index] = file;
+    });
+  }
+
+  item(index: number): File | null {
+    return this[index] ?? null;
+  }
+
+  [Symbol.iterator]() {
+    return this.files[Symbol.iterator]();
+  }
+}
+
+function pathInputEvent(value: string): Event {
+  const input = document.createElement('input');
+  input.value = value;
+  const event = new Event('input');
+  input.dispatchEvent(event);
+  return event;
+}
+
+function fileSelectionEvent(files: readonly File[]): Event {
+  const input = document.createElement('input');
+  input.type = 'file';
+  Object.defineProperty(input, 'files', { value: new SelectedFileList(files) });
+  const event = new Event('change');
+  input.dispatchEvent(event);
+  return event;
+}
+
 async function createComponent(): Promise<{
   component: ContentLakeUploadComponent;
   fixture: ComponentFixture<ContentLakeUploadComponent>;
@@ -123,9 +160,7 @@ describe('ContentLakeUploadComponent', () => {
     const { component } = await createComponent();
     await Promise.resolve();
 
-    component.onParentPathUserInput({
-      target: { value: '/default-domain/' },
-    } as Event);
+    component.onParentPathUserInput(pathInputEvent('/default-domain/'));
     await Promise.resolve();
 
     expect(mockBrowseService.getByPath).toHaveBeenCalledWith('/default-domain');
@@ -168,9 +203,7 @@ describe('ContentLakeUploadComponent', () => {
       option: { value: '/default-domain/workspaces' },
     } as never);
 
-    component.onParentPathUserInput({
-      target: { value: '/default-domain/workspaces/' },
-    } as Event);
+    component.onParentPathUserInput(pathInputEvent('/default-domain/workspaces/'));
     await Promise.resolve();
 
     expect(mockBrowseService.getByPath).toHaveBeenCalledWith('/default-domain/workspaces');
@@ -186,14 +219,10 @@ describe('ContentLakeUploadComponent', () => {
       option: { value: '/default-domain/workspaces' },
     } as never);
 
-    component.onParentPathUserInput({
-      target: { value: '/default-domain/workspaces' },
-    } as Event);
+    component.onParentPathUserInput(pathInputEvent('/default-domain/workspaces'));
     expect(mockBrowseService.getChildren).not.toHaveBeenCalled();
 
-    component.onParentPathUserInput({
-      target: { value: '/default-domain/workspaces/' },
-    } as Event);
+    component.onParentPathUserInput(pathInputEvent('/default-domain/workspaces/'));
     await Promise.resolve();
     expect(mockBrowseService.getByPath).toHaveBeenCalledWith('/default-domain/workspaces');
   });
@@ -246,9 +275,9 @@ describe('ContentLakeUploadComponent', () => {
     const { component } = await createComponent();
     await Promise.resolve();
 
-    component.onFilesSelected({
-      target: { files: [new File(['sample'], 'sample.pdf', { type: 'application/pdf' })] },
-    } as Event);
+    component.onFilesSelected(
+      fileSelectionEvent([new File(['sample'], 'sample.pdf', { type: 'application/pdf' })]),
+    );
     await Promise.resolve();
 
     expect(mockKdClient.listIngestSourceIds).toHaveBeenCalled();

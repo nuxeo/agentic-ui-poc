@@ -150,6 +150,17 @@ const ALL_GATES = [
     cmd: 'npx',
     argv: ['nx', 'affected', '-t', 'typecheck', `--base=${base}`],
   },
+  // `typecheck` above covers library sources only: it runs the per-project targets, which
+  // point at `tsconfig.lib.json`, and that config excludes `*.spec.ts` by construction.
+  // Nineteen of twenty-seven projects had no such target at all. So until this gate existed,
+  // no gate in the pipeline had ever type-checked a spec file, and 43 errors had accumulated
+  // — one of them a production signature stricter than the payload it parsed.
+  {
+    id: 'spec-types',
+    label: 'Spec typecheck',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/spec-typecheck.mjs'],
+  },
   // Last, because it reads the artifact `build` produces. It asks the only question
   // the other gates cannot: what does a customer actually receive? Phase 3's spike
   // found adf-hx importing a test library from its shipped runtime bundle, which put
@@ -321,11 +332,27 @@ const full = notRequested.length === 0;
  */
 const verdict = !allPassed ? 'fail' : full ? 'pass' : 'pass-partial';
 
+/**
+ * The commit the gate actually ran against, and whether the tree was dirty.
+ *
+ * `ranAt` alone cannot answer the question that matters — "does this report
+ * describe the code as it is now?" — because a wall-clock time says nothing about
+ * what was committed since. `state-check.mjs` uses this to reject a phase signed
+ * off on a run that predates the source it claims to cover.
+ */
+function gitFact(argv, fallback) {
+  const proc = spawnSync('git', argv, { encoding: 'utf8' });
+  return proc.status === 0 ? proc.stdout.trim() : fallback;
+}
+
 const report = {
   phase,
   verdict,
   base,
   ranAt: new Date().toISOString(),
+  commit: gitFact(['rev-parse', 'HEAD'], null),
+  // A green gate on a dirty tree describes something no commit contains.
+  dirty: gitFact(['status', '--porcelain'], '') !== '',
   gates: {
     available: ALL_GATES.map((g) => g.id),
     requested: selected.map((g) => g.id),

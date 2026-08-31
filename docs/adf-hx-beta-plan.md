@@ -58,6 +58,21 @@ teardown and one `<img [src]>` bypassing the HTTP interceptor.
 - **Customisation model:** a four-layer extensibility contract. AI agents are the authoring
   accelerator for that contract, **not** a licence to edit our source. The contract is the product.
 - **Distribution:** versioned libraries plus a thin forkable app template.
+- **Layer 1 is additive for Beta, deliberately.** A manifest can add nav items, routes, toolbar
+  actions, tabs, context-menu items, bulk actions and columns, and can hide, reorder or relabel
+  packaged entries. It **cannot** replace or withdraw a shipped route, or change what a packaged
+  document-detail tab renders: `app.routes.ts` imports each feature's `Routes` array directly so
+  no packaged route carries an ID, and the six packaged tab bodies are markup rather than
+  addressable components. Making either addressable is a rewrite, not a refactor, and is deferred
+  to GA. Section 13 of `docs/extension-reference.md` states this to customers, and the slot-state
+  table in section 2 is gated by `npm run beta:reference` so it cannot drift.
+- **The 90% coverage bar applies to the in-scope slice only.** Projects the scope decision above
+  puts out — administration, workflow tasks, KD/KE, assets, trash — plus the reference extension
+  libraries and the forkable template, are named in `OUT_OF_SCOPE` in
+  `scripts/beta-harness/coverage-gate.mjs` and excused from the bar, but **not** from the ratchet:
+  out-of-scope code may still not rot. The default is in-scope, so a new library counts until
+  someone argues otherwise. Quote `betaScope.meetingTargetInScope` from the gate's JSON, not the
+  whole-repo `meetingTarget`, which mixes the two and overstates both the denominator and the debt.
 
 ## The extensibility contract
 

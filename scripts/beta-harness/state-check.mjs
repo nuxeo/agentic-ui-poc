@@ -24,6 +24,7 @@
 
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { EVIDENCE_ROOT } from '../collect-evidence/evidence-path.mjs';
 
@@ -226,6 +227,19 @@ for (const p of state.phases ?? []) {
         const reRan = re?.ok ? (re.report.results?.length ?? 0) : 0;
         if (re?.ok && re.report.verdict === 'pass' && reRan >= CURRENT_GATE_COUNT) {
           row.gate += `  [re-gated ${reRan}/${CURRENT_GATE_COUNT}: ${re.rel}]`;
+        } else if (re?.ok && re.report.verdict === 'pass') {
+          // Green, but over fewer gates than exist now — so a gate has been ADDED since the
+          // re-gate ran. That is the same situation as never having re-gated, and it carries
+          // the same `warn`. It was previously a `fail` reading "cites a re-gate that does
+          // not hold", which accused six phases of citing bad evidence the moment
+          // `spec-types` was added: the re-gates held perfectly, they were simply older than
+          // a gate that did not exist when they ran. A gate that cries fraud over its own
+          // expansion is a gate people learn to bypass.
+          problems.push({
+            phase: p.id,
+            severity: 'warn',
+            message: `re-gated green over ${reRan} gate(s), but the set is now ${CURRENT_GATE_COUNT}. It has not been through the gate(s) added since — re-gate and update \`evidence.regate\`.`,
+          });
         } else if (p.evidence.regate) {
           problems.push({
             phase: p.id,
@@ -240,6 +254,17 @@ for (const p of state.phases ?? []) {
           });
         }
       }
+    }
+  }
+
+  // Passing gates, but possibly against code that no longer exists. A phase read
+  // `complete` off a gate report from days and dozens of commits earlier, which is
+  // the same false-completion this script exists to catch wearing a green hat.
+  if (p.evidence?.gate) {
+    const staleness = await checkRecency(p.evidence.gate);
+    if (staleness) {
+      row.stale = staleness.summary;
+      problems.push({ phase: p.id, severity: staleness.severity, message: staleness.message });
     }
   }
 
@@ -366,6 +391,93 @@ async function resolveGate(ref) {
 }
 
 /**
+ * Has source changed since the cited gate ran?
+ *
+ * A gate report is a statement about one commit. Nothing tied it to that commit,
+ * so a phase could stay `complete` indefinitely while the code underneath it moved
+ * — the failure mode is a stale green, which reads exactly like a real one.
+ *
+ * Source changes are a `fail`: the gate has demonstrably not run against what is
+ * on disk. Documentation-only changes are a `warn`, because re-gating prose is
+ * busywork and treating it as a blocker would train people to ignore this.
+ *
+ * A report predating this check has no `commit` field. That is reported as a `warn`
+ * rather than assumed fine, since "cannot tell" and "is current" are different
+ * answers and only one of them is evidence.
+ *
+ * @param {string} ref
+ * @returns {Promise<{ severity: 'fail'|'warn', message: string, summary: string } | null>}
+ */
+async function checkRecency(ref) {
+  const gate = await resolveGate(ref);
+  if (!gate.ok) return null; // Already reported by the caller.
+
+  if (gate.report.dirty) {
+    return {
+      severity: 'fail',
+      message: `cites gate report ${gate.rel}, which ran on a dirty working tree. It describes code that no commit contains.`,
+      summary: 'ran dirty',
+    };
+  }
+
+  const commit = gate.report.commit;
+  if (!commit) {
+    return {
+      severity: 'warn',
+      message: `cites gate report ${gate.rel}, which records no commit, so whether it covers the current code cannot be determined. Re-gate to record one.`,
+      summary: 'commit unknown',
+    };
+  }
+
+  if (git(['cat-file', '-e', `${commit}^{commit}`]) === null) {
+    return {
+      severity: 'warn',
+      message: `cites gate report ${gate.rel}, whose commit ${commit.slice(0, 8)} is not in this repository (rebased or never pushed), so its currency cannot be checked.`,
+      summary: `commit ${commit.slice(0, 8)} missing`,
+    };
+  }
+
+  const changed = git(['diff', '--name-only', `${commit}..HEAD`]);
+  if (changed === null) return null;
+
+  const files = changed.split('\n').filter(Boolean);
+  if (files.length === 0) return null;
+
+  const isSource = (f) =>
+    (f.startsWith('apps/') || f.startsWith('libs/') || f.startsWith('scripts/') || f === 'package-lock.json' || f === 'package.json') &&
+    !f.endsWith('.md');
+  const source = files.filter(isSource);
+  const behind = (git(['rev-list', '--count', `${commit}..HEAD`]) ?? '?').trim();
+
+  if (source.length > 0) {
+    const shown = source.slice(0, 3).join(', ');
+    return {
+      severity: 'fail',
+      message:
+        `cites gate report ${gate.rel} from commit ${commit.slice(0, 8)}, ${behind} commit(s) behind HEAD, ` +
+        `and ${source.length} source file(s) have changed since (${shown}${source.length > 3 ? ', …' : ''}). ` +
+        'The gate has not run against the code on disk — re-gate and update the citation.',
+      summary: `${behind} behind, ${source.length} source file(s) changed`,
+    };
+  }
+
+  return {
+    severity: 'warn',
+    message: `cites gate report ${gate.rel} from commit ${commit.slice(0, 8)}, ${behind} commit(s) behind HEAD, though only documentation has changed since.`,
+    summary: `${behind} behind, docs only`,
+  };
+}
+
+/**
+ * @param {string[]} argv
+ * @returns {string | null} stdout, or null when git fails
+ */
+function git(argv) {
+  const proc = spawnSync('git', argv, { cwd: repoRoot, encoding: 'utf8' });
+  return proc.status === 0 ? proc.stdout : null;
+}
+
+/**
  * Ask the gate script itself how many gates exist, so this never goes stale.
  * @returns {Promise<number>}
  */
@@ -395,6 +507,7 @@ function report() {
       : 'no evidence cited';
     console.log(`  ${r.id.padEnd(20)} ${String(r.status).padEnd(12)} ${ev}`);
     if (r.gate) console.log(`  ${' '.repeat(20)} ${' '.repeat(12)} gate: ${r.gate}`);
+    if (r.stale) console.log(`  ${' '.repeat(20)} ${' '.repeat(12)} currency: ${r.stale}`);
   }
   console.log('');
   for (const p of fails) console.log(`  [FAIL] ${p.phase} ${p.message}`);

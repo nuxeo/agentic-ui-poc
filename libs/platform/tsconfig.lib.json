@@ -57,5 +57,18 @@
     "strictTemplates": true
   },
   "include": ["src/**/*.ts", "../shared/*/src/**/*.ts"],
-  "exclude": ["**/*.spec.ts", "**/*.test.ts", "**/test-setup.ts"]
+  // The `../shared/*` patterns are not redundant. TypeScript resolves `exclude` globs
+  // relative to this directory and `**` never matches `..`, so the bare `**/*.spec.ts`
+  // silently failed to exclude the specs pulled in by the `../shared/*` include — the
+  // 1,457 "Cannot find name 'describe'" errors that appear on a direct `tsc -p` run,
+  // every one of them in `libs/shared`. ng-packagr compiles from the public API and so
+  // never reached them, which is why the `build` gate stayed green over it.
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/test-setup.ts",
+    "../shared/*/src/**/*.spec.ts",
+    "../shared/*/src/**/*.test.ts",
+    "../shared/*/src/**/test-setup.ts"
+  ]
 }

@@ -5,7 +5,7 @@ import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { MockInstance, vi } from 'vitest';
 
 import { UserService } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -16,12 +16,11 @@ describe('UserFormDialogComponent (NXSAT-151 / NXSAT-166)', () => {
   let fixture: ComponentFixture<UserFormDialogComponent>;
   let closeSpy: ReturnType<typeof vi.fn>;
   let createUserSpy: ReturnType<typeof vi.fn>;
-  let snackBarOpenSpy: ReturnType<typeof vi.fn>;
+  let snackBarOpenSpy: MockInstance<MatSnackBar['open']>;
 
   beforeEach(async () => {
     closeSpy = vi.fn();
     createUserSpy = vi.fn().mockReturnValue(of({ id: 'new.user' }));
-    snackBarOpenSpy = vi.fn();
     await TestBed.configureTestingModule({
       imports: [UserFormDialogComponent, NoopAnimationsModule],
       providers: [

@@ -33,20 +33,33 @@ const mockDialogRef = {
   updateSize: vi.fn(),
 };
 
+/**
+ * Typed against the real service, so `mock.calls` carries the actual argument tuple.
+ *
+ * With a bare `vi.fn(() => of([]))` the parameter list is empty, which made
+ * `mock.calls[0][1]` — the entries array these tests assert on — a type error and
+ * `undefined` at the type level. No gate type-checked a spec, so it went unnoticed.
+ */
 const mockImportService = {
-  getDefaultImportParentPath: vi.fn(() => of(PARENT_PATH)),
+  getDefaultImportParentPath: vi.fn<DocumentImportService['getDefaultImportParentPath']>(() =>
+    of(PARENT_PATH),
+  ),
   stageFileInBatch: vi.fn(),
   createBlobHoldingDocumentReliable: vi.fn(),
   createBlobHoldingDocumentFromBatch: vi.fn(),
   createBlobHoldingDocument: vi.fn(),
   createChildDocument: vi.fn(),
-  importFiles: vi.fn(() => of([])),
-  importFilesWithProperties: vi.fn(() => of([])),
-  importCsvFile: vi.fn(() => of('<p>Imported 2 documents</p>')),
+  importFiles: vi.fn<DocumentImportService['importFiles']>(() => of([])),
+  importFilesWithProperties: vi.fn<DocumentImportService['importFilesWithProperties']>(() =>
+    of([]),
+  ),
+  importCsvFile: vi.fn<DocumentImportService['importCsvFile']>(() =>
+    of('<p>Imported 2 documents</p>'),
+  ),
 };
 
 const mockBrowseService = {
-  getFolderContext: vi.fn(() =>
+  getFolderContext: vi.fn<BrowseService['getFolderContext']>(() =>
     of({
       uid: 'ws-1',
       title: 'Workspace',
@@ -57,7 +70,9 @@ const mockBrowseService = {
       contextParameters: { subtypes: ['File', 'Picture', 'Note'] },
     }),
   ),
-  getChildren: vi.fn(() => of({ entries: [], totalSize: 0 })),
+  getChildren: vi.fn<BrowseService['getChildren']>(() =>
+    of({ entries: [], totalSize: 0, currentPageSize: 0, currentPageIndex: 0, numberOfPages: 0 }),
+  ),
 };
 
 const mockDirectoryService = {
@@ -455,11 +470,12 @@ describe('CreateImportDialogComponent import with properties (NXSAT-185)', () =>
   });
 
   it('runImportWithProperties sends checked entries with metadata', async () => {
-    const created = {
+    const created: NuxeoDocument = {
       uid: 'doc-import-1',
       title: 'My photo',
       type: 'Picture',
       path: `${PARENT_PATH}/photo`,
+      lastModified: '2026-01-01T00:00:00.000Z',
       properties: {},
     };
     mockImportService.importFilesWithProperties.mockReturnValue(of([created]));
@@ -532,7 +548,9 @@ describe('CreateImportDialogComponent CSV', () => {
     mockImportService.getDefaultImportParentPath.mockReturnValue(of('/'));
     mockImportService.importCsvFile.mockReturnValue(of('<p>Imported 2 documents</p>'));
     mockBrowseService.getFolderContext.mockReturnValue(of(folderDoc));
-    mockBrowseService.getChildren.mockReturnValue(of({ entries: [] }));
+    mockBrowseService.getChildren.mockReturnValue(
+      of({ entries: [], totalSize: 0, currentPageSize: 0, currentPageIndex: 0, numberOfPages: 0 }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [CreateImportDialogComponent, NoopAnimationsModule],
@@ -743,7 +761,9 @@ describe('CreateImportDialogComponent domain create (NXSAT-199)', () => {
     vi.clearAllMocks();
     mockImportService.getDefaultImportParentPath.mockReturnValue(of('/'));
     mockBrowseService.getFolderContext.mockReturnValue(of(rootFolderDoc));
-    mockBrowseService.getChildren.mockReturnValue(of({ entries: [], totalSize: 0 }));
+    mockBrowseService.getChildren.mockReturnValue(
+      of({ entries: [], totalSize: 0, currentPageSize: 0, currentPageIndex: 0, numberOfPages: 0 }),
+    );
 
     await TestBed.configureTestingModule({
       imports: [CreateImportDialogComponent, NoopAnimationsModule],

@@ -53,6 +53,43 @@ const coverageRoot = resolve(repoRoot, 'coverage');
 
 /** The Beta quality bar from `docs/adf-hx-beta-plan.md`, Phase 6. */
 const TARGET = 90;
+
+/**
+ * Projects outside the Beta slice, and why.
+ *
+ * The plan scopes Beta to "a deep core slice — browse, folder tree, search, document
+ * detail, metadata, permissions, versions, upload/CRUD", and says in as many words that
+ * "workflow, users and groups, administration and publishing are out". The gate never
+ * encoded that, so `administration` at 62% and `knowledge-discovery` at 65% were counted
+ * against a bar the plan does not hold them to — which makes the shortfall look like Beta
+ * debt and buries the two projects that genuinely are.
+ *
+ * The default is IN scope: a project has to be named here to be excused, so a new library
+ * counts against the bar until someone argues otherwise. The reverse default is how the
+ * uninstrumented allowlist quietly grew.
+ *
+ * Being out of scope excuses a project from the 90% *bar* only. The ratchet still applies —
+ * out-of-scope code may not silently rot.
+ */
+const OUT_OF_SCOPE = Object.freeze({
+  administration: 'administration — out of Beta scope per the plan',
+  tasks: 'workflow tasks — out of Beta scope per the plan',
+  'knowledge-discovery': 'KD feature, not part of the core slice',
+  'shared-kd-client': 'KD client, not part of the core slice',
+  'shared-ke-client': 'KE client, not part of the core slice',
+  assets: 'asset search, not part of the core slice',
+  trash: 'trash, not part of the core slice',
+  'acme-extensions': 'reference customer extension — example code, not product',
+  'contoso-extensions': 'reference customer extension — example code, not product',
+  'insurance-extensions': 'reference customer extension — example code, not product',
+  'nuxeo-satori-template': 'forkable template — example code, not product',
+  core: 'untouched Nx scaffold',
+});
+
+/** @param {string} project */
+function inBetaScope(project) {
+  return !Object.hasOwn(OUT_OF_SCOPE, project);
+}
 /**
  * Slack in percentage points. Line coverage moves a little when a file is added
  * without its spec in the same commit, and failing a gate on 0.3pp of noise trains
@@ -700,6 +737,24 @@ function report() {
           target: TARGET,
           rows,
           meetingTarget: rows.filter((r) => r.target <= 0).map((r) => r.project),
+          // Scope-aware view of the bar. `meetingTarget` above counts every project,
+          // including ones the plan puts out of Beta scope, so quoting it as "N of M meet
+          // the Beta bar" overstates the denominator in one direction and the debt in the
+          // other. These two are the figures worth citing.
+          betaScope: {
+            inScope: rows.filter((r) => inBetaScope(r.project)).map((r) => r.project),
+            meetingTargetInScope: rows
+              .filter((r) => inBetaScope(r.project) && r.target <= 0)
+              .map((r) => r.project),
+            shortInScope: rows
+              .filter((r) => inBetaScope(r.project) && r.target > 0)
+              .map((r) => ({ project: r.project, lines: r.lines, short: r.target })),
+            outOfScope: Object.fromEntries(
+              rows
+                .filter((r) => !inBetaScope(r.project))
+                .map((r) => [r.project, OUT_OF_SCOPE[r.project]]),
+            ),
+          },
           regressions,
           rises,
           // A percentage drop that is not a regression: the denominator grew because
@@ -949,25 +1004,70 @@ function report() {
           '  when they have not been.',
       );
     }
+    // Integrity failures do NOT hide a regression. This used to `return` here, so with any
+    // of the checks above firing the console reported only them and said nothing about a
+    // project that had lost coverage — a real 2.89pp drop in `adf-hx-bridge` was visible
+    // only via `--json`. An unrelated failure masking the gate's primary finding is the
+    // worst possible failure mode for a gate whose whole purpose is to notice a decline.
+    reportRegressions(regressions);
+    reportBetaBar(rows);
     return;
   }
   if (regressions.length) {
-    console.log(`coverage-gate: FAIL — ${regressions.length} project(s) lost coverage:`);
-    for (const r of regressions)
-      console.log(`  ${r.project}  ${r.was}% -> ${r.now}%  (${r.delta}pp)`);
-    console.log(
-      '\n  Add the missing tests. Do not run --update-baseline to make this pass —\n' +
-        '  that is the same move as weakening a test, one file further away.',
-    );
+    reportRegressions(regressions);
+    reportBetaBar(rows);
   } else {
     console.log(`coverage-gate: pass — no project regressed by more than ${TOLERANCE}pp.`);
-    const worst = [...rows].sort((a, b) => b.target - a.target)[0];
-    if (worst && worst.target > 0) {
+    reportBetaBar(rows);
+  }
+}
+
+/**
+ * Report progress against the Beta bar, separating the slice from what is out of scope.
+ *
+ * Reporting one "furthest from the bar" figure across every project named whichever
+ * library happened to be lowest, which was usually one the plan does not hold to the bar at
+ * all. That reads as Beta debt and hides the projects that actually are short.
+ *
+ * @param {{ project: string, lines: number, target: number }[]} rows
+ */
+function reportBetaBar(rows) {
+  const scoped = rows.filter((r) => inBetaScope(r.project));
+  const short = scoped.filter((r) => r.target > 0).sort((a, b) => b.target - a.target);
+  const met = scoped.length - short.length;
+
+  console.log(
+    `\n  Beta bar (${TARGET}%), in-scope slice only: ${met} of ${scoped.length} project(s) meet it.`,
+  );
+  for (const r of short) {
+    console.log(`    ${r.project.padEnd(24)} ${String(r.lines).padStart(6)}%  ${r.target}pp short`);
+  }
+  if (short.length === 0) console.log('    every in-scope project meets the bar.');
+
+  // Named, not silently dropped: an exemption nobody can see is an exemption nobody reviews.
+  const excused = rows.filter((r) => !inBetaScope(r.project) && r.target > 0);
+  if (excused.length > 0) {
+    console.log(
+      `\n  Out of Beta scope, so not held to ${TARGET}% (the ratchet still applies to them):`,
+    );
+    for (const r of excused) {
       console.log(
-        `  Furthest from the Beta bar: ${worst.project} at ${worst.lines}% (${worst.target}pp short of ${TARGET}%).`,
+        `    ${r.project.padEnd(24)} ${String(r.lines).padStart(6)}%  — ${OUT_OF_SCOPE[r.project]}`,
       );
     }
   }
+}
+
+/** @param {{ project: string, was: number, now: number, delta: number }[]} regressions */
+function reportRegressions(regressions) {
+  if (regressions.length === 0) return;
+  console.log(`\ncoverage-gate: FAIL — ${regressions.length} project(s) lost coverage:`);
+  for (const r of regressions)
+    console.log(`  ${r.project}  ${r.was}% -> ${r.now}%  (${r.delta}pp)`);
+  console.log(
+    '\n  Add the missing tests. Do not run --update-baseline to make this pass —\n' +
+      '  that is the same move as weakening a test, one file further away.',
+  );
 }
 
 function round(n) {

@@ -24,6 +24,7 @@ describe('AddPermissionDialogComponent (NXSAT-159)', () => {
     id: 'user-readonly01',
     displayLabel: 'Read Only User',
     type: 'USER_TYPE' as const,
+    prefixed_id: 'user:user-readonly01',
   };
 
   beforeEach(async () => {
