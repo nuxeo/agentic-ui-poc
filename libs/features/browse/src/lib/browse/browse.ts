@@ -331,41 +331,59 @@ export class BrowseComponent {
   readonly auditPageSize = signal(10);
   readonly auditPageIndex = signal(0);
   private historyLoaded = false;
-  filterUsername = '';
-  filterDateFrom: Date | null = null;
-  filterDateTo: Date | null = null;
-  filterAction = '';
-  filterCategory = '';
+  /**
+   * History-tab filter and sort state, as signals.
+   *
+   * These were plain fields, and `filteredAuditEntries` below is a `computed()`
+   * that reads them. A computed only recomputes when a tracked *signal*
+   * dependency changes, so its sole dependency was `auditEntries` — every
+   * filter keystroke and every column sort updated the field, left the memoised
+   * value in place, and the History tab did not move. The browse document list
+   * next to it already held its filters in signals; this half had been missed.
+   */
+  readonly filterUsername = signal('');
+  readonly filterDateFrom = signal<Date | null>(null);
+  readonly filterDateTo = signal<Date | null>(null);
+  readonly filterAction = signal('');
+  readonly filterCategory = signal('');
   readonly availableActions = signal<DirectoryEntry[]>([]);
   readonly availableCategories = signal<DirectoryEntry[]>([]);
   readonly eventTypeLabelMap = signal<Record<string, string>>({});
   readonly eventCategoryLabelMap = signal<Record<string, string>>({});
-  sortActive = 'eventDate';
-  sortDirection: 'asc' | 'desc' | '' = 'desc';
+  readonly sortActive = signal('eventDate');
+  readonly sortDirection = signal<'asc' | 'desc' | ''>('desc');
 
   readonly filteredAuditEntries = computed(() => {
     let entries = this.auditEntries();
-    if (this.filterUsername) {
-      const term = this.filterUsername.toLowerCase();
+    const username = this.filterUsername();
+    const dateFrom = this.filterDateFrom();
+    const dateTo = this.filterDateTo();
+    const action = this.filterAction();
+    const category = this.filterCategory();
+    const sortActive = this.sortActive();
+    const sortDirection = this.sortDirection();
+
+    if (username) {
+      const term = username.toLowerCase();
       entries = entries.filter((e) => e.principalName?.toLowerCase().includes(term));
     }
-    if (this.filterDateFrom) {
-      const from = this.filterDateFrom.getTime();
+    if (dateFrom) {
+      const from = dateFrom.getTime();
       entries = entries.filter((e) => new Date(e.eventDate).getTime() >= from);
     }
-    if (this.filterDateTo) {
-      const to = this.filterDateTo.getTime() + 86_400_000;
+    if (dateTo) {
+      const to = dateTo.getTime() + 86_400_000;
       entries = entries.filter((e) => new Date(e.eventDate).getTime() < to);
     }
-    if (this.filterAction) {
-      entries = entries.filter((e) => e.eventId === this.filterAction);
+    if (action) {
+      entries = entries.filter((e) => e.eventId === action);
     }
-    if (this.filterCategory) {
-      entries = entries.filter((e) => e.category === this.filterCategory);
+    if (category) {
+      entries = entries.filter((e) => e.category === category);
     }
-    if (this.sortActive && this.sortDirection) {
-      const dir = this.sortDirection === 'asc' ? 1 : -1;
-      const key = this.sortActive as keyof AuditEntry;
+    if (sortActive && sortDirection) {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+      const key = sortActive as keyof AuditEntry;
       entries = [...entries].sort((a, b) => {
         const va = String(a[key] ?? '');
         const vb = String(b[key] ?? '');
@@ -1019,8 +1037,8 @@ export class BrowseComponent {
   }
 
   onAuditSort(sort: Sort): void {
-    this.sortActive = sort.active;
-    this.sortDirection = sort.direction;
+    this.sortActive.set(sort.active);
+    this.sortDirection.set(sort.direction);
   }
 
   eventLabel(eventId: string): string {
@@ -1679,7 +1697,11 @@ export class BrowseComponent {
   toggleNotify(): void {
     const doc = this.currentDoc();
     if (!doc) return;
-    const action$ = this.isSubscribed()
+    // Read before the call, not after: the success handler refreshes `currentDoc`,
+    // so re-reading `isSubscribed()` there reports whichever of the two requests
+    // resolved first and can announce the opposite of what just happened.
+    const wasSubscribed = this.isSubscribed() === true;
+    const action$ = wasSubscribed
       ? this.detailService.unsubscribe(doc.uid)
       : this.detailService.subscribe(doc.uid);
     action$.subscribe({
@@ -1687,11 +1709,9 @@ export class BrowseComponent {
         this.browseService.getByPath(this.currentNuxeoPath).subscribe({
           next: (d) => this.currentDoc.set(d),
         });
-        this.snackBar.open(
-          this.isSubscribed() ? 'Unsubscribed' : 'Subscribed to notifications',
-          'OK',
-          { duration: 3000 },
-        );
+        this.snackBar.open(wasSubscribed ? 'Unsubscribed' : 'Subscribed to notifications', 'OK', {
+          duration: 3000,
+        });
       },
       error: () => this.snackBar.open('Failed to update notifications', 'OK', { duration: 3000 }),
     });
@@ -1733,6 +1753,21 @@ export class BrowseComponent {
 
   lastContributor(doc: NuxeoDocument): string {
     return (doc.properties?.['dc:lastContributor'] as string) ?? '';
+  }
+
+  /**
+   * Initials for a `sat-avatar`, never empty.
+   *
+   * `SatAvatar` at `size="24"` renders `initials()[0].toUpperCase()`, which throws
+   * a `TypeError` on an empty string — and every value browse binds to it can be
+   * empty: `lastContributor` and `docCreator` return `''` when the Dublin Core
+   * property is absent, `resolveAcePrincipal` returns `''` for an unrecognised
+   * principal, and Nuxeo omits `principalName` on system audit events. The throw
+   * happens inside change detection, so it takes the whole listing down, not one
+   * cell.
+   */
+  avatarInitials(value: string | null | undefined): string {
+    return value?.trim() || '?';
   }
 
   docCreator(doc: NuxeoDocument): string {

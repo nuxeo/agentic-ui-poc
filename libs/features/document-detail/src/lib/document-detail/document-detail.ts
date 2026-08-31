@@ -421,6 +421,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
   private storyboardObjectUrls: string[] = [];
+  /** A storyboard load is already running for the current document. */
+  private storyboardInFlight = false;
   private docUid = '';
   private metadataRefreshAttempt = 0;
   private blobLoadGeneration = 0;
@@ -2242,19 +2244,27 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadStoryboard(doc: NuxeoDocument, generation = this.blobLoadGeneration): void {
-    if (this.storyboard().length > 0) {
+    // Several callers race for one video: `loadBlob` asks, and `setBlobUrl` asks
+    // again from inside the `fetchMainBlob` it just started. Against a real server
+    // the first request has not answered when the second arrives, so `storyboard()`
+    // is still empty and every frame was fetched twice.
+    if (this.storyboard().length > 0 || this.storyboardInFlight) {
       return;
     }
 
     const sb = doc.properties['vid:storyboard'] as Array<Record<string, unknown>> | undefined;
     if (sb?.length) {
+      this.storyboardInFlight = true;
       this.loadServerStoryboard(doc, sb, generation);
       return;
     }
 
     const videoObjectUrl = this.rawBlobUrl ?? this.videoObjectUrls[0] ?? null;
     if (videoObjectUrl && this.mimeType().startsWith('video/')) {
-      void this.generateClientStoryboard(videoObjectUrl, generation);
+      this.storyboardInFlight = true;
+      void this.generateClientStoryboard(videoObjectUrl, generation).finally(() => {
+        this.storyboardInFlight = false;
+      });
     }
   }
 
@@ -2282,6 +2292,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((results) => {
+        this.storyboardInFlight = false;
         if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
           return;
         }
@@ -2553,6 +2564,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.exifData.set(null);
     this.iptcData.set(null);
     this.videoInfo.set(null);
+    this.storyboardInFlight = false;
     this.revokeStoryboardObjectUrls();
     for (const url of this.videoObjectUrls) {
       URL.revokeObjectURL(url);
@@ -2789,7 +2801,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadPublishingData(): void {
-    this.publishTabLoaded = true;
     this.publishLoading.set(true);
     this.sectionsLoading.set(true);
 
@@ -2809,6 +2820,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.sectionTree.set(this.buildSectionTree(res.entries));
         this.sectionsLoading.set(false);
+        // Marked loaded only here, as every other tab in this component does:
+        // setting it up front left a failed section tree permanently empty,
+        // because returning to the tab saw the flag and never retried.
+        this.publishTabLoaded = true;
       },
       error: () => this.sectionsLoading.set(false),
     });
@@ -3030,7 +3045,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: () => {
         const wasLocked = this.isLocked();
         this.isLocked.set(!wasLocked);
-        this.lockOwner.set(wasLocked ? null : 'Administrator');
+        // Nuxeo records the caller as the lock owner; naming a fixed account here
+        // told every user someone else held their own lock.
+        this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
         this.actionInProgress.set(null);
         this.toast(wasLocked ? 'Document unlocked' : 'Document locked');
       },

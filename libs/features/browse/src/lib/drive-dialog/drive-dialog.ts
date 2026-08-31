@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { NuxeoDriveService } from '@nuxeo-satori/platform/nuxeo-client';
@@ -147,20 +148,24 @@ export class BrowseDriveDialogComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<BrowseDriveDialogComponent>);
   private readonly driveService = inject(NuxeoDriveService);
   private readonly data = inject<BrowseDriveDialogData>(MAT_DIALOG_DATA);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly packages = DRIVE_PACKAGES;
   readonly checking = signal(true);
 
   ngOnInit(): void {
-    this.driveService.hasDriveToken().subscribe((hasToken) => {
-      if (hasToken) {
-        const url = this.driveService.buildDirectTransferUrl(this.data.docPath || '/');
-        this.driveService.openDriveUrl(url);
-        this.dialogRef.close();
-      } else {
-        this.checking.set(false);
-      }
-    });
+    this.driveService
+      .hasDriveToken()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((hasToken) => {
+        if (hasToken) {
+          const url = this.driveService.buildDirectTransferUrl(this.data.docPath || '/');
+          this.driveService.openDriveUrl(url);
+          this.dialogRef.close();
+        } else {
+          this.checking.set(false);
+        }
+      });
   }
 
   close(): void {

@@ -408,7 +408,11 @@ export class CollectionDetailComponent {
       next: () => {
         const wasLocked = this.isLocked();
         this.isLocked.set(!wasLocked);
-        this.lockOwner.set(wasLocked ? null : 'Administrator');
+        // Nuxeo records the caller as the lock owner; naming a fixed account here would
+        // tell every user someone else held their own lock. Latent only because
+        // `lockOwner` is not rendered yet — the same line in document-detail was wrong
+        // for the same reason.
+        this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
         this.actionInProgress.set(null);
         this.toast(wasLocked ? 'Collection unlocked' : 'Collection locked');
       },

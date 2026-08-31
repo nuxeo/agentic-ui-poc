@@ -39,7 +39,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve, relative } from 'node:path';
 
 const repoRoot = resolve(import.meta.dirname, '..', '..');
@@ -788,16 +788,34 @@ function report() {
   // this gate wrong in the first place. `core` reports a truthful 100% over **7** statements
   // from one generated "should create" spec; printed as a bare `100%` it reads identically to
   // `shared-app-config`'s 100% over 428. The column is the difference between the two.
+  // `excluded` is the second half of that same argument, and the more dangerous half. A file no
+  // test imports contributes zero statements, so it is omitted from the denominator entirely and
+  // *cannot* lower the percentage. `ui` reported a clean 100% while 1,519 lines across nine files
+  // sat outside the measurement, and `search` reported 91.16% with a 1,303-line filters drawer
+  // excluded. Printed as a bare percentage those read as "fully tested". Nearly 7,000 in-scope
+  // lines are in this state, so the column is the difference between a true number and an
+  // honest one.
   console.log(
-    `  ${'project'.padEnd(28)} ${'lines'.padStart(7)} ${'was'.padStart(7)} ${'delta'.padStart(7)} ${'stmts'.padStart(6)} ${'specs'.padStart(5)}   gap to ${TARGET}%`,
+    `  ${'project'.padEnd(28)} ${'lines'.padStart(7)} ${'was'.padStart(7)} ${'delta'.padStart(7)} ${'stmts'.padStart(6)} ${'specs'.padStart(5)} ${'excluded'.padStart(14)}   gap to ${TARGET}%`,
   );
   for (const r of rows) {
     const was = r.was === null ? '  new' : `${r.was}%`;
     const delta = r.delta === null ? '    -' : `${r.delta > 0 ? '+' : ''}${r.delta}`;
+    const ex = excludedFor(r.project);
+    const exCol = ex.files === 0 ? '—' : `${ex.files}f / ${ex.lines}L`;
     console.log(
       `  ${r.project.padEnd(28)} ${`${r.lines}%`.padStart(7)} ${was.padStart(7)} ${delta.padStart(7)} ` +
-        `${String(r.sTotal ?? '-').padStart(6)} ${String(r.specs ?? '-').padStart(5)}   ` +
+        `${String(r.sTotal ?? '-').padStart(6)} ${String(r.specs ?? '-').padStart(5)} ${exCol.padStart(14)}   ` +
         `${r.target > 0 ? `${r.target}pp short` : 'met'}`,
+    );
+  }
+  const totalExcluded = rows.reduce((sum, r) => sum + excludedFor(r.project).lines, 0);
+  if (totalExcluded > 0) {
+    console.log(
+      `\n  excluded = source files no test imports, so they contribute no statements and cannot\n` +
+        `  lower the percentage beside them. ${totalExcluded} line(s) across these projects are in\n` +
+        `  that state, dated in .ai/state/coverage-uninstrumented-allowlist.json. A percentage in\n` +
+        `  this table is a statement about the measured subset, not about the project.`,
     );
   }
 
@@ -1056,6 +1074,67 @@ function reportBetaBar(rows) {
       );
     }
   }
+}
+
+/**
+ * Files and source lines a project has in the dated allowlist — code no test imports, so it
+ * sits outside the denominator and cannot affect the percentage.
+ *
+ * Keyed by walking the allowlist paths rather than by asking Nx, because the entries are plain
+ * repository paths and a few are recorded relative to `nuxeo-client`'s lib root.
+ *
+ * @param {string} project
+ * @returns {{ files: number, lines: number }}
+ */
+function excludedFor(project) {
+  let files = 0;
+  let lines = 0;
+  for (const entry of Object.keys(datedAllowlist)) {
+    if (projectForPath(entry) !== project) continue;
+    files += 1;
+    lines += countLines(entry);
+  }
+  return { files, lines };
+}
+
+/** @param {string} entry @returns {number} */
+function countLines(entry) {
+  for (const candidate of [
+    resolve(repoRoot, entry),
+    resolve(repoRoot, 'libs/shared/nuxeo-client/src/lib', entry),
+  ]) {
+    if (!existsSync(candidate)) continue;
+    try {
+      return readFileSync(candidate, 'utf8').split('\n').length;
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Map a repository path to the Nx project name the coverage rows use.
+ *
+ * @param {string} entry
+ * @returns {string}
+ */
+function projectForPath(entry) {
+  const match = /^libs\/(?:features|shared|extensions)\/([^/]+)\//.exec(entry);
+  if (!match) return entry.startsWith('apps/') ? 'nuxeo-ui' : 'nuxeo-client';
+  const dir = match[1];
+  // Four shared libraries are published under a name that differs from their directory.
+  const renamed = {
+    ui: 'ui',
+    'nuxeo-client': 'nuxeo-client',
+    extensions: 'shared-extensions',
+    'app-config': 'shared-app-config',
+    'kd-client': 'shared-kd-client',
+    'ke-client': 'shared-ke-client',
+    'ai-client': 'shared-ai-client',
+    util: 'shared-util',
+  };
+  return renamed[dir] ?? dir;
 }
 
 /** @param {{ project: string, was: number, now: number, delta: number }[]} regressions */

@@ -18,6 +18,7 @@ import { Sort } from '@angular/material/sort';
 import {
   type AuditEntry,
   CollectionService,
+  CURRENT_USERNAME,
   DocumentDetailService,
   DirectoryService,
   type NuxeoAce,
@@ -25,6 +26,8 @@ import {
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { CollectionDetailComponent } from './collection-detail';
+
+const TEST_USERNAME = 'jdoe';
 
 /**
  * Mocks declared with their FULL surface up front, and with explicit return types.
@@ -230,6 +233,9 @@ describe('CollectionDetailComponent', () => {
             paramMap: of(convertToParamMap({ uid: 'collection-1' })),
           },
         },
+        // The token defaults to `() => null`, so without this the lock-owner assertions
+        // below would pass against null whether the component read the acting user or not.
+        { provide: CURRENT_USERNAME, useValue: () => TEST_USERNAME },
         { provide: CollectionService, useValue: mockCollectionService },
         { provide: DocumentDetailService, useValue: mockDetailService },
         { provide: DirectoryService, useValue: mockDirectoryService },
@@ -451,6 +457,26 @@ describe('CollectionDetailComponent', () => {
       component.actionInProgress.set('locking');
       component.toggleLock();
       expect(mockDetailService.lockDocument).not.toHaveBeenCalled();
+    });
+
+    it('records the acting user as the lock owner, not a fixed account', () => {
+      component.collection.set(mockCollection);
+      component.isLocked.set(false);
+      mockDetailService.lockDocument.mockReturnValue(of(undefined));
+
+      component.toggleLock();
+
+      expect(component.lockOwner()).toBe(TEST_USERNAME);
+    });
+
+    it('clears the lock owner on unlock', () => {
+      component.collection.set(mockCollection);
+      component.isLocked.set(true);
+      mockDetailService.unlockDocument.mockReturnValue(of(undefined));
+
+      component.toggleLock();
+
+      expect(component.lockOwner()).toBeNull();
     });
   });
 
