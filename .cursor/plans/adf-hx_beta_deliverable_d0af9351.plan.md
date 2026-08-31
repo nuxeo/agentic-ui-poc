@@ -4,73 +4,73 @@ overview: ''
 todos:
   - id: token-request
     content: Request a GitHub PAT with read:packages for the Alfresco org plus SATORI_GH_READONLY_TOKEN, and get both into GitHub Actions secrets
-    status: pending
+    status: completed
   - id: npmrc-registry
     content: Resolve the @alfresco scope registry conflict in .npmrc (adf-core/adf-extensions on public npm vs adf-hx-content-services on GitHub Packages)
-    status: pending
+    status: completed
   - id: verify-branch
     content: Reinstall dependencies, re-run lint/build/test, delete the unused Material hxp-document-tree, and open a draft PR so CI runs
-    status: pending
+    status: completed
   - id: install-xml-config
     content: Add a non-overwriting config path to install.xml so customer configuration survives package upgrade
-    status: pending
+    status: completed
   - id: bootstrap-config
     content: Add pre-auth bootstrap config on a path the installer does not overwrite, and repoint the existing InjectionToken factories at it
-    status: pending
+    status: completed
   - id: manifest-as-document
     content: Load the runtime manifest from a Nuxeo document at /default-domain/config/agentic-ui with a packaged default as fallback
-    status: pending
+    status: completed
   - id: theming-runtime
     content: Convert the four hardcoded theme blocks to config-driven CSS custom properties and remove the !important override block in styles.scss
-    status: pending
+    status: completed
   - id: i18n-slice
     content: Activate the inert TranslateModule and extract user-facing strings for the core slice
-    status: pending
+    status: completed
   - id: ext-framework
     content: Add libs/shared/extensions wrapping @alfresco/adf-extensions, with manifest merge and $references support
-    status: pending
+    status: completed
   - id: ext-rules
     content: Register the document-permissions.ts predicates as named evaluator rules referenceable from the manifest
-    status: pending
+    status: completed
   - id: ext-nav-routes
     content: Drive navbar, sidebar and routes from the manifest, and remove the hardcoded path getters in nav-drawer.component.ts
-    status: pending
+    status: completed
   - id: ext-actions
     content: Convert the document-detail toolbar/overflow menu and the selection-topbar outputs into declarative action descriptors
-    status: pending
+    status: completed
   - id: adfhx-spike
     content: Install adf-hx and land HxpDocumentListComponent against a Nuxeo-backed adapter as the spike that prices the remaining components
-    status: pending
+    status: completed
   - id: adfhx-swap
     content: Adopt the remaining adf-hx components (breadcrumb, tree, metadata-sidebar, permission, manage-versions, viewer, search), deleting each hand-written hxp-* equivalent
-    status: pending
+    status: in_progress
   - id: adfhx-encapsulation
     content: Enforce that adf-hx types never appear in our public API signatures, with a lint or API-extractor gate
-    status: pending
+    status: completed
   - id: bridge-defects
     content: 'Fix the bridge defects: hardcoded effective permissions, dropped sort, overwritten totalCount, 50-child ceiling, localStorage key collision'
-    status: pending
+    status: completed
   - id: publishable-libs
     content: Make the libraries buildable and publishable with ng-packagr, and declare the public API surface and semver policy
-    status: pending
+    status: completed
   - id: registration-api
     content: Expose a documented registration API so customer code can contribute components, rules and guards by ID
-    status: pending
+    status: completed
   - id: app-template
     content: Create the thin forkable app template plus a customer extension-library starter
-    status: pending
+    status: completed
   - id: agent-harness
     content: Split the AGENTS knowledge base into internal and customer-facing, and add generators plus runnable guardrails for customer agents
-    status: pending
+    status: completed
   - id: quality-bar
     content: 'Take the slice to the Beta quality bar: >90% unit coverage, Playwright E2E, WCAG 2.1 AA, SAST/SCA, Chrome and Safari'
-    status: pending
+    status: completed
   - id: reference-extension
     content: Build a reference customer extension exercising Layers 0-2 with zero edits to our libraries
-    status: pending
+    status: completed
   - id: upgrade-rehearsal
     content: 'Rehearse an upgrade: install, customize, upgrade, and verify configuration and extensions survive'
-    status: pending
+    status: completed
 isProject: false
 ---
 
