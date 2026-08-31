@@ -58,21 +58,29 @@
     </p>
 
     <lib-widget-grid [columns]="3">
-      <lib-widget-container title="Documents" icon="folder" iconColor="#1976d2">
+      <lib-widget-container
+        title="Documents"
+        icon="folder"
+        iconColor="var(--mat-sys-primary, #1976d2)"
+      >
         <div class="widget-content">
           <div class="stat-value">1,247</div>
           <div class="stat-label">Total documents</div>
         </div>
       </lib-widget-container>
 
-      <lib-widget-container title="Storage" icon="storage" iconColor="#388e3c">
+      <lib-widget-container
+        title="Storage"
+        icon="storage"
+        iconColor="var(--mat-sys-tertiary, #388e3c)"
+      >
         <div class="widget-content">
           <div class="stat-value">24.8 GB</div>
           <div class="stat-label">Used storage</div>
         </div>
       </lib-widget-container>
 
-      <lib-widget-container title="Users" icon="people" iconColor="#f57c00">
+      <lib-widget-container title="Users" icon="people" iconColor="var(--mat-sys-error, #f57c00)">
         <div class="widget-content">
           <div class="stat-value">42</div>
           <div class="stat-label">Active users</div>
