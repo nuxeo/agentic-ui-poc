@@ -118,14 +118,20 @@ All under `libs/shared/adf-hx-bridge/src/lib/ui/`. No `mat-*`, no `sat-*` in bri
 | `hxp-browse-pager`         | Paging controls for the upstream list                                     |
 | `hxp-column-picker`        | Column visibility, extracted when upstream's list took over               |
 | `hxp-document-cards`       | Card view, extracted when upstream's list took over                       |
-| `hxp-browse-permissions`   | Permissions tab content (reads Nuxeo ACLs)                                |
 | `hxp-browse-history`       | Audit log tab (reads the Nuxeo audit log)                                 |
 | `hxp-browse-trash`         | Trashed children tab                                                      |
 | `hxp-browse-details-panel` | Side panel: Info · Tags · Activity                                        |
 | `hxp-browse-nav-drawer`    | Shell drawer wrapper around upstream's tree                               |
 | `hxp-icon` / `hxp-spinner` | Icons and loading                                                         |
 
-Permissions, History and Trash are **ours**, reading real Nuxeo APIs. Do not attribute them to adf-hx.
+History and Trash are **ours**, reading real Nuxeo APIs. Do not attribute them to adf-hx.
+
+Permissions used to be on that list. `hxp-browse-permissions`, a read-only table over
+`contextParameters.acls`, was replaced on 2026-08-31 by upstream's own
+`PermissionsManagementPanelComponent` and deleted. That component reads **and writes**, over
+`sys_acl` and `sys_effectiveAcl` rather than the raw Nuxeo payload — see
+`docs/permissions-phase-3-decision.md` for the ACL mapping and the clear-then-replay write path
+that stands in for Nuxeo's missing replace-an-ACL operation.
 
 Our own legacy `hxp-document-tree` (a Material `mat-tree`) and its `AdfHxDocumentTreeDatabaseService`
 data source were **deleted in Phase 0**. They were unused, and they were the last thing keeping

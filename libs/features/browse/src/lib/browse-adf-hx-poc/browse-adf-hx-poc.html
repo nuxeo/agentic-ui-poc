@@ -135,22 +135,30 @@
             />
           }
         } @else if (activeTab() === 'permissions') {
-          <hxp-browse-permissions
-            [loading]="permissionsLoading()"
-            [canManage]="canManagePermissions()"
-            [localAces]="localAces()"
-            [inheritedAces]="inheritedAces()"
-            [externalAces]="externalAces()"
-            [inheritanceBlocked]="inheritanceBlocked()"
-            [actionInProgress]="actionInProgress()"
-            (addPermission)="onPermissionAction('Add permission')"
-            (editPermission)="onPermissionAction('Edit permission')"
-            (deletePermission)="onPermissionAction('Delete permission')"
-            (toggleInheritance)="onPermissionAction('Toggle inheritance')"
-            (shareExternal)="onPermissionAction('Share with external user')"
-            (editExternal)="onPermissionAction('Edit external permission')"
-            (notifyEmail)="onPermissionAction('Send notification email')"
-          />
+          <!-- Upstream's real permissions panel. It reads its two inputs once, in `ngOnInit`, so
+               it is held back until the parent document has resolved: rendering it earlier
+               initialises the inherited column from an empty parent and never corrects it. -->
+          @if (permissionsTarget(); as target) {
+            @if (permissionsPanelReady()) {
+              <div class="hxp-poc-permissions">
+                <hxp-permissions-management-panel
+                  [document]="target"
+                  [parentDocument]="permissionsParent()"
+                />
+              </div>
+            } @else {
+              <div class="hxp-poc-empty">
+                <hxp-spinner />
+              </div>
+            }
+          } @else {
+            <div class="hxp-poc-empty">
+              <p>
+                The repository root carries no access control list. Open a domain or folder to see
+                and manage its permissions.
+              </p>
+            </div>
+          }
         } @else if (activeTab() === 'properties') {
           <!-- Same selection guard as Versions, for the same reason: properties belong to a
                document, and the folder being browsed is not the one the user means. -->

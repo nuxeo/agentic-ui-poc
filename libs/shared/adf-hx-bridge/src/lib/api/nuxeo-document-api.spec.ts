@@ -5,7 +5,7 @@ import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { NuxeoDocumentApi, ROOT_DOCUMENT as ROOT_DOCUMENT_FROM_PORT } from './nuxeo-document-api';
 import { NuxeoAclService } from '../services/nuxeo-acl.service';
 import { NuxeoPrincipalResolver } from '../services/nuxeo-principal-resolver.service';
-import { ROOT_DOCUMENT } from '../tokens/adf-hx-bridge.tokens';
+import { DEFAULT_REPOSITORY_ID, ROOT_DOCUMENT } from '../tokens/adf-hx-bridge.tokens';
 
 describe('NuxeoDocumentApi', () => {
   let api: NuxeoDocumentApi;
@@ -343,10 +343,15 @@ describe('NuxeoDocumentApi', () => {
     await expect(pending).rejects.toBeDefined();
   });
 
-  it('refuses every write with an explicit Scope A message rather than failing obscurely', async () => {
-    // Eight methods upstream's `DocumentService` will call. They are declared so the port
-    // satisfies the interface and construction succeeds; if any silently resolved, a component
-    // would report a save that never happened. Each is exercised so a removed throw is caught.
+  it('refuses every unimplemented write with an explicit Scope A message rather than failing obscurely', async () => {
+    // The seven methods upstream's `DocumentService` will call that this port does not
+    // implement. They are declared so the port satisfies the interface and construction
+    // succeeds; if any silently resolved, a component would report a save that never
+    // happened. Each is exercised so a removed throw is caught.
+    //
+    // `updateDocumentById` is deliberately NOT in this list: it is implemented for
+    // `sys_acl`, so asserting it here would pass on the substring while claiming the
+    // opposite of what the port does. Its real contract is the test below.
     const writes: readonly [string, () => Promise<unknown>][] = [
       ['createDocumentUnderParentById', () => api.createDocumentUnderParentById()],
       ['createDocumentUnderParentByPath', () => api.createDocumentUnderParentByPath()],
@@ -354,7 +359,6 @@ describe('NuxeoDocumentApi', () => {
       ['deleteDocumentByPath', () => api.deleteDocumentByPath()],
       ['patchDocumentById', () => api.patchDocumentById()],
       ['patchDocumentByPath', () => api.patchDocumentByPath()],
-      ['updateDocumentById', () => api.updateDocumentById()],
       ['updateDocumentByPath', () => api.updateDocumentByPath()],
     ];
 
@@ -362,6 +366,25 @@ describe('NuxeoDocumentApi', () => {
       await expect(call()).rejects.toThrow(`${name} is not implemented in Scope A`);
     }
     // And none of them reached Nuxeo on the way to throwing.
+    httpMock.expectNone(() => true);
+  });
+
+  it('accepts only a sys_acl payload on updateDocumentById, naming the properties it refused', async () => {
+    await expect(
+      api.updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, { 'dc:title': 'Renamed' }),
+    ).rejects.toThrow(
+      'updateDocumentById is not implemented in Scope A beyond sys_acl; received dc:title',
+    );
+
+    // The refusal has to name what it dropped. A component that patched title and ACL
+    // together would otherwise be told only that "something" was unsupported.
+    await expect(
+      api.updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, {
+        'dc:title': 'Renamed',
+        sys_acl: [],
+      }),
+    ).rejects.toThrow(/received dc:title/);
+
     httpMock.expectNone(() => true);
   });
 

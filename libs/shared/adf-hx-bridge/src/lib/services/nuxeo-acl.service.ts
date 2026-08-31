@@ -21,24 +21,115 @@ const HX_STATUS_FROM_NUXEO: Readonly<Record<string, string>> = {
 };
 
 /**
- * Builds HxPR's `sys_acl` from Nuxeo's ACLs.
+ * Nuxeo's pseudo-principal for "everyone", and upstream's.
  *
- * Separate from `nuxeo-to-hx-document.mapper.ts` because it is **asynchronous and cannot be
+ * Blocked inheritance is not a flag in either model: both express it as a **deny-everything ACE
+ * for everyone** in the local ACL. Nuxeo writes `username: 'Everyone'`; upstream recognises it
+ * only as `user.id === '__Everyone__'` (`isAclInheritanceBlocked`). Without the translation the
+ * adopted panel reads inheritance as enabled on a document where Nuxeo has blocked it, and its
+ * toggle then writes the opposite of what it shows.
+ */
+const NUXEO_EVERYONE = 'Everyone';
+const HX_EVERYONE_USER_ID = '__Everyone__';
+
+/**
+ * The principal an HxPR ACE names, as Nuxeo spells it.
+ *
+ * `sys_acl` distinguishes `user` from `group`; Nuxeo's write operations take one `user` parameter
+ * for both and resolve the name itself, so the distinction is dropped on the way out. Upstream also
+ * emits `user` as a bare **string** for the inheritance marker it synthesises in
+ * `updateDocumentAcl`, rather than as a `User`, so both shapes are read.
+ */
+function principalOf(ace: ACE): string | undefined {
+  const user: unknown = ace.user;
+  if (typeof user === 'string') return user;
+  if (user && typeof user === 'object') {
+    const { id, username } = user as { id?: string; username?: string };
+    return username ?? id;
+  }
+  return ace.group?.id;
+}
+
+/** One Nuxeo local-ACL grant, in the shape `DocumentDetailService.addPermission` takes. */
+export interface NuxeoAclGrant {
+  principal: string;
+  permission: string;
+  begin?: string;
+  end?: string;
+}
+
+/** A whole desired local ACL, ready to be written by `NuxeoDocumentApi.updateDocumentById`. */
+export interface NuxeoLocalAclWrite {
+  grants: readonly NuxeoAclGrant[];
+  blockInheritance: boolean;
+}
+
+const NUXEO_PERMISSION_FROM_HX: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(HX_PERMISSION_FROM_NUXEO).map(([nuxeo, hx]) => [hx, nuxeo]),
+);
+
+/**
+ * An HxPR `sys_acl` as the Nuxeo writes that would produce it.
+ *
+ * Nuxeo has no "replace the ACL" call, so the caller clears the local ACL and replays these. The
+ * two halves are separated because Nuxeo expresses them with different operations: grants through
+ * `Document.AddPermission`, and the everyone/deny-everything marker through
+ * `Document.BlockPermissionInheritance`, which writes that ACE itself.
+ *
+ * Denies other than the inheritance marker are **dropped**, because Nuxeo's `Document.AddPermission`
+ * only grants and upstream's panel cannot express one. A `ReadWrite` deny arriving here would be
+ * silently lost, so it is reported rather than guessed at — see `deniedPrincipals`.
+ */
+export function toNuxeoLocalAclWrite(aces: readonly ACE[]): NuxeoLocalAclWrite & {
+  deniedPrincipals: readonly string[];
+} {
+  const grants: NuxeoAclGrant[] = [];
+  const deniedPrincipals: string[] = [];
+  let blockInheritance = false;
+
+  for (const ace of aces) {
+    const principal = principalOf(ace);
+    if (!principal || !ace.permission) continue;
+
+    if (ace.granted === false) {
+      const isInheritanceMarker =
+        (principal === HX_EVERYONE_USER_ID || principal === NUXEO_EVERYONE) &&
+        ace.permission === 'Everything';
+      if (isInheritanceMarker) {
+        blockInheritance = true;
+      } else {
+        deniedPrincipals.push(principal);
+      }
+      continue;
+    }
+
+    grants.push({
+      principal,
+      permission: NUXEO_PERMISSION_FROM_HX[ace.permission] ?? ace.permission,
+      ...(ace.begin ? { begin: ace.begin } : {}),
+      ...(ace.end ? { end: ace.end } : {}),
+    });
+  }
+
+  return { grants, blockInheritance, deniedPrincipals };
+}
+
+/**
+ * Maps between Nuxeo's ACLs and HxPR's `sys_acl` / `sys_effectiveAcl`.
+ *
+ * Separate from `nuxeo-to-hx-document.mapper.ts` because the read is **asynchronous and cannot be
  * otherwise**: Nuxeo's ACE names a principal without saying whether it is a user or a group, so each
  * distinct name needs a directory lookup. See `NuxeoPrincipalResolver`.
  *
- * ## What is deliberately lost, and what is not
+ * ## What is deliberately lost
  *
- * Nuxeo groups ACEs into **named** ACLs — `local`, `inherited` — and HxPR's `sys_acl` is a flat
- * `ACE[]` with no equivalent. The names are therefore dropped, and that is a real reduction: a
- * consumer of `sys_acl` alone cannot tell an inherited grant from a local one.
+ * Nuxeo groups ACEs into **named** ACLs — `local`, `inherited` — and HxPR has no field for the
+ * names. The distinction survives as the pair of fields rather than as a label: `sys_acl` is the
+ * `local` ACL and `sys_effectiveAcl` is every ACE in force. That is what upstream's permissions
+ * panel reads, and it recovers local-versus-inherited from the difference.
  *
- * It is not hidden. `AdfHxBrowseFolderService` and the POC's own permissions tab read Nuxeo's ACLs
- * directly and *do* distinguish local, inherited and external, which is why that tab was kept rather
- * than replaced. `sys_acl` exists for upstream components that ask for it.
- *
- * `id` is dropped too — Nuxeo's composite ACE id (`Administrator:Everything:true:Administrator::`)
- * has no HxPR field and encodes information already present in the other columns.
+ * `id` is dropped — Nuxeo's composite ACE id (`Administrator:Everything:true:Administrator::`) has
+ * no HxPR field and encodes information already present in the other columns.
  */
 @Injectable()
 export class NuxeoAclService {
@@ -52,17 +143,41 @@ export class NuxeoAclService {
    * and an empty array would assert that the document has none.
    */
   aclFor(doc: NuxeoDocument): Observable<ACE[] | undefined> {
+    return this.acesFrom(doc);
+  }
+
+  /**
+   * Only the ACEs Nuxeo holds on **this** document, which is HxPR's `sys_acl`.
+   *
+   * `aclFor` is `sys_effectiveAcl` — every ACE in force, local and inherited together. Upstream's
+   * permissions panel needs both and uses the difference: it builds one row per principal from
+   * `sys_effectiveAcl`, then calls an ACE local when it also appears in `sys_acl`. Given the
+   * flattened set in both fields every ACE looks local, the inherited column empties, and saving
+   * rewrites inherited grants as local ones.
+   */
+  localAclFor(doc: NuxeoDocument): Observable<ACE[] | undefined> {
+    return this.acesFrom(doc, 'local');
+  }
+
+  /**
+   * `undefined` when the document carries no `acls` context parameter, for the same reason
+   * `sys_effectivePermissions` does: a read that did not request the enricher cannot know the ACL,
+   * and an empty array would assert that the document has none.
+   */
+  private acesFrom(doc: NuxeoDocument, name?: string): Observable<ACE[] | undefined> {
     const acls = doc.contextParameters?.['acls'];
     if (!Array.isArray(acls)) {
       return of(undefined);
     }
 
-    const aces = acls.flatMap(
-      (acl: { aces?: NuxeoAce[]; ace?: NuxeoAce[] }) =>
-        // Nuxeo's own payload uses `aces`; the `@acl` adapter uses `ace`. Both are accepted because
-        // both appear on this instance depending on which endpoint answered.
-        acl?.aces ?? acl?.ace ?? [],
-    );
+    const aces = (acls as Array<{ name?: string; aces?: NuxeoAce[]; ace?: NuxeoAce[] }>)
+      .filter((acl) => name === undefined || acl?.name === name)
+      .flatMap(
+        (acl) =>
+          // Nuxeo's own payload uses `aces`; the `@acl` adapter uses `ace`. Both are accepted
+          // because both appear on this instance depending on which endpoint answered.
+          acl?.aces ?? acl?.ace ?? [],
+      );
     if (aces.length === 0) {
       return of([]);
     }
@@ -81,6 +196,12 @@ export class NuxeoAclService {
       end: ace.end ?? undefined,
       status: HX_STATUS_FROM_NUXEO[ace.status] as ACE['status'],
     };
+
+    if (ace.username === NUXEO_EVERYONE) {
+      // Not a directory entry, so there is nothing to resolve — and resolving it would answer
+      // `Everyone`, which upstream does not recognise as the inheritance marker.
+      return of({ ...base, user: { id: HX_EVERYONE_USER_ID, username: NUXEO_EVERYONE } });
+    }
 
     return this.principals.resolve(ace.username).pipe(
       map((principal) => {

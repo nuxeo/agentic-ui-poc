@@ -41,7 +41,6 @@ export * from './lib/ui/hxp-browse-pager/hxp-browse-pager.component';
 export * from './lib/ui/hxp-icon/hxp-icon.component';
 export * from './lib/ui/hxp-spinner/hxp-spinner.component';
 export * from './lib/ui/hxp-browse-tabs/hxp-browse-tabs.component';
-export * from './lib/ui/hxp-browse-permissions/hxp-browse-permissions.component';
 export * from './lib/ui/hxp-browse-history/hxp-browse-history.component';
 export * from './lib/ui/hxp-browse-trash/hxp-browse-trash.component';
 export * from './lib/ui/hxp-browse-details-panel/hxp-browse-details-panel.component';

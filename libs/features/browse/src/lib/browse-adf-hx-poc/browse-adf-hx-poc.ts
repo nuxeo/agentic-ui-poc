@@ -7,14 +7,12 @@ import type { Document } from '@hylandsoftware/hxcs-js-client';
 import {
   auditActivityLabel,
   canAddChildren,
-  canManageDocumentPermissions,
   canRemoveDocument,
   canViewDocumentAuditLog,
   canWriteDocument,
   isFolderishDocument,
   isRestrictedImportParentPath,
   isDomainParentType,
-  mergeDocumentPermissionsContext,
   type AuditEntry,
   type DirectoryEntry,
   type NuxeoDocument,
@@ -26,7 +24,6 @@ import {
   HxpBrowseDetailsPanelComponent,
   type HxpDetailsSubTab,
   HxpBrowseHistoryComponent,
-  HxpBrowsePermissionsComponent,
   HxpBrowseTabsComponent,
   type HxpBrowseTabId,
   HxpBrowseToolbarComponent,
@@ -40,14 +37,11 @@ import {
   HxpFolderHeaderComponent,
   HxpBrowseTrashComponent,
   HxpIconComponent,
+  HxpSpinnerComponent,
   ROOT_DOCUMENT,
   hxpDocTitle,
   hxpDocumentTags,
-  hxpExternalAces,
-  hxpInheritedAces,
-  hxpIsInheritanceBlocked,
   hxpIsSubscribed,
-  hxpLocalAces,
 } from '@agentic-ui/shared/adf-hx-bridge';
 
 // The narrow entry point, deliberately. It is the only thing in this bridge that reaches
@@ -63,6 +57,7 @@ import {
   HxpPropertiesSidebarComponent as UpstreamPropertiesSidebarComponent,
   HxpUiDocumentViewerComponent as UpstreamDocumentViewerComponent,
   ManageVersionsSidebarComponent as UpstreamManageVersionsSidebarComponent,
+  PermissionsManagementPanelComponent as UpstreamPermissionsPanelComponent,
 } from '@alfresco/adf-hx-content-services/ui';
 import type { DataColumn } from '@alfresco/adf-core';
 
@@ -73,6 +68,17 @@ import {
 } from '@nuxeo-satori/platform/extensions';
 
 import { toDataColumns } from '../adf-hx-columns';
+
+/**
+ * The `[parentDocument]` upstream's permissions panel gets when this document has no readable
+ * parent.
+ *
+ * The input is not optional and the facade dereferences it — `parentDocument.sys_effectiveAcl || []`
+ * — whenever inheritance is blocked, so `undefined` is a `TypeError` rather than a default. An
+ * empty ACL is the honest stand-in: passing the document as its own parent would list its own ACEs
+ * a second time, in the inherited column.
+ */
+const NO_PARENT_DOCUMENT: Document = { sys_primaryType: '', sys_effectiveAcl: [] };
 
 @Component({
   selector: 'lib-browse-adf-hx-poc',
@@ -88,15 +94,16 @@ import { toDataColumns } from '../adf-hx-columns';
     UpstreamDocumentListComponent,
     UpstreamDocumentViewerComponent,
     UpstreamManageVersionsSidebarComponent,
+    UpstreamPermissionsPanelComponent,
     UpstreamPropertiesSidebarComponent,
     HxpDocumentCardsComponent,
     HxpColumnPickerComponent,
     HxpBrowsePagerComponent,
-    HxpBrowsePermissionsComponent,
     HxpBrowseHistoryComponent,
     HxpBrowseTrashComponent,
     HxpBrowseDetailsPanelComponent,
     HxpIconComponent,
+    HxpSpinnerComponent,
     TranslatePipe,
   ],
   providers: [...ADF_HX_NUXEO_BRIDGE_PROVIDERS],
@@ -324,9 +331,36 @@ export class BrowseAdfHxPocComponent {
   protected readonly panelOpen = signal(false);
   protected readonly panelSubTab = signal<HxpDetailsSubTab>('info');
 
-  protected readonly permissionsLoaded = signal(false);
+  // ── Permissions ──
+  //
+  // Upstream's `PermissionsManagementPanelComponent` replaced a hand-written read-only table. It
+  // initialises from its two inputs in `ngOnInit` and never re-reads them, so both have to be
+  // settled before it is rendered — hence `permissionsPanelReady` rather than a `[loading]` input.
+
   protected readonly permissionsLoading = signal(false);
-  protected readonly actionInProgress = signal<string | null>(null);
+  protected readonly permissionsPanelReady = signal(false);
+
+  /**
+   * The parent, for the inherited column when this document blocks inheritance.
+   *
+   * Upstream reads `parentDocument.sys_effectiveAcl` only in that case: with inheritance on, Nuxeo
+   * already reports the inherited ACEs on the document itself. An empty document rather than the
+   * real parent when there is none — passing the document as its own parent would count its own
+   * ACEs twice.
+   */
+  protected readonly permissionsParent = signal<Document>(NO_PARENT_DOCUMENT);
+
+  /**
+   * The document the panel manages, or `null` when there is no ACL to manage.
+   *
+   * `sys_effectiveAcl` is absent — not empty — when the read did not carry Nuxeo's `acls` enricher,
+   * and the synthetic repository root has no ACL at all. Rendering the panel then shows an empty
+   * permissions table, which reads as "this document grants nobody anything".
+   */
+  protected readonly permissionsTarget = computed<Document | null>(() => {
+    const doc = this.currentDocument();
+    return doc.sys_effectiveAcl === undefined ? null : doc;
+  });
 
   protected readonly auditEntries = signal<AuditEntry[]>([]);
   protected readonly auditLoading = signal(false);
@@ -369,9 +403,6 @@ export class BrowseAdfHxPocComponent {
 
   protected readonly canWrite = computed(() => canWriteDocument(this.currentNuxeoDoc()));
   protected readonly canRemove = computed(() => canRemoveDocument(this.currentNuxeoDoc()));
-  protected readonly canManagePermissions = computed(() =>
-    canManageDocumentPermissions(this.currentNuxeoDoc()),
-  );
   protected readonly isSubscribed = computed(() => hxpIsSubscribed(this.currentNuxeoDoc()));
   protected readonly canCreate = computed(() => {
     const doc = this.currentNuxeoDoc();
@@ -380,12 +411,6 @@ export class BrowseAdfHxPocComponent {
     }
     return !isDomainParentType(doc.type) && !isRestrictedImportParentPath(doc.path);
   });
-  protected readonly localAces = computed(() => hxpLocalAces(this.currentNuxeoDoc()));
-  protected readonly inheritedAces = computed(() => hxpInheritedAces(this.currentNuxeoDoc()));
-  protected readonly externalAces = computed(() => hxpExternalAces(this.currentNuxeoDoc()));
-  protected readonly inheritanceBlocked = computed(() =>
-    hxpIsInheritanceBlocked(this.currentNuxeoDoc()),
-  );
   protected readonly tags = computed(() => hxpDocumentTags(this.currentNuxeoDoc()));
   protected readonly docState = computed(
     () => (this.currentNuxeoDoc()?.properties?.['dc:nature'] as string | undefined) ?? 'Project',
@@ -525,7 +550,7 @@ export class BrowseAdfHxPocComponent {
   protected onTabChange(tab: HxpBrowseTabId): void {
     this.activeTab.set(tab);
     if (tab === 'permissions') {
-      this.loadPermissions();
+      this.loadPermissionsPanel();
     }
     if (tab === 'history') {
       if (!this.historyDirectoriesLoaded) {
@@ -592,10 +617,6 @@ export class BrowseAdfHxPocComponent {
     this.showScopeNotice(`Restore "${hxpDocTitle(doc)}"`);
   }
 
-  protected onPermissionAction(action: string): void {
-    this.showScopeNotice(action);
-  }
-
   protected exportCsv(): void {
     const doc = this.currentDocument();
     const uid = doc.sys_id;
@@ -653,8 +674,10 @@ export class BrowseAdfHxPocComponent {
 
   private resetTabState(): void {
     this.activeTab.set('view');
-    this.permissionsLoaded.set(false);
     this.permissionsLoading.set(false);
+    // The panel is destroyed and rebuilt for the new folder, so its inputs must be re-resolved.
+    this.permissionsPanelReady.set(false);
+    this.permissionsParent.set(NO_PARENT_DOCUMENT);
     this.historyDirectoriesLoaded = false;
     this.trashLoaded = false;
     this.auditEntries.set([]);
@@ -744,31 +767,43 @@ export class BrowseAdfHxPocComponent {
       });
   }
 
-  private loadPermissions(force = false): void {
-    const doc = this.currentNuxeoDoc();
-    if (!doc?.uid || this.permissionsLoading()) {
+  /**
+   * Resolves the parent document, then lets upstream's panel render.
+   *
+   * The document itself needs no fetch: `sys_acl` and `sys_effectiveAcl` already arrived with the
+   * folder read, which requests Nuxeo's `acls` enricher. Only the parent is missing, and only
+   * matters when this document blocks inheritance — but the panel reads both inputs once in
+   * `ngOnInit`, so the parent has to be there before it is rendered rather than after.
+   */
+  private loadPermissionsPanel(): void {
+    if (this.permissionsPanelReady() || this.permissionsLoading()) {
       return;
     }
-    if (this.permissionsLoaded() && !force) {
+
+    const parentRef = this.currentNuxeoDoc()?.parentRef;
+    if (!parentRef) {
+      // A document Nuxeo reports no parent for, or the synthetic root. Either way there is no
+      // inherited ACL to show beyond what the document itself carries.
+      this.permissionsPanelReady.set(true);
       return;
     }
 
     this.permissionsLoading.set(true);
-    this.folderService
-      .getDocumentPermissions(doc.uid)
+    this.documentService
+      .getDocumentById(parentRef)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (updated) => {
-          const existing = this.currentNuxeoDoc();
-          this.currentNuxeoDoc.set(
-            existing ? mergeDocumentPermissionsContext(existing, updated) : updated,
-          );
-          this.permissionsLoaded.set(true);
+        next: (parent) => {
+          this.permissionsParent.set(parent);
           this.permissionsLoading.set(false);
+          this.permissionsPanelReady.set(true);
         },
         error: () => {
+          // A parent the user cannot read is the common case, not an exception: Nuxeo grants
+          // access to a folder without granting it to the folder above. Show the document's own
+          // ACL rather than nothing.
           this.permissionsLoading.set(false);
-          this.scopeNotice.set('Failed to load permissions.');
+          this.permissionsPanelReady.set(true);
         },
       });
   }

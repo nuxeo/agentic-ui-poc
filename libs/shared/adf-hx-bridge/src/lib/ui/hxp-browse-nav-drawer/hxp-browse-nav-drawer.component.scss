@@ -61,6 +61,31 @@
   color: var(--hxp-primary);
 }
 
+.tree-error {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--hxp-error);
+  font-size: 13px;
+
+  p {
+    margin: 0 0 12px;
+  }
+
+  button {
+    padding: 8px 16px;
+    border: 1px solid var(--hxp-error);
+    background: transparent;
+    color: var(--hxp-error);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+
+    &:hover {
+      background: color-mix(in srgb, var(--hxp-error) 8%, transparent);
+    }
+  }
+}
+
 .tree-empty {
   padding: 24px 16px;
   text-align: center;

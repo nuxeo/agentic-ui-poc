@@ -122,8 +122,8 @@ nav updates 245 ms after reload, the browse table 273 ms.
 ## Part 1 — What is adf-hx, and what is ours
 
 This is the question you will be asked first, and the answer is easy to get backwards. An
-`hxp-*` tag says **nothing** about who wrote the component: **six** are upstream's and
-**fourteen** are ours, sharing the prefix.
+`hxp-*` tag says **nothing** about who wrote the component: **seven** are upstream's and
+**thirteen** are ours, sharing the prefix.
 
 > `libs/shared/adf-hx-bridge/ARCHITECTURE.md` had this inverted until 2026-08-25 — it listed
 > `hxp-document-list` and `hxp-breadcrumb` as ours, and listed two things that do not exist. It
@@ -134,24 +134,32 @@ The reliable test is the import. Our POC feature code aliases every upstream com
 
 ### Real adf-hx (from `@alfresco/adf-hx-content-services/ui`)
 
-| Selector                      | Where                                              |
-| ----------------------------- | -------------------------------------------------- |
-| `hxp-document-list`           | browse POC, adf-hx search                          |
-| `hxp-breadcrumb`              | browse POC                                         |
-| `hxp-properties-sidebar`      | browse POC, Properties tab                         |
-| `hxp-ui-document-viewer`      | browse POC                                         |
-| `hxp-manage-versions-sidebar` | browse POC, Versions tab                           |
-| `hxp-document-tree`           | nav drawer, wrapped by our `hxp-browse-nav-drawer` |
+| Selector                           | Where                                              |
+| ---------------------------------- | -------------------------------------------------- |
+| `hxp-document-list`                | browse POC, adf-hx search                          |
+| `hxp-breadcrumb`                   | browse POC                                         |
+| `hxp-properties-sidebar`           | browse POC, Properties tab                         |
+| `hxp-ui-document-viewer`           | browse POC                                         |
+| `hxp-manage-versions-sidebar`      | browse POC, Versions tab                           |
+| `hxp-permissions-management-panel` | browse POC, Permissions tab                        |
+| `hxp-document-tree`                | nav drawer, wrapped by our `hxp-browse-nav-drawer` |
 
-### Ours — 14 components in `libs/shared/adf-hx-bridge/src/lib/ui/`
+### Ours — 13 components in `libs/shared/adf-hx-bridge/src/lib/ui/`
 
 `hxp-folder-header`, `hxp-domain-hint`, `hxp-browse-tabs`, `hxp-browse-toolbar`,
-`hxp-browse-pager`, `hxp-column-picker`, `hxp-document-cards`, `hxp-browse-permissions`,
+`hxp-browse-pager`, `hxp-column-picker`, `hxp-document-cards`,
 `hxp-browse-history`, `hxp-browse-trash`, `hxp-browse-details-panel`, `hxp-browse-nav-drawer`,
 `hxp-icon`, `hxp-spinner`.
 
-**Permissions, History and Trash are ours**, reading real Nuxeo ACL, audit and trash APIs. Do not
-attribute them to adf-hx.
+**History and Trash are ours**, reading real Nuxeo audit and trash APIs. Do not attribute them to
+adf-hx.
+
+Permissions is **no longer** in that group, and earlier copies of this runbook said it was. The
+read-only `hxp-browse-permissions` table was replaced on 2026-08-31 by upstream's
+`hxp-permissions-management-panel`, which reads _and writes_ Nuxeo ACLs. If you are demoing from a
+script that says "upstream ships nothing for permissions", it is out of date —
+`docs/permissions-phase-3-decision.md` records what changed and why the original deferral was
+wrong.
 
 ### Dependency versions (from the lockfile)
 
@@ -231,7 +239,7 @@ real decision with a stated failure mode, not a diagram.
 |                           |                                                                                                                                                                                                              |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Customer depends on       | `@nuxeo-satori/platform` + peers: Angular 20.3, Material/CDK 20.2, `@alfresco/adf-extensions ^9`, `@hylandsoftware/satori-ui ^0.2`, `rxjs ^7.8`                                                              |
-| Customer **cannot** reach | `libs/shared/adf-hx-bridge` is **internal** — not published, no build target, absent from the package. All twelve API ports, the Nuxeo↔Hx mappers and all fourteen of our `hxp-`* components are unreachable |
+| Customer **cannot** reach | `libs/shared/adf-hx-bridge` is **internal** — not published, no build target, absent from the package. All twelve API ports, the Nuxeo↔Hx mappers and all thirteen of our `hxp-`* components are unreachable |
 
 **The line for leadership:** adf-hx is an implementation detail of the product, not part of the
 customer contract. Customers get the Layer 0/1/2 extensibility surface and are insulated from

@@ -37,8 +37,10 @@ import { NuxeoAclService } from '../services/nuxeo-acl.service';
 import {
   DocumentRouterService,
   DOCUMENT_PROVIDERS,
+  IDENTITY_USER_SERVICE_TOKEN,
   USER_RESOLVER_PROVIDERS,
 } from '@alfresco/adf-hx-content-services/services';
+import { NuxeoIdentityUserService } from '../services/nuxeo-identity-user.service';
 import { provideDummyFeatureFlags } from '@alfresco/adf-core/feature-flags';
 
 /**
@@ -99,6 +101,11 @@ export const ADF_HX_NUXEO_BRIDGE_PROVIDERS: Provider[] = [
   // async by necessity: Nuxeo's ACE does not say whether a principal is a user or a group.
   NuxeoPrincipalResolver,
   NuxeoAclService,
+  // adf-hx's identity port. Not an API token and not in upstream's provider arrays, but the same
+  // kind of hole: `PermissionsParserService` takes it non-optionally, so the permissions panel
+  // fails `NG0201` without it. See `nuxeo-identity-user.service.ts`.
+  NuxeoIdentityUserService,
+  { provide: IDENTITY_USER_SERVICE_TOKEN, useExisting: NuxeoIdentityUserService },
   // WORKAROUND(adf-hx): W7 — pipes provided as services, because none carries `providedIn`.
   //
   // adf-core's pipes, which upstream's arrays do **not** cover.

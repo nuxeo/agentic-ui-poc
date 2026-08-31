@@ -326,6 +326,22 @@ export class DocumentDetailService {
     );
   }
 
+  /**
+   * Drops a whole named ACL, `local` by default.
+   *
+   * Nuxeo has no "replace this ACL" operation, so a caller holding a complete desired ACL clears
+   * and replays it. That is destructive between the two calls: an ACL cleared by a request whose
+   * replay then fails leaves the document relying on inheritance alone. Nuxeo still enforces
+   * `WriteSecurity` on both calls, so this cannot grant the caller anything they did not have.
+   */
+  removeAcl(uid: string, acl = 'local'): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${uid}/@op/Document.RemoveACL`,
+      { params: { acl }, context: {} },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
   blockPermissionInheritance(uid: string): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}/@op/Document.BlockPermissionInheritance`,

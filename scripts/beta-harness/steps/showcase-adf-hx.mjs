@@ -146,7 +146,10 @@ export default async function run(page, h) {
   await h.screenshot('adf-hx-tabs', page.locator('hxp-browse-tabs'));
 
   h.step('Permissions tab reads real Nuxeo ACLs');
-  await openTabAndAssert(page, h, 'Permission', 'permissions', 'hxp-browse-permissions');
+  // Upstream's own panel now, not the hand-written table this asserted before. Same stale-selector
+  // situation as the card-view step above: the assertion named a component that no longer exists,
+  // so it would have gone red for the deletion rather than for a regression.
+  await openTabAndAssert(page, h, 'Permission', 'permissions', 'hxp-permissions-management-panel');
 
   h.step('History tab reads the real Nuxeo audit log');
   await openTabAndAssert(page, h, 'History', 'history', 'hxp-browse-history');

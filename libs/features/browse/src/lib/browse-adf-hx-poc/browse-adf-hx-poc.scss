@@ -120,6 +120,17 @@ hxp-domain-hint {
   }
 }
 
+// Third instance of the same containment problem, and the reason it is worth stating as a pattern:
+// every adf-hx panel adopted so far is built to be a drawer and ships `ViewEncapsulation.None`
+// styles that size itself against the viewport rather than its container. Upstream's permissions
+// panel sets `height: calc(100% - 32px)` on its own container, which collapses to nothing unless
+// the host gives it a height to be a percentage of.
+.hxp-poc-permissions {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 // Preview button - sits next to the panel toggle
 .hxp-browse-page__preview-btn {
   display: flex;

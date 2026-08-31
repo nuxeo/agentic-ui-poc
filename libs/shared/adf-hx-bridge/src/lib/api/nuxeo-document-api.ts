@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import type { Document, DocumentAncestors } from '@hylandsoftware/hxcs-js-client';
+import type { ACE, Document, DocumentAncestors } from '@hylandsoftware/hxcs-js-client';
 import { firstValueFrom } from 'rxjs';
 import {
   BrowseService,
@@ -15,7 +15,7 @@ import {
   mapNuxeoDocumentToHx,
   syntheticHxRepositoryRoot,
 } from '../mapping/nuxeo-to-hx-document.mapper';
-import { NuxeoAclService } from '../services/nuxeo-acl.service';
+import { NuxeoAclService, toNuxeoLocalAclWrite } from '../services/nuxeo-acl.service';
 
 type AxiosLikeResponse<T> = { data: T };
 
@@ -37,8 +37,18 @@ export class NuxeoDocumentApi {
    * the honest answer rather than an empty one.
    */
   private async withAcl(nuxeo: NuxeoDocumentInput, mapped: Document): Promise<Document> {
-    const acl = await firstValueFrom(this.acl.aclFor(nuxeo));
-    return acl === undefined ? mapped : { ...mapped, sys_acl: acl };
+    const [effective, local] = await Promise.all([
+      firstValueFrom(this.acl.aclFor(nuxeo)),
+      firstValueFrom(this.acl.localAclFor(nuxeo)),
+    ]);
+    if (effective === undefined) {
+      return mapped;
+    }
+    // Two fields, not one. `sys_acl` is the document's own ACL and `sys_effectiveAcl` is every ACE
+    // in force; upstream's permissions panel recovers inherited-versus-local from the difference,
+    // so filling only `sys_acl` makes every inherited grant look local and saving rewrites it as
+    // one. `local` cannot be `undefined` when `effective` is not — both read the same field.
+    return { ...mapped, sys_acl: local ?? [], sys_effectiveAcl: effective };
   }
 
   async getDocumentById(
@@ -120,8 +130,61 @@ export class NuxeoDocumentApi {
     throw new Error('patchDocumentByPath is not implemented in Scope A');
   }
 
-  async updateDocumentById(): Promise<AxiosLikeResponse<Document>> {
-    throw new Error('updateDocumentById is not implemented in Scope A');
+  /**
+   * The `sys_acl` half of upstream's document update, and nothing else.
+   *
+   * `PermissionsDataAccessService.updateDocument` is the only caller upstream has for this method,
+   * and it sends exactly `{ sys_acl }`. Accepting a general property patch here would be a claim
+   * this port cannot honour, so anything else is refused by name rather than half-applied.
+   *
+   * Nuxeo has no operation that replaces an ACL, so the desired one is written as a clear followed
+   * by a replay. **The window between them is real**: a failure after the clear leaves the document
+   * on its inherited permissions until the caller retries. Nuxeo enforces `WriteSecurity` on every
+   * one of these calls, so a user who cannot change permissions gets a 403 on the first.
+   */
+  async updateDocumentById(
+    docId: string,
+    repositoryId: string = DEFAULT_REPOSITORY_ID,
+    requestBody?: Record<string, unknown>,
+  ): Promise<AxiosLikeResponse<Document>> {
+    const properties = requestBody ?? {};
+    const unsupported = Object.keys(properties).filter((key) => key !== 'sys_acl');
+    if (unsupported.length > 0 || !Array.isArray(properties['sys_acl'])) {
+      // The wording keeps the `<name> is not implemented in Scope A` phrase the other refused
+      // writes share, because it is still true of everything except `sys_acl` and the port's own
+      // spec asserts the whole family by that sentence.
+      throw new Error(
+        `updateDocumentById is not implemented in Scope A beyond sys_acl; received ${Object.keys(properties).join(', ') || '(nothing)'}`,
+      );
+    }
+
+    const { grants, blockInheritance, deniedPrincipals } = toNuxeoLocalAclWrite(
+      properties['sys_acl'] as ACE[],
+    );
+    if (deniedPrincipals.length > 0) {
+      throw new Error(
+        `Nuxeo cannot store a deny ACE through this port: ${deniedPrincipals.join(', ')}`,
+      );
+    }
+
+    await firstValueFrom(this.documentDetail.removeAcl(docId));
+    for (const grant of grants) {
+      await firstValueFrom(
+        this.documentDetail.addPermission(docId, {
+          username: grant.principal,
+          permission: grant.permission,
+          begin: grant.begin ?? null,
+          end: grant.end ?? null,
+          notify: false,
+        }),
+      );
+    }
+    // Last, because Nuxeo appends the deny ACE and a deny ahead of a grant would shadow it.
+    if (blockInheritance) {
+      await firstValueFrom(this.documentDetail.blockPermissionInheritance(docId));
+    }
+
+    return this.getDocumentById(docId, repositoryId);
   }
 
   async updateDocumentByPath(): Promise<AxiosLikeResponse<Document>> {
