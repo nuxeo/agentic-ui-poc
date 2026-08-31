@@ -34,7 +34,7 @@
       "evidence": {
         "manifest": "phase-0-baseline/2026-08-21T11-47-33",
         "gate": "gates/latest:phase-0-committed",
-        "regate": "gates/latest:plan-complete"
+        "regate": "gates/latest:main-merged"
       },
       "deviations": [],
       "notCovered": [
@@ -49,7 +49,7 @@
       "evidence": {
         "manifest": "phase-1-config/2026-08-21T11-47-45",
         "gate": "gates/latest:phase-1-remediation",
-        "regate": "gates/latest:plan-complete"
+        "regate": "gates/latest:main-merged"
       },
       "deviations": [
         "Declared complete once with the config path wrong by one segment; remediated after independent review. Risk R7 was dropped to Low on the strength of the wrong path and has been withdrawn."
@@ -66,7 +66,7 @@
       "evidence": {
         "manifest": "phase-2-registry/2026-08-21T11-51-02",
         "gate": "gates/latest:phase-2-closure",
-        "regate": "gates/latest:plan-complete"
+        "regate": "gates/latest:main-merged"
       },
       "deviations": [
         "Shipped a `typecheck` target where the plan said `build`: Nx's module-boundary rule forbids a buildable library from importing a non-buildable one, and nothing in libs/ is buildable until Phase 4 adds ng-packagr."
@@ -91,7 +91,7 @@
         "manifest": "phase-3-adf-hx/2026-08-24T03-03-48",
         "searchManifest": "phase-3-search/2026-08-24T02-58-00",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/latest:plan-complete"
+        "regate": "gates/latest:main-merged"
       },
       "deviations": [
         "CORRECTED: this file previously recorded that DocumentModelService \"calls getModel() from its CONSTRUCTOR, so anything injecting it fails to construct\". The eager call is real; the consequence was not. An async method that throws returns a rejected promise, so the service constructs. Established by writing the test rather than by reasoning about it, after the reasoning had already been written into three files.",
@@ -197,7 +197,7 @@
       "evidence": {
         "manifest": "phase-4-platform/2026-08-23T03-22-29",
         "gate": "gates/2026-08-23T03-47-19-phase-4-signoff",
-        "regate": "gates/latest:plan-complete"
+        "regate": "gates/latest:main-merged"
       },
       "deviations": [
         "Merged from two duplicate entries. `phase-4-layer2` and `phase-4-platform` both carried the title \"Layer 2 \u2014 publishable platform\"; the latter was a stub whose notCovered read \"everything\". Kept the id the gate reports and the evidence directory use.",
@@ -229,7 +229,7 @@
       "evidence": {
         "manifest": "phase-5-harness/2026-08-24T03-08-47",
         "gate": "gates/2026-08-24T03-05-47-all-phases-signoff",
-        "regate": "gates/latest:plan-complete"
+        "regate": "gates/latest:main-merged"
       },
       "deviations": [
         "Departed from the plan's wording deliberately, and measured first. The plan said 'split the AGENTS/ knowledge base'; 50 files carry 185 references to AGENTS/ paths, and .github/workflows/staleness-check.yml asserts AGENTS/01-services.md and AGENTS/${i}-*.md exist \u2014 so a split breaks CI and every skill. Measuring the content settled it too: 3,177 lines, of which only 3 of 13 files mention extensions, slots or the Layers. libs/platform/AGENTS.md is therefore authored for the audience, not extracted.",
