@@ -68,9 +68,32 @@ export const REGISTRY = {
     name: 'ManageVersionsSidebarComponent',
     headline: true,
   },
+  'hxp-permissions-management-panel': {
+    origin: 'adf-hx',
+    name: 'PermissionsManagementPanelComponent',
+    headline: true,
+  },
 
-  // ---- upstream internals the six render --------------------------------------
+  // ---- upstream internals the seven render ------------------------------------
   'hxp-ui-breadcrumb': { origin: 'adf-hx', name: 'HxpUiBreadcrumbComponent' },
+  'hxp-permission-management-container': {
+    origin: 'adf-hx',
+    name: 'PermissionManagementContainerComponent',
+  },
+  'hxp-permissions-table': { origin: 'adf-hx', name: 'PermissionsTableComponent' },
+  'hxp-permissions-inheritance-toggle': {
+    origin: 'adf-hx',
+    name: 'PermissionsInheritanceToggleComponent',
+  },
+  'hxp-add-permission': { origin: 'adf-hx', name: 'AddPermissionComponent' },
+  'hxp-permission-search': { origin: 'adf-hx', name: 'PermissionSearchComponent' },
+  'hxp-permissions': { origin: 'adf-hx', name: 'PermissionsComponent' },
+  'hxp-inherited-permission': { origin: 'adf-hx', name: 'InheritedPermissionComponent' },
+  'hxp-permissions-document-title': {
+    origin: 'adf-hx',
+    name: 'PermissionsDocumentTitleComponent',
+  },
+  'hxp-permissions-empty-table': { origin: 'adf-hx', name: 'PermissionsEmptyTableComponent' },
   'hxp-folder-icon': { origin: 'adf-hx', name: 'FolderIconComponent' },
   'hxp-mime-type-icon': { origin: 'adf-hx', name: 'MimeTypeIconComponent' },
   'hxp-document-type-icon': { origin: 'adf-hx', name: 'ContentTypeIconComponent' },
@@ -109,12 +132,13 @@ export const REGISTRY = {
     noisy: true,
   },
 
-  // ---- ours: the fourteen in libs/shared/adf-hx-bridge ------------------------
+  // ---- ours: the thirteen in libs/shared/adf-hx-bridge ------------------------
+  // Thirteen, not fourteen: `hxp-browse-permissions` was deleted when upstream's
+  // `hxp-permissions-management-panel` was adopted above.
   'hxp-browse-toolbar': { origin: 'ours', name: 'HxpBrowseToolbarComponent' },
   'hxp-browse-tabs': { origin: 'ours', name: 'HxpBrowseTabsComponent' },
   'hxp-browse-nav-drawer': { origin: 'ours', name: 'HxpBrowseNavDrawerComponent' },
   'hxp-browse-pager': { origin: 'ours', name: 'HxpBrowsePagerComponent' },
-  'hxp-browse-permissions': { origin: 'ours', name: 'HxpBrowsePermissionsComponent' },
   'hxp-browse-details-panel': { origin: 'ours', name: 'HxpBrowseDetailsPanelComponent' },
   'hxp-browse-history': { origin: 'ours', name: 'HxpBrowseHistoryComponent' },
   'hxp-browse-trash': { origin: 'ours', name: 'HxpBrowseTrashComponent' },

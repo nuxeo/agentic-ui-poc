@@ -393,13 +393,16 @@ export default async function run({ page, deckUrl, hold, playDeck }) {
   });
   await beat(page, 'versions-sidebar');
 
-  // Beat 11 — three tabs with no upstream component in them at all.
+  // Beat 11 — the Permissions tab, now upstream's own panel, then two tabs with no upstream
+  // component in them at all. Permissions used to be in the second group: `hxp-browse-permissions`
+  // was a read-only table of ours, and the line here said upstream shipped nothing for it. Both
+  // stopped being true when `hxp-permissions-management-panel` was adopted.
   let spinnerCaught = false;
   for (const [tab, tag, text] of [
     [
       'Permissions',
-      'hxp-browse-permissions',
-      'Permissions: upstream ships nothing for this. The whole tab is ours.',
+      'hxp-permissions-management-panel',
+      'Permissions: upstream’s own panel, reading and writing real Nuxeo ACLs.',
     ],
     [
       'History',

@@ -265,7 +265,7 @@
         {
           "type": "banner",
           "tone": "good",
-          "text": "Six components come from adf-hx. Twelve API ports, fourteen bridge components and the entire four-layer extensibility contract are ours — and that contract is what a customer actually programs against."
+          "text": "Seven components come from adf-hx. Twelve API ports, thirteen bridge components and the entire four-layer extensibility contract are ours — and that contract is what a customer actually programs against."
         }
       ]
     }
