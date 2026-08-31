@@ -24,6 +24,15 @@ export class ExtensionRuleContextService {
   readonly username = signal<string | null>(null);
   readonly isAdministrator = signal(false);
   readonly url = signal('');
+  /**
+   * Interface state published by whichever surface is in focus. See
+   * {@link ExtensionRuleContext.flags}.
+   *
+   * The publishing surface owns the whole bag and must clear it on destroy, the
+   * same contract `document` already has: a stale `favorite: true` left behind
+   * by a closed document would gate the next surface's actions on it.
+   */
+  readonly flags = signal<Readonly<Record<string, boolean>>>({});
 
   readonly context = computed<ExtensionRuleContext>(() => ({
     document: this.document(),
@@ -31,5 +40,6 @@ export class ExtensionRuleContextService {
     selectionCount: this.selectionCount(),
     user: { username: this.username(), isAdministrator: this.isAdministrator() },
     url: this.url(),
+    flags: this.flags(),
   }));
 }

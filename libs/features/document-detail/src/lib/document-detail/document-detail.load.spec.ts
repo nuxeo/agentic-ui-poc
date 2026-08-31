@@ -36,6 +36,11 @@ import {
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
 import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import {
+  EXTENSION_SLOTS,
+  PACKAGED_DOCUMENT_TABS,
+  provideSatoriExtensions,
+} from '@nuxeo-satori/platform/extensions';
 
 import { DocumentDetailComponent } from './document-detail';
 
@@ -256,6 +261,12 @@ describe('DocumentDetailComponent — load chain', () => {
         { provide: CURRENT_USERNAME, useValue: () => 'tester' },
         { provide: MatSnackBar, useValue: { open: snack } },
         { provide: MatDialog, useValue: mockDialog },
+        // The tab strip is resolved from Layer 1 now, and `onTabChange` keys its
+        // lazy loads off the resolved id rather than a literal index. Without the
+        // registration the slot is empty and every tab index addresses nothing.
+        provideSatoriExtensions({
+          slots: { [EXTENSION_SLOTS.tabs]: PACKAGED_DOCUMENT_TABS },
+        }),
       ],
     })
       .overrideComponent(DocumentDetailComponent, {

@@ -69,19 +69,19 @@ The Layer 1 configuration is the `extensions` key of that document:
 
 ## 2. Slots
 
-A slot is a named, ordered list of descriptors. Eight exist for Beta, of which two
+A slot is a named, ordered list of descriptors. Eight exist for Beta, of which six
 carry packaged entries.
 
-| Slot           | What it addresses                       | Status in Beta                                    |
-| -------------- | --------------------------------------- | ------------------------------------------------- |
-| `navbar`       | Primary platform navigation entries     | **Populated** — packaged entries in section 3     |
-| `bulk-actions` | Actions over a multi-document selection | **Populated** — packaged entries in section 5     |
-| `sidebar`      | Drawer content behind a navbar entry    | Resolves; **no packaged entries** — see section 6 |
-| `routes`       | Application routes                      | Declared; **nothing resolves it** — see section 9 |
-| `toolbar`      | Document-detail and browse toolbar      | Declared; **nothing resolves it** — see section 9 |
-| `contextMenu`  | Row-level menu on a document list       | Declared; **nothing resolves it**                 |
-| `tabs`         | Document-detail tab children            | Declared; **nothing resolves it**                 |
-| `documentList` | Document list columns                   | **Populated** — 12 packaged columns, section 7    |
+| Slot           | What it addresses                         | Status in Beta                                     |
+| -------------- | ----------------------------------------- | -------------------------------------------------- |
+| `navbar`       | Primary platform navigation entries       | **Populated** — packaged entries in section 3      |
+| `bulk-actions` | Actions over a multi-document selection   | **Populated** — packaged entries in section 5      |
+| `sidebar`      | Drawer content behind a navbar entry      | Resolves; **no packaged entries** — see section 6  |
+| `routes`       | Application routes                        | Resolves; **no packaged entries** — see section 11 |
+| `toolbar`      | Document-detail toolbar and overflow menu | **Populated** — 16 packaged actions, section 8     |
+| `contextMenu`  | The browse "More actions" menu            | **Populated** — 4 packaged actions, section 10     |
+| `tabs`         | Document-detail tab children              | **Populated** — 6 packaged tabs, section 9         |
+| `documentList` | Document list columns                     | **Populated** — 12 packaged columns, section 7     |
 
 Read the three states precisely, because they are different promises:
 
@@ -268,6 +268,40 @@ denies rather than permits.
 `rule: null` in an override still clears the gate, so a customer who genuinely
 wants an entry ungated has a Layer 1 route to it. Fail-closed is about the
 unknown-ID case, not about making the gate un-overridable.
+
+### Surface-state rules
+
+Registered by `SURFACE_RULE_EVALUATORS`. Where the document rules above read the
+document, these read what the open surface has published about its own state —
+whether the document is already a favourite, whether an operation is in flight.
+They exist so that a **toggle** is two addressable descriptors rather than one
+descriptor whose label the component rewrites: `app.toolbar.addToFavorites` and
+`app.toolbar.removeFromFavorites` are separate ids gated by opposite rules, so a
+manifest can relabel, reorder or hide either half and the label it sets is the
+label that renders.
+
+| ID                        | True when                                          |
+| ------------------------- | -------------------------------------------------- |
+| `app.rules.isFavorite`    | The focused document is in the user's favourites   |
+| `app.rules.isLocked`      | The focused document is locked                     |
+| `app.rules.isSubscribed`  | The user has notifications on the focused document |
+| `app.rules.isInClipboard` | The focused document is in the clipboard           |
+| `app.rules.hasVersion`    | The focused document has at least one version      |
+| `app.rules.isAiEnabled`   | The AI feature flag is on                          |
+| `app.rules.isNotBusy`     | None of the named operations is in flight          |
+
+Only the positive form of each is registered. The negative half is an ordinary
+composite a manifest can write for itself:
+`{ "type": "core.not", "parameters": ["app.rules.isFavorite"] }`.
+
+`app.rules.isNotBusy` takes the operation names as parameters, because an
+operation name is data rather than contract:
+`{ "type": "app.rules.isNotBusy", "parameters": ["trash"] }`. With no parameters
+it is vacuously true. The packaged toolbar uses it as an `enabledRule`, so a
+control greys out while its own request is in flight instead of disappearing.
+
+**Same caveat as the document rules.** These describe the surface, not the
+server. Nuxeo evaluates the real permission on every operation regardless.
 
 ### Composites and constants
 
@@ -458,7 +492,175 @@ Verified behaviour of those two, in the user's own column picker:
 `order` is spaced by ten so an entry can be inserted between two packaged columns
 without restating the list.
 
-## 8. `$references` — layering your JSON over ours
+## 8. `toolbar` — the packaged document-detail actions
+
+Registered by `PACKAGED_DOCUMENT_TOOLBAR_ACTIONS` in
+`libs/shared/extensions/src/lib/packaged-actions.ts`, rendered by the header of
+`/#/doc/:uid`. Sixteen descriptors, which is more controls than a customer ever
+sees at once: the toggles are mutually exclusive pairs, and every entry is gated.
+
+`overflow: true` puts an entry behind the **More actions** menu; the rest are
+icon buttons in the header row. `overflow` is a descriptor field like any other,
+so `slots.toolbar` can move a packaged action between the two.
+
+| ID                                | Label                 | Icon                   | Order | Overflow | Shown when                              |
+| --------------------------------- | --------------------- | ---------------------- | ----- | -------- | --------------------------------------- |
+| `app.toolbar.edit`                | Edit                  | `edit`                 | 10    | no       | not trashed and `app.rules.canWrite`    |
+| `app.toolbar.addToCollection`     | Add to collection     | `library_add`          | 20    | no       | not trashed                             |
+| `app.toolbar.delete`              | Delete                | `delete`               | 30    | no       | not trashed and `app.rules.canRemove`   |
+| `app.toolbar.lock`                | Lock                  | `lock`                 | 40    | no       | not trashed, writable and not locked    |
+| `app.toolbar.unlock`              | Unlock                | `lock_open`            | 40    | no       | not trashed, writable and locked        |
+| `app.toolbar.addToFavorites`      | Add to Favorites      | `star_border`          | 50    | yes      | not trashed and not a favourite         |
+| `app.toolbar.removeFromFavorites` | Remove from Favorites | `star`                 | 50    | yes      | not trashed and a favourite             |
+| `app.toolbar.share`               | Share                 | `share`                | 60    | yes      | not trashed                             |
+| `app.toolbar.publish`             | Publish document      | `publish`              | 70    | yes      | not trashed, has a version and writable |
+| `app.toolbar.subscribe`           | Notify Me             | `notifications`        | 80    | yes      | not trashed and not subscribed          |
+| `app.toolbar.unsubscribe`         | Unsubscribe           | `notifications_active` | 80    | yes      | not trashed and subscribed              |
+| `app.toolbar.addToClipboard`      | Add to Clipboard      | `content_paste`        | 90    | yes      | not trashed and not in the clipboard    |
+| `app.toolbar.removeFromClipboard` | Remove from Clipboard | `content_paste_off`    | 90    | yes      | not trashed and in the clipboard        |
+| `app.toolbar.export`              | Export                | `download`             | 100   | yes      | always                                  |
+| `app.toolbar.startProcess`        | Start Process         | `play_circle`          | 110   | yes      | not trashed                             |
+
+`app.toolbar.export` is the one entry with no `rule`, deliberately: it was
+outside the trashed-document guard in the markup this replaced, and exporting a
+trashed document still works.
+
+The document-specific header controls that are **not** in this table —
+attachments, Knowledge Enrichment, the trashed-document restore banner — remain
+markup. They are conditional on document shape rather than on user intent, and
+extracting them would have changed behaviour rather than made it addressable.
+
+Adding your own works exactly as for `bulk-actions`: a descriptor decides where
+and when, a handler registered against the ID decides what, and a descriptor with
+no handler renders inert rather than throwing.
+
+```json
+{
+  "slots": {
+    "toolbar": [
+      { "id": "acme.toolbar.archive", "label": "Archive", "icon": "inventory_2", "order": 35 }
+    ]
+  },
+  "overrides": {
+    "app.toolbar.startProcess": { "visible": false },
+    "app.toolbar.share": { "order": 15 }
+  }
+}
+```
+
+Moving `app.toolbar.share` to order 15 reorders it **within the overflow menu**;
+`overflow` is what decides which of the two groups it is in.
+
+---
+
+## 9. `tabs` — the packaged document-detail tabs
+
+Registered by `PACKAGED_DOCUMENT_TABS` in
+`libs/shared/extensions/src/lib/packaged-tabs.ts`.
+
+| ID                     | Label       | Icon           | Order | Shown when              |
+| ---------------------- | ----------- | -------------- | ----- | ----------------------- |
+| `app.tabs.view`        | View        | —              | 10    | always                  |
+| `app.tabs.annotations` | Annotations | —              | 20    | always                  |
+| `app.tabs.permissions` | Permissions | —              | 30    | always                  |
+| `app.tabs.history`     | History     | —              | 40    | always                  |
+| `app.tabs.publishing`  | Publishing  | —              | 50    | always                  |
+| `app.tabs.aiInsights`  | AI Insights | `auto_awesome` | 60    | `app.rules.isAiEnabled` |
+
+Hiding, reordering and relabelling these is a manifest edit. **Their bodies are
+not addressable**, and that asymmetry is deliberate and worth stating: the six
+packaged bodies are still markup in the host template, matched by ID. Extracting
+a thousand-plus lines of tab body into separately registered components would
+have been a rewrite, and the point of this slot is to make the tab strip
+addressable without one.
+
+A tab you contribute names a registered component instead, through `componentId`,
+and is rendered by the same `ExtensionOutletComponent` the sidebar uses. The
+component must already be compiled in — contributing one is Layer 2.
+
+```json
+{
+  "slots": {
+    "tabs": [
+      {
+        "id": "acme.tabs.claims",
+        "label": "Claims",
+        "icon": "assignment",
+        "order": 15,
+        "componentId": "acme.components.claimsPanel"
+      }
+    ]
+  }
+}
+```
+
+`componentId` defaults to the descriptor `id`, so registering the component under
+the tab's own ID is enough. A contributed tab with no registered component
+renders an empty body rather than throwing, so the manifest can precede the
+library.
+
+---
+
+## 10. `contextMenu` — the browse "More actions" menu
+
+Registered by `PACKAGED_BROWSE_CONTEXT_MENU` in
+`libs/shared/extensions/src/lib/packaged-actions.ts`, rendered by the browse
+header. The actions apply to the folder or document currently open.
+
+| ID                            | Label       | Icon                | Order | Shown when     |
+| ----------------------------- | ----------- | ------------------- | ----- | -------------- |
+| `app.contextMenu.share`       | Share       | `share`             | 10    | always         |
+| `app.contextMenu.subscribe`   | Notify Me   | `notifications`     | 20    | not subscribed |
+| `app.contextMenu.unsubscribe` | Unsubscribe | `notifications_off` | 20    | subscribed     |
+| `app.contextMenu.export`      | Export      | `ios_share`         | 30    | always         |
+
+**Browse has no per-row menu**, in this build or before it. The slot's
+description in the section 2 table used to read "row-level menu on a document
+list" while the only menu in `browse.html` was this one, which would have sent a
+customer looking for a surface that does not exist. The ID is the contract and
+stays; the description was corrected.
+
+---
+
+## 11. `routes` — manifest-contributed routes
+
+Resolves, with no packaged entries: the application's own routes are still
+imported directly by `app.routes.ts`, so none of them is addressable by ID. What
+this slot does is let a manifest add a route that did not exist at build time,
+serving a component registered under Layer 2.
+
+| Field         | Meaning                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| `path`        | Required. Router path, no leading slash. An entry without one is dropped. |
+| `componentId` | Registered component ID. Defaults to the descriptor `id`.                 |
+| `inputs`      | Static values bound to the component's inputs via route data.             |
+
+```json
+{
+  "slots": {
+    "routes": [
+      {
+        "id": "acme.routes.reports",
+        "path": "reports",
+        "componentId": "acme.components.reports",
+        "inputs": { "reportSet": "claims" }
+      }
+    ]
+  }
+}
+```
+
+Contributed routes are appended to the shell's children, so they inherit the
+navigation and the authentication guard, and they are re-applied whenever the
+manifest changes. A `navbar` entry with `"path": "/reports"` then reaches it.
+
+**A route is not an authorisation boundary.** Adding one exposes a component;
+whatever it calls is still gated by Nuxeo server-side, and removing a route does
+not protect anything the API would otherwise return.
+
+---
+
+## 12. `$references` — layering your JSON over ours
 
 Semantics are ACA's, implemented by merging through `mergeObjects` from `@alfresco/adf-extensions`
 rather than reimplemented, so behaviour matches the upstream documentation.
@@ -489,31 +691,37 @@ so nesting is ignored rather than half-honoured.
 
 ---
 
-## 9. What Beta does not yet address
+## 13. What Beta does not yet address
 
 Stated so nobody plans around a capability that is not there.
 
-- **Toolbar, tabs, context menu and routes.** `document-detail.html` still holds its toolbar, its
-  seven-item overflow menu and its five tab children in markup, and browse still holds its row menu
-  in markup. Those four slot IDs — `toolbar`, `tabs`, `contextMenu`, `routes` — are reserved and the
-  registry accepts entries, but **no code reads them**, so contributing to one has no effect. A
-  manifest cannot yet hide, reorder or gate a toolbar action.
+The first two are a **deliberate Beta boundary**, not an oversight: Layer 1 is additive for
+Beta. You can add surfaces and you can hide, reorder or relabel packaged ones. You cannot
+replace a shipped route or change what a packaged tab renders. Making either addressable is a
+rewrite rather than a refactor, so it is deferred to GA. If you need to replace a shipped page,
+that is Layer 2 — see section 14.
 
-  `bulk-actions` and `documentList` were once in this list and are **not** any more: both are
-  Populated per the table in section 2, and hiding, reordering or relabelling a browse column by id
-  is a supported manifest edit today (section 7). This bullet still named document-list columns after
-  the consumer landed, which is the kind of stale exclusion that gets a working capability left out of
-  a demo. The table in section 2 is the authoritative statement of slot state and is gated by
-  `npm run beta:reference`; this prose is not.
+- **Tab and toolbar bodies.** The six packaged tab bodies and the document-specific header
+  controls listed in section 8 are still markup. The tab strip and the toolbar are addressable;
+  what a packaged tab renders is not.
+
+- **The packaged routes.** `app.routes.ts` imports each feature library's `Routes` array
+  directly, so no packaged route carries an ID and none can be moved, guarded or removed from a
+  manifest. Section 11 covers what the slot does do — add routes that did not exist at build
+  time.
+
+  `toolbar`, `tabs`, `contextMenu`, `bulk-actions` and `documentList` were once in this list and
+  are **not** any more: all five are Populated per the table in section 2. This bullet named
+  document-list columns for weeks after the consumer landed, which is the kind of stale exclusion
+  that gets a working capability left out of a demo. The table in section 2 is the authoritative
+  statement of slot state and is gated by `npm run beta:reference`; this prose is not.
 
 - **The two selection permission rules**, for the reason given in section 4.
-- **Route contributions.** Feature libraries export `Routes` arrays, but `app.routes.ts` still
-  imports them directly.
 - **An in-app editor** for the manifest. It is edited as a Nuxeo Note.
 
 ---
 
-## 10. Registering from your own library (Layer 2)
+## 14. Registering from your own library (Layer 2)
 
 ```ts
 import {

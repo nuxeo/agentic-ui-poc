@@ -21,6 +21,7 @@ import {
   type ExtensionSlotOverrides,
 } from './extension-slot-registry.service';
 import type { ExtensionElement, ExtensionSlotId } from './extension-slots';
+import { SURFACE_RULE_EVALUATORS } from './surface-rules';
 
 /**
  * The single thing the application injects to read the addressable surface.
@@ -60,6 +61,7 @@ export class AppExtensionsService {
 
   constructor() {
     this.rules.registerRules(DOCUMENT_RULE_EVALUATORS);
+    this.rules.registerRules(SURFACE_RULE_EVALUATORS);
   }
 
   /** Contribute packaged descriptors to a slot. See {@link ExtensionSlotRegistry.register}. */

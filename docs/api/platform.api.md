@@ -160,7 +160,7 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/extensions
 
-41 exported symbol(s).
+49 exported symbol(s).
 
 ```ts
 const APP_NAV_ITEMS: InjectionToken<Signal<readonly NavItemDescriptor[]>>;
@@ -285,6 +285,16 @@ interface ExtensionOverride {
     readonly rule?: ExtensionRule | null;
     }
 }
+interface ExtensionRouteDescriptor extends ExtensionElement {
+    readonly path: string;
+    readonly componentId?: string;
+    readonly inputs?: Readonly<Record<string, unknown>>;
+    }
+}
+interface ExtensionRoutesOptions {
+    readonly parentPath?: string;
+    }
+}
 type ExtensionRule = string | ExtensionRuleRef;
 interface ExtensionRuleContext {
     readonly document: NuxeoDocument | null;
@@ -295,6 +305,7 @@ interface ExtensionRuleContext {
     readonly isAdministrator: boolean;
     };
     readonly url: string;
+    readonly flags: Readonly<Record<string, boolean>>;
     }
 }
 class ExtensionRuleContextService {
@@ -304,6 +315,7 @@ class ExtensionRuleContextService {
     readonly username: _angular_core.WritableSignal<string | null>;
     readonly isAdministrator: _angular_core.WritableSignal<boolean>;
     readonly url: _angular_core.WritableSignal<string>;
+    readonly flags: _angular_core.WritableSignal<Readonly<Record<string, boolean>>>;
     readonly context: _angular_core.Signal<ExtensionRuleContext>;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionRuleContextService, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionRuleContextService>;
@@ -350,7 +362,9 @@ class ExtensionSlotRegistry {
 }
 interface ExtensionTabDescriptor extends ExtensionElement {
     readonly label: string;
+    readonly icon?: string;
     readonly rule?: ExtensionRule;
+    readonly componentId?: string;
     }
 }
 const NO_EXTENSION_SLOT_OVERRIDES: ExtensionSlotOverrides;
@@ -363,7 +377,10 @@ interface NavItemDescriptor extends ExtensionElement {
     }
 }
 const PACKAGED_BROWSE_COLUMNS: readonly ExtensionColumnDescriptor[];
+const PACKAGED_BROWSE_CONTEXT_MENU: readonly ExtensionActionDescriptor[];
 const PACKAGED_BULK_ACTIONS: readonly ExtensionActionDescriptor[];
+const PACKAGED_DOCUMENT_TABS: readonly ExtensionTabDescriptor[];
+const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescriptor[];
 const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[];
 interface ResolvedExtensionConfig {
     readonly config: ExtensionConfig;
@@ -372,6 +389,7 @@ interface ResolvedExtensionConfig {
     }
 }
 const SECURITY_RELEVANT_RULE_IDS: readonly string[];
+const SURFACE_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvaluator>>;
 interface SatoriExtensionContributions {
     readonly slots?: Readonly<Record<ExtensionSlotId, readonly ExtensionElement[]>>;
     readonly rules?: Readonly<Record<string, ExtensionRuleEvaluator>>;
@@ -381,7 +399,9 @@ interface SatoriExtensionContributions {
     }
 }
 type SatoriExtensionContributor = SatoriExtensionContributions | (() => SatoriExtensionContributions);
+function extensionRoutes(descriptors: readonly ExtensionRouteDescriptor[]): Routes;
 function mergeExtensionConfigs(...layers: readonly ExtensionConfig[]): ExtensionConfig;
+function provideExtensionRoutes(options?: ExtensionRoutesOptions): EnvironmentProviders;
 function provideSatoriExtensions(contributor: SatoriExtensionContributor): EnvironmentProviders;
 function readExtensionConfig(raw: unknown): ExtensionConfig;
 function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionLayerResolver): ResolvedExtensionConfig;
@@ -847,6 +867,7 @@ class DocumentDetailService {
     begin?: string;
     end?: string;
     }): Observable<NuxeoDocument>;
+    removeAcl(uid: string, acl?: string): Observable<NuxeoDocument>;
     blockPermissionInheritance(uid: string): Observable<NuxeoDocument>;
     unblockPermissionInheritance(uid: string): Observable<NuxeoDocument>;
     replaceACE(uid: string, params: {
@@ -1815,7 +1836,8 @@ function defaultNoteContent(mimeType: string): string;
 function defaultVocabularyLabel(directoryName: string, id: string): string;
 function directoryAdminTableLabel(entry: Pick<ManagedDirectoryEntry, 'label'>): string;
 function directoryEntryDisplayLabel(entry: Pick<ManagedDirectoryEntry, 'id' | 'label'>): string;
-function directoryPickerLabel(entry: Pick<DirectoryEntry, 'id' | 'label' | 'displayLabel'> & {
+function directoryPickerLabel(entry: Pick<DirectoryEntry, 'id' | 'displayLabel'> & {
+    label?: string;
     absoluteLabel?: string;
     }): string;
 }

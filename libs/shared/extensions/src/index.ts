@@ -29,15 +29,27 @@ export {
   type ResolvedExtensionConfig,
 } from './lib/extension-config';
 export { DOCUMENT_RULE_EVALUATORS } from './lib/document-rules';
+export { SURFACE_RULE_EVALUATORS } from './lib/surface-rules';
 export {
   ExtensionActionRegistry,
   type ExtensionActionDescriptor,
   type ExtensionActionHandler,
   type ExtensionColumnDescriptor,
+  type ExtensionRouteDescriptor,
   type ExtensionTabDescriptor,
 } from './lib/extension-actions';
-export { PACKAGED_BULK_ACTIONS } from './lib/packaged-actions';
+export {
+  PACKAGED_BROWSE_CONTEXT_MENU,
+  PACKAGED_BULK_ACTIONS,
+  PACKAGED_DOCUMENT_TOOLBAR_ACTIONS,
+} from './lib/packaged-actions';
+export { PACKAGED_DOCUMENT_TABS } from './lib/packaged-tabs';
 export { PACKAGED_BROWSE_COLUMNS } from './lib/packaged-columns';
+export {
+  extensionRoutes,
+  provideExtensionRoutes,
+  type ExtensionRoutesOptions,
+} from './lib/extension-routes';
 export { ExtensionRuleContextService } from './lib/extension-rule-context.service';
 export {
   ExtensionComponentRegistry,

@@ -10,7 +10,15 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ExtensionRuleContextService } from '@nuxeo-satori/platform/extensions';
+import {
+  AppExtensionsService,
+  EXTENSION_SLOTS,
+  ExtensionActionRegistry,
+  ExtensionOutletComponent,
+  ExtensionRuleContextService,
+  type ExtensionActionDescriptor,
+  type ExtensionTabDescriptor,
+} from '@nuxeo-satori/platform/extensions';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -256,6 +264,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     MatChipsModule,
     MatAutocompleteModule,
     DocumentViewerComponent,
+    ExtensionOutletComponent,
     NoteEditorComponent,
     SatAvatarModule,
     SatBreadcrumbsComponent,
@@ -268,6 +277,8 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
   private readonly extensionRuleContext = inject(ExtensionRuleContextService);
+  private readonly extensions = inject(AppExtensionsService);
+  private readonly actionRegistry = inject(ExtensionActionRegistry);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -309,6 +320,75 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly publishDocumentToRuleContext = effect(() =>
     this.extensionRuleContext.document.set(this.doc()),
   );
+
+  /**
+   * Publish this page's interface state, which the toolbar rules read.
+   *
+   * None of it is derivable from the document: favourite and subscription state
+   * are separate fetches, clipboard membership is local storage, and "an
+   * operation is in flight" is not a fact about the document at all. Without it
+   * a toggle could not be two descriptors gated by opposite rules, and the
+   * label a manifest sets for "Notify Me" would be overwritten by the component
+   * whenever the user happened to be subscribed.
+   *
+   * Cleared in `ngOnDestroy` alongside the document, for the same reason.
+   */
+  private readonly publishFlagsToRuleContext = effect(() => {
+    const busy = this.actionInProgress();
+    this.extensionRuleContext.flags.set({
+      favorite: this.isFavorite(),
+      locked: this.isLocked(),
+      subscribed: this.isSubscribed(),
+      inClipboard: this.isInClipboard(),
+      hasVersion: this.hasVersion(),
+      aiEnabled: this.featureFlags.aiEnabled(),
+      ...(busy ? { [`busy.${busy}`]: true } : {}),
+    });
+  });
+
+  private readonly toolbarDescriptors = computed<readonly ExtensionActionDescriptor[]>(() =>
+    this.extensions.resolve<ExtensionActionDescriptor>(
+      EXTENSION_SLOTS.toolbar,
+      this.extensionRuleContext.context(),
+    ),
+  );
+
+  /** Inline toolbar controls — everything the descriptor list does not send to overflow. */
+  readonly toolbarActions = computed(() =>
+    this.toolbarDescriptors().filter((action) => !action.overflow),
+  );
+
+  /** The "More actions" menu. `overflow: false` in a manifest promotes an entry out of it. */
+  readonly overflowActions = computed(() =>
+    this.toolbarDescriptors().filter((action) => action.overflow),
+  );
+
+  /**
+   * The tab strip, resolved through Layer 1.
+   *
+   * The five packaged bodies are still markup in this template and are matched
+   * by id; a tab a manifest adds renders through `ExtensionOutletComponent`. So
+   * hiding, reordering, relabelling and gating work for every tab, and adding
+   * one works without touching this file.
+   */
+  readonly detailTabs = computed<readonly ExtensionTabDescriptor[]>(() =>
+    this.extensions.resolve<ExtensionTabDescriptor>(
+      EXTENSION_SLOTS.tabs,
+      this.extensionRuleContext.context(),
+    ),
+  );
+
+  /**
+   * The id of the selected tab.
+   *
+   * The lazy loads behind Permissions, History and Publishing used to key off
+   * the literal indices 2, 3 and 4. Once a manifest can hide or reorder a tab
+   * those indices address a different tab, so they key off the id instead.
+   */
+  readonly activeTabId = computed<string | null>(
+    () => this.detailTabs()[this.activeTabIndex()]?.id ?? null,
+  );
+
   readonly loading = signal(true);
   readonly blobLoading = signal(false);
   readonly viewerLoading = computed(
@@ -820,7 +900,55 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return entries;
   });
 
+  /** `enabledRule` renders a control disabled rather than hiding it. */
+  isToolbarActionEnabled(action: ExtensionActionDescriptor): boolean {
+    return this.extensions.evaluateRule(action.enabledRule, this.extensionRuleContext.context());
+  }
+
+  runToolbarAction(action: ExtensionActionDescriptor): void {
+    this.actionRegistry.execute(action, this.extensionRuleContext.context());
+  }
+
+  /**
+   * The behaviour behind the packaged toolbar ids.
+   *
+   * Registered from the component because every handler closes over this
+   * instance, and withdrawn on destroy for the same reason — a handler left
+   * registered keeps a destroyed component reachable and the next invocation
+   * runs against dead state.
+   *
+   * The two halves of each toggle share one method, exactly as the single
+   * `(click)` binding did before: which half is *offered* is the rules' job.
+   */
+  private registerToolbarHandlers(): void {
+    const handlers: Readonly<Record<string, () => void>> = {
+      'app.toolbar.edit': () => this.openEditDialog(),
+      'app.toolbar.addToCollection': () => this.openAddToCollectionDialog(),
+      'app.toolbar.delete': () => this.trashDocument(),
+      'app.toolbar.lock': () => this.toggleLock(),
+      'app.toolbar.unlock': () => this.toggleLock(),
+      'app.toolbar.addToFavorites': () => this.toggleFavorite(),
+      'app.toolbar.removeFromFavorites': () => this.toggleFavorite(),
+      'app.toolbar.share': () => this.shareDocument(),
+      'app.toolbar.publish': () => this.openPublishDialog(),
+      'app.toolbar.subscribe': () => this.toggleSubscription(),
+      'app.toolbar.unsubscribe': () => this.toggleSubscription(),
+      'app.toolbar.addToClipboard': () => this.toggleClipboard(),
+      'app.toolbar.removeFromClipboard': () => this.toggleClipboard(),
+      'app.toolbar.export': () => this.exportDocument(),
+      'app.toolbar.startProcess': () => this.openStartProcess(),
+    };
+
+    this.actionRegistry.register(
+      Object.fromEntries(
+        Object.entries(handlers).map(([id, run]) => [id, { execute: () => run() }]),
+      ),
+    );
+    this.destroyRef.onDestroy(() => this.actionRegistry.unregister(Object.keys(handlers)));
+  }
+
   ngOnInit(): void {
+    this.registerToolbarHandlers();
     this.tagSearch$
       .pipe(
         debounceTime(250),
@@ -1462,6 +1590,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     // Leaving the last viewed document in the context would let a rule on
     // another page answer about a document the user is no longer looking at.
     this.extensionRuleContext.document.set(null);
+    this.extensionRuleContext.flags.set({});
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
     }
@@ -1536,10 +1665,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.browseContext.setFromDocument(doc);
           this.syncActionStates(doc);
           this.loading.set(false);
-          if (this.activeTabIndex() === 2) {
+          if (this.activeTabId() === 'app.tabs.permissions') {
             this.reloadDocumentPermissions();
           }
-          if (this.activeTabIndex() === 3 && !this.historyLoaded) {
+          if (this.activeTabId() === 'app.tabs.history' && !this.historyLoaded) {
             this.loadDirectoryEntries();
             this.loadAuditLog();
           }
@@ -2510,14 +2639,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       return;
     }
     this.activeTabIndex.set(index);
-    if (index === 2 && !this.permissionsTabLoaded) {
+    this.loadDataForTab(this.detailTabs()[index]?.id ?? null);
+  }
+
+  /** The lazy loads the Permissions, History and Publishing tabs need on first show. */
+  private loadDataForTab(id: string | null): void {
+    if (id === 'app.tabs.permissions' && !this.permissionsTabLoaded) {
       this.reloadDocumentPermissions();
     }
-    if (index === 3 && !this.historyLoaded) {
+    if (id === 'app.tabs.history' && !this.historyLoaded) {
       this.loadDirectoryEntries();
       this.loadAuditLog();
     }
-    if (index === 4 && !this.publishTabLoaded) {
+    if (id === 'app.tabs.publishing' && !this.publishTabLoaded) {
       this.loadPublishingData();
     }
   }
@@ -2762,11 +2896,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   goToPublishingTab(): void {
+    // By id, not by literal 4: a manifest that hides or reorders a tab moves it.
+    const index = this.detailTabs().findIndex((tab) => tab.id === 'app.tabs.publishing');
+    if (index < 0) return;
     const g = this.detailTabGroup();
     if (g) {
-      g.selectedIndex = 4;
+      g.selectedIndex = index;
     }
-    this.onTabChange(4);
+    this.onTabChange(index);
   }
 
   unpublishDocument(proxyDoc: NuxeoDocument): void {

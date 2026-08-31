@@ -44,6 +44,23 @@ export interface ExtensionRuleContext {
   };
   /** Router URL without query string, for route-scoped rules. */
   readonly url: string;
+  /**
+   * Transient interface state the focused surface publishes about itself.
+   *
+   * Deliberately a bag of booleans rather than typed fields, because what lives
+   * here is not repository data: it is whether the open document is currently
+   * favourited, locked, subscribed or in the clipboard, and whether a particular
+   * operation is in flight. None of it is derivable from {@link document} —
+   * favourite and subscription state are separate fetches, and "in flight" is
+   * not a fact about the document at all.
+   *
+   * It is what makes a **toggle** expressible as two descriptors gated by
+   * opposite rules, which is upstream's shape, instead of one descriptor whose
+   * label a host rewrites behind the manifest's back. Keys are namespaced by the
+   * publishing surface's convention; `busy.<operation>` is read by
+   * `app.rules.isNotBusy`.
+   */
+  readonly flags: Readonly<Record<string, boolean>>;
 }
 
 /** An empty context, so a caller with nothing in focus need not build one. */
@@ -53,6 +70,7 @@ export const EMPTY_EXTENSION_RULE_CONTEXT: ExtensionRuleContext = {
   selectionCount: 0,
   user: { username: null, isAdministrator: false },
   url: '',
+  flags: {},
 };
 
 /**

@@ -137,42 +137,18 @@
         }
       }
 
-      @if (!isTrashed()) {
-        @if (canWriteDoc()) {
-          <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
-            <mat-icon>edit</mat-icon>
-          </button>
-        }
+      @for (action of toolbarActions(); track action.id) {
         <button
           mat-icon-button
-          (click)="openAddToCollectionDialog()"
-          matTooltip="Add to collection"
-          aria-label="Add to collection"
+          type="button"
+          [attr.data-action-id]="action.id"
+          [matTooltip]="action.tooltip ?? action.label"
+          [attr.aria-label]="action.label"
+          [disabled]="!isToolbarActionEnabled(action)"
+          (click)="runToolbarAction(action)"
         >
-          <mat-icon>library_add</mat-icon>
+          <mat-icon>{{ action.icon }}</mat-icon>
         </button>
-        @if (canRemoveDoc()) {
-          <button
-            mat-icon-button
-            (click)="trashDocument()"
-            [disabled]="actionInProgress() === 'trash'"
-            matTooltip="Delete"
-            aria-label="Delete"
-          >
-            <mat-icon>delete</mat-icon>
-          </button>
-        }
-        @if (canWriteDoc()) {
-          <button
-            mat-icon-button
-            (click)="toggleLock()"
-            [disabled]="actionInProgress() === 'lock'"
-            [matTooltip]="isLocked() ? 'Unlock' : 'Lock'"
-            [attr.aria-label]="isLocked() ? 'Unlock' : 'Lock'"
-          >
-            <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
-          </button>
-        }
       }
       <button
         mat-icon-button
@@ -185,48 +161,18 @@
     </div>
 
     <mat-menu #moreMenu="matMenu">
-      @if (!isTrashed()) {
+      @for (action of overflowActions(); track action.id) {
         <button
           mat-menu-item
-          (click)="toggleFavorite()"
-          [disabled]="actionInProgress() === 'favorite'"
+          type="button"
+          [attr.data-action-id]="action.id"
+          [disabled]="!isToolbarActionEnabled(action)"
+          (click)="runToolbarAction(action)"
         >
-          <mat-icon>{{ isFavorite() ? 'star' : 'star_border' }}</mat-icon>
-          <span>{{ isFavorite() ? 'Remove from Favorites' : 'Add to Favorites' }}</span>
-        </button>
-        <button mat-menu-item (click)="shareDocument()">
-          <mat-icon>share</mat-icon>
-          <span>Share</span>
-        </button>
-        @if (hasVersion()) {
-          @if (canWriteDoc()) {
-            <button mat-menu-item (click)="openPublishDialog()">
-              <mat-icon>publish</mat-icon>
-              <span>Publish document</span>
-            </button>
+          @if (action.icon) {
+            <mat-icon>{{ action.icon }}</mat-icon>
           }
-        }
-        <button
-          mat-menu-item
-          (click)="toggleSubscription()"
-          [disabled]="actionInProgress() === 'subscribe'"
-        >
-          <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
-          <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
-        </button>
-        <button mat-menu-item (click)="toggleClipboard()">
-          <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
-          <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
-        </button>
-      }
-      <button mat-menu-item (click)="exportDocument()" [disabled]="actionInProgress() === 'export'">
-        <mat-icon>download</mat-icon>
-        <span>Export</span>
-      </button>
-      @if (!isTrashed()) {
-        <button mat-menu-item (click)="openStartProcess()">
-          <mat-icon>play_circle</mat-icon>
-          <span>Start Process</span>
+          <span>{{ action.label }}</span>
         </button>
       }
     </mat-menu>
@@ -367,946 +313,948 @@
           animationDuration="0ms"
           (selectedIndexChange)="onTabChange($event)"
         >
-          <mat-tab label="View">
-            <ng-template matTabContent>
-              @if (isNoteDocument()) {
-                <lib-note-editor
-                  [content]="noteEditorBody()"
-                  [mimeType]="mimeType()"
-                  [loading]="viewerLoading()"
-                  [saving]="noteSaving()"
-                  [autoFocus]="focusNoteEditor()"
-                  [readOnly]="!canWriteDoc()"
-                  (saveNote)="saveNote($event)"
-                  (focused)="focusNoteEditor.set(false)"
-                />
-              } @else {
-                <lib-document-viewer
-                  [blobUrl]="blobUrl()"
-                  [mimeType]="mimeType()"
-                  [fileName]="fileName()"
-                  [fileSize]="fileSize()"
-                  [loading]="viewerLoading()"
-                  [noteContent]="noteContent()"
-                  [noteHtml]="noteHtml()"
-                  [videoSources]="videoSources()"
-                  [storyboard]="storyboard()"
-                  [posterUrl]="posterUrl()"
-                  [hasPdfRendition]="hasPdfRendition()"
-                  [previewUrl]="previewUrl()"
-                  [pictureInfo]="pictureInfo()"
-                  [pictureViews]="pictureViews()"
-                  [exifData]="exifData()"
-                  [iptcData]="iptcData()"
-                  [videoInfo]="videoInfo()"
-                  [arenderUrl]="arenderUrl()"
-                  [arenderReloadId]="arenderReloadId()"
-                  [viewerDocUid]="doc()?.uid ?? ''"
-                  [annotationsTab]="false"
-                  [showMainFileControls]="
-                    !isNoteDocument() && !!fileName() && canWriteDoc() && !isTrashed()
-                  "
-                  [mainFileActionInProgress]="actionInProgress()"
-                  (downloadClicked)="download()"
-                  (previewClicked)="previewMainBlob()"
-                  (openWithDriveClicked)="openDriveDialog()"
-                  (formatDownload)="downloadPictureFormat($event)"
-                  (replaceMainFileClicked)="openReplaceMainFileDialog()"
-                  (removeMainFileClicked)="openRemoveMainFileDialog()"
-                />
+          @for (tab of detailTabs(); track tab.id) {
+            <mat-tab>
+              <ng-template mat-tab-label>
+                @if (tab.icon) {
+                  <mat-icon class="detail-tab-icon">{{ tab.icon }}</mat-icon>
+                }
+                {{ tab.label }}
+              </ng-template>
+              @switch (tab.id) {
+                @case ('app.tabs.view') {
+                  <ng-container [ngTemplateOutlet]="viewTabContent" />
+                }
+                @case ('app.tabs.annotations') {
+                  <ng-container [ngTemplateOutlet]="annotationsTabContent" />
+                }
+                @case ('app.tabs.permissions') {
+                  <ng-container [ngTemplateOutlet]="permissionsTabContent" />
+                }
+                @case ('app.tabs.history') {
+                  <ng-container [ngTemplateOutlet]="historyTabContent" />
+                }
+                @case ('app.tabs.publishing') {
+                  <ng-container [ngTemplateOutlet]="publishingTabContent" />
+                }
+                @case ('app.tabs.aiInsights') {
+                  <ng-container [ngTemplateOutlet]="aiInsightsTabContent" />
+                }
+                @default {
+                  <lib-extension-outlet [componentId]="tab.componentId ?? tab.id" />
+                }
               }
-            </ng-template>
-          </mat-tab>
+            </mat-tab>
+          }
+        </mat-tab-group>
 
-          <mat-tab label="Annotations">
-            <ng-template matTabContent>
-              <lib-document-viewer
-                [blobUrl]="blobUrl()"
-                [mimeType]="mimeType()"
-                [fileName]="fileName()"
-                [fileSize]="fileSize()"
-                [loading]="viewerLoading()"
-                [noteContent]="noteContent()"
-                [noteHtml]="noteHtml()"
-                [videoSources]="videoSources()"
-                [storyboard]="storyboard()"
-                [posterUrl]="posterUrl()"
-                [hasPdfRendition]="hasPdfRendition()"
-                [previewUrl]="previewUrl()"
-                [pictureInfo]="pictureInfo()"
-                [pictureViews]="pictureViews()"
-                [exifData]="exifData()"
-                [iptcData]="iptcData()"
-                [videoInfo]="videoInfo()"
-                [arenderUrl]="arenderUrl()"
-                [arenderReloadId]="arenderReloadId()"
-                [viewerDocUid]="doc()?.uid ?? ''"
-                [annotationsTab]="true"
-                [showMainFileControls]="
-                  !isNoteDocument() && !!fileName() && canWriteDoc() && !isTrashed()
-                "
-                [mainFileActionInProgress]="actionInProgress()"
-                (downloadClicked)="download()"
-                (previewClicked)="previewMainBlob()"
-                (openWithDriveClicked)="openDriveDialog()"
-                (formatDownload)="downloadPictureFormat($event)"
-                (replaceMainFileClicked)="openReplaceMainFileDialog()"
-                (removeMainFileClicked)="openRemoveMainFileDialog()"
-              />
-            </ng-template>
-          </mat-tab>
+        <ng-template #viewTabContent>
+          @if (isNoteDocument()) {
+            <lib-note-editor
+              [content]="noteEditorBody()"
+              [mimeType]="mimeType()"
+              [loading]="viewerLoading()"
+              [saving]="noteSaving()"
+              [autoFocus]="focusNoteEditor()"
+              [readOnly]="!canWriteDoc()"
+              (saveNote)="saveNote($event)"
+              (focused)="focusNoteEditor.set(false)"
+            />
+          } @else {
+            <lib-document-viewer
+              [blobUrl]="blobUrl()"
+              [mimeType]="mimeType()"
+              [fileName]="fileName()"
+              [fileSize]="fileSize()"
+              [loading]="viewerLoading()"
+              [noteContent]="noteContent()"
+              [noteHtml]="noteHtml()"
+              [videoSources]="videoSources()"
+              [storyboard]="storyboard()"
+              [posterUrl]="posterUrl()"
+              [hasPdfRendition]="hasPdfRendition()"
+              [previewUrl]="previewUrl()"
+              [pictureInfo]="pictureInfo()"
+              [pictureViews]="pictureViews()"
+              [exifData]="exifData()"
+              [iptcData]="iptcData()"
+              [videoInfo]="videoInfo()"
+              [arenderUrl]="arenderUrl()"
+              [arenderReloadId]="arenderReloadId()"
+              [viewerDocUid]="doc()?.uid ?? ''"
+              [annotationsTab]="false"
+              [showMainFileControls]="
+                !isNoteDocument() && !!fileName() && canWriteDoc() && !isTrashed()
+              "
+              [mainFileActionInProgress]="actionInProgress()"
+              (downloadClicked)="download()"
+              (previewClicked)="previewMainBlob()"
+              (openWithDriveClicked)="openDriveDialog()"
+              (formatDownload)="downloadPictureFormat($event)"
+              (replaceMainFileClicked)="openReplaceMainFileDialog()"
+              (removeMainFileClicked)="openRemoveMainFileDialog()"
+            />
+          }
+        </ng-template>
 
-          <mat-tab label="Permissions">
-            <div class="permissions-container">
-              @if (permissionsLoading()) {
-                <div class="perm-loading"><mat-spinner diameter="28" aria-label="Loading" /></div>
-              }
-              <!-- Permissions defined locally -->
-              <section class="perm-section perm-section--local">
-                <div class="perm-section-header">
-                  <div class="perm-section-title" role="heading" aria-level="3">
-                    Permissions defined locally
-                  </div>
-                  @if (canManagePermissions()) {
-                    <button
-                      mat-button
-                      color="primary"
-                      type="button"
-                      class="perm-action-btn"
-                      (click)="openAddPermissionDialog()"
-                    >
-                      New
-                    </button>
-                  }
+        <ng-template #annotationsTabContent>
+          <lib-document-viewer
+            [blobUrl]="blobUrl()"
+            [mimeType]="mimeType()"
+            [fileName]="fileName()"
+            [fileSize]="fileSize()"
+            [loading]="viewerLoading()"
+            [noteContent]="noteContent()"
+            [noteHtml]="noteHtml()"
+            [videoSources]="videoSources()"
+            [storyboard]="storyboard()"
+            [posterUrl]="posterUrl()"
+            [hasPdfRendition]="hasPdfRendition()"
+            [previewUrl]="previewUrl()"
+            [pictureInfo]="pictureInfo()"
+            [pictureViews]="pictureViews()"
+            [exifData]="exifData()"
+            [iptcData]="iptcData()"
+            [videoInfo]="videoInfo()"
+            [arenderUrl]="arenderUrl()"
+            [arenderReloadId]="arenderReloadId()"
+            [viewerDocUid]="doc()?.uid ?? ''"
+            [annotationsTab]="true"
+            [showMainFileControls]="
+              !isNoteDocument() && !!fileName() && canWriteDoc() && !isTrashed()
+            "
+            [mainFileActionInProgress]="actionInProgress()"
+            (downloadClicked)="download()"
+            (previewClicked)="previewMainBlob()"
+            (openWithDriveClicked)="openDriveDialog()"
+            (formatDownload)="downloadPictureFormat($event)"
+            (replaceMainFileClicked)="openReplaceMainFileDialog()"
+            (removeMainFileClicked)="openRemoveMainFileDialog()"
+          />
+        </ng-template>
+
+        <ng-template #permissionsTabContent>
+          <div class="permissions-container">
+            @if (permissionsLoading()) {
+              <div class="perm-loading"><mat-spinner diameter="28" aria-label="Loading" /></div>
+            }
+            <!-- Permissions defined locally -->
+            <section class="perm-section perm-section--local">
+              <div class="perm-section-header">
+                <div class="perm-section-title" role="heading" aria-level="3">
+                  Permissions defined locally
                 </div>
-                @if (localAces().length === 0) {
-                  <div class="perm-empty perm-empty--local">There are no local permissions.</div>
-                } @else {
-                  <div class="perm-table-wrap">
-                    <table class="perm-table">
-                      <thead>
-                        <tr>
-                          <th>User / Group</th>
-                          <th>Right</th>
-                          <th>Time Frame</th>
-                          <th>Granted by</th>
-                          @if (canManagePermissions()) {
-                            <th></th>
-                          }
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (ace of localAces(); track ace.id) {
-                          <tr>
-                            <td>{{ displayUsername(ace) }}</td>
-                            <td>{{ permissionLabel(ace.permission) }}</td>
-                            <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ aceGrantedBy(ace) }}</td>
-                            @if (canManagePermissions()) {
-                              <td class="perm-row-actions">
-                                <button
-                                  mat-icon-button
-                                  matTooltip="Edit"
-                                  aria-label="Edit permission"
-                                  type="button"
-                                  (click)="editPermission(ace)"
-                                >
-                                  <mat-icon>edit</mat-icon>
-                                </button>
-                                <button
-                                  mat-icon-button
-                                  matTooltip="Delete"
-                                  aria-label="Delete permission"
-                                  type="button"
-                                  (click)="deletePermission(ace)"
-                                >
-                                  <mat-icon>delete</mat-icon>
-                                </button>
-                              </td>
-                            }
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
+                @if (canManagePermissions()) {
+                  <button
+                    mat-button
+                    color="primary"
+                    type="button"
+                    class="perm-action-btn"
+                    (click)="openAddPermissionDialog()"
+                  >
+                    New
+                  </button>
                 }
-              </section>
-
-              <!-- Permissions inherited from upper levels -->
-              <section class="perm-section">
-                <div class="perm-section-header">
-                  <div class="perm-section-title" role="heading" aria-level="3">
-                    Permissions inherited from upper levels
-                  </div>
-                  @if (canManagePermissions()) {
-                    <button
-                      mat-button
-                      color="primary"
-                      class="perm-action-btn"
-                      [disabled]="actionInProgress() === 'block-inheritance'"
-                      (click)="toggleInheritanceBlock()"
-                    >
-                      {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
-                    </button>
-                  }
-                </div>
-                @if (!isInheritanceBlocked()) {
-                  <div class="perm-info-bar">
-                    <span class="perm-info-accent"></span>
-                    <p>
-                      If you want to explicitly control the access to this document you can block
-                      the permissions inheritance. Any change made on parent document will not
-                      affect the access conditions to this document. You and the administrators will
-                      be added to local permissions.
-                    </p>
-                  </div>
-                }
-                @if (isInheritanceBlocked()) {
-                  <div class="perm-empty">Permissions inheritance is blocked.</div>
-                } @else if (inheritedAces().length === 0) {
-                  <div class="perm-empty">No inherited permissions.</div>
-                } @else {
-                  <div class="perm-table-wrap">
-                    <table class="perm-table">
-                      <thead>
-                        <tr>
-                          <th>User / Group</th>
-                          <th>Right</th>
-                          <th>Time Frame</th>
-                          <th>Granted by</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (ace of inheritedAces(); track ace.id) {
-                          <tr>
-                            <td>{{ displayUsername(ace) }}</td>
-                            <td>{{ permissionLabel(ace.permission) }}</td>
-                            <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ aceGrantedBy(ace) }}</td>
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                }
-              </section>
-
-              <!-- Permissions Assigned to External Users -->
-              <section class="perm-section">
-                <div class="perm-section-header">
-                  <div class="perm-section-title" role="heading" aria-level="3">
-                    Permissions Assigned to External Users
-                  </div>
-                  @if (canManagePermissions()) {
-                    <button
-                      mat-button
-                      color="primary"
-                      type="button"
-                      class="perm-action-btn"
-                      (click)="openExternalPermissionDialog()"
-                    >
-                      New
-                    </button>
-                  }
-                </div>
-                <div class="perm-info-bar">
-                  <span class="perm-info-accent"></span>
-                  <p>
-                    Sharing to external users does not create new user accounts. External users are
-                    provided a link to access this document.
-                  </p>
-                </div>
-                @if (externalAces().length === 0) {
-                  <div class="perm-empty">The document is not shared with any external user.</div>
-                } @else {
-                  <div class="perm-table-wrap">
-                    <table class="perm-table">
-                      <thead>
-                        <tr>
-                          <th>User</th>
-                          <th>Right</th>
-                          <th>Time Frame</th>
-                          <th>Granted by</th>
-                          @if (canManagePermissions()) {
-                            <th></th>
-                          }
-                        </tr>
-                      </thead>
-                      <tbody>
-                        @for (ace of externalAces(); track ace.id) {
-                          <tr>
-                            <td>{{ displayUsername(ace) }}</td>
-                            <td>{{ permissionLabel(ace.permission) }}</td>
-                            <td>{{ aceTimeFrame(ace) }}</td>
-                            <td>{{ aceGrantedBy(ace) }}</td>
-                            @if (canManagePermissions()) {
-                              <td class="perm-row-actions">
-                                <button
-                                  mat-icon-button
-                                  matTooltip="Edit"
-                                  aria-label="Edit permission"
-                                  type="button"
-                                  (click)="editExternalPermission(ace)"
-                                >
-                                  <mat-icon>edit</mat-icon>
-                                </button>
-                                <button
-                                  mat-icon-button
-                                  matTooltip="Send notification email"
-                                  aria-label="Send notification"
-                                  type="button"
-                                  [disabled]="actionInProgress() === 'notify-' + ace.id"
-                                  (click)="sendPermissionNotification(ace)"
-                                >
-                                  <mat-icon>send</mat-icon>
-                                </button>
-                                <button
-                                  mat-icon-button
-                                  matTooltip="Delete"
-                                  aria-label="Delete permission"
-                                  type="button"
-                                  (click)="deletePermission(ace)"
-                                >
-                                  <mat-icon>delete</mat-icon>
-                                </button>
-                              </td>
-                            }
-                          </tr>
-                        }
-                      </tbody>
-                    </table>
-                  </div>
-                }
-              </section>
-            </div>
-          </mat-tab>
-
-          <mat-tab label="History">
-            <div class="history-container">
-              <!-- Filters -->
-              <div class="history-filters">
-                <div class="filter-row">
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    class="filter-field filter-field--wide"
-                  >
-                    <mat-label>Username</mat-label>
-                    <input
-                      matInput
-                      placeholder="Filter by username"
-                      [ngModel]="filterUsername()"
-                      (ngModelChange)="filterUsername.set($event)"
-                    />
-                  </mat-form-field>
-                </div>
-
-                <div class="filter-row">
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    class="filter-field"
-                  >
-                    <mat-label>From</mat-label>
-                    <input
-                      matInput
-                      [matDatepicker]="fromPicker"
-                      placeholder="mm/dd/yyyy"
-                      [ngModel]="filterDateFrom()"
-                      (ngModelChange)="filterDateFrom.set($event)"
-                    />
-                    <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-                    <mat-datepicker #fromPicker />
-                  </mat-form-field>
-
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    class="filter-field"
-                  >
-                    <mat-label>To</mat-label>
-                    <input
-                      matInput
-                      [matDatepicker]="toPicker"
-                      placeholder="mm/dd/yyyy"
-                      [ngModel]="filterDateTo()"
-                      (ngModelChange)="filterDateTo.set($event)"
-                    />
-                    <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-                    <mat-datepicker #toPicker />
-                  </mat-form-field>
-                </div>
-
-                <div class="filter-row">
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    class="filter-field"
-                  >
-                    <mat-label>Performed Actions</mat-label>
-                    <mat-select
-                      [ngModel]="filterAction()"
-                      (ngModelChange)="filterAction.set($event)"
-                    >
-                      <mat-option value="">Select event actions</mat-option>
-                      @for (action of availableActions(); track action.id) {
-                        <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    class="filter-field"
-                  >
-                    <mat-label>Event Category</mat-label>
-                    <mat-select
-                      [ngModel]="filterCategory()"
-                      (ngModelChange)="filterCategory.set($event)"
-                    >
-                      <mat-option value="">Select event category</mat-option>
-                      @for (cat of availableCategories(); track cat.id) {
-                        <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                </div>
               </div>
-
-              <!-- Table -->
-              @if (auditLoading()) {
-                <div class="history-loading">
-                  <mat-spinner diameter="32" aria-label="Loading" />
-                </div>
-              } @else if (filteredAuditEntries().length === 0) {
-                <div class="history-empty">
-                  <mat-icon>event_busy</mat-icon>
-                  <p>No history entries found.</p>
-                </div>
+              @if (localAces().length === 0) {
+                <div class="perm-empty perm-empty--local">There are no local permissions.</div>
               } @else {
-                <div class="history-table-wrapper">
-                  <table
-                    mat-table
-                    [dataSource]="filteredAuditEntries()"
-                    matSort
-                    (matSortChange)="onAuditSort($event)"
-                    class="history-table"
-                  >
-                    <ng-container matColumnDef="eventId">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
-                      <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="eventDate">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-                      <td mat-cell *matCellDef="let entry">
-                        {{ entry.eventDate | date: 'MMMM d, yyyy' }}
-                      </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="principalName">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
-                      <td mat-cell *matCellDef="let entry">
-                        <div class="user-cell">
-                          <sat-avatar
-                            [initials]="entry.principalName"
-                            [category]="avatarColor(entry.principalName)"
-                            size="24"
-                            [borderless]="true"
-                            aria-hidden="true"
-                          />
-                          <span>{{ entry.principalName }}</span>
-                        </div>
-                      </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="category">
-                      <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
-                      <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="comment">
-                      <th mat-header-cell *matHeaderCellDef>Comment</th>
-                      <td mat-cell *matCellDef="let entry" class="comment-cell">
-                        {{ entry.comment }}
-                      </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="docLifeCycle">
-                      <th mat-header-cell *matHeaderCellDef>State</th>
-                      <td mat-cell *matCellDef="let entry">
-                        <sat-status-tag status="info" [hideIcon]="true">{{
-                          entry.docLifeCycle
-                        }}</sat-status-tag>
-                      </td>
-                    </ng-container>
-
-                    <tr
-                      mat-header-row
-                      *matHeaderRowDef="historyDisplayedColumns; sticky: true"
-                    ></tr>
-                    <tr mat-row *matRowDef="let row; columns: historyDisplayedColumns"></tr>
-                  </table>
-                </div>
-
-                <mat-paginator
-                  [length]="auditTotalSize()"
-                  [pageSize]="auditPageSize()"
-                  [pageIndex]="auditPageIndex()"
-                  [pageSizeOptions]="[10, 20, 50]"
-                  (page)="onAuditPageChange($event)"
-                  showFirstLastButtons
-                />
-              }
-            </div>
-          </mat-tab>
-
-          <mat-tab label="Publishing">
-            <div class="publish-container">
-              <!-- Publication details -->
-              <section class="publish-section">
-                <div class="publish-section-header">
-                  <div class="publish-section-title" role="heading" aria-level="3">
-                    Publication details
-                  </div>
-                  @if (publishedDocs().length > 0) {
-                    <button
-                      mat-stroked-button
-                      class="unpublish-all-btn"
-                      [disabled]="actionInProgress() === 'unpublish-all'"
-                      (click)="unpublishAll()"
-                    >
-                      @if (actionInProgress() === 'unpublish-all') {
-                        <mat-spinner diameter="16" aria-label="Loading" />
-                      } @else {
-                        Unpublish All
-                      }
-                    </button>
-                  }
-                </div>
-                @if (publishLoading()) {
-                  <div class="publish-loading">
-                    <mat-spinner diameter="24" aria-label="Loading" />
-                  </div>
-                } @else if (publishedDocs().length === 0) {
-                  <div class="publish-empty">
-                    <mat-icon>cloud_off</mat-icon>
-                    <p>This document has not been published yet.</p>
-                  </div>
-                } @else {
-                  <table class="publish-table">
+                <div class="perm-table-wrap">
+                  <table class="perm-table">
                     <thead>
                       <tr>
-                        <th>Path</th>
-                        <th>Version</th>
-                        <th>Rendition</th>
-                        <th>Publisher</th>
-                        <th>Publish Date</th>
-                        <th class="pub-actions-col"></th>
+                        <th>User / Group</th>
+                        <th>Right</th>
+                        <th>Time Frame</th>
+                        <th>Granted by</th>
+                        @if (canManagePermissions()) {
+                          <th></th>
+                        }
                       </tr>
                     </thead>
                     <tbody>
-                      @for (pub of publishedDocs(); track pub.uid) {
+                      @for (ace of localAces(); track ace.id) {
                         <tr>
-                          <td>
-                            <div class="pub-title-cell">
-                              <mat-icon class="pub-doc-icon">description</mat-icon>
-                              <span class="pub-path-text">{{ publishedPath(pub) }}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <sat-status-tag status="neutral" [hideIcon]="true">{{
-                              publishedVersion(pub)
-                            }}</sat-status-tag>
-                          </td>
-                          <td>{{ publishedRendition(pub) }}</td>
-                          <td>
-                            <div class="pub-publisher">
-                              <span class="avatar-sm pub-avatar">{{
-                                publishedBy(pub).charAt(0).toUpperCase()
-                              }}</span>
-                              <span>{{ publishedBy(pub) }}</span>
-                            </div>
-                          </td>
-                          <td>{{ publishedDate(pub) | date: 'longDate' }}</td>
-                          <td class="pub-actions-cell">
-                            <button
-                              mat-stroked-button
-                              class="pub-action-btn"
-                              [disabled]="actionInProgress() === 'unpublish'"
-                              (click)="unpublishDocument(pub)"
-                            >
-                              Unpublish
-                            </button>
-                            @if (isOlderVersion(pub)) {
+                          <td>{{ displayUsername(ace) }}</td>
+                          <td>{{ permissionLabel(ace.permission) }}</td>
+                          <td>{{ aceTimeFrame(ace) }}</td>
+                          <td>{{ aceGrantedBy(ace) }}</td>
+                          @if (canManagePermissions()) {
+                            <td class="perm-row-actions">
                               <button
-                                mat-flat-button
-                                color="primary"
-                                class="pub-action-btn republish-btn"
-                                [disabled]="actionInProgress() === 'republish'"
-                                (click)="republishDocument(pub)"
+                                mat-icon-button
+                                matTooltip="Edit"
+                                aria-label="Edit permission"
+                                type="button"
+                                (click)="editPermission(ace)"
                               >
-                                Republish
+                                <mat-icon>edit</mat-icon>
                               </button>
-                            }
-                          </td>
+                              <button
+                                mat-icon-button
+                                matTooltip="Delete"
+                                aria-label="Delete permission"
+                                type="button"
+                                (click)="deletePermission(ace)"
+                              >
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </td>
+                          }
                         </tr>
                       }
                     </tbody>
                   </table>
-                }
-              </section>
+                </div>
+              }
+            </section>
 
-              <!-- Publish to Section -->
-              <section class="publish-section">
-                <div class="publish-section-header">
-                  <div class="publish-section-title" role="heading" aria-level="3">
-                    Publish to a Section
-                  </div>
+            <!-- Permissions inherited from upper levels -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <div class="perm-section-title" role="heading" aria-level="3">
+                  Permissions inherited from upper levels
+                </div>
+                @if (canManagePermissions()) {
                   <button
-                    mat-flat-button
+                    mat-button
                     color="primary"
-                    class="publish-btn"
-                    [disabled]="!selectedSectionId() || publishing()"
-                    (click)="publishToSection()"
+                    class="perm-action-btn"
+                    [disabled]="actionInProgress() === 'block-inheritance'"
+                    (click)="toggleInheritanceBlock()"
                   >
-                    @if (publishing()) {
-                      <mat-spinner diameter="18" aria-label="Loading" />
-                    } @else {
-                      <ng-container>
-                        <mat-icon>publish</mat-icon>
-                        Publish
-                      </ng-container>
-                    }
+                    {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
                   </button>
-                </div>
-
-                <div class="publish-info-bar">
-                  <span class="publish-info-accent"></span>
-                  <p>
-                    Select a section below to publish this document. Published documents will appear
-                    in the selected section and will be accessible to users with read access.
-                  </p>
-                </div>
-
-                @if (sectionsLoading()) {
-                  <div class="publish-loading">
-                    <mat-spinner diameter="24" aria-label="Loading" />
-                  </div>
-                } @else if (sectionTree().length === 0) {
-                  <div class="publish-empty">
-                    <mat-icon>folder_off</mat-icon>
-                    <p>No sections available for publishing.</p>
-                  </div>
-                } @else {
-                  <div class="section-tree">
-                    @for (node of sectionTree(); track node.doc.uid) {
-                      <ng-container
-                        *ngTemplateOutlet="sectionNodeTpl; context: { $implicit: node, depth: 0 }"
-                      />
-                    }
-                  </div>
-                }
-              </section>
-            </div>
-          </mat-tab>
-
-          <!-- AI Insights Tab -->
-          @if (featureFlags.aiEnabled()) {
-            <mat-tab>
-              <ng-template mat-tab-label>
-                <mat-icon class="ai-tab-icon">auto_awesome</mat-icon>
-                AI Insights
-              </ng-template>
-              <div class="ai-tab-content">
-                <!-- Hero Header -->
-                <div class="ai-insights-hero">
-                  <div class="ai-insights-hero-text">
-                    <div class="ai-insights-title">AI Insights</div>
-                    <p class="ai-insights-subtitle">
-                      Augment your editorial workflow with cognitive processing. Generate summaries,
-                      classify complex data, and discover hidden relationships.
-                    </p>
-                  </div>
-                  <button mat-flat-button class="ai-btn-primary" (click)="openAiAssistant()">
-                    <mat-icon>auto_awesome</mat-icon>
-                    AI Assistant
-                  </button>
-                </div>
-
-                <!-- 2x2 Card Grid -->
-                <div class="ai-insights-grid">
-                  <!-- Document Summary Card -->
-                  <section class="ai-card">
-                    <div class="ai-card-header">
-                      <span class="ai-card-icon ai-card-icon--purple">
-                        <mat-icon>auto_awesome</mat-icon>
-                      </span>
-                      <div class="ai-card-title">Document Summary</div>
-                      @if (aiSummaryLoading()) {
-                        <button mat-flat-button class="ai-btn-primary ai-btn-sm" disabled>
-                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
-                        </button>
-                      } @else {
-                        <button
-                          mat-flat-button
-                          class="ai-btn-primary ai-btn-sm"
-                          (click)="generateSummary()"
-                        >
-                          <mat-icon>auto_awesome</mat-icon>
-                          {{ aiSummary() ? 'Regenerate' : 'Generate' }}
-                        </button>
-                      }
-                    </div>
-                    <p class="ai-card-desc">
-                      Utilize large language models to distill complex editorial pieces into
-                      concise, high-impact executive summaries. Ideal for rapid review and
-                      cross-departmental updates.
-                    </p>
-                    <div class="ai-card-body">
-                      @if (aiSummaryLoading()) {
-                        <div class="ai-loading-skeleton">
-                          <div class="skeleton-line wide"></div>
-                          <div class="skeleton-line wide"></div>
-                          <div class="skeleton-line medium"></div>
-                          <div class="skeleton-line short"></div>
-                        </div>
-                      } @else if (aiSummary()) {
-                        <div class="ai-summary-result">
-                          <p class="ai-summary-text">{{ aiSummary()!.summary }}</p>
-                          @if (aiSummary()!.keyPoints.length) {
-                            <div class="ai-key-points">
-                              <strong>Key Points:</strong>
-                              <ul>
-                                @for (point of aiSummary()!.keyPoints; track point) {
-                                  <li>{{ point }}</li>
-                                }
-                              </ul>
-                            </div>
-                          }
-                        </div>
-                      } @else {
-                        <div class="ai-placeholder-quote">
-                          <p>
-                            "Summary will appear here after generation. The model will analyze
-                            semantic structure and key thematic elements..."
-                          </p>
-                        </div>
-                      }
-                    </div>
-                  </section>
-
-                  <!-- Suggested Tags Card -->
-                  <section class="ai-card">
-                    <div class="ai-card-header">
-                      <span class="ai-card-icon ai-card-icon--indigo">
-                        <mat-icon>sell</mat-icon>
-                      </span>
-                      <div class="ai-card-title">Suggested Tags</div>
-                    </div>
-                    <p class="ai-card-desc">
-                      Automatic taxonomy mapping based on entity extraction and sentiment analysis
-                      of the current document text.
-                    </p>
-                    <div class="ai-card-body">
-                      @if (aiTagsLoading()) {
-                        <div class="ai-loading-skeleton">
-                          <div class="skeleton-line medium"></div>
-                          <div class="skeleton-line short"></div>
-                        </div>
-                      } @else if (aiSuggestedTags().length) {
-                        <div class="ai-tags-list">
-                          @for (tag of aiSuggestedTags(); track tag.label) {
-                            <button
-                              class="ai-tag-chip"
-                              type="button"
-                              [attr.aria-label]="'Add tag ' + tag.label"
-                              (click)="applyAiTag(tag.label)"
-                            >
-                              <span class="ai-tag-label">{{ tag.label }}</span>
-                              <span class="ai-tag-confidence"
-                                >{{ (tag.confidence * 100).toFixed(0) }}%</span
-                              >
-                              <mat-icon class="ai-tag-add">add_circle_outline</mat-icon>
-                            </button>
-                          }
-                        </div>
-                      }
-                    </div>
-                    <div class="ai-card-actions">
-                      @if (aiTagsLoading()) {
-                        <button mat-stroked-button class="ai-btn-outline" disabled>
-                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
-                          Suggest Tags
-                        </button>
-                      } @else {
-                        <button mat-stroked-button class="ai-btn-outline" (click)="suggestTags()">
-                          <mat-icon>auto_awesome</mat-icon>
-                          Suggest Tags
-                        </button>
-                      }
-                    </div>
-                  </section>
-
-                  <!-- Classification & Metadata Card -->
-                  <section class="ai-card">
-                    <div class="ai-card-header">
-                      <span class="ai-card-icon ai-card-icon--purple">
-                        <mat-icon>tune</mat-icon>
-                      </span>
-                      <div class="ai-card-title">Classification &amp; Metadata</div>
-                    </div>
-                    <p class="ai-card-desc">
-                      Categorize content into predefined editorial verticals and extract structural
-                      metadata including author, publication date, and reading time estimation.
-                    </p>
-                    <div class="ai-card-body">
-                      @if (aiClassifyLoading()) {
-                        <div class="ai-loading-skeleton">
-                          <div class="skeleton-line wide"></div>
-                          <div class="skeleton-line wide"></div>
-                          <div class="skeleton-line medium"></div>
-                        </div>
-                      } @else if (aiClassification()) {
-                        <div class="ai-meta-rows">
-                          <div class="ai-meta-row">
-                            <span class="ai-meta-key">Description</span>
-                            <span class="ai-meta-val">{{ aiClassification()!.description }}</span>
-                          </div>
-                          <div class="ai-meta-row">
-                            <span class="ai-meta-key">Primary Category</span>
-                            <sat-category-tag category="blue">{{
-                              aiClassification()!.nature
-                            }}</sat-category-tag>
-                          </div>
-                          <div class="ai-meta-row">
-                            <span class="ai-meta-key">Subjects</span>
-                            <span class="ai-meta-val">{{
-                              aiClassification()!.subjects.join(', ')
-                            }}</span>
-                          </div>
-                          @if (aiClassification()!.suggestedWorkflow !== 'none') {
-                            <div class="ai-meta-row">
-                              <span class="ai-meta-key">Workflow</span>
-                              <span class="ai-meta-val">
-                                <sat-status-tag status="info" [hideIcon]="true">{{
-                                  aiClassification()!.suggestedWorkflow
-                                }}</sat-status-tag>
-                              </span>
-                            </div>
-                          }
-                        </div>
-                      } @else {
-                        <div class="ai-meta-rows">
-                          <div class="ai-meta-row">
-                            <span class="ai-meta-key">Primary Category</span>
-                            <span class="ai-meta-val ai-meta-val--muted">Unclassified</span>
-                          </div>
-                          <div class="ai-meta-row">
-                            <span class="ai-meta-key">Complexity Level</span>
-                            <span class="ai-meta-val ai-meta-val--muted">&mdash;</span>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                    <div class="ai-card-actions">
-                      @if (aiClassifyLoading()) {
-                        <button mat-flat-button class="ai-btn-primary ai-btn-full" disabled>
-                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
-                          Classify
-                        </button>
-                      } @else {
-                        <button
-                          mat-flat-button
-                          class="ai-btn-primary ai-btn-full"
-                          (click)="classifyDocument()"
-                        >
-                          <mat-icon>tune</mat-icon>
-                          Classify
-                        </button>
-                      }
-                    </div>
-                  </section>
-
-                  <!-- Related Documents Card -->
-                  <section class="ai-card">
-                    <div class="ai-card-header">
-                      <span class="ai-card-icon ai-card-icon--indigo">
-                        <mat-icon>hub</mat-icon>
-                      </span>
-                      <div class="ai-card-title">Related Documents</div>
-                    </div>
-                    <p class="ai-card-desc">
-                      Discover documents within the archive that share thematic overlaps, common
-                      entities, or stylistic signatures to ensure editorial consistency.
-                    </p>
-                    <div class="ai-card-body">
-                      @if (aiSimilarLoading()) {
-                        <div class="ai-doc-thumbs">
-                          <div class="ai-doc-thumb ai-doc-thumb--skeleton">
-                            <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
-                            <span>Scanning Archive...</span>
-                          </div>
-                          <div class="ai-doc-thumb ai-doc-thumb--skeleton">
-                            <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
-                            <span>Scanning Archive...</span>
-                          </div>
-                        </div>
-                      } @else if (aiSimilarDocs().length) {
-                        <div class="ai-similar-list">
-                          @for (simDoc of aiSimilarDocs(); track simDoc.uid) {
-                            <button class="ai-similar-item" (click)="navigateToDoc(simDoc.uid)">
-                              <mat-icon class="ai-similar-icon">description</mat-icon>
-                              <div class="ai-similar-info">
-                                <span class="ai-similar-title">{{ simDoc.title }}</span>
-                                <span class="ai-similar-path">{{ simDoc.path }}</span>
-                              </div>
-                              <span class="ai-similar-score"
-                                >{{ (simDoc.score * 100).toFixed(0) }}%</span
-                              >
-                            </button>
-                          }
-                        </div>
-                      } @else {
-                        <div class="ai-doc-thumbs">
-                          <div class="ai-doc-thumb">
-                            <mat-icon class="ai-doc-thumb-icon">description</mat-icon>
-                            <span>Document Preview</span>
-                          </div>
-                          <div class="ai-doc-thumb">
-                            <mat-icon class="ai-doc-thumb-icon">description</mat-icon>
-                            <span>Document Preview</span>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                    <div class="ai-card-actions">
-                      @if (aiSimilarLoading()) {
-                        <button mat-stroked-button class="ai-btn-outline" disabled>
-                          <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
-                          Find Connections
-                        </button>
-                      } @else {
-                        <button mat-stroked-button class="ai-btn-outline" (click)="findSimilar()">
-                          <mat-icon>search</mat-icon>
-                          Find Connections
-                        </button>
-                      }
-                    </div>
-                  </section>
-                </div>
-
-                @if (aiError()) {
-                  <div class="ai-error-banner">
-                    <mat-icon>error_outline</mat-icon>
-                    {{ aiError() }}
-                  </div>
                 }
               </div>
-            </mat-tab>
-          }
-        </mat-tab-group>
+              @if (!isInheritanceBlocked()) {
+                <div class="perm-info-bar">
+                  <span class="perm-info-accent"></span>
+                  <p>
+                    If you want to explicitly control the access to this document you can block the
+                    permissions inheritance. Any change made on parent document will not affect the
+                    access conditions to this document. You and the administrators will be added to
+                    local permissions.
+                  </p>
+                </div>
+              }
+              @if (isInheritanceBlocked()) {
+                <div class="perm-empty">Permissions inheritance is blocked.</div>
+              } @else if (inheritedAces().length === 0) {
+                <div class="perm-empty">No inherited permissions.</div>
+              } @else {
+                <div class="perm-table-wrap">
+                  <table class="perm-table">
+                    <thead>
+                      <tr>
+                        <th>User / Group</th>
+                        <th>Right</th>
+                        <th>Time Frame</th>
+                        <th>Granted by</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (ace of inheritedAces(); track ace.id) {
+                        <tr>
+                          <td>{{ displayUsername(ace) }}</td>
+                          <td>{{ permissionLabel(ace.permission) }}</td>
+                          <td>{{ aceTimeFrame(ace) }}</td>
+                          <td>{{ aceGrantedBy(ace) }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </section>
+
+            <!-- Permissions Assigned to External Users -->
+            <section class="perm-section">
+              <div class="perm-section-header">
+                <div class="perm-section-title" role="heading" aria-level="3">
+                  Permissions Assigned to External Users
+                </div>
+                @if (canManagePermissions()) {
+                  <button
+                    mat-button
+                    color="primary"
+                    type="button"
+                    class="perm-action-btn"
+                    (click)="openExternalPermissionDialog()"
+                  >
+                    New
+                  </button>
+                }
+              </div>
+              <div class="perm-info-bar">
+                <span class="perm-info-accent"></span>
+                <p>
+                  Sharing to external users does not create new user accounts. External users are
+                  provided a link to access this document.
+                </p>
+              </div>
+              @if (externalAces().length === 0) {
+                <div class="perm-empty">The document is not shared with any external user.</div>
+              } @else {
+                <div class="perm-table-wrap">
+                  <table class="perm-table">
+                    <thead>
+                      <tr>
+                        <th>User</th>
+                        <th>Right</th>
+                        <th>Time Frame</th>
+                        <th>Granted by</th>
+                        @if (canManagePermissions()) {
+                          <th></th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (ace of externalAces(); track ace.id) {
+                        <tr>
+                          <td>{{ displayUsername(ace) }}</td>
+                          <td>{{ permissionLabel(ace.permission) }}</td>
+                          <td>{{ aceTimeFrame(ace) }}</td>
+                          <td>{{ aceGrantedBy(ace) }}</td>
+                          @if (canManagePermissions()) {
+                            <td class="perm-row-actions">
+                              <button
+                                mat-icon-button
+                                matTooltip="Edit"
+                                aria-label="Edit permission"
+                                type="button"
+                                (click)="editExternalPermission(ace)"
+                              >
+                                <mat-icon>edit</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                matTooltip="Send notification email"
+                                aria-label="Send notification"
+                                type="button"
+                                [disabled]="actionInProgress() === 'notify-' + ace.id"
+                                (click)="sendPermissionNotification(ace)"
+                              >
+                                <mat-icon>send</mat-icon>
+                              </button>
+                              <button
+                                mat-icon-button
+                                matTooltip="Delete"
+                                aria-label="Delete permission"
+                                type="button"
+                                (click)="deletePermission(ace)"
+                              >
+                                <mat-icon>delete</mat-icon>
+                              </button>
+                            </td>
+                          }
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </section>
+          </div>
+        </ng-template>
+
+        <ng-template #historyTabContent>
+          <div class="history-container">
+            <!-- Filters -->
+            <div class="history-filters">
+              <div class="filter-row">
+                <mat-form-field
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                  class="filter-field filter-field--wide"
+                >
+                  <mat-label>Username</mat-label>
+                  <input
+                    matInput
+                    placeholder="Filter by username"
+                    [ngModel]="filterUsername()"
+                    (ngModelChange)="filterUsername.set($event)"
+                  />
+                </mat-form-field>
+              </div>
+
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>From</mat-label>
+                  <input
+                    matInput
+                    [matDatepicker]="fromPicker"
+                    placeholder="mm/dd/yyyy"
+                    [ngModel]="filterDateFrom()"
+                    (ngModelChange)="filterDateFrom.set($event)"
+                  />
+                  <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+                  <mat-datepicker #fromPicker />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>To</mat-label>
+                  <input
+                    matInput
+                    [matDatepicker]="toPicker"
+                    placeholder="mm/dd/yyyy"
+                    [ngModel]="filterDateTo()"
+                    (ngModelChange)="filterDateTo.set($event)"
+                  />
+                  <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+                  <mat-datepicker #toPicker />
+                </mat-form-field>
+              </div>
+
+              <div class="filter-row">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>Performed Actions</mat-label>
+                  <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
+                    <mat-option value="">Select event actions</mat-option>
+                    @for (action of availableActions(); track action.id) {
+                      <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                  <mat-label>Event Category</mat-label>
+                  <mat-select
+                    [ngModel]="filterCategory()"
+                    (ngModelChange)="filterCategory.set($event)"
+                  >
+                    <mat-option value="">Select event category</mat-option>
+                    @for (cat of availableCategories(); track cat.id) {
+                      <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            </div>
+
+            <!-- Table -->
+            @if (auditLoading()) {
+              <div class="history-loading">
+                <mat-spinner diameter="32" aria-label="Loading" />
+              </div>
+            } @else if (filteredAuditEntries().length === 0) {
+              <div class="history-empty">
+                <mat-icon>event_busy</mat-icon>
+                <p>No history entries found.</p>
+              </div>
+            } @else {
+              <div class="history-table-wrapper">
+                <table
+                  mat-table
+                  [dataSource]="filteredAuditEntries()"
+                  matSort
+                  (matSortChange)="onAuditSort($event)"
+                  class="history-table"
+                >
+                  <ng-container matColumnDef="eventId">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
+                    <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="eventDate">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                    <td mat-cell *matCellDef="let entry">
+                      {{ entry.eventDate | date: 'MMMM d, yyyy' }}
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="principalName">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+                    <td mat-cell *matCellDef="let entry">
+                      <div class="user-cell">
+                        <sat-avatar
+                          [initials]="entry.principalName"
+                          [category]="avatarColor(entry.principalName)"
+                          size="24"
+                          [borderless]="true"
+                          aria-hidden="true"
+                        />
+                        <span>{{ entry.principalName }}</span>
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="category">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                    <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="comment">
+                    <th mat-header-cell *matHeaderCellDef>Comment</th>
+                    <td mat-cell *matCellDef="let entry" class="comment-cell">
+                      {{ entry.comment }}
+                    </td>
+                  </ng-container>
+
+                  <ng-container matColumnDef="docLifeCycle">
+                    <th mat-header-cell *matHeaderCellDef>State</th>
+                    <td mat-cell *matCellDef="let entry">
+                      <sat-status-tag status="info" [hideIcon]="true">{{
+                        entry.docLifeCycle
+                      }}</sat-status-tag>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="historyDisplayedColumns; sticky: true"></tr>
+                  <tr mat-row *matRowDef="let row; columns: historyDisplayedColumns"></tr>
+                </table>
+              </div>
+
+              <mat-paginator
+                [length]="auditTotalSize()"
+                [pageSize]="auditPageSize()"
+                [pageIndex]="auditPageIndex()"
+                [pageSizeOptions]="[10, 20, 50]"
+                (page)="onAuditPageChange($event)"
+                showFirstLastButtons
+              />
+            }
+          </div>
+        </ng-template>
+
+        <ng-template #publishingTabContent>
+          <div class="publish-container">
+            <!-- Publication details -->
+            <section class="publish-section">
+              <div class="publish-section-header">
+                <div class="publish-section-title" role="heading" aria-level="3">
+                  Publication details
+                </div>
+                @if (publishedDocs().length > 0) {
+                  <button
+                    mat-stroked-button
+                    class="unpublish-all-btn"
+                    [disabled]="actionInProgress() === 'unpublish-all'"
+                    (click)="unpublishAll()"
+                  >
+                    @if (actionInProgress() === 'unpublish-all') {
+                      <mat-spinner diameter="16" aria-label="Loading" />
+                    } @else {
+                      Unpublish All
+                    }
+                  </button>
+                }
+              </div>
+              @if (publishLoading()) {
+                <div class="publish-loading">
+                  <mat-spinner diameter="24" aria-label="Loading" />
+                </div>
+              } @else if (publishedDocs().length === 0) {
+                <div class="publish-empty">
+                  <mat-icon>cloud_off</mat-icon>
+                  <p>This document has not been published yet.</p>
+                </div>
+              } @else {
+                <table class="publish-table">
+                  <thead>
+                    <tr>
+                      <th>Path</th>
+                      <th>Version</th>
+                      <th>Rendition</th>
+                      <th>Publisher</th>
+                      <th>Publish Date</th>
+                      <th class="pub-actions-col"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (pub of publishedDocs(); track pub.uid) {
+                      <tr>
+                        <td>
+                          <div class="pub-title-cell">
+                            <mat-icon class="pub-doc-icon">description</mat-icon>
+                            <span class="pub-path-text">{{ publishedPath(pub) }}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <sat-status-tag status="neutral" [hideIcon]="true">{{
+                            publishedVersion(pub)
+                          }}</sat-status-tag>
+                        </td>
+                        <td>{{ publishedRendition(pub) }}</td>
+                        <td>
+                          <div class="pub-publisher">
+                            <span class="avatar-sm pub-avatar">{{
+                              publishedBy(pub).charAt(0).toUpperCase()
+                            }}</span>
+                            <span>{{ publishedBy(pub) }}</span>
+                          </div>
+                        </td>
+                        <td>{{ publishedDate(pub) | date: 'longDate' }}</td>
+                        <td class="pub-actions-cell">
+                          <button
+                            mat-stroked-button
+                            class="pub-action-btn"
+                            [disabled]="actionInProgress() === 'unpublish'"
+                            (click)="unpublishDocument(pub)"
+                          >
+                            Unpublish
+                          </button>
+                          @if (isOlderVersion(pub)) {
+                            <button
+                              mat-flat-button
+                              color="primary"
+                              class="pub-action-btn republish-btn"
+                              [disabled]="actionInProgress() === 'republish'"
+                              (click)="republishDocument(pub)"
+                            >
+                              Republish
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </section>
+
+            <!-- Publish to Section -->
+            <section class="publish-section">
+              <div class="publish-section-header">
+                <div class="publish-section-title" role="heading" aria-level="3">
+                  Publish to a Section
+                </div>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  class="publish-btn"
+                  [disabled]="!selectedSectionId() || publishing()"
+                  (click)="publishToSection()"
+                >
+                  @if (publishing()) {
+                    <mat-spinner diameter="18" aria-label="Loading" />
+                  } @else {
+                    <ng-container>
+                      <mat-icon>publish</mat-icon>
+                      Publish
+                    </ng-container>
+                  }
+                </button>
+              </div>
+
+              <div class="publish-info-bar">
+                <span class="publish-info-accent"></span>
+                <p>
+                  Select a section below to publish this document. Published documents will appear
+                  in the selected section and will be accessible to users with read access.
+                </p>
+              </div>
+
+              @if (sectionsLoading()) {
+                <div class="publish-loading">
+                  <mat-spinner diameter="24" aria-label="Loading" />
+                </div>
+              } @else if (sectionTree().length === 0) {
+                <div class="publish-empty">
+                  <mat-icon>folder_off</mat-icon>
+                  <p>No sections available for publishing.</p>
+                </div>
+              } @else {
+                <div class="section-tree">
+                  @for (node of sectionTree(); track node.doc.uid) {
+                    <ng-container
+                      *ngTemplateOutlet="sectionNodeTpl; context: { $implicit: node, depth: 0 }"
+                    />
+                  }
+                </div>
+              }
+            </section>
+          </div>
+        </ng-template>
+
+        <ng-template #aiInsightsTabContent>
+          <div class="ai-tab-content">
+            <!-- Hero Header -->
+            <div class="ai-insights-hero">
+              <div class="ai-insights-hero-text">
+                <div class="ai-insights-title">AI Insights</div>
+                <p class="ai-insights-subtitle">
+                  Augment your editorial workflow with cognitive processing. Generate summaries,
+                  classify complex data, and discover hidden relationships.
+                </p>
+              </div>
+              <button mat-flat-button class="ai-btn-primary" (click)="openAiAssistant()">
+                <mat-icon>auto_awesome</mat-icon>
+                AI Assistant
+              </button>
+            </div>
+
+            <!-- 2x2 Card Grid -->
+            <div class="ai-insights-grid">
+              <!-- Document Summary Card -->
+              <section class="ai-card">
+                <div class="ai-card-header">
+                  <span class="ai-card-icon ai-card-icon--purple">
+                    <mat-icon>auto_awesome</mat-icon>
+                  </span>
+                  <div class="ai-card-title">Document Summary</div>
+                  @if (aiSummaryLoading()) {
+                    <button mat-flat-button class="ai-btn-primary ai-btn-sm" disabled>
+                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
+                    </button>
+                  } @else {
+                    <button
+                      mat-flat-button
+                      class="ai-btn-primary ai-btn-sm"
+                      (click)="generateSummary()"
+                    >
+                      <mat-icon>auto_awesome</mat-icon>
+                      {{ aiSummary() ? 'Regenerate' : 'Generate' }}
+                    </button>
+                  }
+                </div>
+                <p class="ai-card-desc">
+                  Utilize large language models to distill complex editorial pieces into concise,
+                  high-impact executive summaries. Ideal for rapid review and cross-departmental
+                  updates.
+                </p>
+                <div class="ai-card-body">
+                  @if (aiSummaryLoading()) {
+                    <div class="ai-loading-skeleton">
+                      <div class="skeleton-line wide"></div>
+                      <div class="skeleton-line wide"></div>
+                      <div class="skeleton-line medium"></div>
+                      <div class="skeleton-line short"></div>
+                    </div>
+                  } @else if (aiSummary()) {
+                    <div class="ai-summary-result">
+                      <p class="ai-summary-text">{{ aiSummary()!.summary }}</p>
+                      @if (aiSummary()!.keyPoints.length) {
+                        <div class="ai-key-points">
+                          <strong>Key Points:</strong>
+                          <ul>
+                            @for (point of aiSummary()!.keyPoints; track point) {
+                              <li>{{ point }}</li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="ai-placeholder-quote">
+                      <p>
+                        "Summary will appear here after generation. The model will analyze semantic
+                        structure and key thematic elements..."
+                      </p>
+                    </div>
+                  }
+                </div>
+              </section>
+
+              <!-- Suggested Tags Card -->
+              <section class="ai-card">
+                <div class="ai-card-header">
+                  <span class="ai-card-icon ai-card-icon--indigo">
+                    <mat-icon>sell</mat-icon>
+                  </span>
+                  <div class="ai-card-title">Suggested Tags</div>
+                </div>
+                <p class="ai-card-desc">
+                  Automatic taxonomy mapping based on entity extraction and sentiment analysis of
+                  the current document text.
+                </p>
+                <div class="ai-card-body">
+                  @if (aiTagsLoading()) {
+                    <div class="ai-loading-skeleton">
+                      <div class="skeleton-line medium"></div>
+                      <div class="skeleton-line short"></div>
+                    </div>
+                  } @else if (aiSuggestedTags().length) {
+                    <div class="ai-tags-list">
+                      @for (tag of aiSuggestedTags(); track tag.label) {
+                        <button
+                          class="ai-tag-chip"
+                          type="button"
+                          [attr.aria-label]="'Add tag ' + tag.label"
+                          (click)="applyAiTag(tag.label)"
+                        >
+                          <span class="ai-tag-label">{{ tag.label }}</span>
+                          <span class="ai-tag-confidence"
+                            >{{ (tag.confidence * 100).toFixed(0) }}%</span
+                          >
+                          <mat-icon class="ai-tag-add">add_circle_outline</mat-icon>
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+                <div class="ai-card-actions">
+                  @if (aiTagsLoading()) {
+                    <button mat-stroked-button class="ai-btn-outline" disabled>
+                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
+                      Suggest Tags
+                    </button>
+                  } @else {
+                    <button mat-stroked-button class="ai-btn-outline" (click)="suggestTags()">
+                      <mat-icon>auto_awesome</mat-icon>
+                      Suggest Tags
+                    </button>
+                  }
+                </div>
+              </section>
+
+              <!-- Classification & Metadata Card -->
+              <section class="ai-card">
+                <div class="ai-card-header">
+                  <span class="ai-card-icon ai-card-icon--purple">
+                    <mat-icon>tune</mat-icon>
+                  </span>
+                  <div class="ai-card-title">Classification &amp; Metadata</div>
+                </div>
+                <p class="ai-card-desc">
+                  Categorize content into predefined editorial verticals and extract structural
+                  metadata including author, publication date, and reading time estimation.
+                </p>
+                <div class="ai-card-body">
+                  @if (aiClassifyLoading()) {
+                    <div class="ai-loading-skeleton">
+                      <div class="skeleton-line wide"></div>
+                      <div class="skeleton-line wide"></div>
+                      <div class="skeleton-line medium"></div>
+                    </div>
+                  } @else if (aiClassification()) {
+                    <div class="ai-meta-rows">
+                      <div class="ai-meta-row">
+                        <span class="ai-meta-key">Description</span>
+                        <span class="ai-meta-val">{{ aiClassification()!.description }}</span>
+                      </div>
+                      <div class="ai-meta-row">
+                        <span class="ai-meta-key">Primary Category</span>
+                        <sat-category-tag category="blue">{{
+                          aiClassification()!.nature
+                        }}</sat-category-tag>
+                      </div>
+                      <div class="ai-meta-row">
+                        <span class="ai-meta-key">Subjects</span>
+                        <span class="ai-meta-val">{{
+                          aiClassification()!.subjects.join(', ')
+                        }}</span>
+                      </div>
+                      @if (aiClassification()!.suggestedWorkflow !== 'none') {
+                        <div class="ai-meta-row">
+                          <span class="ai-meta-key">Workflow</span>
+                          <span class="ai-meta-val">
+                            <sat-status-tag status="info" [hideIcon]="true">{{
+                              aiClassification()!.suggestedWorkflow
+                            }}</sat-status-tag>
+                          </span>
+                        </div>
+                      }
+                    </div>
+                  } @else {
+                    <div class="ai-meta-rows">
+                      <div class="ai-meta-row">
+                        <span class="ai-meta-key">Primary Category</span>
+                        <span class="ai-meta-val ai-meta-val--muted">Unclassified</span>
+                      </div>
+                      <div class="ai-meta-row">
+                        <span class="ai-meta-key">Complexity Level</span>
+                        <span class="ai-meta-val ai-meta-val--muted">&mdash;</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+                <div class="ai-card-actions">
+                  @if (aiClassifyLoading()) {
+                    <button mat-flat-button class="ai-btn-primary ai-btn-full" disabled>
+                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
+                      Classify
+                    </button>
+                  } @else {
+                    <button
+                      mat-flat-button
+                      class="ai-btn-primary ai-btn-full"
+                      (click)="classifyDocument()"
+                    >
+                      <mat-icon>tune</mat-icon>
+                      Classify
+                    </button>
+                  }
+                </div>
+              </section>
+
+              <!-- Related Documents Card -->
+              <section class="ai-card">
+                <div class="ai-card-header">
+                  <span class="ai-card-icon ai-card-icon--indigo">
+                    <mat-icon>hub</mat-icon>
+                  </span>
+                  <div class="ai-card-title">Related Documents</div>
+                </div>
+                <p class="ai-card-desc">
+                  Discover documents within the archive that share thematic overlaps, common
+                  entities, or stylistic signatures to ensure editorial consistency.
+                </p>
+                <div class="ai-card-body">
+                  @if (aiSimilarLoading()) {
+                    <div class="ai-doc-thumbs">
+                      <div class="ai-doc-thumb ai-doc-thumb--skeleton">
+                        <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
+                        <span>Scanning Archive...</span>
+                      </div>
+                      <div class="ai-doc-thumb ai-doc-thumb--skeleton">
+                        <mat-spinner diameter="20" aria-label="Loading"></mat-spinner>
+                        <span>Scanning Archive...</span>
+                      </div>
+                    </div>
+                  } @else if (aiSimilarDocs().length) {
+                    <div class="ai-similar-list">
+                      @for (simDoc of aiSimilarDocs(); track simDoc.uid) {
+                        <button class="ai-similar-item" (click)="navigateToDoc(simDoc.uid)">
+                          <mat-icon class="ai-similar-icon">description</mat-icon>
+                          <div class="ai-similar-info">
+                            <span class="ai-similar-title">{{ simDoc.title }}</span>
+                            <span class="ai-similar-path">{{ simDoc.path }}</span>
+                          </div>
+                          <span class="ai-similar-score"
+                            >{{ (simDoc.score * 100).toFixed(0) }}%</span
+                          >
+                        </button>
+                      }
+                    </div>
+                  } @else {
+                    <div class="ai-doc-thumbs">
+                      <div class="ai-doc-thumb">
+                        <mat-icon class="ai-doc-thumb-icon">description</mat-icon>
+                        <span>Document Preview</span>
+                      </div>
+                      <div class="ai-doc-thumb">
+                        <mat-icon class="ai-doc-thumb-icon">description</mat-icon>
+                        <span>Document Preview</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+                <div class="ai-card-actions">
+                  @if (aiSimilarLoading()) {
+                    <button mat-stroked-button class="ai-btn-outline" disabled>
+                      <mat-spinner diameter="16" aria-label="Loading"></mat-spinner>
+                      Find Connections
+                    </button>
+                  } @else {
+                    <button mat-stroked-button class="ai-btn-outline" (click)="findSimilar()">
+                      <mat-icon>search</mat-icon>
+                      Find Connections
+                    </button>
+                  }
+                </div>
+              </section>
+            </div>
+
+            @if (aiError()) {
+              <div class="ai-error-banner">
+                <mat-icon>error_outline</mat-icon>
+                {{ aiError() }}
+              </div>
+            }
+          </div>
+        </ng-template>
+
         <button
           mat-icon-button
           class="panel-toggle-btn"

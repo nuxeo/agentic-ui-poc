@@ -17,7 +17,11 @@ import {
   EXTENSION_SLOTS,
   ExtensionRuleContextService,
   PACKAGED_BROWSE_COLUMNS,
+  PACKAGED_BROWSE_CONTEXT_MENU,
   PACKAGED_BULK_ACTIONS,
+  PACKAGED_DOCUMENT_TABS,
+  PACKAGED_DOCUMENT_TOOLBAR_ACTIONS,
+  provideExtensionRoutes,
   provideSatoriExtensions,
   type ExtensionActionHandler,
 } from '@nuxeo-satori/platform/extensions';
@@ -91,6 +95,15 @@ function provideAppContributions(): EnvironmentProviders {
         // slot, and a manifest override is in force on the first render instead
         // of after a reflow.
         [EXTENSION_SLOTS.documentList]: PACKAGED_BROWSE_COLUMNS,
+        // The document-detail toolbar, its overflow menu and its tab strip, and
+        // the browse document context menu. Registered here for the same reason
+        // as the columns: the ids must exist before the surface first resolves
+        // the slot. The *handlers* are not here — they close over the component
+        // that owns the behaviour, so `DocumentDetailComponent` and
+        // `BrowseComponent` register and withdraw their own.
+        [EXTENSION_SLOTS.toolbar]: PACKAGED_DOCUMENT_TOOLBAR_ACTIONS,
+        [EXTENSION_SLOTS.tabs]: PACKAGED_DOCUMENT_TABS,
+        [EXTENSION_SLOTS.contextMenu]: PACKAGED_BROWSE_CONTEXT_MENU,
       },
 
       actions: {
@@ -179,7 +192,7 @@ function provideRuleContextWiring(): Provider {
   };
 }
 
-/** Layer 1 registration plus the live rule context. */
+/** Layer 1 registration, the live rule context, and manifest-declared routes. */
 export function provideAppExtensions(): (Provider | EnvironmentProviders)[] {
-  return [provideAppContributions(), provideRuleContextWiring()];
+  return [provideAppContributions(), provideRuleContextWiring(), provideExtensionRoutes()];
 }

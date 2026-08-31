@@ -68,10 +68,45 @@ export interface ExtensionColumnDescriptor extends ExtensionElement {
   readonly hiddenByDefault?: boolean;
 }
 
-/** A document-detail tab. Content is compiled in and keyed by `id`. */
+/**
+ * A document-detail tab.
+ *
+ * A packaged tab's content is compiled in and keyed by `id`. A tab a manifest
+ * adds names a **registered component** instead, which `ExtensionOutletComponent`
+ * resolves — so contributing a tab is a manifest edit plus a Layer 2 component,
+ * not a change to the host template.
+ */
 export interface ExtensionTabDescriptor extends ExtensionElement {
   readonly label: string;
+  /** Icon rendered before the label. Absent renders a text-only tab. */
+  readonly icon?: string;
   readonly rule?: ExtensionRule;
+  /**
+   * Registered component id rendering the tab body.
+   *
+   * Ignored for the packaged ids, whose content is markup in the host template.
+   * Defaults to the descriptor `id`, so a customer who registers a component
+   * under the same id as the tab needs only one identifier.
+   */
+  readonly componentId?: string;
+}
+
+/**
+ * A route contributed by id — `path` plus the component that answers it.
+ *
+ * The component is resolved through `ExtensionComponentRegistry`, so a manifest
+ * can only place a component that is already compiled in; contributing a new one
+ * is Layer 2. Guards are deliberately absent: a route a manifest can add must
+ * not be able to claim it has *removed* access to anything, because the surface
+ * it renders is still gated by Nuxeo server-side.
+ */
+export interface ExtensionRouteDescriptor extends ExtensionElement {
+  /** Path relative to the host route, e.g. `contracts` or `reports/:id`. */
+  readonly path: string;
+  /** Registered component id. Defaults to the descriptor `id`. */
+  readonly componentId?: string;
+  /** Inputs set on the rendered component. Unknown keys are ignored. */
+  readonly inputs?: Readonly<Record<string, unknown>>;
 }
 
 /**

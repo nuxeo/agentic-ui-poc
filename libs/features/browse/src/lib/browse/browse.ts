@@ -111,7 +111,9 @@ import {
 import {
   AppExtensionsService,
   EXTENSION_SLOTS,
+  ExtensionActionRegistry,
   ExtensionRuleContextService,
+  type ExtensionActionDescriptor,
   type ExtensionColumnDescriptor,
 } from '@nuxeo-satori/platform/extensions';
 
@@ -196,6 +198,7 @@ export class BrowseComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly extensions = inject(AppExtensionsService);
   private readonly ruleContext = inject(ExtensionRuleContextService);
+  private readonly actionRegistry = inject(ExtensionActionRegistry);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
 
@@ -387,6 +390,34 @@ export class BrowseComponent {
 
   readonly visibleColumns = computed(() => this.columns().filter((c) => c.visible));
   readonly columnPanelOpen = signal(false);
+
+  /**
+   * The browse document context menu, resolved through Layer 1.
+   *
+   * Share, Notify Me / Unsubscribe and Export were three fixed `mat-menu-item`
+   * elements here. They are the same three, in the same order, with the same
+   * icons; what changed is that each is addressable by id, so a manifest can
+   * hide, reorder, relabel or gate one, and a customer library can add a fourth
+   * with a registration instead of an edit to this template.
+   */
+  readonly contextMenuActions = computed<readonly ExtensionActionDescriptor[]>(() =>
+    this.extensions.resolve<ExtensionActionDescriptor>(
+      EXTENSION_SLOTS.contextMenu,
+      this.ruleContext.context(),
+    ),
+  );
+
+  /**
+   * Publish this surface's interface state so the context-menu rules can read it.
+   *
+   * `app.rules.isSubscribed` decides which half of the Notify Me / Unsubscribe
+   * toggle is offered, and subscription state is not on the document model the
+   * rule context carries — it is an enricher on the folder this page loaded.
+   * Cleared on destroy, so the next surface does not inherit it.
+   */
+  private readonly publishFlagsToRuleContext = effect(() =>
+    this.ruleContext.flags.set({ subscribed: this.isSubscribed() === true }),
+  );
   readonly pendingColumns = signal<ColumnDef[]>([]);
 
   // Filters
@@ -502,7 +533,44 @@ export class BrowseComponent {
     }
   }
 
+  /** `enabledRule` renders a menu item disabled rather than hiding it. */
+  isContextMenuActionEnabled(action: ExtensionActionDescriptor): boolean {
+    return this.extensions.evaluateRule(action.enabledRule, this.ruleContext.context());
+  }
+
+  runContextMenuAction(action: ExtensionActionDescriptor): void {
+    this.actionRegistry.execute(action, this.ruleContext.context());
+  }
+
+  /**
+   * The behaviour behind the packaged context-menu ids.
+   *
+   * Registered from the component rather than from `provideSatoriExtensions`
+   * because each handler closes over this instance, and withdrawn on destroy for
+   * the same reason: a handler left registered keeps a destroyed component
+   * reachable and would run against dead state.
+   */
+  private registerContextMenuHandlers(): void {
+    const ids = [
+      'app.contextMenu.share',
+      'app.contextMenu.subscribe',
+      'app.contextMenu.unsubscribe',
+      'app.contextMenu.export',
+    ];
+    this.actionRegistry.register({
+      'app.contextMenu.share': { execute: () => this.openShareDialog() },
+      'app.contextMenu.subscribe': { execute: () => this.toggleNotify() },
+      'app.contextMenu.unsubscribe': { execute: () => this.toggleNotify() },
+      'app.contextMenu.export': { execute: () => this.openExportDialog() },
+    });
+    this.destroyRef.onDestroy(() => {
+      this.actionRegistry.unregister(ids);
+      this.ruleContext.flags.set({});
+    });
+  }
+
   constructor() {
+    this.registerContextMenuHandlers();
     const initialPath = parseBrowseNuxeoPathFromRouterUrl(this.router.url);
     this.currentNuxeoPath = initialPath;
     this.browsePath.set(initialPath);
