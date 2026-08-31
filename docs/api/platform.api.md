@@ -409,7 +409,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-275 exported symbol(s).
+293 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -604,11 +604,14 @@ class BrowseService {
     sortOrder: 'ASC' | 'DESC';
     }[]): Observable<NuxeoDocumentList>;
     getTreeChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>;
-    updateDocument(uid: string, properties: Record<string, unknown>): Observable<NuxeoDocument>;
+    updateDocument(uid: string, properties: Record<string, unknown>, options?: {
+    enrichPermissions?: boolean;
+    }): Observable<NuxeoDocument>;
     copyDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>;
     moveDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>;
     private runClipboardDocumentsOp;
     private normalizeClipboardOpResult;
+    hasChildCollections(collectionsFolderUid: string): Observable<boolean>;
     getTrashedChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>;
     restoreDocument(uid: string): Observable<NuxeoDocument>;
     startCsvExport(parentUid: string): Observable<string>;
@@ -1087,6 +1090,11 @@ interface ManagedDirectoryEntry {
     }
 }
 const NON_CONTENT_DOCUMENT_TYPES: Set<string>;
+const NOTE_DOCUMENT_PICKER_HEADERS: {
+    readonly properties: "dublincore,file";
+    readonly 'enrichers.document': "thumbnail,permissions,highlight";
+};
+const NOTE_DOCUMENT_PICKER_PROVIDER = "document_picker";
 const NOTE_FORMAT_OPTIONS: readonly [{
     readonly value: "text/html";
     readonly label: "HTML";
@@ -1564,6 +1572,13 @@ class SearchService {
     suggest(searchTerm: string, pageSize?: number): Observable<GlobalSearchSuggestion[]>;
     private suggestFallback;
     getUserCollections(): Observable<SearchCollectionOption[]>;
+    searchDocumentPicker(options?: {
+    fulltext?: string;
+    pageSize?: number;
+    pageIndex?: number;
+    }): Observable<NuxeoDocumentList>;
+    private normalizePicturePickerList;
+    private searchDocumentPickerNxql;
     getSavedSearches(pageProvider?: string): Observable<SavedSearchOption[]>;
     getSavedSearchById(id: string): Observable<Record<string, string>>;
     saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown>;
@@ -1595,6 +1610,7 @@ class SelectionService {
     readonly selectedLabels: i0.WritableSignal<Map<string, string>>;
     readonly selectedPreviews: i0.WritableSignal<Map<string, SelectionPreview>>;
     readonly selectedTypes: i0.WritableSignal<Map<string, string>>;
+    readonly clearOnlyMode: i0.WritableSignal<boolean>;
     readonly selectedCount: () => number;
     readonly selectedItems: () => {
     id: string;
@@ -1608,6 +1624,8 @@ class SelectionService {
     isAllSelected(ids: string[]): boolean;
     isIndeterminate(ids: string[]): boolean;
     clear(): void;
+    resetUiState(): void;
+    setClearOnlyMode(enabled: boolean): void;
     deleteSelected(): Observable<NuxeoDocument[]>;
     static ɵfac: i0.ɵɵFactoryDeclaration<SelectionService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<SelectionService>;
@@ -1820,11 +1838,14 @@ function browseTreeContextPath(doc: NuxeoDocument): string;
 function buildContentLakeIngestMarker(blobDigest: string): string;
 function buildDocumentCompareRows(left: NuxeoDocument, right: NuxeoDocument, viewAll: boolean): CompareRow[];
 function buildDocumentCompareSections(left: NuxeoDocument, right: NuxeoDocument, viewAll: boolean): CompareSection[];
+function buildNoteDocumentPickerNxql(fulltext: string): string;
 function buildVocabularyTableColumns(propertyKeys: readonly string[]): string[];
 function canAddChildren(doc: NuxeoDocument | null | undefined): boolean;
 function canManageDocumentPermissions(doc: NuxeoDocument | null | undefined): boolean;
 function canPasteClipboard(items: ClipboardDoc[], target: NuxeoDocument | null | undefined): boolean;
 function canRemoveDocument(doc: NuxeoDocument | null | undefined): boolean;
+function canShowRemoveDocumentAction(doc: NuxeoDocument | null | undefined): boolean;
+function canShowWriteDocumentAction(doc: NuxeoDocument | null | undefined): boolean;
 function canViewDocumentAuditLog(doc: NuxeoDocument | null | undefined): boolean;
 function canWriteDocument(doc: NuxeoDocument | null | undefined): boolean;
 function createExpiresErrorStateMatcher(isInvalid: () => boolean): {
@@ -1846,10 +1867,13 @@ function directoryUsesL10nLabel(directoryName: string): boolean;
 function docTypeIcon(type: string): string;
 function documentHasMainBlob(doc: NuxeoDocument): boolean;
 function documentHasPersistedMainBlob(doc: NuxeoDocument): boolean;
+function documentNavigationUrl(doc: Pick<NuxeoDocument, 'uid' | 'type' | 'path' | 'facets'>, docTypeHint?: string): string;
 function entryPropertiesIncludeParent(keys: readonly string[]): boolean;
+function escapeNxqlLiteral(value: string): string;
 function expandableNuxeoPathPrefixes(nuxeoPath: string): string[];
 function filterCreatableSubtypesForParent(parentType: string | null | undefined, subtypes: string[]): string[];
 function filterDirectoryPickerEntries(entries: DirectoryEntry[], query?: string): DirectoryEntry[];
+function filterInsertablePictureDocuments(entries: NuxeoDocumentList['entries'] | undefined): NuxeoDocument[];
 function findLocalAceForPrincipal(doc: NuxeoDocument, principalId: string): NuxeoAce | undefined;
 function formatCompareDate(value: unknown): string;
 function formatCompareValue(value: unknown): string;
@@ -1860,17 +1884,20 @@ const fullAdministratorGuard: CanActivateFn;
 function getDirectoryMetadata(catalog: Map<string, DirectoryMetadata>, directoryName: string): DirectoryMetadata | undefined;
 function groupL10nChildrenByParent(entries: L10nDirectoryEntry[], query?: string): L10nOptionGroup[];
 function hasDocumentPermission(doc: NuxeoDocument | null | undefined, permission: string): boolean;
+function hasDocumentPermissionsEnricher(doc: NuxeoDocument | null | undefined): boolean;
+function hasInsertablePictureBlob(doc: NuxeoDocument): boolean;
 function inferBlobDocTypeFromFile(file: File): string;
 function isAdfHxBrowseRouterUrl(routerUrl: string): boolean;
 function isBlobHoldingDocType(docType: string): boolean;
 function isBrowsableNavNode(doc: NuxeoDocument | null): boolean;
 function isBrowseRouterUrl(routerUrl: string): boolean;
+function isCollectionDocument(doc: Pick<NuxeoDocument, 'type' | 'facets'> | null | undefined, docTypeHint?: string): boolean;
 function isCompareIconField(key: string): boolean;
 function isContentLakeIngestCurrent(doc: NuxeoDocument | null | undefined): boolean;
 function isDirectoryI18nKey(value: string | undefined | null): boolean;
 function isDomainParentType(parentType: string | null | undefined): boolean;
 function isExpiresFieldValid(expiresRawText: string, expires: Date | null): boolean;
-function isFolderishDocument(doc: NuxeoDocument | null): boolean;
+function isFolderishDocument(doc: Pick<NuxeoDocument, 'type' | 'facets'> | null): boolean;
 function isHtmlNoteFormat(mimeType: string): boolean;
 function isMailSendError(err: unknown): boolean;
 function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean;
@@ -1881,12 +1908,17 @@ function isPowerUserFromGroups(groups: readonly string[]): boolean;
 function isRepositoryRootPath(path: string | null | undefined): boolean;
 function isRestrictedImportParentPath(path: string | null | undefined): boolean;
 function isSafeHttpUrl(url: string): boolean;
+function isUserWorkspacePath(nuxeoPath: string): boolean;
 function l10nEntryLabel(entry: L10nDirectoryEntry): string;
 function mailSendFailureMessage(context: 'add' | 'update' | 'send'): string;
 function mergeCreateDocumentBody(template: NuxeoCreateDocumentTemplate, docType: string, nameFallback: string, overrides: Record<string, unknown>): Record<string, unknown>;
-function mergeDocumentPermissionsContext(existing: NuxeoDocument, updated: NuxeoDocument): NuxeoDocument;
+function mergeDocumentPermissionsContext(existing: NuxeoDocument, updated: NuxeoDocument, options?: MergeDocumentPermissionsContextOptions): NuxeoDocument;
 function needsContentLakeIngest(doc: NuxeoDocument | null | undefined): boolean;
 function normalizeDocumentAcls(doc: NuxeoDocument): NuxeoDocument;
+function normalizeDocumentPickerList(res: PaginatedListMeta & {
+    entries?: NuxeoDocumentList['entries'];
+    }, pageSize: number, pageIndex: number): NuxeoDocumentList;
+}
 function normalizeNuxeoPath(path: string): string;
 function noteFormatLabel(mimeType: string | null | undefined): string;
 function nuxeoPathSegments(path: string): string[];
@@ -1900,6 +1932,7 @@ function parseDocumentSubtypes(doc: NuxeoDocument): string[];
 function permissionCreateMailFailureMessage(): string;
 function permissionNotificationAceNotFoundMessage(context: 'add' | 'update'): string;
 function permissionUpdateMailFailureMessage(): string;
+function postTrashBrowseRouterUrl(deletedDocPath: string): string;
 function principalPermissionTimeFrameLabel(row: PrincipalPermissionRow): string;
 function principalPermissionToLocalRow(row: PrincipalPermissionRow): LocalPermissionRow;
 function readBlobDigest(doc: NuxeoDocument): string | null;
@@ -1919,6 +1952,7 @@ function sanitizeDocumentCreateName(name: string): string;
 function sanitizeDocumentName(name: string): string;
 function shouldProbeContentLakeIngestStatus(doc: NuxeoDocument): boolean;
 function shouldShowExpiresFieldError(expiresRawText: string, expires: Date | null): boolean;
+function shouldShowUserWorkspaceBreadcrumbs(nuxeoPath: string, currentUsername: string | null, isAdministrator: boolean): boolean;
 function sortDocumentSubtypes(types: string[]): string[];
 function summarizeCsvImportReport(report: string): string;
 function supportsContentLakeIngest(doc: NuxeoDocument | null | undefined): boolean;
@@ -1927,6 +1961,9 @@ function toAdfHxBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrlForReturnMode(mode: BrowseReturnMode, nuxeoPath: string): string;
 function topLevelNuxeoFolderPath(nuxeoPath: string): string | null;
+function userWorkspaceBrowseRouterUrl(nuxeoPath: string): string | null;
+function userWorkspaceOwnerFromPath(nuxeoPath: string): string | null;
+function userWorkspaceRootFromPath(nuxeoPath: string): string | null;
 function vocabularyParentRequired(directoryName: string, metadata?: DirectoryMetadata): boolean;
 function vocabularySupportsParent(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly Pick<ManagedDirectoryEntry, 'propertyKeys' | 'parent'>[]): boolean;
 function vocabularyTableColumns(directoryName: string, metadata: DirectoryMetadata | undefined, entries: readonly ManagedDirectoryEntry[]): string[];
@@ -1935,7 +1972,7 @@ function writeClipboardDocs(docs: ClipboardDoc[]): void;
 
 ## @nuxeo-satori/platform/ui
 
-30 exported symbol(s).
+32 exported symbol(s).
 
 ```ts
 class ConfirmDialogComponent {
@@ -2039,6 +2076,61 @@ class DocumentViewerComponent {
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<DocumentViewerComponent, "lib-document-viewer", never, { "blobUrl": { "alias": "blobUrl"; "required": false; "isSignal": true; }; "mimeType": { "alias": "mimeType"; "required": false; "isSignal": true; }; "fileName": { "alias": "fileName"; "required": false; "isSignal": true; }; "fileSize": { "alias": "fileSize"; "required": false; "isSignal": true; }; "loading": { "alias": "loading"; "required": false; "isSignal": true; }; "noteContent": { "alias": "noteContent"; "required": false; "isSignal": true; }; "noteHtml": { "alias": "noteHtml"; "required": false; "isSignal": true; }; "videoSources": { "alias": "videoSources"; "required": false; "isSignal": true; }; "storyboard": { "alias": "storyboard"; "required": false; "isSignal": true; }; "posterUrl": { "alias": "posterUrl"; "required": false; "isSignal": true; }; "hasPdfRendition": { "alias": "hasPdfRendition"; "required": false; "isSignal": true; }; "previewUrl": { "alias": "previewUrl"; "required": false; "isSignal": true; }; "pictureInfo": { "alias": "pictureInfo"; "required": false; "isSignal": true; }; "pictureViews": { "alias": "pictureViews"; "required": false; "isSignal": true; }; "exifData": { "alias": "exifData"; "required": false; "isSignal": true; }; "iptcData": { "alias": "iptcData"; "required": false; "isSignal": true; }; "videoInfo": { "alias": "videoInfo"; "required": false; "isSignal": true; }; "arenderUrl": { "alias": "arenderUrl"; "required": false; "isSignal": true; }; "arenderReloadId": { "alias": "arenderReloadId"; "required": false; "isSignal": true; }; "viewerDocUid": { "alias": "viewerDocUid"; "required": false; "isSignal": true; }; "annotationsTab": { "alias": "annotationsTab"; "required": false; "isSignal": true; }; "showMainFileControls": { "alias": "showMainFileControls"; "required": false; "isSignal": true; }; "mainFileActionInProgress": { "alias": "mainFileActionInProgress"; "required": false; "isSignal": true; }; }, { "downloadClicked": "downloadClicked"; "openWithDriveClicked": "openWithDriveClicked"; "previewClicked": "previewClicked"; "replaceMainFileClicked": "replaceMainFileClicked"; "removeMainFileClicked": "removeMainFileClicked"; "storyboardSeek": "storyboardSeek"; "formatDownload": "formatDownload"; }, never, never, true, never>;
     }
 }
+class EditCollectionDialogComponent implements OnInit {
+    private readonly dialogRef;
+    private readonly data;
+    private readonly collectionService;
+    private readonly directoryService;
+    private readonly destroyRef;
+    private readonly snackBar;
+    readonly l10nEntryLabel: typeof l10nEntryLabel;
+    protected readonly directoryPickerLabel: typeof directoryPickerLabel;
+    expiresNgModel?: NgModel;
+    readonly natureEntries: _angular_core.WritableSignal<DirectoryEntry[]>;
+    readonly subjectEntries: _angular_core.WritableSignal<L10nDirectoryEntry[]>;
+    readonly coverageEntries: _angular_core.WritableSignal<L10nDirectoryEntry[]>;
+    readonly saving: _angular_core.WritableSignal<boolean>;
+    naturePanelSearch: string;
+    subjectsPanelSearch: string;
+    coveragePanelSearch: string;
+    filteredNatureOptions(): DirectoryEntry[];
+    groupedSubjectOptions(): ReturnType<typeof groupL10nChildrenByParent>;
+    groupedCoverageOptions(): ReturnType<typeof groupL10nChildrenByParent>;
+    title: string;
+    description: string;
+    nature: string | null;
+    subjects: string[];
+    coverage: string | null;
+    expires: Date | null;
+    expiresRawText: string;
+    readonly expiresErrorMatcher: {
+    isErrorState: () => boolean;
+    };
+    ngOnInit(): void;
+    onNaturePanelOpen(open: boolean): void;
+    private loadNatureEntries;
+    naturePillLabel(id: string): string;
+    subjectPillLabel(id: string): string;
+    coveragePillLabel(id: string): string;
+    clearNature(): void;
+    clearCoverage(): void;
+    removeSubject(id: string): void;
+    onSubjectsPanelOpen(open: boolean): void;
+    onCoveragePanelOpen(open: boolean): void;
+    private loadL10nEntries;
+    isExpiresValid(): boolean;
+    showExpiresError(): boolean;
+    onExpiresInput(event: Event): void;
+    onExpiresChange(value: Date | null): void;
+    save(): void;
+    static ɵfac: _angular_core.ɵɵFactoryDeclaration<EditCollectionDialogComponent, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<EditCollectionDialogComponent, "lib-edit-collection-dialog", never, {}, {}, never, never, true, never>;
+    }
+}
+interface EditCollectionDialogData {
+    document: NuxeoDocument;
+    }
+}
 interface ExifData {
     dateTimeOriginal?: string;
     orientation?: string;
@@ -2127,8 +2219,10 @@ class SelectionTopbarComponent {
     name: string;
     preview: SafeUrl | string | null;
     }[]>;
+    readonly clearOnly: _angular_core.InputSignal<boolean>;
     readonly cleared: _angular_core.OutputEmitterRef<void>;
     readonly selectionPopupOpen: _angular_core.WritableSignal<boolean>;
+    private readonly closePopupInClearOnlyMode;
     private readonly extensions;
     private readonly actions;
     private readonly ruleContext;
@@ -2139,7 +2233,7 @@ class SelectionTopbarComponent {
     closeSelectionPopup(): void;
     onEscape(): void;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<SelectionTopbarComponent, never>;
-    static ɵcmp: _angular_core.ɵɵComponentDeclaration<SelectionTopbarComponent, "lib-selection-topbar", never, { "selectedCount": { "alias": "selectedCount"; "required": true; "isSignal": true; }; "selectedItems": { "alias": "selectedItems"; "required": false; "isSignal": true; }; }, { "cleared": "cleared"; }, never, never, true, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<SelectionTopbarComponent, "lib-selection-topbar", never, { "selectedCount": { "alias": "selectedCount"; "required": true; "isSignal": true; }; "selectedItems": { "alias": "selectedItems"; "required": false; "isSignal": true; }; "clearOnly": { "alias": "clearOnly"; "required": false; "isSignal": true; }; }, { "cleared": "cleared"; }, never, never, true, never>;
     }
 }
 class ShareDialogComponent {

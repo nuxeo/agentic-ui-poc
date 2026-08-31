@@ -28,6 +28,16 @@ export const SURFACE_RULE_EVALUATORS: Readonly<Record<string, ExtensionRuleEvalu
   /** The AI feature flag, so the AI tab is gateable from a manifest as well as from config. */
   'app.rules.isAiEnabled': (context) => context.flags['aiEnabled'] === true,
   /**
+   * The focused document is a Note.
+   *
+   * A Note's body is edited inline in the View tab, so the toolbar's pencil
+   * reaches only its metadata — which is why it is labelled "Edit properties"
+   * there and plain "Edit" everywhere else. That is the same shape as the
+   * favourite and subscription toggles: two descriptors gated by opposite
+   * rules, so a customer relabelling one does not silently lose the other.
+   */
+  'app.rules.isNote': (context) => context.flags['note'] === true,
+  /**
    * No named operation is in flight — the `enabledRule` behind every control
    * that used to carry `[disabled]="actionInProgress() === 'trash'"`.
    *

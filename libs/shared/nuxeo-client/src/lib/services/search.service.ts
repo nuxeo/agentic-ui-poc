@@ -6,6 +6,13 @@ import type { AggregateResult } from '../models/asset.model';
 import type { SearchAggregations, SearchResponse, SearchResultItem } from '../models/search.model';
 import { NuxeoApiBase } from './nuxeo-api-base';
 import { docTypeIcon } from '../constants/doc-type-icons';
+import {
+  NOTE_DOCUMENT_PICKER_HEADERS,
+  NOTE_DOCUMENT_PICKER_PROVIDER,
+  buildNoteDocumentPickerNxql,
+  filterInsertablePictureDocuments,
+  normalizeDocumentPickerList,
+} from '../utils/note-document-picker-search';
 
 export interface SearchQueryParams {
   q?: string;
@@ -173,6 +180,65 @@ export class SearchService {
           }),
         ),
       );
+  }
+
+  /**
+   * Picture documents for the note RTE "insert from existing documents" picker.
+   * Matches Web UI `nuxeo-document-picker` (`provider="document_picker"`,
+   * `schemas="dublincore,file"`, `fulltext_all` param). Falls back to NXQL when the
+   * ES-backed page provider is unavailable (`file:content` mapping errors).
+   */
+  searchDocumentPicker(
+    options: {
+      fulltext?: string;
+      pageSize?: number;
+      pageIndex?: number;
+    } = {},
+  ): Observable<NuxeoDocumentList> {
+    const { fulltext = '', pageSize = 40, pageIndex = 0 } = options;
+    const params = new HttpParams()
+      .set('pageSize', pageSize)
+      .set('currentPageIndex', pageIndex)
+      .set('fulltext_all', fulltext.trim());
+
+    return this.api
+      .get<NuxeoDocumentList>(
+        `/nuxeo/api/v1/search/pp/${NOTE_DOCUMENT_PICKER_PROVIDER}/execute`,
+        params,
+        { ...NOTE_DOCUMENT_PICKER_HEADERS },
+      )
+      .pipe(
+        map((res) => this.normalizePicturePickerList(res, pageSize, pageIndex)),
+        catchError(() => this.searchDocumentPickerNxql(fulltext, pageSize, pageIndex)),
+      );
+  }
+
+  private normalizePicturePickerList(
+    res: NuxeoDocumentList,
+    pageSize: number,
+    pageIndex: number,
+  ): NuxeoDocumentList {
+    const list = normalizeDocumentPickerList(res, pageSize, pageIndex);
+    const entries = filterInsertablePictureDocuments(list.entries);
+    return { ...list, entries };
+  }
+
+  private searchDocumentPickerNxql(
+    fulltext: string,
+    pageSize: number,
+    pageIndex: number,
+  ): Observable<NuxeoDocumentList> {
+    const params = new HttpParams()
+      .set('query', buildNoteDocumentPickerNxql(fulltext))
+      .set('pageSize', pageSize)
+      .set('currentPageIndex', pageIndex);
+
+    return this.api
+      .get<NuxeoDocumentList>('/nuxeo/api/v1/search/lang/NXQL/execute', params, {
+        properties: 'dublincore,file',
+        'enrichers.document': 'thumbnail',
+      })
+      .pipe(map((res) => this.normalizePicturePickerList(res, pageSize, pageIndex)));
   }
 
   getSavedSearches(pageProvider = 'default_search'): Observable<SavedSearchOption[]> {

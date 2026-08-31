@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from './auth.service';
+import { NUXEO_ESTABLISH_BROWSER_SESSION } from './nuxeo-auth.context';
 import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';
 import { SessionTimeoutService } from './session-timeout.service';
 import { AUTH_TOKEN_HEADER } from './share-token.util';
@@ -85,6 +86,18 @@ describe('nuxeoAuthInterceptor', () => {
     http.get('/nuxeo/api/v1/me').subscribe();
     const req = httpMock.expectOne('/nuxeo/api/v1/me');
     expect(req.request.withCredentials).toBe(false);
+    req.flush({ id: 'test-user' });
+  });
+
+  it('sends browser credentials when establishing a basic-auth browser session', () => {
+    auth.basicCredentials.and.returnValue(btoa('test-user:test-pass'));
+    http
+      .get('/nuxeo/api/v1/me', {
+        context: new HttpContext().set(NUXEO_ESTABLISH_BROWSER_SESSION, true),
+      })
+      .subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(true);
     req.flush({ id: 'test-user' });
   });
 

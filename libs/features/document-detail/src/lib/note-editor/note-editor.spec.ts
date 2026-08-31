@@ -1,9 +1,12 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
 
 import { NoteEditorComponent } from './note-editor';
+import { NOTE_QUILL_TOOLBAR_CONTROLS } from './note-quill-toolbar';
 
 interface FakeQuillRange {
   index: number;
@@ -58,7 +61,7 @@ interface FakeQuill {
   getSelection(force?: boolean): FakeQuillRange | null;
   /**
    * Both real overloads: `(index, length, source)` and the shorter `(index, source)`. The
-   * component uses the short form in `insertImageFromUrl` and the long one in
+   * component uses the short form when inserting an image and the long one in
    * `applyExternalContent`, so a double that only understood one of them would silently record
    * a source as a length.
    */
@@ -189,8 +192,16 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule],
-      providers: [provideZonelessChangeDetection()],
+      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      providers: [
+        provideZonelessChangeDetection(),
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn(() => ({ afterClosed: () => ({ pipe: () => ({ subscribe: vi.fn() }) }) })),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NoteEditorComponent);
@@ -264,6 +275,38 @@ describe('NoteEditorComponent (NXSAT-163)', () => {
     expect(fixture.componentInstance.htmlReadonlyView()).toBeNull();
     expect(fixture.componentInstance.markdownHtml()).toBeNull();
   });
+
+  it('matches Web UI toolbar icons and order for writable HTML notes (NXSAT-193)', () => {
+    fixture.componentRef.setInput('content', '<p>Hello</p>');
+    fixture.componentRef.setInput('mimeType', 'text/html');
+    fixture.componentRef.setInput('readOnly', false);
+    fixture.detectChanges();
+
+    const toolbar = fixture.nativeElement.querySelector('.note-quill-toolbar');
+    expect(toolbar).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.ql-table')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.note-quill-custom-btn')).toBeFalsy();
+    expect(fixture.nativeElement.querySelector('.note-quill-image-from-docs')).toBeTruthy();
+
+    const rendered = Array.from(toolbar.querySelectorAll('button, select')) as HTMLElement[];
+    const renderedKeys = rendered.map((el) => {
+      if (el instanceof HTMLSelectElement) {
+        return `select.${el.classList.contains('ql-header') ? 'ql-header' : el.classList.contains('ql-color') ? 'ql-color' : 'ql-background'}`;
+      }
+      const noteClass = Array.from(el.classList).find((c) => c.startsWith('note-quill-'));
+      if (noteClass) {
+        return `button.${noteClass}`;
+      }
+      const qlClass = Array.from(el.classList).find((c) => c.startsWith('ql-')) ?? '';
+      const value = el.getAttribute('value');
+      return value !== null && value !== ''
+        ? `button.${qlClass}[value="${value}"]`
+        : `button.${qlClass}`;
+    });
+
+    const expectedKeys = NOTE_QUILL_TOOLBAR_CONTROLS.map((c) => c.selector);
+    expect(renderedKeys).toEqual(expectedKeys);
+  });
 });
 
 describe('NoteEditorComponent source sync (NXSAT-174)', () => {
@@ -274,8 +317,16 @@ describe('NoteEditorComponent source sync (NXSAT-174)', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent],
-      providers: [provideZonelessChangeDetection()],
+      imports: [NoteEditorComponent, HttpClientTestingModule],
+      providers: [
+        provideZonelessChangeDetection(),
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn(() => ({ afterClosed: () => ({ pipe: () => ({ subscribe: vi.fn() }) }) })),
+          },
+        },
+      ],
     })
       .overrideComponent(NoteEditorComponent, {
         set: { template: '<div></div>' },
@@ -353,8 +404,16 @@ describe('NoteEditorComponent visual HTML editor', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule],
-      providers: [provideZonelessChangeDetection()],
+      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      providers: [
+        provideZonelessChangeDetection(),
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn(() => ({ afterClosed: () => ({ pipe: () => ({ subscribe: vi.fn() }) }) })),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NoteEditorComponent);
@@ -564,89 +623,6 @@ describe('NoteEditorComponent visual HTML editor', () => {
     });
   });
 
-  describe('image insertion', () => {
-    it('clicks the hidden Quill image button so Quill opens its own file picker', () => {
-      const hidden = fixture.nativeElement.querySelector(
-        '.note-quill-hidden-image',
-      ) as HTMLButtonElement;
-      expect(hidden).toBeTruthy();
-      const clicked = vi.fn();
-      hidden.addEventListener('click', clicked);
-      const event = new MouseEvent('click', { cancelable: true });
-
-      component.onImageUploadClick(event);
-
-      expect(event.defaultPrevented).toBe(true);
-      expect(clicked).toHaveBeenCalled();
-    });
-
-    it('embeds an http(s) image at the caret and steps the caret past it', () => {
-      const prompt = vi.spyOn(window, 'prompt').mockReturnValue('  https://cdn.test/a.png  ');
-      quill.selection = { index: 7, length: 0 };
-
-      component.insertImageFromUrl();
-
-      expect(prompt).toHaveBeenCalledWith('Enter image URL', 'https://');
-      expect(quill.insertEmbedCalls).toEqual([
-        { index: 7, type: 'image', value: 'https://cdn.test/a.png', source: 'user' },
-      ]);
-      expect(quill.setSelectionCalls).toEqual([{ index: 8, length: 0, source: 'silent' }]);
-      prompt.mockRestore();
-    });
-
-    it('rejects a javascript: URL', () => {
-      const prompt = vi
-        .spyOn(window, 'prompt')
-        .mockReturnValue('javascript:alert(document.cookie)');
-
-      component.insertImageFromUrl();
-
-      // A javascript: URL in an <img src> is a stored-XSS vector once the note is saved and
-      // re-rendered for another user.
-      expect(quill.insertEmbedCalls).toEqual([]);
-      prompt.mockRestore();
-    });
-
-    it('rejects a data: URL', () => {
-      const prompt = vi
-        .spyOn(window, 'prompt')
-        .mockReturnValue('data:text/html;base64,PHNjcmlwdD4x');
-
-      component.insertImageFromUrl();
-
-      expect(quill.insertEmbedCalls).toEqual([]);
-      prompt.mockRestore();
-    });
-
-    it('does nothing when the prompt is dismissed', () => {
-      const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null);
-
-      component.insertImageFromUrl();
-
-      expect(quill.insertEmbedCalls).toEqual([]);
-      prompt.mockRestore();
-    });
-
-    it('does nothing when the prompt is left blank', () => {
-      const prompt = vi.spyOn(window, 'prompt').mockReturnValue('   ');
-
-      component.insertImageFromUrl();
-
-      expect(quill.insertEmbedCalls).toEqual([]);
-      prompt.mockRestore();
-    });
-
-    it('does not prompt at all when there is no live editor', () => {
-      detachQuill(component);
-      const prompt = vi.spyOn(window, 'prompt').mockReturnValue('https://cdn.test/a.png');
-
-      component.insertImageFromUrl();
-
-      expect(prompt).not.toHaveBeenCalled();
-      prompt.mockRestore();
-    });
-  });
-
   describe('external content updates', () => {
     it('replaces the editor contents when the parent supplies new HTML', async () => {
       quill.semanticHtml = '<p>hello</p>';
@@ -782,8 +758,16 @@ describe('NoteEditorComponent markdown notes', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule],
-      providers: [provideZonelessChangeDetection()],
+      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      providers: [
+        provideZonelessChangeDetection(),
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn(() => ({ afterClosed: () => ({ pipe: () => ({ subscribe: vi.fn() }) }) })),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NoteEditorComponent);
@@ -830,8 +814,16 @@ describe('NoteEditorComponent plain text editing', () => {
     quillHarness.instances.length = 0;
 
     await TestBed.configureTestingModule({
-      imports: [NoteEditorComponent, NoopAnimationsModule],
-      providers: [provideZonelessChangeDetection()],
+      imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
+      providers: [
+        provideZonelessChangeDetection(),
+        {
+          provide: MatDialog,
+          useValue: {
+            open: vi.fn(() => ({ afterClosed: () => ({ pipe: () => ({ subscribe: vi.fn() }) }) })),
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(NoteEditorComponent);

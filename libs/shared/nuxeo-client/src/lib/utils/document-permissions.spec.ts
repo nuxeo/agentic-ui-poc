@@ -3,9 +3,12 @@ import {
   canAddChildren,
   canManageDocumentPermissions,
   canRemoveDocument,
+  canShowRemoveDocumentAction,
+  canShowWriteDocumentAction,
   canViewDocumentAuditLog,
   canWriteDocument,
   hasDocumentPermission,
+  hasDocumentPermissionsEnricher,
   isPermissionDeniedError,
   MANAGE_DOCUMENT_PERMISSIONS,
   READ_WRITE_DOCUMENT,
@@ -82,6 +85,33 @@ describe('document-permissions', () => {
 
   it('canRemoveDocument is true when user has Remove', () => {
     expect(canRemoveDocument(docWithPermissions(['Read', REMOVE_DOCUMENT]))).toBe(true);
+  });
+
+  it('hasDocumentPermissionsEnricher is false when permissions enricher is missing', () => {
+    expect(hasDocumentPermissionsEnricher({} as NuxeoDocument)).toBe(false);
+    expect(hasDocumentPermissionsEnricher(null)).toBe(false);
+  });
+
+  it('hasDocumentPermissionsEnricher is true when permissions enricher is present', () => {
+    expect(hasDocumentPermissionsEnricher(docWithPermissions(['Read']))).toBe(true);
+  });
+
+  it('canShowWriteDocumentAction is true when permissions are unknown', () => {
+    expect(canShowWriteDocumentAction({} as NuxeoDocument)).toBe(true);
+  });
+
+  it('canShowWriteDocumentAction follows canWriteDocument when permissions are known', () => {
+    expect(canShowWriteDocumentAction(docWithPermissions(['Read']))).toBe(false);
+    expect(canShowWriteDocumentAction(docWithPermissions(['Read', WRITE_DOCUMENT]))).toBe(true);
+  });
+
+  it('canShowRemoveDocumentAction is true when permissions are unknown', () => {
+    expect(canShowRemoveDocumentAction({} as NuxeoDocument)).toBe(true);
+  });
+
+  it('canShowRemoveDocumentAction follows canRemoveDocument when permissions are known', () => {
+    expect(canShowRemoveDocumentAction(docWithPermissions(['Read']))).toBe(false);
+    expect(canShowRemoveDocumentAction(docWithPermissions(['Read', REMOVE_DOCUMENT]))).toBe(true);
   });
 
   it('canViewDocumentAuditLog is true for read-only users (Classic Web UI parity)', () => {

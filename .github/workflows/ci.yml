@@ -19,6 +19,8 @@ concurrency:
 # workflow of the nine that lacked it.
 permissions:
   contents: read
+  # `npm ci` resolves @hylandsoftware and @alfresco from GitHub Packages.
+  packages: read
   # `nrwl/nx-set-shas` calls the workflow-runs API to find the last successful run to diff
   # against. Without this it fails with `Resource not accessible by integration`, which is
   # exactly what happened when this block was first added with `contents: read` alone —
@@ -37,10 +39,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@hylandsoftware'
 
       - name: Install dependencies
         run: npm ci
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
           SATORI_GH_READONLY_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
 
       - uses: nrwl/nx-set-shas@v4

@@ -1,7 +1,7 @@
 import type { NuxeoDocument } from '../models/document.model';
 import { isFolderishDocument } from '../services/document-import.service';
 
-/** Decode a single repository path segment; returns the raw segment if decoding fails. */
+/** Decode a single URL-encoded browse path segment (e.g. `Domain%201` → `Domain 1`). */
 export function decodeNuxeoPathSegment(segment: string): string {
   try {
     return decodeURIComponent(segment);
@@ -172,4 +172,89 @@ export function topLevelNuxeoFolderPath(nuxeoPath: string): string | null {
 export function expandableNuxeoPathPrefixes(nuxeoPath: string): string[] {
   const prefixes = cumulativeNuxeoPathPrefixes(nuxeoPath);
   return prefixes.slice(0, -1);
+}
+
+/** True when `path` is under a `UserWorkspaces` segment (personal workspace tree). */
+export function isUserWorkspacePath(nuxeoPath: string): boolean {
+  return nuxeoPathSegments(nuxeoPath).includes('userworkspaces');
+}
+
+/** Owner username from a personal workspace path, e.g. `/…/UserWorkspaces/jdoe/…` → `jdoe`. */
+export function userWorkspaceOwnerFromPath(nuxeoPath: string): string | null {
+  const segments = normalizeNuxeoPath(nuxeoPath).split('/').filter(Boolean);
+  const uwIndex = segments.findIndex(
+    (segment) => slugifyNuxeoPathSegment(segment) === 'userworkspaces',
+  );
+  if (uwIndex === -1 || uwIndex + 1 >= segments.length) return null;
+  return decodeNuxeoPathSegment(segments[uwIndex + 1]);
+}
+
+/** Personal workspace root path, e.g. `/default-domain/UserWorkspaces/jdoe`. */
+export function userWorkspaceRootFromPath(nuxeoPath: string): string | null {
+  const segments = normalizeNuxeoPath(nuxeoPath).split('/').filter(Boolean);
+  const uwIndex = segments.findIndex(
+    (segment) => slugifyNuxeoPathSegment(segment) === 'userworkspaces',
+  );
+  if (uwIndex === -1 || uwIndex + 1 >= segments.length) return null;
+  return `/${segments.slice(0, uwIndex + 2).join('/')}`;
+}
+
+/**
+ * Web UI: non-admins viewing another user's personal workspace do not get breadcrumbs.
+ * Admins and the workspace owner always see them.
+ */
+export function shouldShowUserWorkspaceBreadcrumbs(
+  nuxeoPath: string,
+  currentUsername: string | null,
+  isAdministrator: boolean,
+): boolean {
+  if (!isUserWorkspacePath(nuxeoPath)) return true;
+  if (isAdministrator) return true;
+  const owner = userWorkspaceOwnerFromPath(nuxeoPath);
+  if (!owner || !currentUsername) return false;
+  return slugifyNuxeoPathSegment(owner) === slugifyNuxeoPathSegment(currentUsername);
+}
+
+/** Browse route to open after trashing a document under UserWorkspaces (workspace root). */
+export function userWorkspaceBrowseRouterUrl(nuxeoPath: string): string | null {
+  const root = userWorkspaceRootFromPath(nuxeoPath);
+  return root ? toBrowseRouterUrl(root) : null;
+}
+
+/** Fallback browse route after trash: parent folder, else workspace root, else repository root. */
+export function postTrashBrowseRouterUrl(deletedDocPath: string): string {
+  const parentPath = parentNuxeoFolderPath(deletedDocPath);
+  if (parentPath !== '/') {
+    return toBrowseRouterUrl(parentPath);
+  }
+  const workspaceUrl = userWorkspaceBrowseRouterUrl(deletedDocPath);
+  if (workspaceUrl) return workspaceUrl;
+  return '/browse';
+}
+
+/** True when the document is a user collection (type or facet; optional create-time type hint). */
+export function isCollectionDocument(
+  doc: Pick<NuxeoDocument, 'type' | 'facets'> | null | undefined,
+  docTypeHint?: string,
+): boolean {
+  if (docTypeHint === 'Collection') return true;
+  if (!doc) return false;
+  return doc.type === 'Collection' || doc.facets?.includes('Collection') === true;
+}
+
+/**
+ * Web UI parity: Collection documents open the collection view; folderish containers open
+ * browse; everything else opens document detail.
+ */
+export function documentNavigationUrl(
+  doc: Pick<NuxeoDocument, 'uid' | 'type' | 'path' | 'facets'>,
+  docTypeHint?: string,
+): string {
+  if (isCollectionDocument(doc, docTypeHint)) {
+    return `/collections/${doc.uid}`;
+  }
+  if (doc.type === 'Favorites' || isFolderishDocument(doc)) {
+    return toBrowseRouterUrl(doc.path);
+  }
+  return `/doc/${doc.uid}`;
 }

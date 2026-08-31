@@ -58,6 +58,8 @@ import {
   createExpiresErrorStateMatcher,
   isExpiresFieldValid,
   shouldShowExpiresFieldError,
+  documentNavigationUrl,
+  isCollectionDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface CreateImportDialogData {
@@ -69,6 +71,8 @@ export interface CreateImportDialogData {
 export interface CreateImportDialogResult {
   refreshed?: boolean;
   path?: string | null;
+  /** When set, the opener should navigate to this app route (Web UI parity). */
+  navigateToUrl?: string;
   /** When set, the opener should navigate to this document's detail page. */
   navigateToUid?: string;
   /** Nuxeo path of the created document (for browse navigation). */
@@ -1184,7 +1188,9 @@ export class CreateImportDialogComponent implements OnInit {
     this.dialogRef.close({
       refreshed: true,
       path: this.parentPath(),
-      navigateToUid: doc.uid,
+      navigateToUrl: documentNavigationUrl(doc, docTypeName),
+      navigateToUid:
+        isCollectionDocument(doc, docTypeName) || doc.type === 'Domain' ? undefined : doc.uid,
       navigateToPath: doc.type === 'Domain' ? doc.path : undefined,
       freshNote: docTypeName === 'Note',
     });

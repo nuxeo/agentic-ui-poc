@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import { adminGuard } from './auth/admin.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
 import { ContractsPageComponent } from './features/contracts/contracts-page.component';
+import { themingGuard } from './theme/theming.guard';
 
 const placeholder = () =>
   import('./placeholder-page.component').then((m) => m.PlaceholderPageComponent);
@@ -134,6 +135,7 @@ export const routes: Routes = [
       },
       {
         path: 'settings/themes',
+        canActivate: [themingGuard],
         loadComponent: () =>
           import('./settings/themes/themes-page.component').then((m) => m.ThemesPageComponent),
       },

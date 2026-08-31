@@ -7,7 +7,7 @@
         <div class="header-title" role="heading" aria-level="1">
           {{ collection()?.title ?? 'Collection' }}
         </div>
-        @if (breadcrumbItems().length) {
+        @if (showBreadcrumbs() && breadcrumbItems().length) {
           <div class="header-path-row">
             <sat-breadcrumbs
               [items]="breadcrumbItems()"
@@ -22,18 +22,22 @@
       <button mat-icon-button matTooltip="Refresh" aria-label="Refresh" (click)="loadMembers()">
         <mat-icon>sync</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="editCollection()">
-        <mat-icon>edit</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        (click)="deleteCollection()"
-        [disabled]="actionInProgress() === 'trash'"
-        matTooltip="Delete"
-        aria-label="Delete"
-      >
-        <mat-icon>delete</mat-icon>
-      </button>
+      @if (canEditCollection()) {
+        <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="editCollection()">
+          <mat-icon>edit</mat-icon>
+        </button>
+      }
+      @if (canDeleteCollection()) {
+        <button
+          mat-icon-button
+          (click)="deleteCollection()"
+          [disabled]="actionInProgress() === 'trash'"
+          matTooltip="Delete"
+          aria-label="Delete"
+        >
+          <mat-icon>delete</mat-icon>
+        </button>
+      }
       <button
         mat-icon-button
         (click)="exportCollection()"

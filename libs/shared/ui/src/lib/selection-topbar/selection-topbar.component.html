@@ -1,33 +1,37 @@
-<div class="selection-topbar">
+<div class="selection-topbar" [class.selection-topbar--clear-only]="clearOnly()">
   <div class="topbar-left">
     <span class="selected-label">All {{ selectedCount() }} item(s) selected</span>
-    <button mat-button type="button" class="clear-btn" (click)="openSelectionPopup()">
-      Display selection
-    </button>
+    @if (!clearOnly()) {
+      <button mat-button type="button" class="clear-btn" (click)="openSelectionPopup()">
+        Display selection
+      </button>
+    }
     <button mat-button type="button" class="clear-btn" (click)="cleared.emit()">Clear</button>
   </div>
 
-  <div class="topbar-actions">
-    @for (action of bulkActions(); track action.id) {
-      <button
-        mat-icon-button
-        type="button"
-        class="topbar-icon-btn"
-        [attr.data-action-id]="action.id"
-        [matTooltip]="action.tooltip ?? action.label"
-        matTooltipPosition="below"
-        matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
-        [attr.aria-label]="action.label"
-        [disabled]="!isEnabled(action)"
-        (click)="run(action)"
-      >
-        <mat-icon>{{ action.icon }}</mat-icon>
-      </button>
-    }
-  </div>
+  @if (!clearOnly()) {
+    <div class="topbar-actions">
+      @for (action of bulkActions(); track action.id) {
+        <button
+          mat-icon-button
+          type="button"
+          class="topbar-icon-btn"
+          [attr.data-action-id]="action.id"
+          [matTooltip]="action.tooltip ?? action.label"
+          matTooltipPosition="below"
+          matTooltipClass="selection-topbar-tooltip mat-tooltip-multiline"
+          [attr.aria-label]="action.label"
+          [disabled]="!isEnabled(action)"
+          (click)="run(action)"
+        >
+          <mat-icon>{{ action.icon }}</mat-icon>
+        </button>
+      }
+    </div>
+  }
 </div>
 
-@if (selectionPopupOpen()) {
+@if (!clearOnly() && selectionPopupOpen()) {
   <button
     type="button"
     class="selection-popup-backdrop"

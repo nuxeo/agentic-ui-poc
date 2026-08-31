@@ -4,6 +4,7 @@ import {
   HostListener,
   ViewChild,
   computed,
+  effect,
   inject,
   input,
   output,
@@ -38,9 +39,17 @@ export class SelectionTopbarComponent {
   readonly selectedItems = input<
     Array<{ id: string; name: string; preview: SafeUrl | string | null }>
   >([]);
+  /** Collapses the bar to its label and Clear button — no bulk actions, no popup. */
+  readonly clearOnly = input(false);
   /** Chrome, not an action: clearing the selection dismisses the bar itself. */
   readonly cleared = output<void>();
   readonly selectionPopupOpen = signal(false);
+
+  private readonly closePopupInClearOnlyMode = effect(() => {
+    if (this.clearOnly()) {
+      this.selectionPopupOpen.set(false);
+    }
+  });
 
   private readonly extensions = inject(AppExtensionsService);
   private readonly actions = inject(ExtensionActionRegistry);

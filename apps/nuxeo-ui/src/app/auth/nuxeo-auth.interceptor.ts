@@ -9,6 +9,7 @@ import { catchError, tap, throwError } from 'rxjs';
 import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from './auth.service';
+import { NUXEO_ESTABLISH_BROWSER_SESSION } from './nuxeo-auth.context';
 import { SessionTimeoutService } from './session-timeout.service';
 import { AUTH_TOKEN_HEADER } from './share-token.util';
 
@@ -94,8 +95,9 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   // Logout must send cookies to clear stale JSESSIONID. Basic-auth requests (stored or
   // in-flight during login) omit cookies to avoid principal override.
   const isLogout = isNuxeoLogoutRequest(req.url, allowedOrigins);
+  const establishBrowserSession = req.context.get(NUXEO_ESTABLISH_BROWSER_SESSION);
   const usesBasicAuth = Boolean(basic) || hasBasicAuthorizationHeader(req.headers);
-  const withCredentials = isLogout ? true : usesBasicAuth ? false : true;
+  const withCredentials = isLogout || establishBrowserSession ? true : usesBasicAuth ? false : true;
   return next(req.clone({ headers, withCredentials })).pipe(
     tap((event) => {
       if (event instanceof HttpResponse && auth.isAuthenticated()) {

@@ -100,7 +100,17 @@ export const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescript
     label: 'Edit',
     icon: 'edit',
     order: 10,
-    rule: every('app.rules.isNotTrashed', 'app.rules.canWrite'),
+    rule: every('app.rules.isNotTrashed', 'app.rules.canWrite', not('app.rules.isNote')),
+  },
+  {
+    // A Note's body belongs to the inline editor in the View tab, so this pencil
+    // only ever reaches metadata and says so. Two descriptors rather than a
+    // component-swapped label, for the same reason as the toggles above.
+    id: 'app.toolbar.editProperties',
+    label: 'Edit properties',
+    icon: 'edit',
+    order: 10,
+    rule: every('app.rules.isNotTrashed', 'app.rules.canWrite', 'app.rules.isNote'),
   },
   {
     id: 'app.toolbar.addToCollection',

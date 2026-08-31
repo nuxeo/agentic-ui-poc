@@ -65,6 +65,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
 import { AppNavItem, SETTINGS_DRAWER_ITEMS, toAppNavItem } from '../platform-nav-items';
+import { ThemingFeatureFlagService } from '../theme/theming-feature-flag.service';
 import { drawerItemForPath } from './drawer-route-match';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
@@ -120,6 +121,7 @@ export class AppShellComponent implements OnDestroy {
   private readonly appConfig = inject(AppConfigService);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
+  readonly themingFlags = inject(ThemingFeatureFlagService);
 
   readonly aiChatOpen = this.aiChat.panelOpen;
   readonly aiChatInput = signal('');
@@ -187,7 +189,10 @@ export class AppShellComponent implements OnDestroy {
     // meant hiding an entry by manifest or rule also stripped its page title,
     // and a user who reached the route directly saw the brand name instead of
     // "Trash". Hiding an entry is a navigation decision, not a route decision:
-    // the route still exists and is still reachable.
+    // the route still exists and is still reachable. That is also why the
+    // unfiltered settings list is used here while the drawer uses
+    // `visibleSettingsDrawerItems` — the theming flag hides the *link*, and
+    // `themingGuard` closes the *route*; neither should blank the title.
     const candidates = [
       ...this.navItems(),
       ...PACKAGED_NAV_ITEMS.map(toAppNavItem),

@@ -509,12 +509,55 @@ describe('BrowseService', () => {
     expect(result.entries[0].title).toBe('My Favorites');
   });
 
-  it('getNavTreeChildren falls back to @children when tree_children is empty', async () => {
+  it('getNavTreeChildren loads user workspace children via @children (Favorites + Collections)', async () => {
     const workspace: NuxeoDocument = {
       uid: 'ws-uid',
       title: 'user readonly',
       type: 'Workspace',
       path: '/default-domain/UserWorkspaces/user-readonly01',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: {},
+    };
+    const result$ = firstValueFrom(service.getNavTreeChildren(workspace));
+
+    const childrenReq = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/path/default-domain/UserWorkspaces/user-readonly01/@children',
+    );
+    childrenReq.flush({
+      entries: [
+        {
+          uid: 'fav-uid',
+          title: 'My Favorites',
+          type: 'Favorites',
+          path: '/default-domain/UserWorkspaces/user-readonly01/Favorites',
+          properties: {},
+        },
+        {
+          uid: 'cols-uid',
+          title: 'Collections',
+          type: 'Collections',
+          path: '/default-domain/UserWorkspaces/user-readonly01/Collections',
+          properties: {},
+        },
+      ],
+      totalSize: 2,
+      currentPageSize: 2,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    const result = await result$;
+    expect(result.entries).toHaveLength(2);
+    expect(result.entries.map((entry) => entry.type)).toEqual(['Favorites', 'Collections']);
+    httpMock.expectNone((r) => r.url === '/nuxeo/api/v1/search/pp/tree_children/execute');
+  });
+
+  it('getNavTreeChildren falls back to @children when tree_children is empty for non-user workspaces', async () => {
+    const workspace: NuxeoDocument = {
+      uid: 'ws-uid',
+      title: 'Demo Workspace',
+      type: 'Workspace',
+      path: '/default-domain/workspaces/demo',
       lastModified: '2026-01-01T00:00:00.000Z',
       properties: {},
     };
@@ -535,15 +578,15 @@ describe('BrowseService', () => {
     });
 
     const childrenReq = httpMock.expectOne(
-      (r) => r.url === '/nuxeo/api/v1/path/default-domain/UserWorkspaces/user-readonly01/@children',
+      (r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces/demo/@children',
     );
     childrenReq.flush({
       entries: [
         {
-          uid: 'fav-uid',
-          title: 'My Favorites',
-          type: 'Favorites',
-          path: '/default-domain/UserWorkspaces/user-readonly01/Favorites',
+          uid: 'folder-uid',
+          title: 'Folder',
+          type: 'Folder',
+          path: '/default-domain/workspaces/demo/folder',
           properties: {},
         },
       ],
@@ -555,7 +598,7 @@ describe('BrowseService', () => {
 
     const result = await result$;
     expect(result.entries).toHaveLength(1);
-    expect(result.entries[0].title).toBe('My Favorites');
+    expect(result.entries[0].title).toBe('Folder');
   });
 
   it('getNavTreeBootstrap falls back to accessible workspaces when root and domains are unavailable', async () => {
@@ -796,5 +839,80 @@ describe('BrowseService', () => {
     const result = await result$;
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe('Moved');
+  });
+
+  it('updateDocument requests permissions enricher on PUT (NXSAT-196)', async () => {
+    const uid = 'note-uid-1';
+    const result$ = firstValueFrom(
+      service.updateDocument(uid, { 'note:note': '<p>updated</p>' }, { enrichPermissions: true }),
+    );
+
+    const req = httpMock.expectOne((r) => r.url === `/nuxeo/api/v1/id/${uid}`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.headers.get('enrichers.document')).toBe('permissions');
+    expect(req.request.headers.get('properties')).toBe('*');
+    req.flush({
+      uid,
+      title: 'Note',
+      type: 'Note',
+      path: '/a/note',
+      lastModified: '2026-01-01T00:00:00.000Z',
+      properties: { 'note:note': '<p>updated</p>' },
+      contextParameters: { permissions: ['Read', 'WriteProperties'] },
+    } satisfies NuxeoDocument);
+
+    const result = await result$;
+    expect(result.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
+  });
+
+  it('hasChildCollections returns true when NXQL finds a child collection', async () => {
+    const parentUid = 'cols-folder-uid';
+    const result$ = firstValueFrom(service.hasChildCollections(parentUid));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('pageSize') === '1' &&
+        (r.params.get('query') ?? '').includes(`ecm:parentId = '${parentUid}'`) &&
+        (r.params.get('query') ?? '').includes("ecm:primaryType = 'Collection'"),
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      entries: [
+        {
+          uid: 'col-1',
+          title: 'My Collection',
+          type: 'Collection',
+          path: '/collections/my-collection',
+          properties: {},
+        },
+      ],
+      totalSize: 1,
+      currentPageSize: 1,
+      currentPageIndex: 0,
+      numberOfPages: 1,
+    });
+
+    expect(await result$).toBe(true);
+  });
+
+  it('hasChildCollections returns false when NXQL finds no child collections', async () => {
+    const result$ = firstValueFrom(service.hasChildCollections('empty-folder'));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url === '/nuxeo/api/v1/search/lang/NXQL/execute' &&
+        r.params.get('pageSize') === '1' &&
+        (r.params.get('query') ?? '').includes("ecm:parentId = 'empty-folder'"),
+    );
+    req.flush({
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 0,
+    });
+
+    expect(await result$).toBe(false);
   });
 });

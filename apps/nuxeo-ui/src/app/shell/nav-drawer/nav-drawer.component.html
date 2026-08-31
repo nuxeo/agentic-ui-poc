@@ -398,7 +398,7 @@
     </div>
   } @else if (isSettings) {
     <div class="settings-panel">
-      @for (settingsItem of settingsItems; track settingsItem.path) {
+      @for (settingsItem of settingsItems(); track settingsItem.path) {
         <button
           type="button"
           class="settings-item"

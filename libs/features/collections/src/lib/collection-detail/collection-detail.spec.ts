@@ -500,7 +500,9 @@ describe('CollectionDetailComponent', () => {
 
       expect(mockDialog.open).toHaveBeenCalled();
       expect(mockDetailService.trashDocument).toHaveBeenCalledWith('collection-1');
-      expect(navigateSpy).toHaveBeenCalledWith('/collections');
+      // NXSAT-204: after trashing, land in the collection's parent folder rather than
+      // back on `/collections`, which for a personal collection would 404 the user.
+      expect(navigateSpy).toHaveBeenCalledWith('/browse/default-domain/workspaces/collections');
     });
 
     it('should not delete when cancelled', () => {

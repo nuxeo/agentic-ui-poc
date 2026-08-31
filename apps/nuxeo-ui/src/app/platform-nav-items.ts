@@ -36,13 +36,22 @@ export function toAppNavItem(descriptor: NavItemDescriptor): AppNavItem {
   };
 }
 
+export const THEMES_SETTINGS_PATH = '/settings/themes';
+
 export const SETTINGS_DRAWER_ITEMS: DrawerLinkItem[] = [
   { label: 'Nuxeo Drive', path: '/settings/nuxeo-drive' },
   { label: 'Profile', path: '/settings/profile' },
   { label: 'Authorized Applications', path: '/settings/authorized-applications' },
   { label: 'Cloud Services', path: '/settings/cloud-services' },
-  { label: 'Themes', path: '/settings/themes' },
+  { label: 'Themes', path: THEMES_SETTINGS_PATH },
 ];
+
+/** Settings drawer links visible for the current theming feature flag. */
+export function visibleSettingsDrawerItems(themingEnabled: boolean): DrawerLinkItem[] {
+  return themingEnabled
+    ? SETTINGS_DRAWER_ITEMS
+    : SETTINGS_DRAWER_ITEMS.filter((item) => item.path !== THEMES_SETTINGS_PATH);
+}
 
 export const ADMINISTRATION_DRAWER_ITEMS: DrawerLinkItem[] = [
   { label: 'Analytics', path: '/administration/analytics' },

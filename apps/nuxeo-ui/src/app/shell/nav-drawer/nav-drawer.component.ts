@@ -44,6 +44,8 @@ import {
   nuxeoPathSegments,
   toBrowseRouterUrl,
   topLevelNuxeoFolderPath,
+  documentNavigationUrl,
+  isCollectionDocument,
   type SearchQueryParams,
   type AssetAggregations,
   canPasteClipboard,
@@ -68,10 +70,11 @@ import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import {
   AppNavItem,
-  SETTINGS_DRAWER_ITEMS,
+  visibleSettingsDrawerItems,
   ADMINISTRATION_DRAWER_ITEMS,
   POWERUSER_ADMINISTRATION_DRAWER_ITEMS,
 } from '../../platform-nav-items';
+import { ThemingFeatureFlagService } from '../../theme/theming-feature-flag.service';
 
 export interface FolderNode {
   doc: NuxeoDocument;
@@ -124,7 +127,10 @@ export class NavDrawerComponent {
   readonly itemSelected = output<string>();
   readonly navigateKeepDrawer = output<string>();
   readonly signOutSelected = output<void>();
-  readonly settingsItems = SETTINGS_DRAWER_ITEMS;
+  private readonly themingFlags = inject(ThemingFeatureFlagService);
+  readonly settingsItems = computed(() =>
+    visibleSettingsDrawerItems(this.themingFlags.themingEnabled()),
+  );
   readonly administrationItems = computed(() =>
     this.authService.isAdministrator()
       ? ADMINISTRATION_DRAWER_ITEMS
@@ -247,6 +253,9 @@ export class NavDrawerComponent {
           const username = this.authService.username();
           if (item?.id === 'app.navbar.browse' && username) {
             this.refreshBrowseTree();
+          }
+          if (item?.path === '/personal-space') {
+            this.refreshPersonalSpaceTree();
           }
         });
       }
@@ -532,8 +541,8 @@ export class NavDrawerComponent {
   }
 
   openRecentlyViewedDoc(doc: NuxeoDocument): void {
-    if (doc.type === 'Collection') {
-      this.navigateKeepDrawer.emit(`/collections/${doc.uid}`);
+    if (isCollectionDocument(doc)) {
+      this.navigateKeepDrawer.emit(documentNavigationUrl(doc));
       return;
     }
 
@@ -1036,7 +1045,7 @@ export class NavDrawerComponent {
       const soleChild = node.children.length === 1 ? node.children[0] : null;
       if (soleChild && !soleChild.isRoot) {
         this.browseContext.setFromNuxeoPath(soleChild.doc.path);
-        this.navigateKeepDrawer.emit(toBrowseRouterUrl(soleChild.doc.path));
+        this.navigateKeepDrawer.emit(documentNavigationUrl(soleChild.doc));
         return;
       }
       this.browseContext.setFromNuxeoPath('/');
@@ -1045,7 +1054,7 @@ export class NavDrawerComponent {
     }
     const nuxeoPath = node.doc.path;
     this.browseContext.setFromNuxeoPath(nuxeoPath);
-    this.navigateKeepDrawer.emit(toBrowseRouterUrl(nuxeoPath));
+    this.navigateKeepDrawer.emit(documentNavigationUrl(node.doc));
   }
 
   nodeLabel(node: FolderNode): string {

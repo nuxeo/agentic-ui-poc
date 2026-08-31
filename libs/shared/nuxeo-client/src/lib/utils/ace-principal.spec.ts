@@ -124,4 +124,86 @@ describe('ace-principal', () => {
     expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'ReadSecurity']);
     expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: true });
   });
+
+  it('mergeDocumentPermissionsContext keeps existing permissions when updated returns empty array (NXSAT-196)', () => {
+    const existing: NuxeoDocument = {
+      uid: 'note-1',
+      title: 'Note',
+      type: 'Note',
+      path: '/a/note',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: { 'note:note': '<p>hello</p>' },
+      contextParameters: {
+        permissions: ['Read', 'WriteProperties'],
+        favorites: { isFavorite: false },
+      },
+    };
+    const updated: NuxeoDocument = {
+      ...existing,
+      properties: { 'note:note': '<p>updated</p>', 'note:mime_type': 'text/html' },
+      contextParameters: { permissions: [] },
+    };
+
+    const merged = mergeDocumentPermissionsContext(existing, updated, {
+      treatEmptyEnricherAsAbsent: true,
+    });
+
+    expect(merged.properties['note:note']).toBe('<p>hello</p>');
+    expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
+    expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: false });
+  });
+
+  it('mergeDocumentPermissionsContext replaces permissions with empty array on permission refresh', () => {
+    const existing: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Doc',
+      type: 'File',
+      path: '/a/b',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: {},
+      contextParameters: {
+        permissions: ['Read', 'WriteProperties'],
+      },
+    };
+    const updated: NuxeoDocument = {
+      ...existing,
+      contextParameters: { permissions: [] },
+    };
+
+    const merged = mergeDocumentPermissionsContext(existing, updated);
+
+    expect(merged.contextParameters?.['permissions']).toEqual([]);
+  });
+
+  it('mergeDocumentPermissionsContext preserves other enrichers from updated response', () => {
+    const existing: NuxeoDocument = {
+      uid: 'doc-1',
+      title: 'Doc',
+      type: 'File',
+      path: '/a/b',
+      lastModified: '2026-07-01T00:00:00.000Z',
+      properties: { 'dc:title': 'Old' },
+      contextParameters: {
+        permissions: ['Read'],
+        favorites: { isFavorite: true },
+      },
+    };
+    const updated: NuxeoDocument = {
+      ...existing,
+      properties: { 'dc:title': 'New' },
+      contextParameters: {
+        permissions: ['Read', 'WriteProperties'],
+        thumbnail: { url: '/nuxeo/api/v1/id/doc-1/@rendition/thumbnail' },
+      },
+    };
+
+    const merged = mergeDocumentPermissionsContext(existing, updated);
+
+    expect(merged.properties['dc:title']).toBe('Old');
+    expect(merged.contextParameters?.['permissions']).toEqual(['Read', 'WriteProperties']);
+    expect(merged.contextParameters?.['thumbnail']).toEqual({
+      url: '/nuxeo/api/v1/id/doc-1/@rendition/thumbnail',
+    });
+    expect(merged.contextParameters?.['favorites']).toEqual({ isFavorite: true });
+  });
 });

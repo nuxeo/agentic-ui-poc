@@ -89,6 +89,7 @@ import {
   isPermissionDeniedError,
   isBlobHoldingDocType,
   isFolderishDocument,
+  isCollectionDocument,
   BrowseContextService,
   BROWSE_RETURN_MODE_PARAM,
   decodeNuxeoPathSegment,
@@ -342,6 +343,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       inClipboard: this.isInClipboard(),
       hasVersion: this.hasVersion(),
       aiEnabled: this.featureFlags.aiEnabled(),
+      note: this.isNoteDocument(),
       ...(busy ? { [`busy.${busy}`]: true } : {}),
     });
   });
@@ -588,6 +590,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
   readonly noteFormatDisplay = computed(() => noteFormatLabel(this.mimeType()));
   readonly noteEditorBody = computed(() => this.noteContent() ?? '');
+  /** Parent folder for note RTE image uploads (Web UI stores uploaded pictures in the repository). */
+  readonly noteImageUploadParentPath = computed(() => {
+    const path = this.doc()?.path;
+    if (!path) return null;
+    const slash = path.lastIndexOf('/');
+    return slash > 0 ? path.slice(0, slash) : '/';
+  });
 
   readonly isImage = computed(() => this.mimeType().startsWith('image/'));
   readonly isPdf = computed(() => this.mimeType() === 'application/pdf');
@@ -922,7 +931,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
    */
   private registerToolbarHandlers(): void {
     const handlers: Readonly<Record<string, () => void>> = {
-      'app.toolbar.edit': () => this.openEditDialog(),
+      'app.toolbar.edit': () => this.onEditClick(),
+      'app.toolbar.editProperties': () => this.onEditClick(),
       'app.toolbar.addToCollection': () => this.openAddToCollectionDialog(),
       'app.toolbar.delete': () => this.trashDocument(),
       'app.toolbar.lock': () => this.toggleLock(),
@@ -1656,7 +1666,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
-          if (doc.type !== 'Collection' && isFolderishDocument(doc) && doc.path) {
+          if (isCollectionDocument(doc)) {
+            void this.router.navigate(['/collections', doc.uid], { replaceUrl: true });
+            return;
+          }
+          if (isFolderishDocument(doc) && doc.path) {
             this.browseContext.setFromDocument(doc);
             void this.router.navigateByUrl(this.browseUrlForPath(doc.path), { replaceUrl: true });
             return;
@@ -3248,6 +3262,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       });
   }
 
+  /** Toolbar Edit opens metadata; note-surface pencil focuses inline content (Web UI parity). */
+  onEditClick(): void {
+    this.openEditDialog();
+  }
+
   saveNote(body: string): void {
     const doc = this.doc();
     if (!doc || this.noteSaving() || !this.requireWritePermission()) return;
@@ -3255,10 +3274,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.noteSaving.set(true);
     const mime = this.mimeType();
     this.browseService
-      .updateDocument(doc.uid, {
-        'note:note': body,
-        'note:mime_type': mime,
-      })
+      .updateDocument(
+        doc.uid,
+        {
+          'note:note': body,
+          'note:mime_type': mime,
+        },
+        { enrichPermissions: true },
+      )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
@@ -3301,21 +3324,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** Keeps enricher data (permissions, ACLs) when a PUT response omits contextParameters. */
+  /**
+   * Keeps enricher data when a Note PUT omits contextParameters or returns empty
+   * permissions/acls arrays (NXSAT-196). Permission refresh GETs use the default merge.
+   */
   private mergeUpdatedDocument(existing: NuxeoDocument, updated: NuxeoDocument): NuxeoDocument {
     if (!existing.contextParameters && !updated.contextParameters) {
       return updated;
     }
-    return {
-      ...updated,
-      contextParameters: {
-        ...existing.contextParameters,
-        ...updated.contextParameters,
-        acls: updated.contextParameters?.['acls'] ?? existing.contextParameters?.['acls'],
-        permissions:
-          updated.contextParameters?.['permissions'] ?? existing.contextParameters?.['permissions'],
-      },
-    };
+    // Note PUT only: treat empty permissions/acls arrays from Nuxeo as absent (NXSAT-196).
+    return mergeDocumentPermissionsContext(
+      { ...updated, contextParameters: existing.contextParameters },
+      updated,
+      { treatEmptyEnricherAsAbsent: true },
+    );
   }
 
   private requireWritePermission(): boolean {

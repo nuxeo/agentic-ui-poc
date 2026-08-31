@@ -202,12 +202,22 @@ export const DEFAULT_APP_BOOTSTRAP_CONFIG: AppBootstrapConfig = {
     warningBeforeMs: null,
   },
   sso: {
-    // Registration IDs must match the Nuxeo OpenID/SAML setup, which is exactly
-    // the kind of per-deployment fact that used to require editing our source.
-    endpoints: [
-      { id: 'azure', label: 'Log In With Azure SAML', path: '/nuxeo/oauth2/authorization/azure' },
-      { id: 'okta', label: 'Log In With Okta SAML', path: '/nuxeo/oauth2/authorization/okta' },
-    ],
+    // Empty on purpose. `main` commented these same two entries out of
+    // `nuxeo-sso.providers.ts` — "hidden until SAML is ready for Satori beta" — because the
+    // buttons rendered but no registration existed behind them. Shipping azure and okta as
+    // the packaged default would put two non-working buttons back on the login page for
+    // every deployment, so the decision is preserved here.
+    //
+    // The mechanism is the improvement rather than the values: registration IDs must match
+    // the Nuxeo OpenID/SAML setup, which is exactly the per-deployment fact that used to
+    // require editing our source. A deployment adds its own under `sso.endpoints` in
+    // `bootstrap.json`, with no rebuild:
+    //
+    //   "sso": { "endpoints": [
+    //     { "id": "azure", "label": "Log In With Azure SAML",
+    //       "path": "/nuxeo/oauth2/authorization/azure" }
+    //   ] }
+    endpoints: [],
     postLoginPath: '/dashboard',
     returnQueryParam: 'requestedUrl',
   },

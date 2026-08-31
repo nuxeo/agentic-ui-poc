@@ -182,6 +182,14 @@ export {
   parseAdfHxBrowsePathFromRouterUrl,
   toBrowseRouterUrlForReturnMode,
   type BrowseReturnMode,
+  isUserWorkspacePath,
+  userWorkspaceOwnerFromPath,
+  userWorkspaceRootFromPath,
+  shouldShowUserWorkspaceBreadcrumbs,
+  userWorkspaceBrowseRouterUrl,
+  postTrashBrowseRouterUrl,
+  documentNavigationUrl,
+  isCollectionDocument,
 } from './lib/utils/browse-path.utils';
 export { ContentLakeIngestService } from './lib/services/content-lake-ingest.service';
 export {
@@ -245,9 +253,12 @@ export {
   canAddChildren,
   canManageDocumentPermissions,
   canRemoveDocument,
+  canShowRemoveDocumentAction,
+  canShowWriteDocumentAction,
   canViewDocumentAuditLog,
   canWriteDocument,
   hasDocumentPermission,
+  hasDocumentPermissionsEnricher,
   isPermissionDeniedError,
   READ_WRITE_DOCUMENT,
 } from './lib/utils/document-permissions';
@@ -303,8 +314,17 @@ export {
   permissionUpdateMailFailureMessage,
   type PermissionWithNotificationResult,
 } from './lib/utils/permission-notification';
+export {
+  buildNoteDocumentPickerNxql,
+  filterInsertablePictureDocuments,
+  hasInsertablePictureBlob,
+  NOTE_DOCUMENT_PICKER_HEADERS,
+  NOTE_DOCUMENT_PICKER_PROVIDER,
+  normalizeDocumentPickerList,
+} from './lib/utils/note-document-picker-search';
 export { resolvePaginatedListTotal } from './lib/utils/paginated-total';
 export type { PaginatedListMeta } from './lib/utils/paginated-total';
+export { escapeNxqlLiteral } from './lib/utils/nxql.utils';
 export {
   formatHierarchicalL10nLabel,
   groupL10nChildrenByParent,

@@ -244,6 +244,67 @@ describe('CreateImportDialogComponent (NXSAT-173)', () => {
     expect(component.mainFileUploadPercent()).toBe(0);
   });
 
+  it('createDocument navigates to collection view for Collection type (Web UI parity)', async () => {
+    const created: NuxeoDocument = {
+      uid: 'col-1',
+      title: 'My Collection',
+      type: 'Collection',
+      path: `${PARENT_PATH}/my-collection`,
+      lastModified: '',
+      properties: {},
+    };
+    mockImportService.createChildDocument.mockReturnValue(of(created));
+
+    component.startCreateFromType({
+      type: 'Collection',
+      label: 'Collection',
+      icon: 'collections_bookmark',
+    });
+    component.docTitle = 'My Collection';
+    component.createDocument();
+    await flushAsync();
+
+    expect(mockDialogRef.close).toHaveBeenCalledWith(
+      expect.objectContaining({
+        navigateToUrl: '/collections/col-1',
+        refreshed: true,
+      }),
+    );
+    expect(mockDialogRef.close).not.toHaveBeenCalledWith(
+      expect.objectContaining({ navigateToUid: 'col-1' }),
+    );
+  });
+
+  it('createDocument navigates to collection view when API omits type on create response', async () => {
+    const created: NuxeoDocument = {
+      uid: 'col-minimal',
+      title: 'Minimal Collection',
+      type: '',
+      path: `${PARENT_PATH}/minimal-collection`,
+      lastModified: '',
+      properties: {},
+    };
+    mockImportService.createChildDocument.mockReturnValue(of(created));
+
+    component.startCreateFromType({
+      type: 'Collection',
+      label: 'Collection',
+      icon: 'collections_bookmark',
+    });
+    component.docTitle = 'Minimal Collection';
+    component.createDocument();
+    await flushAsync();
+
+    expect(mockDialogRef.close).toHaveBeenCalledWith(
+      expect.objectContaining({
+        navigateToUrl: '/collections/col-minimal',
+      }),
+    );
+    expect(mockDialogRef.close).not.toHaveBeenCalledWith(
+      expect.objectContaining({ navigateToUid: 'col-minimal' }),
+    );
+  });
+
   it('createDocument uses reliable blob create with staged batch when upload completed', async () => {
     const created: NuxeoDocument = {
       uid: 'doc-1',
@@ -810,7 +871,11 @@ describe('CreateImportDialogComponent domain create (NXSAT-199)', () => {
       expect.objectContaining({ 'dc:title': 'Test Domain' }),
     );
     expect(mockDialogRef.close).toHaveBeenCalledWith(
-      expect.objectContaining({ navigateToUid: 'domain-1', refreshed: true }),
+      expect.objectContaining({
+        navigateToPath: '/Test Domain',
+        navigateToUrl: '/browse/Test%20Domain',
+        refreshed: true,
+      }),
     );
   });
 });

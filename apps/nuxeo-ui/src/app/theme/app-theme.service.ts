@@ -8,10 +8,12 @@ import {
   migrateLegacyThemeId,
   resolveThemeAttribute,
 } from './app-theme';
+import { ThemingFeatureFlagService } from './theming-feature-flag.service';
 
 @Injectable({ providedIn: 'root' })
 export class AppThemeService {
   private readonly config = inject(AppConfigService);
+  private readonly themingFlags = inject(ThemingFeatureFlagService);
 
   private readonly selectedId = signal<AppThemeId | null>(null);
 
@@ -39,6 +41,15 @@ export class AppThemeService {
    * discarded for not being one of the four packaged ones.
    */
   applyStoredOrDefault(): void {
+    // Theme selection is gated to local development. Where it is off, the stored
+    // preference is ignored and the configured default applies — `null` resolves
+    // through the configured list rather than hardcoding the packaged `nuxeo` id,
+    // so a customer who ships their own default still gets it.
+    if (!this.themingFlags.themingEnabled()) {
+      this.selectedId.set(null);
+      return;
+    }
+
     try {
       const raw = localStorage.getItem(APP_THEME_STORAGE_KEY);
       const migrated = migrateLegacyThemeId(raw);

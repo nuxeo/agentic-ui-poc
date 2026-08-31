@@ -546,6 +546,13 @@ sat-breadcrumbs {
     text-align: right;
     padding: 0 4px;
   }
+
+  .col-actions,
+  .cell-actions {
+    width: 44px;
+    text-align: center;
+    padding: 0;
+  }
 }
 
 .gear-btn {
@@ -712,7 +719,10 @@ sat-breadcrumbs {
   position: relative;
 
   &:hover .grid-card-checkbox,
-  &--selected .grid-card-checkbox {
+  &--selected .grid-card-checkbox,
+  &:hover .grid-card-menu,
+  &:focus-within .grid-card-checkbox,
+  &:focus-within .grid-card-menu {
     opacity: 1;
     visibility: visible;
   }
@@ -721,6 +731,16 @@ sat-breadcrumbs {
     background: var(--mat-sys-primary-container, #e8def8);
     border-color: var(--mat-sys-primary, #5c6bc0);
   }
+}
+
+.grid-card-menu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 2;
+  opacity: 0;
+  visibility: hidden;
+  background: var(--mat-sys-surface-container-lowest, #fff);
 }
 
 .doc-card {

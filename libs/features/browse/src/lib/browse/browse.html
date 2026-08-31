@@ -31,12 +31,12 @@
       >
         <mat-icon>cloud_upload</mat-icon>
       </button>
-      @if (canWriteCurrentDoc()) {
+      @if (showHeaderEdit()) {
         <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
           <mat-icon>edit</mat-icon>
         </button>
       }
-      @if (canRemoveCurrentDoc()) {
+      @if (showHeaderDelete()) {
         <button mat-icon-button matTooltip="Delete" aria-label="Delete" (click)="deleteDocument()">
           <mat-icon>delete</mat-icon>
         </button>
@@ -77,7 +77,9 @@
   </div>
 
   <!-- Breadcrumbs -->
-  <sat-breadcrumbs [items]="breadcrumbs()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
+  @if (showBreadcrumbs()) {
+    <sat-breadcrumbs [items]="breadcrumbs()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
+  }
 
   @if (isDomainBrowse() || isRepositoryRootBrowse()) {
     <p class="browse-domain-hint" role="note">
@@ -285,6 +287,9 @@
                             }
                           </th>
                         }
+                        @if (hasCollectionEntries()) {
+                          <th class="col-actions" aria-label="Actions"></th>
+                        }
                         <th class="col-gear">
                           <button
                             mat-icon-button
@@ -350,6 +355,35 @@
                               }
                             </td>
                           }
+                          @if (hasCollectionEntries()) {
+                            <td class="cell-actions">
+                              @if (isCollectionEntry(doc) && hasCollectionEntryActions(doc)) {
+                                <button
+                                  mat-icon-button
+                                  type="button"
+                                  [matMenuTriggerFor]="collectionRowMenu"
+                                  aria-label="Collection actions"
+                                  (click)="$event.stopPropagation()"
+                                >
+                                  <mat-icon>more_vert</mat-icon>
+                                </button>
+                                <mat-menu #collectionRowMenu="matMenu">
+                                  @if (canEditCollectionEntry(doc)) {
+                                    <button mat-menu-item (click)="openEditCollectionDialog(doc)">
+                                      <mat-icon>edit</mat-icon>
+                                      <span>Edit</span>
+                                    </button>
+                                  }
+                                  @if (canDeleteCollectionEntry(doc)) {
+                                    <button mat-menu-item (click)="deleteCollectionEntry(doc)">
+                                      <mat-icon>delete</mat-icon>
+                                      <span>Delete</span>
+                                    </button>
+                                  }
+                                </mat-menu>
+                              }
+                            </td>
+                          }
                         </tr>
                       }
                     </tbody>
@@ -385,6 +419,32 @@
                         <span class="card-type">{{ doc.type }}</span>
                       </div>
                     </button>
+                    @if (isCollectionEntry(doc) && hasCollectionEntryActions(doc)) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        class="grid-card-menu"
+                        [matMenuTriggerFor]="collectionCardMenu"
+                        aria-label="Collection actions"
+                        (click)="$event.stopPropagation()"
+                      >
+                        <mat-icon>more_vert</mat-icon>
+                      </button>
+                      <mat-menu #collectionCardMenu="matMenu">
+                        @if (canEditCollectionEntry(doc)) {
+                          <button mat-menu-item (click)="openEditCollectionDialog(doc)">
+                            <mat-icon>edit</mat-icon>
+                            <span>Edit</span>
+                          </button>
+                        }
+                        @if (canDeleteCollectionEntry(doc)) {
+                          <button mat-menu-item (click)="deleteCollectionEntry(doc)">
+                            <mat-icon>delete</mat-icon>
+                            <span>Delete</span>
+                          </button>
+                        }
+                      </mat-menu>
+                    }
                   </div>
                 }
               </div>

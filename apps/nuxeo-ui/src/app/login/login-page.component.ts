@@ -1,11 +1,17 @@
-import { Component, inject, signal } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  inject,
+  OnDestroy,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -17,18 +23,14 @@ import { AuthService } from '../auth/auth.service';
 
 const LAST_USER_KEY = 'agentic_ui_last_username';
 
-type LoginStep = 'username' | 'credentials';
-
 @Component({
   selector: 'app-login-page',
   imports: [
     RouterLink,
     ReactiveFormsModule,
     MatButtonModule,
-    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
-    MatIconModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
     SatLogoModule,
@@ -36,15 +38,17 @@ type LoginStep = 'username' | 'credentials';
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
 })
-export class LoginPageComponent {
+export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly autofillSyncTimeouts: ReturnType<typeof setTimeout>[] = [];
 
   readonly submitting = signal(false);
-  readonly step = signal<LoginStep>('username');
   /** SSO entry points from `nuxeo-sso.providers.ts` / app config. */
   readonly samlEndpoints = this.auth.samlLoginOptions;
 
@@ -53,8 +57,7 @@ export class LoginPageComponent {
       typeof localStorage !== 'undefined' ? (localStorage.getItem(LAST_USER_KEY) ?? '') : '',
       Validators.required,
     ],
-    password: [''],
-    remember: [true],
+    password: ['', Validators.required],
   });
 
   constructor() {
@@ -67,6 +70,79 @@ export class LoginPageComponent {
     });
   }
 
+  ngAfterViewInit(): void {
+    // Password managers often autofill after first paint without updating reactive form state.
+    this.scheduleAutofillSync();
+  }
+
+  ngOnDestroy(): void {
+    for (const timeoutId of this.autofillSyncTimeouts) {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  private scheduleAutofillSync(): void {
+    for (const delayMs of [0, 100, 300, 800, 1500]) {
+      const timeoutId = setTimeout(() => {
+        this.syncAutofillFromDom();
+        this.cdr.markForCheck();
+      }, delayMs);
+      this.autofillSyncTimeouts.push(timeoutId);
+    }
+  }
+
+  /** Keeps reactive form values aligned when the browser autofills credentials. */
+  onCredentialInput(): void {
+    this.syncAutofillFromDom();
+    this.cdr.markForCheck();
+  }
+
+  onAutofillAnimation(event: AnimationEvent): void {
+    if (event.animationName.endsWith('login-autofill-start')) {
+      this.syncAutofillFromDom();
+      this.cdr.markForCheck();
+    }
+  }
+
+  private getCredentialInputs(): {
+    usernameInput: HTMLInputElement | null;
+    passwordInput: HTMLInputElement | null;
+  } {
+    return {
+      usernameInput: this.host.nativeElement.querySelector(
+        'input[formcontrolname="username"]',
+      ) as HTMLInputElement | null,
+      passwordInput: this.host.nativeElement.querySelector(
+        'input[formcontrolname="password"]',
+      ) as HTMLInputElement | null,
+    };
+  }
+
+  /** Browsers may paint autofill without exposing input.value to JavaScript yet. */
+  private isBrowserAutofilled(input: HTMLInputElement): boolean {
+    try {
+      return input.matches(':-webkit-autofill') || input.matches(':autofill');
+    } catch {
+      return false;
+    }
+  }
+
+  private syncAutofillFromDom(): void {
+    const { usernameInput, passwordInput } = this.getCredentialInputs();
+    if (!usernameInput || !passwordInput) {
+      return;
+    }
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    if (username && username !== this.form.controls.username.value) {
+      this.form.controls.username.setValue(username);
+    }
+    if (password && password !== this.form.controls.password.value) {
+      this.form.controls.password.setValue(password);
+    }
+  }
+
   /**
    * Right-panel art from `apps/nuxeo-ui/public/images/Login-background.svg`.
    */
@@ -76,42 +152,21 @@ export class LoginPageComponent {
 
   protected readonly heroImagePath = '/images/Login-background.svg';
 
-  continueFromUsername(): void {
-    const ctrl = this.form.controls.username;
-    ctrl.markAsTouched();
-    if (ctrl.invalid) {
-      return;
-    }
-    this.form.controls.password.setValidators(Validators.required);
-    this.form.controls.password.updateValueAndValidity();
-    this.step.set('credentials');
-  }
-
-  backToUsername(): void {
-    this.step.set('username');
-    this.form.controls.password.setValue('');
-    this.form.controls.password.clearValidators();
-    this.form.controls.password.updateValueAndValidity();
-    this.form.controls.password.markAsUntouched();
-  }
-
-  onFormSubmit(): void {
-    if (this.step() === 'username') {
-      this.continueFromUsername();
-      return;
-    }
-    this.submit();
-  }
-
   submit(): void {
-    if (this.form.invalid || this.submitting()) {
+    this.syncAutofillFromDom();
+    const { username, password } = this.readCredentials();
+    this.form.controls.username.setValue(username);
+    this.form.controls.password.setValue(password);
+
+    if (!username || !password || this.submitting()) {
+      this.form.markAllAsTouched();
       return;
     }
     this.submitting.set(true);
-    const { username, password, remember } = this.form.getRawValue();
-    localStorage.setItem(LAST_USER_KEY, username.trim());
+    localStorage.setItem(LAST_USER_KEY, username);
 
-    this.auth.login(username, password, remember).subscribe({
+    // Web UI uses a server cookie session; do not persist credentials in localStorage.
+    this.auth.login(username, password, false).subscribe({
       next: () => {
         this.submitting.set(false);
         void this.router.navigateByUrl('/dashboard');
@@ -127,14 +182,32 @@ export class LoginPageComponent {
     this.auth.startSamlLogin(endpoint);
   }
 
-  /** Primary button enabled state per step. */
-  primaryDisabled(): boolean {
+  submitDisabled(): boolean {
     if (this.submitting()) {
       return true;
     }
-    if (this.step() === 'username') {
-      return this.form.controls.username.invalid;
+    return !this.hasValidCredentials();
+  }
+
+  private hasValidCredentials(): boolean {
+    const { username, password } = this.readCredentials();
+    if (!username) {
+      return false;
     }
-    return this.form.invalid;
+    if (password) {
+      return true;
+    }
+    const { passwordInput } = this.getCredentialInputs();
+    return passwordInput !== null && this.isBrowserAutofilled(passwordInput);
+  }
+
+  private readCredentials(): { username: string; password: string } {
+    const fromForm = this.form.getRawValue();
+    const { usernameInput, passwordInput } = this.getCredentialInputs();
+
+    return {
+      username: (fromForm.username || usernameInput?.value || '').trim(),
+      password: fromForm.password || passwordInput?.value || '',
+    };
   }
 }

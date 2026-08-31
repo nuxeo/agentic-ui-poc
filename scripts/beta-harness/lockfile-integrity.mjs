@@ -49,7 +49,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 const lockIndex = args.indexOf('--lock');
@@ -74,6 +74,24 @@ if (!lock.packages) {
 const entries = lock.packages;
 const problems = [];
 let checked = 0;
+
+/**
+ * Packages force-resolved by `overrides`.
+ *
+ * Read from the `package.json` beside the lock, because npm does not record `overrides` in
+ * the lockfile — the root `packages[""]` entry omits it, so reading from there silently
+ * yielded an empty set and every override still reported as a defect.
+ */
+const manifestPath = resolve(dirname(lockPath), 'package.json');
+let overriddenNames = new Set();
+try {
+  overriddenNames = collectOverriddenNames(
+    JSON.parse(await readFile(manifestPath, 'utf8')).overrides ?? {},
+  );
+} catch {
+  // No manifest beside the lock (a bare fixture): treat nothing as overridden, which is
+  // the strict reading rather than the permissive one.
+}
 
 /** `semver` ships with npm's own tree; use it when present, never require it. */
 let semver = null;
@@ -112,7 +130,7 @@ for (const [path, entry] of Object.entries(entries)) {
         continue;
       }
       const actual = entries[found].version;
-      if (actual && !satisfiesSpec(actual, spec)) {
+      if (actual && !satisfiesSpec(actual, spec) && !isOverridden(name)) {
         problems.push({
           dependent: path || '<root>',
           missing: name,
@@ -122,6 +140,39 @@ for (const [path, entry] of Object.entries(entries)) {
       }
     }
   }
+}
+
+/**
+ * Is this package force-resolved by an `overrides` entry in `package.json`?
+ *
+ * An override exists precisely to install a version some dependency did not ask for —
+ * `main`'s block pins 21 transitive packages to patched releases for CVEs — so the
+ * resulting range violation is the override working, not a broken lock. Reporting it as
+ * "unresolvable" made 24 deliberate security pins look like corruption, which is how a
+ * gate teaches people that its output is noise.
+ *
+ * Nested override forms (`{ "@angular/build": { "vite": "6.4.3" } }`) are flattened, since
+ * the effect on the resolved version is the same.
+ *
+ * @param {string} name
+ */
+function isOverridden(name) {
+  return overriddenNames.has(name);
+}
+
+/** @returns {Set<string>} every package named anywhere in `overrides`, at any nesting */
+function collectOverriddenNames(overrides) {
+  const names = new Set();
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    for (const [key, value] of Object.entries(node)) {
+      // A key is a package name unless it is the `.` self-reference npm allows.
+      if (key !== '.') names.add(key);
+      if (value && typeof value === 'object') walk(value);
+    }
+  };
+  walk(overrides);
+  return names;
 }
 
 /**

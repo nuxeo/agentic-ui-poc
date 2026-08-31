@@ -34,15 +34,19 @@ describe('AuthService poweruser access', () => {
     service.login('poweruser01', 'secret', false).subscribe();
 
     httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
-    const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
-    req.flush({
-      id: 'poweruser01',
-      properties: {
-        username: 'poweruser01',
-        groups: ['members', 'powerusers'],
-      },
-      isAdministrator: false,
-    });
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
+      .flush({
+        id: 'poweruser01',
+        properties: {
+          username: 'poweruser01',
+          groups: ['members', 'powerusers'],
+        },
+        isAdministrator: false,
+      });
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({ id: 'poweruser01' });
 
     expect(service.isPowerUser()).toBe(true);
     expect(service.isAdministrator()).toBe(false);
@@ -63,6 +67,9 @@ describe('AuthService poweruser access', () => {
       },
       isAdministrator: false,
     });
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({ id: 'member01' });
 
     expect(service.isPowerUser()).toBe(false);
     expect(service.hasAdministrationAccess()).toBe(false);
@@ -123,6 +130,9 @@ describe('AuthService poweruser access', () => {
         },
         isAdministrator: true,
       });
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({ id: 'test-user' });
 
     expect(hydrated.username()).toBe('test-user');
     mock.verify();
@@ -187,6 +197,9 @@ describe('AuthService poweruser access', () => {
         properties: { username: 'test.user@gmail.com', groups: ['members'] },
         isAdministrator: false,
       });
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({ id: 'test-user' });
 
     expect(hydrated.isAuthenticated()).toBe(true);
     expect(hydrated.username()).toBe('test-user');
@@ -199,6 +212,7 @@ describe('AuthService poweruser access', () => {
     const clipboardTarget = TestBed.inject(ClipboardTargetService);
 
     selection.toggle('doc-1', 'Doc 1');
+    selection.setClearOnlyMode(true);
     browseContext.setFromNuxeoPath('/default-domain/workspaces/demo');
     clipboardTarget.setTarget({
       uid: 'folder-1',
@@ -218,10 +232,14 @@ describe('AuthService poweruser access', () => {
         properties: { username: 'member01', groups: ['members'] },
         isAdministrator: false,
       });
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({ id: 'member01' });
 
     service.logout();
 
     expect(selection.selectedCount()).toBe(0);
+    expect(selection.clearOnlyMode()).toBe(false);
     expect(browseContext.contextPath()).toBe('/');
     expect(clipboardTarget.target()).toBeNull();
   });

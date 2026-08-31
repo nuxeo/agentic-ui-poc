@@ -288,6 +288,7 @@ label that renders.
 | `app.rules.isInClipboard` | The focused document is in the clipboard           |
 | `app.rules.hasVersion`    | The focused document has at least one version      |
 | `app.rules.isAiEnabled`   | The AI feature flag is on                          |
+| `app.rules.isNote`        | The focused document is a Note                     |
 | `app.rules.isNotBusy`     | None of the named operations is in flight          |
 
 Only the positive form of each is registered. The negative half is an ordinary
@@ -496,7 +497,7 @@ without restating the list.
 
 Registered by `PACKAGED_DOCUMENT_TOOLBAR_ACTIONS` in
 `libs/shared/extensions/src/lib/packaged-actions.ts`, rendered by the header of
-`/#/doc/:uid`. Sixteen descriptors, which is more controls than a customer ever
+`/#/doc/:uid`. Seventeen descriptors, which is more controls than a customer ever
 sees at once: the toggles are mutually exclusive pairs, and every entry is gated.
 
 `overflow: true` puts an entry behind the **More actions** menu; the rest are
@@ -505,7 +506,8 @@ so `slots.toolbar` can move a packaged action between the two.
 
 | ID                                | Label                 | Icon                   | Order | Overflow | Shown when                              |
 | --------------------------------- | --------------------- | ---------------------- | ----- | -------- | --------------------------------------- |
-| `app.toolbar.edit`                | Edit                  | `edit`                 | 10    | no       | not trashed and `app.rules.canWrite`    |
+| `app.toolbar.edit`                | Edit                  | `edit`                 | 10    | no       | not trashed, writable and not a Note    |
+| `app.toolbar.editProperties`      | Edit properties       | `edit`                 | 10    | no       | not trashed, writable and a Note        |
 | `app.toolbar.addToCollection`     | Add to collection     | `library_add`          | 20    | no       | not trashed                             |
 | `app.toolbar.delete`              | Delete                | `delete`               | 30    | no       | not trashed and `app.rules.canRemove`   |
 | `app.toolbar.lock`                | Lock                  | `lock`                 | 40    | no       | not trashed, writable and not locked    |
