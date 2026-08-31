@@ -260,8 +260,14 @@ for (const p of state.phases ?? []) {
   // Passing gates, but possibly against code that no longer exists. A phase read
   // `complete` off a gate report from days and dozens of commits earlier, which is
   // the same false-completion this script exists to catch wearing a green hat.
-  if (p.evidence?.gate) {
-    const staleness = await checkRecency(p.evidence.gate);
+  // Against the re-gate when there is one, because that is the run that speaks to the
+  // current code; the original citation is a historical record of what was run at sign-off
+  // and is deliberately never replaced. Checking the original instead produced a `records
+  // no commit` warning that could never be cleared — those reports predate the field and
+  // cannot be retrofitted — and an uncleanable warning is one people learn to skip past.
+  const recencyRef = p.evidence?.regate ?? p.evidence?.gate;
+  if (recencyRef) {
+    const staleness = await checkRecency(recencyRef);
     if (staleness) {
       row.stale = staleness.summary;
       problems.push({ phase: p.id, severity: staleness.severity, message: staleness.message });
