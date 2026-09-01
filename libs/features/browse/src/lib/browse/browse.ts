@@ -612,23 +612,19 @@ export class BrowseComponent {
    * Registered from the component rather than from `provideSatoriExtensions`
    * because each handler closes over this instance, and withdrawn on destroy for
    * the same reason: a handler left registered keeps a destroyed component
-   * reachable and would run against dead state.
+   * reachable and would run against dead state. Withdrawing the registration
+   * rather than the ids is what leaves a customer's handler for the same id
+   * untouched.
    */
   private registerContextMenuHandlers(): void {
-    const ids = [
-      'app.contextMenu.share',
-      'app.contextMenu.subscribe',
-      'app.contextMenu.unsubscribe',
-      'app.contextMenu.export',
-    ];
-    this.actionRegistry.register({
+    const registration = this.actionRegistry.registerPackaged({
       'app.contextMenu.share': { execute: () => this.openShareDialog() },
       'app.contextMenu.subscribe': { execute: () => this.toggleNotify() },
       'app.contextMenu.unsubscribe': { execute: () => this.toggleNotify() },
       'app.contextMenu.export': { execute: () => this.openExportDialog() },
     });
     this.destroyRef.onDestroy(() => {
-      this.actionRegistry.unregister(ids);
+      registration.unregister();
       this.ruleContext.flags.set({});
     });
   }

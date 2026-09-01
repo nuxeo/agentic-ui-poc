@@ -121,45 +121,73 @@ export interface ExtensionActionHandler {
 }
 
 /**
+ * What one call to {@link ExtensionActionRegistry.register} or
+ * {@link ExtensionActionRegistry.registerPackaged} added, and the only way to
+ * take it back.
+ *
+ * Withdrawal is by registration rather than by id because an id is shared: the
+ * packaged toolbar and a customer library both register `app.toolbar.delete`,
+ * and either withdrawing "the handlers for these ids" would delete the other's.
+ */
+export interface ExtensionActionRegistration {
+  /** Withdraw exactly the handlers this call added. Idempotent. */
+  unregister(): void;
+}
+
+/**
  * Handlers, keyed by the id a descriptor names.
  *
  * Separate from {@link ExtensionSlotRegistry} on purpose: *where* an action
  * appears is Layer 1 configuration, and *what it does* is Layer 2 code. Keeping
  * them apart is what lets a manifest move an action between the toolbar and the
  * overflow menu without knowing anything about its implementation.
+ *
+ * Two tiers, because arrival order cannot decide precedence here. A customer
+ * registers from an `APP_INITIALIZER`, as the extension reference tells them to,
+ * while a packaged surface registers handlers closing over a component instance
+ * in `ngOnInit` — so the packaged registration is always the *later* one, and a
+ * single last-wins map would silently outrank every customer override of a
+ * packaged id. {@link register} is the customer tier and always wins;
+ * {@link registerPackaged} supplies the behaviour used when nobody has.
  */
 @Injectable({ providedIn: 'root' })
 export class ExtensionActionRegistry {
-  private readonly handlers = new Map<string, ExtensionActionHandler>();
+  private readonly overrides = new Map<string, ExtensionActionHandler[]>();
+  private readonly packaged = new Map<string, ExtensionActionHandler[]>();
 
   /**
    * Add or replace handlers. Later registration wins, which is how a customer
-   * library replaces a packaged action's behaviour without forking.
+   * library replaces a packaged action's behaviour without forking, and it
+   * outranks {@link registerPackaged} whenever either was called.
    */
-  register(handlers: Readonly<Record<string, ExtensionActionHandler>>): void {
-    for (const [id, handler] of Object.entries(handlers)) {
-      this.handlers.set(id, handler);
-    }
+  register(
+    handlers: Readonly<Record<string, ExtensionActionHandler>>,
+  ): ExtensionActionRegistration {
+    return this.add(this.overrides, handlers);
   }
 
   /**
-   * Withdraw handlers.
+   * Add handlers for the behaviour this build ships, outranked by any
+   * {@link register} call.
    *
-   * A component that registers handlers closing over itself must call this when
-   * it is destroyed, or the registry keeps a destroyed component reachable and
-   * the next invocation runs against dead state.
+   * For a packaged surface registering handlers that close over a component
+   * instance: withdraw the returned registration when the component is
+   * destroyed, or the registry keeps a destroyed component reachable and the
+   * next invocation runs against dead state.
    */
-  unregister(ids: readonly string[]): void {
-    for (const id of ids) this.handlers.delete(id);
+  registerPackaged(
+    handlers: Readonly<Record<string, ExtensionActionHandler>>,
+  ): ExtensionActionRegistration {
+    return this.add(this.packaged, handlers);
   }
 
   has(id: string): boolean {
-    return this.handlers.has(id);
+    return this.resolve(id) !== undefined;
   }
 
   /** Every registered id, for the reference doc and for diagnostics. */
   registeredActionIds(): readonly string[] {
-    return [...this.handlers.keys()].sort();
+    return [...new Set([...this.overrides.keys(), ...this.packaged.keys()])].sort();
   }
 
   /**
@@ -170,9 +198,44 @@ export class ExtensionActionRegistry {
    * click on it should be inert, not a crash in the shell.
    */
   execute(descriptor: ExtensionActionDescriptor, context: ExtensionRuleContext): boolean {
-    const handler = this.handlers.get(descriptor.action ?? descriptor.id);
+    const handler = this.resolve(descriptor.action ?? descriptor.id);
     if (!handler) return false;
     handler.execute(context);
     return true;
+  }
+
+  private add(
+    tier: Map<string, ExtensionActionHandler[]>,
+    handlers: Readonly<Record<string, ExtensionActionHandler>>,
+  ): ExtensionActionRegistration {
+    const added = Object.entries(handlers);
+    for (const [id, handler] of added) {
+      const registered = tier.get(id);
+      if (registered) registered.push(handler);
+      else tier.set(id, [handler]);
+    }
+    return { unregister: () => this.remove(tier, added) };
+  }
+
+  /**
+   * Within a tier the most recent registration answers, so withdrawing an
+   * earlier one must leave the later one in place — hence removing this
+   * handler rather than the id.
+   */
+  private remove(
+    tier: Map<string, ExtensionActionHandler[]>,
+    added: readonly [string, ExtensionActionHandler][],
+  ): void {
+    for (const [id, handler] of added) {
+      const registered = tier.get(id);
+      const at = registered?.lastIndexOf(handler) ?? -1;
+      if (!registered || at === -1) continue;
+      registered.splice(at, 1);
+      if (registered.length === 0) tier.delete(id);
+    }
+  }
+
+  private resolve(id: string): ExtensionActionHandler | undefined {
+    return this.overrides.get(id)?.at(-1) ?? this.packaged.get(id)?.at(-1);
   }
 }

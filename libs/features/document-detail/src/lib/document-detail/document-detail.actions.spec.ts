@@ -388,6 +388,40 @@ describe('DocumentDetailComponent — toolbar actions and dialogs', () => {
       expect(mockDetailService.lockDocument).not.toHaveBeenCalled();
     });
 
+    it('runs a customer handler registered under a packaged id in preference to ours', async () => {
+      const customerRuns: string[] = [];
+      TestBed.inject(ExtensionActionRegistry).register({
+        'app.toolbar.lock': { execute: () => customerRuns.push('acme') },
+      });
+
+      await build();
+      component.runToolbarAction(offered('app.toolbar.lock'));
+
+      // Layer 2's whole promise: a customer replaces a packaged action's behaviour
+      // by registering under its published id, without forking.
+      expect(customerRuns).toEqual(['acme']);
+      expect(mockDetailService.lockDocument).not.toHaveBeenCalled();
+    });
+
+    it('leaves a customer handler registered under a packaged id alive after destroy', async () => {
+      const customerRuns: string[] = [];
+      TestBed.inject(ExtensionActionRegistry).register({
+        'app.toolbar.lock': { execute: () => customerRuns.push('acme') },
+      });
+
+      await build();
+      const lock = offered('app.toolbar.lock');
+      const context = ruleContext.context();
+
+      fixture.destroy();
+
+      // Withdrawing our own handlers must not take the customer's with them, or the
+      // first navigation away from a document silently deletes their override.
+      expect(actionRegistry.execute(lock, context)).toBe(true);
+      expect(customerRuns).toEqual(['acme']);
+      expect(mockDetailService.lockDocument).not.toHaveBeenCalled();
+    });
+
     it('reports Delete as disabled while a trash operation is in flight', async () => {
       await build();
       component.actionInProgress.set('trash');

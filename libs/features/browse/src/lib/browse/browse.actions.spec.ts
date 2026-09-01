@@ -1129,6 +1129,20 @@ describe('BrowseComponent — actions', () => {
     expect(TestBed.inject(ExtensionRuleContextService).flags()).toEqual({});
   });
 
+  it('keeps a customer handler for a packaged context-menu id when destroyed', () => {
+    const registry = TestBed.inject(ExtensionActionRegistry);
+    const context = TestBed.inject(ExtensionRuleContextService).context();
+    const customerRuns: string[] = [];
+    registry.register({ 'app.contextMenu.share': { execute: () => customerRuns.push('acme') } });
+
+    fixture.destroy();
+
+    // Ours goes; theirs stays. Withdrawing by id alone deletes both.
+    expect(registry.execute({ id: 'app.contextMenu.share', label: 'Share' }, context)).toBe(true);
+    expect(customerRuns).toEqual(['acme']);
+    expect(dialogOpen).not.toHaveBeenCalled();
+  });
+
   it('publishes the folder subscription state so the Notify Me rule can read it', () => {
     const ruleContext = TestBed.inject(ExtensionRuleContextService);
     component.currentDoc.set(
