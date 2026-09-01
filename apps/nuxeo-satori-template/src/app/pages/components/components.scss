@@ -11,7 +11,10 @@
   --tpl-code-bg: var(--mat-sys-inverse-surface, #263238);
   --tpl-code-fg: var(--mat-sys-inverse-primary, #aed581);
   --tpl-status-success: var(--mat-sys-tertiary, #388e3c);
-  --tpl-status-warning: var(--mat-sys-error, #f57c00);
+  // See the note in `contracts-page.component.scss`: `--mat-sys-error` fuses warning to
+  // error permanently. `--shell-warn-fg` is declared beside the rest of the warn family
+  // in this app's `styles.scss`.
+  --tpl-status-warning: var(--shell-warn-fg, #f57c00);
   --tpl-status-info: var(--mat-sys-primary, #1976d2);
   --tpl-badge-bg: var(--mat-sys-surface-variant, #e0e0e0);
   --tpl-badge-fg: var(--mat-sys-on-surface-variant, #424242);

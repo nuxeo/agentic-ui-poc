@@ -35,6 +35,8 @@
   --shell-nav-active: #ddf4ff;
   --shell-warn-bg: #fff8c5;
   --shell-warn-border: #d4a72c;
+  /* Foreground for text and icons that mean "warning", completing the pair above. */
+  --shell-warn-fg: #f57c00;
 }
 
 * {
