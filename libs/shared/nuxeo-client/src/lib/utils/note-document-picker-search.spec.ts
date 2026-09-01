@@ -1,16 +1,13 @@
 import {
   NOTE_DOCUMENT_PICKER_PROVIDER,
   buildNoteDocumentPickerNxql,
-  escapeNxqlLiteral,
   filterInsertablePictureDocuments,
   hasInsertablePictureBlob,
 } from './note-document-picker-search';
 import type { NuxeoDocument } from '../models/document.model';
 
 /** A complete `NuxeoDocument`, so a fixture states only the fields its test is about. */
-function pictureDoc(
-  overrides: Partial<NuxeoDocument> & Pick<NuxeoDocument, 'uid'>,
-): NuxeoDocument {
+function pictureDoc(overrides: Partial<NuxeoDocument> & Pick<NuxeoDocument, 'uid'>): NuxeoDocument {
   return {
     title: 'Document',
     type: 'File',
@@ -38,9 +35,18 @@ describe('note-document-picker-search', () => {
     expect(query).toContain("file:content/name LIKE '%beach%'");
   });
 
-  it('escapeNxqlLiteral escapes single quotes', () => {
-    expect(escapeNxqlLiteral("O'Brien")).toBe("O''Brien");
-    expect(buildNoteDocumentPickerNxql("O'Brien")).toContain("O''Brien");
+  /**
+   * The local copy of the escape this module used to carry doubled the quote and
+   * ignored backslashes entirely, so `\' OR 1 = 1 OR '` broke out of the LIKE literal.
+   * It now delegates to the shared helper.
+   */
+  it('buildNoteDocumentPickerNxql escapes quotes and backslashes in the search term', () => {
+    expect(buildNoteDocumentPickerNxql("O'Brien")).toContain(
+      String.raw`dc:title LIKE '%O\'Brien%'`,
+    );
+    expect(buildNoteDocumentPickerNxql(String.raw`\' OR 1 = 1 OR '`)).toContain(
+      String.raw`dc:title LIKE '%\\\' OR 1 = 1 OR \'%'`,
+    );
   });
 
   it('filterInsertablePictureDocuments keeps only docs with file:content.data', () => {

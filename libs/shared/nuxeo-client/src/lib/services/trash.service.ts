@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 
 import { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
+import { escapeNxqlLiteral } from '../utils/nxql.utils';
 import { NuxeoApiBase } from './nuxeo-api-base';
 
 export interface SavedSearch {
@@ -31,13 +32,13 @@ export class TrashService {
     const clauses: string[] = ['ecm:isTrashed = 1', "ecm:mixinType != 'HiddenInNavigation'"];
 
     if (params.fullText?.trim()) {
-      clauses.push(`ecm:fulltext = '${params.fullText.trim()}'`);
+      clauses.push(`ecm:fulltext = '${escapeNxqlLiteral(params.fullText.trim())}'`);
     }
     if (params.path?.trim() && params.path !== '/') {
-      clauses.push(`ecm:path STARTSWITH '${params.path.trim()}'`);
+      clauses.push(`ecm:path STARTSWITH '${escapeNxqlLiteral(params.path.trim())}'`);
     }
     if (params.author?.trim()) {
-      clauses.push(`dc:creator = '${params.author.trim()}'`);
+      clauses.push(`dc:creator = '${escapeNxqlLiteral(params.author.trim())}'`);
     }
     if (params.sizeRanges?.length) {
       const sizeClauses = params.sizeRanges.map((r) => this.sizeRangeToClause(r)).filter(Boolean);
@@ -68,7 +69,7 @@ export class TrashService {
   }
 
   getPathSuggestions(parentPath: string): Observable<NuxeoDocumentList> {
-    const safePath = parentPath.replace(/\/+$/, '') || '/';
+    const safePath = escapeNxqlLiteral(parentPath.replace(/\/+$/, '') || '/');
     const query =
       `SELECT * FROM Document WHERE ecm:path STARTSWITH '${safePath}' ` +
       `AND ecm:primaryType IN ('Domain', 'WorkspaceRoot', 'Workspace', 'Folder', 'OrderedFolder', 'SectionRoot', 'Section', 'TemplateRoot') ` +
@@ -104,7 +105,9 @@ export class TrashService {
         id: string;
         title: string;
         params: Record<string, unknown>;
-      }>(this.api.apiUrl('/nuxeo/api/v1/search/saved'), body, { headers: { 'Content-Type': 'application/json' } })
+      }>(this.api.apiUrl('/nuxeo/api/v1/search/saved'), body, {
+        headers: { 'Content-Type': 'application/json' },
+      })
       .pipe(
         map((res) => ({
           uid: res.id ?? '',
@@ -130,7 +133,9 @@ export class TrashService {
         id: string;
         title: string;
         params: Record<string, unknown>;
-      }>(this.api.apiUrl(`/nuxeo/api/v1/search/saved/${uid}`), body, { headers: { 'Content-Type': 'application/json' } })
+      }>(this.api.apiUrl(`/nuxeo/api/v1/search/saved/${uid}`), body, {
+        headers: { 'Content-Type': 'application/json' },
+      })
       .pipe(
         map((res) => ({
           uid: res.id ?? uid,
