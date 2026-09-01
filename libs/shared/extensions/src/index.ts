@@ -34,6 +34,7 @@ export {
   ExtensionActionRegistry,
   type ExtensionActionDescriptor,
   type ExtensionActionHandler,
+  type ExtensionActionRegistration,
   type ExtensionColumnDescriptor,
   type ExtensionRouteDescriptor,
   type ExtensionTabDescriptor,
@@ -50,6 +51,12 @@ export {
   provideExtensionRoutes,
   type ExtensionRoutesOptions,
 } from './lib/extension-routes';
+export {
+  extensionRoutePathRejection,
+  partitionExtensionRouteDescriptors,
+  type PartitionedExtensionRoutes,
+  type RejectedExtensionRoute,
+} from './lib/extension-route-paths';
 export { ExtensionRuleContextService } from './lib/extension-rule-context.service';
 export {
   ExtensionComponentRegistry,

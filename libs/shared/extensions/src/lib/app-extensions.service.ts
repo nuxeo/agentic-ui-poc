@@ -9,6 +9,11 @@ import {
   type ResolvedExtensionConfig,
 } from './extension-config';
 import { DOCUMENT_RULE_EVALUATORS } from './document-rules';
+import type { ExtensionRouteDescriptor } from './extension-actions';
+import {
+  partitionExtensionRouteDescriptors,
+  type RejectedExtensionRoute,
+} from './extension-route-paths';
 import {
   EMPTY_EXTENSION_RULE_CONTEXT,
   ExtensionRuleRegistry,
@@ -20,7 +25,7 @@ import {
   ExtensionSlotRegistry,
   type ExtensionSlotOverrides,
 } from './extension-slot-registry.service';
-import type { ExtensionElement, ExtensionSlotId } from './extension-slots';
+import { EXTENSION_SLOTS, type ExtensionElement, type ExtensionSlotId } from './extension-slots';
 import { SURFACE_RULE_EVALUATORS } from './surface-rules';
 
 /**
@@ -50,6 +55,21 @@ export class AppExtensionsService {
 
   /** Layer names referenced but not resolvable — surfaced rather than swallowed. */
   readonly missingLayers = computed<readonly string[]>(() => this.resolved().missing);
+
+  /**
+   * `routes` entries dropped because the router would not have matched their path.
+   *
+   * Same channel as {@link missingLayers}, for the same reason: an entry that
+   * disappears without a word is a manifest you debug by bisection. Recomputes with
+   * the manifest signal, which is where a customer-authored path comes from; the
+   * packaged descriptors registered at bootstrap are compiled in and valid.
+   */
+  readonly invalidRoutes = computed<readonly RejectedExtensionRoute[]>(
+    () =>
+      partitionExtensionRouteDescriptors(
+        this.resolve<ExtensionRouteDescriptor>(EXTENSION_SLOTS.routes),
+      ).rejected,
+  );
 
   private readonly overrides = computed<ExtensionSlotOverrides>(() => {
     const config = this.config();

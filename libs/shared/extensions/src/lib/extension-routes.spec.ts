@@ -5,7 +5,8 @@ import { RouterTestingHarness } from '@angular/router/testing';
 
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 
-import { provideExtensionRoutes } from './extension-routes';
+import { AppExtensionsService } from './app-extensions.service';
+import { extensionRoutes, provideExtensionRoutes } from './extension-routes';
 import { provideSatoriExtensions } from './provide-satori-extensions';
 
 @Component({ standalone: true, selector: 'lib-test-home', template: 'PACKAGED HOME' })
@@ -169,5 +170,102 @@ describe('provideExtensionRoutes', () => {
     harness.detectChanges();
 
     expect(harness.routeNativeElement?.ownerDocument.body.textContent).toContain('PACKAGED HOME');
+  });
+});
+
+/**
+ * `Router.resetConfig` runs `validateConfig` only under `ngDevMode`, and one of its
+ * rules is `path cannot start with a slash`. A manifest writing `"path": "/reports"`
+ * therefore threw a `RuntimeError` out of the registration effect in development, and
+ * in a production build was accepted as a route that can never match — neither of
+ * which is the tolerant-manifest behaviour every other config loader promises.
+ */
+describe('extension route path validation', () => {
+  const REJECTED: readonly unknown[] = ['/reports', '', 'reports?tab=1', 'reports#top', 'a b', 7];
+
+  it.each(REJECTED)('drops a descriptor whose path is %o', (path) => {
+    expect(
+      extensionRoutes([{ id: 'acme.routes.bad', path } as { id: string; path: string }]),
+    ).toEqual([]);
+  });
+
+  it('keeps the paths Angular can actually match', () => {
+    const routes = extensionRoutes([
+      { id: 'acme.routes.reports', path: 'reports' },
+      { id: 'acme.routes.report', path: 'reports/:id' },
+    ]);
+
+    expect(routes.map((route) => route.path)).toEqual(['reports', 'reports/:id']);
+  });
+
+  /**
+   * The load-bearing half. Before the validation, `resetConfig` threw on the invalid
+   * entry and *nothing* in the batch registered, so one typo in a manifest took the
+   * customer's working routes down with it.
+   */
+  it('registers a valid sibling of an invalid entry', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter(
+          [
+            {
+              path: '',
+              component: ShellComponent,
+              children: [{ path: '', component: HomeComponent }],
+            },
+          ],
+          withComponentInputBinding(),
+        ),
+        provideManifest({
+          slots: {
+            routes: [
+              { id: 'acme.routes.bad', path: '/reports' },
+              {
+                id: 'acme.routes.reports',
+                path: 'reports',
+                componentId: 'acme.components.reports',
+              },
+            ],
+          },
+        }),
+        provideSatoriExtensions({ components: { 'acme.components.reports': ReportsComponent } }),
+        provideExtensionRoutes(),
+      ],
+    });
+
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/reports');
+    await harness.fixture.whenStable();
+    harness.detectChanges();
+
+    expect(harness.routeNativeElement?.ownerDocument.body.textContent).toContain(
+      'CONTRIBUTED REPORTS PAGE',
+    );
+  });
+
+  /**
+   * Dropping the entry silently would be its own failure: the customer would see a
+   * route that does nothing and no way to find out why. Reported on the same service
+   * and in the same shape as `missingLayers`.
+   */
+  it('reports the rejected entry on AppExtensionsService', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideManifest({
+          slots: {
+            routes: [
+              { id: 'acme.routes.bad', path: '/reports' },
+              { id: 'acme.routes.reports', path: 'reports' },
+            ],
+          },
+        }),
+        provideSatoriExtensions({}),
+      ],
+    });
+
+    const invalid = TestBed.inject(AppExtensionsService).invalidRoutes();
+
+    expect(invalid.map((entry) => entry.id)).toEqual(['acme.routes.bad']);
+    expect(invalid[0].reason).toContain('/reports');
   });
 });

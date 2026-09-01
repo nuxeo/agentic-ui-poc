@@ -9,6 +9,7 @@ import { Router, type Route, type Routes } from '@angular/router';
 import { AppExtensionsService } from './app-extensions.service';
 import type { ExtensionRouteDescriptor } from './extension-actions';
 import { ExtensionOutletComponent } from './extension-outlet.component';
+import { partitionExtensionRouteDescriptors } from './extension-route-paths';
 import { EXTENSION_SLOTS } from './extension-slots';
 
 /**
@@ -27,19 +28,22 @@ const EXTENSION_ROUTE_MARKER = 'satoriExtensionRoute';
  * The component is named by id and resolved from `ExtensionComponentRegistry`,
  * which is what keeps this Layer 1: a manifest places a component that is
  * already compiled in, and contributing a new one is Layer 2.
+ *
+ * A descriptor whose `path` the router would refuse is dropped here rather than
+ * handed to `resetConfig`, which validates only under `ngDevMode` and would
+ * otherwise reject the **whole batch** — one typo taking down a customer's working
+ * routes with it. What was dropped is on `AppExtensionsService.invalidRoutes`.
  */
 export function extensionRoutes(descriptors: readonly ExtensionRouteDescriptor[]): Routes {
-  return descriptors
-    .filter((descriptor) => typeof descriptor.path === 'string')
-    .map((descriptor) => ({
-      path: descriptor.path,
-      component: ExtensionOutletComponent,
-      data: {
-        [EXTENSION_ROUTE_MARKER]: true,
-        componentId: descriptor.componentId ?? descriptor.id,
-        componentInputs: descriptor.inputs ?? {},
-      },
-    }));
+  return partitionExtensionRouteDescriptors(descriptors).accepted.map((descriptor) => ({
+    path: descriptor.path,
+    component: ExtensionOutletComponent,
+    data: {
+      [EXTENSION_ROUTE_MARKER]: true,
+      componentId: descriptor.componentId ?? descriptor.id,
+      componentInputs: descriptor.inputs ?? {},
+    },
+  }));
 }
 
 export interface ExtensionRoutesOptions {
