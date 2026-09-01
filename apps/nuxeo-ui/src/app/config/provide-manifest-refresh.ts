@@ -22,6 +22,29 @@ import { AuthService } from '../auth/auth.service';
  * when the startup attempt failed, also picks up a manifest edited since the
  * last sign-in.
  */
+/** Backoff between manifest attempts, in milliseconds. Three tries over roughly four seconds. */
+const RETRY_DELAYS_MS = [500, 1500, 2000];
+
+/**
+ * Fetch the manifest, retrying only a *failed* request.
+ *
+ * The guard flag used to be set before the fetch resolved, and `loadManifest()` never rejects, so
+ * a single transient 500 or timeout left the whole session on packaged defaults with every Layer 0
+ * and Layer 1 customisation absent — a quieter version of the defect this file was written to fix.
+ *
+ * `unavailable` is not retried: a 404 means the deployment has never saved a manifest, and an
+ * unparseable document will return the same bytes next time. Retrying either would be a request
+ * per attempt for a result that cannot change.
+ */
+async function loadWithRetry(config: AppConfigService): Promise<void> {
+  for (let attempt = 0; ; attempt += 1) {
+    await config.loadManifest();
+    const outcome = config.diagnostics().manifestAttempt;
+    if (outcome !== 'failed' || attempt >= RETRY_DELAYS_MS.length) return;
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
+  }
+}
+
 export function provideManifestRefresh(): Provider[] {
   return [
     {
@@ -29,22 +52,25 @@ export function provideManifestRefresh(): Provider[] {
       // The returned function is invoked outside an injection context, so the
       // effect needs an injector passed explicitly.
       useFactory: (config: AppConfigService, auth: AuthService, injector: Injector) => () => {
-        let loadedForSession = false;
+        let attemptedForSession = false;
 
         effect(
           () => {
             if (!auth.isAuthenticated()) {
-              // Allow the next sign-in to fetch again.
-              loadedForSession = false;
+              // Drop the previous user's manifest rather than only re-arming the guard. Without
+              // this, a next user who cannot read the configuration document inherited the whole
+              // of the previous one's interface, because a failed fetch keeps the value in force.
+              config.resetManifest();
+              attemptedForSession = false;
               return;
             }
 
-            if (loadedForSession) {
+            if (attemptedForSession) {
               return;
             }
 
-            loadedForSession = true;
-            void config.loadManifest();
+            attemptedForSession = true;
+            void loadWithRetry(config);
           },
           { injector },
         );

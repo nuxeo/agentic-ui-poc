@@ -19,9 +19,22 @@ import {
 /** Where a loaded configuration actually came from, so the shell can show it rather than guess. */
 export type AppConfigSource = 'packaged-default' | 'deployed-file' | 'nuxeo-document';
 
+/**
+ * How the most recent manifest attempt ended.
+ *
+ * `manifestSource` cannot answer this: it records where the manifest in force came from, so it
+ * still reads `nuxeo-document` after a later attempt fails, and a caller reading it would conclude
+ * the fetch had succeeded. The distinction between `unavailable` and `failed` is what makes a retry
+ * policy possible — an absent document is a deployment that never saved one and will not start
+ * working, a failed request may.
+ */
+export type AppManifestAttempt = 'not-attempted' | 'applied' | 'unavailable' | 'failed';
+
 export interface AppConfigDiagnostics {
   readonly bootstrapSource: AppConfigSource;
   readonly manifestSource: AppConfigSource;
+  /** Outcome of the most recent {@link AppConfigService.loadManifest} call. */
+  readonly manifestAttempt: AppManifestAttempt;
   /** Human-readable reasons a load fell back, in the order they happened. */
   readonly messages: readonly string[];
 }
@@ -50,8 +63,12 @@ export class AppConfigService {
   private readonly diagnosticsState = signal<AppConfigDiagnostics>({
     bootstrapSource: 'packaged-default',
     manifestSource: 'packaged-default',
+    manifestAttempt: 'not-attempted',
     messages: [],
   });
+
+  /** Incremented per manifest fetch, so a superseded response cannot apply. See `loadManifest`. */
+  private manifestGeneration = 0;
 
   readonly bootstrap = this.bootstrapConfig.asReadonly();
   readonly manifest = this.runtimeManifest.asReadonly();
@@ -98,6 +115,12 @@ export class AppConfigService {
     const config = this.bootstrapConfig();
     const url = `${config.nuxeoApiOrigin}/nuxeo/api/v1/path${config.manifestDocumentPath}`;
 
+    // A logout followed quickly by a sign-in can leave two fetches in flight. Neither is
+    // cancellable from here, so the later one wins by generation rather than by whichever
+    // response happens to land last — otherwise the previous user's manifest could be applied
+    // after the current user's.
+    const generation = ++this.manifestGeneration;
+
     const response = await firstValueFrom(
       this.http
         .get<unknown>(url, {
@@ -108,10 +131,20 @@ export class AppConfigService {
         .pipe(catchError((error: unknown) => of(this.failure(error)))),
     );
 
+    if (generation !== this.manifestGeneration) {
+      // Superseded while in flight. Deliberately records nothing: this answer is about a session
+      // that has already been replaced, so both the manifest and the diagnostics belong to the
+      // newer load.
+      return this.runtimeManifest();
+    }
+
     if (response instanceof ConfigLoadFailure) {
       this.note(
         `runtime manifest not loaded from ${config.manifestDocumentPath}: ${response.reason}`,
       );
+      // A 404 is a deployment that has not saved a manifest — expected, and not worth retrying.
+      // Anything else may be transient.
+      this.setManifestAttempt(response.status === 404 ? 'unavailable' : 'failed');
       return this.runtimeManifest();
     }
 
@@ -126,12 +159,43 @@ export class AppConfigService {
         `runtime manifest document ${config.manifestDocumentPath} has no readable JSON in ` +
           `"${config.manifestDocumentProperty}"`,
       );
+      // The document answered; its content is unusable. Retrying would fetch the same bytes.
+      this.setManifestAttempt('unavailable');
       return this.runtimeManifest();
     }
 
     this.runtimeManifest.set(parsed);
-    this.diagnosticsState.update((current) => ({ ...current, manifestSource: 'nuxeo-document' }));
+    this.diagnosticsState.update((current) => ({
+      ...current,
+      manifestSource: 'nuxeo-document',
+      manifestAttempt: 'applied',
+    }));
     return parsed;
+  }
+
+  /**
+   * Drop the loaded manifest back to the packaged default.
+   *
+   * Called on sign-out. Without it the previous user's manifest stayed in force for the next one
+   * in the same tab, because a failed re-fetch returns the value already held — so a user who
+   * could not read the configuration document inherited the nav, labels and hidden actions of
+   * whoever signed in before them, while diagnostics still claimed `nuxeo-document`.
+   *
+   * Also bumps the generation, so a fetch already in flight for the previous session cannot land
+   * afterwards and reinstate it.
+   */
+  resetManifest(): void {
+    this.manifestGeneration += 1;
+    this.runtimeManifest.set(DEFAULT_APP_RUNTIME_MANIFEST);
+    this.diagnosticsState.update((current) => ({
+      ...current,
+      manifestSource: 'packaged-default',
+      manifestAttempt: 'not-attempted',
+    }));
+  }
+
+  private setManifestAttempt(attempt: AppManifestAttempt): void {
+    this.diagnosticsState.update((current) => ({ ...current, manifestAttempt: attempt }));
   }
 
   /** The active theme definition for a stored or configured theme id. */
@@ -148,7 +212,9 @@ export class AppConfigService {
   private failure(error: unknown): ConfigLoadFailure {
     const status = (error as { status?: unknown } | null)?.status;
     const message = (error as { message?: unknown } | null)?.message;
-    if (typeof status === 'number' && status !== 0) return new ConfigLoadFailure(`HTTP ${status}`);
+    if (typeof status === 'number' && status !== 0) {
+      return new ConfigLoadFailure(`HTTP ${status}`, status);
+    }
     return new ConfigLoadFailure(typeof message === 'string' ? message : 'request failed');
   }
 
@@ -165,5 +231,12 @@ export class AppConfigService {
  * takes the same code path as a successful one and cannot throw past the caller.
  */
 class ConfigLoadFailure {
-  constructor(readonly reason: string) {}
+  /**
+   * `status` is carried alongside the reason so a caller can tell an absent document from a
+   * failed request without parsing the message. `undefined` when the error had no HTTP status.
+   */
+  constructor(
+    readonly reason: string,
+    readonly status?: number,
+  ) {}
 }

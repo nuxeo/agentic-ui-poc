@@ -12,6 +12,8 @@
     <dd>{{ diagnostics().bootstrapSource }}</dd>
     <dt>Manifest</dt>
     <dd>{{ diagnostics().manifestSource }}</dd>
+    <dt>Last manifest fetch</dt>
+    <dd>{{ diagnostics().manifestAttempt }}</dd>
   </dl>
 
   @if (diagnostics().messages.length) {

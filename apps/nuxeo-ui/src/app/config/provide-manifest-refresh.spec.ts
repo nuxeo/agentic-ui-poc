@@ -1,6 +1,6 @@
 import { ApplicationInitStatus, ApplicationRef, Injectable, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AppConfigService } from '@nuxeo-satori/platform/app-config';
+import { AppConfigService, type AppManifestAttempt } from '@nuxeo-satori/platform/app-config';
 
 import { AuthService } from '../auth/auth.service';
 import { provideManifestRefresh } from './provide-manifest-refresh';
@@ -8,10 +8,23 @@ import { provideManifestRefresh } from './provide-manifest-refresh';
 @Injectable()
 class FakeAppConfigService {
   manifestLoads = 0;
+  resets = 0;
+  /** Outcome the fake reports for each successive call, defaulting to `applied`. */
+  outcomes: AppManifestAttempt[] = [];
+
+  private attempt: AppManifestAttempt = 'not-attempted';
+
+  readonly diagnostics = () => ({ manifestAttempt: this.attempt });
 
   loadManifest(): Promise<unknown> {
+    this.attempt = this.outcomes[this.manifestLoads] ?? 'applied';
     this.manifestLoads += 1;
     return Promise.resolve({});
+  }
+
+  resetManifest(): void {
+    this.resets += 1;
+    this.attempt = 'not-attempted';
   }
 }
 
@@ -92,5 +105,41 @@ describe('provideManifestRefresh', () => {
     flush();
 
     expect(config.manifestLoads).toBe(2);
+  });
+
+  it('drops the previous manifest on sign-out, so it cannot carry into the next session', () => {
+    const { config, auth, flush } = setup();
+
+    auth.authenticated.set(true);
+    flush();
+    auth.authenticated.set(false);
+    flush();
+
+    expect(config.resets).toBeGreaterThan(0);
+  });
+
+  it('retries a failed fetch rather than leaving the session on packaged defaults', async () => {
+    const { config, auth, flush } = setup();
+    config.outcomes = ['failed', 'failed', 'applied'];
+
+    auth.authenticated.set(true);
+    flush();
+    // Long enough to cover the first two backoff delays (500ms + 1500ms).
+    await new Promise((resolve) => setTimeout(resolve, 2600));
+
+    expect(config.manifestLoads).toBe(3);
+    expect(config.diagnostics().manifestAttempt).toBe('applied');
+  });
+
+  it('does not retry when the document is simply absent', async () => {
+    const { config, auth, flush } = setup();
+    config.outcomes = ['unavailable'];
+
+    auth.authenticated.set(true);
+    flush();
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    // Retrying a 404 would cost a request per attempt for an answer that cannot change.
+    expect(config.manifestLoads).toBe(1);
   });
 });

@@ -32,4 +32,5 @@ export {
   AppConfigService,
   type AppConfigDiagnostics,
   type AppConfigSource,
+  type AppManifestAttempt,
 } from './lib/app-config.service';

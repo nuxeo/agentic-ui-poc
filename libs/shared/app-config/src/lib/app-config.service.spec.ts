@@ -159,6 +159,48 @@ describe('AppConfigService', () => {
       expect(service.diagnostics().messages[0]).toContain('HTTP 403');
     });
 
+    it('reports a failed request as retryable and an absent document as not', async () => {
+      const failed = service.loadManifest();
+      http.expectOne(MANIFEST_URL).flush('boom', { status: 500, statusText: 'Server Error' });
+      await failed;
+      expect(service.diagnostics().manifestAttempt).toBe('failed');
+
+      const absent = service.loadManifest();
+      http.expectOne(MANIFEST_URL).flush('gone', { status: 404, statusText: 'Not Found' });
+      await absent;
+      expect(service.diagnostics().manifestAttempt).toBe('unavailable');
+    });
+
+    it('ignores a response for a load that has been superseded', async () => {
+      // Two fetches in flight, as a fast logout then sign-in produces. The first answers last and
+      // must not win, or the previous session's manifest lands on the current one.
+      const first = service.loadManifest();
+      const second = service.loadManifest();
+      const [firstReq, secondReq] = http.match(MANIFEST_URL);
+
+      secondReq.flush({ properties: { 'note:note': JSON.stringify({ labels: { a: 'second' } }) } });
+      await second;
+      firstReq.flush({ properties: { 'note:note': JSON.stringify({ labels: { a: 'first' } }) } });
+      await first;
+
+      expect(service.manifest().labels).toEqual({ a: 'second' });
+    });
+
+    it('resetManifest drops back to the packaged default and clears the attempt', async () => {
+      const loaded = service.loadManifest();
+      http
+        .expectOne(MANIFEST_URL)
+        .flush({ properties: { 'note:note': JSON.stringify({ labels: { a: 'b' } }) } });
+      await loaded;
+      expect(service.diagnostics().manifestSource).toBe('nuxeo-document');
+
+      service.resetManifest();
+
+      expect(service.manifest()).toEqual(DEFAULT_APP_RUNTIME_MANIFEST);
+      expect(service.diagnostics().manifestSource).toBe('packaged-default');
+      expect(service.diagnostics().manifestAttempt).toBe('not-attempted');
+    });
+
     it('falls back when the document exists but holds no manifest', async () => {
       const loaded = service.loadManifest();
       http.expectOne(MANIFEST_URL).flush({ properties: { 'dc:title': 'agentic-ui' } });
