@@ -16,8 +16,29 @@ interface TestAction extends ExtensionElement {
   readonly rule?: string;
 }
 
+/** A toolbar descriptor as the action registry sees it — `action` names the handler to run. */
+interface ActionDescriptor extends ExtensionElement {
+  readonly label?: string;
+  readonly action?: string;
+}
+
 function overrides(patch: Partial<ExtensionSlotOverrides>): ExtensionSlotOverrides {
   return { ...NO_EXTENSION_SLOT_OVERRIDES, ...patch };
+}
+
+/**
+ * Manifest additions for one slot, typed as the concrete descriptor.
+ *
+ * `additions` is declared as `ExtensionElement[]`, so an inline literal carrying `action` or
+ * `label` trips excess-property checking. A real manifest carries exactly those extra keys —
+ * `readExtensionConfig` keeps any entry with a string id — so the test needs to express them
+ * without widening the production type.
+ */
+function additionsFor<T extends ExtensionElement>(
+  slot: (typeof EXTENSION_SLOTS)[keyof typeof EXTENSION_SLOTS],
+  entries: readonly T[],
+): Pick<ExtensionSlotOverrides, 'additions'> {
+  return { additions: { [slot]: entries } };
 }
 
 function doc(permissions: string[]): NuxeoDocument {
@@ -237,6 +258,63 @@ describe('ExtensionSlotRegistry', () => {
         { id: 'app.toolbar.delete', rule: 'acme.rules.notInThisBuild' },
       ]);
       expect(registry.resolve<TestAction>(EXTENSION_SLOTS.toolbar)).toHaveLength(1);
+    });
+  });
+
+  describe('a manifest patching a packaged id', () => {
+    it('cannot rebind the action while keeping the packaged label', () => {
+      // The confused deputy this guards against: the user sees a star reading "Add to Favorites"
+      // and deletes the document. The server authorises it, because it really is that user asking.
+      registry.register<ActionDescriptor>(EXTENSION_SLOTS.toolbar, [
+        { id: 'app.toolbar.addToFavorites', label: 'Add to Favorites', action: undefined },
+      ]);
+
+      const [resolved] = registry.resolve<ActionDescriptor>(
+        EXTENSION_SLOTS.toolbar,
+        overrides(
+          additionsFor<ActionDescriptor>(EXTENSION_SLOTS.toolbar, [
+            { id: 'app.toolbar.addToFavorites', action: 'app.toolbar.delete' },
+          ]),
+        ),
+      );
+
+      expect(resolved.label).toBe('Add to Favorites');
+      expect(resolved.action).toBeUndefined();
+    });
+
+    it('still applies the presentation keys it is allowed to patch', () => {
+      registry.register<ActionDescriptor>(EXTENSION_SLOTS.toolbar, [
+        { id: 'app.toolbar.addToFavorites', label: 'Add to Favorites' },
+      ]);
+
+      const [resolved] = registry.resolve<ActionDescriptor>(
+        EXTENSION_SLOTS.toolbar,
+        overrides(
+          additionsFor<ActionDescriptor>(EXTENSION_SLOTS.toolbar, [
+            { id: 'app.toolbar.addToFavorites', label: 'Star it', order: 5 },
+          ]),
+        ),
+      );
+
+      expect(resolved.label).toBe('Star it');
+      expect(resolved.order).toBe(5);
+    });
+
+    it('keeps the action on an id the manifest owns, which is how new behaviour is added', () => {
+      registry.register<ActionDescriptor>(EXTENSION_SLOTS.toolbar, [{ id: 'app.toolbar.delete' }]);
+
+      const resolved = registry.resolve<ActionDescriptor>(
+        EXTENSION_SLOTS.toolbar,
+        overrides(
+          additionsFor<ActionDescriptor>(EXTENSION_SLOTS.toolbar, [
+            { id: 'acme.toolbar.archive', action: 'acme.actions.archive' },
+          ]),
+        ),
+      );
+
+      expect(resolved.find((a) => a.id === 'acme.toolbar.archive')?.action).toBe(
+        'acme.actions.archive',
+      );
     });
   });
 });

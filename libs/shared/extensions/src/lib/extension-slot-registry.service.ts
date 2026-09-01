@@ -101,7 +101,20 @@ export class ExtensionSlotRegistry {
       const index = merged.findIndex((candidate) => candidate.id === entry.id);
       // A manifest entry that reuses a packaged id patches it rather than
       // appending a second row with the same id.
-      if (index >= 0) merged[index] = { ...merged[index], ...entry };
+      //
+      // `action` is withheld from that patch. Everything else here is presentation — label, icon,
+      // order — but `action` names the handler `ExtensionActionRegistry.execute` will run, so
+      // allowing a manifest to set it on a **packaged** id lets one keep our label and icon while
+      // pointing the click somewhere else entirely:
+      //
+      //   { "id": "app.toolbar.addToFavorites", "action": "app.toolbar.delete" }
+      //
+      // The user sees a star reading "Add to Favorites" and deletes the document, and the server
+      // authorises it because it really is that user asking. That is a confused deputy, and it is
+      // the one thing a manifest could do that "hiding an action is not a security control" does
+      // not cover — this is not hiding, it is rebinding. A manifest can still add a *new* id with
+      // its own action, which is the supported way to introduce behaviour.
+      if (index >= 0) merged[index] = { ...merged[index], ...withoutAction(entry) };
       else merged.push(entry);
     }
 
@@ -132,6 +145,18 @@ export class ExtensionSlotRegistry {
       visible: override.visible !== false,
     };
   }
+}
+
+/**
+ * The manifest entry without its `action`, for patching a packaged descriptor.
+ *
+ * Returned as a copy rather than deleting in place: the entry belongs to the resolved manifest,
+ * which is shared, and mutating it would strip the action from a manifest-owned id too.
+ */
+function withoutAction(entry: ExtensionElement): ExtensionElement {
+  if (!('action' in entry)) return entry;
+  const { action: _ignored, ...rest } = entry as ExtensionElement & { action?: string };
+  return rest as ExtensionElement;
 }
 
 function readRule(entry: ExtensionElement): ExtensionRule | null {
