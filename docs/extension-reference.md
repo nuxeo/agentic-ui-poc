@@ -780,6 +780,15 @@ that is Layer 2 — see section 14.
   permissions must be managed in Nuxeo until upstream can express the full set. Treat a refusal as
   correct behaviour, not a defect.
 
+  **This is not only exotic documents.** Surveyed against a stock instance, 2 of the 12 documents
+  carrying a local ACL would be refused, and both are ones Nuxeo creates itself — the `sections`
+  root of a domain, which Nuxeo grants `members: CanAskForPublishing` by default, and a document's
+  `Comments` container, which the comment service gives `AddChildren` and `RemoveChildren`.
+
+  So the permissions panel is unusable on the Sections root of a stock domain from day one. Saving
+  there would have deleted the grant the publishing workflow depends on, so the refusal is doing its
+  job — but expect it, and manage those permissions in Nuxeo.
+
 ---
 
 ## 14. Registering from your own library (Layer 2)

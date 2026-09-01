@@ -301,6 +301,33 @@ describe('inexpressibleLocalAces', () => {
     ).toEqual(['authors: AddChildren', 'auditors: WriteSecurity']);
   });
 
+  /**
+   * The payload below is copied verbatim from the local Nuxeo instance, from a Folder given
+   * `Document.AddPermission` with `AddChildren`. The hand-written fixtures above assert the check;
+   * this one asserts the *premise* — that a real server answers in the shape `rawLocalAces` reads,
+   * with the permission stored verbatim rather than normalised to one of the three the panel knows.
+   * If Nuxeo ever renamed the `local` ACL, moved the ACEs under `ace`, or collapsed `AddChildren`
+   * into `ReadWrite`, the check would quietly stop firing and the data loss would return with the
+   * gate still green.
+   */
+  it('flags the AddChildren ACE a live Nuxeo actually returns', () => {
+    const fromServer = [
+      {
+        id: 'members:AddChildren:true:Administrator::',
+        username: 'members',
+        externalUser: false,
+        permission: 'AddChildren',
+        granted: true,
+        creator: 'Administrator',
+        begin: null,
+        end: null,
+        status: 'effective' as const,
+      },
+    ];
+
+    expect(inexpressibleLocalAces(fromServer)).toEqual(['members: AddChildren']);
+  });
+
   it('ignores the inheritance marker, which is written by its own operation', () => {
     expect(
       inexpressibleLocalAces([
