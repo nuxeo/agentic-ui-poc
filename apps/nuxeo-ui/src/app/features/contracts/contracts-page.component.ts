@@ -34,6 +34,7 @@ import {
     SelectionTopbarComponent,
   ],
   templateUrl: './contracts-page.component.html',
+  styleUrl: './contracts-page.component.scss',
 })
 export class ContractsPageComponent {
   private dialog = inject(MatDialog);

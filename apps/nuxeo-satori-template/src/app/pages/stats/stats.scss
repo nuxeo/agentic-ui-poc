@@ -1,0 +1,17 @@
+// Presentation lives here rather than in `style=` attributes so a fork can restyle
+// the page from its own stylesheet. There are no colour literals to tokenise: the
+// page inherits `--shell-fg` from `styles.scss` through the body, which is already
+// a Layer 0 token.
+.stats-page {
+  padding: 2rem;
+}
+
+.stat {
+  text-align: center;
+  padding: 2rem;
+}
+
+.stat-value {
+  font-size: 3rem;
+  font-weight: 500;
+}

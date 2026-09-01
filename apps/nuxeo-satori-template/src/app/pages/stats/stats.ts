@@ -8,6 +8,7 @@ import { WidgetGridComponent, WidgetContainerComponent } from '@nuxeo-satori/pla
   standalone: true,
   imports: [WidgetGridComponent, WidgetContainerComponent],
   templateUrl: './stats.html',
+  styleUrl: './stats.scss',
 })
 export class StatsComponent {
   private search = inject(SearchService);

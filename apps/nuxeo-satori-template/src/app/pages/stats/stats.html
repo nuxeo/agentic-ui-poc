@@ -1,26 +1,26 @@
-<div style="padding: 2rem">
+<div class="stats-page">
   <h1>Quick Statistics</h1>
 
   <lib-widget-grid [columns]="3">
     <lib-widget-container title="Total Documents">
-      <div style="text-align: center; padding: 2rem">
-        <div style="font-size: 3rem; font-weight: 500">
+      <div class="stat">
+        <div class="stat-value">
           {{ totalDocs() ?? '...' }}
         </div>
       </div>
     </lib-widget-container>
 
     <lib-widget-container title="This Week">
-      <div style="text-align: center; padding: 2rem">
-        <div style="font-size: 3rem; font-weight: 500">
+      <div class="stat">
+        <div class="stat-value">
           {{ recentDocs }}
         </div>
       </div>
     </lib-widget-container>
 
     <lib-widget-container title="My Documents">
-      <div style="text-align: center; padding: 2rem">
-        <div style="font-size: 3rem; font-weight: 500">
+      <div class="stat">
+        <div class="stat-value">
           {{ myDocs }}
         </div>
       </div>
