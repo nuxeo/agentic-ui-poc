@@ -417,6 +417,9 @@ the registry keeps the destroyed component reachable. Withdrawal is per
 registration and never by ID alone, because an ID is shared: yours and ours can
 both be registered under `app.toolbar.delete` at once.
 
+Section 14 has the full rules, including why your handler outranks ours whatever the
+registration order. Prefer it over this paragraph if the two ever disagree.
+
 ---
 
 ## 6. `sidebar` — drawer components
