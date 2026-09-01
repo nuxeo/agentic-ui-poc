@@ -15,7 +15,15 @@ import {
   mapNuxeoDocumentToHx,
   syntheticHxRepositoryRoot,
 } from '../mapping/nuxeo-to-hx-document.mapper';
-import { NuxeoAclService, toNuxeoLocalAclWrite } from '../services/nuxeo-acl.service';
+import {
+  NuxeoAclService,
+  inexpressibleLocalAces,
+  rawLocalAces,
+  restorableLocalAcl,
+  toNuxeoLocalAclWrite,
+  type NuxeoAclGrant,
+  type NuxeoLocalAclWrite,
+} from '../services/nuxeo-acl.service';
 
 type AxiosLikeResponse<T> = { data: T };
 
@@ -158,7 +166,7 @@ export class NuxeoDocumentApi {
       );
     }
 
-    const { grants, blockInheritance, deniedPrincipals } = toNuxeoLocalAclWrite(
+    const { grants, blockInheritance, deniedPrincipals, unreadableAces } = toNuxeoLocalAclWrite(
       properties['sys_acl'] as ACE[],
     );
     if (deniedPrincipals.length > 0) {
@@ -166,8 +174,65 @@ export class NuxeoDocumentApi {
         `Nuxeo cannot store a deny ACE through this port: ${deniedPrincipals.join(', ')}`,
       );
     }
+    if (unreadableAces.length > 0) {
+      throw new Error(
+        `Refusing to write an ACL containing an ACE this port cannot read: ${unreadableAces.join(', ')}. ` +
+          'The write clears the local ACL first, so applying it would delete these rather than skip them.',
+      );
+    }
+
+    // Read before writing, and refuse rather than clear, when the document holds an ACE upstream
+    // cannot represent. Upstream's panel drops any permission outside Read/ReadWrite/Everything on
+    // save, so combined with the clear below a document carrying `AddChildren` or `WriteSecurity`
+    // lost it on the first Save and the call returned success.
+    const current = await firstValueFrom(this.documentDetail.getFullDocument(docId));
+    const currentLocalAcl = rawLocalAces(current);
+    const inexpressible = inexpressibleLocalAces(currentLocalAcl);
+    if (inexpressible.length > 0) {
+      throw new Error(
+        `Refusing to rewrite the ACL of ${docId}: its local ACL holds permission(s) the ` +
+          `permissions panel cannot represent, so saving would silently delete them — ` +
+          `${inexpressible.join(', ')}. Edit these in Nuxeo, or extend ` +
+          'HX_EXPRESSIBLE_PERMISSIONS once upstream can round-trip them.',
+      );
+    }
+
+    // Snapshot for the compensator below. The clear is unavoidable — Nuxeo has no replace-an-ACL
+    // operation — so the best available guarantee is that a failed replay tries to put back what
+    // was there and says so.
+    const previous = restorableLocalAcl(currentLocalAcl);
 
     await firstValueFrom(this.documentDetail.removeAcl(docId));
+    try {
+      await this.replayLocalAcl(docId, grants, blockInheritance);
+    } catch (error) {
+      const restored = await this.tryRestoreLocalAcl(docId, previous);
+      throw new Error(
+        `The ACL of ${docId} was cleared and the replacement failed: ${describeError(error)}. ` +
+          (restored
+            ? 'The previous ACL was restored, so the document is unchanged.'
+            : 'Restoring the previous ACL also failed, so the document is now on its inherited ' +
+              'permissions with a partial local ACL and needs manual repair.'),
+      );
+    }
+
+    return this.getDocumentById(docId, repositoryId);
+  }
+
+  /**
+   * Replay a desired local ACL onto a document whose local ACL has just been cleared.
+   *
+   * `blockPermissionInheritance` runs **last** on purpose, and it is worth stating why, because the
+   * reverse was proposed during review as a way to shrink the widening window: Nuxeo appends the
+   * deny ACE and evaluates ACEs in order, so a deny-Everything-to-Everyone written ahead of the
+   * grants would shadow every one of them. Blocking first would close the window by breaking the
+   * ACL.
+   */
+  private async replayLocalAcl(
+    docId: string,
+    grants: readonly NuxeoAclGrant[],
+    blockInheritance: boolean,
+  ): Promise<void> {
     for (const grant of grants) {
       await firstValueFrom(
         this.documentDetail.addPermission(docId, {
@@ -176,20 +241,51 @@ export class NuxeoDocumentApi {
           begin: grant.begin ?? null,
           end: grant.end ?? null,
           notify: false,
+          ...(grant.creator ? { creator: grant.creator } : {}),
         }),
       );
     }
-    // Last, because Nuxeo appends the deny ACE and a deny ahead of a grant would shadow it.
     if (blockInheritance) {
       await firstValueFrom(this.documentDetail.blockPermissionInheritance(docId));
     }
+  }
 
-    return this.getDocumentById(docId, repositoryId);
+  /** @returns `true` when the previous ACL was put back in full. */
+  private async tryRestoreLocalAcl(docId: string, previous: NuxeoLocalAclWrite): Promise<boolean> {
+    try {
+      // Clear first: the failed replay may have written some of the new grants, and those must not
+      // survive alongside the restored ones.
+      await firstValueFrom(this.documentDetail.removeAcl(docId));
+      await this.replayLocalAcl(docId, previous.grants, previous.blockInheritance);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async updateDocumentByPath(): Promise<AxiosLikeResponse<Document>> {
     throw new Error('updateDocumentByPath is not implemented in Scope A');
   }
+}
+
+/**
+ * An HTTP failure as something worth reading in an error message.
+ *
+ * `String(error)` on an `HttpErrorResponse` yields `[object Object]`, which is what the ACL
+ * rollback message reported for the underlying cause — the one piece of information an operator
+ * needs to tell a permission denial from an outage.
+ */
+function describeError(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  const { status, statusText, message } = (error ?? {}) as {
+    status?: unknown;
+    statusText?: unknown;
+    message?: unknown;
+  };
+  if (typeof status === 'number') {
+    return `HTTP ${status}${typeof statusText === 'string' && statusText ? ` ${statusText}` : ''}`;
+  }
+  return typeof message === 'string' ? message : 'unknown error';
 }
 
 export { ROOT_DOCUMENT };

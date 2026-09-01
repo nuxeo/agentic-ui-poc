@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { describe, expect, it, afterEach, beforeEach } from 'vitest';
-import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import { NuxeoDocumentApi, ROOT_DOCUMENT as ROOT_DOCUMENT_FROM_PORT } from './nuxeo-document-api';
 import { NuxeoAclService } from '../services/nuxeo-acl.service';
 import { NuxeoPrincipalResolver } from '../services/nuxeo-principal-resolver.service';
@@ -34,6 +34,23 @@ describe('NuxeoDocumentApi', () => {
    * unexpected by `verify()`. Yielding to the task queue is what puts them in flight.
    */
   const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+  /**
+   * One complete Nuxeo ACE. Every optional-looking field on `NuxeoAce` is in fact required, so a
+   * partial literal only compiles behind a cast — which is what hid an incomplete fixture here.
+   */
+  const nuxeoAce = (over: Partial<NuxeoAce> = {}): NuxeoAce => ({
+    id: '1',
+    username: 'jdoe',
+    externalUser: false,
+    permission: 'Read',
+    granted: true,
+    creator: null,
+    begin: null,
+    end: null,
+    status: 'effective',
+    ...over,
+  });
 
   const nuxeoDoc = (over: Partial<NuxeoDocument> = {}): NuxeoDocument => ({
     uid: 'doc-1',
@@ -367,6 +384,184 @@ describe('NuxeoDocumentApi', () => {
     }
     // And none of them reached Nuxeo on the way to throwing.
     httpMock.expectNone(() => true);
+  });
+
+  it('refuses to rewrite an ACL holding a permission the panel cannot represent', async () => {
+    // Upstream ranks rows against Read/ReadWrite/Everything and drops anything else on save.
+    // Combined with the clear-then-replay below, `AddChildren` was silently deleted and the call
+    // returned success. Refusing before the clear is the only place the data still exists.
+    const pending = api.updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, {
+      sys_acl: [{ user: { id: 'jdoe' }, permission: 'Read', granted: true }],
+    });
+
+    httpMock
+      .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
+      .flush(
+        nuxeoDoc({
+          contextParameters: {
+            acls: [
+              {
+                name: 'local',
+                aces: [
+                  nuxeoAce({ id: '1', username: 'jdoe', permission: 'Read' }),
+                  nuxeoAce({ id: '2', username: 'authors', permission: 'AddChildren' }),
+                ],
+              },
+            ],
+          },
+        }),
+      );
+
+    await expect(pending).rejects.toThrow(/authors: AddChildren/);
+    // The decisive part: nothing was cleared, so the ACE is still on the document.
+    httpMock.expectNone((r) => r.url.includes('Document.RemoveACL'));
+  });
+
+  it('restores the previous ACL when the replay fails, and says the document is unchanged', async () => {
+    // `.catch` attaches synchronously, so the rejection is never unhandled while the flushes
+    // below run. Awaiting only at the end of the test made Vitest report an unhandled rejection.
+    const pending = api
+      .updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, {
+        sys_acl: [{ user: { id: 'newcomer' }, permission: 'ReadWrite', granted: true }],
+      })
+      .then(() => null)
+      .catch((error: unknown) => error);
+
+    httpMock
+      .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
+      .flush(
+        nuxeoDoc({
+          contextParameters: {
+            acls: [
+              {
+                name: 'local',
+                aces: [
+                  nuxeoAce({ id: '1', username: 'jdoe', permission: 'Read', creator: 'admin' }),
+                ],
+              },
+            ],
+          },
+        }),
+      );
+    await settle();
+
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    await settle();
+
+    // The replay fails on the first grant.
+    httpMock
+      .expectOne((r) => r.url.includes('Document.AddPermission'))
+      .flush('nope', { status: 500, statusText: 'Server Error' });
+    await settle();
+
+    // Compensation: clear again, then put the previous ACL back.
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    await settle();
+
+    const restore = httpMock.expectOne((r) => r.url.includes('Document.AddPermission'));
+    expect(restore.request.body.params.username).toBe('jdoe');
+    expect(restore.request.body.params.permission).toBe('Read');
+    // The creator travels with the restore, so "Granted by" is not re-stamped to the saver.
+    expect(restore.request.body.params.creator).toBe('admin');
+    restore.flush(nuxeoDoc());
+    await settle();
+
+    const message = String(await pending);
+    expect(message).toMatch(/previous ACL was restored, so the document is unchanged/);
+    // Names the underlying cause. String(HttpErrorResponse) is '[object Object]', which told an
+    // operator nothing about whether this was a denial or an outage.
+    expect(message).toContain('HTTP 500');
+  });
+
+  it('refuses a deny ACE, which Document.AddPermission cannot express', async () => {
+    const pending = api.updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, {
+      sys_acl: [{ group: { id: 'members' }, permission: 'ReadWrite', granted: false }],
+    });
+
+    await expect(pending).rejects.toThrow(/cannot store a deny ACE/);
+    httpMock.expectNone((r) => r.url.includes('Document.RemoveACL'));
+  });
+
+  it('refuses an ACL containing an ACE it cannot read, rather than dropping it after the clear', async () => {
+    const pending = api.updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, {
+      // No principal Nuxeo can address: skipping this would delete it, because the write clears
+      // the local ACL first.
+      sys_acl: [{ permission: 'Read', granted: true }],
+    });
+
+    await expect(pending).rejects.toThrow(/cannot read/);
+    httpMock.expectNone((r) => r.url.includes('Document.RemoveACL'));
+  });
+
+  it('says the document needs manual repair when the rollback also fails', async () => {
+    // `.catch` attaches synchronously, so the rejection is never unhandled while the flushes
+    // below run. Awaiting only at the end of the test made Vitest report an unhandled rejection.
+    const pending = api
+      .updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, {
+        sys_acl: [{ user: { id: 'newcomer' }, permission: 'ReadWrite', granted: true }],
+      })
+      .then(() => null)
+      .catch((error: unknown) => error);
+
+    httpMock
+      .expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1')
+      .flush(
+        nuxeoDoc({
+          contextParameters: {
+            acls: [{ name: 'local', aces: [nuxeoAce({ username: 'jdoe', permission: 'Read' })] }],
+          },
+        }),
+      );
+    await settle();
+
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    await settle();
+    httpMock
+      .expectOne((r) => r.url.includes('Document.AddPermission'))
+      .flush('nope', { status: 500, statusText: 'Server Error' });
+    await settle();
+
+    // The compensating clear fails too, so nothing can be put back.
+    httpMock
+      .expectOne((r) => r.url.includes('Document.RemoveACL'))
+      .flush('nope', { status: 500, statusText: 'Server Error' });
+    await settle();
+
+    expect(String(await pending)).toMatch(/needs manual repair/);
+  });
+
+  it('blocks inheritance after the grants, so the deny cannot shadow them', async () => {
+    // Pins the ordering deliberately: Nuxeo appends the deny ACE and evaluates in order, so
+    // blocking first would place a deny-Everything-to-Everyone ahead of every grant. Review
+    // proposed exactly that as a way to shrink the widening window; this test is why it was not
+    // taken.
+    const order: string[] = [];
+    const pending = api.updateDocumentById('doc-1', DEFAULT_REPOSITORY_ID, {
+      sys_acl: [
+        { user: { id: 'jdoe' }, permission: 'Read', granted: true },
+        { user: '__Everyone__', permission: 'Everything', granted: false },
+      ],
+    });
+
+    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDoc());
+    await settle();
+    httpMock.expectOne((r) => r.url.includes('Document.RemoveACL')).flush(nuxeoDoc());
+    await settle();
+
+    const grant = httpMock.expectOne((r) => r.url.includes('Document.AddPermission'));
+    order.push('grant');
+    grant.flush(nuxeoDoc());
+    await settle();
+
+    const block = httpMock.expectOne((r) => r.url.includes('Document.BlockPermissionInheritance'));
+    order.push('block');
+    block.flush(nuxeoDoc());
+    await settle();
+
+    httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/id/doc-1').flush(nuxeoDoc());
+    await pending;
+
+    expect(order).toEqual(['grant', 'block']);
   });
 
   it('accepts only a sys_acl payload on updateDocumentById, naming the properties it refused', async () => {

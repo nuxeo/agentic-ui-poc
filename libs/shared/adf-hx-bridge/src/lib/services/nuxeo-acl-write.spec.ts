@@ -3,9 +3,14 @@ import { HttpClientTestingModule, HttpTestingController } from '@angular/common/
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { firstValueFrom } from 'rxjs';
 import type { ACE } from '@hylandsoftware/hxcs-js-client';
-import type { NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import type { NuxeoAce, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 
-import { NuxeoAclService, toNuxeoLocalAclWrite } from './nuxeo-acl.service';
+import {
+  NuxeoAclService,
+  inexpressibleLocalAces,
+  restorableLocalAcl,
+  toNuxeoLocalAclWrite,
+} from './nuxeo-acl.service';
 import { NuxeoPrincipalResolver } from './nuxeo-principal-resolver.service';
 
 /**
@@ -137,6 +142,7 @@ describe('toNuxeoLocalAclWrite', () => {
     ]);
 
     expect(result).toEqual({
+      unreadableAces: [],
       grants: [{ principal: 'jdoe', permission: 'Read' }],
       blockInheritance: true,
       deniedPrincipals: ['members'],
@@ -148,6 +154,7 @@ describe('toNuxeoLocalAclWrite', () => {
       grants: [],
       blockInheritance: false,
       deniedPrincipals: [],
+      unreadableAces: [],
     });
   });
 });
@@ -253,5 +260,92 @@ describe('NuxeoAclService.localAclFor', () => {
     const aces = (await firstValueFrom(service.localAclFor(doc))) ?? [];
 
     expect(toNuxeoLocalAclWrite(aces).blockInheritance).toBe(true);
+  });
+});
+
+/**
+ * The two pre-write checks that stand between upstream's three-level panel and a clear-then-replay
+ * that would delete anything it cannot express.
+ */
+describe('inexpressibleLocalAces', () => {
+  const ace = (over: Partial<NuxeoAce> = {}): NuxeoAce => ({
+    id: '1',
+    username: 'jdoe',
+    externalUser: false,
+    permission: 'Read',
+    granted: true,
+    creator: null,
+    begin: null,
+    end: null,
+    status: 'effective',
+    ...over,
+  });
+
+  it('accepts the three levels upstream can rank', () => {
+    expect(
+      inexpressibleLocalAces([
+        ace({ permission: 'Read' }),
+        ace({ permission: 'ReadWrite' }),
+        ace({ permission: 'Everything' }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it('names every permission outside them, with its principal', () => {
+    expect(
+      inexpressibleLocalAces([
+        ace({ username: 'jdoe', permission: 'Read' }),
+        ace({ username: 'authors', permission: 'AddChildren' }),
+        ace({ username: 'auditors', permission: 'WriteSecurity' }),
+      ]),
+    ).toEqual(['authors: AddChildren', 'auditors: WriteSecurity']);
+  });
+
+  it('ignores the inheritance marker, which is written by its own operation', () => {
+    expect(
+      inexpressibleLocalAces([
+        ace({ username: 'Everyone', permission: 'Everything', granted: false }),
+      ]),
+    ).toEqual([]);
+  });
+});
+
+describe('restorableLocalAcl', () => {
+  const ace = (over: Partial<NuxeoAce> = {}): NuxeoAce => ({
+    id: '1',
+    username: 'jdoe',
+    externalUser: false,
+    permission: 'Read',
+    granted: true,
+    creator: null,
+    begin: null,
+    end: null,
+    status: 'effective',
+    ...over,
+  });
+
+  it('carries the creator, so a restore does not re-stamp "Granted by"', () => {
+    expect(restorableLocalAcl([ace({ username: 'jdoe', creator: 'admin' })]).grants).toEqual([
+      { principal: 'jdoe', permission: 'Read', creator: 'admin' },
+    ]);
+  });
+
+  it('recognises a blocked-inheritance document, so the restore re-blocks it', () => {
+    const restored = restorableLocalAcl([
+      ace({ username: 'jdoe', permission: 'Read' }),
+      ace({ username: 'Everyone', permission: 'Everything', granted: false }),
+    ]);
+
+    expect(restored.blockInheritance).toBe(true);
+    // The marker itself is not replayed as a grant — `BlockPermissionInheritance` writes it.
+    expect(restored.grants).toEqual([{ principal: 'jdoe', permission: 'Read' }]);
+  });
+
+  it('drops a deny that is not the inheritance marker, which cannot be restored either way', () => {
+    const restored = restorableLocalAcl([
+      ace({ username: 'members', permission: 'Read', granted: false }),
+    ]);
+
+    expect(restored).toEqual({ grants: [], blockInheritance: false });
   });
 });

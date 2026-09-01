@@ -301,6 +301,15 @@ describe('adf-hx PermissionsManagementPanelComponent over Nuxeo ACLs', () => {
     save!.click();
     await settle();
 
+    // First the port re-reads the document, before touching anything. Upstream's panel can only
+    // represent Read/ReadWrite/Everything, so a local ACL holding anything else would be deleted by
+    // the clear below; the read is what lets the write be refused instead. These ACLs hold only
+    // `Everything`, so the save proceeds.
+    httpMock
+      .expectOne((r) => r.url === '/nuxeo/api/v1/id/ws-1')
+      .flush(nuxeoDocument(WORKSPACES_ACLS));
+    await settle();
+
     // Nuxeo has no operation that replaces an ACL, so the port clears the local ACL and replays the
     // grants the panel kept. The window between the two is real and documented on the port.
     const cleared = httpMock.expectOne(
