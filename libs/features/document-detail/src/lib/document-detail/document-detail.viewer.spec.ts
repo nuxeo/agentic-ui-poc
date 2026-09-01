@@ -7,11 +7,12 @@ import {
   convertToParamMap,
   provideRouter,
   withDisabledInitialNavigation,
+  type ParamMap,
 } from '@angular/router';
 import { MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import {
@@ -182,6 +183,8 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
   let fixture: ComponentFixture<DocumentDetailComponent>;
   let http: HttpTestingController;
   let snack: ReturnType<typeof vi.fn>;
+  /** A subject rather than `of`, so a test can navigate to a second document. */
+  let routeParams: BehaviorSubject<ParamMap>;
 
   let seq = 0;
   (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(
@@ -257,6 +260,7 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
   beforeEach(async () => {
     vi.clearAllMocks();
     snack = vi.fn();
+    routeParams = new BehaviorSubject<ParamMap>(convertToParamMap({ uid: 'doc-1' }));
     installDefaults();
 
     await TestBed.configureTestingModule({
@@ -269,7 +273,7 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
         {
           provide: ActivatedRoute,
           useValue: {
-            paramMap: of(convertToParamMap({ uid: 'doc-1' })),
+            paramMap: routeParams,
             queryParamMap: of(convertToParamMap({})),
             snapshot: { queryParamMap: convertToParamMap({}) },
           },
@@ -423,8 +427,9 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
   });
 
   describe('server storyboard', () => {
-    function videoDoc(storyboard: Array<Record<string, unknown>>): NuxeoDocument {
+    function videoDoc(storyboard: Array<Record<string, unknown>>, uid = 'doc-1'): NuxeoDocument {
       return doc({
+        uid,
         type: 'Video',
         properties: {
           'file:content': {
@@ -493,6 +498,39 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
       await build(videoDoc([{ timecode: 0, comment: 'A', content: { viewUrl: '/nuxeo/sb0' } }]));
 
       expect(http.match('/nuxeo/sb0')).toHaveLength(1);
+    });
+
+    /**
+     * The same duplicate fetch, reached the other way round. The guard was cleared
+     * before the generation was checked, so the *previous* document's frames answering
+     * late released the guard belonging to the load now running. `storyboard()` is
+     * still empty for the new document, so the next caller — `setBlobUrl`, once the
+     * main blob lands — started the fetch the guard exists to prevent.
+     */
+    it('does not release the guard when the previous document answers late', async () => {
+      mockDetailService.fetchBlobByXpath.mockReturnValue(throwError(() => new Error('404')));
+      await build(videoDoc([{ timecode: 0, comment: 'A', content: { viewUrl: '/nuxeo/sb-1' } }]));
+
+      const staleFrames = http.match('/nuxeo/sb-1');
+      expect(staleFrames).toHaveLength(1);
+
+      // Navigate to a second video whose main blob stays pending, so `setBlobUrl`
+      // runs after the first document's frames have answered.
+      const secondMainBlob = new Subject<Blob>();
+      mockDetailService.fetchBlob.mockReturnValue(secondMainBlob);
+      mockDetailService.getFullDocument.mockReturnValue(
+        of(videoDoc([{ timecode: 0, comment: 'B', content: { viewUrl: '/nuxeo/sb-2' } }], 'doc-2')),
+      );
+      routeParams.next(convertToParamMap({ uid: 'doc-2' }));
+      await fixture.whenStable();
+
+      expect(http.match('/nuxeo/sb-2')).toHaveLength(1);
+
+      staleFrames[0].flush(new Blob(['thumb']));
+      secondMainBlob.next(new Blob(['v'], { type: 'video/mp4' }));
+      await fixture.whenStable();
+
+      expect(http.match('/nuxeo/sb-2')).toHaveLength(0);
     });
 
     it('produces no frames when neither the xpath nor a stored URL yields one', async () => {

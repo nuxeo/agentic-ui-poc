@@ -926,7 +926,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
    * Registered from the component because every handler closes over this
    * instance, and withdrawn on destroy for the same reason — a handler left
    * registered keeps a destroyed component reachable and the next invocation
-   * runs against dead state.
+   * runs against dead state. Withdrawing the registration rather than the ids
+   * is what leaves a customer's handler for the same id untouched.
    *
    * The two halves of each toggle share one method, exactly as the single
    * `(click)` binding did before: which half is *offered* is the rules' job.
@@ -951,12 +952,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       'app.toolbar.startProcess': () => this.openStartProcess(),
     };
 
-    this.actionRegistry.register(
+    const registration = this.actionRegistry.registerPackaged(
       Object.fromEntries(
         Object.entries(handlers).map(([id, run]) => [id, { execute: () => run() }]),
       ),
     );
-    this.destroyRef.onDestroy(() => this.actionRegistry.unregister(Object.keys(handlers)));
+    this.destroyRef.onDestroy(() => registration.unregister());
   }
 
   ngOnInit(): void {
@@ -2262,10 +2263,24 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const videoObjectUrl = this.rawBlobUrl ?? this.videoObjectUrls[0] ?? null;
     if (videoObjectUrl && this.mimeType().startsWith('video/')) {
       this.storyboardInFlight = true;
-      void this.generateClientStoryboard(videoObjectUrl, generation).finally(() => {
-        this.storyboardInFlight = false;
-      });
+      void this.generateClientStoryboard(videoObjectUrl, generation).finally(() =>
+        this.releaseStoryboardGuard(doc, generation),
+      );
     }
+  }
+
+  /**
+   * Release the in-flight guard only for the load that still owns it.
+   *
+   * A response for a previously-viewed document arrives after the next load has taken
+   * the guard, and clearing it there lets the next caller start the duplicate fetch the
+   * guard was added to prevent — `storyboard()` is still empty, so it is no barrier.
+   */
+  private releaseStoryboardGuard(doc: NuxeoDocument, generation: number): void {
+    if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
+      return;
+    }
+    this.storyboardInFlight = false;
   }
 
   private loadServerStoryboard(
@@ -2292,7 +2307,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((results) => {
-        this.storyboardInFlight = false;
+        this.releaseStoryboardGuard(doc, generation);
         if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
           return;
         }
