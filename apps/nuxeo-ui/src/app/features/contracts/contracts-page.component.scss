@@ -20,171 +20,178 @@
 
 $code-font: 'Monaco', 'Courier New', monospace;
 
+// Everything is nested under the page root for specificity, not for tidiness. The
+// generated Material theme styles headings and paragraphs by element at
+// `html[data-app-theme="nuxeo"] .mat-typography p { margin: 0 0 0.75em }` — (0,2,2). A
+// bare `.section-note` in a component stylesheet is (0,2,0) and loses to it, so lifting
+// these declarations out of `style=` attributes silently handed spacing back to the
+// theme: measured as a 70px shorter page, with every `<p>` and `<h2>` margin wrong.
+// Inline styles outranked the theme; a single class does not. Nesting makes them (0,4,x).
 .contracts-page {
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
-}
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
 
-  h1 {
-    margin: 0 0 0.5rem 0;
+    h1 {
+      margin: 0 0 0.5rem 0;
+    }
   }
-}
 
-.page-subtitle {
-  color: var(--showcase-text-muted);
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.selection-demo {
-  margin-bottom: 1rem;
-}
-
-.section-title {
-  margin: 2rem 0 1rem 0;
-
-  mat-icon {
-    vertical-align: middle;
-    margin-right: 0.5rem;
-  }
-}
-
-.section-note {
-  color: var(--showcase-text-muted);
-  margin-bottom: 1rem;
-}
-
-.stat {
-  text-align: center;
-  padding: 1.5rem;
-}
-
-.stat-icon {
-  font-size: 48px;
-  width: 48px;
-  height: 48px;
-}
-
-.stat-value {
-  font-size: 2rem;
-  margin: 1rem 0;
-  font-weight: 500;
-}
-
-.stat-caption {
-  color: var(--showcase-text-muted);
-  font-size: 0.875rem;
-  margin: 0;
-}
-
-.activity {
-  padding: 1.5rem;
-}
-
-.activity-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.activity-item {
-  display: flex;
-  align-items: start;
-  gap: 1rem;
-  padding: 1rem;
-  background: var(--showcase-surface-subtle);
-  border-radius: 8px;
-}
-
-.activity-details {
-  flex: 1;
-}
-
-.activity-time {
-  margin: 0.25rem 0 0 0;
-  color: var(--showcase-text-muted);
-  font-size: 0.875rem;
-}
-
-.demo-panel {
-  padding: 1.5rem;
-}
-
-.component-list {
-  margin: 0;
-  padding-left: 1.5rem;
-  line-height: 1.8;
-}
-
-.demo-status {
-  color: var(--showcase-status-success);
-  font-weight: 500;
-}
-
-.demo-note {
-  color: var(--showcase-text-muted);
-  font-size: 0.875rem;
-}
-
-.code-card {
-  margin-bottom: 2rem;
-}
-
-.code-block {
-  margin: 0;
-  padding: 1rem;
-  background: var(--showcase-code-bg);
-  color: var(--showcase-code-fg);
-  border-radius: 4px;
-  overflow-x: auto;
-  font-family: $code-font;
-  font-size: 0.875rem;
-  line-height: 1.6;
-}
-
-.info-banner {
-  margin-top: 2rem;
-  padding: 1rem;
-  background: var(--showcase-banner-bg);
-  border-left: 4px solid var(--showcase-status-info);
-  border-radius: 4px;
-
-  p {
+  .page-subtitle {
+    color: var(--showcase-text-muted);
     margin: 0;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  .selection-demo {
+    margin-bottom: 1rem;
+  }
+
+  .section-title {
+    margin: 2rem 0 1rem 0;
+
+    mat-icon {
+      vertical-align: middle;
+      margin-right: 0.5rem;
+    }
+  }
+
+  .section-note {
+    color: var(--showcase-text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .stat {
+    text-align: center;
+    padding: 1.5rem;
+  }
+
+  .stat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    margin: 1rem 0;
+    font-weight: 500;
+  }
+
+  .stat-caption {
+    color: var(--showcase-text-muted);
+    font-size: 0.875rem;
+    margin: 0;
+  }
+
+  .activity {
+    padding: 1.5rem;
+  }
+
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .activity-item {
     display: flex;
     align-items: start;
-    gap: 0.5rem;
-  }
-}
-
-// The three status meanings carried by this page — informational, warning, success —
-// as modifiers rather than per-element rules, because the same meaning appears on a
-// stat icon, a stat value, an activity icon and the banner icon.
-.stat-icon,
-.stat-value,
-.activity-icon,
-.banner-icon {
-  &.info {
-    color: var(--showcase-status-info);
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--showcase-surface-subtle);
+    border-radius: 8px;
   }
 
-  &.warning {
-    color: var(--showcase-status-warning);
+  .activity-details {
+    flex: 1;
   }
 
-  &.success {
+  .activity-time {
+    margin: 0.25rem 0 0 0;
+    color: var(--showcase-text-muted);
+    font-size: 0.875rem;
+  }
+
+  .demo-panel {
+    padding: 1.5rem;
+  }
+
+  .component-list {
+    margin: 0;
+    padding-left: 1.5rem;
+    line-height: 1.8;
+  }
+
+  .demo-status {
     color: var(--showcase-status-success);
+    font-weight: 500;
+  }
+
+  .demo-note {
+    color: var(--showcase-text-muted);
+    font-size: 0.875rem;
+  }
+
+  .code-card {
+    margin-bottom: 2rem;
+  }
+
+  .code-block {
+    margin: 0;
+    padding: 1rem;
+    background: var(--showcase-code-bg);
+    color: var(--showcase-code-fg);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: $code-font;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+
+  .info-banner {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: var(--showcase-banner-bg);
+    border-left: 4px solid var(--showcase-status-info);
+    border-radius: 4px;
+
+    p {
+      margin: 0;
+      display: flex;
+      align-items: start;
+      gap: 0.5rem;
+    }
+  }
+
+  // The three status meanings carried by this page — informational, warning, success —
+  // as modifiers rather than per-element rules, because the same meaning appears on a
+  // stat icon, a stat value, an activity icon and the banner icon.
+  .stat-icon,
+  .stat-value,
+  .activity-icon,
+  .banner-icon {
+    &.info {
+      color: var(--showcase-status-info);
+    }
+
+    &.warning {
+      color: var(--showcase-status-warning);
+    }
+
+    &.success {
+      color: var(--showcase-status-success);
+    }
   }
 }
