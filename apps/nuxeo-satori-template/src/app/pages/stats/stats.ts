@@ -7,37 +7,7 @@ import { WidgetGridComponent, WidgetContainerComponent } from '@nuxeo-satori/pla
   selector: 'app-stats',
   standalone: true,
   imports: [WidgetGridComponent, WidgetContainerComponent],
-  template: `
-    <div style="padding: 2rem;">
-      <h1>Quick Statistics</h1>
-
-      <lib-widget-grid [columns]="3">
-        <lib-widget-container title="Total Documents">
-          <div style="text-align: center; padding: 2rem;">
-            <div style="font-size: 3rem; font-weight: 500;">
-              {{ totalDocs() ?? '...' }}
-            </div>
-          </div>
-        </lib-widget-container>
-
-        <lib-widget-container title="This Week">
-          <div style="text-align: center; padding: 2rem;">
-            <div style="font-size: 3rem; font-weight: 500;">
-              {{ recentDocs }}
-            </div>
-          </div>
-        </lib-widget-container>
-
-        <lib-widget-container title="My Documents">
-          <div style="text-align: center; padding: 2rem;">
-            <div style="font-size: 3rem; font-weight: 500;">
-              {{ myDocs }}
-            </div>
-          </div>
-        </lib-widget-container>
-      </lib-widget-grid>
-    </div>
-  `,
+  templateUrl: './stats.html',
 })
 export class StatsComponent {
   private search = inject(SearchService);
