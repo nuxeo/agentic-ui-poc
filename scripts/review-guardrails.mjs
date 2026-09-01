@@ -100,6 +100,77 @@ function warn(message) {
 }
 
 /**
+ * The line numbers of a `.ts` file that fall inside an inline `template:` or `styles:` value.
+ *
+ * ## Why this exists
+ *
+ * `checkThemeTokens` used to read `.scss` and `.html` only, so a colour written inside a
+ * component's inline template was never colour-checked at all. That is how 42 hard-coded colours
+ * accumulated in `contracts-page.component.ts` unnoticed, and became visible the moment the
+ * template was moved to a `.html` sibling — the violations were not introduced by the move, only
+ * measured by it. It is also the second, independent reason `templateUrl` is a stated convention:
+ * an inline template is invisible to every tool that keys off the file extension.
+ *
+ * ## The scoping, and why it is the block and not the file
+ *
+ * Only the text between the backticks of a `template:`/`styles:` value is returned. The colour
+ * pattern is `#[0-9a-fA-F]{3,8}`, and a `.ts` file legitimately carries hex-shaped literals that
+ * are not colours — a commit SHA, a document uid, a fixture id, an `&#123;` entity. Scanning the
+ * whole file would flag all of them. Inside a template or a styles block the same literal is CSS,
+ * so there the match is real.
+ *
+ * The block is found by walking forward from the key: optional `[`, then each backtick literal in
+ * turn, stopping at the closing `]` or at the first value that is not a literal, so
+ * `template: SOME_CONST` is not scanned. `templateUrl:`, `styleUrl:` and `styleUrls:` do not match
+ * the key — a component that follows the convention has nothing here to scan.
+ *
+ * ## What it does not claim
+ *
+ * A backtick inside a `${…}` interpolation ends the literal early, so coverage stops there. That
+ * under-covers rather than over-flags, and no template in this repository has that shape.
+ */
+function inlineStyleBlockLines(source) {
+  const lineStarts = [0];
+  for (let i = 0; i < source.length; i += 1) {
+    if (source[i] === '\n') lineStarts.push(i + 1);
+  }
+  const lineAt = (index) => {
+    let low = 0;
+    let high = lineStarts.length - 1;
+    while (low < high) {
+      const mid = (low + high + 1) >> 1;
+      if (lineStarts[mid] <= index) low = mid;
+      else high = mid - 1;
+    }
+    return low + 1;
+  };
+
+  const covered = new Set();
+  for (const key of source.matchAll(/(?:^|[\s,{(])(?:template|styles)\s*:/g)) {
+    let i = key.index + key[0].length;
+    while (i < source.length && /\s/.test(source[i])) i += 1;
+    const isArray = source[i] === '[';
+    if (isArray) i += 1;
+
+    for (;;) {
+      while (i < source.length && /[\s,]/.test(source[i])) i += 1;
+      if (source[i] !== '`') break;
+      i += 1;
+      const opened = lineAt(i);
+      while (i < source.length && source[i] !== '`') {
+        if (source[i] === '\\') i += 1;
+        i += 1;
+      }
+      const closed = lineAt(Math.min(i, source.length - 1));
+      for (let line = opened; line <= closed; line += 1) covered.add(line);
+      i += 1;
+      if (!isArray) break;
+    }
+  }
+  return covered;
+}
+
+/**
  * A colour literal must come from a **theme token with a fallback**, not be typed
  * in at the point of use.
  *
@@ -127,8 +198,16 @@ function checkThemeTokens() {
   const tokenDefinition = /^--[a-z0-9-]+\s*:/;
 
   for (const [file, lines] of addedLinesByFile) {
-    if (!file.endsWith('.scss') && !file.endsWith('.html')) continue;
+    // A whole stylesheet or template is CSS; a `.ts` file is only CSS inside its inline
+    // `template:`/`styles:` blocks, so it is narrowed to those. See `inlineStyleBlockLines`.
+    let inlineBlock = null;
+    if (!file.endsWith('.scss') && !file.endsWith('.html')) {
+      if (!file.endsWith('.ts') || !fileExists(file)) continue;
+      inlineBlock = inlineStyleBlockLines(read(file));
+      if (inlineBlock.size === 0) continue;
+    }
     for (const { line, text } of lines) {
+      if (inlineBlock && !inlineBlock.has(line)) continue;
       const trimmed = text.trim();
       if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*')) continue;
       if (tokenDefinition.test(trimmed)) continue;
@@ -137,7 +216,12 @@ function checkThemeTokens() {
       if (hasColor && !isThemed) {
         fail(
           `${file}:${line} introduces a hard-coded color. Use a theme token with a fallback ` +
-            `(--mat-sys-*, --kd-*, or --shell-* in the template), or declare it as a --* token.`,
+            `(--mat-sys-*, --kd-*, or --shell-* in the template), or declare it as a --* token.` +
+            (inlineBlock
+              ? '\n    It is inside an inline template/styles block. Move it to a sibling ' +
+                '.html/.scss and reference it with templateUrl/styleUrl, which is the convention ' +
+                'and is also what makes the rest of the tooling able to see it.'
+              : ''),
         );
       }
     }
