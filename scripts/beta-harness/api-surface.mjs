@@ -38,8 +38,8 @@
  *   node scripts/beta-harness/api-surface.mjs --update   # rewrite the snapshot
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const DIST = join(ROOT, 'dist', 'libs', 'platform');
@@ -62,6 +62,47 @@ if (!existsSync(DIST)) {
 const pkgPath = join(DIST, 'package.json');
 if (!existsSync(pkgPath)) fail(`${pkgPath} is missing; the build did not complete.`);
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+
+assertDistIsNotStale();
+
+/**
+ * Refuse to report on a `dist` older than the sources it was built from.
+ *
+ * This gate reads built declarations, so against a stale `dist` it compares yesterday's surface to
+ * the snapshot and passes — which is exactly what it did during review of this PR, reporting a
+ * clean surface for a service that had gained a public method minutes earlier. `verify-gate` runs
+ * `build` first so the full gate was never wrong, but a standalone run was, and a standalone run is
+ * how anyone checks a single change.
+ */
+function assertDistIsNotStale() {
+  const builtAt = statSync(pkgPath).mtimeMs;
+  const roots = [join(ROOT, 'libs', 'shared'), join(ROOT, 'libs', 'platform')];
+  const newer = [];
+
+  const walk = (dir) => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules') walk(path);
+      } else if (/\.ts$/.test(entry.name) && !/\.spec\.ts$/.test(entry.name)) {
+        if (statSync(path).mtimeMs > builtAt) newer.push(relative(ROOT, path));
+      }
+    }
+  };
+  roots.forEach(walk);
+
+  if (newer.length) {
+    fail(
+      `${newer.length} source file(s) are newer than dist/libs/platform, so this gate would\n` +
+        'be reporting on a stale build. Run `npx nx build platform` first.\n\n' +
+        newer
+          .slice(0, 10)
+          .map((f) => `  ${f}`)
+          .join('\n'),
+    );
+  }
+}
 
 /**
  * Entry point subpath -> its `types` file, taken from the generated `exports` map.
@@ -208,7 +249,15 @@ function declarationsIn(text) {
         // a member — but keep whatever punctuation it actually uses (`}`, `]`, `];`)
         // so a tuple does not silently render as an object.
         if (depth <= 0 && /^[}\])];]*$/.test(member)) closer = member;
-        else if (member) members.push(`    ${member.replace(/\s+/g, ' ')}`);
+        // `private` members are emitted into the `.d.ts` but are not customer-visible: TypeScript
+        // keeps them only so subclass field layout stays sound. Recording them made an internal
+        // refactor — renaming a private field, extracting a private helper — show up as a change
+        // to the published surface, and the fix for a spurious diff is `--update`, which is how a
+        // gate stops being read. Only depth-1 members are filtered; a `private` inside a nested
+        // type literal cannot occur in emitted declarations.
+        else if (member && !/^private\s/.test(member)) {
+          members.push(`    ${member.replace(/\s+/g, ' ')}`);
+        }
       }
       if (depth <= 0) {
         index = cursor;
