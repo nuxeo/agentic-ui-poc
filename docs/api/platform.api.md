@@ -21,7 +21,7 @@ type PlatformEntryPoint = (typeof PLATFORM_ENTRY_POINTS)[number];
 
 ## @nuxeo-satori/platform/app-config
 
-27 exported symbol(s).
+28 exported symbol(s).
 
 ```ts
 const APP_BOOTSTRAP_CONFIG_FILE = "bootstrap.json";
@@ -56,15 +56,11 @@ interface AppBrandingConfig {
 interface AppConfigDiagnostics {
     readonly bootstrapSource: AppConfigSource;
     readonly manifestSource: AppConfigSource;
+    readonly manifestAttempt: AppManifestAttempt;
     readonly messages: readonly string[];
     }
 }
 class AppConfigService {
-    private readonly http;
-    private readonly bootstrapUrl;
-    private readonly bootstrapConfig;
-    private readonly runtimeManifest;
-    private readonly diagnosticsState;
     readonly bootstrap: _angular_core.Signal<AppBootstrapConfig>;
     readonly manifest: _angular_core.Signal<AppRuntimeManifest>;
     readonly diagnostics: _angular_core.Signal<AppConfigDiagnostics>;
@@ -72,10 +68,9 @@ class AppConfigService {
     load(): Promise<void>;
     loadBootstrap(): Promise<AppBootstrapConfig>;
     loadManifest(): Promise<AppRuntimeManifest>;
+    resetManifest(): void;
     resolveTheme(id: string | null): AppThemeConfig;
     featureToggle(id: string, fallback: boolean): boolean;
-    private failure;
-    private note;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<AppConfigService, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<AppConfigService>;
     }
@@ -87,6 +82,7 @@ interface AppIntegrationsConfig {
     readonly knowledgeEnrichmentOperations: Readonly<Record<string, string>>;
     }
 }
+type AppManifestAttempt = 'not-attempted' | 'applied' | 'unavailable' | 'failed';
 interface AppRuntimeManifest {
     readonly version: number;
     readonly navItems: readonly ManifestNavItem[];
@@ -160,18 +156,14 @@ function resolveTheme(config: AppBootstrapConfig, id: string | null): AppThemeCo
 
 ## @nuxeo-satori/platform/extensions
 
-49 exported symbol(s).
+54 exported symbol(s).
 
 ```ts
 const APP_NAV_ITEMS: InjectionToken<Signal<readonly NavItemDescriptor[]>>;
 class AppExtensionsService {
-    private readonly appConfig;
-    private readonly slots;
-    private readonly rules;
-    private readonly resolved;
     readonly config: _angular_core.Signal<ExtensionConfig>;
     readonly missingLayers: _angular_core.Signal<readonly string[]>;
-    private readonly overrides;
+    readonly invalidRoutes: _angular_core.Signal<readonly RejectedExtensionRoute[]>;
     constructor();
     register<T extends ExtensionElement>(slot: ExtensionSlotId, entries: readonly T[]): void;
     registerRules(evaluators: Readonly<Record<string, ExtensionRuleEvaluator>>): void;
@@ -209,10 +201,13 @@ interface ExtensionActionHandler {
     execute(context: ExtensionRuleContext): void;
     }
 }
+interface ExtensionActionRegistration {
+    unregister(): void;
+    }
+}
 class ExtensionActionRegistry {
-    private readonly handlers;
-    register(handlers: Readonly<Record<string, ExtensionActionHandler>>): void;
-    unregister(ids: readonly string[]): void;
+    register(handlers: Readonly<Record<string, ExtensionActionHandler>>): ExtensionActionRegistration;
+    registerPackaged(handlers: Readonly<Record<string, ExtensionActionHandler>>): ExtensionActionRegistration;
     has(id: string): boolean;
     registeredActionIds(): readonly string[];
     execute(descriptor: ExtensionActionDescriptor, context: ExtensionRuleContext): boolean;
@@ -229,9 +224,6 @@ interface ExtensionColumnDescriptor extends ExtensionElement {
     }
 }
 class ExtensionComponentRegistry {
-    private readonly sources;
-    private readonly resolved;
-    private readonly pending;
     register(components: Readonly<Record<string, ExtensionComponentSource>>): void;
     registeredComponentIds(): readonly string[];
     has(id: string): boolean;
@@ -265,15 +257,7 @@ class ExtensionOutletComponent {
     readonly componentInputs: _angular_core.InputSignal<Readonly<Record<string, unknown>> | null | undefined>;
     readonly loading: _angular_core.WritableSignal<boolean>;
     readonly unresolved: _angular_core.WritableSignal<boolean>;
-    private outlet;
-    private readonly registry;
-    private readonly injector;
-    private readonly environmentInjector;
-    private componentRef;
-    private generation;
     constructor();
-    private render;
-    private clear;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionOutletComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ExtensionOutletComponent, "lib-extension-outlet", never, { "componentId": { "alias": "componentId"; "required": false; "isSignal": true; }; "componentType": { "alias": "componentType"; "required": false; "isSignal": true; }; "componentInputs": { "alias": "componentInputs"; "required": false; "isSignal": true; }; }, {}, never, never, true, never>;
     }
@@ -328,15 +312,12 @@ interface ExtensionRuleRef {
     }
 }
 class ExtensionRuleRegistry {
-    private readonly evaluators;
-    private readonly failClosed;
     declareFailClosed(ids: readonly string[]): void;
     isFailClosed(id: string): boolean;
     registerRules(evaluators: Readonly<Record<string, ExtensionRuleEvaluator>>): void;
     registeredRuleIds(): readonly string[];
     has(id: string): boolean;
     evaluate(rule: ExtensionRule | null | undefined, context: ExtensionRuleContext): boolean;
-    private evaluateRef;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionRuleRegistry, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionRuleRegistry>;
     }
@@ -349,13 +330,10 @@ interface ExtensionSlotOverrides {
     }
 }
 class ExtensionSlotRegistry {
-    private readonly rules;
-    private readonly slots;
     register<T extends ExtensionElement>(slot: ExtensionSlotId, entries: readonly T[]): void;
     registeredSlotIds(): readonly ExtensionSlotId[];
     registeredIds(slot: ExtensionSlotId): readonly string[];
     resolve<T extends ExtensionElement>(slot: ExtensionSlotId, overrides?: ExtensionSlotOverrides, context?: ExtensionRuleContext): readonly T[];
-    private applyOverride;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ExtensionSlotRegistry, never>;
     static ɵprov: _angular_core.ɵɵInjectableDeclaration<ExtensionSlotRegistry>;
     }
@@ -382,6 +360,16 @@ const PACKAGED_BULK_ACTIONS: readonly ExtensionActionDescriptor[];
 const PACKAGED_DOCUMENT_TABS: readonly ExtensionTabDescriptor[];
 const PACKAGED_DOCUMENT_TOOLBAR_ACTIONS: readonly ExtensionActionDescriptor[];
 const PACKAGED_NAV_ITEMS: readonly NavItemDescriptor[];
+interface PartitionedExtensionRoutes {
+    readonly accepted: readonly ExtensionRouteDescriptor[];
+    readonly rejected: readonly RejectedExtensionRoute[];
+    }
+}
+interface RejectedExtensionRoute {
+    readonly id: string;
+    readonly reason: string;
+    }
+}
 interface ResolvedExtensionConfig {
     readonly config: ExtensionConfig;
     readonly applied: readonly string[];
@@ -399,8 +387,10 @@ interface SatoriExtensionContributions {
     }
 }
 type SatoriExtensionContributor = SatoriExtensionContributions | (() => SatoriExtensionContributions);
+function extensionRoutePathRejection(path: unknown): string | null;
 function extensionRoutes(descriptors: readonly ExtensionRouteDescriptor[]): Routes;
 function mergeExtensionConfigs(...layers: readonly ExtensionConfig[]): ExtensionConfig;
+function partitionExtensionRouteDescriptors(descriptors: readonly ExtensionRouteDescriptor[]): PartitionedExtensionRoutes;
 function provideExtensionRoutes(options?: ExtensionRoutesOptions): EnvironmentProviders;
 function provideSatoriExtensions(contributor: SatoriExtensionContributor): EnvironmentProviders;
 function readExtensionConfig(raw: unknown): ExtensionConfig;
@@ -421,8 +411,6 @@ interface ARenderConfig {
     }
 }
 class ARenderService {
-    private readonly cfg;
-    private readonly currentUsername;
     getPreviewerUrl(docUid: string, blobXPath?: string): Observable<string>;
     getDiffUrl(leftDocUid: string, rightDocUid: string): Observable<string>;
     isAvailable(): Observable<boolean>;
@@ -437,8 +425,6 @@ interface AdminAccessChecks {
     }
 }
 class AdministrationService {
-    private readonly api;
-    private readonly http;
     nxqlSearch(query: string, pageSize: number, currentPageIndex?: number, headers?: Record<string, string>): Observable<NuxeoDocumentList>;
     getNxqlTotalSize(query: string): Observable<number>;
     searchAuditLogs(params: {
@@ -450,8 +436,6 @@ class AdministrationService {
     eventIds?: string[];
     category?: string;
     }): Observable<AuditLogList>;
-    private auditFallback;
-    private normalizeAuditResponse;
     listOAuth2Providers(): Observable<NuxeoOAuth2Provider[]>;
     listDirectoryNames(): Observable<string[]>;
     getDefaultDomainPath(): Observable<string>;
@@ -516,7 +500,6 @@ interface AssetSearchResult extends NuxeoPaginatedList<NuxeoDocument> {
     }
 }
 class AssetService {
-    private readonly api;
     searchAssets(params?: AssetSearchParams): Observable<AssetSearchResult>;
     static ɵfac: i0.ɵɵFactoryDeclaration<AssetService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<AssetService>;
@@ -556,7 +539,6 @@ class BrowseContextService {
     readonly treeRefreshTick: i0.WritableSignal<number>;
     readonly contentRefreshTick: i0.WritableSignal<number>;
     readonly clipboardPasteTick: i0.WritableSignal<number>;
-    private pendingClipboardPaste;
     requestTreeRefresh(): void;
     requestContentRefresh(): void;
     notifyClipboardPasteComplete(event: ClipboardPasteEvent): void;
@@ -565,17 +547,12 @@ class BrowseContextService {
     setFromRouterUrl(routerUrl: string): void;
     setFromDocument(doc: NuxeoDocument): void;
     setFromNuxeoPath(nuxeoPath: string): void;
-    private setPath;
     static ɵfac: i0.ɵɵFactoryDeclaration<BrowseContextService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<BrowseContextService>;
     }
 }
 type BrowseReturnMode = 'default' | 'adf-hx';
 class BrowseService {
-    private readonly api;
-    private readonly http;
-    private static readonly ACCESSIBLE_DOMAINS_NXQL;
-    private static readonly ACCESSIBLE_NAV_NODES_NXQL;
     getByPath(nuxeoPath: string): Observable<NuxeoDocument>;
     getUserWorkspace(): Observable<NuxeoDocument>;
     getRepositoryRoot(): Observable<NuxeoDocument>;
@@ -587,18 +564,10 @@ class BrowseService {
     sortOrder: 'ASC' | 'DESC';
     }[];
     }): Observable<BrowseFolderContents>;
-    private listBrowseFolderEntries;
     getCollectionMembers(collectionUid: string, pageSize?: number): Observable<NuxeoDocumentList>;
-    private toBrowseEntryList;
-    private resolveRepositoryRootFromDomains;
-    private loadNavTreeBootstrapEntries;
-    private getAccessibleTopLevelNavNodes;
-    private filterTopLevelNavNodes;
-    private syntheticRepositoryRoot;
     getFolderContext(nuxeoPath: string): Observable<NuxeoDocument>;
     getCreatableSubtypes(nuxeoPath: string): Observable<string[]>;
     getNavTreeChildren(parent: NuxeoDocument, pageSize?: number): Observable<NuxeoDocumentList>;
-    private getTreeChildrenWithPathFallback;
     getChildren(nuxeoPath: string, pageSize?: number, currentPageIndex?: number, sort?: {
     sortBy: string;
     sortOrder: 'ASC' | 'DESC';
@@ -609,8 +578,6 @@ class BrowseService {
     }): Observable<NuxeoDocument>;
     copyDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>;
     moveDocuments(uids: string[], targetUid: string): Observable<NuxeoDocument[]>;
-    private runClipboardDocumentsOp;
-    private normalizeClipboardOpResult;
     hasChildCollections(collectionsFolderUid: string): Observable<boolean>;
     getTrashedChildren(parentUid: string, pageSize?: number): Observable<NuxeoDocumentList>;
     restoreDocument(uid: string): Observable<NuxeoDocument>;
@@ -648,8 +615,6 @@ class ClipboardTargetService {
     }
 }
 class CollectionService {
-    private readonly api;
-    private readonly http;
     getById(uid: string): Observable<NuxeoDocument>;
     getAll(pageSize?: number): Observable<NuxeoDocumentList>;
     getFavorites(userId: string, pageSize?: number): Observable<NuxeoDocumentList>;
@@ -699,26 +664,13 @@ interface ContentLakeIngestCommand {
     }
 }
 class ContentLakeIngestService {
-    private readonly api;
-    private readonly browseService;
     startIngest(documentUids: string[]): Observable<ContentLakeIngestCommand>;
     getStatus(commandId: string): Observable<ContentLakeIngestStatus>;
     waitUntilComplete(commandId: string, pollIntervalMs?: number): Observable<ContentLakeIngestStatus>;
     findDuplicates(files: File[], sourceIds?: string[]): Observable<ContentLakeDuplicate[]>;
-    private resolveDuplicateForFile;
-    private probeFirstContentLakeMatch;
     checkIngested(documentUid: string, sourceIds?: string[]): Observable<boolean>;
     backfillIngestMarkerIfNeeded(doc: NuxeoDocument, sourceIds?: string[]): Observable<ContentLakeBackfillResult>;
-    private checkIngestedOnce;
     markIngested(documentUids: string[]): Observable<NuxeoDocument[]>;
-    private markSingleDocumentIngested;
-    private buildIngestQuery;
-    private throwIfAutomationException;
-    private readCommandId;
-    private readCommandIdFromRecord;
-    private normalizeStatus;
-    private readNumber;
-    private isTerminal;
     static ɵfac: i0.ɵɵFactoryDeclaration<ContentLakeIngestService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<ContentLakeIngestService>;
     }
@@ -732,8 +684,6 @@ interface ContentLakeIngestStatus {
     }
 }
 class ContentModelService {
-    private readonly api;
-    private readonly model$;
     getContentModel(): Observable<NuxeoContentModel>;
     static ɵfac: i0.ɵɵFactoryDeclaration<ContentModelService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<ContentModelService>;
@@ -793,14 +743,9 @@ interface DirectoryMetadata {
     }
 }
 class DirectoryService {
-    private readonly api;
-    private catalog$?;
     getDirectoryCatalog(): Observable<Map<string, DirectoryMetadata>>;
     listDirectoryNames(): Observable<string[]>;
     invalidateDirectoryCatalog(): void;
-    private fetchDirectoryCatalog;
-    private parseDirectoryCatalog;
-    private extractDirectoryCatalogRows;
     getEntries(directoryName: string): Observable<DirectoryEntry[]>;
     getAdminEntries(directoryName: string): Observable<ManagedDirectoryEntry[]>;
     createEntry(directoryName: string, values: VocabularyEntryFormValues, metadata?: DirectoryMetadata): Observable<ManagedDirectoryEntry>;
@@ -808,19 +753,13 @@ class DirectoryService {
     deleteEntry(directoryName: string, entryId: string): Observable<void>;
     getL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>;
     getAllL10nEntries(directoryName: string): Observable<L10nDirectoryEntry[]>;
-    private fetchL10nEntries;
     getEventTypes(): Observable<DirectoryEntry[]>;
     getEventCategories(): Observable<DirectoryEntry[]>;
-    private normalizeAdminEntry;
-    private buildEntryProperties;
     static ɵfac: i0.ɵɵFactoryDeclaration<DirectoryService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<DirectoryService>;
     }
 }
 class DocumentDetailService {
-    private readonly api;
-    private readonly http;
-    private readonly currentUsername;
     getFullDocument(uid: string): Observable<NuxeoDocument>;
     getDocumentPermissions(uid: string): Observable<NuxeoDocument>;
     fetchBlob(uid: string, options?: FetchBlobOptions): Observable<Blob>;
@@ -938,10 +877,7 @@ class DocumentDetailService {
     end?: string | null;
     creator?: string;
     }): Observable<PermissionWithNotificationResult>;
-    private creatorParam;
     sendNotificationEmailForPermission(uid: string, aceId: string): Observable<NuxeoDocument>;
-    private notifyAfterPermissionChange;
-    private sendPermissionNotificationResult;
     removePermission(uid: string, params: {
     user: string;
     permission: string;
@@ -968,13 +904,10 @@ class DocumentDetailService {
     }
 }
 class DocumentImportService {
-    private readonly http;
-    private readonly api;
     getDefaultImportParentPath(): Observable<string>;
     importCsvFile(options: CsvServerImportOptions): Observable<string>;
     initUploadBatch(handler?: string): Observable<string>;
     uploadFileToBatch(batchId: string, fileIndex: number, file: File, onUploadPercent?: (percent: number) => void): Observable<void>;
-    private urlCreateUnderPath;
     getEmptyDocumentWithDefaults(parentPath: string, docType: string): Observable<NuxeoCreateDocumentTemplate>;
     createFileFromBatch(parentPath: string, fileName: string, docType: string, properties: Record<string, unknown>, batchId: string, fileIndex: number, batchNoDrop?: boolean): Observable<NuxeoDocument>;
     createChildDocument(parentPath: string, name: string, docType: string, properties: Record<string, unknown>): Observable<NuxeoDocument>;
@@ -985,22 +918,12 @@ class DocumentImportService {
     createBlobHoldingDocument(parentPath: string, name: string, docType: string, properties: Record<string, unknown>, file: File, options?: CreateBlobHoldingDocumentOptions): Observable<NuxeoDocument>;
     importFiles(parentPath: string, files: File[], options?: ImportFilesOptions): Observable<NuxeoDocument[]>;
     importFilesWithProperties(parentPath: string, entries: ImportFileEntry[], options?: ImportFilesOptions): Observable<NuxeoDocument[]>;
-    private buildBlobDocumentCreateRequest;
-    private isBatchFileAvailable;
-    private verifyBatchFileUploaded;
-    private withMainBlobValidation;
-    private ensurePersistedMainBlob;
-    private pollDocumentMainBlob;
-    private fetchDocumentMainBlob;
-    private enrichDocumentFromBlobEndpointIfNeeded;
-    private runPostUploadClassificationIfEnabled;
     importFromCsvText(parentPath: string, csvText: string): Observable<CsvImportResult>;
     static ɵfac: i0.ɵɵFactoryDeclaration<DocumentImportService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<DocumentImportService>;
     }
 }
 class DocumentService {
-    private readonly api;
     getRecentlyEdited(pageSize?: number): Observable<NuxeoDocumentList>;
     getRecentlyViewed(userId: string, pageSize?: number): Observable<NuxeoDocumentList>;
     getExpiredDocuments(pageSize?: number): Observable<NuxeoDocumentList>;
@@ -1134,8 +1057,6 @@ interface NuxeoAcl {
     }
 }
 class NuxeoApiBase {
-    private readonly http;
-    private readonly apiOrigin;
     apiUrl(path: string): string;
     get<T>(path: string, params?: HttpParams, headers?: Record<string, string>): Observable<T>;
     post<T>(path: string, body: unknown, headers?: Record<string, string>): Observable<T>;
@@ -1216,12 +1137,6 @@ interface NuxeoDocument {
 }
 type NuxeoDocumentList = NuxeoPaginatedList<NuxeoDocument>;
 class NuxeoDriveService {
-    private readonly api;
-    private readonly http;
-    private readonly serverUrl;
-    private readonly currentUsername;
-    private get baseUrl();
-    private get username();
     hasDriveToken(): Observable<boolean>;
     buildEditUrl(docUid: string, blobUrl: string, filename: string): string;
     buildDirectTransferUrl(docPath: string): string;
@@ -1470,11 +1385,7 @@ interface PrincipalPermissionRow {
     }
 }
 class PrincipalPermissionsService {
-    private readonly admin;
-    private readonly documents;
     listLocalPermissionRows(logicalPrincipal: string, pageSize: number, currentPageIndex: number): Observable<PrincipalPermissionPage>;
-    private safeFetch;
-    private fetchPage;
     static ɵfac: i0.ɵɵFactoryDeclaration<PrincipalPermissionsService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<PrincipalPermissionsService>;
     }
@@ -1566,46 +1477,25 @@ interface SearchResultItem {
     }
 }
 class SearchService {
-    private readonly api;
-    private readonly savedSearchHighlight;
     suggestFromSuggestersLauncher(searchTerm: string, pageSize?: number): Observable<GlobalSearchSuggestion[]>;
     suggest(searchTerm: string, pageSize?: number): Observable<GlobalSearchSuggestion[]>;
-    private suggestFallback;
     getUserCollections(): Observable<SearchCollectionOption[]>;
     searchDocumentPicker(options?: {
     fulltext?: string;
     pageSize?: number;
     pageIndex?: number;
     }): Observable<NuxeoDocumentList>;
-    private normalizePicturePickerList;
-    private searchDocumentPickerNxql;
     getSavedSearches(pageProvider?: string): Observable<SavedSearchOption[]>;
     getSavedSearchById(id: string): Observable<Record<string, string>>;
     saveSavedSearch(request: SaveSavedSearchParams): Observable<unknown>;
     updateSavedSearch(id: string, request: SaveSavedSearchParams): Observable<unknown>;
     deleteSavedSearch(id: string): Observable<unknown>;
     search(params: SearchQueryParams): Observable<SearchResponse>;
-    private filterItemsByModifiedDate;
-    private asPrincipalName;
-    private parseSizeInBytes;
-    private firstString;
-    private normalizeAggregations;
-    private normalizeSuggestions;
-    private extractSuggestionItems;
-    private extractArraysFromContainer;
-    private looksLikeSuggestionItem;
-    private mapSuggestion;
-    private extractHighlightsByField;
-    private pickHighlightParts;
-    private toHighlightParts;
-    private stripTags;
-    private asString;
     static ɵfac: i0.ɵɵFactoryDeclaration<SearchService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<SearchService>;
     }
 }
 class SelectionService {
-    private readonly documentDetailService;
     readonly selectedIds: i0.WritableSignal<Set<string>>;
     readonly selectedLabels: i0.WritableSignal<Map<string, string>>;
     readonly selectedPreviews: i0.WritableSignal<Map<string, SelectionPreview>>;
@@ -1632,19 +1522,12 @@ class SelectionService {
     }
 }
 class SettingsService {
-    private readonly api;
     getLocalPermissions(username: string, pageSize?: number): Observable<LocalPermissionRow[]>;
-    private queryPermissions;
     getConnectedAccounts(): Observable<ConnectedAccount[]>;
     getAuthorizedApplications(): Observable<AuthorizedApplication[]>;
     getSynchronizationRoots(): Observable<SynchronizationRootRow[]>;
     setSynchronizationRoot(rootId: string, enable: boolean): Observable<unknown>;
-    private getProviders;
-    private getProviderTokens;
-    private toConnectedAccount;
-    private toAuthorizedApplication;
     changePassword(oldPassword: string, newPassword: string): Observable<void>;
-    private extractLocalPermissionRows;
     static ɵfac: i0.ɵɵFactoryDeclaration<SettingsService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<SettingsService>;
     }
@@ -1665,8 +1548,6 @@ interface SynchronizationRootRow {
     }
 }
 class TagService {
-    private readonly api;
-    private readonly http;
     addTag(uid: string, label: string): Observable<unknown>;
     removeTag(uid: string, label: string): Observable<unknown>;
     searchTags(term: string): Observable<string[]>;
@@ -1675,10 +1556,8 @@ class TagService {
     }
 }
 class TaskService {
-    private readonly api;
     readonly tasksChanged$: Subject<void>;
     notifyTasksChanged(): void;
-    private readonly taskFetchHeaders;
     getUserTasks(userId: string, pageSize?: number): Observable<NuxeoTask[]>;
     getTask(taskId: string): Observable<NuxeoTask>;
     getDocumentTasks(docId: string, userId?: string): Observable<NuxeoTask[]>;
@@ -1733,8 +1612,6 @@ interface TrashSearchParams {
     }
 }
 class TrashService {
-    private readonly api;
-    private readonly http;
     searchTrash(params?: TrashSearchParams): Observable<NuxeoDocumentList>;
     getPathSuggestions(parentPath: string): Observable<NuxeoDocumentList>;
     restoreDocument(uid: string): Observable<NuxeoDocument>;
@@ -1742,7 +1619,6 @@ class TrashService {
     saveSearch(title: string, params: Record<string, unknown>): Observable<SavedSearch>;
     updateSearch(uid: string, title: string, params: Record<string, unknown>): Observable<SavedSearch>;
     getSavedSearches(): Observable<SavedSearch[]>;
-    private sizeRangeToClause;
     static ɵfac: i0.ɵɵFactoryDeclaration<TrashService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<TrashService>;
     }
@@ -1758,7 +1634,6 @@ interface UserGroupSuggestion {
     }
 }
 class UserService {
-    private readonly api;
     searchUsers(query: string): Observable<NuxeoUser[]>;
     searchUsersPaged(query: string, pageSize?: number, currentPageIndex?: number): Observable<NuxeoUserList>;
     searchGroups(query: string): Observable<NuxeoGroup[]>;
@@ -1775,9 +1650,6 @@ class UserService {
     password?: string;
     groups?: string[];
     }): Observable<NuxeoUser>;
-    private createUserWithPassword;
-    private inviteUser;
-    private buildUserFromInput;
     updateUser(userId: string, updates: {
     firstName?: string;
     lastName?: string;
@@ -1815,7 +1687,6 @@ const WORKSPACE_CONTENT_TYPE_ORDER: readonly ["Audio", "Collection", "File", "Fo
 const WRITE_DOCUMENT = "Write";
 const WRITE_PROPERTIES = "WriteProperties";
 class WorkflowService {
-    private readonly api;
     getWorkflowModels(): Observable<NuxeoWorkflowModel[]>;
     startWorkflow(docId: string, workflowModelName: string): Observable<NuxeoWorkflow>;
     getDocumentWorkflows(docId: string): Observable<NuxeoWorkflow[]>;
@@ -1988,7 +1859,6 @@ interface ConfirmDialogData {
     }
 }
 class DocumentCompareDialogComponent {
-    private readonly detailService;
     readonly data: DocumentCompareDialogData;
     readonly leftId: _angular_core.WritableSignal<string>;
     readonly rightId: _angular_core.WritableSignal<string>;
@@ -2077,12 +1947,6 @@ class DocumentViewerComponent {
     }
 }
 class EditCollectionDialogComponent implements OnInit {
-    private readonly dialogRef;
-    private readonly data;
-    private readonly collectionService;
-    private readonly directoryService;
-    private readonly destroyRef;
-    private readonly snackBar;
     readonly l10nEntryLabel: typeof l10nEntryLabel;
     protected readonly directoryPickerLabel: typeof directoryPickerLabel;
     expiresNgModel?: NgModel;
@@ -2108,7 +1972,6 @@ class EditCollectionDialogComponent implements OnInit {
     };
     ngOnInit(): void;
     onNaturePanelOpen(open: boolean): void;
-    private loadNatureEntries;
     naturePillLabel(id: string): string;
     subjectPillLabel(id: string): string;
     coveragePillLabel(id: string): string;
@@ -2117,7 +1980,6 @@ class EditCollectionDialogComponent implements OnInit {
     removeSubject(id: string): void;
     onSubjectsPanelOpen(open: boolean): void;
     onCoveragePanelOpen(open: boolean): void;
-    private loadL10nEntries;
     isExpiresValid(): boolean;
     showExpiresError(): boolean;
     onExpiresInput(event: Event): void;
@@ -2142,8 +2004,6 @@ interface ExifData {
     }
 }
 class ExportDialogComponent {
-    private readonly dialogRef;
-    private readonly data;
     readonly exporting: _angular_core.WritableSignal<ExportType | null>;
     readonly options: ExportOption[];
     onExport(type: ExportType): void;
@@ -2211,8 +2071,6 @@ interface SavedSearchDialogData {
     }
 }
 class SelectionTopbarComponent {
-    private selectionPopupPanel?;
-    private lastFocusedElement;
     readonly selectedCount: _angular_core.InputSignal<number>;
     readonly selectedItems: _angular_core.InputSignal<{
     id: string;
@@ -2222,10 +2080,6 @@ class SelectionTopbarComponent {
     readonly clearOnly: _angular_core.InputSignal<boolean>;
     readonly cleared: _angular_core.OutputEmitterRef<void>;
     readonly selectionPopupOpen: _angular_core.WritableSignal<boolean>;
-    private readonly closePopupInClearOnlyMode;
-    private readonly extensions;
-    private readonly actions;
-    private readonly ruleContext;
     readonly bulkActions: _angular_core.Signal<readonly ExtensionActionDescriptor[]>;
     isEnabled(action: ExtensionActionDescriptor): boolean;
     run(action: ExtensionActionDescriptor): void;
@@ -2238,8 +2092,6 @@ class SelectionTopbarComponent {
 }
 class ShareDialogComponent {
     readonly data: ShareDialogData;
-    private readonly dialogRef;
-    private readonly snackBar;
     copyLink(): void;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ShareDialogComponent, "lib-share-dialog", never, {}, {}, never, never, true, never>;
@@ -2253,35 +2105,22 @@ interface ShareDialogData {
 class ShareSavedSearchDialogComponent implements OnInit {
     readonly dialogRef: MatDialogRef<any, any>;
     readonly data: ShareSavedSearchDialogData;
-    private readonly dialog;
-    private readonly currentUsername;
-    private readonly userService;
-    private readonly detailService;
     readonly permissions: _angular_core.WritableSignal<PermissionEntry[]>;
     readonly inheritedPermissions: _angular_core.WritableSignal<PermissionSummary[]>;
     readonly externalPermissions: _angular_core.WritableSignal<ExternalPermissionEntry[]>;
     readonly isInheritanceBlocked: _angular_core.WritableSignal<boolean>;
     readonly saving: _angular_core.WritableSignal<boolean>;
     readonly loading: _angular_core.WritableSignal<boolean>;
-    private nextId;
     ngOnInit(): void;
-    private loadPermissionsFromApi;
-    private parsePermissionsFromDocument;
     openExternalPermissionDialog(): void;
     editExternalPermission(row: ExternalPermissionEntry): void;
     sendExternalNotification(row: ExternalPermissionEntry): void;
     removeExternalPermission(row: ExternalPermissionEntry): void;
     togglePermissionInheritance(): void;
-    private loadPermissionsFromCurrentUser;
-    private applyUserPermissions;
-    private toDisplayName;
     openAddPermissionDialog(): void;
     removeRow(id: string): void;
     editRow(id: string): void;
     save(): void;
-    private normalizePermissionForApi;
-    private parseTimeFrame;
-    private toTimeFrameLabel;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<ShareSavedSearchDialogComponent, never>;
     static ɵcmp: _angular_core.ɵɵComponentDeclaration<ShareSavedSearchDialogComponent, "lib-share-saved-search-dialog", never, {}, {}, never, never, true, never>;
     }

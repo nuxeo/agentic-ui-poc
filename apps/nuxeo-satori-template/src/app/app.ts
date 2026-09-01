@@ -60,6 +60,9 @@ export class App {
   /** Surfaced so a fork notices a manifest naming a `$layer` that does not resolve. */
   protected readonly missingLayers = this.extensions.missingLayers;
 
+  /** Same, for a `routes` entry whose path the router would never have matched. */
+  protected readonly invalidRoutes = this.extensions.invalidRoutes;
+
   /** Which half of the configuration came from where — worth seeing while demoing. */
   protected readonly manifestSource = computed(() => this.config.diagnostics().manifestSource);
 

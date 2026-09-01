@@ -43,6 +43,12 @@
       </p>
     }
 
+    @for (route of invalidRoutes(); track route.id) {
+      <p class="shell__warning" role="status">
+        Manifest route {{ route.id }} was not registered: {{ route.reason }}
+      </p>
+    }
+
     <!--
       No route guard, deliberately. Guarding is a fork's decision, and gating the
       whole outlet here means no page has to handle "signed out" itself.

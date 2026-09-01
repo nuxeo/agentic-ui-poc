@@ -34,6 +34,33 @@ the real permission server-side on every operation, so:
 
 Use Nuxeo ACLs for authorisation. Use the manifest for what the interface presents.
 
+### A manifest cannot rebind a packaged action
+
+Hiding is yours to decide; **rebinding is not**. When a manifest entry reuses a packaged ID it
+patches that descriptor — `label`, `icon`, `order`, `rule` and the rest all apply — but an `action`
+it supplies is **ignored**:
+
+```json
+{ "id": "app.toolbar.addToFavorites", "action": "app.toolbar.delete" }
+```
+
+That entry changes nothing. Were it honoured, the user would see a star reading "Add to Favorites"
+and delete the document, and the server would authorise it, because it really is that user asking.
+The rule in the section above — that the server still checks permissions — is what makes hiding
+safe, and it is exactly what does **not** make this safe: the user has `Remove`, so the deletion
+succeeds. Presentation and behaviour have to stay attached to each other.
+
+To introduce behaviour, add a descriptor under **your own** ID, where the label and the action are
+both yours:
+
+```json
+{ "id": "acme.toolbar.archive", "label": "Archive", "action": "acme.actions.archive" }
+```
+
+Replacing what a packaged ID _does_ is a Layer 2 operation: register a handler under that ID from
+your own library (section 14), where the change is in reviewed, versioned code rather than in a
+JSON document any repository writer can edit.
+
 ### Where the manifest lives, and how it survives upgrade
 
 The manifest is a Nuxeo document at `/default-domain/config/agentic-ui`, read with the signed-in
@@ -379,8 +406,16 @@ inject(ExtensionActionRegistry).register({
 
 Handlers are objects with an `execute(context)` method — the shape adf-hx uses
 for its own `*-action.service` classes. Re-registering one of our IDs replaces
-the behaviour without forking. A handler that closes over a component must be
-withdrawn with `unregister()` when that component is destroyed.
+the behaviour without forking, and it stays replaced: the packaged surfaces
+register their own handlers in a lower-precedence tier, so yours answers whether
+it was registered before or after the page that ships the ID, and navigating away
+from that page does not withdraw it.
+
+`register()` returns a registration. A handler that closes over a component must
+withdraw it — `registration.unregister()` — when that component is destroyed, or
+the registry keeps the destroyed component reachable. Withdrawal is per
+registration and never by ID alone, because an ID is shared: yours and ours can
+both be registered under `app.toolbar.delete` at once.
 
 ---
 
@@ -631,11 +666,18 @@ imported directly by `app.routes.ts`, so none of them is addressable by ID. What
 this slot does is let a manifest add a route that did not exist at build time,
 serving a component registered under Layer 2.
 
-| Field         | Meaning                                                                   |
-| ------------- | ------------------------------------------------------------------------- |
-| `path`        | Required. Router path, no leading slash. An entry without one is dropped. |
-| `componentId` | Registered component ID. Defaults to the descriptor `id`.                 |
-| `inputs`      | Static values bound to the component's inputs via route data.             |
+| Field         | Meaning                                                                    |
+| ------------- | -------------------------------------------------------------------------- |
+| `path`        | Required. Relative router path — see the validation note below this table. |
+| `componentId` | Registered component ID. Defaults to the descriptor `id`.                  |
+| `inputs`      | Static values bound to the component's inputs via route data.              |
+
+A `path` must be a non-empty string, must not begin with `/`, and must not contain
+whitespace, `?` or `#`. An entry failing any of those is dropped and reported on
+`AppExtensionsService.invalidRoutes()`, alongside the reason — the rest of the batch
+still registers. Angular's own router validation runs only in a development build, so
+without this an invalid path threw on a dev server and became a permanently unmatchable
+route in production.
 
 ```json
 {
@@ -721,6 +763,20 @@ that is Layer 2 — see section 14.
 - **The two selection permission rules**, for the reason given in section 4.
 - **An in-app editor** for the manifest. It is edited as a Nuxeo Note.
 
+- **The permissions panel handles three permission levels, not Nuxeo's twelve.** The adopted
+  upstream panel represents `Read`, `ReadWrite` and `Everything`, and ranks rows against exactly
+  that list. A document whose local ACL holds anything else — `Write`, `AddChildren`,
+  `WriteSecurity`, `ReadVersion` and the rest, which workflows and server-side code do set — cannot
+  be round-tripped through it.
+
+  Because Nuxeo has no replace-an-ACL operation, saving is a clear followed by a replay, so an ACE
+  the panel cannot represent would be **deleted** by a save that reported success. The bridge now
+  **refuses the write** on such a document and names the offending entries, rather than losing them.
+
+  That is a guard, not a capability: the panel still cannot edit those documents at all, and their
+  permissions must be managed in Nuxeo until upstream can express the full set. Treat a refusal as
+  correct behaviour, not a defect.
+
 ---
 
 ## 14. Registering from your own library (Layer 2)
@@ -758,3 +814,36 @@ late registration means a gated entry is briefly visible.
 
 Re-registering one of our IDs replaces it — that is the supported way to override a packaged rule or
 component without forking.
+
+### Replacing what a packaged action does
+
+Section 1 explains why a manifest cannot rebind a packaged action. Here is where you can:
+
+```ts
+import { ExtensionActionRegistry } from '@nuxeo-satori/platform/extensions';
+
+const actions = inject(ExtensionActionRegistry);
+
+const registration = actions.register({
+  'app.toolbar.delete': { execute: (context) => myArchiveFlow(context.document) },
+});
+```
+
+`register` puts your handler in the **customer tier**, which always answers ahead of ours — timing
+does not matter. That guarantee is deliberate: you register from an `APP_INITIALIZER`, while a
+packaged surface registers handlers closing over a live component in `ngOnInit`. Ours is therefore
+always the _later_ call, so a single last-wins map would have silently outranked every override you
+wrote. `registerPackaged` is the tier we use, and it is only consulted when nobody has overridden
+the ID.
+
+`register` returns a registration, and `unregister()` on it withdraws **exactly** the handlers that
+call added:
+
+```ts
+inject(DestroyRef).onDestroy(() => registration.unregister());
+```
+
+It is scoped to the call rather than taking a list of IDs because an ID is shared — we register
+`app.toolbar.delete` too, and "withdraw the handlers for these IDs" would have deleted yours the
+first time the user navigated away from a document. Withdrawing is only necessary if your handler
+closes over something with a lifetime, such as a component instance.
