@@ -119,9 +119,12 @@ export class BrowseContextService {
       if (!raw) {
         return;
       }
-      const parsed = JSON.parse(raw) as SharedDocumentRef;
-      if (parsed?.uid && parsed?.title) {
-        this.sharedDocument.set(parsed);
+      const parsed: unknown = JSON.parse(raw);
+      const doc = parseSharedDocumentRef(parsed);
+      if (doc) {
+        this.sharedDocument.set(doc);
+      } else {
+        this.clearPersistedSharedDocument();
       }
     } catch {
       this.clearPersistedSharedDocument();
@@ -149,4 +152,22 @@ export class BrowseContextService {
       // Ignore storage failures.
     }
   }
+}
+
+function parseSharedDocumentRef(value: unknown): SharedDocumentRef | null {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const uid = record['uid'];
+  const title = record['title'];
+  if (typeof uid !== 'string' || typeof title !== 'string') {
+    return null;
+  }
+  const trimmedUid = uid.trim();
+  const trimmedTitle = title.trim();
+  if (!trimmedUid || !trimmedTitle) {
+    return null;
+  }
+  return { uid: trimmedUid, title: trimmedTitle };
 }

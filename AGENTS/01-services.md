@@ -97,6 +97,7 @@ from browse navigation, document detail, and tree clicks.
 
 ```typescript
 readonly contextPath: Signal<string>  // normalized repository path, default '/'
+readonly sharedDocument: Signal<SharedDocumentRef | null>  // external share recovery target (sessionStorage-backed)
 readonly treeRefreshTick: Signal<number>  // incremented when browse nav tree should reload
 readonly contentRefreshTick: Signal<number>  // incremented when browse folder listing should reload
 readonly clipboardPasteTick: Signal<number>  // incremented when clipboard copy/move completes
@@ -104,11 +105,12 @@ readonly clipboardPasteTick: Signal<number>  // incremented when clipboard copy/
 setFromRouterUrl(routerUrl: string): void
 setFromDocument(doc: NuxeoDocument): void  // folderish → doc.path; leaf → parent folder
 setFromNuxeoPath(nuxeoPath: string): void
+setSharedDocument(doc: SharedDocumentRef): void  // remember first externally shared doc for transient-user recovery
 requestTreeRefresh(): void  // invalidate/reload browse nav drawer tree (e.g. after domain creation)
 requestContentRefresh(): void  // reload browse main view children (e.g. after domain creation)
 notifyClipboardPasteComplete(event: ClipboardPasteEvent): void  // optimistic listing merge + reload
 consumeClipboardPasteEvent(): ClipboardPasteEvent | null
-resetContext(): void  // restore repository root path (e.g. on sign-out)
+resetContext(): void  // restore repository root path and clear shared-document state (e.g. on sign-out)
 ```
 
 Path helpers: `libs/shared/nuxeo-client/src/lib/utils/browse-path.utils.ts`

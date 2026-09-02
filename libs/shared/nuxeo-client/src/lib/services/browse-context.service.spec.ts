@@ -64,6 +64,20 @@ describe('BrowseContextService', () => {
     expect(restored.sharedDocument()).toEqual({ uid: 'doc-1', title: 'Shared file' });
   });
 
+  it('ignores malformed persisted sharedDocument and clears storage', () => {
+    sessionStorage.setItem(
+      'agentic_ui_external_share_doc',
+      JSON.stringify({ uid: 'doc-1', title: 1 }),
+    );
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const restored = TestBed.inject(BrowseContextService);
+
+    expect(restored.sharedDocument()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_external_share_doc')).toBeNull();
+  });
+
   it('notifyClipboardPasteComplete increments ticks and exposes payload once', () => {
     const doc = {
       uid: 'file-1',
