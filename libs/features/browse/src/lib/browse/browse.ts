@@ -204,7 +204,7 @@ export class BrowseComponent {
     () => this.accessDenied() && this.isTransientExternalUser(),
   );
   readonly externalShareAccessDeniedTitle = EXTERNAL_SHARE_ACCESS_DENIED_TITLE;
-  readonly externalShareAccessDeniedDetail = computed(() =>
+  readonly externalShareAccessDeniedDetailText = computed(() =>
     externalShareAccessDeniedDetail(this.sharedDocument()?.title ?? ''),
   );
   readonly externalShareBackLabel = computed(() => {

@@ -1022,7 +1022,7 @@ describe('BrowseComponent transient external-share errors', () => {
 
     expect(component.accessDenied()).toBe(true);
     expect(component.externalShareAccessDenied()).toBe(true);
-    expect(component.externalShareAccessDeniedDetail()).toContain('Quarterly Report');
+    expect(component.externalShareAccessDeniedDetailText()).toContain('Quarterly Report');
     expect(component.error()).toContain('Quarterly Report');
     expect(component.error()).not.toBe('Failed to load folder contents.');
   });
@@ -1051,7 +1051,7 @@ describe('BrowseComponent transient external-share errors', () => {
 
     expect(component.accessDenied()).toBe(true);
     expect(component.externalShareAccessDenied()).toBe(true);
-    expect(component.externalShareAccessDeniedDetail()).toContain('Quarterly Report');
+    expect(component.externalShareAccessDeniedDetailText()).toContain('Quarterly Report');
     expect(component.externalShareBackLabel()).toBe('Back to Quarterly Report');
     expect(component.canReturnToSharedDocument()).toBe(true);
   });
