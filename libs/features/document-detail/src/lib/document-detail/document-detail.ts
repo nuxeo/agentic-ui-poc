@@ -553,7 +553,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!this.isTransientExternalUser()) {
       return true;
     }
-    return Boolean(this.browseContext.sharedDocument()?.uid);
+    const sharedUid = this.browseContext.sharedDocument()?.uid;
+    return Boolean(sharedUid && this.docUid && sharedUid !== this.docUid);
   });
 
   onBreadcrumbClick(event: MouseEvent): void {
@@ -3201,7 +3202,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   goBack(): void {
     const shared = this.browseContext.sharedDocument();
     if (isTransientUser(this.currentUsername())) {
-      if (!shared?.uid || this.doc()?.uid === shared.uid) {
+      if (!shared?.uid || this.docUid === shared.uid) {
         return;
       }
       void this.router.navigate(['/doc', shared.uid]);

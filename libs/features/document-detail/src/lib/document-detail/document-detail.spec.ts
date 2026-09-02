@@ -856,6 +856,16 @@ describe('DocumentDetailComponent', () => {
         expect(browseContext.sharedDocument()).toBeNull();
         expect(component.showErrorGoBack()).toBe(false);
       });
+
+      it('hides error Go Back when reloading the original shared document fails', async () => {
+        browseContext.setSharedDocument({ uid: 'shared-1', title: 'Quarterly Report' });
+        paramMap$.next(convertToParamMap({ uid: 'shared-1' }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(component.error()).toBe('Failed to load document.');
+        expect(component.showErrorGoBack()).toBe(false);
+      });
     });
   });
 });
