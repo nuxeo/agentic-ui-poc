@@ -9,12 +9,13 @@ import {
   Router,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DocumentDetailComponent } from './document-detail';
 import {
   ARenderService,
+  BrowseContextService,
   BrowseService,
   CURRENT_USERNAME,
   DirectoryService,
@@ -671,6 +672,137 @@ describe('DocumentDetailComponent', () => {
       expect(navigateSpy).toHaveBeenCalledWith(['/collections', 'col-resolved-uid'], {
         replaceUrl: true,
       });
+    });
+  });
+
+  describe('transient external-share recovery (NXSAT-211)', () => {
+    const SHARED_DOC: NuxeoDocument = {
+      uid: 'shared-1',
+      title: 'Quarterly Report',
+      type: 'File',
+      path: '/default-domain/workspaces/ws/quarterly-report',
+      lastModified: '2026-01-01T00:00:00Z',
+      properties: {},
+    };
+
+    const CHILD_DOC: NuxeoDocument = {
+      uid: 'child-1',
+      title: 'Child Report',
+      type: 'File',
+      path: '/default-domain/workspaces/ws/quarterly-report/child-report',
+      lastModified: '2026-01-01T00:00:00Z',
+      properties: {},
+    };
+
+    let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+    let browseContext: BrowseContextService;
+    let navigateSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(async () => {
+      sessionStorage.clear();
+      paramMap$ = new BehaviorSubject(convertToParamMap({ uid: 'shared-1' }));
+      mockDocumentDetailService.getFullDocument = vi.fn((uid: string) => {
+        if (uid === 'shared-1') {
+          return of(SHARED_DOC);
+        }
+        if (uid === 'child-1') {
+          return of(CHILD_DOC);
+        }
+        return new Observable<NuxeoDocument>();
+      });
+
+      await TestBed.resetTestingModule();
+      snackBarOpenSpy = vi.fn();
+      await TestBed.configureTestingModule({
+        imports: [DocumentDetailComponent],
+        providers: [
+          provideExperimentalZonelessChangeDetection(),
+          provideRouter([], withDisabledInitialNavigation()),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              paramMap: paramMap$.asObservable(),
+              queryParamMap: of(convertToParamMap({})),
+              snapshot: { queryParamMap: convertToParamMap({}) },
+            },
+          },
+          { provide: DocumentDetailService, useValue: mockDocumentDetailService },
+          { provide: BrowseService, useValue: mockBrowseService },
+          { provide: DirectoryService, useValue: mockDirectoryService },
+          {
+            provide: KeClientService,
+            useValue: { enrich: (): Observable<KeEnrichmentResult> => of(keResult('')) },
+          },
+          { provide: TaskService, useValue: mockTaskService },
+          { provide: WorkflowService, useValue: mockWorkflowService },
+          { provide: ARenderService, useValue: mockARenderService },
+          { provide: TagService, useValue: mockTagService },
+          { provide: AiGatewayService, useValue: mockAiGatewayService },
+          { provide: AiChatService, useValue: mockAiChatService },
+          { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
+          { provide: NuxeoApiBase, useValue: mockNuxeoApiBase },
+          { provide: CURRENT_USERNAME, useValue: () => 'transient/guest@example.com' },
+          { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
+        ],
+      })
+        .overrideComponent(DocumentDetailComponent, {
+          set: { imports: [], template: '<div></div>' },
+        })
+        .compileComponents();
+
+      browseContext = TestBed.inject(BrowseContextService);
+      fixture = TestBed.createComponent(DocumentDetailComponent);
+      component = fixture.componentInstance;
+      navigateSpy = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      fixture.detectChanges();
+      await fixture.whenStable();
+    });
+
+    afterEach(() => {
+      sessionStorage.clear();
+    });
+
+    it('registers the first shared document as the recovery target', () => {
+      expect(browseContext.sharedDocument()).toEqual({
+        uid: 'shared-1',
+        title: 'Quarterly Report',
+      });
+      expect(component.showTransientBackButton()).toBe(false);
+    });
+
+    it('preserves the original shared document when opening a child', async () => {
+      const setSharedDocumentSpy = vi.spyOn(browseContext, 'setSharedDocument');
+
+      paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(setSharedDocumentSpy).toHaveBeenCalledTimes(2);
+      expect(setSharedDocumentSpy).toHaveBeenNthCalledWith(1, {
+        uid: 'shared-1',
+        title: 'Quarterly Report',
+      });
+      expect(setSharedDocumentSpy).toHaveBeenNthCalledWith(2, {
+        uid: 'child-1',
+        title: 'Child Report',
+      });
+      expect(browseContext.sharedDocument()).toEqual({
+        uid: 'shared-1',
+        title: 'Quarterly Report',
+      });
+      expect(component.showTransientBackButton()).toBe(true);
+    });
+
+    it('goBack navigates to the original shared document from a child', async () => {
+      paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      component.goBack();
+
+      expect(navigateSpy).toHaveBeenCalledWith(['/doc', 'shared-1']);
     });
   });
 });
