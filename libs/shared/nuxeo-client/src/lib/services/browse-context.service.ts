@@ -25,6 +25,8 @@ export interface SharedDocumentRef {
   title: string;
 }
 
+const SHARED_DOCUMENT_STORAGE_KEY = 'agentic_ui_external_share_doc';
+
 @Injectable({ providedIn: 'root' })
 export class BrowseContextService {
   readonly contextPath = signal('/');
@@ -38,6 +40,10 @@ export class BrowseContextService {
   readonly clipboardPasteTick = signal(0);
 
   private pendingClipboardPaste: ClipboardPasteEvent | null = null;
+
+  constructor() {
+    this.restoreSharedDocument();
+  }
 
   /** Ask the browse nav drawer to reload its folder tree on next open (or immediately if open). */
   requestTreeRefresh(): void {
@@ -62,15 +68,23 @@ export class BrowseContextService {
     return event;
   }
 
-  /** Remember the externally shared document for transient-user navigation recovery. */
+  /**
+   * Remember the externally shared document for transient-user navigation recovery.
+   * Preserves the first document established for the share session.
+   */
   setSharedDocument(doc: SharedDocumentRef): void {
+    if (this.sharedDocument()) {
+      return;
+    }
     this.sharedDocument.set(doc);
+    this.persistSharedDocument(doc);
   }
 
   /** Reset browse navigation context (e.g. on sign-out / user switch). */
   resetContext(): void {
     this.contextPath.set('/');
     this.sharedDocument.set(null);
+    this.clearPersistedSharedDocument();
     this.treeRefreshTick.set(0);
     this.contentRefreshTick.set(0);
     this.clipboardPasteTick.set(0);
@@ -93,6 +107,46 @@ export class BrowseContextService {
     const normalized = normalizeNuxeoPath(path);
     if (!nuxeoPathsEqualFlexible(this.contextPath(), normalized)) {
       this.contextPath.set(normalized);
+    }
+  }
+
+  private restoreSharedDocument(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      const raw = sessionStorage.getItem(SHARED_DOCUMENT_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as SharedDocumentRef;
+      if (parsed?.uid && parsed?.title) {
+        this.sharedDocument.set(parsed);
+      }
+    } catch {
+      this.clearPersistedSharedDocument();
+    }
+  }
+
+  private persistSharedDocument(doc: SharedDocumentRef): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.setItem(SHARED_DOCUMENT_STORAGE_KEY, JSON.stringify(doc));
+    } catch {
+      // Ignore quota / private-mode failures.
+    }
+  }
+
+  private clearPersistedSharedDocument(): void {
+    if (typeof sessionStorage === 'undefined') {
+      return;
+    }
+    try {
+      sessionStorage.removeItem(SHARED_DOCUMENT_STORAGE_KEY);
+    } catch {
+      // Ignore storage failures.
     }
   }
 }

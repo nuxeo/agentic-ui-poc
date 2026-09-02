@@ -474,6 +474,12 @@ sat-breadcrumbs {
   max-width: 32rem;
   margin: 0 auto;
 
+  &.browse-access-denied--full {
+    min-height: 24rem;
+    width: 100%;
+    max-width: none;
+  }
+
   .access-denied-icon {
     font-size: 48px;
     width: 48px;

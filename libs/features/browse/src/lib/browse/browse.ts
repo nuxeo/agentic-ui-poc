@@ -723,6 +723,11 @@ export class BrowseComponent {
     this.currentDoc.set(null);
     this.entries.set([]);
     this.totalSize.set(0);
+    this.auditEntries.set([]);
+    this.auditTotalSize.set(0);
+    this.trashedDocs.set([]);
+    this.trashLoading.set(false);
+    this.resetBrowseTabState();
     this.loading.set(false);
   }
 

@@ -6,8 +6,13 @@ describe('BrowseContextService', () => {
   let service: BrowseContextService;
 
   beforeEach(() => {
+    sessionStorage.clear();
     TestBed.configureTestingModule({});
     service = TestBed.inject(BrowseContextService);
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
   });
 
   it('requestTreeRefresh increments treeRefreshTick', () => {
@@ -39,6 +44,24 @@ describe('BrowseContextService', () => {
     expect(service.treeRefreshTick()).toBe(0);
     expect(service.contentRefreshTick()).toBe(0);
     expect(service.clipboardPasteTick()).toBe(0);
+    expect(sessionStorage.getItem('agentic_ui_external_share_doc')).toBeNull();
+  });
+
+  it('setSharedDocument preserves the first share target for the session', () => {
+    service.setSharedDocument({ uid: 'doc-1', title: 'Shared folder' });
+    service.setSharedDocument({ uid: 'doc-2', title: 'Child document' });
+
+    expect(service.sharedDocument()).toEqual({ uid: 'doc-1', title: 'Shared folder' });
+  });
+
+  it('setSharedDocument persists and restores across service instances', () => {
+    service.setSharedDocument({ uid: 'doc-1', title: 'Shared file' });
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const restored = TestBed.inject(BrowseContextService);
+
+    expect(restored.sharedDocument()).toEqual({ uid: 'doc-1', title: 'Shared file' });
   });
 
   it('notifyClipboardPasteComplete increments ticks and exposes payload once', () => {

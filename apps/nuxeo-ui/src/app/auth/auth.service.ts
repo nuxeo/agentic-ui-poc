@@ -17,7 +17,7 @@ import {
   readShareTokenFromBrowserUrl,
   stripShareTokenFromBrowserUrl,
 } from './share-token.util';
-import { NUXEO_ESTABLISH_BROWSER_SESSION } from './nuxeo-auth.context';
+import { NUXEO_ESTABLISH_BROWSER_SESSION, NUXEO_OMIT_CREDENTIALS } from './nuxeo-auth.context';
 
 import {
   BrowseContextService,
@@ -153,7 +153,7 @@ export class AuthService {
    * Clears a stale Nuxeo browser session (JSESSIONID) before password login or hydration.
    * Same-origin `/nuxeo/**` requests always send cookies; an old cookie can override Basic auth.
    */
-  private clearStaleNuxeoCookieSession(): Observable<void> {
+  private clearStaleNuxeoCookieSession(options?: { strict?: boolean }): Observable<void> {
     return this.http
       .get(this.apiUrl('/nuxeo/logout'), {
         withCredentials: true,
@@ -161,7 +161,7 @@ export class AuthService {
       })
       .pipe(
         map(() => undefined),
-        catchError(() => of(undefined)),
+        catchError((err) => (options?.strict ? throwError(() => err) : of(undefined))),
       );
   }
 
@@ -434,11 +434,12 @@ export class AuthService {
       [AUTH_TOKEN_HEADER]: trimmed,
     });
 
-    return this.clearStaleNuxeoCookieSession().pipe(
+    return this.clearStaleNuxeoCookieSession({ strict: true }).pipe(
       switchMap(() =>
         this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
           headers,
           withCredentials: false,
+          context: new HttpContext().set(NUXEO_OMIT_CREDENTIALS, true),
         }),
       ),
       switchMap((me) => {

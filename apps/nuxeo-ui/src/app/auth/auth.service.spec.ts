@@ -322,4 +322,16 @@ describe('AuthService poweruser access', () => {
     expect(service.isAuthenticated()).toBeFalse();
     expect(service.shareAuthToken()).toBeNull();
   });
+
+  it('aborts share-token auth when stale session logout fails', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/logout'))
+      .flush('Error', { status: 500, statusText: 'Error' });
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(service.shareAuthToken()).toBeNull();
+    httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/me'));
+  });
 });
