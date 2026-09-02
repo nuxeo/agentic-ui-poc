@@ -311,7 +311,12 @@ export class AuthService {
     if (shareToken) {
       stripShareTokenFromBrowserUrl();
       return this.authenticateWithShareToken(shareToken).pipe(
-        switchMap(() => (this.isAuthenticated() ? of(undefined) : this.runHydration())),
+        switchMap(() => {
+          if (this.isAuthenticated() || this.isExplicitlySignedOut()) {
+            return of(undefined);
+          }
+          return this.runHydration();
+        }),
       );
     }
 
@@ -447,6 +452,7 @@ export class AuthService {
         const user = readUsernameFromMe(me);
         if (!user) {
           this.clearShareAuth();
+          this.markSignedOut();
           return of(undefined);
         }
         const flags = readSessionFlagsFromMe(me);
@@ -473,6 +479,7 @@ export class AuthService {
       }),
       catchError(() => {
         this.clearShareAuth();
+        this.markSignedOut();
         return of(undefined);
       }),
     );

@@ -359,6 +359,23 @@ describe('AuthService poweruser access', () => {
 
     expect(service.isAuthenticated()).toBeFalse();
     expect(service.shareAuthToken()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
     httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/me'));
+  });
+
+  it('ensureHydrated does not rehydrate stale cookie when share-token logout fails', () => {
+    window.history.pushState({}, '', '/?token=share-token-abc');
+
+    service.ensureHydrated().subscribe();
+
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/logout'))
+      .flush('Error', { status: 500, statusText: 'Error' });
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+    httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/me'));
+
+    window.history.pushState({}, '', '/');
   });
 });
