@@ -48,6 +48,8 @@ import {
   writeClipboardDocs,
   type GlobalSearchSuggestion,
   docTypeIcon,
+  isTransientUser,
+  isNavPathAllowedForTransientUser,
 } from '@agentic-ui/shared/nuxeo-client';
 import {
   SelectionTopbarComponent,
@@ -120,8 +122,10 @@ export class AppShellComponent implements OnDestroy {
 
   /** Hides Administration unless the user is an administrator or poweruser. */
   protected readonly navItems = computed(() => {
+    const transientUser = isTransientUser(this.auth.username());
     return PLATFORM_NAV_ITEMS.filter((item) => {
       if (item.path === '/administration' && !this.auth.hasAdministrationAccess()) return false;
+      if (transientUser && !isNavPathAllowedForTransientUser(item.path)) return false;
       return true;
     });
   });

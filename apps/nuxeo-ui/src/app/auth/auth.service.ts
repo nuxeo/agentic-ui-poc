@@ -434,35 +434,46 @@ export class AuthService {
       [AUTH_TOKEN_HEADER]: trimmed,
     });
 
-    return this.http
-      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
-        headers,
-        withCredentials: true,
-      })
-      .pipe(
-        tap((me) => {
-          const user = readUsernameFromMe(me);
-          if (!user) {
-            this.clearShareAuth();
-            return;
-          }
-          const flags = readSessionFlagsFromMe(me);
-          const session: CookieStoredSession = {
-            kind: 'cookie',
-            username: user,
-            isAdministrator: flags.isAdministrator,
-            groups: flags.groups,
-          };
-          this.state.set(session);
-          this.persistCookie(session);
-          this.clearShareAuth();
+    return this.clearStaleNuxeoCookieSession().pipe(
+      switchMap(() =>
+        this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+          headers,
+          withCredentials: false,
         }),
-        map(() => undefined),
-        catchError(() => {
+      ),
+      switchMap((me) => {
+        const user = readUsernameFromMe(me);
+        if (!user) {
           this.clearShareAuth();
           return of(undefined);
-        }),
-      );
+        }
+        const flags = readSessionFlagsFromMe(me);
+        return this.http
+          .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+            headers,
+            withCredentials: true,
+            context: new HttpContext().set(NUXEO_ESTABLISH_BROWSER_SESSION, true),
+          })
+          .pipe(
+            tap(() => {
+              const session: CookieStoredSession = {
+                kind: 'cookie',
+                username: user,
+                isAdministrator: flags.isAdministrator,
+                groups: flags.groups,
+              };
+              this.state.set(session);
+              this.persistCookie(session);
+              this.clearShareAuth();
+            }),
+            map(() => undefined),
+          );
+      }),
+      catchError(() => {
+        this.clearShareAuth();
+        return of(undefined);
+      }),
+    );
   }
 
   /**

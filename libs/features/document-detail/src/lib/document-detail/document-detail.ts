@@ -88,6 +88,7 @@ import {
   mailSendFailureMessage,
   readClipboardDocs,
   writeClipboardDocs,
+  isTransientUser,
   type ClipboardDoc,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -515,6 +516,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly breadcrumbItems = computed<SatBreadcrumbsItem[]>(() => {
+    if (isTransientUser(this.currentUsername())) {
+      return [];
+    }
     const d = this.doc();
     if (!d) return [];
 
@@ -534,6 +538,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
     return this.breadcrumbItemsCache;
   });
+
+  readonly isTransientExternalUser = computed(() => isTransientUser(this.currentUsername()));
 
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
@@ -1496,6 +1502,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
+          if (isTransientUser(this.currentUsername())) {
+            this.browseContext.setSharedDocument({ uid: doc.uid, title: doc.title });
+          }
           if (isCollectionDocument(doc)) {
             void this.router.navigate(['/collections', doc.uid], { replaceUrl: true });
             return;
@@ -3175,6 +3184,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
+    if (isTransientUser(this.currentUsername())) {
+      return;
+    }
     const d = this.doc();
     if (d) {
       const parentPath = d.path.split('/').slice(0, -1).join('/') || '/';

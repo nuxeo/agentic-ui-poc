@@ -20,9 +20,16 @@ export interface ClipboardPasteEvent {
  * folder/workspace navigation updates the path; opening a document keeps the tree
  * aligned to the containing folder (or the folder itself when folderish).
  */
+export interface SharedDocumentRef {
+  uid: string;
+  title: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class BrowseContextService {
   readonly contextPath = signal('/');
+  /** Document opened via an external share link; used for access-denied recovery UX. */
+  readonly sharedDocument = signal<SharedDocumentRef | null>(null);
   /** Incremented when the browse nav tree should reload (e.g. after domain creation). */
   readonly treeRefreshTick = signal(0);
   /** Incremented when the browse main view should reload folder children (e.g. after domain creation). */
@@ -55,9 +62,15 @@ export class BrowseContextService {
     return event;
   }
 
+  /** Remember the externally shared document for transient-user navigation recovery. */
+  setSharedDocument(doc: SharedDocumentRef): void {
+    this.sharedDocument.set(doc);
+  }
+
   /** Reset browse navigation context (e.g. on sign-out / user switch). */
   resetContext(): void {
     this.contextPath.set('/');
+    this.sharedDocument.set(null);
     this.treeRefreshTick.set(0);
     this.contentRefreshTick.set(0);
     this.clipboardPasteTick.set(0);

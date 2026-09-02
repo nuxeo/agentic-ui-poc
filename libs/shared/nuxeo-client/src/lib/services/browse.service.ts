@@ -34,6 +34,14 @@ export interface BrowseFolderContents {
   redirectTo?: string;
 }
 
+export interface BrowseFolderLoadOptions {
+  /**
+   * When false, a 403 on repository root is propagated instead of falling back to
+   * the nav-tree bootstrap (synthetic root + accessible top-level folders).
+   */
+  bootstrapOnRootDenied?: boolean;
+}
+
 /** True for Domain documents attached directly under the repository root. */
 function isTopLevelDomain(doc: NuxeoDocument | null | undefined): boolean {
   if (!doc || doc.type !== 'Domain') {
@@ -115,7 +123,11 @@ export class BrowseService {
    * Loads the current browse folder and its children. When repository root is not readable,
    * falls back to accessible top-level folders (User Workspaces, domain-scoped ACLs, etc.).
    */
-  getBrowseFolderContents(nuxeoPath: string, pageSize = 50): Observable<BrowseFolderContents> {
+  getBrowseFolderContents(
+    nuxeoPath: string,
+    pageSize = 50,
+    options?: BrowseFolderLoadOptions,
+  ): Observable<BrowseFolderContents> {
     const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
 
     return this.getByPath(safePath).pipe(
@@ -124,9 +136,12 @@ export class BrowseService {
           map(({ entries, totalSize }) => ({ folder, entries, totalSize })),
         ),
       ),
-      catchError(() => {
+      catchError((err) => {
         if (safePath !== '/') {
-          return throwError(() => new Error(`Unable to load folder at ${safePath}`));
+          return throwError(() => err);
+        }
+        if (options?.bootstrapOnRootDenied === false) {
+          return throwError(() => err);
         }
         return this.getNavTreeBootstrap(pageSize).pipe(
           map(({ root, entries }) => ({

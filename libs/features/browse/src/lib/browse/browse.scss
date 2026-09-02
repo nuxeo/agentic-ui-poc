@@ -447,7 +447,7 @@ sat-breadcrumbs {
   align-items: center;
   justify-content: center;
   flex: 1;
-  color: #ef5350;
+  color: var(--mat-sys-error);
   gap: 8px;
   padding: 40px 0;
 
@@ -459,6 +459,41 @@ sat-breadcrumbs {
   p {
     font-size: 14px;
     margin: 0;
+  }
+}
+
+.browse-access-denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 12px;
+  padding: 48px 24px;
+  text-align: center;
+  max-width: 32rem;
+  margin: 0 auto;
+
+  .access-denied-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .access-denied-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--mat-sys-on-surface);
+  }
+
+  .access-denied-detail {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--mat-sys-on-surface-variant);
   }
 }
 

@@ -420,6 +420,32 @@ describe('BrowseService', () => {
     expect(result.entries).toHaveLength(1);
   });
 
+  it('getBrowseFolderContents propagates repository root 403 when bootstrap fallback disabled', async () => {
+    const result$ = firstValueFrom(
+      service.getBrowseFolderContents('/', 50, { bootstrapOnRootDenied: false }),
+    );
+
+    const rootReq = httpMock.expectOne((r) => r.url === '/nuxeo/api/v1/path/');
+    rootReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    await expect(result$).rejects.toMatchObject({ status: 403 });
+    httpMock.verify();
+  });
+
+  it('getBrowseFolderContents propagates non-root path errors with status', async () => {
+    const result$ = firstValueFrom(
+      service.getBrowseFolderContents('/default-domain/workspaces/secret'),
+    );
+
+    const folderReq = httpMock.expectOne(
+      (r) => r.url === '/nuxeo/api/v1/path/default-domain/workspaces/secret',
+    );
+    folderReq.flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    await expect(result$).rejects.toMatchObject({ status: 403 });
+    httpMock.verify();
+  });
+
   it('getBrowseFolderContents loads Favorites members via default_content_collection', async () => {
     const result$ = firstValueFrom(
       service.getBrowseFolderContents('/default-domain/UserWorkspaces/user-readonly01/Favorites'),

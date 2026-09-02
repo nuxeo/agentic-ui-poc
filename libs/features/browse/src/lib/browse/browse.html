@@ -1,70 +1,72 @@
 <div class="browse-container">
   <!-- Header row: doc icon/title + actions -->
-  <div class="browse-header">
-    <div class="header-left">
-      @if (currentDoc(); as doc) {
-        <mat-icon class="header-doc-icon">{{ docIcon(doc) }}</mat-icon>
-        <div class="header-doc-info">
-          <div class="header-doc-title" role="heading" aria-level="1">{{ doc.title }}</div>
-          <span class="header-doc-type">{{ doc.type }}</span>
-        </div>
-      }
+  @if (!externalShareAccessDenied()) {
+    <div class="browse-header">
+      <div class="header-left">
+        @if (currentDoc(); as doc) {
+          <mat-icon class="header-doc-icon">{{ docIcon(doc) }}</mat-icon>
+          <div class="header-doc-info">
+            <div class="header-doc-title" role="heading" aria-level="1">{{ doc.title }}</div>
+            <span class="header-doc-type">{{ doc.type }}</span>
+          </div>
+        }
+      </div>
+      <div class="header-actions">
+        @if (canCreateContentHere()) {
+          <button
+            mat-flat-button
+            color="primary"
+            matTooltip="Create folder, upload files, or import CSV"
+            [disabled]="!isCurrentFolderish()"
+            (click)="openCreateImportDialog()"
+          >
+            <mat-icon>add</mat-icon>
+            Create / Import
+          </button>
+        }
+        <button mat-icon-button matTooltip="Upload with Nuxeo Drive" (click)="openDriveDialog()">
+          <mat-icon>cloud_upload</mat-icon>
+        </button>
+        @if (showHeaderEdit()) {
+          <button mat-icon-button matTooltip="Edit" (click)="openEditDialog()">
+            <mat-icon>edit</mat-icon>
+          </button>
+        }
+        @if (showHeaderDelete()) {
+          <button mat-icon-button matTooltip="Delete" (click)="deleteDocument()">
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
+        <button mat-icon-button matTooltip="Download All" (click)="downloadAll()">
+          <mat-icon>download</mat-icon>
+        </button>
+        <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More actions">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #moreMenu="matMenu">
+          <button mat-menu-item (click)="openShareDialog()">
+            <mat-icon>share</mat-icon>
+            <span>Share</span>
+          </button>
+          <button mat-menu-item (click)="toggleNotify()">
+            <mat-icon>{{ isSubscribed() ? 'notifications_off' : 'notifications' }}</mat-icon>
+            <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
+          </button>
+          <button mat-menu-item (click)="openExportDialog()">
+            <mat-icon>ios_share</mat-icon>
+            <span>Export</span>
+          </button>
+        </mat-menu>
+      </div>
     </div>
-    <div class="header-actions">
-      @if (canCreateContentHere()) {
-        <button
-          mat-flat-button
-          color="primary"
-          matTooltip="Create folder, upload files, or import CSV"
-          [disabled]="!isCurrentFolderish()"
-          (click)="openCreateImportDialog()"
-        >
-          <mat-icon>add</mat-icon>
-          Create / Import
-        </button>
-      }
-      <button mat-icon-button matTooltip="Upload with Nuxeo Drive" (click)="openDriveDialog()">
-        <mat-icon>cloud_upload</mat-icon>
-      </button>
-      @if (showHeaderEdit()) {
-        <button mat-icon-button matTooltip="Edit" (click)="openEditDialog()">
-          <mat-icon>edit</mat-icon>
-        </button>
-      }
-      @if (showHeaderDelete()) {
-        <button mat-icon-button matTooltip="Delete" (click)="deleteDocument()">
-          <mat-icon>delete</mat-icon>
-        </button>
-      }
-      <button mat-icon-button matTooltip="Download All" (click)="downloadAll()">
-        <mat-icon>download</mat-icon>
-      </button>
-      <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More actions">
-        <mat-icon>more_vert</mat-icon>
-      </button>
-      <mat-menu #moreMenu="matMenu">
-        <button mat-menu-item (click)="openShareDialog()">
-          <mat-icon>share</mat-icon>
-          <span>Share</span>
-        </button>
-        <button mat-menu-item (click)="toggleNotify()">
-          <mat-icon>{{ isSubscribed() ? 'notifications_off' : 'notifications' }}</mat-icon>
-          <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
-        </button>
-        <button mat-menu-item (click)="openExportDialog()">
-          <mat-icon>ios_share</mat-icon>
-          <span>Export</span>
-        </button>
-      </mat-menu>
-    </div>
-  </div>
+  }
 
   <!-- Breadcrumbs -->
   @if (showBreadcrumbs()) {
     <sat-breadcrumbs [items]="breadcrumbs()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
   }
 
-  @if (isDomainBrowse() || isRepositoryRootBrowse()) {
+  @if (!externalShareAccessDenied() && (isDomainBrowse() || isRepositoryRootBrowse())) {
     <p class="browse-domain-hint" role="note">
       {{ domainContainerGuidance }}
     </p>
@@ -83,130 +85,152 @@
           <!-- ═══════ VIEW TAB ═══════ -->
           <mat-tab label="View">
             <!-- Toolbar: result count + filters + view toggle + column settings + export CSV -->
-            <div class="view-toolbar">
-              <span class="result-count">{{ filteredEntries().length }} result(s)</span>
-              <div class="toolbar-spacer"></div>
+            @if (!externalShareAccessDenied()) {
+              <div class="view-toolbar">
+                <span class="result-count">{{ filteredEntries().length }} result(s)</span>
+                <div class="toolbar-spacer"></div>
 
-              <mat-form-field
-                class="toolbar-filter-field"
-                appearance="outline"
-                subscriptSizing="dynamic"
-              >
-                <mat-label>Filter by title...</mat-label>
-                <input matInput [ngModel]="filterText()" (ngModelChange)="filterText.set($event)" />
-                @if (filterText()) {
-                  <button
-                    matSuffix
-                    mat-icon-button
-                    aria-label="Clear"
-                    (click)="filterText.set('')"
-                    class="filter-clear-btn"
-                  >
-                    <mat-icon>close</mat-icon>
-                  </button>
-                }
-              </mat-form-field>
-              <mat-form-field
-                class="toolbar-filter-field toolbar-filter-date"
-                appearance="outline"
-                subscriptSizing="dynamic"
-              >
-                <mat-label>Modified</mat-label>
-                <mat-date-range-input [rangePicker]="modifiedPicker">
+                <mat-form-field
+                  class="toolbar-filter-field"
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Filter by title...</mat-label>
                   <input
-                    matStartDate
-                    [ngModel]="filterModifiedFrom()"
-                    (ngModelChange)="filterModifiedFrom.set($event)"
-                    placeholder="From"
+                    matInput
+                    [ngModel]="filterText()"
+                    (ngModelChange)="filterText.set($event)"
                   />
-                  <input
-                    matEndDate
-                    [ngModel]="filterModifiedTo()"
-                    (ngModelChange)="filterModifiedTo.set($event)"
-                    placeholder="To"
-                  />
-                </mat-date-range-input>
-                <mat-datepicker-toggle matIconSuffix [for]="modifiedPicker" />
-                <mat-date-range-picker #modifiedPicker />
-              </mat-form-field>
-              <mat-form-field
-                class="toolbar-filter-field"
-                appearance="outline"
-                subscriptSizing="dynamic"
-              >
-                <mat-label>Last Contributor</mat-label>
-                <input
-                  matInput
-                  [ngModel]="filterContributor()"
-                  (ngModelChange)="filterContributor.set($event)"
-                />
-                @if (filterContributor()) {
-                  <button
-                    matSuffix
-                    mat-icon-button
-                    aria-label="Clear"
-                    (click)="filterContributor.set('')"
-                    class="filter-clear-btn"
-                  >
-                    <mat-icon>close</mat-icon>
-                  </button>
-                }
-              </mat-form-field>
-              <mat-form-field
-                class="toolbar-filter-select"
-                appearance="outline"
-                subscriptSizing="dynamic"
-              >
-                <mat-label>All types</mat-label>
-                <mat-select [ngModel]="filterType()" (ngModelChange)="filterType.set($event)">
-                  <mat-option value="">All types</mat-option>
-                  @for (t of distinctTypes(); track t) {
-                    <mat-option [value]="t">{{ t }}</mat-option>
+                  @if (filterText()) {
+                    <button
+                      matSuffix
+                      mat-icon-button
+                      aria-label="Clear"
+                      (click)="filterText.set('')"
+                      class="filter-clear-btn"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
                   }
-                </mat-select>
-              </mat-form-field>
+                </mat-form-field>
+                <mat-form-field
+                  class="toolbar-filter-field toolbar-filter-date"
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Modified</mat-label>
+                  <mat-date-range-input [rangePicker]="modifiedPicker">
+                    <input
+                      matStartDate
+                      [ngModel]="filterModifiedFrom()"
+                      (ngModelChange)="filterModifiedFrom.set($event)"
+                      placeholder="From"
+                    />
+                    <input
+                      matEndDate
+                      [ngModel]="filterModifiedTo()"
+                      (ngModelChange)="filterModifiedTo.set($event)"
+                      placeholder="To"
+                    />
+                  </mat-date-range-input>
+                  <mat-datepicker-toggle matIconSuffix [for]="modifiedPicker" />
+                  <mat-date-range-picker #modifiedPicker />
+                </mat-form-field>
+                <mat-form-field
+                  class="toolbar-filter-field"
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>Last Contributor</mat-label>
+                  <input
+                    matInput
+                    [ngModel]="filterContributor()"
+                    (ngModelChange)="filterContributor.set($event)"
+                  />
+                  @if (filterContributor()) {
+                    <button
+                      matSuffix
+                      mat-icon-button
+                      aria-label="Clear"
+                      (click)="filterContributor.set('')"
+                      class="filter-clear-btn"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </mat-form-field>
+                <mat-form-field
+                  class="toolbar-filter-select"
+                  appearance="outline"
+                  subscriptSizing="dynamic"
+                >
+                  <mat-label>All types</mat-label>
+                  <mat-select [ngModel]="filterType()" (ngModelChange)="filterType.set($event)">
+                    <mat-option value="">All types</mat-option>
+                    @for (t of distinctTypes(); track t) {
+                      <mat-option [value]="t">{{ t }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
 
-              <div class="toolbar-actions">
-                <button
-                  mat-icon-button
-                  matTooltip="Export CSV"
-                  (click)="exportCsv()"
-                  [disabled]="csvExporting()"
-                >
-                  @if (csvExporting()) {
-                    <mat-spinner diameter="18" />
-                  } @else {
-                    <mat-icon>download</mat-icon>
-                  }
-                </button>
-                <button
-                  mat-icon-button
-                  matTooltip="List view"
-                  [class.active-view]="viewMode() === 'list'"
-                  (click)="setViewMode('list')"
-                >
-                  <mat-icon>view_list</mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  matTooltip="Card view"
-                  [class.active-view]="viewMode() === 'card'"
-                  (click)="setViewMode('card')"
-                >
-                  <mat-icon>grid_view</mat-icon>
-                </button>
+                <div class="toolbar-actions">
+                  <button
+                    mat-icon-button
+                    matTooltip="Export CSV"
+                    (click)="exportCsv()"
+                    [disabled]="csvExporting()"
+                  >
+                    @if (csvExporting()) {
+                      <mat-spinner diameter="18" />
+                    } @else {
+                      <mat-icon>download</mat-icon>
+                    }
+                  </button>
+                  <button
+                    mat-icon-button
+                    matTooltip="List view"
+                    [class.active-view]="viewMode() === 'list'"
+                    (click)="setViewMode('list')"
+                  >
+                    <mat-icon>view_list</mat-icon>
+                  </button>
+                  <button
+                    mat-icon-button
+                    matTooltip="Card view"
+                    [class.active-view]="viewMode() === 'card'"
+                    (click)="setViewMode('card')"
+                  >
+                    <mat-icon>grid_view</mat-icon>
+                  </button>
+                </div>
               </div>
-            </div>
+            }
 
             @if (loading()) {
               <div class="browse-loading">
                 <mat-spinner diameter="36" />
               </div>
+            } @else if (externalShareAccessDenied()) {
+              <div class="browse-access-denied" role="alert">
+                <mat-icon class="access-denied-icon" aria-hidden="true">lock</mat-icon>
+                <h2 class="access-denied-title">{{ externalShareAccessDeniedTitle }}</h2>
+                <p class="access-denied-detail">{{ externalShareAccessDeniedDetail() }}</p>
+                <button
+                  mat-flat-button
+                  color="primary"
+                  type="button"
+                  [disabled]="!canReturnToSharedDocument()"
+                  (click)="goBackToSharedDocument()"
+                >
+                  <mat-icon>arrow_back</mat-icon>
+                  {{ externalShareBackLabel() }}
+                </button>
+              </div>
             } @else if (error()) {
               <div class="browse-error">
                 <mat-icon class="error-icon">error_outline</mat-icon>
                 <p>{{ error() }}</p>
-                <button mat-stroked-button (click)="loadContent()">
+                <button mat-stroked-button type="button" (click)="loadContent()">
                   <mat-icon>refresh</mat-icon> Retry
                 </button>
               </div>

@@ -247,24 +247,74 @@ describe('AuthService poweruser access', () => {
   it('authenticates external share links via token', () => {
     service.authenticateWithShareToken('share-token-abc').subscribe();
 
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
     const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
     expect(req.request.url).not.toContain('token=');
     expect(req.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
-    expect(req.request.withCredentials).toBeTrue();
+    expect(req.request.withCredentials).toBeFalse();
     req.flush({
       id: 'transient/guest@example.com',
       properties: { username: 'transient/guest@example.com', groups: [] },
       isAdministrator: false,
     });
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({
+        id: 'transient/guest@example.com',
+        properties: { username: 'transient/guest@example.com', groups: [] },
+        isAdministrator: false,
+      });
 
     expect(service.isAuthenticated()).toBeTrue();
     expect(service.username()).toBe('transient/guest@example.com');
     expect(service.shareAuthToken()).toBeNull();
   });
 
+  it('clears an existing browser session before external share token auth', () => {
+    sessionStorage.setItem(
+      'agentic_ui_nuxeo_session',
+      JSON.stringify({
+        kind: 'cookie',
+        username: 'Administrator',
+        isAdministrator: true,
+        groups: ['administrators'],
+      }),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [{ provide: NUXEO_API_ORIGIN, useValue: '' }],
+    });
+    const restored = TestBed.inject(AuthService);
+    const mock = TestBed.inject(HttpTestingController);
+
+    restored.authenticateWithShareToken('share-token-abc').subscribe();
+
+    mock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    const tokenMe = mock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials);
+    expect(tokenMe.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
+    tokenMe.flush({
+      id: 'transient/guest@example.com',
+      properties: { username: 'transient/guest@example.com', groups: [] },
+      isAdministrator: false,
+    });
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({
+        id: 'transient/guest@example.com',
+        properties: { username: 'transient/guest@example.com', groups: [] },
+        isAdministrator: false,
+      });
+
+    expect(restored.username()).toBe('transient/guest@example.com');
+    expect(restored.isAdministrator()).toBeFalse();
+    mock.verify();
+  });
+
   it('clears share token when token authentication fails', () => {
     service.authenticateWithShareToken('bad-token').subscribe();
 
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
     const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
     expect(req.request.url).not.toContain('token=');
     req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
