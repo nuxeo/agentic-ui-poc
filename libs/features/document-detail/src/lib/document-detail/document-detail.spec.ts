@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideExperimentalZonelessChangeDetection, signal } from '@angular/core';
 import {
@@ -864,6 +864,36 @@ describe('DocumentDetailComponent', () => {
         await fixture.whenStable();
 
         expect(component.error()).toBe('Failed to load document.');
+        expect(component.showErrorGoBack()).toBe(false);
+      });
+
+      it('shows external-share access denied messaging on 403', async () => {
+        browseContext.setSharedDocument({ uid: 'shared-1', title: 'Quarterly Report' });
+        mockDocumentDetailService.getFullDocument = vi.fn(() =>
+          throwError(() => new HttpErrorResponse({ status: 403, statusText: 'Forbidden' })),
+        );
+
+        paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(component.externalShareAccessDenied()).toBe(true);
+        expect(component.externalShareAccessDeniedDetailText()).toContain('Quarterly Report');
+        expect(component.externalShareBackLabel()).toBe('Back to Quarterly Report');
+        expect(component.showErrorGoBack()).toBe(true);
+      });
+
+      it('updates error Go Back when route UID changes back to the shared document', async () => {
+        browseContext.setSharedDocument({ uid: 'shared-1', title: 'Quarterly Report' });
+
+        paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(component.showErrorGoBack()).toBe(true);
+
+        paramMap$.next(convertToParamMap({ uid: 'shared-1' }));
+        fixture.detectChanges();
+        await fixture.whenStable();
         expect(component.showErrorGoBack()).toBe(false);
       });
     });

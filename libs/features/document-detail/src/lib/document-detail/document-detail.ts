@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
@@ -89,6 +89,9 @@ import {
   readClipboardDocs,
   writeClipboardDocs,
   isTransientUser,
+  EXTERNAL_SHARE_ACCESS_DENIED_TITLE,
+  externalShareAccessDeniedDetail,
+  externalShareAccessDeniedMessage,
   type ClipboardDoc,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -318,6 +321,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private videoObjectUrls: string[] = [];
   private storyboardObjectUrls: string[] = [];
   private docUid = '';
+  /** Route param UID; reactive so error recovery affordances update on navigation. */
+  readonly routeDocUid = signal('');
   private metadataRefreshAttempt = 0;
   private blobLoadGeneration = 0;
   /** Set when navigating here immediately after create/import with a main blob. */
@@ -540,6 +545,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly isTransientExternalUser = computed(() => isTransientUser(this.currentUsername()));
+  readonly accessDenied = signal(false);
+  readonly externalShareAccessDenied = computed(
+    () => this.accessDenied() && this.isTransientExternalUser(),
+  );
+  readonly externalShareAccessDeniedTitle = EXTERNAL_SHARE_ACCESS_DENIED_TITLE;
+  readonly externalShareAccessDeniedDetailText = computed(() =>
+    externalShareAccessDeniedDetail(this.browseContext.sharedDocument()?.title ?? ''),
+  );
+  readonly externalShareBackLabel = computed(() => {
+    const title = this.browseContext.sharedDocument()?.title?.trim();
+    return title ? `Back to ${title}` : 'Back to shared document';
+  });
   readonly showTransientBackButton = computed(() => {
     if (!this.isTransientExternalUser()) {
       return false;
@@ -554,7 +571,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       return true;
     }
     const sharedUid = this.browseContext.sharedDocument()?.uid;
-    return Boolean(sharedUid && this.docUid && sharedUid !== this.docUid);
+    const requestedUid = this.routeDocUid();
+    return Boolean(sharedUid && requestedUid && sharedUid !== requestedUid);
   });
 
   onBreadcrumbClick(event: MouseEvent): void {
@@ -847,6 +865,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.freshNoteDocument = this.readFreshNoteNavigationState();
       this.resetState();
       this.docUid = uid;
+      this.routeDocUid.set(uid);
       this.loadVocabularies();
       this.loadDocument(uid);
     });
@@ -912,6 +931,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.blobLoading.set(false);
     this.arenderUrl.set(null);
     this.error.set(null);
+    this.accessDenied.set(false);
     this.comments.set([]);
     this.repliesMap.set({});
     this.commentsLoaded = false;
@@ -1512,6 +1532,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private loadDocument(uid: string): void {
     this.loading.set(true);
     this.error.set(null);
+    this.accessDenied.set(false);
 
     this.detailService
       .getFullDocument(uid)
@@ -1556,8 +1577,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.loadARenderUrl(doc);
           this.maybeBackfillContentLakeMarker(doc);
         },
-        error: () => {
-          this.error.set('Failed to load document.');
+        error: (err) => {
+          if (
+            this.isTransientExternalUser() &&
+            err instanceof HttpErrorResponse &&
+            err.status === 403
+          ) {
+            this.accessDenied.set(true);
+            this.error.set(
+              externalShareAccessDeniedMessage(this.browseContext.sharedDocument()?.title ?? ''),
+            );
+          } else {
+            this.accessDenied.set(false);
+            this.error.set('Failed to load document.');
+          }
           this.loading.set(false);
         },
       });
@@ -3202,7 +3235,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   goBack(): void {
     const shared = this.browseContext.sharedDocument();
     if (isTransientUser(this.currentUsername())) {
-      if (!shared?.uid || this.docUid === shared.uid) {
+      if (!shared?.uid || this.routeDocUid() === shared.uid) {
         return;
       }
       void this.router.navigate(['/doc', shared.uid]);
