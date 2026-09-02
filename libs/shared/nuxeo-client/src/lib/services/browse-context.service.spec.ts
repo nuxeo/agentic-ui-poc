@@ -31,7 +31,7 @@ describe('BrowseContextService', () => {
     expect(service.contentRefreshTick()).toBe(2);
   });
 
-  it('resetContext restores repository root path', () => {
+  it('resetContext restores repository root path without clearing shared document', () => {
     service.setFromNuxeoPath('/default-domain/workspaces/demo');
     service.setSharedDocument({ uid: 'doc-1', title: 'Shared file' });
     expect(service.contextPath()).toBe('/default-domain/workspaces/demo');
@@ -40,10 +40,19 @@ describe('BrowseContextService', () => {
     service.requestContentRefresh();
     service.resetContext();
     expect(service.contextPath()).toBe('/');
-    expect(service.sharedDocument()).toBeNull();
+    expect(service.sharedDocument()?.uid).toBe('doc-1');
     expect(service.treeRefreshTick()).toBe(0);
     expect(service.contentRefreshTick()).toBe(0);
     expect(service.clipboardPasteTick()).toBe(0);
+    expect(sessionStorage.getItem('agentic_ui_external_share_doc')).toBe(
+      JSON.stringify({ uid: 'doc-1', title: 'Shared file' }),
+    );
+  });
+
+  it('clearSharedDocument removes persisted external share recovery state', () => {
+    service.setSharedDocument({ uid: 'doc-1', title: 'Shared file' });
+    service.clearSharedDocument();
+    expect(service.sharedDocument()).toBeNull();
     expect(sessionStorage.getItem('agentic_ui_external_share_doc')).toBeNull();
   });
 

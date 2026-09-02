@@ -71,7 +71,7 @@ const mockDocumentDetailService = {
   // Never-emitting Observable: keeps loadDocument's subscription "in-flight" so
   // the chain of follow-up calls (loadPublicationCount, etc.) never fires and we
   // do not have to stub every downstream service for these focused tests.
-  getFullDocument: (): Observable<NuxeoDocument> => new Observable<NuxeoDocument>(),
+  getFullDocument: (_uid?: string): Observable<NuxeoDocument> => new Observable<NuxeoDocument>(),
   fetchBlob: () => of(new Blob(['stub'], { type: 'application/pdf' })),
   getPublishedVersions: () => of({ entries: [] }),
   sendNotificationEmailForPermission: vi.fn(() => of({ uid: 'doc-uid-1' })),
@@ -702,7 +702,7 @@ describe('DocumentDetailComponent', () => {
     beforeEach(async () => {
       sessionStorage.clear();
       paramMap$ = new BehaviorSubject(convertToParamMap({ uid: 'shared-1' }));
-      mockDocumentDetailService.getFullDocument = vi.fn((uid: string) => {
+      mockDocumentDetailService.getFullDocument = vi.fn((uid?: string) => {
         if (uid === 'shared-1') {
           return of(SHARED_DOC);
         }

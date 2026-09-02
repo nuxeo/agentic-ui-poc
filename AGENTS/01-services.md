@@ -106,11 +106,12 @@ setFromRouterUrl(routerUrl: string): void
 setFromDocument(doc: NuxeoDocument): void  // folderish → doc.path; leaf → parent folder
 setFromNuxeoPath(nuxeoPath: string): void
 setSharedDocument(doc: SharedDocumentRef): void  // remember first externally shared doc for transient-user recovery
+clearSharedDocument(): void  // clear external share recovery state (sign-out / user switch)
 requestTreeRefresh(): void  // invalidate/reload browse nav drawer tree (e.g. after domain creation)
 requestContentRefresh(): void  // reload browse main view children (e.g. after domain creation)
 notifyClipboardPasteComplete(event: ClipboardPasteEvent): void  // optimistic listing merge + reload
 consumeClipboardPasteEvent(): ClipboardPasteEvent | null
-resetContext(): void  // restore repository root path and clear shared-document state (e.g. on sign-out)
+resetContext(): void  // restore repository root path and browse UI ticks (e.g. after trashing current folder)
 ```
 
 Path helpers: `libs/shared/nuxeo-client/src/lib/utils/browse-path.utils.ts`

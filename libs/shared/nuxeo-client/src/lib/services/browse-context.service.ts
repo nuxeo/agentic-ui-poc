@@ -83,15 +83,19 @@ export class BrowseContextService {
     this.persistSharedDocument(doc);
   }
 
-  /** Reset browse navigation context (e.g. on sign-out / user switch). */
+  /** Reset browse navigation context (e.g. after trashing the current folder). */
   resetContext(): void {
     this.contextPath.set('/');
-    this.sharedDocument.set(null);
-    this.clearPersistedSharedDocument();
     this.treeRefreshTick.set(0);
     this.contentRefreshTick.set(0);
     this.clipboardPasteTick.set(0);
     this.pendingClipboardPaste = null;
+  }
+
+  /** Clear externally shared document recovery state (sign-out / user switch). */
+  clearSharedDocument(): void {
+    this.sharedDocument.set(null);
+    this.clearPersistedSharedDocument();
   }
 
   setFromRouterUrl(routerUrl: string): void {
