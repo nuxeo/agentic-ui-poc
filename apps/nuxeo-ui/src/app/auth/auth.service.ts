@@ -433,7 +433,6 @@ export class AuthService {
     this.state.set(null);
     this.clearStorage();
     this.clearUserScopedUiState();
-    this.shareAuthTokenValue = trimmed;
 
     const headers = new HttpHeaders({
       Accept: 'application/json',
@@ -441,6 +440,9 @@ export class AuthService {
     });
 
     return this.clearStaleNuxeoCookieSession({ strict: true }).pipe(
+      tap(() => {
+        this.shareAuthTokenValue = trimmed;
+      }),
       switchMap(() =>
         this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
           headers,

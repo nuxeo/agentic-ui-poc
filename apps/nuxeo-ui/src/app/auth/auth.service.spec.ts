@@ -1,5 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClientTestingModule,
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 
 import {
   NUXEO_API_ORIGIN,
@@ -8,6 +13,8 @@ import {
   ClipboardTargetService,
 } from '@agentic-ui/shared/nuxeo-client';
 import { AuthService } from './auth.service';
+import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';
+import { AUTH_TOKEN_HEADER } from './share-token.util';
 
 describe('AuthService poweruser access', () => {
   let service: AuthService;
@@ -361,6 +368,42 @@ describe('AuthService poweruser access', () => {
     expect(service.shareAuthToken()).toBeNull();
     expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
     httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/me'));
+  });
+
+  it('does not attach share token to stale-session logout via interceptor', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([nuxeoAuthInterceptor])),
+        provideHttpClientTesting(),
+        { provide: NUXEO_API_ORIGIN, useValue: '' },
+      ],
+    });
+    const authWithInterceptor = TestBed.inject(AuthService);
+    const mock = TestBed.inject(HttpTestingController);
+
+    authWithInterceptor.authenticateWithShareToken('share-token-abc').subscribe();
+
+    const logoutReq = mock.expectOne((r) => r.url.includes('/nuxeo/logout'));
+    expect(logoutReq.request.headers.has(AUTH_TOKEN_HEADER)).toBeFalse();
+    logoutReq.flush('');
+
+    const tokenMe = mock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials);
+    expect(tokenMe.request.headers.get(AUTH_TOKEN_HEADER)).toBe('share-token-abc');
+    tokenMe.flush({
+      id: 'transient/guest@example.com',
+      properties: { username: 'transient/guest@example.com', groups: [] },
+      isAdministrator: false,
+    });
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({
+        id: 'transient/guest@example.com',
+        properties: { username: 'transient/guest@example.com', groups: [] },
+        isAdministrator: false,
+      });
+
+    mock.verify();
   });
 
   it('ensureHydrated does not rehydrate stale cookie when share-token logout fails', () => {
