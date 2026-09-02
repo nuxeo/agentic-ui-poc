@@ -16,9 +16,7 @@ export interface ClipboardPasteEvent {
 }
 
 /**
- * Tracks the Nuxeo path that drives the browse nav tree, matching Nuxeo Web UI:
- * folder/workspace navigation updates the path; opening a document keeps the tree
- * aligned to the containing folder (or the folder itself when folderish).
+ * External share recovery reference for transient-user navigation.
  */
 export interface SharedDocumentRef {
   uid: string;
@@ -27,6 +25,11 @@ export interface SharedDocumentRef {
 
 const SHARED_DOCUMENT_STORAGE_KEY = 'agentic_ui_external_share_doc';
 
+/**
+ * Tracks the Nuxeo path that drives the browse nav tree, matching Nuxeo Web UI:
+ * folder/workspace navigation updates the path; opening a document keeps the tree
+ * aligned to the containing folder (or the folder itself when folderish).
+ */
 @Injectable({ providedIn: 'root' })
 export class BrowseContextService {
   readonly contextPath = signal('/');

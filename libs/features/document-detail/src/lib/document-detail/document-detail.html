@@ -6,7 +6,9 @@
   <div class="detail-error">
     <mat-icon class="error-icon">error_outline</mat-icon>
     <p>{{ error() }}</p>
-    <button mat-stroked-button (click)="goBack()"><mat-icon>arrow_back</mat-icon> Go Back</button>
+    @if (showErrorGoBack()) {
+      <button mat-stroked-button (click)="goBack()"><mat-icon>arrow_back</mat-icon> Go Back</button>
+    }
   </div>
 } @else if (doc()) {
   <!-- Header -->

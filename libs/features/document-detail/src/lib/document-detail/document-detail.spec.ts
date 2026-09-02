@@ -73,6 +73,7 @@ const mockDocumentDetailService = {
   // do not have to stub every downstream service for these focused tests.
   getFullDocument: (): Observable<NuxeoDocument> => new Observable<NuxeoDocument>(),
   fetchBlob: () => of(new Blob(['stub'], { type: 'application/pdf' })),
+  getPublishedVersions: () => of({ entries: [] }),
   sendNotificationEmailForPermission: vi.fn(() => of({ uid: 'doc-uid-1' })),
   updateComment: vi.fn(),
   deleteComment: vi.fn(),
@@ -803,6 +804,69 @@ describe('DocumentDetailComponent', () => {
       component.goBack();
 
       expect(navigateSpy).toHaveBeenCalledWith(['/doc', 'shared-1']);
+    });
+
+    describe('error Go Back affordance', () => {
+      beforeEach(async () => {
+        sessionStorage.clear();
+        paramMap$ = new BehaviorSubject(convertToParamMap({ uid: 'missing-1' }));
+        mockDocumentDetailService.getFullDocument = vi.fn(() =>
+          throwError(() => new Error('forbidden')),
+        );
+
+        await TestBed.resetTestingModule();
+        snackBarOpenSpy = vi.fn();
+        await TestBed.configureTestingModule({
+          imports: [DocumentDetailComponent],
+          providers: [
+            provideExperimentalZonelessChangeDetection(),
+            provideRouter([], withDisabledInitialNavigation()),
+            provideHttpClient(),
+            provideHttpClientTesting(),
+            {
+              provide: ActivatedRoute,
+              useValue: {
+                paramMap: paramMap$.asObservable(),
+                queryParamMap: of(convertToParamMap({})),
+                snapshot: { queryParamMap: convertToParamMap({}) },
+              },
+            },
+            { provide: DocumentDetailService, useValue: mockDocumentDetailService },
+            { provide: BrowseService, useValue: mockBrowseService },
+            { provide: DirectoryService, useValue: mockDirectoryService },
+            {
+              provide: KeClientService,
+              useValue: { enrich: (): Observable<KeEnrichmentResult> => of(keResult('')) },
+            },
+            { provide: TaskService, useValue: mockTaskService },
+            { provide: WorkflowService, useValue: mockWorkflowService },
+            { provide: ARenderService, useValue: mockARenderService },
+            { provide: TagService, useValue: mockTagService },
+            { provide: AiGatewayService, useValue: mockAiGatewayService },
+            { provide: AiChatService, useValue: mockAiChatService },
+            { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
+            { provide: NuxeoApiBase, useValue: mockNuxeoApiBase },
+            { provide: CURRENT_USERNAME, useValue: () => 'transient/guest@example.com' },
+            { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
+          ],
+        })
+          .overrideComponent(DocumentDetailComponent, {
+            set: { imports: [], template: '<div></div>' },
+          })
+          .compileComponents();
+
+        browseContext = TestBed.inject(BrowseContextService);
+        fixture = TestBed.createComponent(DocumentDetailComponent);
+        component = fixture.componentInstance;
+        fixture.detectChanges();
+        await fixture.whenStable();
+      });
+
+      it('hides error Go Back when no shared-document recovery target exists', () => {
+        expect(component.error()).toBe('Failed to load document.');
+        expect(browseContext.sharedDocument()).toBeNull();
+        expect(component.showErrorGoBack()).toBe(false);
+      });
     });
   });
 });

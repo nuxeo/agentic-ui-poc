@@ -549,6 +549,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return Boolean(shared?.uid && doc?.uid && doc.uid !== shared.uid);
   });
 
+  readonly showErrorGoBack = computed(() => {
+    if (!this.isTransientExternalUser()) {
+      return true;
+    }
+    return Boolean(this.browseContext.sharedDocument()?.uid);
+  });
+
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
     const href = anchor?.getAttribute('href');
