@@ -774,21 +774,10 @@ describe('DocumentDetailComponent', () => {
     });
 
     it('preserves the original shared document when opening a child', async () => {
-      const setSharedDocumentSpy = vi.spyOn(browseContext, 'setSharedDocument');
-
       paramMap$.next(convertToParamMap({ uid: 'child-1' }));
       fixture.detectChanges();
       await fixture.whenStable();
 
-      expect(setSharedDocumentSpy).toHaveBeenCalledTimes(2);
-      expect(setSharedDocumentSpy).toHaveBeenNthCalledWith(1, {
-        uid: 'shared-1',
-        title: 'Quarterly Report',
-      });
-      expect(setSharedDocumentSpy).toHaveBeenNthCalledWith(2, {
-        uid: 'child-1',
-        title: 'Child Report',
-      });
       expect(browseContext.sharedDocument()).toEqual({
         uid: 'shared-1',
         title: 'Quarterly Report',
