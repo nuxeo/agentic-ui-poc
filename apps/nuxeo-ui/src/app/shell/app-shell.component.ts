@@ -120,9 +120,14 @@ export class AppShellComponent implements OnDestroy {
   readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
+  /** True for transient external-share users (`transient/*`). */
+  protected readonly isTransientExternalUser = computed(() =>
+    isTransientUser(this.auth.username()),
+  );
+
   /** Hides Administration unless the user is an administrator or poweruser. */
   protected readonly navItems = computed(() => {
-    const transientUser = isTransientUser(this.auth.username());
+    const transientUser = this.isTransientExternalUser();
     return PLATFORM_NAV_ITEMS.filter((item) => {
       if (item.path === '/administration' && !this.auth.hasAdministrationAccess()) return false;
       if (transientUser && !isNavPathAllowedForTransientUser(item.path)) return false;

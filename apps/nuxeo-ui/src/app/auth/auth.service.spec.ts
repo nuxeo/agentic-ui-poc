@@ -270,6 +270,33 @@ describe('AuthService poweruser access', () => {
     expect(service.shareAuthToken()).toBeNull();
   });
 
+  it('clears user-scoped UI state before external share token auth', () => {
+    const selection = TestBed.inject(SelectionService);
+    const browseContext = TestBed.inject(BrowseContextService);
+    selection.toggle('doc-1', 'Doc 1');
+    browseContext.setSharedDocument({ uid: 'old-share', title: 'Old Share' });
+
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    expect(selection.selectedCount()).toBe(0);
+    expect(browseContext.sharedDocument()).toBeNull();
+
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials);
+    req.flush({
+      id: 'transient/guest@example.com',
+      properties: { username: 'transient/guest@example.com', groups: [] },
+      isAdministrator: false,
+    });
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush({
+        id: 'transient/guest@example.com',
+        properties: { username: 'transient/guest@example.com', groups: [] },
+        isAdministrator: false,
+      });
+  });
+
   it('clears an existing browser session before external share token auth', () => {
     sessionStorage.setItem(
       'agentic_ui_nuxeo_session',

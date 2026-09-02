@@ -11,7 +11,7 @@
 } @else if (doc()) {
   <!-- Header -->
   <div class="detail-header">
-    @if (!isTransientExternalUser()) {
+    @if (!isTransientExternalUser() || showTransientBackButton()) {
       <button mat-icon-button (click)="goBack()" aria-label="Go back">
         <mat-icon>arrow_back</mat-icon>
       </button>

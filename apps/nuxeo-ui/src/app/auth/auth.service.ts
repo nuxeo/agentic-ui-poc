@@ -427,6 +427,7 @@ export class AuthService {
     this.clearSignedOut();
     this.state.set(null);
     this.clearStorage();
+    this.clearUserScopedUiState();
     this.shareAuthTokenValue = trimmed;
 
     const headers = new HttpHeaders({

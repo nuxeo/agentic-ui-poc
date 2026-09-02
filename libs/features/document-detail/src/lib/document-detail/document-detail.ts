@@ -540,6 +540,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   });
 
   readonly isTransientExternalUser = computed(() => isTransientUser(this.currentUsername()));
+  readonly showTransientBackButton = computed(() => {
+    if (!this.isTransientExternalUser()) {
+      return false;
+    }
+    const shared = this.browseContext.sharedDocument();
+    const doc = this.doc();
+    return Boolean(shared?.uid && doc?.uid && doc.uid !== shared.uid);
+  });
 
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
@@ -3184,7 +3192,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
+    const shared = this.browseContext.sharedDocument();
     if (isTransientUser(this.currentUsername())) {
+      if (!shared?.uid || this.doc()?.uid === shared.uid) {
+        return;
+      }
+      void this.router.navigate(['/doc', shared.uid]);
       return;
     }
     const d = this.doc();
