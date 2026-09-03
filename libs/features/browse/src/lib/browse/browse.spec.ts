@@ -4,7 +4,7 @@ import { Router, provideRouter, withDisabledInitialNavigation } from '@angular/r
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
-import { EMPTY, Subject, of, throwError } from 'rxjs';
+import { EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 import { BrowseComponent } from './browse';
 import {
   AuditEntry,
@@ -993,6 +993,16 @@ describe('BrowseComponent folder-scoped state on navigation', () => {
     path: '/default-domain/workspaces/b',
   };
 
+  /** A child of Workspace A whose row requests a thumbnail. */
+  const FILE_ENTRY: NuxeoDocument = {
+    uid: 'file-1',
+    title: 'Report.pdf',
+    type: 'File',
+    path: '/default-domain/workspaces/a/report.pdf',
+    lastModified: '2026-01-01T00:00:00Z',
+    properties: {},
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
@@ -1055,6 +1065,76 @@ describe('BrowseComponent folder-scoped state on navigation', () => {
     expect(component.entries()).toEqual([]);
     expect(component.totalSize()).toBe(0);
     expect(TestBed.inject(ClipboardTargetService).target()).toBeNull();
+  });
+
+  describe('thumbnail lifecycle across folder changes', () => {
+    let objectUrls: { created: string[]; revoked: string[] };
+    let originalCreate: typeof URL.createObjectURL;
+    let originalRevoke: typeof URL.revokeObjectURL;
+
+    beforeEach(() => {
+      // jsdom implements neither, and the assertions need to observe both.
+      objectUrls = { created: [], revoked: [] };
+      originalCreate = URL.createObjectURL;
+      originalRevoke = URL.revokeObjectURL;
+      URL.createObjectURL = vi.fn(() => {
+        const url = `blob:thumb-${objectUrls.created.length}`;
+        objectUrls.created.push(url);
+        return url;
+      });
+      URL.revokeObjectURL = vi.fn((url: string) => {
+        objectUrls.revoked.push(url);
+      });
+    });
+
+    afterEach(() => {
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    });
+
+    /** Loads Workspace A with one thumbnail-bearing child. */
+    function loadFolderAWithThumbnail(thumbnail: Observable<Blob>): void {
+      mockBrowseService.getBrowseFolderContents.mockReturnValue(
+        of({ folder: FOLDER_A, entries: [FILE_ENTRY], totalSize: 1 }),
+      );
+      mockBrowseService.getFolderContext.mockReturnValue(of(FOLDER_A));
+      mockDocumentDetailService.fetchThumbnail.mockReturnValue(thumbnail);
+
+      fixture.detectChanges();
+      component.loadContent();
+      fixture.detectChanges();
+    }
+
+    it('revokes the previous folder thumbnails when the next folder never loads', async () => {
+      loadFolderAWithThumbnail(of(new Blob(['a'])));
+      expect(component.thumbnailMap()['file-1']).toBeDefined();
+      expect(objectUrls.created).toEqual(['blob:thumb-0']);
+
+      // An access-denied navigation never reaches loadThumbnails, so nothing else would
+      // revoke Workspace A's blob.
+      mockBrowseService.getBrowseFolderContents.mockReturnValue(EMPTY);
+      await router.navigateByUrl('/browse/default-domain/workspaces/b');
+      fixture.detectChanges();
+
+      expect(component.thumbnailMap()).toEqual({});
+      expect(objectUrls.revoked).toEqual(['blob:thumb-0']);
+    });
+
+    it('discards a thumbnail that arrives after the folder changed', async () => {
+      const pendingThumbnail = new Subject<Blob>();
+      loadFolderAWithThumbnail(pendingThumbnail.asObservable());
+
+      mockBrowseService.getBrowseFolderContents.mockReturnValue(EMPTY);
+      await router.navigateByUrl('/browse/default-domain/workspaces/b');
+      fixture.detectChanges();
+
+      pendingThumbnail.next(new Blob(['a']));
+      fixture.detectChanges();
+
+      // Creating the URL now would leak a blob past the revocation that already ran.
+      expect(component.thumbnailMap()).toEqual({});
+      expect(objectUrls.created).toEqual([]);
+    });
   });
 
   it('clears the activity panel when the folder changes', async () => {

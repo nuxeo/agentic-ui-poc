@@ -640,10 +640,7 @@ export class BrowseComponent {
 
     this.destroyRef.onDestroy(() => {
       this.clipboardTargetService.clear();
-      for (const url of this.thumbnailBlobUrls) {
-        URL.revokeObjectURL(url);
-      }
-      this.thumbnailBlobUrls.length = 0;
+      this.revokeThumbnailBlobUrls();
     });
 
     this.tagSearch$
@@ -740,6 +737,9 @@ export class BrowseComponent {
     this.activityLoading.set(false);
     this.trashedDocs.set([]);
     this.trashLoading.set(false);
+    // An access-denied navigation never reaches loadThumbnails, so nothing else would
+    // revoke the previous folder's blobs.
+    this.revokeThumbnailBlobUrls();
     this.clipboardTargetService.setTarget(null);
     this.resetBrowseTabState();
   }
@@ -798,14 +798,19 @@ export class BrowseComponent {
     });
   }
 
+  private revokeThumbnailBlobUrls(): void {
+    for (const url of this.thumbnailBlobUrls) {
+      URL.revokeObjectURL(url);
+    }
+    this.thumbnailBlobUrls.length = 0;
+    this.thumbnailMap.set({});
+  }
+
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
     if (reset) {
-      for (const url of this.thumbnailBlobUrls) {
-        URL.revokeObjectURL(url);
-      }
-      this.thumbnailBlobUrls.length = 0;
-      this.thumbnailMap.set({});
+      this.revokeThumbnailBlobUrls();
     }
+    const requestedUid = this.currentDoc()?.uid ?? '';
     for (const doc of docs) {
       this.detailService
         .fetchThumbnail(doc.uid)
@@ -814,7 +819,9 @@ export class BrowseComponent {
           takeUntilDestroyed(this.destroyRef),
         )
         .subscribe((blob) => {
-          if (!blob) return;
+          // Creating the URL after the route moved on would both show the previous
+          // folder's thumbnail and leak a blob past the revocation that already ran.
+          if (!blob || this.isStaleFolderResponse(requestedUid)) return;
           const url = URL.createObjectURL(blob);
           this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({

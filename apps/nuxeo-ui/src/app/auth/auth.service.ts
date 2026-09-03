@@ -441,6 +441,19 @@ export class AuthService {
   /**
    * Authenticates a transient external user via the Instant Share token from an email link.
    * Sends the token in {@link AUTH_TOKEN_HEADER} only (not the URL) to avoid log/proxy leakage.
+   *
+   * Nuxeo answers `/me` from the session cookie before it consults our token header, and
+   * the XHR backend cannot omit a same-origin cookie (see {@link NUXEO_OMIT_CREDENTIALS}).
+   * The handshake therefore proves the cookie is gone rather than excluding it: log out
+   * strictly, require a 401 from a token-free probe, and only then send the token. Every
+   * later step must agree with the principal that probe returned.
+   *
+   * Residual risk: another tab can create a cookie for a *different* transient user in the
+   * window between the probe and the token request, and it would answer every later step
+   * consistently. Closing that needs a channel where cookies can genuinely be omitted,
+   * which `HttpRequest.credentials` only offers from Angular 20. Until then the damage is
+   * bounded — a cookie this browser already holds, never a privileged principal, and the
+   * wrong share lands on the access-denied recovery UX rather than someone else's content.
    */
   authenticateWithShareToken(token: string): Observable<void> {
     const trimmed = token.trim();
@@ -506,9 +519,10 @@ export class AuthService {
   /** Converts the share token identity into a Nuxeo browser session. */
   private establishShareBrowserSession(me: unknown, headers: HttpHeaders): Observable<void> {
     const user = readAuthenticatedPrincipalFromMe(me);
-    // A share token only ever resolves to `transient/<email>`. Anything else means a
-    // cookie created after the residual probe answered instead, and it could just as
-    // easily be a privileged principal, so the link must not adopt it.
+    // A share token only ever resolves to `transient/<email>`, so anything else was
+    // answered by a cookie that appeared after the residual probe. This rules out
+    // adopting a privileged principal; it cannot prove the token authenticated the
+    // request, which no same-origin XHR can. See authenticateWithShareToken.
     if (!user || !isTransientUser(user)) {
       return this.abortShareAuth();
     }
