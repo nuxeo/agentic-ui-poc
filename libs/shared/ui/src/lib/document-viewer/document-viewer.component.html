@@ -33,12 +33,8 @@
         @case ('video') {
           <div class="viewer-video-container">
             <video #videoPlayer controls class="viewer-video" [poster]="posterUrl()">
-              @if (videoSources().length > 0) {
-                @for (src of videoSources(); track src.url) {
-                  <source [src]="src.url" [type]="src.mimeType" />
-                }
-              } @else {
-                <source [src]="blobUrl()" />
+              @for (source of playableVideoSources(); track source.url) {
+                <source [src]="source.url" [attr.type]="source.mimeType || null" />
               }
               Your browser does not support video playback.
             </video>

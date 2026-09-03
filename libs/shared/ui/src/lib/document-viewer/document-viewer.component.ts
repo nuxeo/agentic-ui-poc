@@ -3,12 +3,14 @@ import {
   input,
   output,
   computed,
+  inject,
   signal,
   ChangeDetectionStrategy,
   ElementRef,
+  SecurityContext,
   viewChild,
 } from '@angular/core';
-import { SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl, SafeHtml } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -96,6 +98,8 @@ export interface VideoInfo {
   styleUrl: './document-viewer.component.scss',
 })
 export class DocumentViewerComponent {
+  private readonly sanitizer = inject(DomSanitizer);
+
   readonly blobUrl = input<SafeResourceUrl | null>(null);
   readonly mimeType = input<string>('');
   readonly fileName = input<string>('');
@@ -251,6 +255,30 @@ export class DocumentViewerComponent {
 
   readonly videoRef = viewChild<ElementRef<HTMLVideoElement>>('videoPlayer');
 
+  /**
+   * Angular sanitizes `src` on `<img>` and `<video>` but not on `<source>`, so a SafeResourceUrl
+   * bound there reaches the DOM as its "SafeValue must use [property]=binding" text and the player
+   * reports NETWORK_NO_SOURCE. Resolve to plain URL strings before the template binds them.
+   */
+  readonly playableVideoSources = computed<Array<{ url: string; mimeType: string }>>(() => {
+    const sources = this.videoSources();
+    if (sources.length > 0) {
+      return sources
+        .map((source) => ({ url: this.resolveUrl(source.url), mimeType: source.mimeType }))
+        .filter((source) => source.url !== '');
+    }
+
+    const url = this.resolveUrl(this.blobUrl());
+    if (!url) {
+      return [];
+    }
+
+    // A `type` the browser cannot decode makes it reject the source outright, so only pass a
+    // real video MIME through and let it sniff the container otherwise.
+    const mime = this.mimeType();
+    return [{ url, mimeType: mime.startsWith('video/') ? mime : '' }];
+  });
+
   zoomIn(): void {
     this.zoom.update((z) => Math.min(z + 0.25, 5));
   }
@@ -302,5 +330,13 @@ export class DocumentViewerComponent {
 
   isFiniteNumber(value: number | null | undefined): value is number {
     return value !== null && value !== undefined && Number.isFinite(value);
+  }
+
+  /** URL context rather than RESOURCE_URL: it unwraps a SafeResourceUrl and tolerates a string. */
+  private resolveUrl(value: SafeResourceUrl | null): string {
+    if (!value) {
+      return '';
+    }
+    return this.sanitizer.sanitize(SecurityContext.URL, value) ?? '';
   }
 }
