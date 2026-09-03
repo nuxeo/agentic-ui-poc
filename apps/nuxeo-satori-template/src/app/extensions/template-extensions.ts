@@ -66,6 +66,16 @@ const NAV_ITEMS: readonly NavItemDescriptor[] = [
     rule: 'template.rules.isSignedIn',
   },
   {
+    // The ECM surface. Rule-gated like the other repository-backed pages: with no credential
+    // every request 401s, and offering a link that can only fail is worse than hiding it.
+    id: 'template.navbar.caseFile',
+    label: 'Case File',
+    path: '/case-file',
+    icon: 'folder_special',
+    order: 15,
+    rule: 'template.rules.isSignedIn',
+  },
+  {
     id: 'template.navbar.components',
     label: 'UI Components',
     path: '/components',

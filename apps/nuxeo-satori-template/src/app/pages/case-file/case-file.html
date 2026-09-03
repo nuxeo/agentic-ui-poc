@@ -1,0 +1,96 @@
+<div class="case-file">
+  <header class="case-file__head">
+    <h1>Case File</h1>
+    <p>
+      Search, metadata, preview and actions on one surface — built only on
+      <code>&#64;nuxeo-satori/platform</code> entry points.
+    </p>
+  </header>
+
+  @if (error()) {
+    <p class="case-file__error" role="alert">{{ error() }}</p>
+  }
+
+  <lib-widget-grid [columns]="3">
+    <!-- 1 — find. SearchResultItem rows: flat, list-shaped, no properties bag. -->
+    <lib-widget-container title="Documents">
+      @if (loading()) {
+        <p class="case-file__muted">Loading…</p>
+      } @else {
+        <ul class="case-file__list">
+          @for (item of items(); track item.id) {
+            <li>
+              <button
+                type="button"
+                class="case-file__row"
+                [class.case-file__row--on]="item.id === selectedId()"
+                (click)="select(item)"
+              >
+                <span class="case-file__row-title">{{ item.title }}</span>
+                <span class="case-file__row-meta">{{ item.type }}</span>
+              </button>
+            </li>
+          }
+          @if (items().length === 0) {
+            <li class="case-file__muted">No documents.</li>
+          }
+        </ul>
+      }
+    </lib-widget-container>
+
+    <!-- 2 — metadata. Needs the FULL document, which the list rows do not carry. -->
+    <lib-widget-container title="Metadata">
+      @if (!selectedId()) {
+        <p class="case-file__muted">Select a document.</p>
+      } @else if (detailLoading()) {
+        <p class="case-file__muted">Loading metadata…</p>
+      } @else {
+        <dl class="case-file__facts">
+          @for (fact of facts(); track fact.label) {
+            <div class="case-file__fact">
+              <dt>{{ fact.label }}</dt>
+              <dd>{{ fact.value }}</dd>
+            </div>
+          }
+        </dl>
+      }
+    </lib-widget-container>
+
+    <!-- 3 — actions. Dialogs the platform publishes; the host supplies how bytes are fetched. -->
+    <lib-widget-container title="Actions">
+      @if (!doc()) {
+        <p class="case-file__muted">Select a document.</p>
+      } @else {
+        <div class="case-file__actions">
+          <button type="button" (click)="share()">Share</button>
+          <button type="button" (click)="exportDocument()">Export…</button>
+          <button type="button" [disabled]="!hasAttachment()" (click)="download()">Download</button>
+        </div>
+        @if (!hasAttachment()) {
+          <p class="case-file__muted">
+            This document has no attachment, so there is nothing to download or preview.
+          </p>
+        }
+      }
+    </lib-widget-container>
+  </lib-widget-grid>
+
+  <!-- 4 — preview. The blob is fetched through the service and wrapped in an object URL that is
+       revoked on replacement and on destroy. Never bind a Nuxeo URL straight to [src]. -->
+  <section class="case-file__preview">
+    <h2>Preview</h2>
+    @if (!doc()) {
+      <p class="case-file__muted">Select a document to preview its content.</p>
+    } @else if (!hasAttachment()) {
+      <p class="case-file__muted">No attachment on this document.</p>
+    } @else {
+      <lib-document-viewer
+        [blobUrl]="blobUrl()"
+        [mimeType]="mimeType()"
+        [fileName]="fileName()"
+        [fileSize]="fileSize()"
+        [loading]="previewLoading()"
+      />
+    }
+  </section>
+</div>

@@ -440,11 +440,34 @@ at the table below, conflating the two.
 
 Components are referenced by ID and must already be compiled in. Contributing a new one is Layer 2.
 
-| Component ID                | Renders             |
-| --------------------------- | ------------------- |
-| `app.sidebar.assets`        | Asset facet filters |
-| `app.sidebar.searchFilters` | Search filter panel |
-| `app.sidebar.trashFilters`  | Trash filter panel  |
+| Component ID                | Renders                                    |
+| --------------------------- | ------------------------------------------ |
+| `app.sidebar.assets`        | Asset facet filters                        |
+| `app.sidebar.searchFilters` | Search filter panel                        |
+| `app.sidebar.trashFilters`  | Trash filter panel                         |
+| `app.page.contracts`        | A full-page surface, for the `routes` slot |
+
+`app.page.contracts` is the first component registered for the **`routes`** slot rather than for a
+drawer, and it exists because that slot went live with **no component in the product able to serve
+it** — live and unusable, which is the "registered surface with no consumer" failure this programme
+has been caught by before. Route to it, and give it a nav entry, entirely from a manifest:
+
+```json
+{
+  "extensions": {
+    "slots": {
+      "routes": [{ "id": "app.page.contracts", "path": "contracts" }],
+      "navbar": [
+        { "id": "acme.navbar.contracts", "label": "Contracts", "path": "/contracts", "order": 15 }
+      ]
+    }
+  }
+}
+```
+
+Several nav entries may point at one page; `inputs` on the route descriptor is how you vary what it
+shows. The component itself must be compiled in — **that** part is Layer 2, once. Everything after
+it, including moving the page, renaming it and rule-gating it, is Layer 1 and needs no build.
 
 The packaged nav entries with bespoke drawer markup (browse tree, tasks, clipboard, favorites,
 collections, recently viewed, expired queue, personal space, settings, administration) are rendered

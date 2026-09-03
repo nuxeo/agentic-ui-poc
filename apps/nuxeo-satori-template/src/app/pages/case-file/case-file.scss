@@ -1,0 +1,133 @@
+/* Plain CSS on purpose: the template ships no Angular Material theme, so nothing here may depend
+   on one. The dialogs it opens bring their own. */
+.case-file {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.case-file__head h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.6rem;
+}
+
+.case-file__head p {
+  margin: 0;
+  color: var(--shell-muted, #5a5a6e);
+}
+
+.case-file__error {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid var(--shell-error-border, #b3261e);
+  background: var(--shell-error-bg, #fdeceb);
+  color: var(--shell-error-fg, #7a1c17);
+}
+
+.case-file__muted {
+  color: var(--shell-muted, #6b6b7b);
+  font-size: 0.9rem;
+  margin: 0.5rem 0 0;
+}
+
+.case-file__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.case-file__row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.6rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.case-file__row:hover {
+  background: var(--shell-surface-alt, #eef0f6);
+}
+
+.case-file__row--on {
+  background: var(--shell-nav-active, #e3e9fb);
+  box-shadow: inset 0 0 0 1px var(--shell-accent, #2f6feb);
+}
+
+.case-file__row-title {
+  font-weight: 600;
+}
+
+.case-file__row-meta {
+  font-size: 0.78rem;
+  color: var(--shell-muted, #6b6b7b);
+}
+
+.case-file__facts {
+  /* Two columns, because nine facts in one column overflow the card and the last row gets clipped
+     mid-glyph — which reads as a rendering bug rather than as a full card. */
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.case-file__fact:last-child {
+  /* Path is the long one; let it use the full width rather than wrap awkwardly in a half column. */
+  grid-column: 1 / -1;
+}
+
+.case-file__fact dt {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--shell-muted, #6b6b7b);
+}
+
+.case-file__fact dd {
+  margin: 0.1rem 0 0;
+  word-break: break-word;
+}
+
+.case-file__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.case-file__actions button {
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--shell-accent, #2f6feb);
+  border-radius: 6px;
+  background: var(--shell-accent, #2f6feb);
+  color: var(--shell-accent-fg, #fff);
+  cursor: pointer;
+  font: inherit;
+}
+
+.case-file__actions button:disabled {
+  background: var(--shell-border, #c7c7d1);
+  border-color: var(--shell-border, #c7c7d1);
+  cursor: not-allowed;
+}
+
+.case-file__preview h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.1rem;
+}
+
+.case-file__preview lib-document-viewer {
+  display: block;
+  min-height: 26rem;
+  border: 1px solid var(--shell-border, #dcdce4);
+  border-radius: 8px;
+  overflow: hidden;
+}

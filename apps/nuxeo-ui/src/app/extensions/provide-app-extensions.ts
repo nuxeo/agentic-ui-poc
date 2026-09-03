@@ -127,6 +127,27 @@ function provideAppContributions(): EnvironmentProviders {
           import('@agentic-ui/feature-search').then((m) => m.SearchFiltersDrawerComponent),
         'app.sidebar.trashFilters': () =>
           import('@agentic-ui/feature-trash').then((m) => m.TrashFiltersDrawerComponent),
+
+        /**
+         * A whole PAGE a manifest can route to, not a drawer panel.
+         *
+         * Added because the `routes` slot went live in `7fd5e46` and **the product registered no
+         * component for a manifest route to resolve** — so the slot was live and unusable here, which
+         * is the "registered surface with no consumer" failure this programme has already been caught
+         * by twice. A manifest can now contribute both the route and the nav entry:
+         *
+         *   "routes": [{ "id": "app.page.contracts", "path": "contracts" }]
+         *   "navbar": [{ "id": "acme.navbar.contracts", "label": "Contracts", "path": "/contracts" }]
+         *
+         * `app.routes.ts` also maps `/contracts` statically, and both paths reach the same component.
+         * That is deliberate for now: the static route is what the packaged app ships, and this
+         * registration is what makes the page addressable to a customer who wants it somewhere else,
+         * renamed, or rule-gated.
+         */
+        'app.page.contracts': () =>
+          import('../features/contracts/contracts-page.component').then(
+            (m) => m.ContractsPageComponent,
+          ),
       },
     };
   });

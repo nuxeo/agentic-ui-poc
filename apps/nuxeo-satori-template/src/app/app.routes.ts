@@ -44,6 +44,14 @@ export const routes: Routes = [
       import('./pages/components/components').then((m) => m.ComponentsShowcaseComponent),
   },
   {
+    /**
+     * The ECM working surface: search, metadata, preview and actions on one page.
+     * Lazily loaded, so its chunk is only fetched when someone navigates here.
+     */
+    path: 'case-file',
+    loadComponent: () => import('./pages/case-file/case-file').then((m) => m.CaseFileComponent),
+  },
+  {
     path: 'stats',
     loadComponent: () => import('./pages/stats/stats').then((m) => m.StatsComponent),
   },

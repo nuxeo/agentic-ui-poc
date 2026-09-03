@@ -35,6 +35,12 @@
   --shell-nav-active: #ddf4ff;
   --shell-warn-bg: #fff8c5;
   --shell-warn-border: #d4a72c;
+  /* Error, as a triplet mirroring warn above. Distinct from warn on purpose: a failed load and a
+     caution are different states, and collapsing them means a fork cannot restyle one without the
+     other. */
+  --shell-error-bg: #fdeceb;
+  --shell-error-border: #b3261e;
+  --shell-error-fg: #7a1c17;
   /* Foreground for text and icons that mean "warning", completing the pair above. */
   --shell-warn-fg: #f57c00;
 }

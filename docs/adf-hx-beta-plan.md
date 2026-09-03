@@ -521,7 +521,18 @@ customer-authored code.
 - Do we keep `/#/browse-adf-hx` as a parallel route through Beta, or cut over `/#/browse` once
   parity is reached?
 - ~~How much of the app becomes addressable by ID in Layer 1?~~ **Answered in Phase 2, and the
-  question turned out to be less consequential than it looked.** Nine slots are implemented; five are
-  deferred to GA. Because slot registration and resolution are per-slot with no central dispatch,
-  adding a slot later is additive, so this is no longer a decision that has to be right first time.
+  question turned out to be less consequential than it looked.** **Eight** slots are implemented and
+  **all eight are live** — `navbar`, `sidebar`, `routes`, `toolbar`, `contextMenu`, `bulk-actions`,
+  `tabs`, `documentList`. Because slot registration and resolution are per-slot with no central
+  dispatch, adding a slot later is additive, so this is no longer a decision that has to be right
+  first time.
+
+  > Corrected 2026-09-01. This read "Nine slots are implemented; five are deferred to GA" in the
+  > present tense, and both halves were wrong: `EXTENSION_SLOTS` in
+  > `libs/shared/extensions/src/lib/extension-slots.ts` defines eight, and commit `7fd5e46`
+  > (2026-08-31) made the last four live, so none is deferred. Independently confirmed by
+  > `npm run beta:upgrade`, which prints the shipped set and lists exactly those eight. The
+  > demo runbook's F6 carried the same staleness from the other direction — it still told a presenter
+  > four of them were inert.
+
 - What is the supported Nuxeo LTS matrix for Beta, which determines the contract-test grid?
