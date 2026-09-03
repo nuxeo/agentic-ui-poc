@@ -16,6 +16,28 @@ import { AuthService } from './auth.service';
 import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';
 import { AUTH_TOKEN_HEADER } from './share-token.util';
 
+const TRANSIENT_ME = {
+  id: 'transient/guest@example.com',
+  properties: { username: 'transient/guest@example.com', groups: [] },
+  isAdministrator: false,
+};
+
+const ADMINISTRATOR_ME = {
+  id: 'Administrator',
+  properties: { username: 'Administrator', groups: ['administrators'] },
+  isAdministrator: true,
+};
+
+/**
+ * Answers the credential-free probe the share flow makes after logout to confirm no
+ * browser session survived. A 401 means the cookie is gone and the token can be trusted.
+ */
+function flushNoResidualCookieSession(mock: HttpTestingController): void {
+  const probe = mock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
+  expect(probe.request.headers.has(AUTH_TOKEN_HEADER)).toBeFalse();
+  probe.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+}
+
 describe('AuthService poweruser access', () => {
   let service: AuthService;
   let httpMock: HttpTestingController;
@@ -255,22 +277,15 @@ describe('AuthService poweruser access', () => {
     service.authenticateWithShareToken('share-token-abc').subscribe();
 
     httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    flushNoResidualCookieSession(httpMock);
     const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
     expect(req.request.url).not.toContain('token=');
     expect(req.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
     expect(req.request.withCredentials).toBeFalse();
-    req.flush({
-      id: 'transient/guest@example.com',
-      properties: { username: 'transient/guest@example.com', groups: [] },
-      isAdministrator: false,
-    });
+    req.flush(TRANSIENT_ME);
     httpMock
       .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
-      .flush({
-        id: 'transient/guest@example.com',
-        properties: { username: 'transient/guest@example.com', groups: [] },
-        isAdministrator: false,
-      });
+      .flush(TRANSIENT_ME);
 
     expect(service.isAuthenticated()).toBeTrue();
     expect(service.username()).toBe('transient/guest@example.com');
@@ -289,19 +304,13 @@ describe('AuthService poweruser access', () => {
     expect(browseContext.sharedDocument()).toBeNull();
 
     httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
-    const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials);
-    req.flush({
-      id: 'transient/guest@example.com',
-      properties: { username: 'transient/guest@example.com', groups: [] },
-      isAdministrator: false,
-    });
+    flushNoResidualCookieSession(httpMock);
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials)
+      .flush(TRANSIENT_ME);
     httpMock
       .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
-      .flush({
-        id: 'transient/guest@example.com',
-        properties: { username: 'transient/guest@example.com', groups: [] },
-        isAdministrator: false,
-      });
+      .flush(TRANSIENT_ME);
   });
 
   it('clears an existing browser session before external share token auth', () => {
@@ -325,34 +334,41 @@ describe('AuthService poweruser access', () => {
     restored.authenticateWithShareToken('share-token-abc').subscribe();
 
     mock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    flushNoResidualCookieSession(mock);
     const tokenMe = mock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials);
     expect(tokenMe.request.headers.get('X-Authentication-Token')).toBe('share-token-abc');
-    tokenMe.flush({
-      id: 'transient/guest@example.com',
-      properties: { username: 'transient/guest@example.com', groups: [] },
-      isAdministrator: false,
-    });
+    tokenMe.flush(TRANSIENT_ME);
     mock
       .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
-      .flush({
-        id: 'transient/guest@example.com',
-        properties: { username: 'transient/guest@example.com', groups: [] },
-        isAdministrator: false,
-      });
+      .flush(TRANSIENT_ME);
 
     expect(restored.username()).toBe('transient/guest@example.com');
     expect(restored.isAdministrator()).toBeFalse();
     mock.verify();
   });
 
-  it('aborts share-token auth when the superseded cookie principal answers the token probe', () => {
+  it('aborts share-token auth when a browser session survives the logout', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    // Logout did not clear the JSESSIONID, so it would out-rank the share token.
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me')).flush(ADMINISTRATOR_ME);
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(service.username()).toBeNull();
+    expect(service.shareAuthToken()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+    httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/me'));
+  });
+
+  it('accepts a share link that resolves to the same principal as the previous session', () => {
     sessionStorage.setItem(
       'agentic_ui_nuxeo_session',
       JSON.stringify({
         kind: 'cookie',
-        username: 'Administrator',
-        isAdministrator: true,
-        groups: ['administrators'],
+        username: 'transient/guest@example.com',
+        isAdministrator: false,
+        groups: [],
       }),
     );
     TestBed.resetTestingModule();
@@ -363,29 +379,47 @@ describe('AuthService poweruser access', () => {
     const restored = TestBed.inject(AuthService);
     const mock = TestBed.inject(HttpTestingController);
 
-    restored.authenticateWithShareToken('share-token-abc').subscribe();
+    // A second share link mailed to the same external address is still valid.
+    restored.authenticateWithShareToken('share-token-def').subscribe();
 
     mock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
-    // Same-origin XHR still sent the surviving JSESSIONID, so Nuxeo answered as the old user.
+    flushNoResidualCookieSession(mock);
     mock
-      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
-      .flush({
-        id: 'Administrator',
-        properties: { username: 'Administrator', groups: ['administrators'] },
-        isAdministrator: true,
-      });
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials)
+      .flush(TRANSIENT_ME);
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush(TRANSIENT_ME);
 
-    expect(restored.isAuthenticated()).toBeFalse();
-    expect(restored.username()).toBeNull();
-    expect(restored.shareAuthToken()).toBeNull();
-    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+    expect(restored.isAuthenticated()).toBeTrue();
+    expect(restored.username()).toBe('transient/guest@example.com');
     mock.verify();
+  });
+
+  it('aborts when the established browser session belongs to another principal', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    flushNoResidualCookieSession(httpMock);
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials)
+      .flush(TRANSIENT_ME);
+    // A cookie answered the session-establishing call instead of the token.
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush(ADMINISTRATOR_ME);
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(service.username()).toBeNull();
+    expect(service.shareAuthToken()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
   });
 
   it('clears share token when token authentication fails', () => {
     service.authenticateWithShareToken('bad-token').subscribe();
 
     httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    flushNoResidualCookieSession(httpMock);
     const req = httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me'));
     expect(req.request.url).not.toContain('token=');
     req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
@@ -425,20 +459,15 @@ describe('AuthService poweruser access', () => {
     expect(logoutReq.request.headers.has(AUTH_TOKEN_HEADER)).toBeFalse();
     logoutReq.flush('');
 
+    // The residual-cookie probe must stay credential-free, or it would prove nothing.
+    flushNoResidualCookieSession(mock);
+
     const tokenMe = mock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials);
     expect(tokenMe.request.headers.get(AUTH_TOKEN_HEADER)).toBe('share-token-abc');
-    tokenMe.flush({
-      id: 'transient/guest@example.com',
-      properties: { username: 'transient/guest@example.com', groups: [] },
-      isAdministrator: false,
-    });
+    tokenMe.flush(TRANSIENT_ME);
     mock
       .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
-      .flush({
-        id: 'transient/guest@example.com',
-        properties: { username: 'transient/guest@example.com', groups: [] },
-        isAdministrator: false,
-      });
+      .flush(TRANSIENT_ME);
 
     mock.verify();
   });

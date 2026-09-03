@@ -9,7 +9,7 @@ import {
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
-import { EMPTY, of, throwError } from 'rxjs';
+import { BehaviorSubject, EMPTY, Subject, of, throwError } from 'rxjs';
 import {
   ADMIN_ACCESS_CHECKS,
   BrowseContextService,
@@ -29,6 +29,13 @@ const SHARED_COLLECTION: NuxeoDocument = {
   path: '/default-domain/UserWorkspaces/alice/quarterly-reports',
   lastModified: '2026-01-01T00:00:00Z',
   properties: {},
+};
+
+const OTHER_COLLECTION: NuxeoDocument = {
+  ...SHARED_COLLECTION,
+  uid: 'collection-2',
+  title: 'Annual Reports',
+  path: '/default-domain/UserWorkspaces/alice/annual-reports',
 };
 
 const mockCollectionService = {
@@ -56,6 +63,8 @@ function denyCollectionAccess(): void {
   mockCollectionService.getCollectionMembers.mockReturnValue(forbidden());
 }
 
+let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+
 async function createComponent(
   username: string,
   sharedDocument?: SharedDocumentRef,
@@ -68,7 +77,7 @@ async function createComponent(
       {
         provide: ActivatedRoute,
         useValue: {
-          paramMap: of(convertToParamMap({ uid: 'collection-1' })),
+          paramMap: paramMap$.asObservable(),
           queryParamMap: of(convertToParamMap({})),
           snapshot: { queryParamMap: convertToParamMap({}) },
         },
@@ -107,6 +116,7 @@ describe('CollectionDetailComponent transient external-share recovery (NXSAT-211
   beforeEach(async () => {
     // BrowseContextService restores sharedDocument from sessionStorage on construction.
     sessionStorage.clear();
+    paramMap$ = new BehaviorSubject(convertToParamMap({ uid: 'collection-1' }));
     await TestBed.resetTestingModule();
     vi.clearAllMocks();
     mockCollectionService.getById.mockReturnValue(EMPTY);
@@ -160,5 +170,52 @@ describe('CollectionDetailComponent transient external-share recovery (NXSAT-211
     expect(component.showBreadcrumbs()).toBe(false);
     // The recovery target is this very collection, so Back would be a no-op.
     expect(component.canReturnToSharedDocument()).toBe(false);
+  });
+
+  it('ignores a collection response that arrives after the route moved on', async () => {
+    const pending = new Subject<NuxeoDocument>();
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      uid === 'collection-1' ? pending.asObservable() : of(OTHER_COLLECTION),
+    );
+
+    fixture = await createComponent('transient/guest@example.com');
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    paramMap$.next(convertToParamMap({ uid: 'collection-2' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    pending.next(SHARED_COLLECTION);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(component.collection()?.uid).toBe('collection-2');
+    expect(TestBed.inject(BrowseContextService).sharedDocument()).toEqual({
+      uid: 'collection-2',
+      title: 'Annual Reports',
+    });
+  });
+
+  it('keeps the denied state when a late metadata success follows a members denial', async () => {
+    const pendingMetadata = new Subject<NuxeoDocument>();
+    mockDocumentDetailService.getFullDocument.mockReturnValue(pendingMetadata.asObservable());
+    mockCollectionService.getCollectionMembers.mockReturnValue(forbidden());
+
+    fixture = await createComponent('transient/guest@example.com', {
+      uid: 'shared-1',
+      title: 'Quarterly Report',
+    });
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(component.externalShareAccessDenied()).toBe(true);
+
+    pendingMetadata.next(SHARED_COLLECTION);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Clearing the flag here would drop the recovery panel while keeping its message.
+    expect(component.externalShareAccessDenied()).toBe(true);
+    expect(component.error()).toContain('Quarterly Report');
   });
 });

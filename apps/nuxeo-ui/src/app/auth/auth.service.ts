@@ -429,9 +429,6 @@ export class AuthService {
       return of(undefined);
     }
 
-    // Captured before the reset: the token probe must not silently resolve back to it.
-    const supersededUsername = this.state()?.username ?? null;
-
     this.clearSignedOut();
     this.state.set(null);
     this.clearStorage();
@@ -443,54 +440,85 @@ export class AuthService {
     });
 
     return this.clearStaleNuxeoCookieSession({ strict: true }).pipe(
-      tap(() => {
-        this.shareAuthTokenValue = trimmed;
-      }),
-      switchMap(() =>
-        this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
-          headers,
-          withCredentials: false,
-          context: new HttpContext().set(NUXEO_OMIT_CREDENTIALS, true),
-        }),
-      ),
-      switchMap((me) => {
-        const user = readUsernameFromMe(me);
-        // Same-origin XHR cannot drop cookies, so the probe is only trustworthy when it
-        // returns someone other than the principal we just logged out. Getting that
-        // principal back means the surviving JSESSIONID answered instead of the token.
-        if (!user || user === supersededUsername) {
-          this.clearShareAuth();
-          this.markSignedOut();
-          return of(undefined);
+      switchMap(() => this.residualCookiePrincipal()),
+      switchMap((residualPrincipal) => {
+        if (residualPrincipal) {
+          return this.abortShareAuth();
         }
-        const flags = readSessionFlagsFromMe(me);
+        // Safe to expose the token now that no cookie can out-rank it.
+        this.shareAuthTokenValue = trimmed;
         return this.http
           .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
             headers,
-            withCredentials: true,
-            context: new HttpContext().set(NUXEO_ESTABLISH_BROWSER_SESSION, true),
+            withCredentials: false,
+            context: new HttpContext().set(NUXEO_OMIT_CREDENTIALS, true),
           })
-          .pipe(
-            tap(() => {
-              const session: CookieStoredSession = {
-                kind: 'cookie',
-                username: user,
-                isAdministrator: flags.isAdministrator,
-                groups: flags.groups,
-              };
-              this.state.set(session);
-              this.persistCookie(session);
-              this.clearShareAuth();
-            }),
-            map(() => undefined),
-          );
+          .pipe(switchMap((me) => this.establishShareBrowserSession(me, headers)));
       }),
-      catchError(() => {
-        this.clearShareAuth();
-        this.markSignedOut();
-        return of(undefined);
-      }),
+      catchError(() => this.abortShareAuth()),
     );
+  }
+
+  /**
+   * Reports who the browser session still authenticates as after the stale-session logout.
+   *
+   * Same-origin XHR cannot omit cookies, so the token request has no way to opt out of a
+   * surviving `JSESSIONID`. Asking without any credentials of our own is the only reliable
+   * way to learn whether one is still there and would out-rank the share token.
+   */
+  private residualCookiePrincipal(): Observable<string | null> {
+    return this.http
+      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+        headers: { Accept: 'application/json' },
+        withCredentials: true,
+      })
+      .pipe(
+        map((me) => readUsernameFromMe(me)),
+        catchError(() => of(null)),
+      );
+  }
+
+  /** Converts the share token identity into a Nuxeo browser session. */
+  private establishShareBrowserSession(me: unknown, headers: HttpHeaders): Observable<void> {
+    const user = readUsernameFromMe(me);
+    if (!user) {
+      return this.abortShareAuth();
+    }
+    return this.http
+      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+        headers,
+        withCredentials: true,
+        context: new HttpContext().set(NUXEO_ESTABLISH_BROWSER_SESSION, true),
+      })
+      .pipe(
+        switchMap((sessionMe) => {
+          // Storing the token identity while the cookie belongs to someone else would leave
+          // the UI acting as one principal and the server as another.
+          const sessionUser = readUsernameFromMe(sessionMe);
+          if (sessionUser !== user) {
+            return this.abortShareAuth();
+          }
+          const flags = readSessionFlagsFromMe(sessionMe);
+          const session: CookieStoredSession = {
+            kind: 'cookie',
+            username: user,
+            isAdministrator: flags.isAdministrator,
+            groups: flags.groups,
+          };
+          this.state.set(session);
+          this.persistCookie(session);
+          this.clearShareAuth();
+          return of(undefined);
+        }),
+      );
+  }
+
+  private abortShareAuth(): Observable<void> {
+    this.state.set(null);
+    this.clearStorage();
+    this.clearShareAuth();
+    this.markSignedOut();
+    return of(undefined);
   }
 
   /**

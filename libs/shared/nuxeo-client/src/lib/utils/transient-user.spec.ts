@@ -19,7 +19,8 @@ describe('transient-user utils', () => {
   it('externalShareAccessDeniedMessage includes the document title', () => {
     expect(externalShareAccessDeniedMessage('Quarterly Report')).toContain('Quarterly Report');
     expect(externalShareAccessDeniedMessage('')).toContain('the shared document');
-    expect(EXTERNAL_SHARE_ACCESS_DENIED_TITLE).toBe('You do not have access to this folder');
+    // Shared by folder, document and collection screens, so it must not name a resource type.
+    expect(EXTERNAL_SHARE_ACCESS_DENIED_TITLE).toBe('You do not have access to this item');
     expect(externalShareAccessDeniedDetail('Quarterly Report')).toBe(
       'The link you received gives you access only to Quarterly Report.',
     );

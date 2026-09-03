@@ -297,22 +297,31 @@ export class CollectionDetailComponent {
   }
 
   private loadCollection(): void {
+    // Angular reuses this component across :uid changes, so a slow reply for the previous
+    // collection must not replace the current one or claim the share recovery target.
+    const requestedUid = this.collectionUid;
     this.detailService
-      .getFullDocument(this.collectionUid)
+      .getFullDocument(requestedUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
-          this.applyLoadedCollection(doc);
+          this.applyLoadedCollection(requestedUid, doc);
         },
         error: (err) => {
+          if (this.isStaleCollectionResponse(requestedUid)) {
+            return;
+          }
           this.collectionService
-            .getById(this.collectionUid)
+            .getById(requestedUid)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (doc) => {
-                this.applyLoadedCollection(doc);
+                this.applyLoadedCollection(requestedUid, doc);
               },
               error: (fallbackErr) => {
+                if (this.isStaleCollectionResponse(requestedUid)) {
+                  return;
+                }
                 if (!this.applyExternalShareAccessDenied(fallbackErr)) {
                   this.applyExternalShareAccessDenied(err);
                 }
@@ -322,8 +331,16 @@ export class CollectionDetailComponent {
       });
   }
 
-  private applyLoadedCollection(doc: NuxeoDocument): void {
-    this.accessDenied.set(false);
+  private isStaleCollectionResponse(requestedUid: string): boolean {
+    return this.routeCollectionUid() !== requestedUid;
+  }
+
+  private applyLoadedCollection(requestedUid: string, doc: NuxeoDocument): void {
+    if (this.isStaleCollectionResponse(requestedUid)) {
+      return;
+    }
+    // Metadata and members load independently, so leave the denied state to whichever
+    // request set it — clearing it here would strip the recovery UX but keep its message.
     this.collection.set(doc);
     // A collection reached through a share link is a valid recovery target; the setter
     // keeps whichever document the share session started with.
@@ -363,8 +380,13 @@ export class CollectionDetailComponent {
     this.loading.set(true);
     this.error.set(null);
 
-    this.collectionService.getCollectionMembers(this.collectionUid, 50).subscribe({
+    const requestedUid = this.collectionUid;
+    this.collectionService.getCollectionMembers(requestedUid, 50).subscribe({
       next: (res) => {
+        if (this.isStaleCollectionResponse(requestedUid)) {
+          return;
+        }
+        // The members request owns the contents-access state.
         this.accessDenied.set(false);
         this.members.set(res.entries);
         this.totalSize.set(res.totalSize);
@@ -372,6 +394,9 @@ export class CollectionDetailComponent {
         this.loadThumbnails(res.entries);
       },
       error: (err) => {
+        if (this.isStaleCollectionResponse(requestedUid)) {
+          return;
+        }
         if (this.applyExternalShareAccessDenied(err)) {
           return;
         }

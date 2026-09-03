@@ -3,8 +3,11 @@ export function isTransientUser(username: string | null | undefined): boolean {
   return typeof username === 'string' && username.startsWith('transient/');
 }
 
-/** Heading when a transient external user opens a folder they cannot access. */
-export const EXTERNAL_SHARE_ACCESS_DENIED_TITLE = 'You do not have access to this folder';
+/**
+ * Heading when a transient external user opens something outside their share.
+ * Stays resource-neutral because folders, documents and collections all use it.
+ */
+export const EXTERNAL_SHARE_ACCESS_DENIED_TITLE = 'You do not have access to this item';
 
 /** User-facing message when a transient user browses outside their shared document. */
 export function externalShareAccessDeniedDetail(documentTitle: string): string {
