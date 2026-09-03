@@ -45,6 +45,16 @@ const READABLE_COLLECTION: NuxeoDocument = {
   contextParameters: { permissions: ['Read'] },
 };
 
+/** A member whose type is eligible for a thumbnail request. */
+const MEMBER_FILE: NuxeoDocument = {
+  uid: 'member-1',
+  title: 'Report.pdf',
+  type: 'File',
+  path: '/default-domain/UserWorkspaces/alice/report.pdf',
+  lastModified: '2026-01-01T00:00:00Z',
+  properties: {},
+};
+
 const mockCollectionService = {
   getById: vi.fn(() => EMPTY),
   getCollectionMembers: vi.fn(() => of({ entries: [], totalSize: 0 })),
@@ -270,6 +280,87 @@ describe('CollectionDetailComponent transient external-share recovery (NXSAT-211
       expect.any(Number),
       expect.any(Number),
     );
+  });
+
+  it('keeps a metadata denial when the members request later succeeds', async () => {
+    const pendingMetadata = new Subject<NuxeoDocument>();
+    const pendingMembers = new Subject<{ entries: NuxeoDocument[]; totalSize: number }>();
+    mockDocumentDetailService.getFullDocument.mockReturnValue(pendingMetadata.asObservable());
+    mockCollectionService.getById.mockReturnValue(forbidden());
+    mockCollectionService.getCollectionMembers.mockReturnValue(pendingMembers.asObservable());
+
+    fixture = await createComponent('transient/guest@example.com', {
+      uid: 'shared-1',
+      title: 'Quarterly Report',
+    });
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(component.externalShareAccessDenied()).toBe(false);
+
+    // The denial lands while the members request is already in flight.
+    pendingMetadata.error({ status: 403 });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.externalShareAccessDenied()).toBe(true);
+
+    pendingMembers.next({ entries: [], totalSize: 0 });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    // Taking over here would leave the share message rendered as a generic retry error,
+    // making the outcome depend on which request answered first.
+    expect(component.externalShareAccessDenied()).toBe(true);
+    expect(component.error()).toContain('Quarterly Report');
+  });
+
+  it('clears the History spinner when the route changes with an audit request pending', async () => {
+    const pendingAudit = new Subject<{ entries: unknown[]; totalSize: number }>();
+    // collection-2's metadata never arrives, so nothing starts a replacement request.
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      uid === 'collection-1' ? of(READABLE_COLLECTION) : EMPTY,
+    );
+    mockDocumentDetailService.getAuditLog.mockReturnValue(pendingAudit.asObservable());
+
+    fixture = await createComponent('alice');
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.onTabChange(2);
+    fixture.detectChanges();
+    expect(component.auditLoading()).toBe(true);
+
+    paramMap$.next(convertToParamMap({ uid: 'collection-2' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(component.auditLoading()).toBe(false);
+  });
+
+  it('ignores a thumbnail that arrives after the route moved on', async () => {
+    const pendingThumbnail = new Subject<Blob>();
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      of(uid === 'collection-1' ? READABLE_COLLECTION : OTHER_COLLECTION),
+    );
+    mockCollectionService.getCollectionMembers.mockImplementation((uid: string) =>
+      uid === 'collection-1'
+        ? of({ entries: [MEMBER_FILE], totalSize: 1 })
+        : of({ entries: [], totalSize: 0 }),
+    );
+    mockDocumentDetailService.fetchThumbnail.mockReturnValue(pendingThumbnail.asObservable());
+
+    fixture = await createComponent('alice');
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    paramMap$.next(convertToParamMap({ uid: 'collection-2' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    pendingThumbnail.next(new Blob(['thumb']));
+    fixture.detectChanges();
+
+    // Creating the URL now would show collection-1's thumbnail and leak a blob past the
+    // revocation that already ran.
+    expect(component.thumbnailMap()).toEqual({});
   });
 
   it('keeps the denied state when a late metadata success follows a members denial', async () => {

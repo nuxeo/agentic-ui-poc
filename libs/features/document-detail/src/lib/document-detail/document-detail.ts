@@ -954,6 +954,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.historyLoaded = false;
     this.permissionsTabLoaded = false;
     this.publishTabLoaded = false;
+    this.auditEntries.set([]);
+    this.auditTotalSize.set(0);
+    // Replies still in flight for the previous document are discarded, so nothing else
+    // would ever turn these off and the tabs would spin forever.
+    this.auditLoading.set(false);
+    this.panelActivityLoading.set(false);
+    this.permissionsLoading.set(false);
+    this.documentTasksLoading.set(false);
+    this.publishLoading.set(false);
   }
 
   generateSummary(): void {
@@ -1491,6 +1500,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     this.contentLakePresenceChecking.set(true);
+    const requestedUid = doc.uid;
     this.kdClient
       .listIngestSourceIds()
       .pipe(
@@ -1501,6 +1511,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((result) => {
+        // The badge is about the document that was probed, not whichever one is on screen.
+        if (this.isStaleDocumentResponse(requestedUid)) return;
         if (result.presentInContentLake) {
           this.contentLakePresenceVerified.set(true);
         }
@@ -1616,20 +1628,36 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private loadDocumentTasks(uid: string): void {
     this.documentTasksLoading.set(true);
     const userId = this.currentUsername() ?? 'Administrator';
-    this.taskService.getDocumentTasks(uid, userId).subscribe({
-      next: (tasks) => {
-        this.documentTasks.set(tasks);
-        this.documentTasksLoading.set(false);
-      },
-      error: () => this.documentTasksLoading.set(false),
-    });
+    this.taskService
+      .getDocumentTasks(uid, userId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (tasks) => {
+          if (this.isStaleDocumentResponse(uid)) return;
+          this.documentTasks.set(tasks);
+          this.documentTasksLoading.set(false);
+        },
+        error: () => {
+          if (this.isStaleDocumentResponse(uid)) return;
+          this.documentTasksLoading.set(false);
+        },
+      });
   }
 
   private loadDocumentWorkflows(uid: string): void {
-    this.workflowService.getDocumentWorkflows(uid).subscribe({
-      next: (wfs) => this.documentWorkflows.set(wfs),
-      error: () => this.documentWorkflows.set([]),
-    });
+    this.workflowService
+      .getDocumentWorkflows(uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (wfs) => {
+          if (this.isStaleDocumentResponse(uid)) return;
+          this.documentWorkflows.set(wfs);
+        },
+        error: () => {
+          if (this.isStaleDocumentResponse(uid)) return;
+          this.documentWorkflows.set([]);
+        },
+      });
   }
 
   abandonWorkflow(wf: NuxeoWorkflow): void {
@@ -2571,11 +2599,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private reloadDocumentPermissions(): void {
     if (!this.docUid) return;
     this.permissionsLoading.set(true);
+    const requestedUid = this.docUid;
     this.detailService
-      .getDocumentPermissions(this.docUid)
+      .getDocumentPermissions(requestedUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
+          // With no document loaded yet this would install the previous one as current.
+          if (this.isStaleDocumentResponse(requestedUid)) return;
           const existing = this.doc();
           if (!existing) {
             this.doc.set(updated);
@@ -2586,6 +2617,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.permissionsLoading.set(false);
         },
         error: () => {
+          if (this.isStaleDocumentResponse(requestedUid)) return;
           this.permissionsLoading.set(false);
           this.toast('Failed to refresh permissions');
         },
@@ -2625,17 +2657,22 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     this.auditLoading.set(true);
 
+    const requestedUid = this.docUid;
     this.detailService
-      .getAuditLog(this.docUid, this.auditPageSize(), this.auditPageIndex())
+      .getAuditLog(requestedUid, this.auditPageSize(), this.auditPageIndex())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          // Marking a late reply as loaded would pin the previous document's history to
+          // this one until the tab is refetched by hand.
+          if (this.isStaleDocumentResponse(requestedUid)) return;
           this.auditEntries.set(res.entries);
           this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
         error: () => {
+          if (this.isStaleDocumentResponse(requestedUid)) return;
           this.auditLoading.set(false);
         },
       });
@@ -2677,13 +2714,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadPublicationCount(uid: string): void {
-    this.detailService.getPublishedVersions(uid).subscribe({
-      next: (res) => {
-        this.publishedDocs.set(res.entries);
-        this.publishLoading.set(false);
-      },
-      error: () => this.publishLoading.set(false),
-    });
+    this.detailService
+      .getPublishedVersions(uid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (this.isStaleDocumentResponse(uid)) return;
+          this.publishedDocs.set(res.entries);
+          this.publishLoading.set(false);
+        },
+        error: () => {
+          if (this.isStaleDocumentResponse(uid)) return;
+          this.publishLoading.set(false);
+        },
+      });
   }
 
   private loadPublishingData(): void {
@@ -3593,16 +3637,21 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     this.panelActivityLoading.set(true);
+    const requestedUid = this.docUid;
     this.detailService
-      .getAuditLog(this.docUid, 20, 0)
+      .getAuditLog(requestedUid, 20, 0)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (this.isStaleDocumentResponse(requestedUid)) return;
           this.panelActivity.set(res.entries);
           this.panelActivityLoading.set(false);
           this.panelActivityLoaded = true;
         },
-        error: () => this.panelActivityLoading.set(false),
+        error: () => {
+          if (this.isStaleDocumentResponse(requestedUid)) return;
+          this.panelActivityLoading.set(false);
+        },
       });
   }
 

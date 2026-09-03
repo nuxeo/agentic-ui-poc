@@ -28,6 +28,7 @@ import {
   NUXEO_SSO_RETURN_QUERY_PARAM,
   SelectionService,
   isPowerUserFromGroups,
+  isTransientUser,
   readGroupsFromMe,
   type NuxeoSamlLoginEndpoint,
 } from '@agentic-ui/shared/nuxeo-client';
@@ -504,8 +505,11 @@ export class AuthService {
 
   /** Converts the share token identity into a Nuxeo browser session. */
   private establishShareBrowserSession(me: unknown, headers: HttpHeaders): Observable<void> {
-    const user = readUsernameFromMe(me);
-    if (!user) {
+    const user = readAuthenticatedPrincipalFromMe(me);
+    // A share token only ever resolves to `transient/<email>`. Anything else means a
+    // cookie created after the residual probe answered instead, and it could just as
+    // easily be a privileged principal, so the link must not adopt it.
+    if (!user || !isTransientUser(user)) {
       return this.abortShareAuth();
     }
     return this.http

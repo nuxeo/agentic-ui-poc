@@ -413,6 +413,24 @@ describe('AuthService poweruser access', () => {
     mock.verify();
   });
 
+  it('aborts when the share token resolves to a non-transient principal', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    flushNoResidualCookieSession(httpMock);
+    // A cookie created after the probe answered instead of the token. A share link only
+    // ever resolves to transient/<email>, so adopting this would hand it a real session.
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials)
+      .flush(ADMINISTRATOR_ME);
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(service.username()).toBeNull();
+    expect(service.shareAuthToken()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+    httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/me'));
+  });
+
   it('aborts when the established browser session belongs to another principal', () => {
     service.authenticateWithShareToken('share-token-abc').subscribe();
 

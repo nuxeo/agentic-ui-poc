@@ -25,6 +25,7 @@ import {
   PERMISSION_DENIED_MESSAGE,
   type NuxeoComment,
   type NuxeoDocument,
+  type NuxeoTask,
   TagService,
   TaskService,
   WorkflowService,
@@ -106,7 +107,7 @@ const mockDirectoryService = {
 };
 
 const mockTaskService = {
-  getDocumentTasks: () => of([]),
+  getDocumentTasks: (_uid?: string): Observable<NuxeoTask[]> => of([]),
 };
 
 const mockWorkflowService = {
@@ -835,6 +836,37 @@ describe('DocumentDetailComponent', () => {
         expect(component.accessDenied()).toBe(false);
         expect(component.error()).toBeNull();
         expect(component.doc()?.uid).toBe('shared-1');
+      });
+
+      it('ignores a stale task list that arrives after the route moved on', async () => {
+        const pendingTasks = new Subject<NuxeoTask[]>();
+        const originalGetDocumentTasks = mockTaskService.getDocumentTasks;
+        // The document resolves at once, so its follow-up loads start; only child-1's
+        // task request is left hanging.
+        mockTaskService.getDocumentTasks = (uid?: string) =>
+          uid === 'child-1' ? pendingTasks.asObservable() : of([]);
+        try {
+          mockDocumentDetailService.getFullDocument = vi.fn((uid?: string) =>
+            of(uid === 'child-1' ? CHILD_DOC : SHARED_DOC),
+          );
+
+          paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+          fixture.detectChanges();
+          await fixture.whenStable();
+
+          paramMap$.next(convertToParamMap({ uid: 'shared-1' }));
+          fixture.detectChanges();
+          await fixture.whenStable();
+
+          pendingTasks.next([{ id: 'task-1' } as NuxeoTask]);
+          fixture.detectChanges();
+          await fixture.whenStable();
+
+          expect(component.documentTasks()).toEqual([]);
+          expect(component.documentTasksLoading()).toBe(false);
+        } finally {
+          mockTaskService.getDocumentTasks = originalGetDocumentTasks;
+        }
       });
     });
 

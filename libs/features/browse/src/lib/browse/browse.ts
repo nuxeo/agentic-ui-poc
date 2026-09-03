@@ -735,6 +735,9 @@ export class BrowseComponent {
     this.totalSize.set(0);
     this.auditEntries.set([]);
     this.auditTotalSize.set(0);
+    this.auditLoading.set(false);
+    this.activityEntries.set([]);
+    this.activityLoading.set(false);
     this.trashedDocs.set([]);
     this.trashLoading.set(false);
     this.clipboardTargetService.setTarget(null);
@@ -854,10 +857,14 @@ export class BrowseComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (this.isStaleFolderResponse(uid)) return;
           this.activityEntries.set(res.entries);
           this.activityLoading.set(false);
         },
-        error: () => this.activityLoading.set(false),
+        error: () => {
+          if (this.isStaleFolderResponse(uid)) return;
+          this.activityLoading.set(false);
+        },
       });
   }
 

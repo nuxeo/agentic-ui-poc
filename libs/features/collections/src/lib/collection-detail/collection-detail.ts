@@ -166,6 +166,8 @@ export class CollectionDetailComponent implements OnDestroy {
     'docLifeCycle',
   ];
   private historyLoaded = false;
+  /** UID already denied, so a parallel success cannot silently drop the recovery panel. */
+  private accessDeniedUid: string | null = null;
   private readonly activeTabIndex = signal(0);
 
   readonly filterUsername = signal('');
@@ -309,6 +311,7 @@ export class CollectionDetailComponent implements OnDestroy {
   private resetUidScopedState(): void {
     this.historyLoaded = false;
     this.accessDenied.set(false);
+    this.accessDeniedUid = null;
     this.error.set(null);
     this.loading.set(true);
     this.collection.set(null);
@@ -322,6 +325,9 @@ export class CollectionDetailComponent implements OnDestroy {
     this.auditEntries.set([]);
     this.auditTotalSize.set(0);
     this.auditPageIndex.set(0);
+    // A pending audit reply for the previous collection is discarded, so nothing else
+    // would ever turn this off and the History tab would spin forever.
+    this.auditLoading.set(false);
     this.breadcrumbPathCache = null;
     this.breadcrumbItemsCache = [];
   }
@@ -360,8 +366,8 @@ export class CollectionDetailComponent implements OnDestroy {
                 if (this.isStaleCollectionResponse(requestedUid)) {
                   return;
                 }
-                if (!this.applyExternalShareAccessDenied(fallbackErr)) {
-                  this.applyExternalShareAccessDenied(err);
+                if (!this.applyExternalShareAccessDenied(requestedUid, fallbackErr)) {
+                  this.applyExternalShareAccessDenied(requestedUid, err);
                 }
               },
             });
@@ -392,17 +398,19 @@ export class CollectionDetailComponent implements OnDestroy {
   }
 
   /** Renders the shared-link access-denied state; returns false when the error is unrelated. */
-  private applyExternalShareAccessDenied(err: unknown): boolean {
+  private applyExternalShareAccessDenied(requestedUid: string, err: unknown): boolean {
     if (!this.isTransientExternalUser() || !isPermissionDeniedError(err)) {
       return false;
     }
     this.accessDenied.set(true);
+    this.accessDeniedUid = requestedUid;
     this.error.set(externalShareAccessDeniedMessage(this.sharedDocument()?.title ?? ''));
     this.collection.set(null);
     this.members.set([]);
     this.totalSize.set(0);
     this.auditEntries.set([]);
     this.auditTotalSize.set(0);
+    this.auditLoading.set(false);
     this.loading.set(false);
     return true;
   }
@@ -415,6 +423,11 @@ export class CollectionDetailComponent implements OnDestroy {
   }
 
   loadMembers(): void {
+    // The metadata request already denied this collection and its recovery panel owns
+    // the screen, so clearing the error here would strip the share-specific message.
+    if (this.accessDeniedUid === this.collectionUid) {
+      return;
+    }
     this.loading.set(true);
     this.error.set(null);
 
@@ -427,7 +440,12 @@ export class CollectionDetailComponent implements OnDestroy {
           if (this.isStaleCollectionResponse(requestedUid)) {
             return;
           }
-          // The members request owns the contents-access state.
+          // The metadata request already denied this collection. Taking over now would
+          // leave its share-specific message rendered as a generic retry error, making
+          // the outcome depend on which request happened to answer first.
+          if (this.accessDeniedUid === requestedUid) {
+            return;
+          }
           this.accessDenied.set(false);
           this.members.set(res.entries);
           this.totalSize.set(res.totalSize);
@@ -438,7 +456,7 @@ export class CollectionDetailComponent implements OnDestroy {
           if (this.isStaleCollectionResponse(requestedUid)) {
             return;
           }
-          if (this.applyExternalShareAccessDenied(err)) {
+          if (this.applyExternalShareAccessDenied(requestedUid, err)) {
             return;
           }
           this.error.set('Failed to load collection contents.');
@@ -449,6 +467,7 @@ export class CollectionDetailComponent implements OnDestroy {
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
     this.revokeThumbnailUrls();
+    const requestedUid = this.collectionUid;
     for (const doc of docs) {
       if (!this.canLoadThumbnail(doc)) continue;
       this.detailService
@@ -458,7 +477,9 @@ export class CollectionDetailComponent implements OnDestroy {
           takeUntilDestroyed(this.destroyRef),
         )
         .subscribe((blob) => {
-          if (!blob) return;
+          // Creating the URL after the route moved on would both show the previous
+          // collection's thumbnail and leak a blob the reset already revoked past.
+          if (!blob || this.isStaleCollectionResponse(requestedUid)) return;
           const url = URL.createObjectURL(blob);
           this.thumbnailObjectUrls.push(url);
           this.thumbnailMap.update((m) => ({

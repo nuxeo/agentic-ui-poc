@@ -1057,6 +1057,36 @@ describe('BrowseComponent folder-scoped state on navigation', () => {
     expect(TestBed.inject(ClipboardTargetService).target()).toBeNull();
   });
 
+  it('clears the activity panel when the folder changes', async () => {
+    const pendingAudit = new Subject<{ entries: AuditEntry[]; totalSize: number }>();
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder: FOLDER_A, entries: [], totalSize: 0 }),
+    );
+    mockBrowseService.getFolderContext.mockReturnValue(of(FOLDER_A));
+    mockDocumentDetailService.getAuditLog.mockReturnValue(pendingAudit.asObservable());
+
+    fixture.detectChanges();
+    component.loadContent();
+    fixture.detectChanges();
+    expect(component.activityLoading()).toBe(true);
+
+    // Workspace B never replies, so nothing starts a replacement activity request.
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(EMPTY);
+    await router.navigateByUrl('/browse/default-domain/workspaces/b');
+    fixture.detectChanges();
+
+    expect(component.activityLoading()).toBe(false);
+    expect(component.activityEntries()).toEqual([]);
+
+    pendingAudit.next({
+      entries: [{ id: 1, eventId: 'documentModified', eventDate: '2026-01-01T00:00:00Z' }],
+      totalSize: 1,
+    } as { entries: AuditEntry[]; totalSize: number });
+    fixture.detectChanges();
+
+    expect(component.activityEntries()).toEqual([]);
+  });
+
   it('discards a history reply that arrives after the folder changed', async () => {
     const pendingAudit = new Subject<{ entries: AuditEntry[]; totalSize: number }>();
     mockBrowseService.getBrowseFolderContents.mockReturnValue(
