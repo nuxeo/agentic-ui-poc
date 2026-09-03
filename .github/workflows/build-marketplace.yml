@@ -7,16 +7,6 @@ on:
   pull_request:
     branches:
       - main
-  # Manual lane, so a branch can be published to Marketplace preprod without merging to
-  # `main` first. Deliberately not tied to the `pull_request` trigger: that fires on every
-  # push to every open PR, and publishing a package per push would fill preprod with builds
-  # nobody asked for.
-  workflow_dispatch:
-    inputs:
-      publishToPreprod:
-        description: 'Publish the built package to Nuxeo Marketplace preprod'
-        type: boolean
-        default: false
 
 concurrency:
   group: marketplace-${{ github.ref }}
@@ -56,16 +46,6 @@ jobs:
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             VERSION="${BASE_VERSION}-$(date +%Y%m%d%H%M%S)"
             IS_MAIN=true
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # Carries the branch in the version because these land in the same preprod list
-            # as `main` builds, and a bare timestamp would make the two indistinguishable
-            # once someone is looking at the Marketplace rather than at this workflow.
-            # Drops the `feature/` or `fix/` prefix before truncating, otherwise the 24-char
-            # cut lands mid-word and the version reads like a corrupted string.
-            SLUG=$(echo "${{ github.ref_name }}" \
-              | sed -E 's#^(feature|feat|fix|chore|docs)/##' \
-              | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-//;s/-$//' | cut -c1-24 | sed 's/-$//')
-            VERSION="${BASE_VERSION}-${SLUG}-$(date +%Y%m%d%H%M%S)"
           else
             VERSION="${BASE_VERSION}-SNAPSHOT"
           fi
@@ -132,9 +112,7 @@ jobs:
   push-to-preprod:
     needs: [properties, build]
     runs-on: ubuntu-latest
-    # `main` publishes automatically; any other branch publishes only when someone asks for
-    # it explicitly through the manual lane above.
-    if: needs.properties.outputs.IS_MAIN == 'true' || github.event.inputs.publishToPreprod == 'true'
+    if: needs.properties.outputs.IS_MAIN == 'true'
     env:
       VERSION: ${{ needs.properties.outputs.VERSION }}
     steps:
