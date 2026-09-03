@@ -435,6 +435,25 @@ already holds and rules out adopting a privileged principal, which is the substa
 of the concern. It cannot prove the token authenticated the request — nothing
 same-origin can on Angular 19 — and it must not pretend to.
 
+**Validating a response is not the same as adding a gate.** The distinction is
+whether the check needs a request that would not otherwise be made:
+
+| Check                                                             | Verdict |
+| ----------------------------------------------------------------- | ------- |
+| Assert the token `/me` principal is `transient/<email>`           | ✅ keep |
+| Assert the session-establishing `/me` returns that same principal | ✅ keep |
+| Extra credential-free probe before the token, demanding a 401     | ❌ no   |
+| Extra cookie-only `/me` afterwards to confirm a `JSESSIONID`      | ❌ no   |
+| Failing the handoff when `GET /nuxeo/logout` errors               | ❌ no   |
+
+The two accepted checks read a response the flow already receives, so they cost
+nothing and cannot strand a valid link. The establishing request in particular sends
+cookies where the token request sent none, so on a cross-origin deployment it can be
+answered by a surviving privileged session — persisting the token identity there
+would leave the UI acting as the transient user while every later call runs as that
+principal. The three rejected ones each need an additional round-trip whose outcome
+is ambiguous, and they abort on the ambiguity.
+
 **Why this matters beyond the handshake:** when the handoff aborts, no `transient/`
 session exists, so every transient-gated behaviour silently disappears — the
 breadcrumb suppression, the hidden back button, and the access-denied recovery panel

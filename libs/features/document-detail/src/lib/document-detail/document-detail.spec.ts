@@ -868,6 +868,44 @@ describe('DocumentDetailComponent', () => {
           mockTaskService.getDocumentTasks = originalGetDocumentTasks;
         }
       });
+
+      it('ignores a task list from an earlier load of the same document', async () => {
+        const firstTasks = new Subject<NuxeoTask[]>();
+        const originalGetDocumentTasks = mockTaskService.getDocumentTasks;
+        let child1Requests = 0;
+        mockTaskService.getDocumentTasks = (uid?: string) => {
+          if (uid !== 'child-1') return of([]);
+          child1Requests += 1;
+          return child1Requests === 1 ? firstTasks.asObservable() : of([]);
+        };
+        try {
+          mockDocumentDetailService.getFullDocument = vi.fn((uid?: string) =>
+            of(uid === 'child-1' ? CHILD_DOC : SHARED_DOC),
+          );
+
+          paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+          fixture.detectChanges();
+          await fixture.whenStable();
+
+          // Away to shared-1 and straight back, so the route UID is child-1 again while the
+          // very first task request is still in flight.
+          paramMap$.next(convertToParamMap({ uid: 'shared-1' }));
+          fixture.detectChanges();
+          await fixture.whenStable();
+          paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+          fixture.detectChanges();
+          await fixture.whenStable();
+
+          firstTasks.next([{ id: 'stale-task' } as NuxeoTask]);
+          fixture.detectChanges();
+          await fixture.whenStable();
+
+          // A UID-only guard would accept this, because the route is back on the same document.
+          expect(component.documentTasks()).toEqual([]);
+        } finally {
+          mockTaskService.getDocumentTasks = originalGetDocumentTasks;
+        }
+      });
     });
 
     describe('error Go Back affordance', () => {

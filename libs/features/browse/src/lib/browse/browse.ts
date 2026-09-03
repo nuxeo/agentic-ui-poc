@@ -216,6 +216,8 @@ export class BrowseComponent {
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
   private currentNuxeoPath = '/';
+  /** Bumped per folder load so replies from a superseded load of the same folder are dropped. */
+  private folderLoadGeneration = 0;
   /** Skips the initial contentRefreshTick effect run to avoid duplicate folder loads. */
   private lastSeenContentRefreshTick = -1;
   /** Skips the initial clipboardPasteTick effect run. */
@@ -540,6 +542,9 @@ export class BrowseComponent {
     this.browsePath$
       .pipe(
         switchMap((nuxeoPath) => {
+          // Every folder load gets its own generation, so replies still in flight from the
+          // previous one are rejected even when it was the same folder.
+          this.folderLoadGeneration += 1;
           this.loading.set(true);
           this.error.set(null);
           this.accessDenied.set(false);
@@ -811,6 +816,7 @@ export class BrowseComponent {
       this.revokeThumbnailBlobUrls();
     }
     const requestedUid = this.currentDoc()?.uid ?? '';
+    const generation = this.folderLoadGeneration;
     for (const doc of docs) {
       this.detailService
         .fetchThumbnail(doc.uid)
@@ -821,7 +827,7 @@ export class BrowseComponent {
         .subscribe((blob) => {
           // Creating the URL after the route moved on would both show the previous
           // folder's thumbnail and leak a blob past the revocation that already ran.
-          if (!blob || this.isStaleFolderResponse(requestedUid)) return;
+          if (!blob || this.isStaleFolderResponse(requestedUid, generation)) return;
           const url = URL.createObjectURL(blob);
           this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
@@ -859,17 +865,18 @@ export class BrowseComponent {
     }
 
     this.activityLoading.set(true);
+    const generation = this.folderLoadGeneration;
     this.detailService
       .getAuditLog(uid, 5, 0)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          if (this.isStaleFolderResponse(uid)) return;
+          if (this.isStaleFolderResponse(uid, generation)) return;
           this.activityEntries.set(res.entries);
           this.activityLoading.set(false);
         },
         error: () => {
-          if (this.isStaleFolderResponse(uid)) return;
+          if (this.isStaleFolderResponse(uid, generation)) return;
           this.activityLoading.set(false);
         },
       });
@@ -968,19 +975,20 @@ export class BrowseComponent {
 
     this.auditLoading.set(true);
     const requestedUid = doc.uid;
+    const generation = this.folderLoadGeneration;
     this.detailService
       .getAuditLog(requestedUid, this.auditPageSize(), this.auditPageIndex())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          if (this.isStaleFolderResponse(requestedUid)) return;
+          if (this.isStaleFolderResponse(requestedUid, generation)) return;
           this.auditEntries.set(res.entries);
           this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
         error: () => {
-          if (this.isStaleFolderResponse(requestedUid)) return;
+          if (this.isStaleFolderResponse(requestedUid, generation)) return;
           this.auditLoading.set(false);
         },
       });
@@ -989,9 +997,13 @@ export class BrowseComponent {
   /**
    * True when a folder-scoped reply arrived after the page moved on. Marking such a reply
    * as loaded would pin the previous folder's data to the new one until a manual refresh.
+   *
+   * The UID alone is not enough: navigating A → B → A, or reloading A, lands on the same
+   * UID again, and a reply still in flight from the earlier load would pass that check.
+   * Comparing the generation the request was issued in rejects it.
    */
-  private isStaleFolderResponse(requestedUid: string): boolean {
-    return this.currentDoc()?.uid !== requestedUid;
+  private isStaleFolderResponse(requestedUid: string, generation: number): boolean {
+    return generation !== this.folderLoadGeneration || this.currentDoc()?.uid !== requestedUid;
   }
 
   onAuditPageChange(event: PageEvent): void {
@@ -1026,19 +1038,20 @@ export class BrowseComponent {
     if (!doc) return;
     this.trashLoading.set(true);
     const requestedUid = doc.uid;
+    const generation = this.folderLoadGeneration;
     this.browseService
       .getTrashedChildren(requestedUid, 50)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          if (this.isStaleFolderResponse(requestedUid)) return;
+          if (this.isStaleFolderResponse(requestedUid, generation)) return;
           this.trashedDocs.set(res.entries);
           this.trashLoading.set(false);
           this.trashLoaded = true;
           this.loadThumbnails(res.entries, false);
         },
         error: () => {
-          if (this.isStaleFolderResponse(requestedUid)) return;
+          if (this.isStaleFolderResponse(requestedUid, generation)) return;
           this.trashLoading.set(false);
         },
       });
@@ -1817,18 +1830,19 @@ export class BrowseComponent {
 
     this.permissionsLoading.set(true);
     const requestedUid = doc.uid;
+    const generation = this.folderLoadGeneration;
     this.detailService
       .getDocumentPermissions(requestedUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
-          if (this.isStaleFolderResponse(requestedUid)) return;
+          if (this.isStaleFolderResponse(requestedUid, generation)) return;
           this.applyPermissionsDoc(updated);
           this.permissionsLoaded.set(true);
           this.permissionsLoading.set(false);
         },
         error: () => {
-          if (this.isStaleFolderResponse(requestedUid)) return;
+          if (this.isStaleFolderResponse(requestedUid, generation)) return;
           this.permissionsLoading.set(false);
           this.snackBar.open('Failed to load permissions', 'OK', { duration: 4000 });
         },

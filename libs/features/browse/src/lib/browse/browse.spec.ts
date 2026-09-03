@@ -1206,6 +1206,64 @@ describe('BrowseComponent folder-scoped state on navigation', () => {
       expect.any(Number),
     );
   });
+
+  it('discards a history reply from an earlier load of the same folder', async () => {
+    const firstAudit = new Subject<{ entries: AuditEntry[]; totalSize: number }>();
+    const secondAudit = new Subject<{ entries: AuditEntry[]; totalSize: number }>();
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder: FOLDER_A, entries: [], totalSize: 0 }),
+    );
+    mockBrowseService.getFolderContext.mockReturnValue(of(FOLDER_A));
+    // The details panel also calls getAuditLog, with a limit of 5. Only the History tab's
+    // requests (the tab's page size) may be handed the subjects this test drives.
+    let historyRequests = 0;
+    mockDocumentDetailService.getAuditLog.mockImplementation((_uid: string, limit: number) => {
+      if (limit === 5) return EMPTY;
+      historyRequests += 1;
+      return historyRequests === 1 ? firstAudit.asObservable() : secondAudit.asObservable();
+    });
+
+    fixture.detectChanges();
+    component.loadContent();
+    fixture.detectChanges();
+    component.onTabChange(2);
+    fixture.detectChanges();
+
+    // Away to Workspace B and straight back, so the UID is Workspace A again while the
+    // very first history request is still in flight.
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder: FOLDER_B, entries: [], totalSize: 0 }),
+    );
+    await router.navigateByUrl('/browse/default-domain/workspaces/b');
+    fixture.detectChanges();
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder: FOLDER_A, entries: [], totalSize: 0 }),
+    );
+    await router.navigateByUrl('/browse/default-domain/workspaces/a');
+    fixture.detectChanges();
+    component.onTabChange(2);
+    fixture.detectChanges();
+    expect(component.currentDoc()?.uid).toBe('folder-a');
+
+    firstAudit.next({
+      entries: [{ id: 1, eventId: 'stale', eventDate: '2026-01-01T00:00:00Z' }],
+      totalSize: 1,
+    } as { entries: AuditEntry[]; totalSize: number });
+    fixture.detectChanges();
+
+    // A UID-only guard would accept this, because the route is back on the same folder.
+    expect(component.auditEntries()).toEqual([]);
+    expect(component.auditLoading()).toBe(true);
+
+    secondAudit.next({
+      entries: [{ id: 2, eventId: 'current', eventDate: '2026-01-02T00:00:00Z' }],
+      totalSize: 1,
+    } as { entries: AuditEntry[]; totalSize: number });
+    fixture.detectChanges();
+
+    expect(component.auditEntries().map((e) => e.eventId)).toEqual(['current']);
+    expect(component.auditLoading()).toBe(false);
+  });
 });
 
 describe('BrowseComponent transient external-share errors', () => {

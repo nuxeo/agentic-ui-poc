@@ -442,6 +442,26 @@ describe('AuthService poweruser access', () => {
     expect(service.shareAuthToken()).toBeNull();
   });
 
+  it('aborts when the session-establishing call is answered by another principal', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials)
+      .flush(TRANSIENT_ME);
+    // This call adds cookies where the one above sent none, so a surviving privileged
+    // session can answer it. Persisting the transient identity would leave the UI and the
+    // server session disagreeing about who is signed in.
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && r.withCredentials)
+      .flush(ADMINISTRATOR_ME);
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(service.username()).toBeNull();
+    expect(service.shareAuthToken()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+  });
+
   it('clears share token when the session-establishing request fails', () => {
     service.authenticateWithShareToken('share-token-abc').subscribe();
 

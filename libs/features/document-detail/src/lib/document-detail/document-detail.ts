@@ -325,6 +325,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly routeDocUid = signal('');
   private metadataRefreshAttempt = 0;
   private blobLoadGeneration = 0;
+  /**
+   * Bumped per route-driven load so replies from a superseded load of the same document
+   * are dropped. Separate from {@link blobLoadGeneration}, which `loadBlob()` also bumps
+   * partway through a load and so cannot date document-scoped requests.
+   */
+  private docLoadGeneration = 0;
   /** Set when navigating here immediately after create/import with a main blob. */
   private freshBlobDocument = false;
   /** Set when navigating here immediately after creating a Note. */
@@ -654,7 +660,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (directMime) return directMime;
 
     const pictureViews = d.properties['picture:views'] as
-      Array<Record<string, unknown>> | undefined;
+      | Array<Record<string, unknown>>
+      | undefined;
     const pictureContent = pictureViews?.[0]?.['content'] as Record<string, unknown> | undefined;
     return (pictureContent?.['mime-type'] as string) ?? '';
   });
@@ -693,7 +700,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const d = this.doc();
     if (!d) return [];
     const cols = d.contextParameters?.['collections'] as
-      Array<{ uid: string; title: string; path: string; type?: string }> | undefined;
+      | Array<{ uid: string; title: string; path: string; type?: string }>
+      | undefined;
     // Web UI uses contextParameters.favorites for the star; collections enricher
     // also lists the Favorites folder (type Favorites) — exclude it here.
     return (cols ?? []).filter((col) => col.type !== 'Favorites');
@@ -873,7 +881,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshBlobNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      { freshBlobDocument?: boolean } | undefined;
+      | { freshBlobDocument?: boolean }
+      | undefined;
     if (fromCurrent?.freshBlobDocument === true) {
       return true;
     }
@@ -883,7 +892,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private readFreshNoteNavigationState(): boolean {
     const fromCurrent = this.router.getCurrentNavigation()?.extras?.state as
-      { freshNote?: boolean } | undefined;
+      | { freshNote?: boolean }
+      | undefined;
     if (fromCurrent?.freshNote === true) {
       return true;
     }
@@ -921,6 +931,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private resetState(): void {
     this.metadataRefreshAttempt = 0;
     this.blobLoadGeneration += 1;
+    this.docLoadGeneration += 1;
     this.resetViewerState();
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
@@ -1501,6 +1512,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     this.contentLakePresenceChecking.set(true);
     const requestedUid = doc.uid;
+    const generation = this.docLoadGeneration;
     this.kdClient
       .listIngestSourceIds()
       .pipe(
@@ -1512,7 +1524,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       )
       .subscribe((result) => {
         // The badge is about the document that was probed, not whichever one is on screen.
-        if (this.isStaleDocumentResponse(requestedUid)) return;
+        if (this.isStaleDocumentResponse(requestedUid, generation)) return;
         if (result.presentInContentLake) {
           this.contentLakePresenceVerified.set(true);
         }
@@ -1545,9 +1557,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
    * Each route emission starts its own `getFullDocument` request, so a slow earlier
    * response can land after the user already moved on. Applying it would show the wrong
    * document (or a stale 403) and pin the share recovery target to the wrong UID.
+   *
+   * The UID alone is not enough: navigating A → B → A, or reloading A, lands on the same
+   * UID again, and a reply still in flight from the earlier load would pass that check.
+   * Comparing the generation the request was issued in rejects it.
    */
-  private isStaleDocumentResponse(requestedUid: string): boolean {
-    return this.routeDocUid() !== requestedUid;
+  private isStaleDocumentResponse(requestedUid: string, generation: number): boolean {
+    return generation !== this.docLoadGeneration || this.routeDocUid() !== requestedUid;
   }
 
   private loadDocument(uid: string): void {
@@ -1555,12 +1571,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.error.set(null);
     this.accessDenied.set(false);
 
+    const generation = this.docLoadGeneration;
     this.detailService
       .getFullDocument(uid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
-          if (this.isStaleDocumentResponse(uid)) {
+          if (this.isStaleDocumentResponse(uid, generation)) {
             return;
           }
           if (isTransientUser(this.currentUsername())) {
@@ -1602,7 +1619,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.maybeBackfillContentLakeMarker(doc);
         },
         error: (err) => {
-          if (this.isStaleDocumentResponse(uid)) {
+          if (this.isStaleDocumentResponse(uid, generation)) {
             return;
           }
           if (
@@ -1628,33 +1645,35 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private loadDocumentTasks(uid: string): void {
     this.documentTasksLoading.set(true);
     const userId = this.currentUsername() ?? 'Administrator';
+    const generation = this.docLoadGeneration;
     this.taskService
       .getDocumentTasks(uid, userId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (tasks) => {
-          if (this.isStaleDocumentResponse(uid)) return;
+          if (this.isStaleDocumentResponse(uid, generation)) return;
           this.documentTasks.set(tasks);
           this.documentTasksLoading.set(false);
         },
         error: () => {
-          if (this.isStaleDocumentResponse(uid)) return;
+          if (this.isStaleDocumentResponse(uid, generation)) return;
           this.documentTasksLoading.set(false);
         },
       });
   }
 
   private loadDocumentWorkflows(uid: string): void {
+    const generation = this.docLoadGeneration;
     this.workflowService
       .getDocumentWorkflows(uid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (wfs) => {
-          if (this.isStaleDocumentResponse(uid)) return;
+          if (this.isStaleDocumentResponse(uid, generation)) return;
           this.documentWorkflows.set(wfs);
         },
         error: () => {
-          if (this.isStaleDocumentResponse(uid)) return;
+          if (this.isStaleDocumentResponse(uid, generation)) return;
           this.documentWorkflows.set([]);
         },
       });
@@ -1778,7 +1797,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
 
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      Array<Record<string, unknown>> | undefined;
+      | Array<Record<string, unknown>>
+      | undefined;
     if (transcodedVideos && transcodedVideos.length > 0) {
       this.loadVideoSources(doc, transcodedVideos, generation);
       this.extractVideoInfo(doc);
@@ -1982,7 +2002,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     }
     this.extractVideoInfo(doc);
     const transcodedVideos = doc.properties['vid:transcodedVideos'] as
-      Array<Record<string, unknown>> | undefined;
+      | Array<Record<string, unknown>>
+      | undefined;
     if (transcodedVideos?.length && this.videoSources().length === 0 && !this.blobUrl()) {
       this.loadVideoSources(doc, transcodedVideos, this.blobLoadGeneration);
     }
@@ -2600,13 +2621,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!this.docUid) return;
     this.permissionsLoading.set(true);
     const requestedUid = this.docUid;
+    const generation = this.docLoadGeneration;
     this.detailService
       .getDocumentPermissions(requestedUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
           // With no document loaded yet this would install the previous one as current.
-          if (this.isStaleDocumentResponse(requestedUid)) return;
+          if (this.isStaleDocumentResponse(requestedUid, generation)) return;
           const existing = this.doc();
           if (!existing) {
             this.doc.set(updated);
@@ -2617,7 +2639,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.permissionsLoading.set(false);
         },
         error: () => {
-          if (this.isStaleDocumentResponse(requestedUid)) return;
+          if (this.isStaleDocumentResponse(requestedUid, generation)) return;
           this.permissionsLoading.set(false);
           this.toast('Failed to refresh permissions');
         },
@@ -2658,6 +2680,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.auditLoading.set(true);
 
     const requestedUid = this.docUid;
+    const generation = this.docLoadGeneration;
     this.detailService
       .getAuditLog(requestedUid, this.auditPageSize(), this.auditPageIndex())
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -2665,14 +2688,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         next: (res) => {
           // Marking a late reply as loaded would pin the previous document's history to
           // this one until the tab is refetched by hand.
-          if (this.isStaleDocumentResponse(requestedUid)) return;
+          if (this.isStaleDocumentResponse(requestedUid, generation)) return;
           this.auditEntries.set(res.entries);
           this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
         error: () => {
-          if (this.isStaleDocumentResponse(requestedUid)) return;
+          if (this.isStaleDocumentResponse(requestedUid, generation)) return;
           this.auditLoading.set(false);
         },
       });
@@ -2714,17 +2737,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadPublicationCount(uid: string): void {
+    const generation = this.docLoadGeneration;
     this.detailService
       .getPublishedVersions(uid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          if (this.isStaleDocumentResponse(uid)) return;
+          if (this.isStaleDocumentResponse(uid, generation)) return;
           this.publishedDocs.set(res.entries);
           this.publishLoading.set(false);
         },
         error: () => {
-          if (this.isStaleDocumentResponse(uid)) return;
+          if (this.isStaleDocumentResponse(uid, generation)) return;
           this.publishLoading.set(false);
         },
       });
@@ -3638,18 +3662,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
     this.panelActivityLoading.set(true);
     const requestedUid = this.docUid;
+    const generation = this.docLoadGeneration;
     this.detailService
       .getAuditLog(requestedUid, 20, 0)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          if (this.isStaleDocumentResponse(requestedUid)) return;
+          if (this.isStaleDocumentResponse(requestedUid, generation)) return;
           this.panelActivity.set(res.entries);
           this.panelActivityLoading.set(false);
           this.panelActivityLoaded = true;
         },
         error: () => {
-          if (this.isStaleDocumentResponse(requestedUid)) return;
+          if (this.isStaleDocumentResponse(requestedUid, generation)) return;
           this.panelActivityLoading.set(false);
         },
       });

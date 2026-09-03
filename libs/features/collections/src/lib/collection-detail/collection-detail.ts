@@ -150,6 +150,8 @@ export class CollectionDetailComponent implements OnDestroy {
   private collectionUid = '';
   /** Reactive mirror of {@link collectionUid} so recovery affordances re-evaluate on route change. */
   private readonly routeCollectionUid = signal('');
+  /** Bumped per load so replies from a superseded load of the same collection are dropped. */
+  private loadGeneration = 0;
 
   // History tab state
   readonly auditEntries = signal<AuditEntry[]>([]);
@@ -309,6 +311,9 @@ export class CollectionDetailComponent implements OnDestroy {
    * old collection's lock/subscription flags while targeting the new UID.
    */
   private resetUidScopedState(): void {
+    // Every load gets its own generation, so replies still in flight from the previous one
+    // are rejected even when it was the same collection.
+    this.loadGeneration += 1;
     this.historyLoaded = false;
     this.accessDenied.set(false);
     this.accessDeniedUid = null;
@@ -344,15 +349,16 @@ export class CollectionDetailComponent implements OnDestroy {
     // Angular reuses this component across :uid changes, so a slow reply for the previous
     // collection must not replace the current one or claim the share recovery target.
     const requestedUid = this.collectionUid;
+    const generation = this.loadGeneration;
     this.detailService
       .getFullDocument(requestedUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
-          this.applyLoadedCollection(requestedUid, doc);
+          this.applyLoadedCollection(requestedUid, generation, doc);
         },
         error: (err) => {
-          if (this.isStaleCollectionResponse(requestedUid)) {
+          if (this.isStaleCollectionResponse(requestedUid, generation)) {
             return;
           }
           this.collectionService
@@ -360,10 +366,10 @@ export class CollectionDetailComponent implements OnDestroy {
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (doc) => {
-                this.applyLoadedCollection(requestedUid, doc);
+                this.applyLoadedCollection(requestedUid, generation, doc);
               },
               error: (fallbackErr) => {
-                if (this.isStaleCollectionResponse(requestedUid)) {
+                if (this.isStaleCollectionResponse(requestedUid, generation)) {
                   return;
                 }
                 if (!this.applyExternalShareAccessDenied(requestedUid, fallbackErr)) {
@@ -375,12 +381,23 @@ export class CollectionDetailComponent implements OnDestroy {
       });
   }
 
-  private isStaleCollectionResponse(requestedUid: string): boolean {
-    return this.routeCollectionUid() !== requestedUid;
+  /**
+   * True when a reply belongs to a load this page has moved past.
+   *
+   * The UID alone is not enough: navigating A → B → A, or reloading A, lands on the same
+   * UID again, and a reply still in flight from the earlier load would pass that check.
+   * Comparing the generation the request was issued in rejects it.
+   */
+  private isStaleCollectionResponse(requestedUid: string, generation: number): boolean {
+    return generation !== this.loadGeneration || this.routeCollectionUid() !== requestedUid;
   }
 
-  private applyLoadedCollection(requestedUid: string, doc: NuxeoDocument): void {
-    if (this.isStaleCollectionResponse(requestedUid)) {
+  private applyLoadedCollection(
+    requestedUid: string,
+    generation: number,
+    doc: NuxeoDocument,
+  ): void {
+    if (this.isStaleCollectionResponse(requestedUid, generation)) {
       return;
     }
     // Metadata and members load independently, so leave the denied state to whichever
@@ -432,12 +449,13 @@ export class CollectionDetailComponent implements OnDestroy {
     this.error.set(null);
 
     const requestedUid = this.collectionUid;
+    const generation = this.loadGeneration;
     this.collectionService
       .getCollectionMembers(requestedUid, 50)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          if (this.isStaleCollectionResponse(requestedUid)) {
+          if (this.isStaleCollectionResponse(requestedUid, generation)) {
             return;
           }
           // The metadata request already denied this collection. Taking over now would
@@ -453,7 +471,7 @@ export class CollectionDetailComponent implements OnDestroy {
           this.loadThumbnails(res.entries);
         },
         error: (err) => {
-          if (this.isStaleCollectionResponse(requestedUid)) {
+          if (this.isStaleCollectionResponse(requestedUid, generation)) {
             return;
           }
           if (this.applyExternalShareAccessDenied(requestedUid, err)) {
@@ -468,6 +486,7 @@ export class CollectionDetailComponent implements OnDestroy {
   private loadThumbnails(docs: NuxeoDocument[]): void {
     this.revokeThumbnailUrls();
     const requestedUid = this.collectionUid;
+    const generation = this.loadGeneration;
     for (const doc of docs) {
       if (!this.canLoadThumbnail(doc)) continue;
       this.detailService
@@ -479,7 +498,7 @@ export class CollectionDetailComponent implements OnDestroy {
         .subscribe((blob) => {
           // Creating the URL after the route moved on would both show the previous
           // collection's thumbnail and leak a blob the reset already revoked past.
-          if (!blob || this.isStaleCollectionResponse(requestedUid)) return;
+          if (!blob || this.isStaleCollectionResponse(requestedUid, generation)) return;
           const url = URL.createObjectURL(blob);
           this.thumbnailObjectUrls.push(url);
           this.thumbnailMap.update((m) => ({
@@ -920,6 +939,7 @@ export class CollectionDetailComponent implements OnDestroy {
     this.auditLoading.set(true);
 
     const requestedUid = this.collectionUid;
+    const generation = this.loadGeneration;
     this.detailService
       .getAuditLog(requestedUid, this.auditPageSize(), this.auditPageIndex())
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -927,14 +947,14 @@ export class CollectionDetailComponent implements OnDestroy {
         next: (res) => {
           // Marking a late reply as loaded would pin the previous collection's history to
           // this one until the tab is refetched by hand.
-          if (this.isStaleCollectionResponse(requestedUid)) return;
+          if (this.isStaleCollectionResponse(requestedUid, generation)) return;
           this.auditEntries.set(res.entries);
           this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
         error: () => {
-          if (this.isStaleCollectionResponse(requestedUid)) return;
+          if (this.isStaleCollectionResponse(requestedUid, generation)) return;
           this.auditLoading.set(false);
           this.historyLoaded = false;
         },

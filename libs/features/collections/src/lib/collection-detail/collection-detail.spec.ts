@@ -282,6 +282,52 @@ describe('CollectionDetailComponent transient external-share recovery (NXSAT-211
     );
   });
 
+  it('discards a history reply from an earlier load of the same collection', async () => {
+    const firstAudit = new Subject<{ entries: unknown[]; totalSize: number }>();
+    const secondAudit = new Subject<{ entries: unknown[]; totalSize: number }>();
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      of(uid === 'collection-1' ? READABLE_COLLECTION : OTHER_COLLECTION),
+    );
+    let collection1Requests = 0;
+    mockDocumentDetailService.getAuditLog.mockImplementation((uid: string) => {
+      if (uid !== 'collection-1') return EMPTY;
+      collection1Requests += 1;
+      return collection1Requests === 1 ? firstAudit.asObservable() : secondAudit.asObservable();
+    });
+
+    fixture = await createComponent('alice');
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.onTabChange(2);
+    fixture.detectChanges();
+
+    // Away to collection-2 and straight back, so the route UID is collection-1 again while
+    // the very first history request is still in flight.
+    paramMap$.next(convertToParamMap({ uid: 'collection-2' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    paramMap$.next(convertToParamMap({ uid: 'collection-1' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    firstAudit.next({
+      entries: [{ id: 1, eventId: 'stale', eventDate: '2026-01-01T00:00:00Z' }],
+      totalSize: 1,
+    });
+    fixture.detectChanges();
+
+    // A UID-only guard would accept this, because the route is back on the same collection.
+    expect(component.auditEntries()).toEqual([]);
+
+    secondAudit.next({
+      entries: [{ id: 2, eventId: 'current', eventDate: '2026-01-02T00:00:00Z' }],
+      totalSize: 1,
+    });
+    fixture.detectChanges();
+
+    expect(component.auditEntries().map((e) => e.eventId)).toEqual(['current']);
+  });
+
   it('keeps a metadata denial when the members request later succeeds', async () => {
     const pendingMetadata = new Subject<NuxeoDocument>();
     const pendingMembers = new Subject<{ entries: NuxeoDocument[]; totalSize: number }>();

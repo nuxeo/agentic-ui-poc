@@ -486,7 +486,6 @@ export class AuthService {
     if (!user || !isTransientUser(user)) {
       return this.abortShareAuth();
     }
-    const flags = readSessionFlagsFromMe(me);
     return this.http
       .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
         headers,
@@ -494,7 +493,15 @@ export class AuthService {
         context: new HttpContext().set(NUXEO_ESTABLISH_BROWSER_SESSION, true),
       })
       .pipe(
-        map(() => {
+        switchMap((sessionMe) => {
+          // This request adds cookies where the one above sent none, so on a cross-origin
+          // deployment it can be answered by a surviving privileged session instead. Storing
+          // the token identity then would leave the UI acting as the transient user while
+          // every later call runs as that principal.
+          if (readAuthenticatedPrincipalFromMe(sessionMe) !== user) {
+            return this.abortShareAuth();
+          }
+          const flags = readSessionFlagsFromMe(sessionMe);
           const session: CookieStoredSession = {
             kind: 'cookie',
             username: user,
@@ -504,6 +511,7 @@ export class AuthService {
           this.state.set(session);
           this.persistCookie(session);
           this.clearShareAuth();
+          return of(undefined);
         }),
       );
   }
