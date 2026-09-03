@@ -974,6 +974,9 @@ describe('BrowseComponent transient external-share errors', () => {
   let fixture: ComponentFixture<BrowseComponent>;
 
   beforeEach(async () => {
+    // BrowseContextService restores sharedDocument from sessionStorage on construction,
+    // so each test must establish its own recovery target.
+    sessionStorage.clear();
     await TestBed.configureTestingModule({
       imports: [BrowseComponent],
       providers: [

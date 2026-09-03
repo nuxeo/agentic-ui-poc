@@ -9,7 +9,7 @@ import {
   Router,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DocumentDetailComponent } from './document-detail';
@@ -793,6 +793,49 @@ describe('DocumentDetailComponent', () => {
       component.goBack();
 
       expect(navigateSpy).toHaveBeenCalledWith(['/doc', 'shared-1']);
+    });
+
+    describe('out-of-order document responses', () => {
+      /** Leaves `child-1` in flight so its response can be resolved after a later route change. */
+      async function navigateToPendingChildThenBackToShared(
+        pending: Subject<NuxeoDocument>,
+      ): Promise<void> {
+        mockDocumentDetailService.getFullDocument = vi.fn((uid?: string) =>
+          uid === 'child-1' ? pending.asObservable() : of(SHARED_DOC),
+        );
+
+        paramMap$.next(convertToParamMap({ uid: 'child-1' }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        paramMap$.next(convertToParamMap({ uid: 'shared-1' }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+      }
+
+      it('ignores a stale document that arrives after the route moved on', async () => {
+        const pending = new Subject<NuxeoDocument>();
+        await navigateToPendingChildThenBackToShared(pending);
+
+        pending.next(CHILD_DOC);
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(component.doc()?.uid).toBe('shared-1');
+      });
+
+      it('ignores a stale 403 that arrives after the route moved on', async () => {
+        const pending = new Subject<NuxeoDocument>();
+        await navigateToPendingChildThenBackToShared(pending);
+
+        pending.error(new HttpErrorResponse({ status: 403, statusText: 'Forbidden' }));
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(component.accessDenied()).toBe(false);
+        expect(component.error()).toBeNull();
+        expect(component.doc()?.uid).toBe('shared-1');
+      });
     });
 
     describe('error Go Back affordance', () => {

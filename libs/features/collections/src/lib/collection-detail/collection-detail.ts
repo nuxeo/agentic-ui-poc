@@ -53,6 +53,10 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   BrowseContextService,
+  isTransientUser,
+  externalShareAccessDeniedMessage,
+  externalShareAccessDeniedDetail,
+  EXTERNAL_SHARE_ACCESS_DENIED_TITLE,
 } from '@agentic-ui/shared/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
@@ -131,6 +135,7 @@ export class CollectionDetailComponent {
   readonly members = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly accessDenied = signal(false);
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
 
@@ -141,6 +146,8 @@ export class CollectionDetailComponent {
   readonly clipboardDocs = signal<ClipboardDoc[]>(readClipboardDocs());
 
   private collectionUid = '';
+  /** Reactive mirror of {@link collectionUid} so recovery affordances re-evaluate on route change. */
+  private readonly routeCollectionUid = signal('');
 
   // History tab state
   readonly auditEntries = signal<AuditEntry[]>([]);
@@ -202,15 +209,44 @@ export class CollectionDetailComponent {
     return this.breadcrumbItemsCache;
   });
 
+  readonly isTransientExternalUser = computed(() => isTransientUser(this.currentUsername()));
+  readonly sharedDocument = this.browseContext.sharedDocument;
+
+  readonly externalShareAccessDenied = computed(
+    () => this.accessDenied() && this.isTransientExternalUser(),
+  );
+  readonly externalShareAccessDeniedTitle = EXTERNAL_SHARE_ACCESS_DENIED_TITLE;
+  readonly externalShareAccessDeniedDetailText = computed(() =>
+    externalShareAccessDeniedDetail(this.sharedDocument()?.title ?? ''),
+  );
+  readonly externalShareBackLabel = computed(() => {
+    const title = this.sharedDocument()?.title?.trim();
+    return title ? `Back to ${title}` : 'Back to shared document';
+  });
+  readonly canReturnToSharedDocument = computed(() => {
+    const sharedUid = this.sharedDocument()?.uid;
+    return Boolean(sharedUid && sharedUid !== this.routeCollectionUid());
+  });
+
   readonly showBreadcrumbs = computed(() => {
     const col = this.collection();
     if (!col?.path) return false;
+    // Repository breadcrumbs would expose paths outside the shared scope.
+    if (this.isTransientExternalUser()) return false;
     return shouldShowUserWorkspaceBreadcrumbs(
       col.path,
       this.currentUsername(),
       this.adminAccess.isAdministrator(),
     );
   });
+
+  goBackToSharedDocument(): void {
+    const shared = this.sharedDocument();
+    if (!shared?.uid || shared.uid === this.routeCollectionUid()) {
+      return;
+    }
+    void this.router.navigate(['/doc', shared.uid]);
+  }
 
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
@@ -250,7 +286,9 @@ export class CollectionDetailComponent {
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.collectionUid = params.get('uid') ?? '';
+      this.routeCollectionUid.set(this.collectionUid);
       this.historyLoaded = false;
+      this.accessDenied.set(false);
       if (this.collectionUid) {
         this.loadCollection();
         this.loadMembers();
@@ -264,29 +302,54 @@ export class CollectionDetailComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
-          this.collection.set(doc);
-          this.syncActionStates(doc);
-          if (this.activeTabIndex() === 2 && !this.historyLoaded) {
-            this.loadAuditLog();
-          }
+          this.applyLoadedCollection(doc);
         },
-        error: () => {
+        error: (err) => {
           this.collectionService
             .getById(this.collectionUid)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
               next: (doc) => {
-                this.collection.set(doc);
-                if (this.activeTabIndex() === 2 && !this.historyLoaded) {
-                  this.loadAuditLog();
-                }
+                this.applyLoadedCollection(doc);
               },
-              error: () => {
-                /* fallback also failed, ignore */
+              error: (fallbackErr) => {
+                if (!this.applyExternalShareAccessDenied(fallbackErr)) {
+                  this.applyExternalShareAccessDenied(err);
+                }
               },
             });
         },
       });
+  }
+
+  private applyLoadedCollection(doc: NuxeoDocument): void {
+    this.accessDenied.set(false);
+    this.collection.set(doc);
+    // A collection reached through a share link is a valid recovery target; the setter
+    // keeps whichever document the share session started with.
+    if (this.isTransientExternalUser()) {
+      this.browseContext.setSharedDocument({ uid: doc.uid, title: doc.title });
+    }
+    this.syncActionStates(doc);
+    if (this.activeTabIndex() === 2 && !this.historyLoaded) {
+      this.loadAuditLog();
+    }
+  }
+
+  /** Renders the shared-link access-denied state; returns false when the error is unrelated. */
+  private applyExternalShareAccessDenied(err: unknown): boolean {
+    if (!this.isTransientExternalUser() || !isPermissionDeniedError(err)) {
+      return false;
+    }
+    this.accessDenied.set(true);
+    this.error.set(externalShareAccessDeniedMessage(this.sharedDocument()?.title ?? ''));
+    this.collection.set(null);
+    this.members.set([]);
+    this.totalSize.set(0);
+    this.auditEntries.set([]);
+    this.auditTotalSize.set(0);
+    this.loading.set(false);
+    return true;
   }
 
   private syncActionStates(doc: NuxeoDocument): void {
@@ -302,12 +365,16 @@ export class CollectionDetailComponent {
 
     this.collectionService.getCollectionMembers(this.collectionUid, 50).subscribe({
       next: (res) => {
+        this.accessDenied.set(false);
         this.members.set(res.entries);
         this.totalSize.set(res.totalSize);
         this.loading.set(false);
         this.loadThumbnails(res.entries);
       },
-      error: () => {
+      error: (err) => {
+        if (this.applyExternalShareAccessDenied(err)) {
+          return;
+        }
         this.error.set('Failed to load collection contents.');
         this.loading.set(false);
       },

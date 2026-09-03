@@ -1529,6 +1529,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Each route emission starts its own `getFullDocument` request, so a slow earlier
+   * response can land after the user already moved on. Applying it would show the wrong
+   * document (or a stale 403) and pin the share recovery target to the wrong UID.
+   */
+  private isStaleDocumentResponse(requestedUid: string): boolean {
+    return this.routeDocUid() !== requestedUid;
+  }
+
   private loadDocument(uid: string): void {
     this.loading.set(true);
     this.error.set(null);
@@ -1539,6 +1548,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
+          if (this.isStaleDocumentResponse(uid)) {
+            return;
+          }
           if (isTransientUser(this.currentUsername())) {
             this.browseContext.setSharedDocument({ uid: doc.uid, title: doc.title });
           }
@@ -1578,6 +1590,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.maybeBackfillContentLakeMarker(doc);
         },
         error: (err) => {
+          if (this.isStaleDocumentResponse(uid)) {
+            return;
+          }
           if (
             this.isTransientExternalUser() &&
             err instanceof HttpErrorResponse &&

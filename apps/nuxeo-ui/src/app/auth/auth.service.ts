@@ -429,6 +429,9 @@ export class AuthService {
       return of(undefined);
     }
 
+    // Captured before the reset: the token probe must not silently resolve back to it.
+    const supersededUsername = this.state()?.username ?? null;
+
     this.clearSignedOut();
     this.state.set(null);
     this.clearStorage();
@@ -452,7 +455,10 @@ export class AuthService {
       ),
       switchMap((me) => {
         const user = readUsernameFromMe(me);
-        if (!user) {
+        // Same-origin XHR cannot drop cookies, so the probe is only trustworthy when it
+        // returns someone other than the principal we just logged out. Getting that
+        // principal back means the surviving JSESSIONID answered instead of the token.
+        if (!user || user === supersededUsername) {
           this.clearShareAuth();
           this.markSignedOut();
           return of(undefined);

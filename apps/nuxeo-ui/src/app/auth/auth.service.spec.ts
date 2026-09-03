@@ -345,6 +345,43 @@ describe('AuthService poweruser access', () => {
     mock.verify();
   });
 
+  it('aborts share-token auth when the superseded cookie principal answers the token probe', () => {
+    sessionStorage.setItem(
+      'agentic_ui_nuxeo_session',
+      JSON.stringify({
+        kind: 'cookie',
+        username: 'Administrator',
+        isAdministrator: true,
+        groups: ['administrators'],
+      }),
+    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [{ provide: NUXEO_API_ORIGIN, useValue: '' }],
+    });
+    const restored = TestBed.inject(AuthService);
+    const mock = TestBed.inject(HttpTestingController);
+
+    restored.authenticateWithShareToken('share-token-abc').subscribe();
+
+    mock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    // Same-origin XHR still sent the surviving JSESSIONID, so Nuxeo answered as the old user.
+    mock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
+      .flush({
+        id: 'Administrator',
+        properties: { username: 'Administrator', groups: ['administrators'] },
+        isAdministrator: true,
+      });
+
+    expect(restored.isAuthenticated()).toBeFalse();
+    expect(restored.username()).toBeNull();
+    expect(restored.shareAuthToken()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+    mock.verify();
+  });
+
   it('clears share token when token authentication fails', () => {
     service.authenticateWithShareToken('bad-token').subscribe();
 
