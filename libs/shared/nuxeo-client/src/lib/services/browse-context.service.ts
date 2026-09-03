@@ -35,6 +35,8 @@ export class BrowseContextService {
   readonly contextPath = signal('/');
   /** Document opened via an external share link; used for access-denied recovery UX. */
   readonly sharedDocument = signal<SharedDocumentRef | null>(null);
+  /** Principal {@link sharedDocument} was established for; guards against cross-user reuse. */
+  private sharedDocumentOwner: string | null = null;
   /** Incremented when the browse nav tree should reload (e.g. after domain creation). */
   readonly treeRefreshTick = signal(0);
   /** Incremented when the browse main view should reload folder children (e.g. after domain creation). */
@@ -74,13 +76,36 @@ export class BrowseContextService {
   /**
    * Remember the externally shared document for transient-user navigation recovery.
    * Preserves the first document established for the share session.
+   *
+   * `owner` binds the target to the principal it was established for; see
+   * {@link retainSharedDocumentFor}.
    */
-  setSharedDocument(doc: SharedDocumentRef): void {
+  setSharedDocument(doc: SharedDocumentRef, owner: string | null = null): void {
     if (this.sharedDocument()) {
       return;
     }
+    this.sharedDocumentOwner = owner;
     this.sharedDocument.set(doc);
-    this.persistSharedDocument(doc);
+    this.persistSharedDocument(doc, owner);
+  }
+
+  /**
+   * Drops the recovery target unless it belongs to `username`.
+   *
+   * The target outlives a reload in session storage, so a hydration that resolves a
+   * different `transient/*` principal would otherwise hand the new user the previous
+   * user's document title and a Back action pointing at their UID.
+   */
+  retainSharedDocumentFor(username: string | null): void {
+    // No principal means "not hydrated yet" rather than "somebody else": clearing here
+    // would discard the target restored for a reload before auth catches up.
+    if (!username || !this.sharedDocument()) {
+      return;
+    }
+    if (this.sharedDocumentOwner === username) {
+      return;
+    }
+    this.clearSharedDocument();
   }
 
   /** Reset browse navigation context (e.g. after trashing the current folder). */
@@ -95,6 +120,7 @@ export class BrowseContextService {
   /** Clear externally shared document recovery state (sign-out / user switch). */
   clearSharedDocument(): void {
     this.sharedDocument.set(null);
+    this.sharedDocumentOwner = null;
     this.clearPersistedSharedDocument();
   }
 
@@ -127,9 +153,10 @@ export class BrowseContextService {
         return;
       }
       const parsed: unknown = JSON.parse(raw);
-      const doc = parseSharedDocumentRef(parsed);
-      if (doc) {
-        this.sharedDocument.set(doc);
+      const stored = parseStoredSharedDocument(parsed);
+      if (stored) {
+        this.sharedDocumentOwner = stored.owner;
+        this.sharedDocument.set({ uid: stored.uid, title: stored.title });
       } else {
         this.clearPersistedSharedDocument();
       }
@@ -138,12 +165,12 @@ export class BrowseContextService {
     }
   }
 
-  private persistSharedDocument(doc: SharedDocumentRef): void {
+  private persistSharedDocument(doc: SharedDocumentRef, owner: string | null): void {
     if (typeof sessionStorage === 'undefined') {
       return;
     }
     try {
-      sessionStorage.setItem(SHARED_DOCUMENT_STORAGE_KEY, JSON.stringify(doc));
+      sessionStorage.setItem(SHARED_DOCUMENT_STORAGE_KEY, JSON.stringify({ ...doc, owner }));
     } catch {
       // Ignore quota / private-mode failures.
     }
@@ -161,7 +188,9 @@ export class BrowseContextService {
   }
 }
 
-function parseSharedDocumentRef(value: unknown): SharedDocumentRef | null {
+function parseStoredSharedDocument(
+  value: unknown,
+): (SharedDocumentRef & { owner: string | null }) | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -175,7 +204,12 @@ function parseSharedDocumentRef(value: unknown): SharedDocumentRef | null {
   if (!trimmedUid) {
     return null;
   }
+  const owner = record['owner'];
   // An untitled document is still a usable recovery target — the access-denied copy
   // falls back to generic wording — so only the UID is required.
-  return { uid: trimmedUid, title: title.trim() };
+  return {
+    uid: trimmedUid,
+    title: title.trim(),
+    owner: typeof owner === 'string' && owner.trim() ? owner : null,
+  };
 }

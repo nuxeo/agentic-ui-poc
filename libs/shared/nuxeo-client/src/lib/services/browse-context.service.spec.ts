@@ -45,7 +45,7 @@ describe('BrowseContextService', () => {
     expect(service.contentRefreshTick()).toBe(0);
     expect(service.clipboardPasteTick()).toBe(0);
     expect(sessionStorage.getItem('agentic_ui_external_share_doc')).toBe(
-      JSON.stringify({ uid: 'doc-1', title: 'Shared file' }),
+      JSON.stringify({ uid: 'doc-1', title: 'Shared file', owner: null }),
     );
   });
 
@@ -69,6 +69,43 @@ describe('BrowseContextService', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({});
     const restored = TestBed.inject(BrowseContextService);
+
+    expect(restored.sharedDocument()).toEqual({ uid: 'doc-1', title: 'Shared file' });
+  });
+
+  it('keeps a restored share target for the principal it was established for', () => {
+    service.setSharedDocument({ uid: 'doc-1', title: 'Shared file' }, 'transient/a@example.com');
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const restored = TestBed.inject(BrowseContextService);
+    restored.retainSharedDocumentFor('transient/a@example.com');
+
+    expect(restored.sharedDocument()).toEqual({ uid: 'doc-1', title: 'Shared file' });
+  });
+
+  it('drops a restored share target belonging to a different principal', () => {
+    service.setSharedDocument({ uid: 'doc-1', title: 'Shared file' }, 'transient/a@example.com');
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const restored = TestBed.inject(BrowseContextService);
+    // Session storage outlives a hydration that resolves another transient principal; that
+    // user must not inherit this title or a Back action pointing at this UID.
+    restored.retainSharedDocumentFor('transient/b@example.com');
+
+    expect(restored.sharedDocument()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_external_share_doc')).toBeNull();
+  });
+
+  it('keeps a restored share target while no principal is known yet', () => {
+    service.setSharedDocument({ uid: 'doc-1', title: 'Shared file' }, 'transient/a@example.com');
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const restored = TestBed.inject(BrowseContextService);
+    // A null principal means hydration has not finished, not that somebody else is here.
+    restored.retainSharedDocumentFor(null);
 
     expect(restored.sharedDocument()).toEqual({ uid: 'doc-1', title: 'Shared file' });
   });

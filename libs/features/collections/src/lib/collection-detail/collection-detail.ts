@@ -406,7 +406,10 @@ export class CollectionDetailComponent implements OnDestroy {
     // A collection reached through a share link is a valid recovery target; the setter
     // keeps whichever document the share session started with.
     if (this.isTransientExternalUser()) {
-      this.browseContext.setSharedDocument({ uid: doc.uid, title: doc.title });
+      this.browseContext.setSharedDocument(
+        { uid: doc.uid, title: doc.title },
+        this.currentUsername(),
+      );
     }
     this.syncActionStates(doc);
     if (this.activeTabIndex() === 2 && !this.historyLoaded) {

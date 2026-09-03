@@ -9,7 +9,7 @@ import {
   Router,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { BehaviorSubject, Observable, Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, EMPTY, Observable, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DocumentDetailComponent } from './document-detail';
@@ -26,6 +26,7 @@ import {
   type NuxeoComment,
   type NuxeoDocument,
   type NuxeoTask,
+  ContentLakeIngestService,
   TagService,
   TaskService,
   WorkflowService,
@@ -36,6 +37,7 @@ import {
   AiGatewayService,
 } from '@agentic-ui/shared/ai-client';
 import { KeClientService, type KeEnrichmentResult } from '@agentic-ui/shared/ke-client';
+import { KdClientService } from '@agentic-ui/shared/kd-client';
 
 const STUB_DOC: NuxeoDocument = {
   uid: 'doc-uid-1',
@@ -1010,5 +1012,121 @@ describe('DocumentDetailComponent', () => {
         expect(component.showErrorGoBack()).toBe(false);
       });
     });
+  });
+});
+
+describe('DocumentDetailComponent Content Lake probe staleness (NXSAT-211)', () => {
+  let component: DocumentDetailComponent;
+  let fixture: ComponentFixture<DocumentDetailComponent>;
+  let paramMap$: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
+  const probes = new Map<string, Subject<{ doc: null; presentInContentLake: boolean }>>();
+
+  // A File with a main blob and no ingest marker is what triggers the presence probe.
+  const ingestibleDoc = (uid: string, title: string): NuxeoDocument => ({
+    uid,
+    title,
+    type: 'File',
+    path: `/${uid}`,
+    lastModified: '2026-01-01T00:00:00Z',
+    properties: { 'file:content': { name: `${uid}.pdf`, length: 10 } },
+  });
+
+  const originalFetchBlob = mockDocumentDetailService.fetchBlob;
+
+  beforeEach(async () => {
+    sessionStorage.clear();
+    probes.clear();
+    paramMap$ = new BehaviorSubject(convertToParamMap({ uid: 'probe-a' }));
+    mockDocumentDetailService.getFullDocument = vi.fn((uid?: string) =>
+      of(ingestibleDoc(uid ?? 'probe-a', `Doc ${uid}`)),
+    );
+    // These docs carry a main blob, so the viewer would reach the object-URL API, which the
+    // test environment does not implement. The probe is what this suite exercises.
+    mockDocumentDetailService.fetchBlob = () => EMPTY;
+
+    await TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [DocumentDetailComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([], withDisabledInitialNavigation()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: paramMap$.asObservable(),
+            queryParamMap: of(convertToParamMap({})),
+            snapshot: { queryParamMap: convertToParamMap({}) },
+          },
+        },
+        { provide: DocumentDetailService, useValue: mockDocumentDetailService },
+        { provide: BrowseService, useValue: mockBrowseService },
+        { provide: DirectoryService, useValue: mockDirectoryService },
+        {
+          provide: KeClientService,
+          useValue: { enrich: (): Observable<KeEnrichmentResult> => of(keResult('')) },
+        },
+        { provide: TaskService, useValue: mockTaskService },
+        { provide: WorkflowService, useValue: mockWorkflowService },
+        { provide: ARenderService, useValue: mockARenderService },
+        { provide: TagService, useValue: mockTagService },
+        { provide: AiGatewayService, useValue: mockAiGatewayService },
+        { provide: AiChatService, useValue: mockAiChatService },
+        { provide: AiFeatureFlagService, useValue: mockAiFeatureFlagService },
+        { provide: NuxeoApiBase, useValue: mockNuxeoApiBase },
+        { provide: CURRENT_USERNAME, useValue: () => 'tester' },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        { provide: KdClientService, useValue: { listIngestSourceIds: () => of(['source-1']) } },
+        {
+          provide: ContentLakeIngestService,
+          useValue: {
+            backfillIngestMarkerIfNeeded: (doc: NuxeoDocument) => {
+              const probe = new Subject<{ doc: null; presentInContentLake: boolean }>();
+              probes.set(doc.uid, probe);
+              return probe.asObservable();
+            },
+          },
+        },
+      ],
+    })
+      .overrideComponent(DocumentDetailComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
+
+    fixture = TestBed.createComponent(DocumentDetailComponent);
+    component = fixture.componentInstance;
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+  });
+
+  afterEach(() => {
+    sessionStorage.clear();
+    mockDocumentDetailService.fetchBlob = originalFetchBlob;
+  });
+
+  it('keeps the presence spinner when a superseded probe completes', async () => {
+    expect(component.contentLakePresenceChecking()).toBe(true);
+
+    paramMap$.next(convertToParamMap({ uid: 'probe-b' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.contentLakePresenceChecking()).toBe(true);
+
+    // Completing probe-a runs its finalize. Ungated, it would clear the flag for probe-b,
+    // hiding the spinner and re-enabling ingestion before probe-b's status is known.
+    probes.get('probe-a')?.complete();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(component.contentLakePresenceChecking()).toBe(true);
+
+    probes.get('probe-b')?.complete();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(component.contentLakePresenceChecking()).toBe(false);
   });
 });

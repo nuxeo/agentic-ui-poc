@@ -1,5 +1,5 @@
 import { HttpClient, HttpContext, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { Injectable, Injector, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, effect, inject, signal } from '@angular/core';
 import {
   Observable,
   catchError,
@@ -156,6 +156,13 @@ export class AuthService {
     if (this.state()) {
       // Validation deferred to ensureHydrated() on first navigation
     }
+    // Every principal change funnels through here, including hydration, so the share
+    // recovery target cannot outlive the user it was established for. Resolved lazily —
+    // an eager inject() would create a DI cycle via CURRENT_USERNAME.
+    effect(() => {
+      const username = this.username();
+      this.injector.get(BrowseContextService).retainSharedDocumentFor(username);
+    });
   }
 
   private apiUrl(path: string): string {

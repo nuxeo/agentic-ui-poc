@@ -1519,7 +1519,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         switchMap((sourceIds) =>
           this.contentLakeIngestService.backfillIngestMarkerIfNeeded(doc, sourceIds),
         ),
-        finalize(() => this.contentLakePresenceChecking.set(false)),
+        finalize(() => {
+          // A superseded probe must not clear the flag for whichever document is on screen
+          // now: its spinner would vanish and ingestion re-enable before its status is known.
+          if (this.isStaleDocumentResponse(requestedUid, generation)) return;
+          this.contentLakePresenceChecking.set(false);
+        }),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((result) => {
@@ -1581,7 +1586,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             return;
           }
           if (isTransientUser(this.currentUsername())) {
-            this.browseContext.setSharedDocument({ uid: doc.uid, title: doc.title });
+            this.browseContext.setSharedDocument(
+              { uid: doc.uid, title: doc.title },
+              this.currentUsername(),
+            );
           }
           if (isCollectionDocument(doc)) {
             void this.router.navigate(['/collections', doc.uid], { replaceUrl: true });
