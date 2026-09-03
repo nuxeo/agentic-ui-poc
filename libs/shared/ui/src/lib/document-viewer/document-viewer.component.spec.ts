@@ -1,11 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentViewerComponent, type VideoSource } from './document-viewer.component';
 
 describe('DocumentViewerComponent', () => {
   let fixture: ComponentFixture<DocumentViewerComponent>;
   let component: DocumentViewerComponent;
+  let sanitizer: DomSanitizer;
 
   beforeEach(async () => {
     vi.spyOn(HTMLMediaElement.prototype, 'load').mockImplementation(() => undefined);
@@ -19,7 +21,12 @@ describe('DocumentViewerComponent', () => {
 
     fixture = TestBed.createComponent(DocumentViewerComponent);
     component = fixture.componentInstance;
+    sanitizer = TestBed.inject(DomSanitizer);
   });
+
+  function safeUrl(url: string): VideoSource['url'] {
+    return sanitizer.bypassSecurityTrustResourceUrl(url);
+  }
 
   afterEach(() => {
     fixture.destroy();
@@ -34,7 +41,7 @@ describe('DocumentViewerComponent', () => {
   it('uses video mode when transcoded sources exist without a blob URL (NXSAT-175)', async () => {
     const sources: VideoSource[] = [
       {
-        url: 'blob:mock-video' as VideoSource['url'],
+        url: safeUrl('blob:mock-video'),
         mimeType: 'video/mp4',
         label: 'MP4 480p',
       },
@@ -52,7 +59,7 @@ describe('DocumentViewerComponent', () => {
 
   it('shows the video info card when metadata is present', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
-    fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
+    fixture.componentRef.setInput('blobUrl', safeUrl('blob:mock-video'));
     fixture.componentRef.setInput('videoInfo', { duration: 12, width: 1920, height: 1080 });
     render();
 
@@ -75,12 +82,12 @@ describe('DocumentViewerComponent', () => {
     fixture.componentRef.setInput('blobUrl', null);
     fixture.componentRef.setInput('previewUrl', null);
     fixture.componentRef.setInput('videoSources', [
-      { url: 'blob:mock-video' as VideoSource['url'], mimeType: 'video/mp4' },
+      { url: safeUrl('blob:mock-video'), mimeType: 'video/mp4' },
     ]);
     fixture.componentRef.setInput('storyboard', [
       {
         timecode: 2,
-        thumbnailUrl: 'blob:mock-thumb' as VideoSource['url'],
+        thumbnailUrl: safeUrl('blob:mock-thumb'),
         label: '2s',
       },
     ]);
@@ -91,10 +98,7 @@ describe('DocumentViewerComponent', () => {
 
   it('gives the player a usable source URL for the main blob', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
-    fixture.componentRef.setInput(
-      'blobUrl',
-      'blob:http://localhost/main-blob' as VideoSource['url'],
-    );
+    fixture.componentRef.setInput('blobUrl', safeUrl('blob:http://localhost/main-blob'));
     render();
 
     const source = fixture.nativeElement.querySelector('video source') as HTMLSourceElement;
@@ -108,8 +112,8 @@ describe('DocumentViewerComponent', () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
     fixture.componentRef.setInput('blobUrl', null);
     fixture.componentRef.setInput('videoSources', [
-      { url: 'blob:http://localhost/mp4-480' as VideoSource['url'], mimeType: 'video/mp4' },
-      { url: 'blob:http://localhost/webm-480' as VideoSource['url'], mimeType: 'video/webm' },
+      { url: safeUrl('blob:http://localhost/mp4-480'), mimeType: 'video/mp4' },
+      { url: safeUrl('blob:http://localhost/webm-480'), mimeType: 'video/webm' },
     ]);
     render();
 
@@ -126,7 +130,7 @@ describe('DocumentViewerComponent', () => {
     // `application/mxf` reaches the video branch, but declaring it makes the browser refuse
     // the source outright instead of trying to decode it.
     fixture.componentRef.setInput('mimeType', 'application/mxf');
-    fixture.componentRef.setInput('blobUrl', 'blob:http://localhost/mxf' as VideoSource['url']);
+    fixture.componentRef.setInput('blobUrl', safeUrl('blob:http://localhost/mxf'));
     render();
 
     const source = fixture.nativeElement.querySelector('video source') as HTMLSourceElement;
@@ -136,7 +140,7 @@ describe('DocumentViewerComponent', () => {
 
   it('seeks without auto-playing (Web UI parity)', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
-    fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
+    fixture.componentRef.setInput('blobUrl', safeUrl('blob:mock-video'));
     fixture.componentRef.setInput('loading', false);
     render();
 

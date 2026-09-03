@@ -332,11 +332,11 @@ export class DocumentViewerComponent {
     return value !== null && value !== undefined && Number.isFinite(value);
   }
 
-  /** URL context rather than RESOURCE_URL: it unwraps a SafeResourceUrl and tolerates a string. */
+  /** Unwraps SafeResourceUrl (RESOURCE_URL context) for use on `<source src>`. */
   private resolveUrl(value: SafeResourceUrl | null): string {
     if (!value) {
       return '';
     }
-    return this.sanitizer.sanitize(SecurityContext.URL, value) ?? '';
+    return this.sanitizer.sanitize(SecurityContext.RESOURCE_URL, value) ?? '';
   }
 }
