@@ -27,7 +27,6 @@ import {
   NUXEO_SSO_POST_LOGIN_PATH,
   NUXEO_SSO_RETURN_QUERY_PARAM,
   SelectionService,
-  isPermissionDeniedError,
   isPowerUserFromGroups,
   readGroupsFromMe,
   type NuxeoSamlLoginEndpoint,
@@ -101,6 +100,24 @@ function readSessionFlagsFromMe(me: unknown): { isAdministrator: boolean; groups
     isAdministrator: readIsAdministratorFromMe(me),
     groups: readGroupsFromMe(me),
   };
+}
+
+/**
+ * The principal `/me` authenticated, or null when nobody is.
+ *
+ * Deployments that expose the anonymous user answer with 200 and a placeholder principal
+ * instead of rejecting the request, so the id alone does not mean someone is signed in.
+ */
+function readAuthenticatedPrincipalFromMe(me: unknown): string | null {
+  if (me && typeof me === 'object' && (me as Record<string, unknown>)['isAnonymous'] === true) {
+    return null;
+  }
+  return readUsernameFromMe(me);
+}
+
+/** True only when Nuxeo rejected the request for lack of credentials. */
+function isUnauthenticatedError(err: unknown): boolean {
+  return (err as { status?: number } | null)?.status === 401;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -477,10 +494,11 @@ export class AuthService {
    */
   private residualCookiePrincipal(): Observable<string | null> {
     return this.cookieOnlyMe().pipe(
-      map((me) => readUsernameFromMe(me)),
-      // Only an explicit rejection proves the cookie is gone. A network or server error
-      // leaves us unable to tell, so fail the handoff instead of assuming we are clear.
-      catchError((err) => (isPermissionDeniedError(err) ? of(null) : throwError(() => err))),
+      map((me) => readAuthenticatedPrincipalFromMe(me)),
+      // Only an outright 401 proves the cookie is gone. A 403 can come from a surviving
+      // session that is merely barred from this endpoint, and network or server errors
+      // say nothing at all, so both must fail the handoff rather than let it continue.
+      catchError((err) => (isUnauthenticatedError(err) ? of(null) : throwError(() => err))),
     );
   }
 
@@ -500,7 +518,7 @@ export class AuthService {
         switchMap((sessionMe) => {
           // Storing the token identity while the cookie belongs to someone else would leave
           // the UI acting as one principal and the server as another.
-          if (readUsernameFromMe(sessionMe) !== user) {
+          if (readAuthenticatedPrincipalFromMe(sessionMe) !== user) {
             return this.abortShareAuth();
           }
           // Drop the token so the confirmation below can only be answered by the cookie.
@@ -520,7 +538,7 @@ export class AuthService {
   private confirmShareBrowserSession(user: string): Observable<void> {
     return this.cookieOnlyMe().pipe(
       switchMap((cookieMe) => {
-        if (readUsernameFromMe(cookieMe) !== user) {
+        if (readAuthenticatedPrincipalFromMe(cookieMe) !== user) {
           return this.abortShareAuth();
         }
         const flags = readSessionFlagsFromMe(cookieMe);

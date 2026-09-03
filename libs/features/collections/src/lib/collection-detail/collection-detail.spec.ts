@@ -36,6 +36,13 @@ const OTHER_COLLECTION: NuxeoDocument = {
   uid: 'collection-2',
   title: 'Annual Reports',
   path: '/default-domain/UserWorkspaces/alice/annual-reports',
+  contextParameters: { permissions: ['Read'] },
+};
+
+/** The History tab only loads for a collection the user may read. */
+const READABLE_COLLECTION: NuxeoDocument = {
+  ...SHARED_COLLECTION,
+  contextParameters: { permissions: ['Read'] },
 };
 
 const mockCollectionService = {
@@ -223,6 +230,46 @@ describe('CollectionDetailComponent transient external-share recovery (NXSAT-211
     expect(component.totalSize()).toBe(0);
     expect(component.isLocked()).toBe(false);
     expect(component.loading()).toBe(true);
+  });
+
+  it('discards a history reply that arrives after the route moved on', async () => {
+    const pendingAudit = new Subject<{ entries: unknown[]; totalSize: number }>();
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      of(uid === 'collection-1' ? READABLE_COLLECTION : OTHER_COLLECTION),
+    );
+    // Switching to collection-2 reloads History straight away because the tab is already
+    // open, so only collection-1's request may be left hanging.
+    mockDocumentDetailService.getAuditLog.mockImplementation((uid: string) =>
+      uid === 'collection-1' ? pendingAudit.asObservable() : EMPTY,
+    );
+
+    fixture = await createComponent('alice');
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    component.onTabChange(2);
+    fixture.detectChanges();
+
+    paramMap$.next(convertToParamMap({ uid: 'collection-2' }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    pendingAudit.next({
+      entries: [{ id: 1, eventId: 'documentModified', eventDate: '2026-01-01T00:00:00Z' }],
+      totalSize: 1,
+    });
+    fixture.detectChanges();
+
+    expect(component.auditEntries()).toEqual([]);
+
+    // History was never marked loaded for collection-2, so opening the tab refetches
+    // rather than showing collection-1's audit entries.
+    mockDocumentDetailService.getAuditLog.mockClear();
+    component.onTabChange(2);
+    expect(mockDocumentDetailService.getAuditLog).toHaveBeenCalledWith(
+      'collection-2',
+      expect.any(Number),
+      expect.any(Number),
+    );
   });
 
   it('keeps the denied state when a late metadata success follows a members denial', async () => {

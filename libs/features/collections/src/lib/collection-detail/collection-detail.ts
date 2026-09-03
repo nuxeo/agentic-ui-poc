@@ -898,17 +898,22 @@ export class CollectionDetailComponent implements OnDestroy {
 
     this.auditLoading.set(true);
 
+    const requestedUid = this.collectionUid;
     this.detailService
-      .getAuditLog(this.collectionUid, this.auditPageSize(), this.auditPageIndex())
+      .getAuditLog(requestedUid, this.auditPageSize(), this.auditPageIndex())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          // Marking a late reply as loaded would pin the previous collection's history to
+          // this one until the tab is refetched by hand.
+          if (this.isStaleCollectionResponse(requestedUid)) return;
           this.auditEntries.set(res.entries);
           this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
         error: () => {
+          if (this.isStaleCollectionResponse(requestedUid)) return;
           this.auditLoading.set(false);
           this.historyLoaded = false;
         },

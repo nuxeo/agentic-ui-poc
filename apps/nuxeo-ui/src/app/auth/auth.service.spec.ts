@@ -28,6 +28,14 @@ const ADMINISTRATOR_ME = {
   isAdministrator: true,
 };
 
+/** Deployments that expose the anonymous user answer `/me` with this instead of a 401. */
+const ANONYMOUS_ME = {
+  id: 'Guest',
+  properties: { username: 'Guest', groups: [] },
+  isAdministrator: false,
+  isAnonymous: true,
+};
+
 /**
  * Answers the credential-free probe the share flow makes after logout to confirm no
  * browser session survived. A 401 means the cookie is gone and the token can be trusted.
@@ -422,6 +430,39 @@ describe('AuthService poweruser access', () => {
     expect(service.username()).toBeNull();
     expect(service.shareAuthToken()).toBeNull();
     expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+  });
+
+  it('treats an anonymous residual response as no surviving session', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    // Rejecting the link here would break external shares on every deployment that
+    // answers 200 with the anonymous principal rather than 401.
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/api/v1/me')).flush(ANONYMOUS_ME);
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me') && !r.withCredentials)
+      .flush(TRANSIENT_ME);
+    flushShareSessionHandshake(httpMock, TRANSIENT_ME);
+
+    expect(service.isAuthenticated()).toBeTrue();
+    expect(service.username()).toBe('transient/guest@example.com');
+    httpMock.verify();
+  });
+
+  it('aborts share-token auth when the residual probe is forbidden rather than rejected', () => {
+    service.authenticateWithShareToken('share-token-abc').subscribe();
+
+    httpMock.expectOne((r) => r.url.includes('/nuxeo/logout')).flush('');
+    // A 403 can come from a session that survived but is barred from this endpoint, so
+    // it is no proof the cookie is gone.
+    httpMock
+      .expectOne((r) => r.url.includes('/nuxeo/api/v1/me'))
+      .flush('Forbidden', { status: 403, statusText: 'Forbidden' });
+
+    expect(service.isAuthenticated()).toBeFalse();
+    expect(service.shareAuthToken()).toBeNull();
+    expect(sessionStorage.getItem('agentic_ui_signed_out')).toBe('1');
+    httpMock.expectNone((r) => r.url.includes('/nuxeo/api/v1/me'));
   });
 
   it('aborts share-token auth when the residual-cookie probe is inconclusive', () => {

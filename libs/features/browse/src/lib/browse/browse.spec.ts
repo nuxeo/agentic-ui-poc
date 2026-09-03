@@ -4,9 +4,10 @@ import { Router, provideRouter, withDisabledInitialNavigation } from '@angular/r
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
-import { EMPTY, of, throwError } from 'rxjs';
+import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { BrowseComponent } from './browse';
 import {
+  AuditEntry,
   BrowseService,
   BrowseContextService,
   ClipboardTargetService,
@@ -982,6 +983,14 @@ describe('BrowseComponent folder-scoped state on navigation', () => {
     path: '/default-domain/workspaces/a',
     lastModified: '2026-01-01T00:00:00Z',
     properties: {},
+    contextParameters: { permissions: ['Read'] },
+  };
+
+  const FOLDER_B: NuxeoDocument = {
+    ...FOLDER_A,
+    uid: 'folder-b',
+    title: 'Workspace B',
+    path: '/default-domain/workspaces/b',
   };
 
   beforeEach(async () => {
@@ -1046,6 +1055,46 @@ describe('BrowseComponent folder-scoped state on navigation', () => {
     expect(component.entries()).toEqual([]);
     expect(component.totalSize()).toBe(0);
     expect(TestBed.inject(ClipboardTargetService).target()).toBeNull();
+  });
+
+  it('discards a history reply that arrives after the folder changed', async () => {
+    const pendingAudit = new Subject<{ entries: AuditEntry[]; totalSize: number }>();
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder: FOLDER_A, entries: [], totalSize: 0 }),
+    );
+    mockBrowseService.getFolderContext.mockReturnValue(of(FOLDER_A));
+    mockDocumentDetailService.getAuditLog.mockReturnValue(pendingAudit.asObservable());
+
+    fixture.detectChanges();
+    component.loadContent();
+    fixture.detectChanges();
+    component.onTabChange(2);
+    fixture.detectChanges();
+
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder: FOLDER_B, entries: [], totalSize: 0 }),
+    );
+    await router.navigateByUrl('/browse/default-domain/workspaces/b');
+    fixture.detectChanges();
+    expect(component.currentDoc()?.uid).toBe('folder-b');
+
+    pendingAudit.next({
+      entries: [{ id: 1, eventId: 'documentModified', eventDate: '2026-01-01T00:00:00Z' }],
+      totalSize: 1,
+    } as { entries: AuditEntry[]; totalSize: number });
+    fixture.detectChanges();
+
+    expect(component.auditEntries()).toEqual([]);
+
+    // History was never marked loaded for Workspace B, so opening the tab refetches
+    // instead of leaving Workspace A's entries on screen.
+    mockDocumentDetailService.getAuditLog.mockClear();
+    component.onTabChange(2);
+    expect(mockDocumentDetailService.getAuditLog).toHaveBeenCalledWith(
+      'folder-b',
+      expect.any(Number),
+      expect.any(Number),
+    );
   });
 });
 

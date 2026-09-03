@@ -953,18 +953,31 @@ export class BrowseComponent {
     }
 
     this.auditLoading.set(true);
+    const requestedUid = doc.uid;
     this.detailService
-      .getAuditLog(doc.uid, this.auditPageSize(), this.auditPageIndex())
+      .getAuditLog(requestedUid, this.auditPageSize(), this.auditPageIndex())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (this.isStaleFolderResponse(requestedUid)) return;
           this.auditEntries.set(res.entries);
           this.auditTotalSize.set(res.resultsCount ?? res.totalSize ?? res.entries.length);
           this.auditLoading.set(false);
           this.historyLoaded = true;
         },
-        error: () => this.auditLoading.set(false),
+        error: () => {
+          if (this.isStaleFolderResponse(requestedUid)) return;
+          this.auditLoading.set(false);
+        },
       });
+  }
+
+  /**
+   * True when a folder-scoped reply arrived after the page moved on. Marking such a reply
+   * as loaded would pin the previous folder's data to the new one until a manual refresh.
+   */
+  private isStaleFolderResponse(requestedUid: string): boolean {
+    return this.currentDoc()?.uid !== requestedUid;
   }
 
   onAuditPageChange(event: PageEvent): void {
@@ -998,15 +1011,23 @@ export class BrowseComponent {
     const doc = this.currentDoc();
     if (!doc) return;
     this.trashLoading.set(true);
-    this.browseService.getTrashedChildren(doc.uid, 50).subscribe({
-      next: (res) => {
-        this.trashedDocs.set(res.entries);
-        this.trashLoading.set(false);
-        this.trashLoaded = true;
-        this.loadThumbnails(res.entries, false);
-      },
-      error: () => this.trashLoading.set(false),
-    });
+    const requestedUid = doc.uid;
+    this.browseService
+      .getTrashedChildren(requestedUid, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (this.isStaleFolderResponse(requestedUid)) return;
+          this.trashedDocs.set(res.entries);
+          this.trashLoading.set(false);
+          this.trashLoaded = true;
+          this.loadThumbnails(res.entries, false);
+        },
+        error: () => {
+          if (this.isStaleFolderResponse(requestedUid)) return;
+          this.trashLoading.set(false);
+        },
+      });
   }
 
   restoreDocument(doc: NuxeoDocument): void {
@@ -1781,16 +1802,19 @@ export class BrowseComponent {
     if (this.permissionsLoaded() && !force) return;
 
     this.permissionsLoading.set(true);
+    const requestedUid = doc.uid;
     this.detailService
-      .getDocumentPermissions(doc.uid)
+      .getDocumentPermissions(requestedUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (updated) => {
+          if (this.isStaleFolderResponse(requestedUid)) return;
           this.applyPermissionsDoc(updated);
           this.permissionsLoaded.set(true);
           this.permissionsLoading.set(false);
         },
         error: () => {
+          if (this.isStaleFolderResponse(requestedUid)) return;
           this.permissionsLoading.set(false);
           this.snackBar.open('Failed to load permissions', 'OK', { duration: 4000 });
         },
