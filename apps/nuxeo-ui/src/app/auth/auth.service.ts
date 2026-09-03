@@ -116,11 +116,6 @@ function readAuthenticatedPrincipalFromMe(me: unknown): string | null {
   return readUsernameFromMe(me);
 }
 
-/** True only when Nuxeo rejected the request for lack of credentials. */
-function isUnauthenticatedError(err: unknown): boolean {
-  return (err as { status?: number } | null)?.status === 401;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
@@ -172,7 +167,7 @@ export class AuthService {
    * Clears a stale Nuxeo browser session (JSESSIONID) before password login or hydration.
    * Same-origin `/nuxeo/**` requests always send cookies; an old cookie can override Basic auth.
    */
-  private clearStaleNuxeoCookieSession(options?: { strict?: boolean }): Observable<void> {
+  private clearStaleNuxeoCookieSession(): Observable<void> {
     return this.http
       .get(this.apiUrl('/nuxeo/logout'), {
         withCredentials: true,
@@ -180,7 +175,7 @@ export class AuthService {
       })
       .pipe(
         map(() => undefined),
-        catchError((err) => (options?.strict ? throwError(() => err) : of(undefined))),
+        catchError(() => of(undefined)),
       );
   }
 
@@ -442,18 +437,12 @@ export class AuthService {
    * Authenticates a transient external user via the Instant Share token from an email link.
    * Sends the token in {@link AUTH_TOKEN_HEADER} only (not the URL) to avoid log/proxy leakage.
    *
-   * Nuxeo answers `/me` from the session cookie before it consults our token header, and
-   * the XHR backend cannot omit a same-origin cookie (see {@link NUXEO_OMIT_CREDENTIALS}).
-   * The handshake therefore proves the cookie is gone rather than excluding it: log out
-   * strictly, require a 401 from a token-free probe, and only then send the token. Every
-   * later step must agree with the principal that probe returned.
-   *
-   * Residual risk: another tab can create a cookie for a *different* transient user in the
-   * window between the probe and the token request, and it would answer every later step
-   * consistently. Closing that needs a channel where cookies can genuinely be omitted,
-   * which `HttpRequest.credentials` only offers from Angular 20. Until then the damage is
-   * bounded — a cookie this browser already holds, never a privileged principal, and the
-   * wrong share lands on the access-denied recovery UX rather than someone else's content.
+   * Nuxeo answers `/me` from the session cookie before it consults our token header, and the
+   * XHR backend cannot omit a same-origin cookie (see {@link NUXEO_OMIT_CREDENTIALS}). The
+   * stale-session logout is therefore best-effort, and the principal that comes back is the
+   * only evidence of who authenticated: a share token resolves to `transient/<email>` and
+   * nothing else, so any other principal means a cookie answered instead and the link must
+   * not adopt it.
    */
   authenticateWithShareToken(token: string): Observable<void> {
     const trimmed = token.trim();
@@ -471,61 +460,33 @@ export class AuthService {
       [AUTH_TOKEN_HEADER]: trimmed,
     });
 
-    return this.clearStaleNuxeoCookieSession({ strict: true }).pipe(
-      switchMap(() => this.residualCookiePrincipal()),
-      switchMap((residualPrincipal) => {
-        if (residualPrincipal) {
-          return this.abortShareAuth();
-        }
-        // Safe to expose the token now that no cookie can out-rank it.
+    return this.clearStaleNuxeoCookieSession().pipe(
+      switchMap(() => {
+        // Held back until the logout is done, or the interceptor would attach it there and
+        // Nuxeo would tear down the session the token just authenticated.
         this.shareAuthTokenValue = trimmed;
-        return this.http
-          .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
-            headers,
-            withCredentials: false,
-            context: new HttpContext().set(NUXEO_OMIT_CREDENTIALS, true),
-          })
-          .pipe(switchMap((me) => this.establishShareBrowserSession(me, headers)));
+        return this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+          headers,
+          withCredentials: false,
+          context: new HttpContext().set(NUXEO_OMIT_CREDENTIALS, true),
+        });
       }),
+      switchMap((me) => this.establishShareBrowserSession(me, headers)),
       catchError(() => this.abortShareAuth()),
-    );
-  }
-
-  /** `/me` answered by the browser's own cookies, with no credentials of ours attached. */
-  private cookieOnlyMe(): Observable<unknown> {
-    return this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
-      headers: { Accept: 'application/json' },
-      withCredentials: true,
-    });
-  }
-
-  /**
-   * Reports who the browser session still authenticates as after the stale-session logout.
-   *
-   * Same-origin XHR cannot omit cookies, so the token request has no way to opt out of a
-   * surviving `JSESSIONID`. Asking without any credentials of our own is the only reliable
-   * way to learn whether one is still there and would out-rank the share token.
-   */
-  private residualCookiePrincipal(): Observable<string | null> {
-    return this.cookieOnlyMe().pipe(
-      map((me) => readAuthenticatedPrincipalFromMe(me)),
-      // Only an outright 401 proves the cookie is gone. A 403 can come from a surviving
-      // session that is merely barred from this endpoint, and network or server errors
-      // say nothing at all, so both must fail the handoff rather than let it continue.
-      catchError((err) => (isUnauthenticatedError(err) ? of(null) : throwError(() => err))),
     );
   }
 
   /** Converts the share token identity into a Nuxeo browser session. */
   private establishShareBrowserSession(me: unknown, headers: HttpHeaders): Observable<void> {
     const user = readAuthenticatedPrincipalFromMe(me);
-    // A share token only ever resolves to `transient/<email>`, so anything else was
-    // answered by a cookie that appeared after the residual probe. This rules out
-    // adopting a privileged principal; it cannot prove the token authenticated the
-    // request, which no same-origin XHR can. See authenticateWithShareToken.
+    // A share token only ever resolves to `transient/<email>`. Anything else was answered by
+    // a cookie that out-ranked the token, and it could be a privileged principal, so the link
+    // must not adopt it. This cannot prove the token authenticated the request, which no
+    // same-origin XHR can. See authenticateWithShareToken.
     if (!user || !isTransientUser(user)) {
       return this.abortShareAuth();
     }
+    const flags = readSessionFlagsFromMe(me);
     return this.http
       .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
         headers,
@@ -533,44 +494,18 @@ export class AuthService {
         context: new HttpContext().set(NUXEO_ESTABLISH_BROWSER_SESSION, true),
       })
       .pipe(
-        switchMap((sessionMe) => {
-          // Storing the token identity while the cookie belongs to someone else would leave
-          // the UI acting as one principal and the server as another.
-          if (readAuthenticatedPrincipalFromMe(sessionMe) !== user) {
-            return this.abortShareAuth();
-          }
-          // Drop the token so the confirmation below can only be answered by the cookie.
+        map(() => {
+          const session: CookieStoredSession = {
+            kind: 'cookie',
+            username: user,
+            isAdministrator: flags.isAdministrator,
+            groups: flags.groups,
+          };
+          this.state.set(session);
+          this.persistCookie(session);
           this.clearShareAuth();
-          return this.confirmShareBrowserSession(user);
         }),
       );
-  }
-
-  /**
-   * Confirms Nuxeo actually issued a browser session for the share principal.
-   *
-   * The establishing request carries the token, so its success is equally explained by
-   * header authentication that never set a `JSESSIONID`. Persisting on that alone would
-   * leave every later cookie-only request unauthenticated.
-   */
-  private confirmShareBrowserSession(user: string): Observable<void> {
-    return this.cookieOnlyMe().pipe(
-      switchMap((cookieMe) => {
-        if (readAuthenticatedPrincipalFromMe(cookieMe) !== user) {
-          return this.abortShareAuth();
-        }
-        const flags = readSessionFlagsFromMe(cookieMe);
-        const session: CookieStoredSession = {
-          kind: 'cookie',
-          username: user,
-          isAdministrator: flags.isAdministrator,
-          groups: flags.groups,
-        };
-        this.state.set(session);
-        this.persistCookie(session);
-        return of(undefined);
-      }),
-    );
   }
 
   private abortShareAuth(): Observable<void> {

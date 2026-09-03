@@ -397,6 +397,68 @@ guarantee. See `libs/features/document-detail/src/lib/document-detail/ke-action-
 
 ---
 
+## 16. Gating the share-token handshake on a precondition the browser cannot prove
+
+`authenticateWithShareToken()` in `apps/nuxeo-ui/src/app/auth/auth.service.ts` turns
+the Instant Share token from a notification email into a transient session. Nuxeo
+answers `/me` from the `JSESSIONID` cookie **before** it looks at our token header,
+and on Angular 19 the XHR backend ignores `withCredentials: false` for same-origin
+requests, so the token request has no way to opt out of a surviving cookie
+(`HttpRequest.credentials` only lands in Angular 20).
+
+The tempting fix is to prove the cookie is gone before sending the token: log out
+strictly, then require a 401 from a credential-free `/me` probe, then re-check the
+cookie afterwards. Every one of those steps is a new way for a working link to fail,
+and they fail on ordinary local and on-prem setups:
+
+```typescript
+// BAD ❌ — each gate aborts a link that would otherwise work
+return this.clearStaleNuxeoCookieSession({ strict: true }).pipe(
+  // `GET /nuxeo/logout` over XHR does not reliably drop JSESSIONID — it is a
+  // redirect-driven endpoint meant for top-level navigation.
+  switchMap(() => this.residualCookiePrincipal()), // demands a 401
+  switchMap((residual) => (residual ? this.abortShareAuth() : this.sendToken())),
+);
+
+// GOOD ✅ — best-effort logout, then judge the principal that comes back
+return this.clearStaleNuxeoCookieSession().pipe(
+  switchMap(() => this.sendToken()),
+  switchMap((me) => this.establishShareBrowserSession(me, headers)),
+  catchError(() => this.abortShareAuth()),
+);
+```
+
+The principal is the only trustworthy evidence available. A share token resolves to
+`transient/<email>` and nothing else, so `establishShareBrowserSession()` asserts
+exactly that and aborts otherwise. That bounds the damage to a cookie the browser
+already holds and rules out adopting a privileged principal, which is the substance
+of the concern. It cannot prove the token authenticated the request — nothing
+same-origin can on Angular 19 — and it must not pretend to.
+
+**Why this matters beyond the handshake:** when the handoff aborts, no `transient/`
+session exists, so every transient-gated behaviour silently disappears — the
+breadcrumb suppression, the hidden back button, and the access-denied recovery panel
+in browse, collections, and document detail. The symptom looks nothing like an auth
+bug: the recipient simply sees the app as whoever the browser was already signed in
+as, with full navigation chrome. NXSAT-211 regressed exactly this way while
+addressing review feedback.
+
+Regression tests that lock the shape in, all in `auth.service.spec.ts`:
+
+- `authenticates external share links via token` — the first `/me` after the logout
+  must carry the token header, which fails if a probe is inserted ahead of it
+- `persists the share session without a further confirmation round-trip` —
+  `expectNone` after the establishing call, which fails if a confirmation is added
+- `completes share-token auth even when the stale-session logout fails` — fails if
+  the logout is made strict again
+- `aborts when the share token resolves to a non-transient principal` — the guard
+  that must stay
+
+Do not re-add these gates in response to a review comment without a channel that can
+genuinely omit cookies. Reply with this section instead.
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -411,3 +473,4 @@ Fix proactively to avoid a review cycle:
 - "Code span split across newlines" → keep the whole backticked phrase on one line
 - "Writing AI output to a vocabulary field without validation" → source candidates from the vocabulary and validate the response
 - "`<mat-spinner>` inside a button" → use a spinning `<mat-icon class="ke-spinning">progress_activity</mat-icon>` to preserve inline layout
+- "The share token can be overridden by a stale cookie" → **do not** add a residual-cookie probe, a strict logout, or a post-hoc confirmation. Angular 19 cannot omit a same-origin cookie, so those gates reject working links instead of closing the hole. Point the reviewer at bug pattern 16 and keep the `transient/<email>` assertion as the guard.
