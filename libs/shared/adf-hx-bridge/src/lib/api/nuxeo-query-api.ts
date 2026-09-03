@@ -58,7 +58,8 @@ const HXQL_SEARCH_QUERY =
  * render an empty list on a folder full of documents, which is the worst failure available here.
  *
  * `sys_isFolderish` is deliberately absent. Nuxeo has no sortable folderish property, so
- * "folders first" cannot be expressed server-side at all — see `assertSortable`.
+ * "folders first" cannot be expressed server-side at all. An unmappable key is **dropped**
+ * rather than refused — see `toNuxeoSort` for why refusing it emptied the document tree.
  */
 const NUXEO_SORT_FIELD: Readonly<Record<string, string>> = {
   sys_title: 'dc:title',
@@ -76,27 +77,45 @@ const NUXEO_SORT_FIELD: Readonly<Record<string, string>> = {
  * Upstream's sort entries are `"<key> <asc|desc>"` strings. Translated, or refused by name.
  */
 function toNuxeoSort(sort: readonly string[]): { sortBy: string; sortOrder: 'ASC' | 'DESC' }[] {
-  return sort.map((entry) => {
+  const translated: { sortBy: string; sortOrder: 'ASC' | 'DESC' }[] = [];
+
+  for (const entry of sort) {
     const [key, direction = 'asc'] = entry.trim().split(/\s+/);
     // `Object.hasOwn`, because a bare index read resolves through the prototype chain: a key
-    // of `constructor` produced a truthy `Function`, sailed past the refusal below and was
+    // of `constructor` produced a truthy `Function`, sailed past the check below and was
     // sent to Nuxeo as a `sortBy`. Nuxeo answers an unusable `sortBy` with HTTP 200 and zero
-    // entries, which is the exact empty-folder failure this refusal exists to prevent.
+    // entries, which is the exact empty-folder failure this function exists to prevent.
     const sortBy = Object.hasOwn(NUXEO_SORT_FIELD, key) ? NUXEO_SORT_FIELD[key] : undefined;
-    if (!sortBy) {
-      throw new Error(
-        `Cannot sort by "${key}": no Nuxeo property corresponds to it. Nuxeo answers an ` +
-          'unsupported sortBy with HTTP 200 and zero entries, so forwarding this would render ' +
-          'an empty folder. Sortable keys: ' +
-          `${Object.keys(NUXEO_SORT_FIELD).join(', ')}.`,
-      );
-    }
     const normalized = direction.toLowerCase();
-    if (normalized !== 'asc' && normalized !== 'desc') {
-      throw new Error(`Cannot sort by "${entry}": direction must be asc or desc.`);
+
+    if (!sortBy || (normalized !== 'asc' && normalized !== 'desc')) {
+      // Dropped, not thrown. This used to throw, and the throw caused the precise failure the
+      // refusal was written to prevent: upstream's document tree hardcodes
+      // `['sys_isFolderish desc', 'sys_title asc']` on every fetch, and
+      // `DocumentTreeDatabaseService.getChildren` wraps the call in
+      // `catchError(() => of({ documents: [] }))`. So the throw was swallowed and the tree
+      // rendered permanently empty, with no error and — the part that made it hard to find —
+      // no HTTP request at all. The list worked only because its sort happens to be mappable.
+      //
+      // Dropping keeps the protection that mattered (an unmappable key is never forwarded to
+      // Nuxeo) while letting the mappable remainder through, so the caller gets a folder
+      // ordered by title instead of an empty one. `sys_isFolderish` has no Nuxeo equivalent,
+      // so "folders first" is simply not expressible server-side and is silently not applied.
+      console.warn(
+        `Ignoring sort "${entry}": ${
+          sortBy ? 'direction must be asc or desc' : 'no Nuxeo property corresponds to that key'
+        }. Sortable keys: ${Object.keys(NUXEO_SORT_FIELD).join(', ')}.`,
+      );
+      continue;
     }
-    return { sortBy, sortOrder: normalized === 'desc' ? ('DESC' as const) : ('ASC' as const) };
-  });
+
+    translated.push({
+      sortBy,
+      sortOrder: normalized === 'desc' ? ('DESC' as const) : ('ASC' as const),
+    });
+  }
+
+  return translated;
 }
 
 /**

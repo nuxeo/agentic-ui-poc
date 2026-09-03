@@ -185,36 +185,46 @@ describe('NuxeoQueryApi', () => {
       expect((result as { hasNextPage?: boolean }).hasNextPage).toBe(true);
     });
 
-    it('refuses a sort key Nuxeo cannot order by, rather than emptying the folder', async () => {
-      // Nuxeo answers an unsupported `sortBy` with HTTP 200 and ZERO entries — verified against
-      // the local instance with `sortBy=ecm:isFolder`. Forwarding it would render an empty folder.
-      await expect(
-        api.getDocumentsByNamedQuery({
-          queryName: 'advanced_document_content',
-          parameters: { parentId: 'ws-1' },
-          sort: ['sys_isFolderish desc'],
-        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
-      ).rejects.toThrow('Cannot sort by "sys_isFolderish"');
+    it('drops a sort key Nuxeo cannot order by, and still returns the folder', async () => {
+      // This used to assert a throw, under the heading "rather than emptying the folder". The
+      // throw WAS the empty folder: upstream's tree hardcodes `sys_isFolderish desc` on every
+      // fetch and swallows errors with `catchError(() => of({ documents: [] }))`, so the tree
+      // rendered permanently empty with no error and no HTTP request. Reproduced in a browser
+      // against the local instance on 2026-09-03.
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        sort: ['sys_isFolderish desc', 'sys_title asc'],
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+
+      await flushParentLookup();
+
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      // The protection that mattered is intact: the unmappable key never reaches Nuxeo, which
+      // answers an unusable `sortBy` with HTTP 200 and zero entries.
+      expect(children.request.params.get('sortBy')).not.toContain('isFolder');
+      // The mappable remainder still applies, so the folder comes back ordered by title.
+      expect(children.request.params.get('sortBy')).toBe('dc:title');
+      expect(children.request.params.get('sortOrder')).toBe('ASC');
+      children.flush({ entries: [], resultsCount: -2 });
+
+      expect((await pending).data.documents).toEqual([]);
     });
 
-    it('names the sortable keys in the refusal, so the caller can pick another', async () => {
-      await expect(
-        api.getDocumentsByNamedQuery({
-          queryName: 'advanced_document_content',
-          parameters: { parentId: 'ws-1' },
-          sort: ['sys_madeUp asc'],
-        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
-      ).rejects.toThrow('sys_title');
-    });
+    it('drops a direction that is neither asc nor desc rather than failing the fetch', async () => {
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        sort: ['sys_title sideways'],
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
 
-    it('rejects a direction that is neither asc nor desc', async () => {
-      await expect(
-        api.getDocumentsByNamedQuery({
-          queryName: 'advanced_document_content',
-          parameters: { parentId: 'ws-1' },
-          sort: ['sys_title sideways'],
-        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
-      ).rejects.toThrow('direction must be asc or desc');
+      await flushParentLookup();
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      // Nothing usable was left, so no sort is sent at all rather than a malformed one.
+      expect(children.request.params.get('sortBy')).toBeNull();
+      children.flush({ entries: [], resultsCount: -2 });
+
+      await pending;
     });
 
     it('refuses a sort key inherited from Object.prototype', async () => {
@@ -222,14 +232,18 @@ describe('NuxeoQueryApi', () => {
       // `constructor` produced a truthy `Function`, escaped this refusal entirely and was
       // sent to Nuxeo as a `sortBy` — which answers HTTP 200 with zero entries, rendering
       // an empty folder. The absence of any HTTP request is half the assertion.
-      await expect(
-        api.getDocumentsByNamedQuery({
-          queryName: 'advanced_document_content',
-          parameters: { parentId: 'ws-1' },
-          sort: ['constructor asc'],
-        } as Parameters<typeof api.getDocumentsByNamedQuery>[0]),
-      ).rejects.toThrow('Cannot sort by "constructor"');
-      httpMock.expectNone(() => true);
+      const pending = api.getDocumentsByNamedQuery({
+        queryName: 'advanced_document_content',
+        parameters: { parentId: 'ws-1' },
+        sort: ['constructor asc'],
+      } as Parameters<typeof api.getDocumentsByNamedQuery>[0]);
+
+      await flushParentLookup();
+      const children = httpMock.expectOne((r) => r.url.includes('/@children'));
+      // The half of the assertion that matters: `constructor` never reaches Nuxeo as a sortBy.
+      expect(children.request.params.get('sortBy')).toBeNull();
+      children.flush({ entries: [], resultsCount: -2 });
+      await pending;
     });
 
     it('defaults an omitted sort direction to ascending', async () => {
