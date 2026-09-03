@@ -528,7 +528,7 @@ export class BrowseComponent {
         takeUntilDestroyed(),
       )
       .subscribe((nuxeoPath) => {
-        this.resetBrowseTabState();
+        this.clearFolderScopedState();
         this.currentNuxeoPath = nuxeoPath;
         this.browsePath.set(nuxeoPath);
         if (isBrowseRouterUrl(this.router.url)) {
@@ -720,6 +720,16 @@ export class BrowseComponent {
     const sharedTitle = this.browseContext.sharedDocument()?.title ?? '';
     this.error.set(externalShareAccessDeniedMessage(sharedTitle));
     this.accessDenied.set(true);
+    this.clearFolderScopedState();
+    this.loading.set(false);
+  }
+
+  /**
+   * Drops everything describing one folder. The header keeps its actions enabled while a
+   * load is in flight, so the previous folder must be gone before the next request starts
+   * — otherwise Edit/Delete/paste read the old document but target the new path.
+   */
+  private clearFolderScopedState(): void {
     this.currentDoc.set(null);
     this.entries.set([]);
     this.totalSize.set(0);
@@ -727,8 +737,8 @@ export class BrowseComponent {
     this.auditTotalSize.set(0);
     this.trashedDocs.set([]);
     this.trashLoading.set(false);
+    this.clipboardTargetService.setTarget(null);
     this.resetBrowseTabState();
-    this.loading.set(false);
   }
 
   /** Merge clipboard copy/move API results into the visible folder (Web UI updates listing immediately). */

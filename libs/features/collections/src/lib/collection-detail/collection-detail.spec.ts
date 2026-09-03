@@ -197,6 +197,34 @@ describe('CollectionDetailComponent transient external-share recovery (NXSAT-211
     });
   });
 
+  it('clears the previous collection while the next one loads', async () => {
+    // collection-2 never replies, so the component stays in its loading state.
+    mockDocumentDetailService.getFullDocument.mockImplementation((uid: string) =>
+      uid === 'collection-1' ? of(SHARED_COLLECTION) : EMPTY,
+    );
+    mockCollectionService.getCollectionMembers.mockImplementation((uid: string) =>
+      uid === 'collection-1' ? of({ entries: [OTHER_COLLECTION], totalSize: 1 }) : EMPTY,
+    );
+
+    fixture = await createComponent('alice');
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(component.collection()?.uid).toBe('collection-1');
+    component.isLocked.set(true);
+
+    paramMap$.next(convertToParamMap({ uid: 'collection-2' }));
+    fixture.detectChanges();
+
+    // Header actions stay enabled while loading, so acting on collection-1's document or
+    // lock state here would send that state to collection-2.
+    expect(component.collection()).toBeNull();
+    expect(component.members()).toEqual([]);
+    expect(component.totalSize()).toBe(0);
+    expect(component.isLocked()).toBe(false);
+    expect(component.loading()).toBe(true);
+  });
+
   it('keeps the denied state when a late metadata success follows a members denial', async () => {
     const pendingMetadata = new Subject<NuxeoDocument>();
     mockDocumentDetailService.getFullDocument.mockReturnValue(pendingMetadata.asObservable());

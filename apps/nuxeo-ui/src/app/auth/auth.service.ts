@@ -27,6 +27,7 @@ import {
   NUXEO_SSO_POST_LOGIN_PATH,
   NUXEO_SSO_RETURN_QUERY_PARAM,
   SelectionService,
+  isPermissionDeniedError,
   isPowerUserFromGroups,
   readGroupsFromMe,
   type NuxeoSamlLoginEndpoint,
@@ -459,6 +460,14 @@ export class AuthService {
     );
   }
 
+  /** `/me` answered by the browser's own cookies, with no credentials of ours attached. */
+  private cookieOnlyMe(): Observable<unknown> {
+    return this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
+      headers: { Accept: 'application/json' },
+      withCredentials: true,
+    });
+  }
+
   /**
    * Reports who the browser session still authenticates as after the stale-session logout.
    *
@@ -467,15 +476,12 @@ export class AuthService {
    * way to learn whether one is still there and would out-rank the share token.
    */
   private residualCookiePrincipal(): Observable<string | null> {
-    return this.http
-      .get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
-        headers: { Accept: 'application/json' },
-        withCredentials: true,
-      })
-      .pipe(
-        map((me) => readUsernameFromMe(me)),
-        catchError(() => of(null)),
-      );
+    return this.cookieOnlyMe().pipe(
+      map((me) => readUsernameFromMe(me)),
+      // Only an explicit rejection proves the cookie is gone. A network or server error
+      // leaves us unable to tell, so fail the handoff instead of assuming we are clear.
+      catchError((err) => (isPermissionDeniedError(err) ? of(null) : throwError(() => err))),
+    );
   }
 
   /** Converts the share token identity into a Nuxeo browser session. */
@@ -494,23 +500,41 @@ export class AuthService {
         switchMap((sessionMe) => {
           // Storing the token identity while the cookie belongs to someone else would leave
           // the UI acting as one principal and the server as another.
-          const sessionUser = readUsernameFromMe(sessionMe);
-          if (sessionUser !== user) {
+          if (readUsernameFromMe(sessionMe) !== user) {
             return this.abortShareAuth();
           }
-          const flags = readSessionFlagsFromMe(sessionMe);
-          const session: CookieStoredSession = {
-            kind: 'cookie',
-            username: user,
-            isAdministrator: flags.isAdministrator,
-            groups: flags.groups,
-          };
-          this.state.set(session);
-          this.persistCookie(session);
+          // Drop the token so the confirmation below can only be answered by the cookie.
           this.clearShareAuth();
-          return of(undefined);
+          return this.confirmShareBrowserSession(user);
         }),
       );
+  }
+
+  /**
+   * Confirms Nuxeo actually issued a browser session for the share principal.
+   *
+   * The establishing request carries the token, so its success is equally explained by
+   * header authentication that never set a `JSESSIONID`. Persisting on that alone would
+   * leave every later cookie-only request unauthenticated.
+   */
+  private confirmShareBrowserSession(user: string): Observable<void> {
+    return this.cookieOnlyMe().pipe(
+      switchMap((cookieMe) => {
+        if (readUsernameFromMe(cookieMe) !== user) {
+          return this.abortShareAuth();
+        }
+        const flags = readSessionFlagsFromMe(cookieMe);
+        const session: CookieStoredSession = {
+          kind: 'cookie',
+          username: user,
+          isAdministrator: flags.isAdministrator,
+          groups: flags.groups,
+        };
+        this.state.set(session);
+        this.persistCookie(session);
+        return of(undefined);
+      }),
+    );
   }
 
   private abortShareAuth(): Observable<void> {

@@ -73,6 +73,17 @@ describe('BrowseContextService', () => {
     expect(restored.sharedDocument()).toEqual({ uid: 'doc-1', title: 'Shared file' });
   });
 
+  it('restores an untitled sharedDocument so the recovery target survives a reload', () => {
+    // The access-denied copy falls back to generic wording, so an empty title is usable.
+    service.setSharedDocument({ uid: 'doc-1', title: '' });
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({});
+    const restored = TestBed.inject(BrowseContextService);
+
+    expect(restored.sharedDocument()).toEqual({ uid: 'doc-1', title: '' });
+  });
+
   it('ignores malformed persisted sharedDocument and clears storage', () => {
     sessionStorage.setItem(
       'agentic_ui_external_share_doc',

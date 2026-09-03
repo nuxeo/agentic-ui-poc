@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideExperimentalZonelessChangeDetection } from '@angular/core';
-import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
+import { Router, provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { vi } from 'vitest';
@@ -9,6 +9,7 @@ import { BrowseComponent } from './browse';
 import {
   BrowseService,
   BrowseContextService,
+  ClipboardTargetService,
   DocumentDetailService,
   DirectoryService,
   mailSendFailureMessage,
@@ -966,6 +967,85 @@ describe('BrowseComponent', () => {
     expect(mockDocumentDetailService.getDocumentPermissions).toHaveBeenCalledTimes(2);
     expect(component.permissionsLoaded()).toBe(true);
     expect(component.permissionsLoading()).toBe(false);
+  });
+});
+
+describe('BrowseComponent folder-scoped state on navigation', () => {
+  let component: BrowseComponent;
+  let fixture: ComponentFixture<BrowseComponent>;
+  let router: Router;
+
+  const FOLDER_A: NuxeoDocument = {
+    uid: 'folder-a',
+    title: 'Workspace A',
+    type: 'Workspace',
+    path: '/default-domain/workspaces/a',
+    lastModified: '2026-01-01T00:00:00Z',
+    properties: {},
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    await TestBed.configureTestingModule({
+      imports: [BrowseComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([{ path: '**', children: [] }], withDisabledInitialNavigation()),
+        { provide: BrowseService, useValue: mockBrowseService },
+        { provide: DocumentDetailService, useValue: mockDocumentDetailService },
+        { provide: DirectoryService, useValue: mockDirectoryService },
+        { provide: TagService, useValue: mockTagService },
+        { provide: SelectionService, useValue: mockSelectionService },
+        { provide: CURRENT_USERNAME, useValue: () => 'jdoe' },
+        {
+          provide: ADMIN_ACCESS_CHECKS,
+          useValue: {
+            isAdministrator: () => false,
+            isPowerUser: () => false,
+            hasAdministrationAccess: () => false,
+          },
+        },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => of(false) })) } },
+      ],
+    })
+      .overrideComponent(BrowseComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
+
+    router = TestBed.inject(Router);
+    fixture = TestBed.createComponent(BrowseComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+  });
+
+  it('clears the previous folder before the next one loads', async () => {
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({ folder: FOLDER_A, entries: [FOLDER_A], totalSize: 1 }),
+    );
+    mockBrowseService.getFolderContext.mockReturnValue(of(FOLDER_A));
+
+    fixture.detectChanges();
+    component.loadContent();
+    fixture.detectChanges();
+    expect(component.currentDoc()?.uid).toBe('folder-a');
+    expect(TestBed.inject(ClipboardTargetService).target()?.uid).toBe('folder-a');
+
+    // The next folder never replies, so the component sits in its loading state.
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(EMPTY);
+    await router.navigateByUrl('/browse/default-domain/workspaces/b');
+    fixture.detectChanges();
+
+    // Header actions stay enabled while loading. Keeping Workspace A here would let
+    // Edit/Delete/paste read its document but target the new path.
+    expect(component.currentDoc()).toBeNull();
+    expect(component.entries()).toEqual([]);
+    expect(component.totalSize()).toBe(0);
+    expect(TestBed.inject(ClipboardTargetService).target()).toBeNull();
   });
 });
 

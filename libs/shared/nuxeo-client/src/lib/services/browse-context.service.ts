@@ -172,9 +172,10 @@ function parseSharedDocumentRef(value: unknown): SharedDocumentRef | null {
     return null;
   }
   const trimmedUid = uid.trim();
-  const trimmedTitle = title.trim();
-  if (!trimmedUid || !trimmedTitle) {
+  if (!trimmedUid) {
     return null;
   }
-  return { uid: trimmedUid, title: trimmedTitle };
+  // An untitled document is still a usable recovery target — the access-denied copy
+  // falls back to generic wording — so only the UID is required.
+  return { uid: trimmedUid, title: title.trim() };
 }

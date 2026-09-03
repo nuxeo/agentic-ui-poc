@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal, computed } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -118,7 +118,7 @@ import {
   templateUrl: './collection-detail.html',
   styleUrl: './collection-detail.scss',
 })
-export class CollectionDetailComponent {
+export class CollectionDetailComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly collectionService = inject(CollectionService);
@@ -138,6 +138,8 @@ export class CollectionDetailComponent {
   readonly accessDenied = signal(false);
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  /** Every object URL handed to the template, so all of them can be revoked. */
+  private readonly thumbnailObjectUrls: string[] = [];
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -287,13 +289,49 @@ export class CollectionDetailComponent {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.collectionUid = params.get('uid') ?? '';
       this.routeCollectionUid.set(this.collectionUid);
-      this.historyLoaded = false;
-      this.accessDenied.set(false);
+      this.resetUidScopedState();
       if (this.collectionUid) {
         this.loadCollection();
         this.loadMembers();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.revokeThumbnailUrls();
+  }
+
+  /**
+   * Drops everything tied to the previous `:uid` before the new requests start. Header
+   * actions stay enabled while loading, so leaving stale state would let them act on the
+   * old collection's lock/subscription flags while targeting the new UID.
+   */
+  private resetUidScopedState(): void {
+    this.historyLoaded = false;
+    this.accessDenied.set(false);
+    this.error.set(null);
+    this.loading.set(true);
+    this.collection.set(null);
+    this.members.set([]);
+    this.totalSize.set(0);
+    this.revokeThumbnailUrls();
+    this.isLocked.set(false);
+    this.lockOwner.set(null);
+    this.isSubscribed.set(false);
+    this.actionInProgress.set(null);
+    this.auditEntries.set([]);
+    this.auditTotalSize.set(0);
+    this.auditPageIndex.set(0);
+    this.breadcrumbPathCache = null;
+    this.breadcrumbItemsCache = [];
+  }
+
+  private revokeThumbnailUrls(): void {
+    for (const url of this.thumbnailObjectUrls) {
+      URL.revokeObjectURL(url);
+    }
+    this.thumbnailObjectUrls.length = 0;
+    this.thumbnailMap.set({});
   }
 
   private loadCollection(): void {
@@ -381,41 +419,48 @@ export class CollectionDetailComponent {
     this.error.set(null);
 
     const requestedUid = this.collectionUid;
-    this.collectionService.getCollectionMembers(requestedUid, 50).subscribe({
-      next: (res) => {
-        if (this.isStaleCollectionResponse(requestedUid)) {
-          return;
-        }
-        // The members request owns the contents-access state.
-        this.accessDenied.set(false);
-        this.members.set(res.entries);
-        this.totalSize.set(res.totalSize);
-        this.loading.set(false);
-        this.loadThumbnails(res.entries);
-      },
-      error: (err) => {
-        if (this.isStaleCollectionResponse(requestedUid)) {
-          return;
-        }
-        if (this.applyExternalShareAccessDenied(err)) {
-          return;
-        }
-        this.error.set('Failed to load collection contents.');
-        this.loading.set(false);
-      },
-    });
+    this.collectionService
+      .getCollectionMembers(requestedUid, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (this.isStaleCollectionResponse(requestedUid)) {
+            return;
+          }
+          // The members request owns the contents-access state.
+          this.accessDenied.set(false);
+          this.members.set(res.entries);
+          this.totalSize.set(res.totalSize);
+          this.loading.set(false);
+          this.loadThumbnails(res.entries);
+        },
+        error: (err) => {
+          if (this.isStaleCollectionResponse(requestedUid)) {
+            return;
+          }
+          if (this.applyExternalShareAccessDenied(err)) {
+            return;
+          }
+          this.error.set('Failed to load collection contents.');
+          this.loading.set(false);
+        },
+      });
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
-    this.thumbnailMap.set({});
+    this.revokeThumbnailUrls();
     for (const doc of docs) {
       if (!this.canLoadThumbnail(doc)) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailObjectUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
