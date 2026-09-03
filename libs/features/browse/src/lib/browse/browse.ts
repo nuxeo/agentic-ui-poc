@@ -89,6 +89,10 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   isCollectionDocument,
+  isTransientUser,
+  externalShareAccessDeniedMessage,
+  EXTERNAL_SHARE_ACCESS_DENIED_TITLE,
+  externalShareAccessDeniedDetail,
 } from '@agentic-ui/shared/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
@@ -193,6 +197,21 @@ export class BrowseComponent {
   readonly entries = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly accessDenied = signal(false);
+  readonly sharedDocument = this.browseContext.sharedDocument;
+  readonly isTransientExternalUser = computed(() => isTransientUser(this.currentUsername()));
+  readonly externalShareAccessDenied = computed(
+    () => this.accessDenied() && this.isTransientExternalUser(),
+  );
+  readonly externalShareAccessDeniedTitle = EXTERNAL_SHARE_ACCESS_DENIED_TITLE;
+  readonly externalShareAccessDeniedDetail = computed(() =>
+    externalShareAccessDeniedDetail(this.sharedDocument()?.title ?? ''),
+  );
+  readonly externalShareBackLabel = computed(() => {
+    const title = this.sharedDocument()?.title?.trim();
+    return title ? `Back to ${title}` : 'Back to shared document';
+  });
+  readonly canReturnToSharedDocument = computed(() => !!this.sharedDocument()?.uid);
   readonly currentDoc = signal<NuxeoDocument | null>(null);
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
@@ -471,6 +490,9 @@ export class BrowseComponent {
   });
 
   readonly showBreadcrumbs = computed(() => {
+    if (isTransientUser(this.currentUsername())) {
+      return false;
+    }
     const doc = this.currentDoc();
     if (!doc?.path) return true;
     return shouldShowUserWorkspaceBreadcrumbs(
@@ -520,24 +542,42 @@ export class BrowseComponent {
         switchMap((nuxeoPath) => {
           this.loading.set(true);
           this.error.set(null);
-          return this.browseService.getBrowseFolderContents(nuxeoPath, 50).pipe(
-            map((result) => ({ nuxeoPath, result })),
-            catchError(() => of({ nuxeoPath, error: true as const })),
-          );
+          this.accessDenied.set(false);
+          return this.browseService
+            .getBrowseFolderContents(nuxeoPath, 50, {
+              bootstrapOnRootDenied: !isTransientUser(this.currentUsername()),
+            })
+            .pipe(
+              map((result) => ({ nuxeoPath, result })),
+              catchError((err) => of({ nuxeoPath, error: err })),
+            );
         }),
         takeUntilDestroyed(),
       )
       .subscribe((payload) => {
         if (payload.nuxeoPath !== this.currentNuxeoPath) return;
         if ('error' in payload) {
-          this.error.set('Failed to load folder contents.');
-          this.loading.set(false);
+          if (isTransientUser(this.currentUsername()) && isPermissionDeniedError(payload.error)) {
+            this.applyExternalShareAccessDenied();
+          } else if (isPermissionDeniedError(payload.error)) {
+            this.error.set(PERMISSION_DENIED_MESSAGE);
+            this.accessDenied.set(true);
+            this.loading.set(false);
+          } else {
+            this.error.set('Failed to load folder contents.');
+            this.accessDenied.set(false);
+            this.loading.set(false);
+          }
           return;
         }
         const { folder, entries, totalSize, redirectTo } = payload.result;
         if (redirectTo) {
           this.loading.set(false);
           void this.router.navigateByUrl(`/browse${redirectTo}`, { replaceUrl: true });
+          return;
+        }
+        if (this.isTransientRepositoryRootAccessDenied(folder, payload.nuxeoPath)) {
+          this.applyExternalShareAccessDenied();
           return;
         }
         this.currentDoc.set(folder);
@@ -658,6 +698,32 @@ export class BrowseComponent {
 
   loadContent(): void {
     this.browsePath$.next(this.currentNuxeoPath);
+  }
+
+  goBackToSharedDocument(): void {
+    const shared = this.browseContext.sharedDocument();
+    if (!shared?.uid) {
+      return;
+    }
+    void this.router.navigate(['/doc', shared.uid]);
+  }
+
+  /** Transient external users must not browse repository root (bootstrap fallback masks 403). */
+  private isTransientRepositoryRootAccessDenied(folder: NuxeoDocument, nuxeoPath: string): boolean {
+    if (!isTransientUser(this.currentUsername())) {
+      return false;
+    }
+    return isRepositoryRootPath(nuxeoPath) || folder.uid === 'virtual-root';
+  }
+
+  private applyExternalShareAccessDenied(): void {
+    const sharedTitle = this.browseContext.sharedDocument()?.title ?? '';
+    this.error.set(externalShareAccessDeniedMessage(sharedTitle));
+    this.accessDenied.set(true);
+    this.currentDoc.set(null);
+    this.entries.set([]);
+    this.totalSize.set(0);
+    this.loading.set(false);
   }
 
   /** Merge clipboard copy/move API results into the visible folder (Web UI updates listing immediately). */

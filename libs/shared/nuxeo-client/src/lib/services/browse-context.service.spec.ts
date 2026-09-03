@@ -28,11 +28,14 @@ describe('BrowseContextService', () => {
 
   it('resetContext restores repository root path', () => {
     service.setFromNuxeoPath('/default-domain/workspaces/demo');
+    service.setSharedDocument({ uid: 'doc-1', title: 'Shared file' });
     expect(service.contextPath()).toBe('/default-domain/workspaces/demo');
+    expect(service.sharedDocument()?.uid).toBe('doc-1');
     service.requestTreeRefresh();
     service.requestContentRefresh();
     service.resetContext();
     expect(service.contextPath()).toBe('/');
+    expect(service.sharedDocument()).toBeNull();
     expect(service.treeRefreshTick()).toBe(0);
     expect(service.contentRefreshTick()).toBe(0);
     expect(service.clipboardPasteTick()).toBe(0);

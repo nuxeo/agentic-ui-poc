@@ -150,6 +150,7 @@ export { BrowseService } from './lib/services/browse.service';
 export {
   BrowseContextService,
   type ClipboardPasteEvent,
+  type SharedDocumentRef,
 } from './lib/services/browse-context.service';
 export { ClipboardTargetService } from './lib/services/clipboard-target.service';
 export {
@@ -244,6 +245,14 @@ export {
   isPermissionDeniedError,
   READ_WRITE_DOCUMENT,
 } from './lib/utils/document-permissions';
+export {
+  EXTERNAL_SHARE_ACCESS_DENIED_TITLE,
+  externalShareAccessDeniedDetail,
+  externalShareAccessDeniedMessage,
+  isNavPathAllowedForTransientUser,
+  isTransientUser,
+  TRANSIENT_USER_BLOCKED_NAV_PATHS,
+} from './lib/utils/transient-user';
 export {
   buildDocumentCompareRows,
   buildDocumentCompareSections,

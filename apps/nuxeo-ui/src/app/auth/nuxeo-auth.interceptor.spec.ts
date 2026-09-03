@@ -4,7 +4,10 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from './auth.service';
-import { NUXEO_ESTABLISH_BROWSER_SESSION } from './nuxeo-auth.context';
+import {
+  NUXEO_ESTABLISH_BROWSER_SESSION,
+  NUXEO_OMIT_BROWSER_CREDENTIALS,
+} from './nuxeo-auth.context';
 import { nuxeoAuthInterceptor } from './nuxeo-auth.interceptor';
 import { SessionTimeoutService } from './session-timeout.service';
 import { AUTH_TOKEN_HEADER } from './share-token.util';
@@ -173,6 +176,20 @@ describe('nuxeoAuthInterceptor', () => {
     const req = httpMock.expectOne('/nuxeo/api/v1/id/doc-1');
     expect(req.request.headers.get(AUTH_TOKEN_HEADER)).toBe('share-token-abc');
     req.flush({ uid: 'doc-1' });
+  });
+
+  it('omits browser credentials when NUXEO_OMIT_BROWSER_CREDENTIALS is set', () => {
+    auth.isAuthenticated.and.returnValue(false);
+    auth.shareAuthToken.and.returnValue('share-token-abc');
+    http
+      .get('/nuxeo/api/v1/me', {
+        headers: { [AUTH_TOKEN_HEADER]: 'share-token-abc' },
+        context: new HttpContext().set(NUXEO_OMIT_BROWSER_CREDENTIALS, true),
+      })
+      .subscribe();
+    const req = httpMock.expectOne('/nuxeo/api/v1/me');
+    expect(req.request.withCredentials).toBe(false);
+    req.flush({ id: 'transient/guest@example.com' });
   });
 
   it('does not send share token header after authentication is established', () => {

@@ -968,3 +968,91 @@ describe('BrowseComponent', () => {
     expect(component.permissionsLoading()).toBe(false);
   });
 });
+
+describe('BrowseComponent transient external-share errors', () => {
+  let component: BrowseComponent;
+  let fixture: ComponentFixture<BrowseComponent>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [BrowseComponent],
+      providers: [
+        provideExperimentalZonelessChangeDetection(),
+        provideRouter([], withDisabledInitialNavigation()),
+        { provide: BrowseService, useValue: mockBrowseService },
+        { provide: DocumentDetailService, useValue: mockDocumentDetailService },
+        { provide: DirectoryService, useValue: mockDirectoryService },
+        { provide: TagService, useValue: mockTagService },
+        { provide: SelectionService, useValue: mockSelectionService },
+        { provide: CURRENT_USERNAME, useValue: () => 'transient/guest@example.com' },
+        {
+          provide: ADMIN_ACCESS_CHECKS,
+          useValue: {
+            isAdministrator: () => false,
+            isPowerUser: () => false,
+            hasAdministrationAccess: () => false,
+          },
+        },
+        { provide: MatSnackBar, useValue: { open: vi.fn() } },
+        { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => of(false) })) } },
+      ],
+    })
+      .overrideComponent(BrowseComponent, {
+        set: { imports: [], template: '<div></div>' },
+      })
+      .compileComponents();
+
+    fixture = TestBed.createComponent(BrowseComponent);
+    component = fixture.componentInstance;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+  });
+
+  it('shows shared-document access message on browse 403 for transient users', () => {
+    const browseContext = TestBed.inject(BrowseContextService);
+    browseContext.setSharedDocument({ uid: 'shared-1', title: 'Quarterly Report' });
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(throwError(() => ({ status: 403 })));
+
+    fixture.detectChanges();
+    component.loadContent();
+    fixture.detectChanges();
+
+    expect(component.accessDenied()).toBe(true);
+    expect(component.externalShareAccessDenied()).toBe(true);
+    expect(component.externalShareAccessDeniedDetail()).toContain('Quarterly Report');
+    expect(component.error()).toContain('Quarterly Report');
+    expect(component.error()).not.toBe('Failed to load folder contents.');
+  });
+
+  it('shows shared-document access message when transient user loads synthetic repository root', () => {
+    const browseContext = TestBed.inject(BrowseContextService);
+    browseContext.setSharedDocument({ uid: 'shared-1', title: 'Quarterly Report' });
+    mockBrowseService.getBrowseFolderContents.mockReturnValue(
+      of({
+        folder: {
+          uid: 'virtual-root',
+          title: 'Root',
+          type: 'Root',
+          path: '/',
+          lastModified: '',
+          properties: {},
+        },
+        entries: [],
+        totalSize: 0,
+      }),
+    );
+
+    fixture.detectChanges();
+    component.loadContent();
+    fixture.detectChanges();
+
+    expect(component.accessDenied()).toBe(true);
+    expect(component.externalShareAccessDenied()).toBe(true);
+    expect(component.externalShareAccessDeniedDetail()).toContain('Quarterly Report');
+    expect(component.externalShareBackLabel()).toBe('Back to Quarterly Report');
+    expect(component.canReturnToSharedDocument()).toBe(true);
+  });
+});

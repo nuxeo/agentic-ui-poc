@@ -11,15 +11,19 @@
 } @else if (doc()) {
   <!-- Header -->
   <div class="detail-header">
-    <button mat-icon-button (click)="goBack()" aria-label="Go back">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
+    @if (!isTransientExternalUser()) {
+      <button mat-icon-button (click)="goBack()" aria-label="Go back">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+    }
     <div class="header-info">
       <div class="header-title" role="heading" aria-level="1">{{ doc()!.title }}</div>
-      <sat-breadcrumbs
-        [items]="breadcrumbItems()"
-        (click)="onBreadcrumbClick($event)"
-      ></sat-breadcrumbs>
+      @if (!isTransientExternalUser() && breadcrumbItems().length) {
+        <sat-breadcrumbs
+          [items]="breadcrumbItems()"
+          (click)="onBreadcrumbClick($event)"
+        ></sat-breadcrumbs>
+      }
     </div>
     <div class="header-actions">
       @if (!isTrashed() && supportsTextKnowledgeEnrichment()) {

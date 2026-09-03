@@ -71,7 +71,7 @@ getByPath(nuxeoPath: string): Observable<NuxeoDocument>
 getUserWorkspace(): Observable<NuxeoDocument>  // POST automation/User.GetUserWorkspace (Web UI)
 getRepositoryRoot(): Observable<NuxeoDocument>  // falls back to NXQL when GET /path/ is denied
 getNavTreeBootstrap(pageSize?: number): Observable<NavTreeBootstrap>  // root + top-level folders for all permission profiles
-getBrowseFolderContents(nuxeoPath: string, pageSize?: number): Observable<BrowseFolderContents>  // browse page loader with restricted-user fallbacks
+getBrowseFolderContents(nuxeoPath: string, pageSize?: number, options?: BrowseFolderLoadOptions): Observable<BrowseFolderContents>  // browse page loader with restricted-user fallbacks; set `bootstrapOnRootDenied: false` to surface root load errors instead of synthetic root
 getCollectionMembers(collectionUid: string, pageSize?: number): Observable<NuxeoDocumentList>  // Favorites / Collection member listing
 getFolderContext(nuxeoPath: string): Observable<NuxeoDocument>  // includes @subtypes enricher
 getCreatableSubtypes(nuxeoPath: string): Observable<string[]>  // parsed allowed child types

@@ -9,7 +9,10 @@ import { catchError, tap, throwError } from 'rxjs';
 import { NUXEO_API_ORIGIN } from '@agentic-ui/shared/nuxeo-client';
 
 import { AuthService } from './auth.service';
-import { NUXEO_ESTABLISH_BROWSER_SESSION } from './nuxeo-auth.context';
+import {
+  NUXEO_ESTABLISH_BROWSER_SESSION,
+  NUXEO_OMIT_BROWSER_CREDENTIALS,
+} from './nuxeo-auth.context';
 import { SessionTimeoutService } from './session-timeout.service';
 import { AUTH_TOKEN_HEADER } from './share-token.util';
 
@@ -96,8 +99,15 @@ export const nuxeoAuthInterceptor: HttpInterceptorFn = (req, next) => {
   // in-flight during login) omit cookies to avoid principal override.
   const isLogout = isNuxeoLogoutRequest(req.url, allowedOrigins);
   const establishBrowserSession = req.context.get(NUXEO_ESTABLISH_BROWSER_SESSION);
+  const omitBrowserCredentials = req.context.get(NUXEO_OMIT_BROWSER_CREDENTIALS);
   const usesBasicAuth = Boolean(basic) || hasBasicAuthorizationHeader(req.headers);
-  const withCredentials = isLogout || establishBrowserSession ? true : usesBasicAuth ? false : true;
+  const withCredentials = omitBrowserCredentials
+    ? false
+    : isLogout || establishBrowserSession
+      ? true
+      : usesBasicAuth
+        ? false
+        : true;
   return next(req.clone({ headers, withCredentials })).pipe(
     tap((event) => {
       if (event instanceof HttpResponse && auth.isAuthenticated()) {
