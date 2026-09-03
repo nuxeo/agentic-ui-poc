@@ -17,7 +17,10 @@ import {
   readShareTokenFromBrowserUrl,
   stripShareTokenFromBrowserUrl,
 } from './share-token.util';
-import { NUXEO_ESTABLISH_BROWSER_SESSION } from './nuxeo-auth.context';
+import {
+  NUXEO_ESTABLISH_BROWSER_SESSION,
+  NUXEO_OMIT_BROWSER_CREDENTIALS,
+} from './nuxeo-auth.context';
 
 import {
   BrowseContextService,
@@ -439,6 +442,7 @@ export class AuthService {
         this.http.get<unknown>(this.apiUrl('/nuxeo/api/v1/me'), {
           headers,
           withCredentials: false,
+          context: new HttpContext().set(NUXEO_OMIT_BROWSER_CREDENTIALS, true),
         }),
       ),
       switchMap((me) => {
