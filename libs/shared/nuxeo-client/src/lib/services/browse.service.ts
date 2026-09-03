@@ -36,8 +36,8 @@ export interface BrowseFolderContents {
 
 export interface BrowseFolderLoadOptions {
   /**
-   * When false, a 403 on repository root is propagated instead of falling back to
-   * the nav-tree bootstrap (synthetic root + accessible top-level folders).
+   * When false, any failure loading repository root (`/`) is propagated instead of
+   * falling back to the nav-tree bootstrap (synthetic root + accessible top-level folders).
    */
   bootstrapOnRootDenied?: boolean;
 }
