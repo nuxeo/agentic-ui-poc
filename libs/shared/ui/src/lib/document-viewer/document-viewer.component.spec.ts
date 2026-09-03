@@ -89,6 +89,51 @@ describe('DocumentViewerComponent', () => {
     expect(component.showVideoStoryboard()).toBe(true);
   });
 
+  it('gives the player a usable source URL for the main blob', async () => {
+    fixture.componentRef.setInput('mimeType', 'video/mp4');
+    fixture.componentRef.setInput(
+      'blobUrl',
+      'blob:http://localhost/main-blob' as VideoSource['url'],
+    );
+    render();
+
+    const source = fixture.nativeElement.querySelector('video source') as HTMLSourceElement;
+    // Angular does not sanitize `source|src`, so binding the SafeResourceUrl itself left the
+    // player with "SafeValue must use [property]=binding: …" and NETWORK_NO_SOURCE.
+    expect(source.getAttribute('src')).toBe('blob:http://localhost/main-blob');
+    expect(source.getAttribute('type')).toBe('video/mp4');
+  });
+
+  it('gives the player a usable source URL for each transcoded rendition', async () => {
+    fixture.componentRef.setInput('mimeType', 'video/mp4');
+    fixture.componentRef.setInput('blobUrl', null);
+    fixture.componentRef.setInput('videoSources', [
+      { url: 'blob:http://localhost/mp4-480' as VideoSource['url'], mimeType: 'video/mp4' },
+      { url: 'blob:http://localhost/webm-480' as VideoSource['url'], mimeType: 'video/webm' },
+    ]);
+    render();
+
+    const sources = [...fixture.nativeElement.querySelectorAll('video source')].map(
+      (el: HTMLSourceElement) => [el.getAttribute('src'), el.getAttribute('type')],
+    );
+    expect(sources).toEqual([
+      ['blob:http://localhost/mp4-480', 'video/mp4'],
+      ['blob:http://localhost/webm-480', 'video/webm'],
+    ]);
+  });
+
+  it('omits the type attribute for a container the browser must sniff', async () => {
+    // `application/mxf` reaches the video branch, but declaring it makes the browser refuse
+    // the source outright instead of trying to decode it.
+    fixture.componentRef.setInput('mimeType', 'application/mxf');
+    fixture.componentRef.setInput('blobUrl', 'blob:http://localhost/mxf' as VideoSource['url']);
+    render();
+
+    const source = fixture.nativeElement.querySelector('video source') as HTMLSourceElement;
+    expect(source.getAttribute('src')).toBe('blob:http://localhost/mxf');
+    expect(source.hasAttribute('type')).toBe(false);
+  });
+
   it('seeks without auto-playing (Web UI parity)', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
