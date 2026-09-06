@@ -106,6 +106,59 @@ this.blobUrl.set(URL.createObjectURL(blob)); // never revoked
 
 ---
 
+## Automated Security Scanning
+
+Two automated systems protect against vulnerabilities:
+
+### 1. CodeQL - Code Scanning
+
+Scans source code for security vulnerabilities and code quality issues.
+
+**Configuration:**
+
+- Workflow: [.github/workflows/codeql.yml](.github/workflows/codeql.yml)
+- Config: [.github/codeql-config.yml](.github/codeql-config.yml)
+- Runs: Push, PR, weekly schedule
+- Query suite: `security-extended`
+
+**Common Findings:**
+
+- Hardcoded credentials or API keys
+- Insecure use of `innerHTML` or `eval()`
+- Missing input validation at system boundaries
+- Incomplete URL sanitization
+- SSRF via user-controlled URLs
+- Prototype pollution
+
+**Viewing Results:** Security tab → Code scanning alerts
+
+### 2. Dependency Review - Supply Chain Security
+
+Prevents vulnerable dependencies from being introduced via pull requests.
+
+**Configuration:**
+
+- Workflow: [.github/workflows/dependency-review.yml](.github/workflows/dependency-review.yml)
+- Runs: On PRs that change `package.json` or `package-lock.json`
+- Fail threshold: Moderate severity or higher
+
+**What It Checks:**
+
+- Known CVEs in npm packages
+- License compliance (optional)
+
+**How to Fix:**
+
+- Update to patched version: `npm update <package>`
+- Find alternative package if no fix available
+- Document and accept risk only with security team approval
+
+**Never bypass Dependency Review without documented justification.**
+
+See [docs/security-scanning.md](../docs/security-scanning.md) for detailed guidance.
+
+---
+
 ## AI Security
 
 The AI backend is **not in this repository** — AI features are Nuxeo Automation operations
