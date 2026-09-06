@@ -1669,7 +1669,9 @@ describe('DocumentDetailComponent — tab surfaces', () => {
 
       component.generateSummary();
 
-      expect(component.aiError()).toBe('model unavailable');
+      // The server message is still surfaced, now behind the operation that failed, so the
+      // reader learns both what broke and why rather than seeing a detached fragment.
+      expect(component.aiError()).toBe('Summary generation failed: model unavailable');
       expect(component.aiSummaryLoading()).toBe(false);
     });
 

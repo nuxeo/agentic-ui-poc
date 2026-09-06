@@ -40,10 +40,21 @@ describe('aiErrorMessage', () => {
     );
   });
 
-  it('falls back untouched when the error is not an HTTP response', () => {
+  it('falls back untouched when the error carries neither status nor detail', () => {
     expect(aiErrorMessage(new Error('boom'), 'AI failed')).toBe('AI failed');
     expect(aiErrorMessage(undefined, 'AI failed')).toBe('AI failed');
     expect(aiErrorMessage(null, 'AI failed')).toBe('AI failed');
+  });
+
+  it('still reports the detail when the thrown object carries no status', () => {
+    // Interceptors and test doubles throw bare objects. An earlier revision of this function
+    // returned the fallback whenever the status was missing, discarding the one useful part.
+    expect(aiErrorMessage({ error: { error: 'model unavailable' } }, 'Summary failed')).toBe(
+      'Summary failed: model unavailable',
+    );
+    expect(aiErrorMessage({ error: { message: 'no such operation' } }, 'AI failed')).toBe(
+      'AI failed: no such operation',
+    );
   });
 
   it('reports the status alone when the body carries no usable detail', () => {

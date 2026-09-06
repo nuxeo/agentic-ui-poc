@@ -19,17 +19,24 @@ const MAX_DETAIL_LENGTH = 200;
  */
 export function aiErrorMessage(err: unknown, fallback: string): string {
   const status = readStatus(err);
+  const detail = readDetail(err);
 
-  // Angular reports an unreachable server, a DNS failure or a CORS rejection as status 0.
+  // Angular reports an unreachable server, a DNS failure or a CORS rejection as status 0,
+  // where the body is empty and "HTTP 0" would tell the reader nothing.
   if (status === 0) {
     return `${fallback} (could not reach the server)`;
   }
-  if (status === undefined) {
-    return fallback;
+
+  // The detail is the useful half, so it is reported whenever present. A thrown object with
+  // no status is not a real HttpErrorResponse, but tests and interceptors produce them and
+  // dropping their message loses the only diagnostic there is.
+  if (detail) {
+    return status === undefined
+      ? `${fallback}: ${detail}`
+      : `${fallback} (HTTP ${status}: ${detail})`;
   }
 
-  const detail = readDetail(err);
-  return detail ? `${fallback} (HTTP ${status}: ${detail})` : `${fallback} (HTTP ${status})`;
+  return status === undefined ? fallback : `${fallback} (HTTP ${status})`;
 }
 
 function readStatus(err: unknown): number | undefined {
