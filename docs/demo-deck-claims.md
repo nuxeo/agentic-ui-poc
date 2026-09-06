@@ -1,0 +1,202 @@
+# Demo deck — claims ledger
+
+**Rule: no factual claim reaches a slide without a row here.** A row carries the claim, the
+first-hand source, and the caveat that must travel with it.
+
+This file exists because the failure mode of a leadership deck is not invention — it is a **true
+number quoted without the caveat that makes it mean what the audience thinks it means**. This
+programme has shipped that error before, in both directions, and an independent review caught it
+every time.
+
+Verified 2026-09-01 against the current branch unless a row says otherwise.
+
+---
+
+## 1. Part 6 re-verification (Phase A)
+
+`docs/beta-demo-runbook.md` Part 6 lists thirteen things not to demo, dated 2026-08-25. **161
+commits** landed since. Every entry re-checked against current code:
+
+| #       | Verdict                     | Established by                                                                                                                                                                                                                                                                                                                                        |
+| ------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **F0**  | holds                       | No `acme.*` reference anywhere in `apps/nuxeo-ui/src`.                                                                                                                                                                                                                                                                                                |
+| **F1**  | holds                       | `bootstrap-config.ts:42-47` — `AppBrandingConfig` declares `applicationTitle` and `documentTitle`, nothing else. No logo or favicon key exists.                                                                                                                                                                                                       |
+| **F2**  | holds                       | `app-shell.component.ts:203` — `return match?.label ?? …branding.applicationTitle`. The route label wins; the brand surfaces only on an unmatched route.                                                                                                                                                                                              |
+| **F3**  | holds                       | `runtime-manifest.ts` declares neither `branding` nor `themes`.                                                                                                                                                                                                                                                                                       |
+| **F4**  | holds                       | `applyOverride()` (`extension-slot-registry.service.ts:136-146`) patches only `order`, `label`, `rule`, `visible`. A `slots` addition reusing a packaged id spreads everything **except** `action` — which is why the runbook's "use `slots.documentList`" advice is right.                                                                           |
+| **F5**  | holds                       | `nav-drawer.component.html:10` renders `{{ item.label }}` with no `translate` pipe, so the `labels` catalogue cannot reach a nav entry. Use `overrides.<id>.label`.                                                                                                                                                                                   |
+| **F6**  | **WRONG — withdrawn**       | All four slots are live. Registered `provide-app-extensions.ts:104-106`; `toolbar` rendered `document-detail.html:140`; `tabs` `document-detail.ts:378`; `contextMenu` `browse.ts:459`; `routes` `extension-routes.ts:96` + `provideExtensionRoutes()` at `provide-app-extensions.ts:197`, calling `router.resetConfig` at `extension-routes.ts:112`. |
+| **F7**  | holds, **different reason** | The rule bodies are real (`document-rules.ts:52-56`). The **writer** is missing: `provide-app-extensions.ts:174-176` sets `username`, `isAdministrator`, `selectionCount` — never `selection`. Always `false` in effect.                                                                                                                              |
+| **F8**  | holds (core defect)         | Byte-identical duplicates confirmed by size in `showcase-adf-hx/2026-08-20T14-07-03/`: three files at exactly **64,105 B**, two at **74,300 B**. The exact 21/22 figure was not re-run.                                                                                                                                                               |
+| **F9**  | holds                       | `app.routes.ts:34` defines the route; no nav descriptor references it.                                                                                                                                                                                                                                                                                |
+| **F10** | holds                       | The three ids are registered (`extensions.ts:85,107,116`) but `NAV_ITEMS` places only `acme.navbar.acmeExtensions`.                                                                                                                                                                                                                                   |
+| **F11** | **not re-verified**         | Needs a production build, a static serve and a real sign-in attempt. Recorded as unconfirmed rather than restated. Use `nx serve` and the question does not arise.                                                                                                                                                                                    |
+| **F12** | holds                       | Live check: `/default-domain/config/satori-template` exists, `note:note` empty.                                                                                                                                                                                                                                                                       |
+| **F13** | holds                       | No `nuxeo-agentic-ui-package/target/`. **Maven has never run.**                                                                                                                                                                                                                                                                                       |
+
+**Twelve of thirteen hold. One was wrong, one was right for the wrong reason, one is unconfirmed.**
+That base rate is the argument for re-verifying rather than trusting a dated document.
+
+### Two staleness findings outside Part 6
+
+| Finding                  | Was                                          | Is                                                                                                         |
+| ------------------------ | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Beat 1 document count    | "113 documents"                              | **187** (live NXQL count, non-trashed, 2026-09-01). Drifts with use — re-count, never quote.               |
+| Upstream component count | Part 5 said "Six"; Part 1's table said seven | **Seven.** Counted from aliased imports. Part 1 was right. This is the first number the audience asks for. |
+
+### One state finding that would have produced a false slide
+
+The manifest document at `/default-domain/config/agentic-ui` **was not empty** — it held Beat 6's
+column overrides from an earlier run (`lastContributor` → "Updated by", `modified` hidden).
+Capturing browse in that state and captioning it "the product as shipped" is a customised screen
+with a baseline caption — the F8 failure class exactly. **Reset to `{"version":1}` before any
+baseline capture.** Added to the runbook as a Beat 1 precondition.
+
+---
+
+## 2. Claims cleared for slides
+
+| Claim                                          | Source                                                                                              | Caveat that must travel with it                                                                                                                                                                             |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **7 upstream adf-hx components adopted**       | 7 `Upstream*Component` aliases, verified                                                            | The `hxp-` prefix says nothing about authorship — **13 same-prefix components are ours**. History and Trash are ours, reading real Nuxeo audit and trash APIs.                                              |
+| **13 components are ours**                     | `libs/shared/adf-hx-bridge/src/lib/ui/` — 13 dirs                                                   | —                                                                                                                                                                                                           |
+| **Real repository, 187 documents**             | Live NXQL count 2026-09-01                                                                          | Drifts with use. Re-count at capture time; do not reuse this figure.                                                                                                                                        |
+| **Four extension slots now live**              | Phase A, F6 above                                                                                   | New as of 2026-08-31. Layer 1 remains **additive**: a manifest can add, hide, reorder and relabel, but cannot replace a packaged route or change what a packaged tab renders.                               |
+| **`@nuxeo-satori/platform`, 5 entry points**   | Runbook Part 2                                                                                      | **Publishable, not published.** Nothing is on any registry. `private: true` is a deliberate tripwire. The final package name is part of the publish step.                                                   |
+| **Configuration survives upgrade**             | `install.xml` — app `overwrite="true"`, config sibling `overwrite="false"`; plus the rehearsal gate | The **marketplace ZIP has never been built** — nobody ran Maven (F13). The mechanism is evidenced; the packaged install is not.                                                                             |
+| **Rebrand with a byte-identical bundle**       | Runbook Beat 3, `sha256` of `main-*.js` unchanged                                                   | Verified pre-2026-08-25. **Re-verify before presenting.**                                                                                                                                                   |
+| **Hiding an action is not a security control** | Manifest visibility vs. Nuxeo ACLs                                                                  | Volunteer this rather than be caught by it. Demonstrate by typing a hidden route into the address bar — the page still loads.                                                                               |
+| **10 of 10 in-scope projects meet 90%**        | Commit `33208ce`                                                                                    | Percentages of the **measured subset**. **6,911 in-scope lines are imported by no test at all**, contribute no statements, and cannot lower any percentage. Not the same claim as "the code is 90% tested". |
+| **WCAG 2.1 AA met**                            | Phase 6 step 3, `KNOWN_VIOLATIONS` empty                                                            | 15 cases over 8 routes. **Dialogs, upload, dark mode and the pre-auth login surface are not covered.** One remaining violation is upstream's (`adf-core` `role="row"`) and is excluded on that step alone.  |
+| **3.56 MB initial bundle vs a 4 MB budget**    | Runbook Part 5                                                                                      | adf-core registers eleven root services, so it is **eager** — every user pays it, including users who never open an adf-hx route.                                                                           |
+| **Template app: zero internal imports**        | Runbook Beat 11                                                                                     | Re-measure the line count and bundle size before quoting them.                                                                                                                                              |
+| **18-gate pipeline**                           | Commit `d781349`                                                                                    | —                                                                                                                                                                                                           |
+
+---
+
+## 3. Claims that must NOT appear
+
+| Do not say                                 | Why                                                                                                                                                                                            |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "The marketplace package builds"           | Unverified. Maven has never run (F13). No `target/` directory exists.                                                                                                                          |
+| "Published on npm"                         | It is publishable and dry-run verified. Nothing is on any registry.                                                                                                                            |
+| "You can change the logo"                  | No logo or favicon key exists at Layer 0 or 1 (F1). Product name and theme colours only.                                                                                                       |
+| "90% of the code is tested"                | Says something the measurement does not support — see the coverage caveat above.                                                                                                               |
+| "Phase 6 is complete"                      | `docs/adf-hx-beta-plan.md` says complete; `.ai/state/phases.json` still says `in-progress` with a stale `notCovered` block. **Unresolved repo inconsistency — resolve before quoting either.** |
+| "Metadata is editable in the adf-hx panel" | Upstream does not export the cache service its metadata sidebar needs; the read-only properties panel renders instead.                                                                         |
+
+---
+
+## 3a. What the capture gates caught (Phases C–D)
+
+The harness is `scripts/demo-deck/capture.mjs`. All three falsifiable gates were watched failing
+before any output was trusted, and the first honest run then found five problems — **four of them in
+my own harness, one in the app**. That ratio is the argument for the gates: none of these was
+visible in a passing screenshot.
+
+| Found                                          | Whose fault | Consequence had it shipped                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **The route gate was tautological**            | harness     | It compared where it landed against where it had just been told to go — true by construction. A deliberate mis-route passed it; only the content gate caught it. This is the tautological path check this repo has already been burned by, reproduced exactly.                                                                                                          |
+| **The console allowlist could never match**    | harness     | Playwright's message is "Failed to load resource: … 403" with **no URL in the text**, so URL-fragment matching matched nothing and the two documented-expected failures failed every run. The tempting fix — allowlist `Failed to load resource` — is the F8 postmortem's own recorded mistake. Split into failed-responses-by-URL and never-allowlisted JS exceptions. |
+| **A false PASS from incidental text**          | harness     | `core-04-adfhx-list` asserted `'Workspaces'` and passed **while no document list existed at all** — it matched the domain-hint banner's sentence "Open Sections, Templates, or Workspaces…". An assertion satisfied by unrelated prose is not an assertion. Replaced with a structural predicate on `hxp-document-list adf-datatable [role=row]`.                       |
+| **`.first()` matched the select-all checkbox** | harness     | Selected all five rows, so the panel correctly read "select a **single** document" — indistinguishable from a broken panel. The screenshot looked like an upstream defect and was not one.                                                                                                                                                                              |
+| **A whole run authenticated as `Anonymous`**   | environment | The most expensive one. See below.                                                                                                                                                                                                                                                                                                                                      |
+
+### The authentication trap, and a correction
+
+Seeding `sessionStorage` is **not sufficient** on this deployment. This Nuxeo has anonymous
+authentication enabled — a recorded verified fact — so `/me` answers `200` as `Anonymous` and the
+app's SSO-detection path **adopts that session**, overwriting the seeded one. Measured: after seeding
+Basic Administrator, `sessionStorage` held
+`{"kind":"cookie","username":"Anonymous","isAdministrator":false}`.
+
+The visible result was browse rendering **"Failed to load folder contents."** with `0 result(s)`.
+**I initially read that as a functional regression in the runbook's strongest beat, and said so. That
+was wrong**, and the check that settled it was cheap: on the identical path, an explicit Basic header
+answers `200`. Anonymous simply cannot read the folder, and refusing it is correct behaviour.
+
+The harness now clears cookies before seeding, and **Gate 0 aborts the run** if `/me` is not the
+expected user — because a full run as Anonymous passes dedup, passes every route assertion, and
+yields empty and error states throughout. Nothing looks wrong until it is on a slide captioned "real
+repository".
+
+### A fourth expected error, documented nowhere
+
+`AuthService.clearStaleNuxeoCookieSession()` (`auth.service.ts:156-166`) GETs `/nuxeo/logout` to drop
+a stale `JSESSIONID` and swallows failure with `catchError`. Measured against this Nuxeo:
+`GET /nuxeo/logout` → **404**, `GET /nuxeo/logout?requestedUrl=/nuxeo/` → **302**. The call omits that
+parameter, so **it very likely never clears the session it exists to clear**, and the `catchError`
+hides that. It is the app's own defence against the anonymous-adoption trap above, and it is not
+working. Allowlisted in the harness with the reason stated; **worth a look on its own merits, and out
+of scope for the deck.**
+
+### Verified captures
+
+Five, all distinct by SHA-256, all asserting their own content, run exit 0. The properties shot was
+read visually as well as gated: it shows `Q1 2026 Content Strategy Review` with **Created rendered as
+`Apr 24, 2026` and Creator as `Administrator`** — the two fields that once rendered a raw ISO string
+and `[object Object]`, so W11's `sys` pseudo-schema is visibly working.
+
+> **Caveat for that slide:** `Creator` reads `Administrator` because that is the username. This is
+> **D4** — Nuxeo carries only the username on the document, so a real deployment reads `jdoe`, not
+> `Jane Doe`. Do not present this field as a display name.
+
+---
+
+## 3b. Appendix evidence (A2–A8)
+
+Only A4 needed a screenshot. A2 and A3 are real captured CLI output — **not retyped**, saved under
+`cli/` in the capture directory. A5–A8 are derived from source.
+
+| Slide  | Evidence                                                                                                                                                                                 |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **A2** | `npm run beta:upgrade` exit 0, and `--break-slot toolbar` exit 1. Both runs captured verbatim.                                                                                           |
+| **A3** | `npm run beta:customer-guardrails` exit 0, plus the same guardrail exit 1 against a throwaway copy carrying one deep import. The real library was untouched — confirmed by `git status`. |
+| **A4** | The core-04 capture, annotated from live DOM bounding rects. All six callouts resolved.                                                                                                  |
+| **A5** | 5 entry points (**from the guardrail's own output**, not asserted), 8 slots (from `extension-slots.ts`), 4 generators (from `generators.json`), 7 upstream + 13 ours.                    |
+| **A6** | The coverage/a11y/security/browser rows in §2, each with its caveat.                                                                                                                     |
+| **A7** | The Part 6 re-verification in §1, plus D4 and D5 from the workarounds register.                                                                                                          |
+| **A8** | Layer structure from `libs/platform/package.json` (`private: true`, confirmed) and the bridge's location outside the package.                                                            |
+
+### One claim I trimmed rather than made
+
+The runbook says `--break-slot toolbar` "leaves the compile GREEN and only that check goes red — a
+clean build and a broken customer". **The failing run does not demonstrate that.** It is 146 lines and
+short-circuits from the negative-control notice straight to `FAIL`; the compile checks never run, so
+no green compile is observed alongside the red check.
+
+The mechanism is sound and is the gate's stated rationale — nothing type-checks JSON, so a renamed
+slot is invisible to the build. But that is a _rationale_, not a jointly-demonstrated result, and the
+slide says "this is the failure JSON cannot catch" rather than "we watched it compile clean".
+
+### A third document/code mismatch, in the plan of record
+
+`docs/adf-hx-beta-plan.md` said, in the present tense, "Nine slots are implemented; five are deferred
+to GA". Both halves were wrong: source defines **eight**, and commit `7fd5e46` made the last four
+live, so **none is deferred**. Confirmed independently by `beta:upgrade`, which prints the shipped set.
+Corrected, with the correction noted inline.
+
+Note the direction of the two errors: the plan **understated** the addressable surface while the
+runbook's F6 **told a presenter four slots were inert**. The same staleness, read from opposite ends,
+in the two documents a presenter would rely on.
+
+### The dedup gate forced a better design
+
+A separate `appx-a4-anatomy` capture was rejected as byte-identical to `core-04-adfhx-list` — same
+route, same state, same pixels. The gate was right, and the correct response was not to defeat it: A4
+needs that capture _annotated_, not duplicated. One capture, two presentations. A callout whose
+selector matches nothing now fails the run, so an anatomy diagram cannot be silently missing a part.
+
+---
+
+## 4. Open item flagged for the presenter
+
+**Phase 6 status is inconsistent in the repo.** The plan document records all seven steps done on
+2026-08-31; `.ai/state/phases.json` still carries `"status": "in-progress"` and a `notCovered` list
+naming figures the coverage work superseded ("3 of 15 measurable projects", "search 22.76%").
+
+`npm run beta:state` is the machine-checked source and CLAUDE.md points at it, so the mismatch is
+load-bearing rather than cosmetic. It is not a presentation problem to paper over — either the state
+file is stale and should be updated, or the plan overstates. **Resolve it before a slide quotes
+either number.** Not resolved as part of the deck work, because which one is right is a programme
+decision, not a documentation one.
