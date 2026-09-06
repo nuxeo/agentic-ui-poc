@@ -1,6 +1,6 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 import { NUXEO_API_ORIGIN } from '../nuxeo-api.config';
@@ -95,6 +95,26 @@ describe('ContentLakeIngestService', () => {
       errorCount: 0,
     });
   });
+
+  it('waitUntilComplete errors when a bulk command never reaches a terminal state', fakeAsync(() => {
+    let error: Error | undefined;
+
+    service.waitUntilComplete('bulk-123', 10, 1).subscribe({
+      error: (err: Error) => {
+        error = err;
+      },
+    });
+
+    const firstReq = httpMock.expectOne('/nuxeo/api/v1/bulk/bulk-123');
+    firstReq.flush({ state: 'RUNNING', processed: 0, total: 1, error: false, errorCount: 0 });
+    tick(10);
+
+    const secondReq = httpMock.expectOne('/nuxeo/api/v1/bulk/bulk-123');
+    secondReq.flush({ state: 'RUNNING', processed: 0, total: 1, error: false, errorCount: 0 });
+
+    expect(error?.message).toContain('did not finish');
+    expect(error?.message).toContain('RUNNING (0/1 processed)');
+  }));
 
   it('findDuplicates returns matches from a repository-wide NXQL search', async () => {
     const duplicates$ = firstValueFrom(

@@ -6,6 +6,7 @@ export interface ContentLakeIngestStatus {
   commandId: string;
   state: string;
   processed: number;
+  total?: number;
   error: boolean;
   errorCount: number;
 }

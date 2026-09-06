@@ -22,6 +22,7 @@ import { BrowseService } from './browse.service';
 import { NuxeoApiBase } from './nuxeo-api-base';
 
 const TERMINAL_BULK_STATES = new Set(['COMPLETED', 'ABORTED', 'COMPLETED_WITH_ERROR']);
+export const CONTENT_LAKE_INGEST_POLL_MAX_ATTEMPTS = 60;
 
 /**
  * Triggers HxAI Content Lake ingestion for Nuxeo documents via the
@@ -62,18 +63,25 @@ export class ContentLakeIngestService {
       .pipe(map((body) => this.normalizeStatus(commandId, body)));
   }
 
-  waitUntilComplete(commandId: string, pollIntervalMs = 2000): Observable<ContentLakeIngestStatus> {
-    const poll = (): Observable<ContentLakeIngestStatus> =>
+  waitUntilComplete(
+    commandId: string,
+    pollIntervalMs = 2000,
+    maxPollAttempts = CONTENT_LAKE_INGEST_POLL_MAX_ATTEMPTS,
+  ): Observable<ContentLakeIngestStatus> {
+    const poll = (attempt: number): Observable<ContentLakeIngestStatus> =>
       this.getStatus(commandId).pipe(
         switchMap((status) => {
           if (this.isTerminal(status)) {
             return of(status);
           }
-          return timer(pollIntervalMs).pipe(switchMap(() => poll()));
+          if (attempt >= maxPollAttempts) {
+            return throwError(() => new Error(this.buildStalledIngestMessage(status)));
+          }
+          return timer(pollIntervalMs).pipe(switchMap(() => poll(attempt + 1)));
         }),
       );
 
-    return poll();
+    return poll(0);
   }
 
   /**
@@ -319,17 +327,32 @@ export class ContentLakeIngestService {
     body: Record<string, unknown>,
   ): ContentLakeIngestStatus {
     const state = String(body['state'] ?? body['status'] ?? 'UNKNOWN').toUpperCase();
+    const total = this.readOptionalNumber(body['total']);
     return {
       commandId,
       state,
       processed: this.readNumber(body['processed']),
+      ...(total === undefined ? {} : { total }),
       error: body['error'] === true,
       errorCount: this.readNumber(body['errorCount'] ?? body['error-count']),
     };
   }
 
+  private buildStalledIngestMessage(status: ContentLakeIngestStatus): string {
+    const total = status.total === undefined ? 'unknown' : status.total;
+    return (
+      `Content Lake ingest command ${status.commandId} did not finish. ` +
+      `Last Nuxeo bulk state was ${status.state} (${status.processed}/${total} processed). ` +
+      'Check the Nuxeo HxAI connector logs and ingest credentials, then retry.'
+    );
+  }
+
   private readNumber(value: unknown): number {
     return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+  }
+
+  private readOptionalNumber(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
   }
 
   private isTerminal(status: ContentLakeIngestStatus): boolean {
