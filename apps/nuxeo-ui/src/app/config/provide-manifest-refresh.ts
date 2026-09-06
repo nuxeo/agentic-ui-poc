@@ -69,6 +69,16 @@ export function provideManifestRefresh(): Provider[] {
               return;
             }
 
+            // When a session is already restored at startup (page refresh with stored credentials),
+            // the bootstrap initializer has already called config.load() which includes loadManifest().
+            // Mark that startup load as "attempted" so this effect doesn't race it. Subsequent
+            // sign-in transitions will still refresh the manifest as intended.
+            const outcome = config.diagnostics().manifestAttempt;
+            if (outcome === 'applied' || outcome === 'unavailable') {
+              attemptedForSession = true;
+              return;
+            }
+
             attemptedForSession = true;
             void loadWithRetry(config);
           },

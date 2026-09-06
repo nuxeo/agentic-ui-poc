@@ -138,5 +138,43 @@ export const appConfig: ApplicationConfig = {
         )
         .subscribe((event) => ruleContext.url.set(event.urlAfterRedirects.split('?')[0]));
     }),
+
+    // 4. Refresh the Layer 1 manifest when a session appears.
+    //
+    //    `config.load()` at bootstrap runs before a user signs in, so the manifest request
+    //    is anonymous and falls back to packaged defaults. Without this refresh, Layer 1
+    //    configuration does not apply until a manual reload — the product app has the same
+    //    pattern, mirrored here so the template demonstrates a working first sign-in.
+    provideAppInitializer(() => {
+      const config = inject(AppConfigService);
+      const session = inject(TemplateSessionService);
+      const injector = inject(Injector);
+      let attemptedForSession = false;
+
+      effect(
+        () => {
+          if (!session.isSignedIn()) {
+            config.resetManifest();
+            attemptedForSession = false;
+            return;
+          }
+
+          if (attemptedForSession) {
+            return;
+          }
+
+          // If bootstrap already loaded the manifest successfully, don't race it.
+          const outcome = config.diagnostics().manifestAttempt;
+          if (outcome === 'applied' || outcome === 'unavailable') {
+            attemptedForSession = true;
+            return;
+          }
+
+          attemptedForSession = true;
+          void config.loadManifest();
+        },
+        { injector },
+      );
+    }),
   ],
 };

@@ -142,9 +142,16 @@ export class AppConfigService {
       this.note(
         `runtime manifest not loaded from ${config.manifestDocumentPath}: ${response.reason}`,
       );
-      // A 404 is a deployment that has not saved a manifest — expected, and not worth retrying.
-      // Anything else may be transient.
-      this.setManifestAttempt(response.status === 404 ? 'unavailable' : 'failed');
+      // A failed load must reset to packaged defaults rather than returning the stale manifest.
+      // Without this, after user A loads a tenant manifest, user B who gets a 403/404 inherits
+      // user A's routes, labels and actions. A 404 is expected (no saved manifest) and won't retry;
+      // other failures may be transient.
+      this.runtimeManifest.set(DEFAULT_APP_RUNTIME_MANIFEST);
+      this.diagnosticsState.update((current) => ({
+        ...current,
+        manifestSource: 'packaged-default',
+        manifestAttempt: response.status === 404 ? 'unavailable' : 'failed',
+      }));
       return this.runtimeManifest();
     }
 
@@ -159,8 +166,15 @@ export class AppConfigService {
         `runtime manifest document ${config.manifestDocumentPath} has no readable JSON in ` +
           `"${config.manifestDocumentProperty}"`,
       );
-      // The document answered; its content is unusable. Retrying would fetch the same bytes.
-      this.setManifestAttempt('unavailable');
+      // The document answered but its content is unusable. Reset to packaged defaults rather than
+      // leaving a stale manifest active. On a logout/login transition, an unreadable manifest for
+      // the new session must replace the previous tenant configuration, not retain it.
+      this.runtimeManifest.set(DEFAULT_APP_RUNTIME_MANIFEST);
+      this.diagnosticsState.update((current) => ({
+        ...current,
+        manifestSource: 'packaged-default',
+        manifestAttempt: 'unavailable',
+      }));
       return this.runtimeManifest();
     }
 
