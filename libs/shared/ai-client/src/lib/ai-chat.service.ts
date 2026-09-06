@@ -1,4 +1,5 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
+import { aiErrorMessage } from './ai-error';
 import { AiGatewayService } from './ai-gateway.service';
 import type { ChatMessage, DocRef } from './ai.models';
 
@@ -61,7 +62,7 @@ export class AiChatService {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err?.error?.error ?? 'AI service unavailable');
+        this.error.set(aiErrorMessage(err, 'AI service unavailable'));
         this.loading.set(false);
       },
     });

@@ -43,7 +43,11 @@ import {
   type SearchResponse,
   type SearchQueryParams,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import {
+  AiGatewayService,
+  AiFeatureFlagService,
+  aiErrorMessage,
+} from '@agentic-ui/shared/ai-client';
 
 export type SortDirection = 'asc' | 'desc' | null;
 export type ViewMode = 'grid' | 'table' | 'list';
@@ -989,7 +993,7 @@ export class SearchComponent {
           this.runNxqlQuery(res.nxql);
         },
         error: (err) => {
-          this.aiError.set(err?.error?.error ?? 'AI search failed. Try again.');
+          this.aiError.set(aiErrorMessage(err, 'AI search failed. Try again.'));
           this.aiLoading.set(false);
         },
       });

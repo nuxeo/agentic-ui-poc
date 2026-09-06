@@ -26,7 +26,12 @@ import {
 import { AuthService } from '../auth/auth.service';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
-import { AiGatewayService, AiFeatureFlagService, type Insight } from '@agentic-ui/shared/ai-client';
+import {
+  AiGatewayService,
+  AiFeatureFlagService,
+  aiErrorMessage,
+  type Insight,
+} from '@agentic-ui/shared/ai-client';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -138,8 +143,8 @@ export class DashboardPageComponent {
         this.aiInsights.set(res.insights);
         this.aiInsightsLoading.set(false);
       },
-      error: () => {
-        this.aiInsightsError.set('AI insights unavailable.');
+      error: (err) => {
+        this.aiInsightsError.set(aiErrorMessage(err, 'AI insights unavailable.'));
         this.aiInsightsLoading.set(false);
       },
     });

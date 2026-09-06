@@ -114,6 +114,7 @@ import {
   AiGatewayService,
   AiChatService,
   AiFeatureFlagService,
+  aiErrorMessage,
   type SummarizeResponse,
   type SuggestedTag,
   type ClassifyResponse,
@@ -1093,7 +1094,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSummaryLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Summary generation failed');
+        this.aiError.set(aiErrorMessage(err, 'Summary generation failed'));
         this.aiSummaryLoading.set(false);
       },
     });
@@ -1109,7 +1110,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiTagsLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Tag suggestion failed');
+        this.aiError.set(aiErrorMessage(err, 'Tag suggestion failed'));
         this.aiTagsLoading.set(false);
       },
     });
@@ -1228,7 +1229,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiClassifyLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Classification failed');
+        this.aiError.set(aiErrorMessage(err, 'Classification failed'));
         this.aiClassifyLoading.set(false);
       },
     });
@@ -1244,7 +1245,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSimilarLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Similar doc search failed');
+        this.aiError.set(aiErrorMessage(err, 'Similar doc search failed'));
         this.aiSimilarLoading.set(false);
       },
     });

@@ -10,7 +10,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 
 import { AdministrationService, NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
-import { AiGatewayService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import {
+  AiGatewayService,
+  AiFeatureFlagService,
+  aiErrorMessage,
+} from '@agentic-ui/shared/ai-client';
 
 const DEFAULT_NXQL =
   "SELECT * FROM Document WHERE ecm:mixinType != 'HiddenInNavigation' AND ecm:isProxy = 0 " +
@@ -104,7 +108,7 @@ export class AdminNxqlSearchPageComponent {
         this.aiGenerating.set(false);
       },
       error: (err) => {
-        this.aiGenError.set(err?.error?.error ?? 'AI generation failed');
+        this.aiGenError.set(aiErrorMessage(err, 'AI generation failed'));
         this.aiGenerating.set(false);
       },
     });
