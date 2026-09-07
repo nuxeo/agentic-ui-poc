@@ -801,20 +801,20 @@ CRITICAL RULES:
 
 [... all endpoints ...]
 
-## 5. AI Backend Routes
+## 5. AI Operations
 
-All under POST /ai/\* (Express backend on port 3000 in dev)
+All called as POST /nuxeo/api/v1/automation/AI.\* — served by a separate marketplace package
 
-| Route            | Purpose                 | Model       |
-| ---------------- | ----------------------- | ----------- |
-| /ai/nl-to-nxql   | NL → NXQL query         | GPT-4o-mini |
-| /ai/summarize    | Document summary        | GPT-4o      |
-| /ai/suggest-tags | Tag suggestions         | GPT-4o-mini |
-| /ai/classify     | Document classification | GPT-4o      |
-| /ai/similar      | Similar document NXQL   | GPT-4o-mini |
-| /ai/chat         | RAG streaming chat      | GPT-4o      |
-| /ai/insights     | Dashboard KPI cards     | GPT-4o      |
-| /ai/anomalies    | Audit anomaly detection | GPT-4o      |
+| Operation      | Purpose                 |
+| -------------- | ----------------------- |
+| AI.NlToNxql    | NL → NXQL query         |
+| AI.Summarize   | Document summary        |
+| AI.SuggestTags | Tag suggestions         |
+| /ai/classify   | Document classification | GPT-4o      |
+| /ai/similar    | Similar document NXQL   | GPT-4o-mini |
+| /ai/chat       | RAG streaming chat      | GPT-4o      |
+| /ai/insights   | Dashboard KPI cards     | GPT-4o      |
+| /ai/anomalies  | Audit anomaly detection | GPT-4o      |
 
 ## 6. Angular Conventions (non-negotiable)
 
@@ -834,7 +834,6 @@ export class MyComponent {
   templateUrl: './my-component.html'
 }
 ```
-````
 
 ## 7. How to Add a New Feature Module
 
@@ -861,7 +860,7 @@ export class MyComponent {
 | Add a feature page   | libs/features/<feature>/src/lib/<feature>/<feature>.ts        |
 | Change routing       | apps/nuxeo-ui/src/app/app.routes.ts                           |
 | Change navigation    | apps/nuxeo-ui/src/app/platform-nav-items.ts                   |
-| Add an AI feature    | apps/ai-backend/src/routes/<name>.route.ts                    |
+| Add an AI call       | libs/shared/ai-client/src/lib/ai-gateway.service.ts           |
 | Change auth behavior | apps/nuxeo-ui/src/app/auth/                                   |
 | Add a data model     | libs/shared/nuxeo-client/src/lib/models/                      |
 
@@ -875,12 +874,12 @@ export class MyComponent {
 - [ ] docs/ai-features.md updated if AI backend changed
 - [ ] AGENTS.md updated if architecture changed
 - [ ] PR created on a feature/_ or fix/_ branch (never commit directly to main)
-
 ````
 
 ### Maintenance Rule
 
 `AGENTS.md` must be kept current. Add to the PR checklist:
+
 - "If you changed the architecture → update AGENTS.md section 2 or 4"
 - "If you added a new service → update AGENTS.md section 3"
 - "If you added a new Nuxeo API call → update AGENTS.md section 4"
@@ -911,7 +910,7 @@ Do not proceed with any task until you have internalized:
 4. The definition of done (section 10 of AGENTS.md)
 
 If AGENTS.md does not exist, stop and tell the developer to create it first.
-````
+```
 
 ---
 

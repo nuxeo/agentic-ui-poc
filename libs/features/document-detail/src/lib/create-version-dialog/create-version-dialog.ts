@@ -10,7 +10,7 @@ import {
   DocumentDetailService,
   isPermissionDeniedError,
   PERMISSION_DENIED_MESSAGE,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface CreateVersionDialogData {
   documentUid: string;

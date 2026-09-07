@@ -27,7 +27,7 @@ import {
   isExpiresFieldValid,
   shouldShowExpiresFieldError,
   l10nEntryLabel,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface EditDocumentDialogData {
   document: NuxeoDocument;

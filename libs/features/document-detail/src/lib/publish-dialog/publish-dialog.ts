@@ -5,7 +5,7 @@ import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/materia
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { NuxeoDocument, DocumentDetailService } from '@agentic-ui/shared/nuxeo-client';
+import { NuxeoDocument, DocumentDetailService } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface PublishDialogData {
   documentUid: string;

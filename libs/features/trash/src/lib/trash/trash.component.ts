@@ -16,7 +16,13 @@ import { of, finalize, filter, switchMap, map } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
-import { ConfirmDialogComponent, SavedSearchDialogComponent, SAVED_SEARCH_DIALOG_OPTIONS, ShareSavedSearchDialogComponent, type ConfirmDialogData } from '@agentic-ui/shared/ui';
+import {
+  ConfirmDialogComponent,
+  SavedSearchDialogComponent,
+  SAVED_SEARCH_DIALOG_OPTIONS,
+  ShareSavedSearchDialogComponent,
+  type ConfirmDialogData,
+} from '@nuxeo-satori/platform/ui';
 
 import {
   TrashService,
@@ -27,7 +33,7 @@ import {
   docTypeIcon,
   type NuxeoDocument,
   type NuxeoDocumentList,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export type ViewMode = 'grid' | 'table' | 'list';
 type SortDirection = 'asc' | 'desc';
@@ -463,7 +469,7 @@ export class TrashComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
 
       const inProgress = new Set(this.actionInProgress());
@@ -528,7 +534,7 @@ export class TrashComponent {
       } as ConfirmDialogData,
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
+    dialogRef.afterClosed().subscribe((confirmed) => {
       if (!confirmed) return;
       this.markInProgress(uid, true);
       this.trashService

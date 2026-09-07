@@ -8,7 +8,6 @@ import {
   effect,
   computed,
   DestroyRef,
-  Type,
   untracked,
 } from '@angular/core';
 import { NgTemplateOutlet, DatePipe } from '@angular/common';
@@ -17,7 +16,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { DynamicDrawerComponent } from './dynamic-drawer.component';
 import { forkJoin, of } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 
@@ -54,7 +52,19 @@ import {
   readClipboardDocs,
   writeClipboardDocs,
   type ClipboardDoc,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  HxpBrowseNavDrawerComponent,
+  toAdfHxBrowseRouterUrl,
+} from '@agentic-ui/shared/adf-hx-bridge';
+import {
+  AppExtensionsService,
+  EXTENSION_SLOTS,
+  ExtensionComponentRegistry,
+  ExtensionOutletComponent,
+  ExtensionRuleContextService,
+  type ExtensionElement,
+} from '@nuxeo-satori/platform/extensions';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
@@ -88,7 +98,8 @@ export interface FolderNode {
     MatButtonModule,
     MatTooltipModule,
     MatSnackBarModule,
-    DynamicDrawerComponent,
+    ExtensionOutletComponent,
+    HxpBrowseNavDrawerComponent,
   ],
   templateUrl: './nav-drawer.component.html',
   styleUrl: './nav-drawer.component.scss',
@@ -108,6 +119,9 @@ export class NavDrawerComponent {
   private readonly authService = inject(AuthService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly router = inject(Router);
+  private readonly extensions = inject(AppExtensionsService);
+  private readonly componentRegistry = inject(ExtensionComponentRegistry);
+  private readonly ruleContext = inject(ExtensionRuleContextService);
 
   readonly activeItem = input<AppNavItem | null>(null);
   readonly itemSelected = output<string>();
@@ -161,9 +175,24 @@ export class NavDrawerComponent {
   readonly collectionsLoading = signal(false);
   private collectionsLoaded = false;
 
-  readonly assetsDrawerComponent = signal<Type<unknown> | null>(null);
-  readonly searchFiltersDrawerComponent = signal<Type<unknown> | null>(null);
-  readonly trashDrawerComponent = signal<Type<unknown> | null>(null);
+  /**
+   * The `sidebar` slot entry for the active nav item, if any.
+   *
+   * By convention a nav item `app.navbar.<name>` is served by the sidebar
+   * component `app.sidebar.<name>`, so a manifest that adds a nav item and
+   * registers a component for it gets drawer content with no code change. The
+   * packaged entries that have bespoke markup above never reach this.
+   */
+  readonly sidebarComponentId = computed<string | null>(() => {
+    const id = this.activeItem()?.id;
+    if (!id) return null;
+    const sidebar = this.extensions
+      .resolve<ExtensionElement>(EXTENSION_SLOTS.sidebar, this.ruleContext.context())
+      .find((entry) => entry.id === id || entry.id === id.replace('.navbar.', '.sidebar.'));
+    if (sidebar) return (sidebar as { componentId?: string }).componentId ?? sidebar.id;
+    const byConvention = id.replace('.navbar.', '.sidebar.');
+    return this.componentRegistry.has(byConvention) ? byConvention : null;
+  });
 
   // Tasks
   private readonly taskService = inject(TaskService);
@@ -202,9 +231,6 @@ export class NavDrawerComponent {
   private browseTreeLoadGen = 0;
 
   constructor() {
-    // Dynamically load drawer components to avoid static import of lazy-loaded libraries
-    this.loadDrawerComponents();
-
     this.taskService.tasksChanged$
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.loadTasks());
@@ -225,7 +251,7 @@ export class NavDrawerComponent {
           this.rootNodes.set([]);
           const item = this.activeItem();
           const username = this.authService.username();
-          if (item?.path === '/browse' && username) {
+          if (item?.id === 'app.navbar.browse' && username) {
             this.refreshBrowseTree();
           }
           if (item?.path === '/personal-space') {
@@ -240,7 +266,7 @@ export class NavDrawerComponent {
       const contextPath = this.browseContext.contextPath();
       const username = this.authService.username();
 
-      if (item?.path === '/browse' && username) {
+      if (item?.id === 'app.navbar.browse' && username) {
         untracked(() => {
           const needsReload =
             this.browseTreeLoadedForUser !== username || this.rootNodes().length === 0;
@@ -253,31 +279,31 @@ export class NavDrawerComponent {
           this.syncBrowseTreeToPath(contextPath);
         });
       }
-      if (item?.path === '/collections' && !this.collectionsLoaded) {
+      if (item?.id === 'app.navbar.collections' && !this.collectionsLoaded) {
         this.loadCollections();
       }
-      if (item?.path === '/documents') {
+      if (item?.id === 'app.navbar.assets') {
         this.loadAssetAggregations();
       }
-      if (item?.path === '/search') {
+      if (item?.id === 'app.navbar.search') {
         this.loadSearchAggregations();
       }
-      if (item?.path === '/tasks') {
+      if (item?.id === 'app.navbar.tasks') {
         this.loadTasks();
       }
-      if (item?.path === '/clipboard') {
+      if (item?.id === 'app.navbar.clipboard') {
         this.refreshClipboard();
       }
-      if (item?.path === '/favorites') {
+      if (item?.id === 'app.navbar.favorites') {
         this.loadFavorites();
       }
-      if (item?.path === '/recently-viewed' && !this.recentlyViewedLoaded) {
+      if (item?.id === 'app.navbar.recentlyViewed' && !this.recentlyViewedLoaded) {
         this.loadRecentlyViewed();
       }
-      if (item?.path === '/expired-queue' && !this.expiredLoaded) {
+      if (item?.id === 'app.navbar.expiredQueue' && !this.expiredLoaded) {
         this.loadExpiredDocuments();
       }
-      if (item?.path === '/personal-space' && !this.personalSpaceLoaded) {
+      if (item?.id === 'app.navbar.personalSpace' && !this.personalSpaceLoaded) {
         this.loadPersonalSpaceTree();
       }
     });
@@ -291,6 +317,7 @@ export class NavDrawerComponent {
     this.destroyRef.onDestroy(() => {
       window.removeEventListener('clipboard-changed', onClipboardChanged);
       window.removeEventListener('favorites-changed', onFavoritesChanged);
+      this.revokeThumbnails();
     });
   }
 
@@ -374,52 +401,44 @@ export class NavDrawerComponent {
     });
   }
 
-  private loadDrawerComponents(): void {
-    Promise.all([
-      import('@agentic-ui/feature-assets/assets-drawer').then((m) => m.AssetsDrawerComponent),
-      import('@agentic-ui/feature-search').then((m) => m.SearchFiltersDrawerComponent),
-      import('@agentic-ui/feature-trash').then((m) => m.TrashFiltersDrawerComponent),
-    ])
-      .then(([assetsComp, searchComp, trashComp]) => {
-        this.assetsDrawerComponent.set(assetsComp);
-        this.searchFiltersDrawerComponent.set(searchComp);
-        this.trashDrawerComponent.set(trashComp);
-      })
-      .catch(() => {
-        // Silently fail if components don't load
-      });
+  get isBrowse(): boolean {
+    return this.activeItem()?.id === 'app.navbar.browse';
   }
 
-  get isBrowse(): boolean {
-    return this.activeItem()?.path === '/browse';
+  get isBrowseAdfHx(): boolean {
+    return this.activeItem()?.id === 'app.navbar.browseAdfHx';
+  }
+
+  onAdfHxBrowseNavigate(nuxeoPath: string): void {
+    this.navigateKeepDrawer.emit(toAdfHxBrowseRouterUrl(nuxeoPath));
   }
 
   get isPersonalSpace(): boolean {
-    return this.activeItem()?.path === '/personal-space';
+    return this.activeItem()?.id === 'app.navbar.personalSpace';
   }
 
   get isCollections(): boolean {
-    return this.activeItem()?.path === '/collections';
+    return this.activeItem()?.id === 'app.navbar.collections';
   }
 
   get isAssets(): boolean {
-    return this.activeItem()?.path === '/documents';
+    return this.activeItem()?.id === 'app.navbar.assets';
   }
 
   get isSearchFilters(): boolean {
-    return this.activeItem()?.path === '/search';
+    return this.activeItem()?.id === 'app.navbar.search';
   }
 
   get isClipboard(): boolean {
-    return this.activeItem()?.path === '/clipboard';
+    return this.activeItem()?.id === 'app.navbar.clipboard';
   }
 
   get isSettings(): boolean {
-    return this.activeItem()?.path === '/settings';
+    return this.activeItem()?.id === 'app.navbar.settings';
   }
 
   get isAdministration(): boolean {
-    return this.activeItem()?.path === '/administration';
+    return this.activeItem()?.id === 'app.navbar.administration';
   }
 
   isAdminDrawerPathActive(path: string): boolean {
@@ -435,15 +454,15 @@ export class NavDrawerComponent {
   }
 
   get isFavorites(): boolean {
-    return this.activeItem()?.path === '/favorites';
+    return this.activeItem()?.id === 'app.navbar.favorites';
   }
 
   get isRecentlyViewed(): boolean {
-    return this.activeItem()?.path === '/recently-viewed';
+    return this.activeItem()?.id === 'app.navbar.recentlyViewed';
   }
 
   get isExpiredQueue(): boolean {
-    return this.activeItem()?.path === '/expired-queue';
+    return this.activeItem()?.id === 'app.navbar.expiredQueue';
   }
 
   onSettingsSignOut(): void {
@@ -451,7 +470,7 @@ export class NavDrawerComponent {
   }
 
   get isTrash(): boolean {
-    return this.activeItem()?.path === '/trash';
+    return this.activeItem()?.id === 'app.navbar.trash';
   }
 
   // ── Expired Queue ──
@@ -593,6 +612,12 @@ export class NavDrawerComponent {
   // ── Browse tree ──
 
   private loadRootTree(): void {
+    // The effect that calls this can fire again before the request settles, and a second
+    // load would race the first for `rootNodes`.
+    if (this.rootLoading()) {
+      return;
+    }
+
     const loadGen = ++this.browseTreeLoadGen;
     const username = this.authService.username();
     this.rootLoading.set(true);
@@ -627,7 +652,11 @@ export class NavDrawerComponent {
           this.pendingBrowseSyncPath = null;
           this.syncBrowseTreeToPath(syncPath);
         },
-        error: () => {
+        error: (error) => {
+          // The only signal this failed: the handler clears the spinner and leaves an empty
+          // tree, which is indistinguishable from a user with no accessible folders.
+          console.error('Failed to load the browse navigation tree', error);
+
           if (loadGen !== this.browseTreeLoadGen || username !== this.authService.username()) {
             return;
           }
@@ -1050,7 +1079,7 @@ export class NavDrawerComponent {
   // ── Tasks panel ──
 
   get isTasksPanel(): boolean {
-    return this.activeItem()?.path === '/tasks';
+    return this.activeItem()?.id === 'app.navbar.tasks';
   }
 
   loadTasks(): void {
@@ -1142,10 +1171,14 @@ export class NavDrawerComponent {
       if (this.thumbnailMap()[uid]) continue;
       this.detailService
         .fetchThumbnail(uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
@@ -1260,15 +1293,35 @@ export class NavDrawerComponent {
     });
   }
 
+  /**
+   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
+   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out.
+   *
+   * One array for both loaders — `loadThumbnailsForIds` (clipboard) and
+   * `loadThumbnails` (favourites) — because they share `thumbnailMap` and so share its
+   * lifetime. The drawer is long-lived, and neither loader revoked anything, so a
+   * session accumulated one un-revoked blob per document ever shown in it.
+   */
+  private readonly thumbnailBlobUrls: string[] = [];
+
+  private revokeThumbnails(): void {
+    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
+    this.thumbnailBlobUrls.length = 0;
+  }
+
   private loadThumbnails(docs: NuxeoDocument[]): void {
     for (const doc of docs) {
       if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),

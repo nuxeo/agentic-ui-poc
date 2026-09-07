@@ -18,7 +18,7 @@ import {
   DocumentDetailService,
   SearchAggregationService,
   type SearchResultItem,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { catchError, of } from 'rxjs';
 
 interface ActiveFilter {

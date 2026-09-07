@@ -3,7 +3,7 @@
   <div class="viewer-content" [class.fit-real]="fitMode() === 'real' && contentType() === 'image'">
     @if (loading()) {
       <div class="viewer-loading">
-        <mat-spinner diameter="36" />
+        <mat-spinner diameter="36" aria-label="Loading" />
       </div>
     } @else if (annotationsTab() && !arenderAvailable()) {
       <div class="viewer-placeholder">
@@ -300,6 +300,7 @@
                   mat-icon-button
                   class="format-download-btn"
                   matTooltip="Download {{ view.title }}"
+                  attr.aria-label="Download {{ view.title }}"
                   (click)="formatDownload.emit(view.downloadUrl)"
                 >
                   <mat-icon>download</mat-icon>

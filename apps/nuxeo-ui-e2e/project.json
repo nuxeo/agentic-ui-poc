@@ -1,0 +1,28 @@
+{
+  "name": "nuxeo-ui-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/nuxeo-ui-e2e/src",
+  "implicitDependencies": ["nuxeo-ui"],
+  "tags": ["scope:e2e", "type:e2e"],
+  "targets": {
+    "e2e": {
+      "executor": "nx:run-commands",
+      "$comment": "Preflight first, so a missing dev server or an empty Nuxeo reports as a precondition rather than as thirteen product failures. Deliberately NOT cached: the result depends on a live Nuxeo, and a cached green would assert something about a repository state that has since changed.",
+      "cache": false,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "commands": [
+          "node scripts/beta-harness/e2e-preflight.mjs",
+          "npx playwright test -c apps/nuxeo-ui-e2e/playwright.config.ts"
+        ],
+        "parallel": false
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "$comment": "Declared explicitly because @nx/eslint/plugin infers `eslint:lint`, which `nx affected -t lint` does not match — the same trap that left six projects unlinted."
+    }
+  },
+  "$noTestTarget": "There is deliberately no `test` target. These are end-to-end specs, not unit tests, and a `test` target would put them in the coverage ratchet's population — where they would be measured at 0% and drag the whole gate, or be excluded and make its project count a lie."
+}

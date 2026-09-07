@@ -21,7 +21,7 @@ import {
   resolveParentSourceName,
   vocabularyParentRequired,
   vocabularySupportsParent,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface VocabularyEntryFormDialogData {
   mode: 'create' | 'edit';

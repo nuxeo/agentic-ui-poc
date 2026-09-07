@@ -1,0 +1,36 @@
+{
+  "$comment": [
+    "Read by `npm run beta:supply-chain`. Two kinds of exception, both deliberately awkward to add.",
+    "",
+    "`advisories` accepts a NON-blocking production advisory. `high` and `critical` cannot be",
+    "accepted here at all — the gate fails on them regardless of what this file says. Every entry",
+    "needs a `reason` and an `expires`; an expired entry FAILS, so an acceptance is a decision with",
+    "a review date rather than a permanent one. An entry for an advisory the audit no longer",
+    "reports also fails, because a standing acceptance of a fixed problem reads as coverage.",
+    "",
+    "`unreferencedDependencies` excuses a production dependency that no source file imports. Four",
+    "of these turned out to be genuinely unused — `openai`, `express`, `cors`, `dotenv` — and were",
+    "removed rather than listed. An entry here means the package is required by something other",
+    "than an import: the Angular runtime, or a version pin that satisfies an adf-core peer. If the",
+    "package becomes referenced, or stops being a dependency, its entry fails as unnecessary."
+  ],
+  "advisories": {
+    "quill": {
+      "severity": "low",
+      "reason": "GHSA-4943-9vgg-gr5r — XSS via Quill's HTML export. Not reachable as configured: every path that renders note HTML passes it through DOMPurify.sanitize() before DomSanitizer.bypassSecurityTrustHtml (document-detail.ts:1694 and :3133, note-editor.ts:89 and :95), and the guardrail `checkSanitizerPairing` fails the build if that pairing is ever broken. No fixed Quill release is available for 2.x at time of review. Revisit on the next Quill release or when the editor is replaced.",
+      "reviewed": "2026-08-24",
+      "expires": "2026-11-30"
+    }
+  },
+  "unreferencedDependencies": {
+    "tslib": "Emitted helper library. The TypeScript compiler generates imports of it into the build output; no source file names it.",
+    "@angular/animations": "Required by @angular/material at runtime for its transitions. Never imported by our source.",
+    "@angular/material-date-fns-adapter": "Version pin only. @alfresco/adf-core declares it as an unbounded `>=` peer, so without an exact pin a clean install floats it to the Angular 22 line and the build dies with `Unsupported enum value`. See docs/adf-hx-upstream-findings.md 2.1.",
+    "@mat-datetimepicker/core": "Version pin only, and one of the two that deliberately differ from adf-core's suggestion: its major track is offset from Angular's, so 16.0.1 is correct for Angular 20.",
+    "date-fns": "Version pin only, to keep @angular/material-date-fns-adapter and adf-core agreeing on one copy.",
+    "pdfjs-dist": "Version pin only, and the second deliberate deviation: 4.x downgrades a shared native package, so 6.2.108 is pinned.",
+    "minimatch": "Version pin only. Declared as a `>=10.0.0` peer by @alfresco/adf-core.",
+    "angular-oauth2-oidc": "Version pin only. A direct dependency of @alfresco/adf-core; pinned here so a clean install cannot float it.",
+    "cropperjs": "Version pin only. A direct dependency of @alfresco/adf-core; pinned here so a clean install cannot float it."
+  }
+}

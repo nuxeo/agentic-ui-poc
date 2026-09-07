@@ -9,7 +9,9 @@ describe('App', () => {
     isAuthenticated: signal(true),
     username: signal('test.user'),
     basicCredentials: () => 'dGVzdA==',
-    logout: () => {},
+    // `undefined` rather than an empty body: `no-empty-function` is right to flag a
+    // silent no-op, and this stub genuinely returns nothing.
+    logout: () => undefined,
   } as unknown as AuthService;
 
   beforeEach(async () => {

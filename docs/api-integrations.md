@@ -1150,9 +1150,7 @@ that takes `httpMethod`, `endpoint`, `jsonPayloadStr`).
 
 ```json
 {
-  "response": {
-    /* upstream JSON */
-  },
+  "response": {/* upstream JSON */},
   "responseCode": 200,
   "responseMessage": "OK"
 }
@@ -1511,3 +1509,15 @@ Returns users and groups sorted by creation date descending (newest first), usin
 | ------ | -------- |
 | ... | ... |
 -->
+
+---
+
+## Adf-hx Nuxeo bridge (NXENG-619 Scope A)
+
+| Field                      | Value                                                                    |
+| -------------------------- | ------------------------------------------------------------------------ |
+| **Library**                | `@agentic-ui/shared/adf-hx-bridge`                                       |
+| **Purpose**                | Map Nuxeo REST responses to HxPR `Document` shapes for adf-hx browse POC |
+| **POC route**              | `/#/browse-adf-hx?path=<nuxeo-path>`                                     |
+| **HxPR APIs implemented**  | `DocumentApi`, `QueryApi` (`tree_children`, `advanced_document_content`) |
+| **Nuxeo backing services** | `BrowseService`, `DocumentDetailService`                                 |

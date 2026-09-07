@@ -1,0 +1,42 @@
+# CodeQL Configuration for Nuxeo Agentic UI
+# See: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning
+
+name: "CodeQL Config for Nuxeo Satori"
+
+# Paths to include in analysis
+paths:
+  - apps
+  - libs
+
+# Paths to exclude from analysis
+paths-ignore:
+  - '**/node_modules'
+  - '**/dist'
+  - '**/out-tsc'
+  - '**/coverage'
+  - '**/*.spec.ts'
+  - '**/*.spec.js'
+  - '**/*.test.ts'
+  - '**/*.test.js'
+  - '**/test/**'
+  - '**/tests/**'
+  - '**/__mocks__/**'
+  - '**/*.d.ts'
+  - 'scripts/**'  # Build/beta scripts not shipped to customers
+  - 'tools/**'    # Development tools not shipped to customers
+
+# Query filters and customization
+queries:
+  # Use security-extended suite for comprehensive security analysis
+  # Includes: security-and-quality (default + quality checks) + security-extended (advanced security patterns)
+  - uses: security-extended
+
+# Query filters to reduce noise (uncomment after reviewing initial results)
+# query-filters:
+#   - exclude:
+#       id: js/unused-local-variable
+#   - exclude:
+#       id: js/angular/missing-explicit-injection-token
+
+# Compilation database (not needed for TypeScript, but documented for reference)
+# For TypeScript/JavaScript, CodeQL analyzes source directly without compilation

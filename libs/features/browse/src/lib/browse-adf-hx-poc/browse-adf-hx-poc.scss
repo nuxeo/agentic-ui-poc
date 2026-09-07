@@ -1,0 +1,175 @@
+:host {
+  display: block;
+  height: 100%;
+  background: var(--hxp-surface-container-lowest);
+}
+
+.hxp-browse-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px 24px;
+  min-height: 0;
+  color: var(--hxp-on-surface);
+}
+
+.hxp-browse-page__body {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
+}
+
+.hxp-browse-page__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hxp-browse-page__tabs-row {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.hxp-browse-page__panel-toggle {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--hxp-on-surface-variant);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--hxp-surface-container-low);
+    color: var(--hxp-primary);
+  }
+}
+
+.hxp-browse-page__tab-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hxp-browse-scope-notice {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--hxp-primary-container);
+  color: var(--hxp-on-primary-container);
+  font-size: 13px;
+}
+
+hxp-breadcrumb,
+hxp-domain-hint {
+  flex-shrink: 0;
+}
+
+// WORKAROUND(adf-hx): W9 — ::ng-deep overrides, because the panels ship drawer-sized
+// ViewEncapsulation.None styles.
+//
+// Upstream's versions panel is built to be a drawer, not a tab body: it ships
+// `ViewEncapsulation.None` styles that give its list `height: 100vh` and its skeleton loader a
+// fixed 370px width. Inside a tab that pushes the page taller than the viewport.
+//
+// `::ng-deep` rather than a scroll container, because a scroll container would leave a
+// viewport-tall empty area below three versions. The selectors are upstream's own class names
+// and would stop matching if it were restyled — that shows up as a layout regression in the
+// evidence screenshot, not as silently broken data.
+.hxp-poc-versions {
+  flex: 1;
+  min-height: 0;
+  max-width: 420px;
+  overflow: auto;
+
+  ::ng-deep .hxp-version-list {
+    height: auto;
+    padding: 12px 0;
+  }
+
+  ::ng-deep .hxp-version-panel-skeleton-loader {
+    width: 100%;
+  }
+}
+
+// Same containment problem as the versions panel: upstream's properties sidebar is built to be
+// a drawer and ships `ViewEncapsulation.None` styles sized for one. Wider than Versions because
+// it renders two-column property cards rather than a list.
+.hxp-poc-properties {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+
+  ::ng-deep .adf-info-drawer-layout-content {
+    height: auto;
+  }
+}
+
+// Third instance of the same containment problem, and the reason it is worth stating as a pattern:
+// every adf-hx panel adopted so far is built to be a drawer and ships `ViewEncapsulation.None`
+// styles that size itself against the viewport rather than its container. Upstream's permissions
+// panel sets `height: calc(100% - 32px)` on its own container, which collapses to nothing unless
+// the host gives it a height to be a percentage of.
+.hxp-poc-permissions {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+// Preview button - sits next to the panel toggle
+.hxp-browse-page__preview-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid var(--hxp-border);
+  border-radius: 4px;
+  background: var(--hxp-surface);
+  color: var(--hxp-primary);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: var(--hxp-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--hxp-primary);
+    outline-offset: 2px;
+  }
+}
+
+// Document viewer overlay - full-screen over everything
+.hxp-viewer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: var(--hxp-surface, var(--mat-sys-surface, #fff));
+
+  // Upstream's viewer is a standalone component that manages its own layout
+  hxp-ui-document-viewer {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}

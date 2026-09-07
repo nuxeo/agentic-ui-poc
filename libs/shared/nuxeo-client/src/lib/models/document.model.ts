@@ -14,6 +14,18 @@ export interface NuxeoDocument {
   state?: string;
   isTrashed?: boolean;
   isCheckedOut?: boolean;
+  /** True on a version snapshot, false on the live document. */
+  isVersion?: boolean;
+  /**
+   * The **live** document this version was cut from.
+   *
+   * Not the same as `parentRef`: Nuxeo reports a version's `parentRef` as the live
+   * document's *folder*, so `parentRef` alone cannot get you back to the document a
+   * version belongs to.
+   */
+  versionableId?: string;
+  isLatestVersion?: boolean;
+  isLatestMajorVersion?: boolean;
   facets?: string[];
   contextParameters?: {
     acls?: NuxeoAcl[];

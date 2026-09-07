@@ -26,7 +26,7 @@ import {
   NuxeoDocument,
   SearchService,
   SelectionService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { extractMainBlobFileName } from './note-image-url';
 
 @Component({

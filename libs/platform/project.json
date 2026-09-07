@@ -1,0 +1,52 @@
+{
+  "name": "platform",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/platform/src",
+  "projectType": "library",
+  "tags": ["scope:shared", "type:publishable"],
+  "implicitDependencies": ["shared-extensions", "shared-app-config", "nuxeo-client", "ui"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "$comment": "@nx/eslint/plugin infers this as `eslint:lint`, which `nx affected -t lint` does NOT match — so the gate and CI never linted this project. Declaring it explicitly is what puts it under the gate."
+    },
+    "build": {
+      "executor": "@nx/angular:package",
+      "outputs": ["{workspaceRoot}/dist/libs/platform"],
+      "cache": true,
+      "options": {
+        "project": "libs/platform/ng-package.json",
+        "tsConfig": "libs/platform/tsconfig.lib.json"
+      },
+      "dependsOn": ["sync-docs", "sync-generators"]
+    },
+    "sync-docs": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/docs/extension-reference.md",
+        "{workspaceRoot}/scripts/sync-platform-docs.mjs"
+      ],
+      "outputs": ["{projectRoot}/extension-reference.md"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "node scripts/sync-platform-docs.mjs"
+      },
+      "$comment": "ng-packagr refuses assets from outside the package root, so the customer-facing docs are copied in before the build. The copies are gitignored — docs/ is the single source."
+    },
+    "sync-generators": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "{workspaceRoot}/tools/satori-generators/**/*",
+        "{workspaceRoot}/scripts/build-platform-generators.mjs"
+      ],
+      "outputs": ["{projectRoot}/generators", "{projectRoot}/generators.json"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "node scripts/build-platform-generators.mjs"
+      },
+      "$comment": "Compiles tools/satori-generators into the package so a CUSTOMER can run them: libs/platform/AGENTS.md told them to run `nx g ./tools/satori-generators:…`, a path only this repository has. Must precede the ng-packagr build, which clears its destination — writing into dist/ afterwards survives until the first cache hit. Also the only thing that typechecks the generators: the project has lint and no typecheck, and two real type errors were sitting in it."
+    }
+  }
+}

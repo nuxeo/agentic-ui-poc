@@ -23,38 +23,55 @@
           Create / Import
         </button>
       }
-      <button mat-icon-button matTooltip="Upload with Nuxeo Drive" (click)="openDriveDialog()">
+      <button
+        mat-icon-button
+        matTooltip="Upload with Nuxeo Drive"
+        aria-label="Upload with Nuxeo Drive"
+        (click)="openDriveDialog()"
+      >
         <mat-icon>cloud_upload</mat-icon>
       </button>
       @if (showHeaderEdit()) {
-        <button mat-icon-button matTooltip="Edit" (click)="openEditDialog()">
+        <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="openEditDialog()">
           <mat-icon>edit</mat-icon>
         </button>
       }
       @if (showHeaderDelete()) {
-        <button mat-icon-button matTooltip="Delete" (click)="deleteDocument()">
+        <button mat-icon-button matTooltip="Delete" aria-label="Delete" (click)="deleteDocument()">
           <mat-icon>delete</mat-icon>
         </button>
       }
-      <button mat-icon-button matTooltip="Download All" (click)="downloadAll()">
+      <button
+        mat-icon-button
+        matTooltip="Download All"
+        aria-label="Download All"
+        (click)="downloadAll()"
+      >
         <mat-icon>download</mat-icon>
       </button>
-      <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More actions">
+      <button
+        mat-icon-button
+        [matMenuTriggerFor]="moreMenu"
+        matTooltip="More actions"
+        aria-label="More actions"
+      >
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #moreMenu="matMenu">
-        <button mat-menu-item (click)="openShareDialog()">
-          <mat-icon>share</mat-icon>
-          <span>Share</span>
-        </button>
-        <button mat-menu-item (click)="toggleNotify()">
-          <mat-icon>{{ isSubscribed() ? 'notifications_off' : 'notifications' }}</mat-icon>
-          <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
-        </button>
-        <button mat-menu-item (click)="openExportDialog()">
-          <mat-icon>ios_share</mat-icon>
-          <span>Export</span>
-        </button>
+        @for (action of contextMenuActions(); track action.id) {
+          <button
+            mat-menu-item
+            type="button"
+            [attr.data-action-id]="action.id"
+            [disabled]="!isContextMenuActionEnabled(action)"
+            (click)="runContextMenuAction(action)"
+          >
+            @if (action.icon) {
+              <mat-icon>{{ action.icon }}</mat-icon>
+            }
+            <span>{{ action.label }}</span>
+          </button>
+        }
       </mat-menu>
     </div>
   </div>
@@ -170,11 +187,12 @@
                 <button
                   mat-icon-button
                   matTooltip="Export CSV"
+                  aria-label="Export CSV"
                   (click)="exportCsv()"
                   [disabled]="csvExporting()"
                 >
                   @if (csvExporting()) {
-                    <mat-spinner diameter="18" />
+                    <mat-spinner diameter="18" aria-label="Loading" />
                   } @else {
                     <mat-icon>download</mat-icon>
                   }
@@ -182,6 +200,7 @@
                 <button
                   mat-icon-button
                   matTooltip="List view"
+                  aria-label="List view"
                   [class.active-view]="viewMode() === 'list'"
                   (click)="setViewMode('list')"
                 >
@@ -190,6 +209,7 @@
                 <button
                   mat-icon-button
                   matTooltip="Card view"
+                  aria-label="Card view"
                   [class.active-view]="viewMode() === 'card'"
                   (click)="setViewMode('card')"
                 >
@@ -200,7 +220,7 @@
 
             @if (loading()) {
               <div class="browse-loading">
-                <mat-spinner diameter="36" />
+                <mat-spinner diameter="36" aria-label="Loading" />
               </div>
             } @else if (error()) {
               <div class="browse-error">
@@ -275,6 +295,7 @@
                             mat-icon-button
                             class="gear-btn"
                             matTooltip="Manage columns"
+                            aria-label="Manage columns"
                             (click)="openColumnPanel()"
                           >
                             <mat-icon>tune</mat-icon>
@@ -293,7 +314,7 @@
                           <td class="cell-checkbox">
                             <mat-checkbox
                               [checked]="isSelected(doc.uid)"
-                              [attr.aria-label]="selectionAriaLabel(doc)"
+                              [aria-label]="selectionAriaLabel(doc)"
                               (change)="toggleSelection(doc.uid)"
                               (click)="$event.stopPropagation()"
                             ></mat-checkbox>
@@ -321,10 +342,11 @@
                               } @else if (col.key === 'lastContributor') {
                                 <span class="contributor-cell">
                                   <sat-avatar
-                                    [initials]="lastContributor(doc)"
+                                    [initials]="avatarInitials(lastContributor(doc))"
                                     [category]="avatarColor(lastContributor(doc))"
                                     size="24"
                                     [borderless]="true"
+                                    aria-hidden="true"
                                   />
                                   {{ lastContributor(doc) }}
                                 </span>
@@ -379,7 +401,7 @@
                     <div class="grid-card-checkbox">
                       <mat-checkbox
                         [checked]="isSelected(doc.uid)"
-                        [attr.aria-label]="selectionAriaLabel(doc)"
+                        [aria-label]="selectionAriaLabel(doc)"
                         (change)="toggleSelection(doc.uid)"
                         (click)="$event.stopPropagation()"
                       ></mat-checkbox>
@@ -433,7 +455,7 @@
           <mat-tab label="Permissions">
             <div class="permissions-container">
               @if (permissionsLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" /></div>
+                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
               } @else {
                 <!-- Permissions defined locally -->
                 <section class="perm-section">
@@ -473,10 +495,11 @@
                             <td>
                               <span class="perm-user">
                                 <sat-avatar
-                                  [initials]="displayUsername(ace)"
+                                  [initials]="avatarInitials(displayUsername(ace))"
                                   [category]="avatarColor(displayUsername(ace))"
                                   size="24"
                                   [borderless]="true"
+                                  aria-hidden="true"
                                 />
                                 {{ displayUsername(ace) }}
                               </span>
@@ -489,6 +512,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Edit"
+                                  aria-label="Edit"
                                   type="button"
                                   (click)="editPermission(ace)"
                                 >
@@ -497,6 +521,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Delete"
+                                  aria-label="Delete"
                                   type="button"
                                   (click)="deletePermission(ace)"
                                 >
@@ -560,10 +585,11 @@
                             <td>
                               <span class="perm-user">
                                 <sat-avatar
-                                  [initials]="displayUsername(ace)"
+                                  [initials]="avatarInitials(displayUsername(ace))"
                                   [category]="avatarColor(displayUsername(ace))"
                                   size="24"
                                   [borderless]="true"
+                                  aria-hidden="true"
                                 />
                                 {{ displayUsername(ace) }}
                               </span>
@@ -629,6 +655,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Edit"
+                                  aria-label="Edit"
                                   type="button"
                                   (click)="editExternalPermission(ace)"
                                 >
@@ -637,6 +664,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Send notification email"
+                                  aria-label="Send notification email"
                                   type="button"
                                   [disabled]="actionInProgress() === 'notify-' + ace.id"
                                   (click)="sendNotificationEmail(ace)"
@@ -646,6 +674,7 @@
                                 <button
                                   mat-icon-button
                                   matTooltip="Delete"
+                                  aria-label="Delete"
                                   type="button"
                                   (click)="deletePermission(ace)"
                                 >
@@ -669,24 +698,38 @@
               <div class="history-filters">
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
                   <mat-label>Username</mat-label>
-                  <input matInput [(ngModel)]="filterUsername" />
+                  <input
+                    matInput
+                    [ngModel]="filterUsername()"
+                    (ngModelChange)="filterUsername.set($event)"
+                  />
                   <mat-icon matPrefix>person_search</mat-icon>
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
                   <mat-label>From</mat-label>
-                  <input matInput [matDatepicker]="histFrom" [(ngModel)]="filterDateFrom" />
+                  <input
+                    matInput
+                    [matDatepicker]="histFrom"
+                    [ngModel]="filterDateFrom()"
+                    (ngModelChange)="filterDateFrom.set($event)"
+                  />
                   <mat-datepicker-toggle matIconSuffix [for]="histFrom" />
                   <mat-datepicker #histFrom />
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
                   <mat-label>To</mat-label>
-                  <input matInput [matDatepicker]="histTo" [(ngModel)]="filterDateTo" />
+                  <input
+                    matInput
+                    [matDatepicker]="histTo"
+                    [ngModel]="filterDateTo()"
+                    (ngModelChange)="filterDateTo.set($event)"
+                  />
                   <mat-datepicker-toggle matIconSuffix [for]="histTo" />
                   <mat-datepicker #histTo />
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
                   <mat-label>Action</mat-label>
-                  <mat-select [(ngModel)]="filterAction">
+                  <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
                     <mat-option value="">All</mat-option>
                     @for (a of availableActions(); track a.id) {
                       <mat-option [value]="a.id">{{ a.label }}</mat-option>
@@ -695,7 +738,10 @@
                 </mat-form-field>
                 <mat-form-field appearance="outline" class="filter-field" subscriptSizing="dynamic">
                   <mat-label>Category</mat-label>
-                  <mat-select [(ngModel)]="filterCategory">
+                  <mat-select
+                    [ngModel]="filterCategory()"
+                    (ngModelChange)="filterCategory.set($event)"
+                  >
                     <mat-option value="">All</mat-option>
                     @for (c of availableCategories(); track c.id) {
                       <mat-option [value]="c.id">{{ c.label }}</mat-option>
@@ -705,7 +751,7 @@
               </div>
 
               @if (auditLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" /></div>
+                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
               } @else if (filteredAuditEntries().length === 0) {
                 <div class="history-empty">No audit entries found.</div>
               } @else {
@@ -714,8 +760,8 @@
                     mat-table
                     [dataSource]="filteredAuditEntries()"
                     matSort
-                    [matSortActive]="sortActive"
-                    [matSortDirection]="sortDirection"
+                    [matSortActive]="sortActive()"
+                    [matSortDirection]="sortDirection()"
                     (matSortChange)="onAuditSort($event)"
                     class="history-table"
                   >
@@ -732,10 +778,11 @@
                       <td mat-cell *matCellDef="let row">
                         <span class="user-cell">
                           <sat-avatar
-                            [initials]="row.principalName"
+                            [initials]="avatarInitials(row.principalName)"
                             [category]="avatarColor(row.principalName)"
                             size="24"
                             [borderless]="true"
+                            aria-hidden="true"
                           />
                           {{ row.principalName }}
                         </span>
@@ -804,7 +851,7 @@
           <mat-tab label="Trash">
             <div class="trash-container">
               @if (trashLoading()) {
-                <div class="browse-loading"><mat-spinner diameter="24" /></div>
+                <div class="browse-loading"><mat-spinner diameter="24" aria-label="Loading" /></div>
               } @else if (trashedDocs().length === 0) {
                 <div class="browse-empty">
                   <mat-icon class="empty-icon">delete_outline</mat-icon>
@@ -927,10 +974,11 @@
                 <span class="info-label">By</span>
                 <span class="info-value avatar-value">
                   <sat-avatar
-                    [initials]="docCreator(doc)"
+                    [initials]="avatarInitials(docCreator(doc))"
                     [category]="avatarColor(docCreator(doc))"
                     size="24"
                     [borderless]="true"
+                    aria-hidden="true"
                   />
                   {{ docCreator(doc) }}
                 </span>
@@ -939,10 +987,11 @@
                 <span class="info-label">Contributors</span>
                 <span class="info-value avatar-value">
                   <sat-avatar
-                    [initials]="lastContributor(doc)"
+                    [initials]="avatarInitials(lastContributor(doc))"
                     [category]="avatarColor(lastContributor(doc))"
                     size="24"
                     [borderless]="true"
+                    aria-hidden="true"
                   />
                   {{ lastContributor(doc) }}
                 </span>
@@ -1017,15 +1066,16 @@
         @if (panelSubTab() === 'activity') {
           <div class="panel-body">
             @if (activityLoading()) {
-              <div class="panel-loading"><mat-spinner diameter="20" /></div>
+              <div class="panel-loading"><mat-spinner diameter="20" aria-label="Loading" /></div>
             } @else {
               @for (entry of activityEntries(); track entry.id) {
                 <div class="activity-item">
                   <sat-avatar
-                    [initials]="entry.principalName"
+                    [initials]="avatarInitials(entry.principalName)"
                     [category]="avatarColor(entry.principalName)"
                     size="28"
                     [borderless]="true"
+                    aria-hidden="true"
                   />
                   <div class="activity-text">
                     <span class="activity-user">{{ entry.principalName }}</span>

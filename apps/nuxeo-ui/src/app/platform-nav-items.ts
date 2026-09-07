@@ -1,8 +1,17 @@
+import type { NavItemDescriptor } from '@nuxeo-satori/platform/extensions';
 import type { SatNavigationItemWithIcon } from '@hylandsoftware/satori-ui/platform-nav';
 
+/**
+ * A nav entry in the shape Satori's platform nav renders.
+ *
+ * `id` is the registered extension ID and is the thing the drawer and the shell
+ * key on. Before Phase 2 they keyed on `path`, which meant a manifest that
+ * changed a route silently detached the entry from its drawer content.
+ */
 export interface AppNavItem extends SatNavigationItemWithIcon {
+  readonly id: string;
   /** When true, clicking opens the side drawer instead of navigating directly. */
-  hasDrawer?: boolean;
+  readonly hasDrawer?: boolean;
 }
 
 export interface DrawerLinkItem {
@@ -11,25 +20,21 @@ export interface DrawerLinkItem {
 }
 
 /**
- * Platform nav entries aligned to Figma order.
- * Items with `hasDrawer: true` open a secondary panel showing contextual content.
+ * Adapt an extension descriptor to the shell's nav component.
+ *
+ * The descriptor type deliberately knows nothing about Satori — see
+ * `NavItemDescriptor`. This function is the one place the two meet, so replacing
+ * the nav component does not invalidate any customer's manifest.
  */
-export const PLATFORM_NAV_ITEMS: AppNavItem[] = [
-  { label: 'Knowledge Discovery', path: '/knowledge-discovery', icon: 'star' },
-  { label: 'Dashboard', path: '/dashboard', icon: 'dashboard' },
-  { label: 'Browse', path: '/browse', icon: 'folder', hasDrawer: true },
-  { label: 'Recently viewed', path: '/recently-viewed', icon: 'clock', hasDrawer: true },
-  { label: 'Search filters', path: '/search', icon: 'search', hasDrawer: true },
-  { label: 'Expired Queue', path: '/expired-queue', icon: 'timer', hasDrawer: true },
-  { label: 'Assets', path: '/documents', icon: 'document', hasDrawer: true },
-  { label: 'Tasks', path: '/tasks', icon: 'tasks', hasDrawer: true },
-  { label: 'Favorites', path: '/favorites', icon: 'star', hasDrawer: true },
-  { label: 'Collections', path: '/collections', icon: 'bookmark', hasDrawer: true },
-  { label: 'Personal Space', path: '/personal-space', icon: 'grid_view', hasDrawer: true },
-  { label: 'Clipboard', path: '/clipboard', icon: 'notepad', hasDrawer: true },
-  { label: 'Trash', path: '/trash', icon: 'trash', hasDrawer: true },
-  { label: 'Administration', path: '/administration', icon: 'settings', hasDrawer: true },
-];
+export function toAppNavItem(descriptor: NavItemDescriptor): AppNavItem {
+  return {
+    id: descriptor.id,
+    label: descriptor.label,
+    path: descriptor.path,
+    icon: descriptor.icon,
+    hasDrawer: descriptor.hasDrawer,
+  };
+}
 
 export const THEMES_SETTINGS_PATH = '/settings/themes';
 

@@ -9,7 +9,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTableModule } from '@angular/material/table';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { forkJoin } from 'rxjs';
-import { AdministrationService, type NuxeoDocument } from '@agentic-ui/shared/nuxeo-client';
+import { AdministrationService, type NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AiGatewayService,
   AiFeatureFlagService,

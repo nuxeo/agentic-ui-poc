@@ -5,19 +5,14 @@
     [selectedItems]="selectionService.selectedItems()"
     [clearOnly]="selectionService.clearOnlyMode()"
     (cleared)="selectionService.clear()"
-    (publishRequested)="onPublishSelected()"
-    (addToClipboardRequested)="onAddSelectedToClipboard()"
-    (addToCollectionRequested)="onAddSelectedToCollection()"
-    (downloadZipRequested)="onDownloadSelectedAsZip()"
-    (compareRequested)="onCompareSelected()"
-    (deleted)="onDeleteSelected()"
   />
 }
 
 <sat-platform-nav-container [class.has-selection-topbar]="selectionService.selectedCount() > 0">
   <sat-platform-nav>
-    @for (item of navItems(); track item.path) {
+    @for (item of navItems(); track item.id) {
       <sat-platform-nav-list-item
+        [attr.data-nav-id]="item.id"
         [active]="isActive(item.path)"
         (click)="onNavClick(item, $event)"
         [class.nav-item--clipboard-badge]="item.path === '/clipboard' && clipboardCount() > 0"
@@ -45,7 +40,7 @@
         mat-icon-button
         satAppHeaderPlatformNavMobileTrigger
         (click)="togglePlatformNav()"
-        aria-label="Toggle navigation menu"
+        [attr.aria-label]="'app.nav.toggle' | translate"
       >
         <mat-icon>menu</mat-icon>
       </button>
@@ -328,6 +323,7 @@
             <button
               mat-icon-button
               class="ai-chat-send"
+              aria-label="Send message"
               (click)="sendAiMessage()"
               [disabled]="!aiChatInput().trim() || aiChat.loading()"
             >

@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { MatDialog } from '@angular/material/dialog';
@@ -77,7 +77,7 @@ describe('NoteEditorComponent toolbar actions (NXSAT-193)', () => {
 
     await TestBed.configureTestingModule({
       imports: [NoteEditorComponent, NoopAnimationsModule, HttpClientTestingModule],
-      providers: [provideExperimentalZonelessChangeDetection()],
+      providers: [provideZonelessChangeDetection()],
     })
       .overrideProvider(MatDialog, {
         useValue: {

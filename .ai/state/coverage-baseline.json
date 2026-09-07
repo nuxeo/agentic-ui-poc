@@ -1,0 +1,140 @@
+{
+  "$comment": [
+    "Coverage ratchet baseline. `npm run beta:coverage` fails if a project drops below",
+    "its entry here by more than 0.5pp. Raise these by writing tests, never by editing",
+    "the file to match a regression.",
+    "Beta target is 90% (docs/adf-hx-beta-plan.md, Phase 6)."
+  ],
+  "target": 90,
+  "tolerance": 0.5,
+  "projects": {
+    "adf-hx-bridge": {
+      "lines": 91.62,
+      "statements": 91.62,
+      "branches": 93.45,
+      "functions": 83.41,
+      "sTotal": 2100,
+      "sCovered": 1924
+    },
+    "administration": {
+      "lines": 62.08,
+      "statements": 62.08,
+      "branches": 65.1,
+      "functions": 55.81,
+      "sTotal": 1031,
+      "sCovered": 640
+    },
+    "browse": {
+      "lines": 99.02,
+      "statements": 99.02,
+      "branches": 93.05,
+      "functions": 98.96,
+      "sTotal": 3076,
+      "sCovered": 3046
+    },
+    "collections": {
+      "lines": 94.05,
+      "statements": 94.05,
+      "branches": 85.35,
+      "functions": 91.38,
+      "sTotal": 672,
+      "sCovered": 632
+    },
+    "core": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "sTotal": 7,
+      "sCovered": 7
+    },
+    "document-detail": {
+      "lines": 92.55,
+      "statements": 92.55,
+      "branches": 83.45,
+      "functions": 97.81,
+      "sTotal": 4724,
+      "sCovered": 4372
+    },
+    "knowledge-discovery": {
+      "lines": 64.77,
+      "statements": 64.77,
+      "branches": 59.46,
+      "functions": 68,
+      "sTotal": 1039,
+      "sCovered": 673
+    },
+    "nuxeo-client": {
+      "lines": 94.31,
+      "statements": 94.31,
+      "branches": 83.16,
+      "functions": 96.16,
+      "sTotal": 4111,
+      "sCovered": 3877
+    },
+    "search": {
+      "lines": 91.16,
+      "statements": 91.16,
+      "branches": 84.05,
+      "functions": 90.48,
+      "sTotal": 848,
+      "sCovered": 773
+    },
+    "shared-app-config": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 90.22,
+      "functions": 96.97,
+      "sTotal": 426,
+      "sCovered": 426
+    },
+    "shared-extensions": {
+      "lines": 94.71,
+      "statements": 94.71,
+      "branches": 93.07,
+      "functions": 75.64,
+      "sTotal": 662,
+      "sCovered": 627
+    },
+    "shared-kd-client": {
+      "lines": 99.72,
+      "statements": 99.72,
+      "branches": 92.77,
+      "functions": 100,
+      "sTotal": 713,
+      "sCovered": 711
+    },
+    "shared-ke-client": {
+      "lines": 100,
+      "statements": 100,
+      "branches": 98.28,
+      "functions": 100,
+      "sTotal": 247,
+      "sCovered": 247
+    },
+    "ui": {
+      "lines": 97.57,
+      "statements": 97.57,
+      "branches": 96.93,
+      "functions": 88.64,
+      "sTotal": 493,
+      "sCovered": 481
+    },
+    "permission-dialogs": {
+      "lines": 93.85,
+      "statements": 93.85,
+      "branches": 61.73,
+      "functions": 84.38,
+      "sTotal": 439,
+      "sCovered": 412
+    },
+    "acme-extensions": {
+      "lines": 53.47,
+      "statements": 53.47,
+      "branches": 75,
+      "functions": 38.46,
+      "sTotal": 101,
+      "sCovered": 54
+    }
+  }
+}

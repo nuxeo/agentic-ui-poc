@@ -5,18 +5,21 @@ import { provideRouter, withComponentInputBinding, withHashLocation } from '@ang
 import { MAT_FAB_DEFAULT_OPTIONS } from '@angular/material/button';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { provideSatori } from '@hylandsoftware/satori-ui/providers';
-import { Observable, of } from 'rxjs';
 
-import {
-  CURRENT_USERNAME,
-  ADMIN_ACCESS_CHECKS,
-  NUXEO_SERVER_URL,
-} from '@agentic-ui/shared/nuxeo-client';
-import { AI_BACKEND_URL } from '@agentic-ui/shared/ai-client';
+import { CURRENT_USERNAME, ADMIN_ACCESS_CHECKS } from '@nuxeo-satori/platform/nuxeo-client';
 import { nuxeoAuthInterceptor } from './auth/nuxeo-auth.interceptor';
 import { AuthService } from './auth/auth.service';
-import { nuxeoSamlProviders } from './nuxeo-sso.providers';
+import { provideAppConfig } from './config/provide-app-config';
+import { provideManifestRefresh } from './config/provide-manifest-refresh';
+import { provideAppExtensions } from './extensions/provide-app-extensions';
+import { provideAdfHxNuxeoBridge } from '@agentic-ui/shared/adf-hx-bridge/providers';
+import {
+  ContextMenuActionsService,
+  DocumentService,
+} from '@alfresco/adf-hx-content-services/services';
+import { CONTEXT_MENU_ACTIONS_PROVIDERS } from '@alfresco/adf-hx-content-services/ui';
 import { routes } from './app.routes';
+import { AppTranslateLoader } from './i18n/app-translate-loader';
 import { AppThemeService } from './theme/app-theme.service';
 
 /** `APP_INITIALIZER` values are invoked as `fn()` at startup; the factory must return that `fn`. */
@@ -24,18 +27,38 @@ export function initializeAppTheme(theme: AppThemeService) {
   return () => theme.applyStoredOrDefault();
 }
 
-class AppTranslateLoader implements TranslateLoader {
-  getTranslation(_lang: string): Observable<Record<string, string>> {
-    return of({
-      'sat.platform-nav.expand': '',
-      'sat.platform-nav.collapse': '',
-    });
-  }
-}
-
 export const appConfig: ApplicationConfig = {
   providers: [
-    ...nuxeoSamlProviders,
+    // Must come before anything that reads configuration: this registers the
+    // Layer 0 loader and repoints every configuration token at its result.
+    ...provideAppConfig(),
+    // Layer 1: registers the application's slot, rule and component IDs. Must
+    // follow `provideAppConfig()`, which loads the manifest they are merged with.
+    ...provideAppExtensions(),
+    // The manifest document needs a session, which does not exist during
+    // `provideAppConfig()`'s initializer. Re-fetch it once the user signs in.
+    ...provideManifestRefresh(),
+    // The adf-hx API ports belong in the **root** injector, because that is what upstream
+    // is built for: eleven of its services are `providedIn: 'root'` and resolve the port
+    // tokens from the root injector — `SingleItemCopyService`, `SingleItemMoveService`,
+    // `CreateDocumentVersionService`, `RestoreDocumentVersionService`,
+    // `BlobDownloadService`, `SharedDocumentService`, `RenditionsService`,
+    // `DocumentModelService`, `SearchService`, `UserService`, `RouterExtService`.
+    //
+    // Providing the ports on the POC component instead requires shadowing every one of
+    // those root services locally, and the list grows with each component adopted. That
+    // was tried; it fails one `NG0201` at a time.
+    //
+    // The cost is that adf-core becomes eager: initial bundle 1.71 MB -> 2.86 MB. See the
+    // budget note in `angular.json`.
+    provideAdfHxNuxeoBridge(),
+    DocumentService,
+    ContextMenuActionsService,
+    // The nine action handlers `ContextMenuActionsService` takes. In root for the same
+    // reason as everything above: a root-provided service resolves its own dependencies
+    // from the root injector, so leaving these on the component left it failing NG0201 on
+    // HXP_DOCUMENT_DELETE_ACTION_SERVICE.
+    ...CONTEXT_MENU_ACTIONS_PROVIDERS,
     {
       provide: APP_INITIALIZER,
       useFactory: initializeAppTheme,
@@ -71,18 +94,6 @@ export const appConfig: ApplicationConfig = {
           isPowerUser: () => auth.isPowerUser(),
           hasAdministrationAccess: () => auth.hasAdministrationAccess(),
         };
-      },
-    },
-    // AI operations served by the Java nuxeo-ai-package via Nuxeo Automation API
-    { provide: AI_BACKEND_URL, useValue: '/nuxeo' },
-    {
-      // Nuxeo Drive connects directly to the Nuxeo server (bypassing the Angular dev proxy).
-      // When served via the Angular dev server (:4200), use the real Nuxeo URL (:8080).
-      // In production (same-origin deployment), window.location.origin is the Nuxeo server.
-      provide: NUXEO_SERVER_URL,
-      useFactory: () => {
-        const isDevProxy = window.location.port === '4200';
-        return isDevProxy ? 'http://localhost:8080/nuxeo' : `${window.location.origin}/nuxeo`;
       },
     },
   ],

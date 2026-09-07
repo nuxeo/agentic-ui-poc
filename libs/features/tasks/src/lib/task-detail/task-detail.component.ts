@@ -1,4 +1,7 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -22,7 +25,7 @@ import {
   WorkflowService,
   DocumentService,
   NuxeoApiBase,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
 
 @Component({
@@ -54,6 +57,9 @@ export class TaskDetailComponent implements OnInit {
   private readonly docService = inject(DocumentService);
   private readonly nuxeoApi = inject(NuxeoApiBase);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly http = inject(HttpClient);
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly task = signal<NuxeoTask | null>(null);
   readonly targetDoc = signal<NuxeoDocument | null>(null);
@@ -97,6 +103,12 @@ export class TaskDetailComponent implements OnInit {
     return !!t?.dueDate && new Date(t.dueDate) < new Date();
   }
 
+  constructor() {
+    // The last preview must be revoked when the component goes away, not only when the
+    // next one replaces it.
+    this.destroyRef.onDestroy(() => this.clearPreview());
+  }
+
   ngOnInit(): void {
     const taskId = this.route.snapshot.paramMap.get('taskId');
     if (!taskId) {
@@ -136,6 +148,7 @@ export class TaskDetailComponent implements OnInit {
             next: (doc) => {
               this.targetDoc.set(doc);
               this.docLoading.set(false);
+              this.loadPreview(doc);
             },
             error: () => this.docLoading.set(false),
           });
@@ -293,11 +306,48 @@ export class TaskDetailComponent implements OnInit {
     return 'send';
   }
 
-  /** URL for the document thumbnail/preview image. */
-  docPreviewUrl(): string | null {
-    const doc = this.targetDoc();
-    if (!doc) return null;
-    return this.nuxeoApi.apiUrl(`/nuxeo/api/v1/id/${doc.uid}/@rendition/thumbnail`);
+  /**
+   * The preview image, as a blob URL.
+   *
+   * This used to return the Nuxeo rendition URL directly for the template to put in
+   * `<img [src]>`. That is the pattern CLAUDE.md forbids outright: the browser issues that
+   * request itself, so it never passes through the HTTP interceptor and carries no
+   * `Authorization` header — it worked only by falling back on an ambient session cookie,
+   * and it put an internal API URL in the DOM where it is visible in devtools and leaks in
+   * a referrer. `tasks-page.component.ts`, in this same library, already did it correctly.
+   */
+  readonly docPreviewUrl = signal<SafeUrl | null>(null);
+
+  /** The raw string behind {@link docPreviewUrl}: a SafeUrl cannot be read back out. */
+  private rawPreviewUrl: string | null = null;
+
+  private loadPreview(doc: NuxeoDocument): void {
+    this.clearPreview();
+    if (!this.hasVisualPreview()) return;
+
+    this.http
+      .get(this.nuxeoApi.apiUrl(`/nuxeo/api/v1/id/${doc.uid}/@rendition/thumbnail`), {
+        responseType: 'blob',
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          this.rawPreviewUrl = URL.createObjectURL(blob);
+          this.docPreviewUrl.set(this.sanitizer.bypassSecurityTrustUrl(this.rawPreviewUrl));
+        },
+        // A document with no rendition is ordinary, not an error worth surfacing. The
+        // template's `@if (docPreviewUrl())` already handles the absent case, which is why
+        // the old `(error)` handler that hid the broken image by hand is gone.
+        error: () => this.clearPreview(),
+      });
+  }
+
+  private clearPreview(): void {
+    if (this.rawPreviewUrl) {
+      URL.revokeObjectURL(this.rawPreviewUrl);
+      this.rawPreviewUrl = null;
+    }
+    this.docPreviewUrl.set(null);
   }
 
   /** URL for downloading the document's main file. */

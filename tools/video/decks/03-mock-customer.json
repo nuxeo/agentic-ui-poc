@@ -1,0 +1,113 @@
+{
+  "title": "Acme Corp customises Nuxeo Satori",
+  "slides": [
+    {
+      "kind": "title",
+      "eyebrow": "Nuxeo Satori Beta · 3 of 3",
+      "rule": true,
+      "title": "A mock customer: Acme Corp",
+      "lede": "A rebrand, a rule-gated navigation entry, and a custom panel — with zero edits to our libraries. Everything after this slide is running code."
+    },
+    {
+      "eyebrow": "The brief",
+      "title": "What Acme asked for",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            {
+              "series": "adfhx",
+              "title": "Our brand, not yours",
+              "text": "\"Acme Content\" in the header and the browser tab, and our navy in the navigation. **Layer 0** — a JSON edit and a reload."
+            },
+            {
+              "series": "ours",
+              "title": "A section only our legal team sees",
+              "text": "A navigation entry gated on a rule we write ourselves, against our own notion of who is signed in. **Layer 2**."
+            },
+            {
+              "series": "3",
+              "title": "A panel that is ours, placed by configuration",
+              "text": "A component we own, contributed by ID, so it can be routed or dropped into a drawer without anyone importing our class. **Layer 2 + Layer 1**."
+            },
+            {
+              "series": "4",
+              "title": "And we will not fork the platform",
+              "text": "Because next quarter we want to take your upgrade as a version bump."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "eyebrow": "Step 1 — Layer 0",
+      "title": "The rebrand is a JSON file",
+      "lede": "No rebuild, no redeploy of the application bundle. Edit, reload, done — and it survives the next marketplace upgrade because it sits beside the bundle rather than in it.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// public/agentic-ui-config/bootstrap.json</span>\n{\n  \"branding\": {\n    \"applicationTitle\": <b>\"Acme Content\"</b>,\n    \"documentTitle\":    <b>\"Acme Content\"</b>\n  },\n  \"defaultThemeId\": <b>\"acme\"</b>,\n  \"themes\": [{\n    \"id\": \"acme\", \"label\": \"Acme\", \"base\": \"nuxeo\",\n    \"tokens\": {\n      <b>\"--shell-nav-bg\"</b>:     \"#0f2b46\",   <span class=\"c\">// Acme navy</span>\n      <b>\"--shell-nav-fg\"</b>:     \"#eef4fb\",\n      <b>\"--shell-nav-active\"</b>: \"#1f6feb\"\n    }\n  }]\n}"
+        }
+      ],
+      "footnote": "The nav carries its own foreground token deliberately. Without it, a customer darkening the navigation background would render dark text on a dark background — a rebrand must not be able to make navigation unreadable from JSON alone. The Phase 4 evidence asserts a luminance gap after the rebrand."
+    },
+    {
+      "eyebrow": "Step 2 — Layer 2",
+      "title": "One command scaffolds the library",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">$</span> npx nx g @nuxeo-satori/generators:extension-library acme-extensions <b>--owner=acme</b>\n\n<span class=\"ok\">CREATE</span> libs/extensions/acme-extensions/src/lib/extensions.ts\n<span class=\"ok\">CREATE</span> libs/extensions/acme-extensions/src/lib/extensions.spec.ts     <span class=\"c\">6 specs</span>\n<span class=\"ok\">CREATE</span> libs/extensions/acme-extensions/src/lib/rules.service.ts\n<span class=\"ok\">CREATE</span> libs/extensions/acme-extensions/src/lib/panel/acme-panel.ts\n<span class=\"ok\">CREATE</span> libs/extensions/acme-extensions/README.md\n<span class=\"ok\">UPDATE</span> tsconfig.base.json                                  <span class=\"c\">import alias</span>\n\n<span class=\"c\">It is inert until an application opts in. Add one line:</span>\n\n  import { <b>provideAcmeExtensions</b> } from '@agentic-ui/acme-extensions';\n  <span class=\"c\">// providers: [ ..., provideAcmeExtensions() ]</span>"
+        }
+      ],
+      "footnote": "Fourteen files, including a `test`, `lint` and `typecheck` target. The six generated specs assert against the **registries**, not that a function was called — because \"the ID is registered\" is the only thing that catches a descriptor nothing renders."
+    },
+    {
+      "eyebrow": "Step 3 — Layer 2",
+      "title": "What Acme actually writes",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// libs/extensions/acme-extensions/src/lib/extensions.ts</span>\nexport const <b>ACME_EXTENSIONS_EXTENSION_IDS</b> = Object.freeze({\n  navbar:     ['acme.navbar.acmeExtensions'],\n  rules:      ['acme.rules.canUseAcme'],\n  actions:    ['acme.actions.acmeExtensionsExport'],\n  components: ['acme.panel.acmeExtensions'],\n});\n\nexport function <b>provideAcmeExtensions</b>(): EnvironmentProviders {\n  return provideSatoriExtensions(() =&gt; {\n    const rules = inject(AcmeRulesService);\n    return {\n      slots:           { navbar: NAV_ITEMS },\n      rules:           { 'acme.rules.canUseAcme': (ctx) =&gt; rules.canUse(ctx) },\n      failClosedRules: ['acme.rules.canUseAcme'],\n      components:      { 'acme.panel.acmeExtensions': () =&gt; import('./panel/acme-panel')... },\n      actions:         { 'acme.actions.acmeExtensionsExport': { execute: ... } },\n    };\n  });\n}"
+        }
+      ],
+      "footnote": "The library exports **only** the provider and the ID list. Deliberately: a host that could import the panel class would depend on a name that should stay free to change. The host maps a path; `ExtensionOutletComponent` resolves the component from the registry by ID."
+    },
+    {
+      "eyebrow": "Step 4 — Layer 1",
+      "title": "And then configuration moves it, without touching the library",
+      "lede": "The same IDs Acme registered in code are now addressable from the manifest — by their own administrators, with no developer involved.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// The Nuxeo config document — no rebuild, no deploy</span>\n{\n  \"extensions\": {\n    \"overrides\": {\n      <span class=\"c\">// Rename Acme's own entry and move it to the top</span>\n      \"acme.navbar.acmeExtensions\": { <b>\"label\"</b>: \"Contracts\", <b>\"order\"</b>: 5 }\n    },\n    \"slots\": {\n      <span class=\"c\">// Or place Acme's panel in a drawer instead of on a route</span>\n      \"sidebar\": [{\n        \"id\": \"acme.sidebar.contracts\", \"label\": \"Contracts\",\n        <b>\"component\"</b>: \"acme.panel.acmeExtensions\", \"order\": 10\n      }]\n    }\n  }\n}"
+        }
+      ],
+      "footnote": "This is the payoff of IDs being the contract. The code says *what exists*; configuration says *where it appears and when* — and the two can be changed by different people, at different times, with different permissions."
+    },
+    {
+      "eyebrow": "The claim, checked",
+      "title": "Zero edits to our libraries",
+      "lede": "Not asserted — read out of `git status` after integrating the generated library into the template.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">$</span> git status --short\n\n <b>M</b> apps/nuxeo-satori-template/src/app/app.config.ts   <span class=\"c\">one line + one import</span>\n <b>M</b> tsconfig.base.json                                <span class=\"c\">one alias, written by the generator</span>\n <b>??</b> libs/extensions/acme-extensions/                  <span class=\"c\">Acme's own library</span>\n\n<span class=\"c\">$</span> git status --short | grep -E 'libs/shared/|libs/platform/'\n<span class=\"ok\">  (no output — no platform library was modified)</span>"
+        }
+      ],
+      "footnote": "Verified again by the Phase 4 evidence run, which clicks Acme's navigation entry in a browser and asserts both the URL and the panel's own markup — because a wildcard redirect back to the home page would still leave a rendered page and a green-looking check."
+    },
+    {
+      "eyebrow": "In one line",
+      "title": "A rebrand, a gated entry and a custom panel — none of it a fork",
+      "blocks": [
+        {
+          "type": "banner",
+          "tone": "good",
+          "text": "Acme changed the brand from a JSON file, added a rule-gated section and a panel from their own npm library, and their administrators can still move both from the manifest. Our libraries are byte-for-byte unchanged, so next quarter's upgrade is a version bump."
+        }
+      ],
+      "footnote": "Still honest about what is not proven: the platform has never been published to a registry, and no test resolves its ten peer dependencies from a clean install. The first real publish will be tagged `alpha` for exactly that reason."
+    }
+  ]
+}

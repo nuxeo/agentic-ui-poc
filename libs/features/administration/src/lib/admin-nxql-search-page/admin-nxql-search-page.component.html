@@ -31,7 +31,7 @@
         </mat-form-field>
         @if (aiGenerating()) {
           <button type="button" mat-flat-button class="ai-gen-btn" disabled>
-            <mat-spinner diameter="18"></mat-spinner>
+            <mat-spinner diameter="18" aria-label="Loading"></mat-spinner>
           </button>
         } @else {
           <button
@@ -80,7 +80,7 @@
   }
 
   @if (loading()) {
-    <div class="nxql-center"><mat-spinner diameter="40" /></div>
+    <div class="nxql-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
   } @else {
     <p class="nxql-count">{{ totalSize() }} result(s)</p>
     <div class="nxql-table-wrap mat-elevation-z1">

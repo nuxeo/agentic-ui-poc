@@ -13,7 +13,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { provideNativeDateAdapter } from '@angular/material/core';
 import { Subject, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DocumentDetailService, type UserGroupSuggestion } from '@agentic-ui/shared/nuxeo-client';
+import {
+  DocumentDetailService,
+  type UserGroupSuggestion,
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface ShareSavedSearchAddPermissionDialogData {
   title?: string;
@@ -146,15 +149,15 @@ export class ShareSavedSearchAddPermissionDialogComponent {
   private normalizeRightValue(value: string): string {
     // Map various right values to the standardized options
     const normalizedMap: Record<string, string> = {
-      'Read': 'Read',
-      'Write': 'ReadWrite',
-      'Edit': 'ReadWrite',
-      'ReadWrite': 'ReadWrite',
-      'Manage': 'Everything',
+      Read: 'Read',
+      Write: 'ReadWrite',
+      Edit: 'ReadWrite',
+      ReadWrite: 'ReadWrite',
+      Manage: 'Everything',
       'Manage everything': 'Everything',
-      'Everything': 'Everything',
+      Everything: 'Everything',
       'Can collect': 'ReadCanCollect',
-      'ReadCanCollect': 'ReadCanCollect',
+      ReadCanCollect: 'ReadCanCollect',
     };
     return normalizedMap[value] || 'Read'; // Default to 'Read' if no match
   }
@@ -226,11 +229,12 @@ export class ShareSavedSearchAddPermissionDialogComponent {
   private buildResultEntry(): ShareSavedSearchAddPermissionResult {
     const principal = this.selectedPrincipal;
     const userGroup = principal?.displayLabel || this.searchText.trim();
-    const grantedBy = this.isEditMode && this.data.initialData?.grantedBy
-      ? this.data.initialData.grantedBy
-      : principal?.type === 'GROUP_TYPE'
-        ? 'Group'
-        : 'User';
+    const grantedBy =
+      this.isEditMode && this.data.initialData?.grantedBy
+        ? this.data.initialData.grantedBy
+        : principal?.type === 'GROUP_TYPE'
+          ? 'Group'
+          : 'User';
 
     if (this.timeFrameMode === 'permanent') {
       return {

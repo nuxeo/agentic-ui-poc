@@ -9,6 +9,15 @@ export type {
 } from './lib/models/asset.model';
 export type { NuxeoDocument, NuxeoDocumentList } from './lib/models/document.model';
 export type {
+  NuxeoComplexField,
+  NuxeoContentModel,
+  NuxeoDoctypeDefinition,
+  NuxeoFacetDefinition,
+  NuxeoFieldType,
+  NuxeoSchemaDefinition,
+  NuxeoTypesConfig,
+} from './lib/models/content-model.model';
+export type {
   ContentLakeDuplicate,
   ContentLakeBackfillResult,
   ContentLakeIngestCommand,
@@ -166,6 +175,13 @@ export {
   toBrowseRouterUrl,
   isBrowseRouterUrl,
   topLevelNuxeoFolderPath,
+  BROWSE_RETURN_MODE_PARAM,
+  parseBrowseReturnMode,
+  toAdfHxBrowseRouterUrl,
+  isAdfHxBrowseRouterUrl,
+  parseAdfHxBrowsePathFromRouterUrl,
+  toBrowseRouterUrlForReturnMode,
+  type BrowseReturnMode,
   isUserWorkspacePath,
   userWorkspaceOwnerFromPath,
   userWorkspaceRootFromPath,
@@ -197,6 +213,7 @@ export {
   type LocalPermissionRow,
   type SynchronizationRootRow,
 } from './lib/services/settings.service';
+export { ContentModelService } from './lib/services/content-model.service';
 export {
   AdministrationService,
   FALLBACK_DIRECTORY_NAMES,
@@ -217,6 +234,7 @@ export {
 // Constants
 export { DOC_TYPE_ICONS, docTypeIcon } from './lib/constants/doc-type-icons';
 export { avatarColor } from './lib/constants/avatar-colors';
+export type { AvatarColor } from './lib/constants/avatar-colors';
 export { FOLDERISH_TYPES } from './lib/constants/folderish-types';
 export { NON_CONTENT_DOCUMENT_TYPES } from './lib/constants/non-content-document-types';
 export {

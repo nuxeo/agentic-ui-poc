@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { adminGuard } from './auth/admin.guard';
 import { authGuard, loginGuard } from './auth/auth.guards';
+import { ContractsPageComponent } from './features/contracts/contracts-page.component';
 import { themingGuard } from './theme/theming.guard';
 
 const placeholder = () =>
@@ -25,8 +26,23 @@ export const routes: Routes = [
           import('./dashboard/dashboard-page.component').then((m) => m.DashboardPageComponent),
       },
       {
+        path: 'browse-adf-hx',
+        loadComponent: () =>
+          import('@agentic-ui/feature-browse/adf-hx-poc').then((m) => m.BrowseAdfHxPocComponent),
+      },
+      {
+        path: 'search-adf-hx',
+        loadComponent: () =>
+          import('@agentic-ui/feature-browse/search-adf-hx').then((m) => m.SearchAdfHxComponent),
+      },
+      {
         path: 'browse',
         loadChildren: () => import('@agentic-ui/feature-browse').then((m) => m.browseRoutes),
+      },
+      {
+        path: 'contracts',
+        component: ContractsPageComponent,
+        canActivate: [authGuard],
       },
       {
         path: 'recently-viewed',

@@ -35,5 +35,18 @@
         <include>**/*</include>
       </includes>
     </fileSet>
+
+    <!--
+      Layer 0 bootstrap configuration. Staged outside /web on purpose: install.xml
+      copies /web with overwrite="true", and copies this directory separately with
+      overwrite="false" so customer edits survive an upgrade.
+    -->
+    <fileSet>
+      <directory>src/main/config</directory>
+      <outputDirectory>/config</outputDirectory>
+      <includes>
+        <include>**/*</include>
+      </includes>
+    </fileSet>
   </fileSets>
 </assembly>

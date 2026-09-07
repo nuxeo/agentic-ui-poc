@@ -1,0 +1,58 @@
+// Global styles for the template.
+//
+// Deliberately minimal: a fork brings its own design system. The custom
+// properties below are the ones `app.scss` and the pages read, so a rebrand can
+// be a single block here — or, better, Layer 0 `themes[].tokens`, which applies
+// without a rebuild.
+
+// Angular Material prebuilt theme - required for Material components to render properly.
+// This is imported here (not in app.scss) because it's a global dependency for
+// any page using @nuxeo-satori/platform/ui components, which are built on Material.
+// Using the prebuilt indigo-pink theme for simplicity. Customers can replace this
+// with their own custom Material theme if needed.
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+// These are the *packaged* defaults. Layer 0 `themes[].tokens` overwrites any of
+// them on `<html>` at runtime via `TemplateThemeService`, and `<html>` wins over
+// `:root` for a custom property set inline, so an unconfigured deployment gets
+// exactly this palette and a configured one gets its own.
+:root {
+  --shell-fg: #1f2328;
+  --shell-muted: #656d76;
+  --shell-border: #d0d7de;
+  // Surfaces and the accent are read by the document pages. They are separate
+  // tokens rather than derived from `--shell-nav-*` because a rebrand routinely
+  // wants a dark navigation over a light content area, and deriving one from the
+  // other made that impossible from JSON.
+  --shell-surface: #ffffff;
+  --shell-surface-alt: #f6f8fa;
+  --shell-accent: #0969da;
+  --shell-accent-fg: #ffffff;
+  --shell-nav-fg: #1f2328;
+  --shell-nav-muted: #656d76;
+  --shell-nav-bg: #f6f8fa;
+  --shell-nav-hover: #eaeef2;
+  --shell-nav-active: #ddf4ff;
+  --shell-warn-bg: #fff8c5;
+  --shell-warn-border: #d4a72c;
+  /* Error, as a triplet mirroring warn above. Distinct from warn on purpose: a failed load and a
+     caution are different states, and collapsing them means a fork cannot restyle one without the
+     other. */
+  --shell-error-bg: #fdeceb;
+  --shell-error-border: #b3261e;
+  --shell-error-fg: #7a1c17;
+  /* Foreground for text and icons that mean "warning", completing the pair above. */
+  --shell-warn-fg: #f57c00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  color: var(--shell-fg, #1f2328);
+  background: var(--shell-surface, #ffffff);
+}

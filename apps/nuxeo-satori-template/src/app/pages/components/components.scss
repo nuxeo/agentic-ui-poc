@@ -1,0 +1,271 @@
+// This page is shipped to customers as the worked example of the template, so
+// it follows the rule the guardrails enforce rather than only describing it:
+// every colour resolves through a theme token, with the previous literal kept
+// as the fallback. A rebrand via Layer 0 therefore restyles this page too,
+// instead of leaving it stranded in the old palette.
+:host {
+  --tpl-text-muted: var(--mat-sys-on-surface-variant, #666);
+  --tpl-accent: var(--mat-sys-primary, #1976d2);
+  --tpl-divider: var(--mat-sys-outline-variant, #f0f0f0);
+  --tpl-code-surface: var(--mat-sys-surface-container, #f5f5f5);
+  --tpl-code-bg: var(--mat-sys-inverse-surface, #263238);
+  --tpl-code-fg: var(--mat-sys-inverse-primary, #aed581);
+  --tpl-status-success: var(--mat-sys-tertiary, #388e3c);
+  // See the note in `contracts-page.component.scss`: `--mat-sys-error` fuses warning to
+  // error permanently. `--shell-warn-fg` is declared beside the rest of the warn family
+  // in this app's `styles.scss`.
+  --tpl-status-warning: var(--shell-warn-fg, #f57c00);
+  --tpl-status-info: var(--mat-sys-primary, #1976d2);
+  --tpl-badge-bg: var(--mat-sys-surface-variant, #e0e0e0);
+  --tpl-badge-fg: var(--mat-sys-on-surface-variant, #424242);
+  --tpl-badge-live-bg: var(--mat-sys-tertiary-container, #c8e6c9);
+  --tpl-badge-live-fg: var(--mat-sys-on-tertiary-container, #2e7d32);
+  --tpl-badge-active-bg: var(--mat-sys-primary-container, #bbdefb);
+  --tpl-badge-active-fg: var(--mat-sys-on-primary-container, #1565c0);
+  --tpl-banner-bg: var(--mat-sys-primary-container, #e3f2fd);
+  --tpl-banner-code-bg: var(--mat-sys-surface, rgba(255, 255, 255, 0.7));
+}
+
+$code-font: 'Monaco', 'Courier New', monospace;
+
+.components-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+
+  h1 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+    font-weight: 500;
+  }
+
+  .subtitle {
+    color: var(--tpl-text-muted);
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+
+    code {
+      background: var(--tpl-code-surface);
+      padding: 0.125rem 0.375rem;
+      border-radius: 3px;
+      font-family: $code-font;
+      font-size: 0.875rem;
+    }
+  }
+
+  .description {
+    color: var(--tpl-text-muted);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.6;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+
+    button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+  }
+}
+
+.selection-demo {
+  margin-bottom: 2rem;
+}
+
+.section {
+  margin-bottom: 3rem;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+    font-weight: 500;
+
+    mat-icon {
+      color: var(--tpl-accent);
+    }
+  }
+
+  .section-description {
+    color: var(--tpl-text-muted);
+    margin: 0 0 1.5rem 0;
+    line-height: 1.6;
+
+    code {
+      background: var(--tpl-code-surface);
+      padding: 0.125rem 0.375rem;
+      border-radius: 3px;
+      font-family: $code-font;
+      font-size: 0.875rem;
+    }
+  }
+}
+
+.widget-content {
+  padding: 2rem 1.5rem;
+  text-align: center;
+
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-label {
+    color: var(--tpl-text-muted);
+    font-size: 0.875rem;
+  }
+}
+
+.activity-list {
+  padding: 0.5rem;
+}
+
+.activity-item {
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--tpl-divider);
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  .activity-icon {
+    flex-shrink: 0;
+
+    &.success {
+      color: var(--tpl-status-success);
+    }
+
+    &.warning {
+      color: var(--tpl-status-warning);
+    }
+
+    &.info {
+      color: var(--tpl-status-info);
+    }
+  }
+
+  .activity-details {
+    flex: 1;
+  }
+
+  .activity-title {
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  .activity-time {
+    color: var(--tpl-text-muted);
+    font-size: 0.875rem;
+  }
+}
+
+.component-list {
+  padding: 1rem;
+
+  .component-item {
+    padding: 1rem;
+    border-bottom: 1px solid var(--tpl-divider);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    code {
+      display: inline-block;
+      background: var(--tpl-code-bg);
+      color: var(--tpl-code-fg);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-family: $code-font;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-left: 0.5rem;
+      padding: 0.125rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: var(--tpl-badge-bg);
+      color: var(--tpl-badge-fg);
+
+      &.live {
+        background: var(--tpl-badge-live-bg);
+        color: var(--tpl-badge-live-fg);
+      }
+
+      &.active {
+        background: var(--tpl-badge-active-bg);
+        color: var(--tpl-badge-active-fg);
+      }
+    }
+
+    .component-desc {
+      color: var(--tpl-text-muted);
+      font-size: 0.875rem;
+      margin: 0.5rem 0 0 0;
+      line-height: 1.5;
+    }
+  }
+}
+
+.code-card {
+  margin-bottom: 1rem;
+
+  .code-block {
+    margin: 0;
+    padding: 1.5rem;
+    background: var(--tpl-code-bg);
+    color: var(--tpl-code-fg);
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: $code-font;
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+}
+
+.info-banner {
+  display: flex;
+  align-items: start;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: var(--tpl-banner-bg);
+  border-left: 4px solid var(--tpl-accent);
+  border-radius: 4px;
+  margin-top: 2rem;
+
+  mat-icon {
+    color: var(--tpl-accent);
+    flex-shrink: 0;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  code {
+    background: var(--tpl-banner-code-bg);
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    font-family: $code-font;
+    font-size: 0.875rem;
+  }
+}

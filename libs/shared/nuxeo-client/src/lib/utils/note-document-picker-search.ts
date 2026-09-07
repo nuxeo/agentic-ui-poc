@@ -1,4 +1,5 @@
 import type { NuxeoDocument, NuxeoDocumentList } from '../models/document.model';
+import { escapeNxqlLiteral } from './nxql.utils';
 import { resolvePaginatedListTotal, type PaginatedListMeta } from './paginated-total';
 
 /** Web UI note RTE — `nuxeo-document-picker provider="document_picker"`. */
@@ -9,10 +10,6 @@ export const NOTE_DOCUMENT_PICKER_HEADERS = {
   properties: 'dublincore,file',
   'enrichers.document': 'thumbnail,permissions,highlight',
 } as const;
-
-export function escapeNxqlLiteral(value: string): string {
-  return value.replace(/'/g, "''");
-}
 
 /**
  * NXQL equivalent of the default `document_picker` page provider

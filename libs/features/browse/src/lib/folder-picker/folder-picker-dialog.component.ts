@@ -8,7 +8,7 @@ import {
   BrowseService,
   isFolderishDocument,
   type NuxeoDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface FolderPickerDialogData {
   /** Folder path to start from (e.g. current import target). */

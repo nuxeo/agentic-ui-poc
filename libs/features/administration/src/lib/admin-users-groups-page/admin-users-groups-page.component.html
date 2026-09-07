@@ -50,7 +50,7 @@
       </button>
     </div>
     @if (recentLoading()) {
-      <div class="ug-center"><mat-spinner diameter="32" /></div>
+      <div class="ug-center"><mat-spinner diameter="32" aria-label="Loading" /></div>
     } @else {
       <div class="ug-table-wrap mat-elevation-z0">
         <table mat-table [dataSource]="recentRowsPage()" class="ug-table">
@@ -101,7 +101,7 @@
     <mat-tab [label]="usersTabLabel()">
       <div class="ug-tab-pad">
         @if (usersLoading()) {
-          <div class="ug-center"><mat-spinner diameter="40" /></div>
+          <div class="ug-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
         } @else if (usersError()) {
           <p class="ug-error">{{ usersError() }}</p>
         } @else {
@@ -185,7 +185,7 @@
     <mat-tab [label]="groupsTabLabel()">
       <div class="ug-tab-pad">
         @if (groupsLoading()) {
-          <div class="ug-center"><mat-spinner diameter="40" /></div>
+          <div class="ug-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
         } @else if (groupsError()) {
           <p class="ug-error">{{ groupsError() }}</p>
         } @else {

@@ -2,7 +2,7 @@
   @if (readOnly()) {
     @if (loading()) {
       <div class="note-editor-loading">
-        <mat-spinner diameter="36" />
+        <mat-spinner diameter="36" aria-label="Loading" />
       </div>
     } @else {
       <div class="note-body note-body--read-only">
@@ -21,7 +21,7 @@
     }
   } @else if (loading()) {
     <div class="note-editor-loading">
-      <mat-spinner diameter="36" />
+      <mat-spinner diameter="36" aria-label="Loading" />
     </div>
   } @else {
     <div class="note-body">
@@ -283,7 +283,7 @@
                 (click)="onSave()"
               >
                 @if (saving()) {
-                  <mat-spinner diameter="18" />
+                  <mat-spinner diameter="18" aria-label="Loading" />
                 } @else {
                   Save
                 }
@@ -316,7 +316,7 @@
           (click)="onSave()"
         >
           @if (saving()) {
-            <mat-spinner diameter="18" />
+            <mat-spinner diameter="18" aria-label="Loading" />
           } @else {
             Save
           }

@@ -27,7 +27,7 @@
             the service. Please select another path (deeper than the domain root).
           </div>
         } @else if (distLoading()) {
-          <div class="center"><mat-spinner diameter="36" /></div>
+          <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
         } @else {
           <p class="muted">
             Total documents under this path:
@@ -64,7 +64,7 @@
           />
         </mat-form-field>
         @if (repoLoading()) {
-          <div class="center"><mat-spinner diameter="36" /></div>
+          <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
         } @else {
           <p class="muted">
             Showing {{ repoDocs().length }} of {{ repoTotal() }} (most recently modified).
@@ -108,7 +108,7 @@
     <mat-tab label="Workflow">
       <div class="tab-pad">
         @if (wfLoading()) {
-          <div class="center"><mat-spinner diameter="36" /></div>
+          <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
         } @else {
           <p class="muted">
             Documents with workflow-related primary types (Route / DocumentRoute / RoutingTask):
@@ -146,7 +146,7 @@
               (click)="runAnomalyDetection()"
             >
               @if (aiAnomalyLoading()) {
-                <mat-spinner diameter="18"></mat-spinner>
+                <mat-spinner diameter="18" aria-label="Loading"></mat-spinner>
               } @else {
                 <mat-icon>auto_awesome</mat-icon>
               }
@@ -155,7 +155,7 @@
           </div>
 
           @if (aiAnomalyLoading()) {
-            <div class="center"><mat-spinner diameter="36" /></div>
+            <div class="center"><mat-spinner diameter="36" aria-label="Loading" /></div>
           } @else if (aiAnomalySummary()) {
             <div class="anomaly-summary">
               <mat-icon>info</mat-icon>

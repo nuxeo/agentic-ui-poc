@@ -1,10 +1,12 @@
 @use '@angular/material' as mat;
 @use '@hylandsoftware/satori-ui/theme' as sat;
+@use './styles/hxp-theme' as hxp;
 
 html[data-app-theme='nuxeo'],
 html:not([data-app-theme]) {
   color-scheme: light dark;
   @include sat.theme;
+  @include hxp.tokens-from-satori;
 }
 
 html[data-app-theme='dark'] {
@@ -18,6 +20,7 @@ html[data-app-theme='dark'] {
       ),
     )
   );
+  @include hxp.tokens-from-satori;
 }
 
 html[data-app-theme='kawaii'] {
@@ -31,6 +34,7 @@ html[data-app-theme='kawaii'] {
       ),
     )
   );
+  @include hxp.tokens-from-satori;
 }
 
 html[data-app-theme='light'] {
@@ -44,6 +48,7 @@ html[data-app-theme='light'] {
       ),
     )
   );
+  @include hxp.tokens-from-satori;
 }
 
 html,
@@ -159,6 +164,12 @@ sat-platform-nav p.sat-platform-nav-item-label {
 
 /*
  * App-wide pill normalization using the Asset Grid pill style as the single source.
+ *
+ * Layer 0: every value is a `--agentic-pill-*` custom property, so a customer can
+ * restyle every badge in the product from configuration. `!important` was removed
+ * from this block — nothing in Material or Satori targets these app-owned class
+ * names, so the flags only served to make the rules unoverridable by the customer
+ * CSS they are supposed to coexist with.
  */
 .asset-type-pill,
 .result-type-pill,
@@ -176,66 +187,132 @@ sat-platform-nav p.sat-platform-nav-item-label {
 .sentiment-badge,
 .ai-tag-chip,
 .ai-anomaly-badge,
-.overdue-badge,
-.sat-tag {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 2px 8px !important;
-  border-radius: 999px !important;
-  background: var(--mat-sys-surface-container-high, #eef0f4) !important;
-  border: 1px solid var(--mat-sys-outline-variant, #d8dbe2) !important;
-  color: var(--mat-sys-on-surface-variant, #5c5f6b) !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
-  text-align: center !important;
-  max-width: 120px !important;
+.overdue-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--agentic-pill-padding, 2px 8px);
+  border-radius: var(--agentic-pill-radius, 999px);
+  background: var(--agentic-pill-background, var(--mat-sys-surface-container-high, #eef0f4));
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2));
+  color: var(--agentic-pill-color, var(--mat-sys-on-surface-variant, #5c5f6b));
+  font-size: var(--agentic-pill-font-size, 11px);
+  font-weight: var(--agentic-pill-font-weight, 600);
+  line-height: 1;
+  text-align: center;
+  max-width: var(--agentic-pill-max-width, 120px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
 }
 
-.sat-tag {
-  min-height: auto !important;
-  box-shadow: none !important;
+/*
+ * `.sat-tag` is a Satori component class. Its own stylesheet is a `sat-tag`
+ * component style with `ViewEncapsulation.None`, injected into <head> when the
+ * component first loads — which is after this global sheet, so at equal
+ * specificity Satori wins on source order. The repeated class (`.sat-tag.sat-tag`,
+ * 0-2-0) beats it on specificity instead, which is what let the `!important`
+ * flags go. A customer can still override with any 0-3-0 selector; they could not
+ * override `!important` at all without matching it.
+ *
+ * Colour is the one thing specificity cannot win. Satori sets the palette as an
+ * *inline* style on the host — `background-color: var(--sat-tag-cat-blue-container)`
+ * for category tags, `var(--sat-tag-info-container)` for status tags — and an
+ * inline declaration outranks every author rule. Redefining the custom properties
+ * that inline style reads reaches the same result through Satori's own token
+ * indirection, and keeps the value a token rather than a hardcoded colour.
+ * Only the variants this application actually renders are remapped; any other
+ * category or status keeps Satori's semantic colour.
+ */
+.sat-tag.sat-tag {
+  --sat-tag-cat-blue-container: var(
+    --agentic-pill-background,
+    var(--mat-sys-surface-container-high, #eef0f4)
+  );
+  --sat-tag-on-cat-blue-container: var(
+    --agentic-pill-color,
+    var(--mat-sys-on-surface-variant, #5c5f6b)
+  );
+  --sat-tag-info-container: var(
+    --agentic-pill-background,
+    var(--mat-sys-surface-container-high, #eef0f4)
+  );
+  --sat-tag-on-info-container: var(
+    --agentic-pill-color,
+    var(--mat-sys-on-surface-variant, #5c5f6b)
+  );
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--agentic-pill-padding, 2px 8px);
+  border-radius: var(--agentic-pill-radius, 999px);
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2));
+  font-size: var(--agentic-pill-font-size, 11px);
+  font-weight: var(--agentic-pill-font-weight, 600);
+  line-height: 1;
+  text-align: center;
+  max-width: var(--agentic-pill-max-width, 120px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  min-height: auto;
+  box-shadow: none;
 }
 
 sat-category-tag,
 sat-status-tag {
-  display: inline-flex !important;
-  align-items: center !important;
+  display: inline-flex;
+  align-items: center;
   vertical-align: middle;
 }
 
-.sat-tag .sat-tag-icon {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+.sat-tag.sat-tag .sat-tag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.sat-tag .sat-tag-label {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  line-height: 1 !important;
+.sat-tag.sat-tag .sat-tag-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 /*
  * Dialog title: Material's default maps mat-dialog-title to display-medium (~2rem).
  * Reduce to title-large (1.375rem / 1.75rem line-height) for a more compact feel across
  * all dialogs in the application.
+ *
+ * Two rules, because two different things size this element.
+ *
+ * Material's own dialog rule reads `var(--mat-dialog-subhead-size, …)`, so the
+ * first block sets the value through the supported theming API. That alone was
+ * not enough: dialog titles are `<h2>`, and Material's typography hierarchy
+ * matches them with `html[data-app-theme="…"] .mat-typography h2` (0-2-2), whose
+ * `font` shorthand is display-medium — measured at 44.99px with only the token
+ * block in place. The second rule is deliberately 0-3-1 so it outranks that
+ * without `!important`; a customer stylesheet can still beat it, which an
+ * `!important` declaration did not allow.
  */
-[mat-dialog-title],
-.mat-mdc-dialog-title {
-  font-size: 1.375rem !important;
-  line-height: 1.75rem !important;
-  font-weight: 500 !important;
-  letter-spacing: 0 !important;
+.mat-mdc-dialog-container {
+  --mat-dialog-subhead-size: var(--agentic-dialog-title-font-size, 1.375rem);
+  --mat-dialog-subhead-line-height: var(--agentic-dialog-title-line-height, 1.75rem);
+  --mat-dialog-subhead-weight: var(--agentic-dialog-title-font-weight, 500);
+  --mat-dialog-subhead-tracking: 0;
+}
+
+html .mat-mdc-dialog-container .mat-mdc-dialog-title.mat-mdc-dialog-title {
+  font-size: var(--agentic-dialog-title-font-size, 1.375rem);
+  line-height: var(--agentic-dialog-title-line-height, 1.75rem);
+  font-weight: var(--agentic-dialog-title-font-weight, 500);
+  letter-spacing: 0;
 }
 
 /*

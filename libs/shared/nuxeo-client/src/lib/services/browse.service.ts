@@ -29,7 +29,15 @@ export interface NavTreeBootstrap {
 export interface BrowseFolderContents {
   folder: NuxeoDocument;
   entries: NuxeoDocument[];
+  /**
+   * Nuxeo's own count, **negative when it did not count**.
+   *
+   * Real only when the folder fits on one page — `resultsCountLimit` is the requested `pageSize`.
+   * Read `hasNextPage` for pagination rather than deriving a page count from this.
+   */
   totalSize: number;
+  /** Whether Nuxeo has another page. The only reliable pagination fact when `totalSize` is negative. */
+  hasNextPage?: boolean;
   /** Present when a restricted user should land on their only accessible folder. */
   redirectTo?: string;
 }
@@ -115,13 +123,19 @@ export class BrowseService {
    * Loads the current browse folder and its children. When repository root is not readable,
    * falls back to accessible top-level folders (User Workspaces, domain-scoped ACLs, etc.).
    */
-  getBrowseFolderContents(nuxeoPath: string, pageSize = 50): Observable<BrowseFolderContents> {
+  getBrowseFolderContents(
+    nuxeoPath: string,
+    pageSize = 50,
+    page?: { currentPageIndex?: number; sort?: { sortBy: string; sortOrder: 'ASC' | 'DESC' }[] },
+  ): Observable<BrowseFolderContents> {
     const safePath = nuxeoPath.replace(/\/+$/, '') || '/';
 
     return this.getByPath(safePath).pipe(
       switchMap((folder) =>
-        this.listBrowseFolderEntries(folder, safePath, pageSize).pipe(
-          map(({ entries, totalSize }) => ({ folder, entries, totalSize })),
+        this.listBrowseFolderEntries(folder, safePath, pageSize, page).pipe(
+          // Spread rather than destructure: picking named fields is what dropped `hasNextPage`
+          // on its way out, so the pager saw `undefined` and never offered a next page.
+          map((page) => ({ folder, ...page })),
         ),
       ),
       catchError(() => {
@@ -144,7 +158,8 @@ export class BrowseService {
     folder: NuxeoDocument,
     safePath: string,
     pageSize: number,
-  ): Observable<{ entries: NuxeoDocument[]; totalSize: number }> {
+    page?: { currentPageIndex?: number; sort?: { sortBy: string; sortOrder: 'ASC' | 'DESC' }[] },
+  ): Observable<{ entries: NuxeoDocument[]; totalSize: number; hasNextPage?: boolean }> {
     if (folder.type === 'Root' || folder.type === 'Domain') {
       return this.getNavTreeChildren(folder, pageSize).pipe(
         map((list) => this.toBrowseEntryList(list)),
@@ -155,7 +170,9 @@ export class BrowseService {
         map((list) => this.toBrowseEntryList(list)),
       );
     }
-    return this.getChildren(safePath, pageSize).pipe(map((list) => this.toBrowseEntryList(list)));
+    return this.getChildren(safePath, pageSize, page?.currentPageIndex ?? 0, page?.sort).pipe(
+      map((list) => this.toBrowseEntryList(list)),
+    );
   }
 
   /** Collection / Favorites members (Nuxeo Web UI uses default_content_collection, not @children). */
@@ -169,13 +186,32 @@ export class BrowseService {
     );
   }
 
+  /**
+   * Nuxeo's own pagination facts, not a substitute for them.
+   *
+   * Nuxeo sets `resultsCountLimit` to the **requested `pageSize`** and counts only within it. So
+   * `resultsCount` is a real total exactly when the whole folder fits on one page, and `-2`
+   * otherwise — measured on the local instance: `pageSize=39` over 39 children answered `39`;
+   * `pageSize=20` over the same folder answered `-2`.
+   *
+   * **The total is therefore known only when there is nothing to page**, which is why the pager is
+   * next/previous rather than numbered. `isNextPageAvailable` is accurate in both cases.
+   *
+   * Replacing an unknown total with the page length is the recorded `totalCount` defect: it makes a
+   * paged list look complete.
+   */
   private toBrowseEntryList(list: NuxeoDocumentList): {
     entries: NuxeoDocument[];
     totalSize: number;
+    hasNextPage?: boolean;
   } {
+    const reported = list.totalSize ?? list.resultsCount;
     return {
       entries: list.entries ?? [],
-      totalSize: list.totalSize ?? list.entries?.length ?? 0,
+      // Negative means Nuxeo declined to count. Passed through as-is so a caller can tell
+      // "unknown" from "zero"; `-1` and `-2` are Nuxeo's own conventions.
+      totalSize: typeof reported === 'number' ? reported : -2,
+      hasNextPage: (list as { isNextPageAvailable?: boolean }).isNextPageAvailable,
     };
   }
 
@@ -313,18 +349,41 @@ export class BrowseService {
     );
   }
 
+  /**
+   * A folder's children, one page at a time, optionally ordered by the server.
+   *
+   * `sortBy` takes Nuxeo property names — `dc:title`, `dc:modified` — and accepts several,
+   * comma-separated, with a matching `sortOrder` list. Verified against the local instance.
+   *
+   * **A property Nuxeo cannot sort by returns HTTP 200 with zero entries**, not an error, which
+   * is indistinguishable from an empty folder. Callers must therefore validate the field before
+   * calling — see `NuxeoQueryApi`, which refuses a sort key it cannot map rather than forwarding
+   * it and rendering an empty list.
+   */
   getChildren(
     nuxeoPath: string,
     pageSize = 50,
     currentPageIndex = 0,
+    sort?: { sortBy: string; sortOrder: 'ASC' | 'DESC' }[],
   ): Observable<NuxeoDocumentList> {
     const safePath = nuxeoPath.replace(/\/+$/, '');
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('pageSize', pageSize)
       .set('currentPageIndex', currentPageIndex);
 
+    if (sort?.length) {
+      params = params
+        .set('sortBy', sort.map((entry) => entry.sortBy).join(','))
+        .set('sortOrder', sort.map((entry) => entry.sortOrder).join(','));
+    }
+
     return this.api.get<NuxeoDocumentList>(`/nuxeo/api/v1/path${safePath}/@children`, params, {
       properties: '*',
+      // `permissions` only — not the full enricher set `getFullDocument` asks for, which would
+      // multiply the payload of every row. Without it each row's `sys_effectivePermissions` is
+      // `undefined`, and upstream reads that as no permission at all, so row-level actions would
+      // disappear. Asking is cheaper than the alternatives: guessing, or hardcoding.
+      'enrichers.document': 'permissions',
     });
   }
 

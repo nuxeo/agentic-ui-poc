@@ -1,0 +1,42 @@
+<section class="sign-in">
+  <h1 class="sign-in__title">{{ applicationTitle() }}</h1>
+  <p class="sign-in__lede">Sign in with your Nuxeo account to browse the repository.</p>
+
+  <form class="sign-in__form" (submit)="submit($event)">
+    <label class="sign-in__field">
+      <span>Username</span>
+      <input
+        name="username"
+        type="text"
+        autocomplete="username"
+        [value]="username()"
+        (input)="onUsername($event)"
+      />
+    </label>
+
+    <label class="sign-in__field">
+      <span>Password</span>
+      <input
+        name="password"
+        type="password"
+        autocomplete="current-password"
+        [value]="password()"
+        (input)="onPassword($event)"
+      />
+    </label>
+
+    <button class="sign-in__submit" type="submit" [disabled]="pending()">
+      {{ pending() ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </form>
+
+  @if (error()) {
+    <p class="sign-in__error" role="alert">{{ error() }}</p>
+  }
+
+  <p class="sign-in__note">
+    Authenticated against <code>GET /nuxeo/api/v1/me</code>. Every later request is signed by this
+    application's own HTTP interceptor — the platform's services never build an auth header
+    themselves.
+  </p>
+</section>

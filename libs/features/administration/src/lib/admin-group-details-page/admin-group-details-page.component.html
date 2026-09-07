@@ -7,7 +7,7 @@
   </div>
 
   @if (loading()) {
-    <div class="gd-center"><mat-spinner diameter="36" /></div>
+    <div class="gd-center"><mat-spinner diameter="36" aria-label="Loading" /></div>
   } @else if (error()) {
     <p class="gd-error">{{ error() }}</p>
   } @else if (group()) {
@@ -116,7 +116,7 @@
           <div class="gd-section-heading" role="heading" aria-level="2">Local Permissions</div>
         </header>
         @if (localPermLoading()) {
-          <div class="gd-center"><mat-spinner diameter="32" /></div>
+          <div class="gd-center"><mat-spinner diameter="32" aria-label="Loading" /></div>
         } @else if (localPerm()) {
           @if (localPerm(); as lp) {
             <table mat-table [dataSource]="lp.rows" class="gd-table gd-perm-table">

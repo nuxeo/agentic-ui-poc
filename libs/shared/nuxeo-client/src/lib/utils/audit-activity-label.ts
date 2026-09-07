@@ -44,7 +44,7 @@ function directoryEventLabel(
   if (labels instanceof Map) {
     return labels.get(key);
   }
-  return labels[key];
+  return Object.hasOwn(labels, key) ? labels[key] : undefined;
 }
 
 /**
@@ -56,7 +56,9 @@ export function auditActivityLabel(
 ): string {
   const key = auditActivityLabelKey(entry);
 
-  const builtIn = ACTIVITY_LABELS[key];
+  // `Object.hasOwn` guard, not a bare lookup: an eventId of `constructor` or `toString` would
+  // otherwise resolve up the prototype chain and return a function where a string is declared.
+  const builtIn = Object.hasOwn(ACTIVITY_LABELS, key) ? ACTIVITY_LABELS[key] : undefined;
   if (builtIn) {
     return builtIn;
   }

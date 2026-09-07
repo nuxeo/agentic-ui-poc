@@ -24,12 +24,19 @@
             type="button"
             mat-icon-button
             matTooltip="Refresh"
+            aria-label="Refresh"
             (click)="loadAnomalies()"
             [disabled]="anomalyLoading()"
           >
             <mat-icon>refresh</mat-icon>
           </button>
-          <button type="button" mat-icon-button matTooltip="Dismiss" (click)="dismissAnomalies()">
+          <button
+            type="button"
+            mat-icon-button
+            matTooltip="Dismiss"
+            aria-label="Dismiss"
+            (click)="dismissAnomalies()"
+          >
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -86,7 +93,7 @@
           [disabled]="nlLoading()"
         />
         @if (nlLoading()) {
-          <mat-spinner diameter="20" class="ai-nl-search__spinner" />
+          <mat-spinner diameter="20" class="ai-nl-search__spinner" aria-label="Loading" />
         } @else {
           <button
             type="button"
@@ -94,6 +101,7 @@
             (click)="onNlSearch()"
             [disabled]="!nlQuery.trim()"
             matTooltip="Search with AI"
+            aria-label="Search with AI"
           >
             <mat-icon>search</mat-icon>
           </button>
@@ -104,6 +112,7 @@
             mat-icon-button
             (click)="clearNlSearch()"
             matTooltip="Clear AI filters"
+            aria-label="Clear AI filters"
           >
             <mat-icon>clear</mat-icon>
           </button>
@@ -183,13 +192,18 @@
       <div class="ai-summary-panel__header">
         <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
         <span>AI Summary</span>
-        <button type="button" mat-icon-button (click)="closeSummary()">
+        <button
+          type="button"
+          mat-icon-button
+          aria-label="Close AI summary"
+          (click)="closeSummary()"
+        >
           <mat-icon>close</mat-icon>
         </button>
       </div>
       @if (summaryLoading()) {
         <div class="ai-summary-panel__loading">
-          <mat-spinner diameter="28" />
+          <mat-spinner diameter="28" aria-label="Loading" />
           <span>Analyzing {{ entries().length }} entries…</span>
         </div>
       } @else if (auditSummary()) {
@@ -239,7 +253,7 @@
 
   <!-- ═══════ Audit Table ═══════ -->
   @if (loading()) {
-    <div class="audit-center"><mat-spinner diameter="40" /></div>
+    <div class="audit-center"><mat-spinner diameter="40" aria-label="Loading" /></div>
   } @else {
     <div class="audit-table-wrap mat-elevation-z1">
       <table mat-table [dataSource]="entries()" class="audit-table">

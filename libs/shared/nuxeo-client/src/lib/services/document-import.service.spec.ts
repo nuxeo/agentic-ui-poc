@@ -243,6 +243,7 @@ describe('DocumentImportService', () => {
         title: 't',
         type: 'File',
         path: '/a',
+        lastModified: '2026-01-01T00:00:00.000Z',
         properties: { 'file:content': { name: 'photo.jpg', length: '1024' } },
       }),
     ).toBe(true);
@@ -252,6 +253,7 @@ describe('DocumentImportService', () => {
         title: 't',
         type: 'File',
         path: '/a',
+        lastModified: '2026-01-01T00:00:00.000Z',
         properties: { 'file:content': { name: 'photo.jpg' } },
       }),
     ).toBe(false);
@@ -261,6 +263,7 @@ describe('DocumentImportService', () => {
         title: 't',
         type: 'File',
         path: '/a',
+        lastModified: '2026-01-01T00:00:00.000Z',
         properties: { 'file:content': { name: '', 'mime-type': 'image/jpeg' } },
       }),
     ).toBe(false);
@@ -270,6 +273,7 @@ describe('DocumentImportService', () => {
         title: 't',
         type: 'File',
         path: '/a',
+        lastModified: '2026-01-01T00:00:00.000Z',
         properties: { 'file:content': null },
       }),
     ).toBe(false);

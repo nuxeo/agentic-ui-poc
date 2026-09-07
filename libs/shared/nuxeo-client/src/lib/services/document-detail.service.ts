@@ -326,6 +326,22 @@ export class DocumentDetailService {
     );
   }
 
+  /**
+   * Drops a whole named ACL, `local` by default.
+   *
+   * Nuxeo has no "replace this ACL" operation, so a caller holding a complete desired ACL clears
+   * and replays it. That is destructive between the two calls: an ACL cleared by a request whose
+   * replay then fails leaves the document relying on inheritance alone. Nuxeo still enforces
+   * `WriteSecurity` on both calls, so this cannot grant the caller anything they did not have.
+   */
+  removeAcl(uid: string, acl = 'local'): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${uid}/@op/Document.RemoveACL`,
+      { params: { acl }, context: {} },
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
   blockPermissionInheritance(uid: string): Observable<NuxeoDocument> {
     return this.api.post<NuxeoDocument>(
       `/nuxeo/api/v1/id/${uid}/@op/Document.BlockPermissionInheritance`,
@@ -705,6 +721,48 @@ export class DocumentDetailService {
     return this.http.get<NuxeoDocumentList>(
       this.api.apiUrl('/nuxeo/api/v1/search/lang/NXQL/execute'),
       { params, headers: { properties: '*' } },
+    );
+  }
+
+  /**
+   * A document's versions, read straight from the repository rather than the search index.
+   *
+   * `getVersions` above goes through `/search/lang/NXQL/execute`, which on this deployment is
+   * OpenSearch-backed and therefore **eventually** consistent. Measured on the local
+   * instance: immediately after two `Document.CheckIn` calls the NXQL query returned one of
+   * the two versions, and both only after the index caught up. A versions panel that reloads
+   * on check-in would show the user a list missing the version they just created.
+   *
+   * `Document.GetVersions` reads the repository directly and returned both immediately, so
+   * that is what the adf-hx `QUERY` port uses. The operation answers with a bare
+   * `{"entity-type":"documents","entries":[...]}` — no `totalSize`, no page index — so this
+   * returns the entries rather than pretending to be a `NuxeoPaginatedList`.
+   *
+   * `getVersions` is deliberately left alone: `document-detail` and the bulk-action services
+   * already depend on its paginated shape, and changing them is not this port's business.
+   */
+  getVersionsDirect(uid: string): Observable<NuxeoDocument[]> {
+    return this.api
+      .post<{ entries?: NuxeoDocument[] }>(
+        `/nuxeo/api/v1/id/${uid}/@op/Document.GetVersions`,
+        { params: {}, context: {} },
+        { 'Content-Type': 'application/json', properties: '*' },
+      )
+      .pipe(map((res) => res.entries ?? []));
+  }
+
+  /**
+   * Create a version of a live document — Nuxeo's `Document.CheckIn`.
+   *
+   * Added for the adf-hx `CHECKIN` API port, which upstream's
+   * `CreateDocumentVersionService` requires. Nuxeo takes the increment as
+   * `'minor' | 'major'`; adf-hx expresses it as a `minor` boolean.
+   */
+  checkInDocument(uid: string, minor = true): Observable<NuxeoDocument> {
+    return this.api.post<NuxeoDocument>(
+      `/nuxeo/api/v1/id/${uid}/@op/Document.CheckIn`,
+      { params: { version: minor ? 'minor' : 'major' }, context: {} },
+      { 'Content-Type': 'application/json' },
     );
   }
 

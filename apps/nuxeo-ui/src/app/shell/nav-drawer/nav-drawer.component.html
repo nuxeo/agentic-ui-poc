@@ -1,60 +1,77 @@
 @if (activeItem(); as item) {
-  <div class="drawer-header" [class.drawer-header--tasks]="isTasksPanel">
-    <div
-      class="drawer-title"
-      [class.drawer-title--tasks]="isTasksPanel"
-      role="heading"
-      aria-level="2"
-    >
-      {{ item.label }}
+  @if (!isBrowseAdfHx) {
+    <div class="drawer-header" [class.drawer-header--tasks]="isTasksPanel">
+      <div
+        class="drawer-title"
+        [class.drawer-title--tasks]="isTasksPanel"
+        role="heading"
+        aria-level="2"
+      >
+        {{ item.label }}
+      </div>
+      @if (isTasksPanel) {
+        <button
+          mat-icon-button
+          (click)="loadTasks()"
+          matTooltip="Refresh"
+          aria-label="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isRecentlyViewed) {
+        <button
+          mat-icon-button
+          (click)="refreshRecentlyViewed()"
+          matTooltip="Refresh"
+          aria-label="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isExpiredQueue) {
+        <button
+          mat-icon-button
+          (click)="refreshExpired()"
+          matTooltip="Refresh"
+          aria-label="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isBrowse) {
+        <button
+          mat-icon-button
+          (click)="refreshBrowseTree()"
+          matTooltip="Refresh"
+          aria-label="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
+      @if (isPersonalSpace) {
+        <button
+          mat-icon-button
+          (click)="refreshPersonalSpaceTree()"
+          matTooltip="Refresh"
+          aria-label="Refresh"
+          class="refresh-btn"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      }
     </div>
-    @if (isTasksPanel) {
-      <button mat-icon-button (click)="loadTasks()" matTooltip="Refresh" class="refresh-btn">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isRecentlyViewed) {
-      <button
-        mat-icon-button
-        (click)="refreshRecentlyViewed()"
-        matTooltip="Refresh"
-        class="refresh-btn"
-      >
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isExpiredQueue) {
-      <button mat-icon-button (click)="refreshExpired()" matTooltip="Refresh" class="refresh-btn">
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isBrowse) {
-      <button
-        mat-icon-button
-        (click)="refreshBrowseTree()"
-        matTooltip="Refresh"
-        class="refresh-btn"
-      >
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-    @if (isPersonalSpace) {
-      <button
-        mat-icon-button
-        (click)="refreshPersonalSpaceTree()"
-        matTooltip="Refresh"
-        class="refresh-btn"
-      >
-        <mat-icon>refresh</mat-icon>
-      </button>
-    }
-  </div>
+  }
 
   @if (isBrowse) {
     <div class="folder-tree">
       @if (rootLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (rootNodes().length === 0) {
         <div class="tree-empty">No folders found</div>
@@ -72,11 +89,13 @@
         </div>
       }
     </div>
+  } @else if (isBrowseAdfHx) {
+    <hxp-browse-nav-drawer [title]="item.label" (navigatePath)="onAdfHxBrowseNavigate($event)" />
   } @else if (isPersonalSpace) {
     <div class="folder-tree">
       @if (personalSpaceLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (personalSpaceError()) {
         <div class="tree-empty error">
@@ -99,7 +118,7 @@
     <!-- Recently Viewed panel -->
     @if (recentlyViewedLoading()) {
       <div class="tree-loading">
-        <mat-spinner diameter="24" />
+        <mat-spinner diameter="24" aria-label="Loading" />
       </div>
     } @else if (recentlyViewedError()) {
       <div class="tree-empty error">{{ recentlyViewedError() }}</div>
@@ -134,7 +153,7 @@
   } @else if (isExpiredQueue) {
     @if (expiredLoading()) {
       <div class="tree-loading">
-        <mat-spinner diameter="24" />
+        <mat-spinner diameter="24" aria-label="Loading" />
       </div>
     } @else if (expiredError()) {
       <div class="tree-empty error">{{ expiredError() }}</div>
@@ -171,7 +190,7 @@
     <div class="collections-panel">
       @if (collectionsLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (collections().length === 0) {
         <div class="tree-empty">No collections found</div>
@@ -202,16 +221,16 @@
       }
     </div>
   } @else if (isAssets) {
-    <app-dynamic-drawer [drawerComponent]="assetsDrawerComponent()" />
+    <lib-extension-outlet componentId="app.sidebar.assets" />
   } @else if (isSearchFilters) {
-    <app-dynamic-drawer [drawerComponent]="searchFiltersDrawerComponent()" />
+    <lib-extension-outlet componentId="app.sidebar.searchFilters" />
   } @else if (isTrash) {
-    <app-dynamic-drawer [drawerComponent]="trashDrawerComponent()" />
+    <lib-extension-outlet componentId="app.sidebar.trashFilters" />
   } @else if (isTasksPanel) {
     <div class="tasks-panel-wrap">
       @if (tasksLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (tasksError()) {
         <div class="tree-empty error">
@@ -271,7 +290,7 @@
     <div class="favorites-panel">
       @if (favoritesLoading()) {
         <div class="tree-loading">
-          <mat-spinner diameter="24" />
+          <mat-spinner diameter="24" aria-label="Loading" />
         </div>
       } @else if (favorites().length === 0) {
         <div class="tree-empty">
@@ -349,7 +368,7 @@
           <p class="clipboard-tip">Browse to a container to paste or move clipboard content.</p>
           @if (clipboardActionLoading()) {
             <div class="clipboard-loading">
-              <mat-spinner diameter="24" />
+              <mat-spinner diameter="24" aria-label="Loading" />
             </div>
           }
           <div class="clipboard-primary-actions">
@@ -405,6 +424,14 @@
         </button>
       }
     </div>
+  } @else if (sidebarComponentId(); as sidebarId) {
+    <!--
+      A nav entry with no packaged drawer renders whatever the `sidebar` slot
+      registers for its id. Before Phase 2 this branch could only show the
+      placeholder below, so a manifest-added nav item was guaranteed an empty
+      drawer and the nav array was decorative.
+    -->
+    <lib-extension-outlet [componentId]="sidebarId" />
   } @else {
     <div class="drawer-empty">
       <p>Content for "{{ item.label }}" will appear here.</p>
@@ -417,7 +444,7 @@
     @if (hasChildren(node)) {
       <button class="tree-toggle" (click)="toggleNode(node)" type="button">
         @if (node.loading) {
-          <mat-spinner diameter="14" />
+          <mat-spinner diameter="14" aria-label="Loading" />
         } @else {
           <mat-icon class="tree-arrow" [class.tree-arrow--expanded]="node.expanded">
             chevron_right

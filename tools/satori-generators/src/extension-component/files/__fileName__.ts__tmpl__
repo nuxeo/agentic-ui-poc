@@ -1,0 +1,17 @@
+import { Component } from '@angular/core';
+
+/**
+ * `<%= componentId %>`
+ *
+ * Contributed to the platform **by ID**, behind a lazy import. Nothing in the host
+ * imports this class — a manifest or a host route names the ID and
+ * `ExtensionOutletComponent` resolves it. That is what leaves the class name free to
+ * change without being a breaking change.
+ */
+@Component({
+  selector: '<%= owner %>-<%= fileName %>',
+  standalone: true,
+  templateUrl: './<%= fileName %>.html',
+  styleUrl: './<%= fileName %>.scss',
+})
+export class <%= className %>Component {}

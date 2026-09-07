@@ -38,19 +38,21 @@
           <mat-icon>bookmark</mat-icon>
           Save
         </button>
-          <button
-            mat-icon-button
-            type="button"
-            [matMenuTriggerFor]="resultsActionsMenu"
-            aria-label="Results actions"
-          >
-            <mat-icon>more_vert</mat-icon>
+        <button
+          mat-icon-button
+          type="button"
+          [matMenuTriggerFor]="resultsActionsMenu"
+          aria-label="Results actions"
+        >
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #resultsActionsMenu="matMenu">
+          <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
+          <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
+          <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">
+            Delete
           </button>
-          <mat-menu #resultsActionsMenu="matMenu">
-            <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
-            <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
-            <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">Delete</button>
-          </mat-menu>
+        </mat-menu>
       }
     </div>
   </div>
@@ -63,7 +65,13 @@
     </div>
 
     <div class="toolbar-actions">
-      <button mat-icon-button matTooltip="Export CSV" (click)="exportCsv()" class="toolbar-btn">
+      <button
+        mat-icon-button
+        matTooltip="Export CSV"
+        aria-label="Export CSV"
+        (click)="exportCsv()"
+        class="toolbar-btn"
+      >
         <mat-icon>download</mat-icon>
       </button>
 
@@ -71,6 +79,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'grid'"
         matTooltip="Grid View"
+        aria-label="Grid View"
         (click)="setViewMode('grid')"
         class="toolbar-btn"
       >
@@ -81,6 +90,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'table'"
         matTooltip="Table View"
+        aria-label="Table View"
         (click)="setViewMode('table')"
         class="toolbar-btn"
       >
@@ -91,6 +101,7 @@
         mat-icon-button
         [class.active]="viewMode() === 'list'"
         matTooltip="List View"
+        aria-label="List View"
         (click)="setViewMode('list')"
         class="toolbar-btn"
       >
@@ -101,7 +112,7 @@
 
   @if (loading()) {
     <div class="results-loading">
-      <mat-spinner diameter="32" />
+      <mat-spinner diameter="32" aria-label="Loading" />
     </div>
   }
 
@@ -117,6 +128,7 @@
           <mat-checkbox
             [checked]="isAllSelected()"
             [indeterminate]="isIndeterminate()"
+            aria-label="Select all"
             [disabled]="resultCount() === 0"
             matTooltip="Select all"
             (change)="toggleAll()"
@@ -137,6 +149,7 @@
           <button
             mat-icon-button
             matTooltip="Revert sort order"
+            aria-label="Revert sort order"
             (click)="toggleSortDir()"
             class="action-btn"
           >
@@ -147,15 +160,11 @@
 
       <div class="result-grid">
         @for (doc of documents(); track doc.uid) {
-          <button
-            type="button"
-            class="result-card"
-            (click)="openDocument(doc.uid)"
-            [class.selected]="isSelected(doc.uid)"
-          >
+          <div class="result-card" [class.selected]="isSelected(doc.uid)">
             <div class="grid-card-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
+                [aria-label]="'Select ' + doc.title"
                 (change)="toggleSelection(doc.uid)"
                 (click)="$event.stopPropagation()"
               ></mat-checkbox>
@@ -168,10 +177,17 @@
               }
             </div>
             <div class="result-card-body">
-              <p class="result-name" [title]="doc.title">{{ doc.title }}</p>
+              <button
+                type="button"
+                class="result-name"
+                [title]="doc.title"
+                (click)="openDocument(doc.uid); $event.stopPropagation()"
+              >
+                {{ doc.title }}
+              </button>
               <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
             </div>
-          </button>
+          </div>
         }
 
         @if (resultCount() === 0) {
@@ -217,6 +233,7 @@
             <mat-checkbox
               [checked]="isAllSelected()"
               [indeterminate]="isIndeterminate()"
+              aria-label="Select all"
               (change)="toggleAll()"
             ></mat-checkbox>
           </span>
@@ -239,6 +256,7 @@
               mat-icon-button
               class="gear-btn"
               matTooltip="Manage columns"
+              aria-label="Manage columns"
               (click)="openColumnPanel()"
             >
               <mat-icon>tune</mat-icon>
@@ -247,16 +265,15 @@
         </div>
 
         @for (doc of documents(); track doc.uid) {
-          <button
-            type="button"
+          <div
             class="list-row"
             [class.selected]="isSelected(doc.uid)"
             [style.grid-template-columns]="gridTemplate()"
-            (click)="openDocument(doc.uid)"
           >
             <span class="col-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
+                [aria-label]="'Select ' + doc.title"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>
@@ -269,7 +286,14 @@
                   } @else {
                     <mat-icon class="row-icon">{{ docIcon(doc) }}</mat-icon>
                   }
-                  <span class="row-name-text" [title]="doc.title">{{ doc.title }}</span>
+                  <button
+                    type="button"
+                    class="row-name-text"
+                    [title]="doc.title"
+                    (click)="openDocument(doc.uid); $event.stopPropagation()"
+                  >
+                    {{ doc.title }}
+                  </button>
                 </span>
               } @else if (col.key === 'modified' || col.key === 'created') {
                 <span>{{ getCellValue(doc, col.key) | date: 'medium' }}</span>
@@ -281,6 +305,7 @@
               <button
                 mat-icon-button
                 matTooltip="Restore"
+                aria-label="Restore"
                 class="action-btn"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="restoreDocument(doc.uid, $event)"
@@ -290,6 +315,7 @@
               <button
                 mat-icon-button
                 matTooltip="Delete permanently"
+                aria-label="Delete permanently"
                 class="action-btn action-danger"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="permanentlyDelete(doc.uid, $event)"
@@ -297,7 +323,7 @@
                 <mat-icon class="action-icon">delete_forever</mat-icon>
               </button>
             </span>
-          </button>
+          </div>
         }
 
         @if (resultCount() === 0) {
@@ -314,6 +340,7 @@
         <mat-checkbox
           [checked]="isAllSelected()"
           [indeterminate]="isIndeterminate()"
+          aria-label="Select all"
           [disabled]="resultCount() === 0"
           matTooltip="Select all"
           (change)="toggleAll()"
@@ -335,6 +362,7 @@
         <button
           mat-icon-button
           matTooltip="Revert sort order"
+          aria-label="Revert sort order"
           (click)="toggleSortDir()"
           class="action-btn"
         >
@@ -345,12 +373,7 @@
 
     <div class="simple-list">
       @for (doc of documents(); track doc.uid) {
-        <button
-          type="button"
-          class="simple-list-item"
-          [class.selected]="isSelected(doc.uid)"
-          (click)="openDocument(doc.uid)"
-        >
+        <div class="simple-list-item" [class.selected]="isSelected(doc.uid)">
           <div class="simple-list-thumb-wrap">
             @if (thumbnailMap()[doc.uid]; as thumb) {
               <img class="simple-list-thumb" [src]="thumb" alt="" />
@@ -360,6 +383,7 @@
             <span class="simple-list-checkbox col-hover-select">
               <mat-checkbox
                 [checked]="isSelected(doc.uid)"
+                [aria-label]="'Select ' + doc.title"
                 (click)="$event.stopPropagation()"
                 (change)="toggleSelection(doc.uid)"
               ></mat-checkbox>
@@ -367,13 +391,21 @@
           </div>
           <div class="simple-list-body">
             <div class="simple-list-header">
-              <p class="simple-list-title" [title]="doc.title">{{ doc.title }}</p>
+              <button
+                type="button"
+                class="simple-list-title"
+                [title]="doc.title"
+                (click)="openDocument(doc.uid); $event.stopPropagation()"
+              >
+                {{ doc.title }}
+              </button>
               <sat-category-tag category="gray">{{ doc.type }}</sat-category-tag>
             </div>
             <div class="simple-list-actions col-hover-actions">
               <button
                 mat-icon-button
                 matTooltip="Restore"
+                aria-label="Restore"
                 class="action-btn"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="restoreDocument(doc.uid, $event)"
@@ -383,6 +415,7 @@
               <button
                 mat-icon-button
                 matTooltip="Delete permanently"
+                aria-label="Delete permanently"
                 class="action-btn action-danger"
                 [disabled]="actionInProgress().has(doc.uid)"
                 (click)="permanentlyDelete(doc.uid, $event)"
@@ -391,7 +424,7 @@
               </button>
             </div>
           </div>
-        </button>
+        </div>
       }
 
       @if (resultCount() === 0) {

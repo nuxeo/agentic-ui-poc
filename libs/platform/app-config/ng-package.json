@@ -1,0 +1,3 @@
+{
+  "lib": { "entryFile": "../../shared/app-config/src/index.ts" }
+}

@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, effect, inject, input, OnDestroy, signal } from '@angular/core';
 import { catchError, of } from 'rxjs';
-import { NUXEO_API_ORIGIN, resolveNuxeoIconPath } from '@agentic-ui/shared/nuxeo-client';
+import { NUXEO_API_ORIGIN, resolveNuxeoIconPath } from '@nuxeo-satori/platform/nuxeo-client';
 
 @Component({
   selector: 'lib-compare-icon-image',

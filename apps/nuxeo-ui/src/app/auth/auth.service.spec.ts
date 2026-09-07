@@ -6,7 +6,7 @@ import {
   SelectionService,
   BrowseContextService,
   ClipboardTargetService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { AuthService } from './auth.service';
 
 describe('AuthService poweruser access', () => {

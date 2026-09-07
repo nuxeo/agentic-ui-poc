@@ -1,0 +1,98 @@
+name: A11y
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, 'feature/**', 'fix/**']
+  # Reusable, so a release or nightly workflow can call this rather than duplicating it.
+  # Modelled on nuxeo-web-ui's a11y.yaml, which exposes the same entry point.
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: a11y-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege. This job reads the tree and writes a job summary; it needs nothing else.
+# `packages: read` is required because `npm ci` resolves @hylandsoftware and @alfresco from
+# GitHub Packages.
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  templates:
+    name: Template accessibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@hylandsoftware'
+
+      # `--ignore-scripts` is safe here and is what nuxeo-web-ui's a11y job does: this scan
+      # needs `eslint` and the angular-eslint template packages resolvable, and nothing that
+      # a postinstall script produces. It also skips the husky install, which has no purpose
+      # on a runner.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
+          SATORI_GH_READONLY_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
+
+      # Runs the eleven @angular-eslint/template accessibility rules over the 89 tracked
+      # templates and fails only on violations beyond tools/a11y/baseline.json. A local run
+      # reports 90 — `apps/nuxeo-ui/src/diagnostic.html` is gitignored and so exists only on a
+      # developer's disk. Findings are emitted as
+      # GitHub annotations — errors for new ones, warnings for baselined ones — so they appear
+      # inline on the diff, and a table goes to the job summary.
+      #
+      # Verified by negative control before being trusted: adding a second
+      # click-events-have-key-events to an already-baselined file and an alt-text violation to
+      # a clean one both turned it red, while the six known violations stayed green.
+      - name: Scan templates
+        run: node scripts/a11y-scan.mjs
+
+  # ---------------------------------------------------------------------------------------
+  # NOT IMPLEMENTED HERE, deliberately: the live-server axe scan.
+  #
+  # `scripts/beta-harness/steps/phase-6-a11y.mjs` is the real accessibility measurement — 15
+  # axe cases over 8 routes at WCAG 2.1 A/AA, with an empty KNOWN_VIOLATIONS list and one
+  # step-scoped upstream exclusion. It is strictly better than the static scan above and it
+  # catches what static rules cannot: colour contrast, and anything that depends on rendered
+  # layout.
+  #
+  # It cannot run on a GitHub-hosted runner today, for a specific reason rather than a vague
+  # one. It requires a live Nuxeo reachable through the dev proxy — `backend-preflight.mjs`
+  # fails the run outright if `/nuxeo/api/v1/me` does not answer 200, because an empty screen
+  # scans clean and proves nothing. And `backend-preflight.mjs` cannot create that stack:
+  #
+  #     "This repo has no compose file, so the stack was created by hand and cannot be
+  #      recreated"
+  #
+  # It can only `docker start` a container that already exists. Nuxeo images come from the
+  # private packages.nuxeo.com, for which this repository holds no credentials.
+  #
+  # A job added here anyway would have shipped without ever being observed to pass, which is
+  # the exact shape of the self-confirming gates recorded in docs/adf-hx-beta-plan.md. To wire
+  # it up, one of these has to exist first:
+  #
+  #   - a self-hosted runner with the `nuxeo` container, targeted with
+  #     EVIDENCE_ENSURE_BACKEND=1 and AGENTIC_UI_EVIDENCE_DIR pointed inside the workspace
+  #     (the default evidence root is the developer's Desktop, which no runner has)
+  #   - or packages.nuxeo.com credentials as secrets, plus a compose file for Nuxeo and
+  #     OpenSearch
+  #
+  # Until then it is run locally:
+  #
+  #   npm install --no-save @playwright/test @axe-core/playwright
+  #   npm run beta:backend && npx nx serve nuxeo-ui
+  #   npm run beta:evidence -- phase-6-a11y

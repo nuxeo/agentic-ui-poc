@@ -1,0 +1,29 @@
+<div class="stats-page">
+  <h1>Quick Statistics</h1>
+
+  <lib-widget-grid [columns]="3">
+    <lib-widget-container title="Total Documents">
+      <div class="stat">
+        <div class="stat-value">
+          {{ totalDocs() ?? '...' }}
+        </div>
+      </div>
+    </lib-widget-container>
+
+    <lib-widget-container title="This Week">
+      <div class="stat">
+        <div class="stat-value">
+          {{ recentDocs }}
+        </div>
+      </div>
+    </lib-widget-container>
+
+    <lib-widget-container title="My Documents">
+      <div class="stat">
+        <div class="stat-value">
+          {{ myDocs }}
+        </div>
+      </div>
+    </lib-widget-container>
+  </lib-widget-grid>
+</div>

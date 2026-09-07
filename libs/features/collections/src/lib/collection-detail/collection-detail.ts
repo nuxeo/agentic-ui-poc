@@ -53,7 +53,7 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   BrowseContextService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
@@ -67,23 +67,17 @@ import {
   ConfirmDialogData,
   EditCollectionDialogComponent,
   EditCollectionDialogData,
-} from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/ui';
 import {
   AddPermissionDialogComponent,
   AddPermissionDialogData,
-} from '../add-permission-dialog/add-permission-dialog';
-import {
-  UpdatePermissionDialogComponent,
-  UpdatePermissionDialogData,
-} from '../update-permission-dialog/update-permission-dialog';
-import {
   DeletePermissionDialogComponent,
   DeletePermissionDialogData,
-} from '../delete-permission-dialog/delete-permission-dialog';
-import {
   ShareExternalDialogComponent,
   ShareExternalDialogData,
-} from '../share-external-dialog/share-external-dialog';
+  UpdatePermissionDialogComponent,
+  UpdatePermissionDialogData,
+} from '@agentic-ui/shared-permission-dialogs';
 
 @Component({
   selector: 'lib-collection-detail',
@@ -128,6 +122,14 @@ export class CollectionDetailComponent {
   private readonly adminAccess = inject(ADMIN_ACCESS_CHECKS);
 
   readonly collection = signal<NuxeoDocument | null>(null);
+  /**
+   * Whether the collection itself resolved, kept separate from `collection` because a null
+   * document has three different meanings — still loading, gone, and unreachable — and the page
+   * must not offer actions in the last two. Before this existed, a failed load left `collection`
+   * at null and the template's `collection()?.title ?? 'Collection'` rendered the full surface,
+   * tabs and actions included, for a collection that did not exist.
+   */
+  readonly loadState = signal<'loading' | 'loaded' | 'not-found' | 'error'>('loading');
   readonly members = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -248,6 +250,8 @@ export class CollectionDetailComponent {
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.revokeThumbnails());
+
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       this.collectionUid = params.get('uid') ?? '';
       this.historyLoaded = false;
@@ -258,13 +262,24 @@ export class CollectionDetailComponent {
     });
   }
 
+  /** Retry after a transport or permission failure. Not offered for `not-found`, which retrying cannot change. */
+  retryLoad(): void {
+    this.loadCollection();
+  }
+
+  goToCollections(): void {
+    void this.router.navigateByUrl('/collections');
+  }
+
   private loadCollection(): void {
+    this.loadState.set('loading');
     this.detailService
       .getFullDocument(this.collectionUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
           this.collection.set(doc);
+          this.loadState.set('loaded');
           this.syncActionStates(doc);
           if (this.activeTabIndex() === 2 && !this.historyLoaded) {
             this.loadAuditLog();
@@ -277,12 +292,20 @@ export class CollectionDetailComponent {
             .subscribe({
               next: (doc) => {
                 this.collection.set(doc);
+                this.loadState.set('loaded');
                 if (this.activeTabIndex() === 2 && !this.historyLoaded) {
                   this.loadAuditLog();
                 }
               },
-              error: () => {
-                /* fallback also failed, ignore */
+              // Both reads failed. A 404 means the collection is genuinely absent — a mistyped,
+              // stale or deleted link — and is reported as such; anything else is a transport or
+              // permission failure the user can retry, and saying "does not exist" there would be
+              // a guess. Either way the page must stop pretending it loaded something.
+              error: (err: unknown) => {
+                this.collection.set(null);
+                this.loadState.set(
+                  (err as { status?: number } | null)?.status === 404 ? 'not-found' : 'error',
+                );
               },
             });
         },
@@ -315,21 +338,41 @@ export class CollectionDetailComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
+    // The reset that made the leak unbounded: `thumbnailMap.set({})` dropped the last
+    // batch's `SafeUrl`s without revoking the blobs behind them, so every navigation to
+    // another collection pinned another batch in memory for the life of the document.
+    this.revokeThumbnails();
     this.thumbnailMap.set({});
     for (const doc of docs) {
       if (!this.canLoadThumbnail(doc)) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
+          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
             [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
           }));
         });
     }
+  }
+
+  /**
+   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
+   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out. This is
+   * the only point where the raw url exists.
+   */
+  private readonly thumbnailBlobUrls: string[] = [];
+
+  private revokeThumbnails(): void {
+    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
+    this.thumbnailBlobUrls.length = 0;
   }
 
   private canLoadThumbnail(doc: NuxeoDocument): boolean {
@@ -392,7 +435,11 @@ export class CollectionDetailComponent {
       next: () => {
         const wasLocked = this.isLocked();
         this.isLocked.set(!wasLocked);
-        this.lockOwner.set(wasLocked ? null : 'Administrator');
+        // Nuxeo records the caller as the lock owner; naming a fixed account here would
+        // tell every user someone else held their own lock. Latent only because
+        // `lockOwner` is not rendered yet — the same line in document-detail was wrong
+        // for the same reason.
+        this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
         this.actionInProgress.set(null);
         this.toast(wasLocked ? 'Collection unlocked' : 'Collection locked');
       },

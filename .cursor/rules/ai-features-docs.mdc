@@ -1,7 +1,6 @@
 ---
 description: Keep AI features documentation in sync with code changes
 globs:
-  - apps/ai-backend/src/**/*.ts
   - libs/shared/ai-client/src/**/*.ts
   - libs/features/search/src/lib/search/search.ts
   - libs/features/document-detail/src/lib/document-detail/document-detail.ts
@@ -14,7 +13,10 @@ alwaysApply: false
 
 # AI Features Documentation Rule
 
-The application includes the following AI features (all powered by OpenAI via `apps/ai-backend`):
+AI features are served by Nuxeo Automation operations (`AI.*`) from a **separate** marketplace
+package repository. This repo contains only the Angular client (`libs/shared/ai-client`).
+
+The application includes the following AI features:
 
 1. **Natural Language Search** — Convert plain English to NXQL queries (Search page + Admin NXQL page)
 2. **Document Summarization** — AI-generated summary with key points (Document Detail > AI Insights tab)
@@ -27,10 +29,10 @@ The application includes the following AI features (all powered by OpenAI via `a
 9. **Comment Sentiment Analysis** — Classify comment sentiment and summarize threads (API ready)
 10. **Natural Language Permission Queries** — Answer "who can access what" questions via ACL analysis (API ready)
 
-When modifying any AI-related code (backend routes, Angular AI components, AI client services), you MUST also update `docs/ai-features.md` to reflect the changes.
+When modifying any AI-related code (Angular AI components, AI client services), you MUST also update `docs/ai-features.md` to reflect the changes.
 
 Specifically:
-- If you add, remove, or rename an API endpoint, update the corresponding feature section and the Project Structure listing.
+- If you add, remove, or rename an automation operation call, update the corresponding feature section and the Project Structure listing.
 - If you change request/response shapes, update the API examples in the relevant feature section.
 - If you add a new AI feature, add a new numbered section following the existing format (heading, location, description, table of files, API example).
 - If you change which OpenAI model a feature uses, update the Models Used table.

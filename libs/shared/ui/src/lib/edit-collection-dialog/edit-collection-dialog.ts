@@ -30,7 +30,7 @@ import {
   l10nEntryLabel,
   PERMISSION_DENIED_MESSAGE,
   isPermissionDeniedError,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface EditCollectionDialogData {
   document: NuxeoDocument;

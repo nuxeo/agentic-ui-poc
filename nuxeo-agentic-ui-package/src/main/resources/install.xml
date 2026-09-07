@@ -1,4 +1,25 @@
 <install>
   <update file="${package.root}/install/bundles" todir="${env.bundles}" />
   <copy dir="${package.root}/web" todir="${env.server.home}/nxserver" overwrite="true" />
+  <!--
+    Customer-editable configuration, deliberately installed *beside* the
+    application bundle rather than inside it.
+
+    The destination must be inside the directory Tomcat actually serves. The
+    `nuxeo` context declares docBase="../nxserver/nuxeo.war", so a request for
+    `/nuxeo/agentic-ui-config/bootstrap.json` resolves to
+    `nxserver/nuxeo.war/agentic-ui-config/bootstrap.json`. `nxserver/web` holds
+    only `root.war` and is not a docBase; anything placed there is never served.
+
+    The copy above stages `${package.root}/web` (which contains only
+    `nuxeo.war/agentic-ui/**`) into `nxserver` with overwrite="true", so a
+    configuration file under `nuxeo.war/agentic-ui` would be destroyed on every
+    upgrade. `nuxeo.war/agentic-ui-config` is a sibling of that tree and absent
+    from the copy's source, and overwrite="false" means an existing deployed file
+    is left untouched — so this step seeds the defaults on a first install and
+    preserves customer edits on every upgrade after it.
+  -->
+  <copy dir="${package.root}/config"
+        todir="${env.server.home}/nxserver/nuxeo.war/agentic-ui-config"
+        overwrite="false" />
 </install>

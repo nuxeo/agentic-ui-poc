@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentViewerComponent, type VideoSource } from './document-viewer.component';
 
@@ -14,7 +14,7 @@ describe('DocumentViewerComponent', () => {
 
     await TestBed.configureTestingModule({
       imports: [DocumentViewerComponent],
-      providers: [provideExperimentalZonelessChangeDetection()],
+      providers: [provideZonelessChangeDetection()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DocumentViewerComponent);

@@ -24,7 +24,7 @@ import {
   isFolderishDocument,
   type ContentLakeDuplicate,
   type NuxeoDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
 
 type UploadPhase = 'idle' | 'uploading' | 'ingesting' | 'complete' | 'error';

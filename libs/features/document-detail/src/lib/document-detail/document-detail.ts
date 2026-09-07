@@ -6,9 +6,19 @@ import {
   inject,
   signal,
   computed,
+  effect,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  AppExtensionsService,
+  EXTENSION_SLOTS,
+  ExtensionActionRegistry,
+  ExtensionOutletComponent,
+  ExtensionRuleContextService,
+  type ExtensionActionDescriptor,
+  type ExtensionTabDescriptor,
+} from '@nuxeo-satori/platform/extensions';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, NgTemplateOutlet } from '@angular/common';
@@ -81,15 +91,22 @@ import {
   isFolderishDocument,
   isCollectionDocument,
   BrowseContextService,
+  BROWSE_RETURN_MODE_PARAM,
+  decodeNuxeoPathSegment,
   documentHasPersistedMainBlob,
   noteFormatLabel,
+  normalizeNuxeoPath,
+  parentNuxeoFolderPath,
+  parseBrowseReturnMode,
   renderNoteMarkdown,
   isMailSendError,
   mailSendFailureMessage,
   readClipboardDocs,
   writeClipboardDocs,
+  toBrowseRouterUrlForReturnMode,
+  type BrowseReturnMode,
   type ClipboardDoc,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatBreadcrumbsComponent, SatBreadcrumbsItem } from '@hylandsoftware/satori-ui/breadcrumbs';
 import { SatTagModule, SatTagCategory } from '@hylandsoftware/satori-ui/tag';
@@ -97,6 +114,7 @@ import {
   AiGatewayService,
   AiChatService,
   AiFeatureFlagService,
+  aiErrorMessage,
   type SummarizeResponse,
   type SuggestedTag,
   type ClassifyResponse,
@@ -141,7 +159,7 @@ import {
   type ExifData,
   type IptcData,
   type VideoInfo,
-} from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/ui';
 import { AddToCollectionDialogComponent } from '../add-to-collection-dialog/add-to-collection-dialog';
 import {
   CreateVersionDialogComponent,
@@ -163,7 +181,7 @@ import {
   ShareExternalDialogData,
   UpdatePermissionDialogComponent,
   UpdatePermissionDialogData,
-} from '@agentic-ui/feature-collections';
+} from '@agentic-ui/shared-permission-dialogs';
 
 export interface SectionNode {
   doc: NuxeoDocument;
@@ -248,6 +266,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
     MatChipsModule,
     MatAutocompleteModule,
     DocumentViewerComponent,
+    ExtensionOutletComponent,
     NoteEditorComponent,
     SatAvatarModule,
     SatBreadcrumbsComponent,
@@ -259,6 +278,9 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 })
 export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly destroyRef = inject(DestroyRef);
+  private readonly extensionRuleContext = inject(ExtensionRuleContextService);
+  private readonly extensions = inject(AppExtensionsService);
+  private readonly actionRegistry = inject(ExtensionActionRegistry);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly browseService = inject(BrowseService);
@@ -286,6 +308,90 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly detailTabGroup = viewChild<MatTabGroup>('detailTabGroup');
 
   readonly doc = signal<NuxeoDocument | null>(null);
+
+  /**
+   * Publish the focused document to the extension rule context.
+   *
+   * `app.rules.canWrite`, `canRemove`, `canAddChildren`, `canManagePermissions`,
+   * `hasDocument` and the two trash rules all read
+   * `ExtensionRuleContext.document`. Nothing populated it before, so every one
+   * of them answered `false` while the reference doc described them as working.
+   * This page is the only surface with a single document in focus, so it is the
+   * one that owns the write; `ngOnDestroy` clears it again.
+   */
+  private readonly publishDocumentToRuleContext = effect(() =>
+    this.extensionRuleContext.document.set(this.doc()),
+  );
+
+  /**
+   * Publish this page's interface state, which the toolbar rules read.
+   *
+   * None of it is derivable from the document: favourite and subscription state
+   * are separate fetches, clipboard membership is local storage, and "an
+   * operation is in flight" is not a fact about the document at all. Without it
+   * a toggle could not be two descriptors gated by opposite rules, and the
+   * label a manifest sets for "Notify Me" would be overwritten by the component
+   * whenever the user happened to be subscribed.
+   *
+   * Cleared in `ngOnDestroy` alongside the document, for the same reason.
+   */
+  private readonly publishFlagsToRuleContext = effect(() => {
+    const busy = this.actionInProgress();
+    this.extensionRuleContext.flags.set({
+      favorite: this.isFavorite(),
+      locked: this.isLocked(),
+      subscribed: this.isSubscribed(),
+      inClipboard: this.isInClipboard(),
+      hasVersion: this.hasVersion(),
+      aiEnabled: this.featureFlags.aiEnabled(),
+      note: this.isNoteDocument(),
+      ...(busy ? { [`busy.${busy}`]: true } : {}),
+    });
+  });
+
+  private readonly toolbarDescriptors = computed<readonly ExtensionActionDescriptor[]>(() =>
+    this.extensions.resolve<ExtensionActionDescriptor>(
+      EXTENSION_SLOTS.toolbar,
+      this.extensionRuleContext.context(),
+    ),
+  );
+
+  /** Inline toolbar controls — everything the descriptor list does not send to overflow. */
+  readonly toolbarActions = computed(() =>
+    this.toolbarDescriptors().filter((action) => !action.overflow),
+  );
+
+  /** The "More actions" menu. `overflow: false` in a manifest promotes an entry out of it. */
+  readonly overflowActions = computed(() =>
+    this.toolbarDescriptors().filter((action) => action.overflow),
+  );
+
+  /**
+   * The tab strip, resolved through Layer 1.
+   *
+   * The five packaged bodies are still markup in this template and are matched
+   * by id; a tab a manifest adds renders through `ExtensionOutletComponent`. So
+   * hiding, reordering, relabelling and gating work for every tab, and adding
+   * one works without touching this file.
+   */
+  readonly detailTabs = computed<readonly ExtensionTabDescriptor[]>(() =>
+    this.extensions.resolve<ExtensionTabDescriptor>(
+      EXTENSION_SLOTS.tabs,
+      this.extensionRuleContext.context(),
+    ),
+  );
+
+  /**
+   * The id of the selected tab.
+   *
+   * The lazy loads behind Permissions, History and Publishing used to key off
+   * the literal indices 2, 3 and 4. Once a manifest can hide or reorder a tab
+   * those indices address a different tab, so they key off the id instead.
+   */
+  readonly activeTabId = computed<string | null>(
+    () => this.detailTabs()[this.activeTabIndex()]?.id ?? null,
+  );
+
   readonly loading = signal(true);
   readonly blobLoading = signal(false);
   readonly viewerLoading = computed(
@@ -316,6 +422,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private rawBlobUrl: string | null = null;
   private videoObjectUrls: string[] = [];
   private storyboardObjectUrls: string[] = [];
+  /** A storyboard load is already running for the current document. */
+  private storyboardInFlight = false;
   private docUid = '';
   private metadataRefreshAttempt = 0;
   private blobLoadGeneration = 0;
@@ -519,7 +627,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     if (!d) return [];
 
     const path = d.path ?? '';
-    const cacheKey = `${path}\0${d.title}`;
+    const returnMode = this.browseReturnMode();
+    const cacheKey = `${path}\0${d.title}\0${returnMode}`;
     if (cacheKey === this.breadcrumbPathCache) {
       return this.breadcrumbItemsCache;
     }
@@ -527,13 +636,24 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const parts = path.split('/').filter(Boolean);
     parts.pop();
     this.breadcrumbPathCache = cacheKey;
-    let accumulated = '/browse';
+    let accumulated = '/';
     this.breadcrumbItemsCache = parts.map((s) => {
-      accumulated += `/${s}`;
-      return { label: decodeURIComponent(s), href: accumulated };
+      accumulated = normalizeNuxeoPath(`${accumulated}/${s}`);
+      return {
+        label: decodeNuxeoPathSegment(s),
+        href: toBrowseRouterUrlForReturnMode(returnMode, accumulated),
+      };
     });
     return this.breadcrumbItemsCache;
   });
+
+  private browseReturnMode(): BrowseReturnMode {
+    return parseBrowseReturnMode(this.route.snapshot.queryParamMap.get(BROWSE_RETURN_MODE_PARAM));
+  }
+
+  private browseUrlForPath(nuxeoPath: string): string {
+    return toBrowseRouterUrlForReturnMode(this.browseReturnMode(), nuxeoPath);
+  }
 
   onBreadcrumbClick(event: MouseEvent): void {
     const anchor = (event.target as HTMLElement).closest('a');
@@ -792,7 +912,57 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return entries;
   });
 
+  /** `enabledRule` renders a control disabled rather than hiding it. */
+  isToolbarActionEnabled(action: ExtensionActionDescriptor): boolean {
+    return this.extensions.evaluateRule(action.enabledRule, this.extensionRuleContext.context());
+  }
+
+  runToolbarAction(action: ExtensionActionDescriptor): void {
+    this.actionRegistry.execute(action, this.extensionRuleContext.context());
+  }
+
+  /**
+   * The behaviour behind the packaged toolbar ids.
+   *
+   * Registered from the component because every handler closes over this
+   * instance, and withdrawn on destroy for the same reason — a handler left
+   * registered keeps a destroyed component reachable and the next invocation
+   * runs against dead state. Withdrawing the registration rather than the ids
+   * is what leaves a customer's handler for the same id untouched.
+   *
+   * The two halves of each toggle share one method, exactly as the single
+   * `(click)` binding did before: which half is *offered* is the rules' job.
+   */
+  private registerToolbarHandlers(): void {
+    const handlers: Readonly<Record<string, () => void>> = {
+      'app.toolbar.edit': () => this.onEditClick(),
+      'app.toolbar.editProperties': () => this.onEditClick(),
+      'app.toolbar.addToCollection': () => this.openAddToCollectionDialog(),
+      'app.toolbar.delete': () => this.trashDocument(),
+      'app.toolbar.lock': () => this.toggleLock(),
+      'app.toolbar.unlock': () => this.toggleLock(),
+      'app.toolbar.addToFavorites': () => this.toggleFavorite(),
+      'app.toolbar.removeFromFavorites': () => this.toggleFavorite(),
+      'app.toolbar.share': () => this.shareDocument(),
+      'app.toolbar.publish': () => this.openPublishDialog(),
+      'app.toolbar.subscribe': () => this.toggleSubscription(),
+      'app.toolbar.unsubscribe': () => this.toggleSubscription(),
+      'app.toolbar.addToClipboard': () => this.toggleClipboard(),
+      'app.toolbar.removeFromClipboard': () => this.toggleClipboard(),
+      'app.toolbar.export': () => this.exportDocument(),
+      'app.toolbar.startProcess': () => this.openStartProcess(),
+    };
+
+    const registration = this.actionRegistry.registerPackaged(
+      Object.fromEntries(
+        Object.entries(handlers).map(([id, run]) => [id, { execute: () => run() }]),
+      ),
+    );
+    this.destroyRef.onDestroy(() => registration.unregister());
+  }
+
   ngOnInit(): void {
+    this.registerToolbarHandlers();
     this.tagSearch$
       .pipe(
         debounceTime(250),
@@ -924,7 +1094,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSummaryLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Summary generation failed');
+        this.aiError.set(aiErrorMessage(err, 'Summary generation failed'));
         this.aiSummaryLoading.set(false);
       },
     });
@@ -940,7 +1110,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiTagsLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Tag suggestion failed');
+        this.aiError.set(aiErrorMessage(err, 'Tag suggestion failed'));
         this.aiTagsLoading.set(false);
       },
     });
@@ -1059,7 +1229,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiClassifyLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Classification failed');
+        this.aiError.set(aiErrorMessage(err, 'Classification failed'));
         this.aiClassifyLoading.set(false);
       },
     });
@@ -1075,7 +1245,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.aiSimilarLoading.set(false);
       },
       error: (err) => {
-        this.aiError.set(err?.error?.error ?? 'Similar doc search failed');
+        this.aiError.set(aiErrorMessage(err, 'Similar doc search failed'));
         this.aiSimilarLoading.set(false);
       },
     });
@@ -1431,6 +1601,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Leaving the last viewed document in the context would let a rule on
+    // another page answer about a document the user is no longer looking at.
+    this.extensionRuleContext.document.set(null);
+    this.extensionRuleContext.flags.set({});
     if (this.rawBlobUrl) {
       URL.revokeObjectURL(this.rawBlobUrl);
     }
@@ -1502,17 +1676,17 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           }
           if (isFolderishDocument(doc) && doc.path) {
             this.browseContext.setFromDocument(doc);
-            void this.router.navigateByUrl(`/browse${doc.path}`, { replaceUrl: true });
+            void this.router.navigateByUrl(this.browseUrlForPath(doc.path), { replaceUrl: true });
             return;
           }
           this.doc.set(doc);
           this.browseContext.setFromDocument(doc);
           this.syncActionStates(doc);
           this.loading.set(false);
-          if (this.activeTabIndex() === 2) {
+          if (this.activeTabId() === 'app.tabs.permissions') {
             this.reloadDocumentPermissions();
           }
-          if (this.activeTabIndex() === 3 && !this.historyLoaded) {
+          if (this.activeTabId() === 'app.tabs.history' && !this.historyLoaded) {
             this.loadDirectoryEntries();
             this.loadAuditLog();
           }
@@ -2072,20 +2246,42 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadStoryboard(doc: NuxeoDocument, generation = this.blobLoadGeneration): void {
-    if (this.storyboard().length > 0) {
+    // Several callers race for one video: `loadBlob` asks, and `setBlobUrl` asks
+    // again from inside the `fetchMainBlob` it just started. Against a real server
+    // the first request has not answered when the second arrives, so `storyboard()`
+    // is still empty and every frame was fetched twice.
+    if (this.storyboard().length > 0 || this.storyboardInFlight) {
       return;
     }
 
     const sb = doc.properties['vid:storyboard'] as Array<Record<string, unknown>> | undefined;
     if (sb?.length) {
+      this.storyboardInFlight = true;
       this.loadServerStoryboard(doc, sb, generation);
       return;
     }
 
     const videoObjectUrl = this.rawBlobUrl ?? this.videoObjectUrls[0] ?? null;
     if (videoObjectUrl && this.mimeType().startsWith('video/')) {
-      void this.generateClientStoryboard(videoObjectUrl, generation);
+      this.storyboardInFlight = true;
+      void this.generateClientStoryboard(videoObjectUrl, generation).finally(() =>
+        this.releaseStoryboardGuard(doc, generation),
+      );
     }
+  }
+
+  /**
+   * Release the in-flight guard only for the load that still owns it.
+   *
+   * A response for a previously-viewed document arrives after the next load has taken
+   * the guard, and clearing it there lets the next caller start the duplicate fetch the
+   * guard was added to prevent — `storyboard()` is still empty, so it is no barrier.
+   */
+  private releaseStoryboardGuard(doc: NuxeoDocument, generation: number): void {
+    if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
+      return;
+    }
+    this.storyboardInFlight = false;
   }
 
   private loadServerStoryboard(
@@ -2112,6 +2308,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     )
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((results) => {
+        this.releaseStoryboardGuard(doc, generation);
         if (generation !== this.blobLoadGeneration || doc.uid !== this.docUid) {
           return;
         }
@@ -2383,6 +2580,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     this.exifData.set(null);
     this.iptcData.set(null);
     this.videoInfo.set(null);
+    this.storyboardInFlight = false;
     this.revokeStoryboardObjectUrls();
     for (const url of this.videoObjectUrls) {
       URL.revokeObjectURL(url);
@@ -2483,14 +2681,19 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       return;
     }
     this.activeTabIndex.set(index);
-    if (index === 2 && !this.permissionsTabLoaded) {
+    this.loadDataForTab(this.detailTabs()[index]?.id ?? null);
+  }
+
+  /** The lazy loads the Permissions, History and Publishing tabs need on first show. */
+  private loadDataForTab(id: string | null): void {
+    if (id === 'app.tabs.permissions' && !this.permissionsTabLoaded) {
       this.reloadDocumentPermissions();
     }
-    if (index === 3 && !this.historyLoaded) {
+    if (id === 'app.tabs.history' && !this.historyLoaded) {
       this.loadDirectoryEntries();
       this.loadAuditLog();
     }
-    if (index === 4 && !this.publishTabLoaded) {
+    if (id === 'app.tabs.publishing' && !this.publishTabLoaded) {
       this.loadPublishingData();
     }
   }
@@ -2614,7 +2817,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   private loadPublishingData(): void {
-    this.publishTabLoaded = true;
     this.publishLoading.set(true);
     this.sectionsLoading.set(true);
 
@@ -2634,6 +2836,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: (res) => {
         this.sectionTree.set(this.buildSectionTree(res.entries));
         this.sectionsLoading.set(false);
+        // Marked loaded only here, as every other tab in this component does:
+        // setting it up front left a failed section tree permanently empty,
+        // because returning to the tab saw the flag and never retried.
+        this.publishTabLoaded = true;
       },
       error: () => this.sectionsLoading.set(false),
     });
@@ -2735,11 +2941,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   goToPublishingTab(): void {
+    // By id, not by literal 4: a manifest that hides or reorders a tab moves it.
+    const index = this.detailTabs().findIndex((tab) => tab.id === 'app.tabs.publishing');
+    if (index < 0) return;
     const g = this.detailTabGroup();
     if (g) {
-      g.selectedIndex = 4;
+      g.selectedIndex = index;
     }
-    this.onTabChange(4);
+    this.onTabChange(index);
   }
 
   unpublishDocument(proxyDoc: NuxeoDocument): void {
@@ -2852,7 +3061,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       next: () => {
         const wasLocked = this.isLocked();
         this.isLocked.set(!wasLocked);
-        this.lockOwner.set(wasLocked ? null : 'Administrator');
+        // Nuxeo records the caller as the lock owner; naming a fixed account here
+        // told every user someone else held their own lock.
+        this.lockOwner.set(wasLocked ? null : (this.currentUsername() ?? null));
         this.actionInProgress.set(null);
         this.toast(wasLocked ? 'Document unlocked' : 'Document locked');
       },
@@ -3177,10 +3388,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   goBack(): void {
     const d = this.doc();
     if (d) {
-      const parentPath = d.path.split('/').slice(0, -1).join('/') || '/';
-      void this.router.navigateByUrl(`/browse${parentPath}`);
+      void this.router.navigateByUrl(this.browseUrlForPath(parentNuxeoFolderPath(d.path)));
     } else {
-      void this.router.navigateByUrl('/browse');
+      void this.router.navigateByUrl(this.browseUrlForPath('/'));
     }
   }
 

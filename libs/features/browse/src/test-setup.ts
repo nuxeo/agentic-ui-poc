@@ -1,4 +1,9 @@
 import '@angular/compiler';
+// Zone.js, as `libs/shared/adf-hx-bridge` and `libs/features/document-detail` already load it.
+// Without it `TestBed.createComponent` of any component whose providers reach `NgZone` fails with
+// `NG0908: In this configuration Angular requires Zone.js` — which the adopted adf-hx permissions
+// panel does, through adf-core.
+import '@analogjs/vitest-angular/setup-zone';
 import { TestBed } from '@angular/core/testing';
 import {
   BrowserDynamicTestingModule,

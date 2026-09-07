@@ -4,7 +4,7 @@
 <mat-dialog-content class="form">
   @if (showParentField) {
     @if (loadingParents()) {
-      <div class="parent-loading"><mat-spinner diameter="28" /></div>
+      <div class="parent-loading"><mat-spinner diameter="28" aria-label="Loading" /></div>
     } @else {
       <mat-form-field appearance="outline" class="full first-field">
         <mat-label>Parent</mat-label>

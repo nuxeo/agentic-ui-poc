@@ -34,7 +34,7 @@
 
   @if (loading()) {
     <div class="compare-loading">
-      <mat-spinner diameter="32" />
+      <mat-spinner diameter="32" aria-label="Loading" />
     </div>
   } @else if (error()) {
     <p class="compare-error">{{ error() }}</p>

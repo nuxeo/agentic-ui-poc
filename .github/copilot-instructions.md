@@ -6,7 +6,7 @@ When reviewing pull requests in this Angular 19 + Nx monorepo, enforce the follo
 
 ## Architecture
 
-- **Shared code lives in `libs/shared/`**. Feature libs must NOT define their own copies of constants, models, or utilities that already exist in `@agentic-ui/shared/nuxeo-client` or `@agentic-ui/shared/ui`.
+- **Shared code lives in `libs/shared/`**. Feature libs must NOT define their own copies of constants, models, or utilities that already exist in `@nuxeo-satori/platform/nuxeo-client` or `@nuxeo-satori/platform/ui`.
 - **`NuxeoApiBase`** is a thin HTTP wrapper. Domain-specific API methods belong in their respective services — never in `NuxeoApiBase` directly.
 - **Features never import from other features.** If `libs/features/browse` imports from `libs/features/search`, flag it as an Nx boundary violation. Shared logic belongs in `libs/shared/`.
 - If a constant or utility is duplicated across feature libraries, flag it and recommend importing from the shared library.
@@ -62,6 +62,6 @@ When reviewing pull requests in this Angular 19 + Nx monorepo, enforce the follo
 ## AI Features
 
 - All new UI that calls AI must be gated behind `@if (aiFeatureFlagService.aiEnabled())`.
-- No direct calls from Angular components to the HAIP API — all AI calls go through `apps/ai-backend`.
+- No direct calls from Angular components to the HAIP API — all AI calls go through `AiGatewayService`, which posts to Nuxeo Automation operations (`/nuxeo/api/v1/automation/AI.*`) provided by a separate marketplace package.
 - The feature flag defaults to `true`; users can still explicitly disable AI features from the UI.
 - Default-on is acceptable for the Agentic UI PoC because HAIP is configured through Nuxeo/cloud secrets; keep clear opt-out UX and do not hardcode credentials or call HAIP directly.

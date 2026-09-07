@@ -15,7 +15,7 @@ import {
   buildDocumentCompareSections,
   isCompareIconField,
   type CompareRow,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import { CompareIconImageComponent } from './compare-icon-image.component';
 
 export interface DocumentCompareDialogData {

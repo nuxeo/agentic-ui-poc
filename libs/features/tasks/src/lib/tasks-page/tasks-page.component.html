@@ -7,7 +7,9 @@
         <p>Select a task from the <strong>Tasks</strong> panel on the left</p>
       </div>
     } @else if (taskLoading()) {
-      <div class="loading-detail"><mat-spinner diameter="36" /><span>Loading…</span></div>
+      <div class="loading-detail">
+        <mat-spinner diameter="36" aria-label="Loading" /><span>Loading…</span>
+      </div>
     } @else {
       <!-- Document Header Bar (title + breadcrumb) — spans full width -->
       <div class="doc-header-bar">
@@ -18,7 +20,10 @@
               <div class="doc-main-title" role="heading" aria-level="1">
                 {{ targetDoc()!.title }}
               </div>
-              <sat-breadcrumbs [items]="breadcrumbItems()" (click)="onBreadcrumbClick($event)"></sat-breadcrumbs>
+              <sat-breadcrumbs
+                [items]="breadcrumbItems()"
+                (click)="onBreadcrumbClick($event)"
+              ></sat-breadcrumbs>
             } @else {
               <div class="doc-main-title" role="heading" aria-level="1">
                 {{ selectedTask()!.targetDocTitle || 'Document' }}
@@ -58,7 +63,12 @@
               <div class="action-panel delegate-panel">
                 <div class="action-panel-header">
                   <div class="action-panel-title" role="heading" aria-level="4">Delegate Task</div>
-                  <button mat-icon-button (click)="closeDelegatePanel()" matTooltip="Close">
+                  <button
+                    mat-icon-button
+                    (click)="closeDelegatePanel()"
+                    matTooltip="Close"
+                    aria-label="Close"
+                  >
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
@@ -143,7 +153,12 @@
               <div class="action-panel reassign-panel">
                 <div class="action-panel-header">
                   <div class="action-panel-title" role="heading" aria-level="4">Reassign Task</div>
-                  <button mat-icon-button (click)="closeReassignPanel()" matTooltip="Close">
+                  <button
+                    mat-icon-button
+                    (click)="closeReassignPanel()"
+                    matTooltip="Close"
+                    aria-label="Close"
+                  >
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
@@ -227,13 +242,20 @@
               <div class="action-panel graph-panel">
                 <div class="action-panel-header">
                   <div class="action-panel-title" role="heading" aria-level="4">Workflow Graph</div>
-                  <button mat-icon-button (click)="closeGraphPanel()" matTooltip="Close">
+                  <button
+                    mat-icon-button
+                    (click)="closeGraphPanel()"
+                    matTooltip="Close"
+                    aria-label="Close"
+                  >
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
 
                 @if (graphLoading()) {
-                  <div class="graph-loading"><mat-spinner diameter="24" /></div>
+                  <div class="graph-loading">
+                    <mat-spinner diameter="24" aria-label="Loading" />
+                  </div>
                 } @else if (graphNodes().length > 0) {
                   <div class="graph-nodes">
                     @for (node of graphNodes(); track node.id; let i = $index; let last = $last) {
@@ -404,7 +426,7 @@
                 </button>
               }
               @if (submitting()) {
-                <mat-spinner diameter="20" />
+                <mat-spinner diameter="20" aria-label="Loading" />
               }
             </div>
 
@@ -453,7 +475,7 @@
 
           <!-- Collapse handle -->
           <div class="panel-collapse-handle">
-            <button mat-icon-button matTooltip="Collapse">
+            <button mat-icon-button matTooltip="Collapse" aria-label="Collapse">
               <mat-icon>chevron_left</mat-icon>
             </button>
           </div>

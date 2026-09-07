@@ -26,6 +26,31 @@
               {
                 "glob": "**/*",
                 "input": "apps/nuxeo-ui/public"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-core/bundles/assets/adf-core",
+                "output": "assets/adf-core"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-hx-content-services/icons/assets",
+                "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-hx-content-services/ui/assets",
+                "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@alfresco/adf-hx-content-services/services/assets",
+                "output": "assets"
+              },
+              {
+                "glob": "**/*",
+                "input": "node_modules/@hylandsoftware/satori-ui/i18n",
+                "output": "assets/satori-ui/i18n"
               }
             ],
             "styles": ["apps/nuxeo-ui/src/styles.scss"]
@@ -35,8 +60,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1.5MB",
-                  "maximumError": "2MB"
+                  "maximumWarning": "2.5mb",
+                  "maximumError": "4mb"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -47,14 +72,55 @@
               "outputHashing": "all",
               "optimization": {
                 "scripts": true,
-                "styles": { "minify": true, "inlineCritical": true },
-                "fonts": { "inline": false }
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": true
+                },
+                "fonts": {
+                  "inline": false
+                }
               }
             },
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "assets": [
+                {
+                  "glob": "**/*",
+                  "input": "apps/nuxeo-ui/public"
+                },
+                {
+                  "glob": "bootstrap.json",
+                  "input": "nuxeo-agentic-ui-package/src/main/config",
+                  "output": "agentic-ui-config"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-core/bundles/assets/adf-core",
+                  "output": "assets/adf-core"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-hx-content-services/icons/assets",
+                  "output": "assets"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-hx-content-services/ui/assets",
+                  "output": "assets"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@alfresco/adf-hx-content-services/services/assets",
+                  "output": "assets"
+                },
+                {
+                  "glob": "**/*",
+                  "input": "node_modules/@hylandsoftware/satori-ui/i18n",
+                  "output": "assets/satori-ui/i18n"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -89,6 +155,65 @@
             "styles": ["apps/nuxeo-ui/src/styles.scss"],
             "karmaConfig": "apps/nuxeo-ui/karma.conf.js"
           }
+        }
+      }
+    },
+    "nuxeo-satori-template": {
+      "projectType": "application",
+      "root": "apps/nuxeo-satori-template",
+      "sourceRoot": "apps/nuxeo-satori-template/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "apps/nuxeo-satori-template/src/main.ts",
+            "index": "apps/nuxeo-satori-template/src/index.html",
+            "tsConfig": "apps/nuxeo-satori-template/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "outputPath": "dist/nuxeo-satori-template",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "apps/nuxeo-satori-template/public"
+              }
+            ],
+            "styles": ["apps/nuxeo-satori-template/src/styles.scss"]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "450kb",
+                  "maximumError": "700kb"
+                }
+              ],
+              "outputHashing": "all",
+              "optimization": true
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "apps/nuxeo-satori-template/proxy.conf.json"
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "nuxeo-satori-template:build:production"
+            },
+            "development": {
+              "buildTarget": "nuxeo-satori-template:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
         }
       }
     }

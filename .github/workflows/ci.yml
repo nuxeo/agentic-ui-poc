@@ -3,16 +3,28 @@ name: CI
 on:
   pull_request:
     branches: [main]
+  # Long-lived feature branches are validated on push as well as on PR, so work in
+  # progress is never only "green on my machine". nx-set-shas falls back to comparing
+  # against the default branch when a push has no previous successful run to diff from.
   push:
-    branches: [main]
+    branches: [main, 'feature/**', 'fix/**']
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege, explicitly. Without this block the job inherits the repository default, which
+# can be read/write on `contents` — a workflow that only needs to read the code would be able to
+# push to it. Flagged by CodeQL's `actions/missing-workflow-permissions`, and this was the only
+# workflow of the nine that lacked it.
 permissions:
   contents: read
+  # `npm ci` resolves @hylandsoftware and @alfresco from GitHub Packages.
   packages: read
+  # `nrwl/nx-set-shas` calls the workflow-runs API to find the last successful run to diff
+  # against. Without this it fails with `Resource not accessible by integration`, which is
+  # exactly what happened when this block was first added with `contents: read` alone —
+  # tightening permissions broke the build on the very next push.
   actions: read
 
 jobs:
@@ -55,6 +67,30 @@ jobs:
       - name: Run review guardrails
         run: npm run review:guardrails -- --base=$NX_BASE --head=$NX_HEAD
 
+      # Four static checks that `beta:gate` has run locally since Phase 5 and that had
+      # never run here. They are seconds each and they close a specific hole: the local
+      # gate and CI were two different gates, so "green locally" and "green in CI" made
+      # different claims and neither said so. A check that only ever runs on one
+      # developer's machine is a check that stops running the day they stop running it.
+      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain)
+        run: |
+          set -euo pipefail
+          # Fails if an evidence step asserts something it cannot observe. Phase 1 shipped
+          # a dead feature past two checks that certified properties they could not see.
+          npm run beta:audit
+          # The only customer-facing document nothing checked. When first measured it was
+          # wrong in both directions.
+          npm run beta:reference
+          # The guardrail we hand customers, run against our own reference library — so we
+          # do not learn it is broken from a customer's CI log.
+          npm run beta:customer-guardrails
+          # SCA. Fails on a high or critical in the PRODUCTION tree, and on an accepted
+          # advisory whose review date has expired. Gating on the dev-inclusive total
+          # instead would be permanently red (9 high, none shipped) and so bypassed.
+          # Also fails on a production dependency nothing imports — which is how `cors`
+          # and `dotenv` were found, two beyond the two already recorded as debt.
+          npm run beta:supply-chain
+
       - name: Lint affected projects
         run: npx nx affected -t lint --base=$NX_BASE --head=$NX_HEAD
 
@@ -69,10 +105,63 @@ jobs:
           npx nx run browse:test --output-style=stream
           npx nx affected -t test --base=$NX_BASE --head=$NX_HEAD --output-style=stream --parallel=1 --exclude=browse,document-detail,knowledge-discovery,search
 
+      # `test` does NOT typecheck — vitest strips types through esbuild — and most
+      # libraries have no `build` target, so before this step a type error confined to a
+      # library reached `main` unless `nuxeo-ui`'s build happened to import it.
+      - name: Typecheck affected projects
+        run: npx nx affected -t typecheck --base=$NX_BASE --head=$NX_HEAD
+
+      # The three checks that guard the published package. Run unconditionally rather
+      # than only when affected: they are ~30s in total, and they are the checks that
+      # catch the expensive class of defect — both of the ones below were configuration
+      # *absent* rather than wrong, so no compiler reported either, and every other gate
+      # in this file was green through both.
+      #
+      # MUST stay above "Check bundle size", which starts with `rm -rf dist` and would
+      # delete the platform build these three read.
+      - name: Verify the published package
+        run: |
+          set -euo pipefail
+          npx nx build platform
+          # Fails if the built .d.ts surface no longer matches docs/api/platform.api.md.
+          # Caught nothing on its own until it was rewritten — it reported PASS across 27
+          # changed types because the rolled-up .d.ts has no `export` prefix to match.
+          npm run beta:api
+          # Runs a real `npm publish --dry-run`, the only check that executes the
+          # `prepublishOnly` script. Phase 4 shipped a package that could not be
+          # published at all, for want of `compilationMode: partial`.
+          npm run beta:publishable
+          # Compiles the template against the BUILT declarations instead of the source
+          # tree — the resolution a customer actually gets. Found the platform being
+          # compiled without `strictNullChecks`, shipping 27 wrong public types.
+          npm run beta:fork
+          # The only check that crosses a version boundary: installs the package, applies a
+          # Layer 0/1/2 customisation, upgrades, and proves the customisation survived. The
+          # three above each test a single version, so none of them can see an upgrade that
+          # compiles cleanly and silently breaks a customer's JSON manifest.
+          npm run beta:upgrade
+
       - name: Check bundle size (nuxeo-ui)
         shell: bash
         env:
-          NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES: 5242880
+          # 6 MiB of TOTAL shipped JS+CSS — distinct from the Angular *initial* budget
+          # in angular.json (4 MB), which measures only the eager entry point.
+          #
+          # Raised from 5 MiB on 2026-08-24. The 5 MiB figure was set on 2026-04-21,
+          # before adf-hx adoption was planned, and was never revisited — while the
+          # Angular initial ceiling was deliberately raised twice during the Beta with
+          # the reasoning recorded. This one had no owner, so a 0.60% breach kept CI red
+          # for 16 consecutive runs without anyone understanding why.
+          #
+          # What moved it: putting the adf-hx bridge in the root injector makes adf-core
+          # eager (+1.15 MB, accepted in Phase 3 — 11 upstream services are
+          # `providedIn: 'root'` and providing the ports on a component instead fails
+          # one NG0201 at a time). Then the viewer +60 kB and search +10 kB.
+          #
+          # Headroom at 6 MiB is ~1.0 MB, roughly 14 more components at the recent rate.
+          # This DEFERS the real fix rather than making it: adf-core should be lazy. Do
+          # not raise this again without attempting that first.
+          NUXEO_UI_BUNDLE_SIZE_LIMIT_BYTES: 6291456
         run: |
           set -euo pipefail
 
@@ -80,8 +169,30 @@ jobs:
             rm -rf dist
             npx nx build nuxeo-ui --configuration=production
 
+            # Bundle *contents*, not just its size — and this is the first commit in which
+            # it runs here at all. It is the gate that found adf-hx importing a test
+            # library from its shipped runtime bundle, putting ng-mocks' implementation and
+            # two `eval()` calls into a customer-facing chunk. It needs the production
+            # build, which is why it lives in this step rather than with the static gates
+            # above, and it must come before the size measurement so a contents failure is
+            # not reported as a size pass.
+            #
+            # Invoked directly rather than through `beta:gate --gates bundle`: the gate
+            # runner writes its report under the evidence root on the developer's Desktop,
+            # which does not exist on a runner.
+            npm run beta:bundle
+
+            # Scoped to dist/nuxeo-ui, NOT `-path '*/nuxeo-ui/*'` under all of dist.
+            #
+            # That glob also matches `dist/out-tsc/apps/nuxeo-ui/**`, which is the
+            # `typecheck` target's ngc output, not the shipped bundle. It only measured
+            # the right thing here because this step does `rm -rf dist` first and CI
+            # happens to run typecheck before it without leaving output behind. Locally
+            # the same command reports 9.8 MB against a 5 MB ceiling — 345 files instead
+            # of 63 — so anyone reproducing a CI failure got a number that could not be
+            # reconciled with the one in the log.
             bundle_size_bytes=$(
-              find dist -type f \( -name '*.js' -o -name '*.css' \) -path '*/nuxeo-ui/*' -printf '%s\n' \
+              find dist/nuxeo-ui -type f \( -name '*.js' -o -name '*.css' \) -printf '%s\n' \
                 | awk '{ total += $1 } END { print total + 0 }'
             )
 

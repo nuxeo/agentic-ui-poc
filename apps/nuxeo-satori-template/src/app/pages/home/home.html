@@ -1,0 +1,50 @@
+<h1>{{ branding().applicationTitle }}</h1>
+
+<p class="home__lede">
+  A fork of this template. Everything below was resolved at runtime from Layer 0 configuration and
+  the Layer 1 manifest — none of it is compiled in.
+</p>
+
+<section class="home__panel">
+  <h2>Configuration sources</h2>
+  <dl class="home__facts">
+    <dt>Bootstrap</dt>
+    <dd>{{ diagnostics().bootstrapSource }}</dd>
+    <dt>Manifest</dt>
+    <dd>{{ diagnostics().manifestSource }}</dd>
+    <dt>Last manifest fetch</dt>
+    <dd>{{ diagnostics().manifestAttempt }}</dd>
+  </dl>
+
+  @if (diagnostics().messages.length) {
+    <p class="home__hint">Fallbacks that happened, in order:</p>
+    <ul class="home__messages">
+      @for (message of diagnostics().messages; track $index) {
+        <li>{{ message }}</li>
+      }
+    </ul>
+  } @else {
+    <p class="home__hint">Both halves loaded without falling back.</p>
+  }
+</section>
+
+<section class="home__panel">
+  <h2>Registered extension IDs</h2>
+  <p class="home__hint">
+    Every ID this build registered, including the template's own. A manifest may address any of
+    them.
+  </p>
+
+  @for (group of inventory(); track group[0]) {
+    <h3 class="home__group">{{ group[0] }}</h3>
+    <ul class="home__ids">
+      @for (id of group[1]; track id) {
+        <li>
+          <code>{{ id }}</code>
+        </li>
+      } @empty {
+        <li class="home__hint">none</li>
+      }
+    </ul>
+  }
+</section>

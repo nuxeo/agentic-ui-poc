@@ -89,7 +89,7 @@ import {
   shouldShowUserWorkspaceBreadcrumbs,
   postTrashBrowseRouterUrl,
   isCollectionDocument,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 import { SatAvatarModule } from '@hylandsoftware/satori-ui/avatar';
 import { SatTagModule } from '@hylandsoftware/satori-ui/tag';
@@ -107,7 +107,7 @@ import {
   trashSelectedDocumentsConfirmData,
   EditCollectionDialogComponent,
   EditCollectionDialogData,
-} from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/ui';
 
 import {
   AddPermissionDialogComponent,
@@ -118,7 +118,16 @@ import {
   DeletePermissionDialogData,
   ShareExternalDialogComponent,
   ShareExternalDialogData,
-} from '@agentic-ui/feature-collections';
+} from '@agentic-ui/shared-permission-dialogs';
+
+import {
+  AppExtensionsService,
+  EXTENSION_SLOTS,
+  ExtensionActionRegistry,
+  ExtensionRuleContextService,
+  type ExtensionActionDescriptor,
+  type ExtensionColumnDescriptor,
+} from '@nuxeo-satori/platform/extensions';
 
 import {
   BrowseDriveDialogComponent,
@@ -128,7 +137,7 @@ import {
 import {
   ALL_COLUMNS,
   ColumnDef,
-  loadColumnSettings,
+  loadColumnVisibility,
   saveColumnSettings,
 } from '../column-settings-dialog/column-settings-dialog';
 import {
@@ -136,6 +145,21 @@ import {
   EditMetadataDialogData,
 } from '../edit-metadata-dialog/edit-metadata-dialog';
 import { CreateImportDialogComponent } from '../create-import/create-import-dialog.component';
+
+/**
+ * The packaged column set as descriptors, for an injector where Layer 1
+ * registration has not run. Derived from `ALL_COLUMNS` rather than restated, so
+ * there is one list to keep in step instead of two.
+ */
+const FALLBACK_COLUMN_DESCRIPTORS: readonly ExtensionColumnDescriptor[] = ALL_COLUMNS.map(
+  (col, index) => ({
+    id: `app.documentList.${col.key}`,
+    label: col.label,
+    field: col.key,
+    order: (index + 1) * 10,
+    ...(col.visible ? {} : { hiddenByDefault: true }),
+  }),
+);
 
 @Component({
   selector: 'lib-browse',
@@ -184,6 +208,9 @@ export class BrowseComponent {
   private readonly tagService = inject(TagService);
   readonly selectionService = inject(SelectionService);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly extensions = inject(AppExtensionsService);
+  private readonly ruleContext = inject(ExtensionRuleContextService);
+  private readonly actionRegistry = inject(ExtensionActionRegistry);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly currentUsername = inject(CURRENT_USERNAME);
@@ -304,41 +331,59 @@ export class BrowseComponent {
   readonly auditPageSize = signal(10);
   readonly auditPageIndex = signal(0);
   private historyLoaded = false;
-  filterUsername = '';
-  filterDateFrom: Date | null = null;
-  filterDateTo: Date | null = null;
-  filterAction = '';
-  filterCategory = '';
+  /**
+   * History-tab filter and sort state, as signals.
+   *
+   * These were plain fields, and `filteredAuditEntries` below is a `computed()`
+   * that reads them. A computed only recomputes when a tracked *signal*
+   * dependency changes, so its sole dependency was `auditEntries` — every
+   * filter keystroke and every column sort updated the field, left the memoised
+   * value in place, and the History tab did not move. The browse document list
+   * next to it already held its filters in signals; this half had been missed.
+   */
+  readonly filterUsername = signal('');
+  readonly filterDateFrom = signal<Date | null>(null);
+  readonly filterDateTo = signal<Date | null>(null);
+  readonly filterAction = signal('');
+  readonly filterCategory = signal('');
   readonly availableActions = signal<DirectoryEntry[]>([]);
   readonly availableCategories = signal<DirectoryEntry[]>([]);
   readonly eventTypeLabelMap = signal<Record<string, string>>({});
   readonly eventCategoryLabelMap = signal<Record<string, string>>({});
-  sortActive = 'eventDate';
-  sortDirection: 'asc' | 'desc' | '' = 'desc';
+  readonly sortActive = signal('eventDate');
+  readonly sortDirection = signal<'asc' | 'desc' | ''>('desc');
 
   readonly filteredAuditEntries = computed(() => {
     let entries = this.auditEntries();
-    if (this.filterUsername) {
-      const term = this.filterUsername.toLowerCase();
+    const username = this.filterUsername();
+    const dateFrom = this.filterDateFrom();
+    const dateTo = this.filterDateTo();
+    const action = this.filterAction();
+    const category = this.filterCategory();
+    const sortActive = this.sortActive();
+    const sortDirection = this.sortDirection();
+
+    if (username) {
+      const term = username.toLowerCase();
       entries = entries.filter((e) => e.principalName?.toLowerCase().includes(term));
     }
-    if (this.filterDateFrom) {
-      const from = this.filterDateFrom.getTime();
+    if (dateFrom) {
+      const from = dateFrom.getTime();
       entries = entries.filter((e) => new Date(e.eventDate).getTime() >= from);
     }
-    if (this.filterDateTo) {
-      const to = this.filterDateTo.getTime() + 86_400_000;
+    if (dateTo) {
+      const to = dateTo.getTime() + 86_400_000;
       entries = entries.filter((e) => new Date(e.eventDate).getTime() < to);
     }
-    if (this.filterAction) {
-      entries = entries.filter((e) => e.eventId === this.filterAction);
+    if (action) {
+      entries = entries.filter((e) => e.eventId === action);
     }
-    if (this.filterCategory) {
-      entries = entries.filter((e) => e.category === this.filterCategory);
+    if (category) {
+      entries = entries.filter((e) => e.category === category);
     }
-    if (this.sortActive && this.sortDirection) {
-      const dir = this.sortDirection === 'asc' ? 1 : -1;
-      const key = this.sortActive as keyof AuditEntry;
+    if (sortActive && sortDirection) {
+      const dir = sortDirection === 'asc' ? 1 : -1;
+      const key = sortActive as keyof AuditEntry;
       entries = [...entries].sort((a, b) => {
         const va = String(a[key] ?? '');
         const vb = String(b[key] ?? '');
@@ -361,10 +406,72 @@ export class BrowseComponent {
   readonly browseSortKey = signal<string>('');
   readonly browseSortDir = signal<'asc' | 'desc'>('asc');
 
-  // Column settings
-  readonly columns = signal<ColumnDef[]>(loadColumnSettings());
+  // ── Column settings ──
+  //
+  // Three layers, narrowest last: packaged descriptors registered into the
+  // `documentList` slot, then the manifest's hide/reorder/relabel by id, then the
+  // user's own picker. `columns` is computed rather than a signal so a manifest
+  // change reflows without a reload; the user's choice is the only mutable part.
+
+  /** Keys the user switched on, or `null` if they have never chosen. */
+  private readonly userVisibleKeys = signal<readonly string[] | null>(loadColumnVisibility());
+
+  /**
+   * Descriptors resolved through Layer 1, falling back to the packaged list.
+   *
+   * The fallback matters: a bare `TestBed` has no `APP_INITIALIZER`, so the slot
+   * is empty there, and rendering a document list with no columns at all would be
+   * a worse failure than using the defaults. This mirrors how `app-config` treats
+   * an absent manifest — tolerant, with the packaged values reproducing the
+   * pre-Layer-1 behaviour exactly.
+   */
+  private readonly columnDescriptors = computed<readonly ExtensionColumnDescriptor[]>(() => {
+    const resolved = this.extensions.resolve<ExtensionColumnDescriptor>(
+      EXTENSION_SLOTS.documentList,
+      this.ruleContext.context(),
+    );
+    return resolved.length > 0 ? resolved : FALLBACK_COLUMN_DESCRIPTORS;
+  });
+
+  readonly columns = computed<ColumnDef[]>(() => {
+    const chosen = this.userVisibleKeys();
+    return this.columnDescriptors().map((descriptor) => ({
+      key: descriptor.field,
+      label: descriptor.label,
+      visible: chosen ? chosen.includes(descriptor.field) : !descriptor.hiddenByDefault,
+    }));
+  });
+
   readonly visibleColumns = computed(() => this.columns().filter((c) => c.visible));
   readonly columnPanelOpen = signal(false);
+
+  /**
+   * The browse document context menu, resolved through Layer 1.
+   *
+   * Share, Notify Me / Unsubscribe and Export were three fixed `mat-menu-item`
+   * elements here. They are the same three, in the same order, with the same
+   * icons; what changed is that each is addressable by id, so a manifest can
+   * hide, reorder, relabel or gate one, and a customer library can add a fourth
+   * with a registration instead of an edit to this template.
+   */
+  readonly contextMenuActions = computed<readonly ExtensionActionDescriptor[]>(() =>
+    this.extensions.resolve<ExtensionActionDescriptor>(
+      EXTENSION_SLOTS.contextMenu,
+      this.ruleContext.context(),
+    ),
+  );
+
+  /**
+   * Publish this surface's interface state so the context-menu rules can read it.
+   *
+   * `app.rules.isSubscribed` decides which half of the Notify Me / Unsubscribe
+   * toggle is offered, and subscription state is not on the document model the
+   * rule context carries — it is an enricher on the folder this page loaded.
+   * Cleared on destroy, so the next surface does not inherit it.
+   */
+  private readonly publishFlagsToRuleContext = effect(() =>
+    this.ruleContext.flags.set({ subscribed: this.isSubscribed() === true }),
+  );
   readonly pendingColumns = signal<ColumnDef[]>([]);
 
   // Filters
@@ -490,7 +597,40 @@ export class BrowseComponent {
     }
   }
 
+  /** `enabledRule` renders a menu item disabled rather than hiding it. */
+  isContextMenuActionEnabled(action: ExtensionActionDescriptor): boolean {
+    return this.extensions.evaluateRule(action.enabledRule, this.ruleContext.context());
+  }
+
+  runContextMenuAction(action: ExtensionActionDescriptor): void {
+    this.actionRegistry.execute(action, this.ruleContext.context());
+  }
+
+  /**
+   * The behaviour behind the packaged context-menu ids.
+   *
+   * Registered from the component rather than from `provideSatoriExtensions`
+   * because each handler closes over this instance, and withdrawn on destroy for
+   * the same reason: a handler left registered keeps a destroyed component
+   * reachable and would run against dead state. Withdrawing the registration
+   * rather than the ids is what leaves a customer's handler for the same id
+   * untouched.
+   */
+  private registerContextMenuHandlers(): void {
+    const registration = this.actionRegistry.registerPackaged({
+      'app.contextMenu.share': { execute: () => this.openShareDialog() },
+      'app.contextMenu.subscribe': { execute: () => this.toggleNotify() },
+      'app.contextMenu.unsubscribe': { execute: () => this.toggleNotify() },
+      'app.contextMenu.export': { execute: () => this.openExportDialog() },
+    });
+    this.destroyRef.onDestroy(() => {
+      registration.unregister();
+      this.ruleContext.flags.set({});
+    });
+  }
+
   constructor() {
+    this.registerContextMenuHandlers();
     const initialPath = parseBrowseNuxeoPathFromRouterUrl(this.router.url);
     this.currentNuxeoPath = initialPath;
     this.browsePath.set(initialPath);
@@ -893,8 +1033,8 @@ export class BrowseComponent {
   }
 
   onAuditSort(sort: Sort): void {
-    this.sortActive = sort.active;
-    this.sortDirection = sort.direction;
+    this.sortActive.set(sort.active);
+    this.sortDirection.set(sort.direction);
   }
 
   eventLabel(eventId: string): string {
@@ -975,13 +1115,28 @@ export class BrowseComponent {
     );
   }
 
+  /**
+   * Back to the *descriptors'* defaults, not the packaged const.
+   *
+   * Reset previously read `ALL_COLUMNS`, which meant a customer who hid a column
+   * in the manifest saw it reappear the moment a user pressed Reset — the
+   * manifest silently lost. Resetting through the descriptors keeps Layer 1
+   * authoritative and only discards the user's own layer, which is what "reset"
+   * should mean.
+   */
   resetColumns(): void {
-    this.pendingColumns.set(ALL_COLUMNS.map((c) => ({ ...c })));
+    this.pendingColumns.set(
+      this.columnDescriptors().map((d) => ({
+        key: d.field,
+        label: d.label,
+        visible: !d.hiddenByDefault,
+      })),
+    );
   }
 
   applyColumns(): void {
     const updated = this.pendingColumns();
-    this.columns.set(updated);
+    this.userVisibleKeys.set(updated.filter((c) => c.visible).map((c) => c.key));
     saveColumnSettings(updated);
     this.columnPanelOpen.set(false);
   }
@@ -1538,7 +1693,11 @@ export class BrowseComponent {
   toggleNotify(): void {
     const doc = this.currentDoc();
     if (!doc) return;
-    const action$ = this.isSubscribed()
+    // Read before the call, not after: the success handler refreshes `currentDoc`,
+    // so re-reading `isSubscribed()` there reports whichever of the two requests
+    // resolved first and can announce the opposite of what just happened.
+    const wasSubscribed = this.isSubscribed() === true;
+    const action$ = wasSubscribed
       ? this.detailService.unsubscribe(doc.uid)
       : this.detailService.subscribe(doc.uid);
     action$.subscribe({
@@ -1546,11 +1705,9 @@ export class BrowseComponent {
         this.browseService.getByPath(this.currentNuxeoPath).subscribe({
           next: (d) => this.currentDoc.set(d),
         });
-        this.snackBar.open(
-          this.isSubscribed() ? 'Unsubscribed' : 'Subscribed to notifications',
-          'OK',
-          { duration: 3000 },
-        );
+        this.snackBar.open(wasSubscribed ? 'Unsubscribed' : 'Subscribed to notifications', 'OK', {
+          duration: 3000,
+        });
       },
       error: () => this.snackBar.open('Failed to update notifications', 'OK', { duration: 3000 }),
     });
@@ -1592,6 +1749,21 @@ export class BrowseComponent {
 
   lastContributor(doc: NuxeoDocument): string {
     return (doc.properties?.['dc:lastContributor'] as string) ?? '';
+  }
+
+  /**
+   * Initials for a `sat-avatar`, never empty.
+   *
+   * `SatAvatar` at `size="24"` renders `initials()[0].toUpperCase()`, which throws
+   * a `TypeError` on an empty string — and every value browse binds to it can be
+   * empty: `lastContributor` and `docCreator` return `''` when the Dublin Core
+   * property is absent, `resolveAcePrincipal` returns `''` for an unrecognised
+   * principal, and Nuxeo omits `principalName` on system audit events. The throw
+   * happens inside change detection, so it takes the whole listing down, not one
+   * cell.
+   */
+  avatarInitials(value: string | null | undefined): string {
+    return value?.trim() || '?';
   }
 
   docCreator(doc: NuxeoDocument): string {

@@ -6,6 +6,7 @@ import {
   OnDestroy,
   ViewChild,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -19,12 +20,11 @@ import {
   distinctUntilChanged,
   filter,
   finalize,
-  forkJoin,
   of,
   switchMap,
   Subscription,
 } from 'rxjs';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -41,26 +41,32 @@ import {
   CollectionService,
   DocumentDetailService,
   BrowseContextService,
-  NuxeoDocument,
   SearchService,
   SelectionService,
   readClipboardDocs,
-  writeClipboardDocs,
+  isAdfHxBrowseRouterUrl,
+  isBrowseRouterUrl,
+  parseAdfHxBrowsePathFromRouterUrl,
+  parseBrowseNuxeoPathFromRouterUrl,
+  toBrowseRouterUrl,
   type GlobalSearchSuggestion,
   docTypeIcon,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
-  SelectionTopbarComponent,
-  ConfirmDialogComponent,
-  openDocumentCompareDialog,
-  trashSelectedDocumentsConfirmData,
-} from '@agentic-ui/shared/ui';
+  AdfHxBrowseContextService,
+  toAdfHxBrowseRouterUrl,
+} from '@agentic-ui/shared/adf-hx-bridge';
+import { SelectionTopbarComponent } from '@nuxeo-satori/platform/ui';
 import { AiChatService, AiFeatureFlagService } from '@agentic-ui/shared/ai-client';
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
+import { APP_NAV_ITEMS, PACKAGED_NAV_ITEMS } from '@nuxeo-satori/platform/extensions';
+import { TranslatePipe } from '@ngx-translate/core';
 
 import { AuthService } from '../auth/auth.service';
 import { SessionTimeoutService } from '../auth/session-timeout.service';
-import { AppNavItem, PLATFORM_NAV_ITEMS, visibleSettingsDrawerItems } from '../platform-nav-items';
+import { AppNavItem, SETTINGS_DRAWER_ITEMS, toAppNavItem } from '../platform-nav-items';
 import { ThemingFeatureFlagService } from '../theme/theming-feature-flag.service';
+import { drawerItemForPath } from './drawer-route-match';
 import { NavDrawerComponent } from './nav-drawer/nav-drawer.component';
 import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
 
@@ -83,6 +89,7 @@ import { AiMarkdownPipe } from '../pipes/ai-markdown.pipe';
     SelectionTopbarComponent,
     FormsModule,
     AiMarkdownPipe,
+    TranslatePipe,
   ],
   templateUrl: './app-shell.component.html',
   styleUrl: './app-shell.component.scss',
@@ -92,6 +99,7 @@ export class AppShellComponent implements OnDestroy {
   private globalSearchContainer?: ElementRef<HTMLElement>;
 
   private readonly settingsDrawerItem: AppNavItem = {
+    id: 'app.navbar.settings',
     label: 'Settings',
     path: '/settings',
     icon: 'settings',
@@ -103,13 +111,14 @@ export class AppShellComponent implements OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly sessionTimeout = inject(SessionTimeoutService);
   private readonly snackBar = inject(MatSnackBar);
-  private readonly dialog = inject(MatDialog);
   readonly selectionService = inject(SelectionService);
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly searchService = inject(SearchService);
   private readonly browseContext = inject(BrowseContextService);
+  private readonly adfHxBrowseContext = inject(AdfHxBrowseContextService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly appConfig = inject(AppConfigService);
   readonly aiChat = inject(AiChatService);
   readonly featureFlags = inject(AiFeatureFlagService);
   readonly themingFlags = inject(ThemingFeatureFlagService);
@@ -118,13 +127,16 @@ export class AppShellComponent implements OnDestroy {
   readonly aiChatInput = signal('');
   private readonly searchInput$ = new Subject<string>();
 
-  /** Hides Administration unless the user is an administrator or poweruser. */
-  protected readonly navItems = computed(() => {
-    return PLATFORM_NAV_ITEMS.filter((item) => {
-      if (item.path === '/administration' && !this.auth.hasAdministrationAccess()) return false;
-      return true;
-    });
-  });
+  /**
+   * The navigation, resolved from the extension registry.
+   *
+   * Nothing is filtered here any more. Administration is hidden by the
+   * `app.rules.hasAdministrationAccess` rule on its descriptor, which a manifest
+   * can see, override or replace — the previous hardcoded `path === '/administration'`
+   * test could do none of those.
+   */
+  private readonly navDescriptors = inject(APP_NAV_ITEMS);
+  protected readonly navItems = computed(() => this.navDescriptors().map(toAppNavItem));
 
   readonly displayName = computed(() => this.auth.username() ?? 'User');
   readonly drawerOpen = signal(false);
@@ -172,11 +184,23 @@ export class AppShellComponent implements OnDestroy {
       };
       return titles[seg] ?? 'Administration';
     }
-    const match = [
-      ...PLATFORM_NAV_ITEMS,
-      ...visibleSettingsDrawerItems(this.themingFlags.themingEnabled()),
-    ].find((item) => url === item.path || url.startsWith(item.path + '/'));
-    return match?.label ?? 'Hyland Nuxeo';
+    // Resolved entries first so a manifest relabel wins, then the packaged list
+    // as a fallback. Matching only against `navItems()` — which is filtered —
+    // meant hiding an entry by manifest or rule also stripped its page title,
+    // and a user who reached the route directly saw the brand name instead of
+    // "Trash". Hiding an entry is a navigation decision, not a route decision:
+    // the route still exists and is still reachable. That is also why the
+    // unfiltered settings list is used here while the drawer uses
+    // `visibleSettingsDrawerItems` — the theming flag hides the *link*, and
+    // `themingGuard` closes the *route*; neither should blank the title.
+    const candidates = [
+      ...this.navItems(),
+      ...PACKAGED_NAV_ITEMS.map(toAppNavItem),
+      ...SETTINGS_DRAWER_ITEMS,
+    ];
+    const match = candidates.find((item) => url === item.path || url.startsWith(item.path + '/'));
+    // Layer 0: the product name on an unmatched route is branding, not a literal.
+    return match?.label ?? this.appConfig.bootstrap().branding.applicationTitle;
   });
 
   private storageListener = (e: StorageEvent) => {
@@ -190,6 +214,13 @@ export class AppShellComponent implements OnDestroy {
 
   constructor() {
     this.sessionTimeout.start();
+
+    // The browser tab is branding too, and it was previously fixed in index.html
+    // where no customer could reach it. An effect rather than a one-off call
+    // because the configuration load is asynchronous.
+    effect(() => {
+      document.title = this.appConfig.bootstrap().branding.documentTitle;
+    });
 
     if (!this.platformNavState.collapsed()) {
       this.platformNavState.toggleCollapsed();
@@ -209,12 +240,17 @@ export class AppShellComponent implements OnDestroy {
         this.currentUrl.set(nextPath);
         this.refreshClipboardCount();
         this.clearGlobalSearch();
+        this.syncDrawerToRoute(nextPath);
       });
 
     window.addEventListener('storage', this.storageListener);
     window.addEventListener('clipboard-changed', this.clipboardChangedListener);
     window.addEventListener('favorites-changed', this.favoritesChangedListener);
     this.refreshFavoritesCount();
+
+    // The subscription above only fires on subsequent navigations, so a deep link or a
+    // reload needs the current route applied once here.
+    this.syncDrawerToRoute(this.router.url.split('?')[0]);
 
     this.searchInput$
       .pipe(
@@ -312,6 +348,10 @@ export class AppShellComponent implements OnDestroy {
           void this.router.navigateByUrl(target);
         } else if (item.path === '/personal-space') {
           void this.router.navigateByUrl('/personal-space');
+        } else if (item.path === '/browse') {
+          this.navigateToProductionBrowse();
+        } else if (item.path === '/browse-adf-hx') {
+          this.navigateToAdfHxBrowse();
         }
       }
     } else {
@@ -327,12 +367,36 @@ export class AppShellComponent implements OnDestroy {
     if (base === '/browse' || base.startsWith('/browse/')) {
       this.browseContext.setFromRouterUrl(path);
     }
+    if (base === '/browse-adf-hx') {
+      this.adfHxBrowseContext.setFromRouterUrl(path);
+    }
     const keepTasksDrawer = /^\/tasks\/[^/]+$/.test(base);
     if (!keepTasksDrawer) {
       this.drawerOpen.set(false);
       this.activeDrawerItem.set(null);
     }
     void this.router.navigateByUrl(path);
+  }
+
+  /**
+   * Open the drawer belonging to the route being shown, if it has one.
+   *
+   * Driven from the route rather than from the nav click, so a deep link and a browser
+   * back both arrive with the tree already open — which is how the section is meant to
+   * look, and previously only happened if the user clicked the nav item themselves.
+   */
+  private syncDrawerToRoute(currentPath: string): void {
+    const matchingItem = drawerItemForPath(this.navItems(), currentPath);
+
+    // Re-setting the same item would reopen a drawer the user has just closed, so a
+    // navigation within one section leaves their choice alone.
+    if (matchingItem && this.activeDrawerItem()?.path !== matchingItem.path) {
+      this.activeDrawerItem.set(matchingItem);
+      this.drawerOpen.set(true);
+    }
+
+    // Navigating away deliberately does not close it: the drawer is the browse tree, and
+    // opening a document from it would otherwise dismiss the tree the user is working in.
   }
 
   toggleSettingsDrawer(): void {
@@ -356,6 +420,9 @@ export class AppShellComponent implements OnDestroy {
     if (base === '/browse' || base.startsWith('/browse/')) {
       this.browseContext.setFromRouterUrl(path);
     }
+    if (base === '/browse-adf-hx') {
+      this.adfHxBrowseContext.setFromRouterUrl(path);
+    }
     void this.router.navigateByUrl(path, { onSameUrlNavigation: 'reload' });
   }
 
@@ -363,170 +430,6 @@ export class AppShellComponent implements OnDestroy {
     this.drawerOpen.set(false);
     this.activeDrawerItem.set(null);
     this.refreshClipboardCount();
-  }
-
-  onDeleteSelected(): void {
-    const count = this.selectionService.selectedCount();
-    if (count === 0) return;
-
-    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
-      data: trashSelectedDocumentsConfirmData(count),
-    });
-
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((confirmed) => {
-        if (!confirmed) {
-          this.selectionService.clear();
-          return;
-        }
-
-        this.selectionService
-          .deleteSelected()
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: () => {
-              this.browseContext.requestTreeRefresh();
-            },
-            error: (err) => {
-              console.error('Failed to delete selected documents', err);
-              const message = this.getDeleteErrorMessage(err);
-              this.snackBar.open(message, 'Dismiss', { duration: 5000 });
-              this.selectionService.clear();
-            },
-          });
-      });
-  }
-
-  onPublishSelected(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    const first = selected[0];
-    if (selected.length > 1) {
-      this.snackBar.open('Opening publish dialog for the first selected item.', 'Dismiss', {
-        duration: 3000,
-      });
-    }
-
-    const openDialog = async (versions: NuxeoDocument[]) => {
-      const { PublishDialogComponent } = await import('@agentic-ui/feature-document-detail');
-      const data = {
-        documentUid: first.id,
-        documentTitle: first.name,
-        versionLabel: 'Current',
-        renditions: [
-          { name: 'thumbnail', label: 'Thumbnail' },
-          { name: 'pdf', label: 'PDF' },
-          { name: 'zipExport', label: 'ZIP Export' },
-          { name: 'xmlExport', label: 'XML Export' },
-        ],
-        versions,
-      };
-
-      this.dialog.open(PublishDialogComponent, {
-        width: '620px',
-        panelClass: 'publish-dialog-panel',
-        data,
-      });
-    };
-
-    this.detailService.getVersions(first.id).subscribe({
-      next: (res) => openDialog(res.entries ?? []),
-      error: () => openDialog([]),
-    });
-  }
-
-  onAddSelectedToClipboard(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    const current = readClipboardDocs();
-    const existing = new Set(current.map((item) => item.uid));
-    const additions = selected
-      .filter((item) => !existing.has(item.id))
-      .map((item) => ({
-        uid: item.id,
-        title: item.name,
-        ...(item.type ? { type: item.type } : {}),
-      }));
-
-    const updated = [...current, ...additions];
-    writeClipboardDocs(updated);
-    window.dispatchEvent(new Event('clipboard-changed'));
-
-    this.snackBar.open(
-      additions.length > 0
-        ? `Added ${additions.length} item(s) to clipboard.`
-        : 'Selected items are already in clipboard.',
-      'Dismiss',
-      { duration: 3000 },
-    );
-  }
-
-  onAddSelectedToCollection(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    import('@agentic-ui/feature-document-detail').then(({ AddToCollectionDialogComponent }) => {
-      const ref = this.dialog.open(AddToCollectionDialogComponent, {
-        width: '440px',
-        autoFocus: false,
-      });
-
-      ref.afterClosed().subscribe((collectionId: string | undefined) => {
-        if (!collectionId) return;
-
-        forkJoin(
-          selected.map((item) =>
-            this.detailService
-              .addToCollection(item.id, collectionId)
-              .pipe(catchError(() => of(null))),
-          ),
-        ).subscribe((results) => {
-          const success = results.filter((r) => !!r).length;
-          this.snackBar.open(`Added ${success} item(s) to collection.`, 'Dismiss', {
-            duration: 3000,
-          });
-        });
-      });
-    });
-  }
-
-  onDownloadSelectedAsZip(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length === 0) return;
-
-    const ids = selected.map((item) => item.id);
-    const zipFileName = `selected-documents-${Date.now()}.zip`;
-    this.detailService.bulkDownload(ids, zipFileName).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = zipFileName;
-        a.click();
-        URL.revokeObjectURL(url);
-      },
-      error: () => {
-        this.snackBar.open('Failed to download selected documents as ZIP.', 'Dismiss', {
-          duration: 4000,
-        });
-      },
-    });
-  }
-
-  onCompareSelected(): void {
-    const selected = this.selectionService.selectedItems();
-    if (selected.length < 2) {
-      this.snackBar.open('Select at least two documents to compare.', 'Dismiss', {
-        duration: 3000,
-      });
-      return;
-    }
-
-    openDocumentCompareDialog(this.dialog, selected);
   }
 
   onGlobalSearchInput(value: string): void {
@@ -661,20 +564,6 @@ export class AppShellComponent implements OnDestroy {
     return this.highlightText(this.userGroupSubtext(result));
   }
 
-  private getDeleteErrorMessage(err: unknown): string {
-    if (typeof err === 'string' && err.trim().length > 0) return err;
-
-    const maybeObj = err as { error?: { message?: string }; message?: string } | null;
-    const apiMessage = maybeObj?.error?.message;
-    if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) return apiMessage;
-
-    const defaultMessage = maybeObj?.message;
-    if (typeof defaultMessage === 'string' && defaultMessage.trim().length > 0)
-      return defaultMessage;
-
-    return 'Failed to delete selected documents. Please try again.';
-  }
-
   refreshClipboardCount(): void {
     this.clipboardCount.set(this.readClipboardCount());
   }
@@ -733,5 +622,43 @@ export class AppShellComponent implements OnDestroy {
 
   docTypeIcon(type: string): string {
     return docTypeIcon(type);
+  }
+
+  /** Open production browse at the path the user was viewing in adf-hx (or current browse context). */
+  private navigateToProductionBrowse(): void {
+    const nuxeoPath = this.resolveBrowsePathForProductionSwitch();
+    this.browseContext.setFromNuxeoPath(nuxeoPath);
+    void this.router.navigateByUrl(toBrowseRouterUrl(nuxeoPath));
+  }
+
+  /** Open adf-hx browse at the path the user was viewing in production browse (or current adf-hx context). */
+  private navigateToAdfHxBrowse(): void {
+    const nuxeoPath = this.resolveBrowsePathForAdfHxSwitch();
+    this.adfHxBrowseContext.setFromNuxeoPath(nuxeoPath);
+    void this.router.navigateByUrl(toAdfHxBrowseRouterUrl(nuxeoPath));
+  }
+
+  /** Prefer the live router URL when switching from adf-hx browse to production browse. */
+  private resolveBrowsePathForProductionSwitch(): string {
+    const url = this.router.url;
+    if (isAdfHxBrowseRouterUrl(url)) {
+      return parseAdfHxBrowsePathFromRouterUrl(url);
+    }
+    if (isBrowseRouterUrl(url)) {
+      return parseBrowseNuxeoPathFromRouterUrl(url);
+    }
+    return this.adfHxBrowseContext.contextPath() || this.browseContext.contextPath();
+  }
+
+  /** Prefer the live router URL when switching from production browse to adf-hx browse. */
+  private resolveBrowsePathForAdfHxSwitch(): string {
+    const url = this.router.url;
+    if (isBrowseRouterUrl(url)) {
+      return parseBrowseNuxeoPathFromRouterUrl(url);
+    }
+    if (isAdfHxBrowseRouterUrl(url)) {
+      return parseAdfHxBrowsePathFromRouterUrl(url);
+    }
+    return this.browseContext.contextPath() || this.adfHxBrowseContext.contextPath();
   }
 }

@@ -204,7 +204,7 @@ The `ARENDER_CONFIG` injection token in `libs/shared/nuxeo-client/src/lib/arende
 Override in `app.config.ts` if needed:
 
 ```typescript
-import { ARENDER_CONFIG } from '@agentic-ui/shared/nuxeo-client';
+import { ARENDER_CONFIG } from '@nuxeo-satori/platform/nuxeo-client';
 
 {
   provide: ARENDER_CONFIG,

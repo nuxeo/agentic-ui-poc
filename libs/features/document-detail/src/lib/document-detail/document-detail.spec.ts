@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideExperimentalZonelessChangeDetection, signal } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import {
   ActivatedRoute,
   convertToParamMap,
@@ -10,7 +10,7 @@ import {
   withDisabledInitialNavigation,
 } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
-import { vi } from 'vitest';
+import { vi, type MockInstance } from 'vitest';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DocumentDetailComponent } from './document-detail';
 import {
@@ -27,7 +27,7 @@ import {
   TagService,
   TaskService,
   WorkflowService,
-} from '@agentic-ui/shared/nuxeo-client';
+} from '@nuxeo-satori/platform/nuxeo-client';
 import {
   AiChatService,
   AiFeatureFlagService,
@@ -151,7 +151,7 @@ describe('DocumentDetailComponent', () => {
     await TestBed.configureTestingModule({
       imports: [DocumentDetailComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
         provideHttpClient(),
         provideHttpClientTesting(),
@@ -605,7 +605,7 @@ describe('DocumentDetailComponent', () => {
   });
 
   describe('collection routing (NXSAT-204)', () => {
-    let navigateSpy: ReturnType<typeof vi.spyOn>;
+    let navigateSpy: MockInstance<Router['navigate']>;
 
     beforeEach(async () => {
       mockDocumentDetailService.getFullDocument = vi.fn(() =>
@@ -624,7 +624,7 @@ describe('DocumentDetailComponent', () => {
       await TestBed.configureTestingModule({
         imports: [DocumentDetailComponent],
         providers: [
-          provideExperimentalZonelessChangeDetection(),
+          provideZonelessChangeDetection(),
           provideRouter([], withDisabledInitialNavigation()),
           provideHttpClient(),
           provideHttpClientTesting(),

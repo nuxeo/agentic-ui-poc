@@ -1,0 +1,564 @@
+/*
+ * Infographic slides for the Beta screencasts.
+ *
+ * Sized for a 1920x1080 recording viewport. Dark surface on purpose: a screencast
+ * is watched, not printed, and the live application shots it cuts between are
+ * themed dark too, so the deck does not strobe.
+ *
+ * Palette is the dataviz reference instance, dark steps, validated rather than
+ * chosen by eye:
+ *   node scripts/validate_palette.js "#3987e5,#d95926,#199e70,#c98500" --mode dark
+ *   -> ALL CHECKS PASS, worst adjacent CVD dE 8.4 (green<->yellow)
+ * That 8.4 sits just above the 8 target, so every bar and segment carries a direct
+ * label — the secondary encoding the floor band requires. Identity is never colour
+ * alone anywhere in this deck.
+ */
+
+.viz-root {
+  color-scheme: dark;
+
+  --surface-1: #1a1a19; /* chart surface */
+  --plane: #0d0d0d; /* page plane */
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --gridline: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+
+  /* Two entities recur across all three decks, in fixed slot order. Never cycled. */
+  --series-adfhx: #3987e5; /* slot 1 — upstream adf-hx */
+  --series-ours: #d95926; /* slot 2 — agentic-ui, our code */
+  --series-3: #199e70;
+  --series-4: #c98500;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+.slide {
+  width: 1920px;
+  height: 1080px;
+  padding: 84px 104px;
+  display: none;
+  flex-direction: column;
+  background: var(--plane);
+}
+
+.slide[data-active='true'] {
+  display: flex;
+}
+
+/* ---------------------------------------------------------------- header ---- */
+
+.slide__eyebrow {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 18px;
+}
+
+.slide__title {
+  font-size: 68px;
+  font-weight: 680;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  margin: 0 0 20px;
+  max-width: 30ch;
+}
+
+.slide__lede {
+  font-size: 30px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin: 0 0 40px;
+  max-width: 62ch;
+}
+
+.slide__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slide__footnote {
+  margin: 32px 0 0;
+  font-size: 21px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 96ch;
+}
+
+/* Title slide ------------------------------------------------------------- */
+
+.slide--title {
+  justify-content: center;
+}
+
+.slide--title .slide__title {
+  font-size: 104px;
+  max-width: 26ch;
+}
+
+.slide--title .slide__lede {
+  font-size: 34px;
+  margin-bottom: 0;
+}
+
+.slide__rule {
+  width: 148px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--series-adfhx);
+  margin: 0 0 40px;
+}
+
+/* ------------------------------------------------------------ stat tiles ---- */
+
+.stats {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 28px;
+}
+
+.stat {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 34px 34px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* A 6px colour bar carries entity identity; the value text stays in ink. */
+.stat__accent {
+  width: 56px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--text-muted);
+}
+
+.stat[data-series='adfhx'] .stat__accent {
+  background: var(--series-adfhx);
+}
+.stat[data-series='ours'] .stat__accent {
+  background: var(--series-ours);
+}
+.stat[data-series='3'] .stat__accent {
+  background: var(--series-3);
+}
+.stat[data-series='4'] .stat__accent {
+  background: var(--series-4);
+}
+
+.stat__value {
+  font-size: 76px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.stat__unit {
+  font-size: 30px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
+
+.stat__label {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.stat__sub {
+  font-size: 20px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* ----------------------------------------------------------------- bars ---- */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  align-items: center;
+  gap: 28px;
+}
+
+.bar__label {
+  font-size: 25px;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.bar__track {
+  position: relative;
+  height: 46px;
+  /* Recessive baseline rather than a filled track, so the mark is the ink. */
+  border-left: 2px solid var(--baseline);
+  display: flex;
+  align-items: center;
+}
+
+.bar__fill {
+  height: 34px;
+  /* 4px rounded data-end, anchored square to the baseline. */
+  border-radius: 0 4px 4px 0;
+  background: var(--text-muted);
+  min-width: 4px;
+}
+
+.bar[data-series='adfhx'] .bar__fill {
+  background: var(--series-adfhx);
+}
+.bar[data-series='ours'] .bar__fill {
+  background: var(--series-ours);
+}
+.bar[data-series='3'] .bar__fill {
+  background: var(--series-3);
+}
+.bar[data-series='4'] .bar__fill {
+  background: var(--series-4);
+}
+
+.bar__value {
+  margin-left: 18px;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.bar__note {
+  margin-left: 14px;
+  font-size: 20px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- stacked bar ---- */
+
+.stack {
+  display: flex;
+  /* 2px surface gap between segments, per the mark spec. */
+  gap: 2px;
+  height: 76px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.stack__seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 25px;
+  font-weight: 700;
+  color: #0d0d0d;
+  min-width: 4px;
+}
+
+.stack__seg[data-series='adfhx'] {
+  background: var(--series-adfhx);
+}
+.stack__seg[data-series='ours'] {
+  background: var(--series-ours);
+}
+.stack__seg[data-series='3'] {
+  background: var(--series-3);
+}
+.stack__seg[data-series='4'] {
+  background: var(--series-4);
+}
+
+.stack-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 34px;
+  margin-top: 26px;
+}
+
+/* ---------------------------------------------------------------- split ---- */
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  min-height: 0;
+}
+
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 34px 36px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.panel__swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  flex: none;
+}
+
+.panel[data-series='adfhx'] .panel__swatch {
+  background: var(--series-adfhx);
+}
+.panel[data-series='ours'] .panel__swatch {
+  background: var(--series-ours);
+}
+
+.panel__title {
+  font-size: 31px;
+  font-weight: 680;
+  margin: 0;
+}
+
+.panel__sub {
+  font-size: 21px;
+  color: var(--text-muted);
+  margin: 0 0 22px;
+}
+
+.panel__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  overflow: hidden;
+}
+
+.panel__list li {
+  font-size: 23px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  padding-left: 26px;
+  position: relative;
+}
+
+.panel__list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: var(--text-muted);
+}
+
+.panel[data-series='adfhx'] .panel__list li::before {
+  background: var(--series-adfhx);
+}
+.panel[data-series='ours'] .panel__list li::before {
+  background: var(--series-ours);
+}
+
+.panel__list code,
+.slide__lede code,
+.slide__footnote code,
+.steps code {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.92em;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.07);
+  padding: 2px 7px;
+  border-radius: 5px;
+}
+
+/* ---------------------------------------------------------------- steps ---- */
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.step {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 26px;
+  align-items: start;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 26px 32px;
+}
+
+.step__n {
+  width: 54px;
+  height: 54px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27px;
+  font-weight: 700;
+  color: #0d0d0d;
+  background: var(--text-muted);
+}
+
+.step[data-series='adfhx'] .step__n {
+  background: var(--series-adfhx);
+}
+.step[data-series='ours'] .step__n {
+  background: var(--series-ours);
+}
+.step[data-series='3'] .step__n {
+  background: var(--series-3);
+}
+.step[data-series='4'] .step__n {
+  background: var(--series-4);
+}
+
+.step__title {
+  font-size: 28px;
+  font-weight: 660;
+  margin: 0 0 6px;
+}
+
+.step__text {
+  font-size: 22px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* --------------------------------------------------------------- legend ---- */
+
+.legend {
+  display: flex;
+  gap: 38px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 23px;
+  color: var(--text-secondary);
+}
+
+.legend__swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background: var(--text-muted);
+  flex: none;
+}
+
+.legend__item[data-series='adfhx'] .legend__swatch {
+  background: var(--series-adfhx);
+}
+.legend__item[data-series='ours'] .legend__swatch {
+  background: var(--series-ours);
+}
+.legend__item[data-series='3'] .legend__swatch {
+  background: var(--series-3);
+}
+.legend__item[data-series='4'] .legend__swatch {
+  background: var(--series-4);
+}
+
+/* ---------------------------------------------------------------- code ---- */
+
+.codeblock {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 32px 38px;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 25px;
+  line-height: 1.62;
+  color: var(--text-secondary);
+  white-space: pre;
+  overflow: hidden;
+}
+
+.codeblock b {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.codeblock .c {
+  color: var(--text-muted);
+}
+
+.codeblock .ok {
+  color: var(--status-good);
+  font-weight: 700;
+}
+
+/* --------------------------------------------------------------- banner ---- */
+
+.banner {
+  border-left: 6px solid var(--series-ours);
+  background: var(--surface-1);
+  border-radius: 0 14px 14px 0;
+  padding: 30px 38px;
+  font-size: 30px;
+  line-height: 1.45;
+  color: var(--text-primary);
+}
+
+.banner--good {
+  border-left-color: var(--status-good);
+}
+
+.banner--warn {
+  border-left-color: var(--status-warning);
+}
+
+/* Progress rail, so a viewer can see how far through a section they are. */
+.rail {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 5px;
+  background: var(--series-adfhx);
+  transition: width 220ms linear;
+}

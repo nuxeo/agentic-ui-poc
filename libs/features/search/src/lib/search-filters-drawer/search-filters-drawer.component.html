@@ -50,6 +50,7 @@
     <button
       mat-icon-button
       [matTooltip]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
+      [attr.aria-label]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
       (click)="viewMode() === 'filter' ? switchToQueueView() : switchToFilterView()"
       type="button"
       class="queue-toggle-btn"

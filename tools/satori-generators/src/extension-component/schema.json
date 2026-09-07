@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "SatoriExtensionComponent",
+  "title": "Add a component to a Satori extension library",
+  "description": "Scaffolds a standalone component and registers it by ID behind a lazy import, so a manifest can place it without any host importing the class.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Component name, kebab-case. Becomes <owner>.panel.<camelCase> and <Name>Component.",
+      "$default": { "$source": "argv", "index": 0 },
+      "x-prompt": "Component name (kebab-case, e.g. claim-summary)?",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "library": {
+      "type": "string",
+      "description": "The extension library to add it to.",
+      "x-prompt": "Which extension library (e.g. acme-extensions)?"
+    },
+    "surface": {
+      "type": "string",
+      "description": "The ID surface segment, as in <owner>.<surface>.<name>.",
+      "default": "panel"
+    }
+  },
+  "required": ["name", "library"]
+}

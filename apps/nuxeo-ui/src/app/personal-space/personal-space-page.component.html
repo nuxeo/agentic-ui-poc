@@ -1,7 +1,7 @@
 <div class="personal-space-page">
   @if (loading()) {
     <div class="personal-space-page__loading">
-      <mat-spinner diameter="40" />
+      <mat-spinner diameter="40" aria-label="Loading" />
       <p>Loading your personal workspace…</p>
     </div>
   } @else if (error()) {

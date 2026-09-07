@@ -1,0 +1,62 @@
+<div class="shell">
+  <nav class="shell__nav" aria-label="Main">
+    <!-- Layer 0: `branding.applicationTitle`, applied on reload with no rebuild. -->
+    <p class="shell__brand">{{ brand() }}</p>
+
+    <!--
+      Rendered from the extension registry. Adding an entry is a manifest edit or
+      a `provideSatoriExtensions({ slots: { navbar: [...] } })` call — never a
+      change to this template.
+    -->
+    <ul class="shell__nav-list">
+      @for (item of navItems(); track item.id) {
+        <li>
+          <a
+            class="shell__nav-link"
+            routerLinkActive="shell__nav-link--active"
+            [routerLink]="item.path"
+          >
+            {{ item.label }}
+          </a>
+        </li>
+      } @empty {
+        <li class="shell__nav-empty">No navigation entries registered.</li>
+      }
+    </ul>
+
+    @if (signedIn()) {
+      <div class="shell__session">
+        <p class="shell__session-user">
+          Signed in as <strong>{{ username() }}</strong>
+        </p>
+        <p class="shell__session-source">Layer 1 manifest: {{ manifestSource() }}</p>
+        <button class="shell__sign-out" type="button" (click)="signOut()">Sign out</button>
+      </div>
+    }
+  </nav>
+
+  <main class="shell__content">
+    @if (missingLayers().length) {
+      <p class="shell__warning" role="status">
+        Manifest references {{ missingLayers().length }} extension layer(s) that did not resolve:
+        {{ missingLayers().join(', ') }}
+      </p>
+    }
+
+    @for (route of invalidRoutes(); track route.id) {
+      <p class="shell__warning" role="status">
+        Manifest route {{ route.id }} was not registered: {{ route.reason }}
+      </p>
+    }
+
+    <!--
+      No route guard, deliberately. Guarding is a fork's decision, and gating the
+      whole outlet here means no page has to handle "signed out" itself.
+    -->
+    @if (signedIn()) {
+      <router-outlet />
+    } @else {
+      <app-sign-in />
+    }
+  </main>
+</div>

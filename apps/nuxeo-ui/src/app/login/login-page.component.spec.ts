@@ -4,7 +4,7 @@ import { provideRouter, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, Observable } from 'rxjs';
 
-import type { NuxeoSamlLoginEndpoint } from '@agentic-ui/shared/nuxeo-client';
+import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "name": "nuxeo-satori-generators",
+  "version": "0.1.0",
+  "generators": {
+    "extension-library": {
+      "factory": "./src/extension-library/generator",
+      "schema": "./src/extension-library/schema.json",
+      "description": "Scaffold a customer Layer 2 extension library that contributes slots, rules, actions and components to the Satori platform."
+    },
+    "extension-rule": {
+      "factory": "./src/extension-rule/generator",
+      "schema": "./src/extension-rule/schema.json",
+      "description": "Add a named rule evaluator to an existing extension library. A rule gates whether a surface is offered \u2014 it is not authorisation."
+    },
+    "extension-action": {
+      "factory": "./src/extension-action/generator",
+      "schema": "./src/extension-action/schema.json",
+      "description": "Add an action handler to an existing extension library. Where it appears is Layer 1 configuration; what it does is the handler."
+    },
+    "extension-component": {
+      "factory": "./src/extension-component/generator",
+      "schema": "./src/extension-component/schema.json",
+      "description": "Scaffold a standalone component in an existing extension library and register it by ID behind a lazy import."
+    }
+  }
+}

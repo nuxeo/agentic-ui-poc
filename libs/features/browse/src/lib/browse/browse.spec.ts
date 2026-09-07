@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideExperimentalZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { AppConfigService } from '@nuxeo-satori/platform/app-config';
 import { provideRouter, withDisabledInitialNavigation } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
@@ -19,34 +20,65 @@ import {
   CURRENT_USERNAME,
   ADMIN_ACCESS_CHECKS,
   PERMISSION_DENIED_MESSAGE,
-} from '@agentic-ui/shared/nuxeo-client';
-import { trashSelectedDocumentsConfirmData } from '@agentic-ui/shared/ui';
+} from '@nuxeo-satori/platform/nuxeo-client';
+import { trashSelectedDocumentsConfirmData } from '@nuxeo-satori/platform/ui';
+
+/**
+ * Each mock is annotated with the real method's return type.
+ *
+ * Without it, `throwError()` and `EMPTY` infer `Observable<never>`, so every
+ * `mockReturnValue(of(...))` in the suite was a type error — invisible, because no gate
+ * type-checked a spec file. Tying the mock to the service also means a fixture that has
+ * drifted from what `BrowseService` actually returns fails to compile rather than
+ * passing against a shape the production code would never receive.
+ */
+const notConnected = () => throwError(() => new Error('not connected'));
+
+/** A complete `NuxeoDocument`, so a fixture states only the fields its test is about. */
+function doc(overrides: Partial<NuxeoDocument> & Pick<NuxeoDocument, 'uid'>): NuxeoDocument {
+  return {
+    title: 'Document',
+    type: 'File',
+    path: '/default-domain/workspaces/document',
+    lastModified: '2026-01-01T00:00:00.000Z',
+    properties: {},
+    ...overrides,
+  };
+}
 
 const mockBrowseService = {
-  getByPath: vi.fn(() => throwError(() => new Error('not connected'))),
-  getBrowseFolderContents: vi.fn(() => throwError(() => new Error('not connected'))),
-  getFolderContext: vi.fn(() => throwError(() => new Error('not connected'))),
-  getChildren: vi.fn(() => throwError(() => new Error('not connected'))),
-  hasChildCollections: vi.fn(() => of(false)),
-  getTrashedChildren: vi.fn(() => EMPTY),
-  restoreDocument: vi.fn(() => EMPTY),
-  startCsvExport: vi.fn(() => EMPTY),
-  pollAndDownloadCsv: vi.fn(() => EMPTY),
+  getByPath: vi.fn((): ReturnType<BrowseService['getByPath']> => notConnected()),
+  getBrowseFolderContents: vi.fn((): ReturnType<BrowseService['getBrowseFolderContents']> =>
+    notConnected(),
+  ),
+  getFolderContext: vi.fn((): ReturnType<BrowseService['getFolderContext']> => notConnected()),
+  getChildren: vi.fn((): ReturnType<BrowseService['getChildren']> => notConnected()),
+  hasChildCollections: vi.fn((): ReturnType<BrowseService['hasChildCollections']> => of(false)),
+  getTrashedChildren: vi.fn((): ReturnType<BrowseService['getTrashedChildren']> => EMPTY),
+  restoreDocument: vi.fn((): ReturnType<BrowseService['restoreDocument']> => EMPTY),
+  startCsvExport: vi.fn((): ReturnType<BrowseService['startCsvExport']> => EMPTY),
+  pollAndDownloadCsv: vi.fn((): ReturnType<BrowseService['pollAndDownloadCsv']> => EMPTY),
 };
 
+type DetailReturn<K extends keyof DocumentDetailService> = ReturnType<DocumentDetailService[K]>;
+
 const mockDocumentDetailService = {
-  getFullDocument: vi.fn(() => EMPTY),
-  getDocumentPermissions: vi.fn(() => EMPTY),
-  fetchThumbnail: vi.fn(() => EMPTY),
-  getAuditLog: vi.fn(() => of({ entries: [], totalSize: 0 })),
-  trashDocument: vi.fn(() => EMPTY),
-  exportZip: vi.fn(() => EMPTY),
-  exportXml: vi.fn(() => EMPTY),
-  subscribe: vi.fn(() => EMPTY),
-  unsubscribe: vi.fn(() => EMPTY),
-  blockPermissionInheritance: vi.fn(() => EMPTY),
-  unblockPermissionInheritance: vi.fn(() => EMPTY),
-  sendNotificationEmailForPermission: vi.fn(() => EMPTY),
+  getFullDocument: vi.fn((_uid: string): DetailReturn<'getFullDocument'> => EMPTY),
+  getDocumentPermissions: vi.fn((): DetailReturn<'getDocumentPermissions'> => EMPTY),
+  fetchThumbnail: vi.fn((): DetailReturn<'fetchThumbnail'> => EMPTY),
+  getAuditLog: vi.fn((): DetailReturn<'getAuditLog'> =>
+    of({ entries: [], totalSize: 0, currentPageSize: 0, currentPageIndex: 0, numberOfPages: 0 }),
+  ),
+  trashDocument: vi.fn((): DetailReturn<'trashDocument'> => EMPTY),
+  exportZip: vi.fn((): DetailReturn<'exportZip'> => EMPTY),
+  exportXml: vi.fn((): DetailReturn<'exportXml'> => EMPTY),
+  subscribe: vi.fn((): DetailReturn<'subscribe'> => EMPTY),
+  unsubscribe: vi.fn((): DetailReturn<'unsubscribe'> => EMPTY),
+  blockPermissionInheritance: vi.fn((): DetailReturn<'blockPermissionInheritance'> => EMPTY),
+  unblockPermissionInheritance: vi.fn((): DetailReturn<'unblockPermissionInheritance'> => EMPTY),
+  sendNotificationEmailForPermission: vi.fn(
+    (): DetailReturn<'sendNotificationEmailForPermission'> => EMPTY,
+  ),
 };
 
 const mockDirectoryService = {
@@ -72,6 +104,14 @@ const mockSelectionService = {
   deleteSelected: vi.fn(() => of([])),
 };
 
+/**
+ * Stubs `AppConfigService` so `AppExtensionsService` — which browse now injects to
+ * resolve its `documentList` columns — does not drag `HttpClient` into every spec
+ * in this file. Same shape as `selection-topbar.component.spec.ts`, the other slot
+ * consumer, and it doubles as the handle a test uses to drive the manifest.
+ */
+const manifest = signal<{ extensions?: unknown }>({});
+
 describe('BrowseComponent', () => {
   let component: BrowseComponent;
   let fixture: ComponentFixture<BrowseComponent>;
@@ -86,7 +126,7 @@ describe('BrowseComponent', () => {
     await TestBed.configureTestingModule({
       imports: [BrowseComponent],
       providers: [
-        provideExperimentalZonelessChangeDetection(),
+        provideZonelessChangeDetection(),
         provideRouter([], withDisabledInitialNavigation()),
         { provide: BrowseService, useValue: mockBrowseService },
         { provide: DocumentDetailService, useValue: mockDocumentDetailService },
@@ -104,6 +144,7 @@ describe('BrowseComponent', () => {
         },
         { provide: MatSnackBar, useValue: { open: snackBarOpenSpy } },
         { provide: MatDialog, useValue: { open: dialogOpenSpy } },
+        { provide: AppConfigService, useValue: { manifest } },
       ],
     })
       // Shallow-render: replace the complex Material/Satori template with a stub.
@@ -709,7 +750,7 @@ describe('BrowseComponent', () => {
 
   it('sendNotificationEmail shows success snackbar (NXSAT-159)', () => {
     mockDocumentDetailService.sendNotificationEmailForPermission.mockReturnValue(
-      of({ uid: 'doc-1' }),
+      of(doc({ uid: 'doc-1' })),
     );
     component.currentDoc.set({
       uid: 'doc-1',
@@ -910,12 +951,12 @@ describe('BrowseComponent', () => {
   });
 
   it('onTabChange loads permissions via getDocumentPermissions', () => {
-    const permissionsDoc = {
+    const permissionsDoc = doc({
       uid: 'root-uid',
       contextParameters: {
         acls: [{ name: 'local', aces: [] }],
       },
-    } as NuxeoDocument;
+    });
     mockDocumentDetailService.getDocumentPermissions.mockReturnValue(of(permissionsDoc));
 
     component.currentDoc.set({
@@ -943,10 +984,12 @@ describe('BrowseComponent', () => {
     mockDocumentDetailService.getDocumentPermissions
       .mockReturnValueOnce(throwError(() => new Error('network error')))
       .mockReturnValueOnce(
-        of({
-          uid: 'root-uid',
-          contextParameters: { acls: [{ name: 'local', aces: [] }] },
-        } as NuxeoDocument),
+        of(
+          doc({
+            uid: 'root-uid',
+            contextParameters: { acls: [{ name: 'local', aces: [] }] },
+          }),
+        ),
       );
 
     component.currentDoc.set({

@@ -1,11 +1,22 @@
 import {
   NOTE_DOCUMENT_PICKER_PROVIDER,
   buildNoteDocumentPickerNxql,
-  escapeNxqlLiteral,
   filterInsertablePictureDocuments,
   hasInsertablePictureBlob,
 } from './note-document-picker-search';
 import type { NuxeoDocument } from '../models/document.model';
+
+/** A complete `NuxeoDocument`, so a fixture states only the fields its test is about. */
+function pictureDoc(overrides: Partial<NuxeoDocument> & Pick<NuxeoDocument, 'uid'>): NuxeoDocument {
+  return {
+    title: 'Document',
+    type: 'File',
+    path: '/default-domain/workspaces/document',
+    lastModified: '2026-01-01T00:00:00.000Z',
+    properties: {},
+    ...overrides,
+  };
+}
 
 describe('note-document-picker-search', () => {
   it('uses document_picker provider name like Web UI', () => {
@@ -24,23 +35,32 @@ describe('note-document-picker-search', () => {
     expect(query).toContain("file:content/name LIKE '%beach%'");
   });
 
-  it('escapeNxqlLiteral escapes single quotes', () => {
-    expect(escapeNxqlLiteral("O'Brien")).toBe("O''Brien");
-    expect(buildNoteDocumentPickerNxql("O'Brien")).toContain("O''Brien");
+  /**
+   * The local copy of the escape this module used to carry doubled the quote and
+   * ignored backslashes entirely, so `\' OR 1 = 1 OR '` broke out of the LIKE literal.
+   * It now delegates to the shared helper.
+   */
+  it('buildNoteDocumentPickerNxql escapes quotes and backslashes in the search term', () => {
+    expect(buildNoteDocumentPickerNxql("O'Brien")).toContain(
+      String.raw`dc:title LIKE '%O\'Brien%'`,
+    );
+    expect(buildNoteDocumentPickerNxql(String.raw`\' OR 1 = 1 OR '`)).toContain(
+      String.raw`dc:title LIKE '%\\\' OR 1 = 1 OR \'%'`,
+    );
   });
 
   it('filterInsertablePictureDocuments keeps only docs with file:content.data', () => {
-    const withData = {
+    const withData = pictureDoc({
       uid: '1',
       type: 'Picture',
       properties: { 'file:content': { data: '/nuxeo/nxfile/default/1/file:content/a.jpg' } },
-    } as NuxeoDocument;
-    const withoutData = {
+    });
+    const withoutData = pictureDoc({
       uid: '2',
       type: 'Picture',
       properties: { 'file:content': { name: 'a.jpg' } },
-    } as NuxeoDocument;
-    const nonImage = {
+    });
+    const nonImage = pictureDoc({
       uid: '3',
       type: 'File',
       properties: {
@@ -49,13 +69,13 @@ describe('note-document-picker-search', () => {
           'mime-type': 'application/pdf',
         },
       },
-    } as NuxeoDocument;
+    });
 
     expect(filterInsertablePictureDocuments([withData, withoutData, nonImage])).toEqual([withData]);
   });
 
   it('hasInsertablePictureBlob accepts image mime types on non-Picture docs', () => {
-    const doc = {
+    const doc = pictureDoc({
       uid: '4',
       type: 'File',
       properties: {
@@ -64,7 +84,7 @@ describe('note-document-picker-search', () => {
           'mime-type': 'image/png',
         },
       },
-    } as NuxeoDocument;
+    });
     expect(hasInsertablePictureBlob(doc)).toBe(true);
   });
 });
