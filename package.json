@@ -36,6 +36,9 @@
     "watch": "nx build --watch --configuration development",
     "beta:supply-chain": "node scripts/beta-harness/supply-chain.mjs",
     "beta:code-scanning": "node scripts/beta-harness/code-scanning.mjs",
+    "a11y": "node scripts/a11y-scan.mjs",
+    "a11y:all": "node scripts/a11y-scan.mjs --all",
+    "a11y:baseline": "node scripts/a11y-scan.mjs --update-baseline",
     "sonar:scan": "sonar-scanner",
     "sonar:scan:local": "npm run test -- --coverage && sonar-scanner"
   },
