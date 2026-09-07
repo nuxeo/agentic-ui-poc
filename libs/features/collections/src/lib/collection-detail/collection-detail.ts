@@ -122,6 +122,14 @@ export class CollectionDetailComponent {
   private readonly adminAccess = inject(ADMIN_ACCESS_CHECKS);
 
   readonly collection = signal<NuxeoDocument | null>(null);
+  /**
+   * Whether the collection itself resolved, kept separate from `collection` because a null
+   * document has three different meanings — still loading, gone, and unreachable — and the page
+   * must not offer actions in the last two. Before this existed, a failed load left `collection`
+   * at null and the template's `collection()?.title ?? 'Collection'` rendered the full surface,
+   * tabs and actions included, for a collection that did not exist.
+   */
+  readonly loadState = signal<'loading' | 'loaded' | 'not-found' | 'error'>('loading');
   readonly members = signal<NuxeoDocument[]>([]);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
@@ -254,13 +262,24 @@ export class CollectionDetailComponent {
     });
   }
 
+  /** Retry after a transport or permission failure. Not offered for `not-found`, which retrying cannot change. */
+  retryLoad(): void {
+    this.loadCollection();
+  }
+
+  goToCollections(): void {
+    void this.router.navigateByUrl('/collections');
+  }
+
   private loadCollection(): void {
+    this.loadState.set('loading');
     this.detailService
       .getFullDocument(this.collectionUid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
           this.collection.set(doc);
+          this.loadState.set('loaded');
           this.syncActionStates(doc);
           if (this.activeTabIndex() === 2 && !this.historyLoaded) {
             this.loadAuditLog();
@@ -273,12 +292,20 @@ export class CollectionDetailComponent {
             .subscribe({
               next: (doc) => {
                 this.collection.set(doc);
+                this.loadState.set('loaded');
                 if (this.activeTabIndex() === 2 && !this.historyLoaded) {
                   this.loadAuditLog();
                 }
               },
-              error: () => {
-                /* fallback also failed, ignore */
+              // Both reads failed. A 404 means the collection is genuinely absent — a mistyped,
+              // stale or deleted link — and is reported as such; anything else is a transport or
+              // permission failure the user can retry, and saying "does not exist" there would be
+              // a guess. Either way the page must stop pretending it loaded something.
+              error: (err: unknown) => {
+                this.collection.set(null);
+                this.loadState.set(
+                  (err as { status?: number } | null)?.status === 404 ? 'not-found' : 'error',
+                );
               },
             });
         },

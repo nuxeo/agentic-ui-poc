@@ -1,501 +1,528 @@
 <div class="collection-page">
-  <!-- Header -->
-  <div class="collection-header">
-    <div class="header-left">
-      <mat-icon class="header-icon">collections_bookmark</mat-icon>
-      <div class="header-info">
-        <div class="header-title" role="heading" aria-level="1">
-          {{ collection()?.title ?? 'Collection' }}
-        </div>
-        @if (showBreadcrumbs() && breadcrumbItems().length) {
-          <div class="header-path-row">
-            <sat-breadcrumbs
-              [items]="breadcrumbItems()"
-              (click)="onBreadcrumbClick($event)"
-            ></sat-breadcrumbs>
-          </div>
+  @if (loadState() === 'not-found' || loadState() === 'error') {
+    <div class="collection-unavailable" role="status">
+      <mat-icon class="unavailable-icon">
+        {{ loadState() === 'not-found' ? 'search_off' : 'error_outline' }}
+      </mat-icon>
+      <div class="unavailable-title" role="heading" aria-level="1">
+        {{ loadState() === 'not-found' ? 'Collection not found' : 'Collection unavailable' }}
+      </div>
+      <div class="unavailable-detail">
+        @if (loadState() === 'not-found') {
+          This collection does not exist, or it has been deleted. The link may be out of date.
+        } @else {
+          The collection could not be loaded. This may be a permission or connection problem.
         }
       </div>
+      <div class="unavailable-actions">
+        @if (loadState() === 'error') {
+          <button mat-stroked-button (click)="retryLoad()">Try again</button>
+        }
+        <button mat-stroked-button (click)="goToCollections()">Back to collections</button>
+      </div>
     </div>
+  } @else {
+    <!-- Header -->
+    <div class="collection-header">
+      <div class="header-left">
+        <mat-icon class="header-icon">collections_bookmark</mat-icon>
+        <div class="header-info">
+          <div class="header-title" role="heading" aria-level="1">
+            {{ collection()?.title ?? 'Collection' }}
+          </div>
+          @if (showBreadcrumbs() && breadcrumbItems().length) {
+            <div class="header-path-row">
+              <sat-breadcrumbs
+                [items]="breadcrumbItems()"
+                (click)="onBreadcrumbClick($event)"
+              ></sat-breadcrumbs>
+            </div>
+          }
+        </div>
+      </div>
 
-    <div class="header-actions">
-      <button mat-icon-button matTooltip="Refresh" aria-label="Refresh" (click)="loadMembers()">
-        <mat-icon>sync</mat-icon>
-      </button>
-      @if (canEditCollection()) {
-        <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="editCollection()">
-          <mat-icon>edit</mat-icon>
+      <div class="header-actions">
+        <button mat-icon-button matTooltip="Refresh" aria-label="Refresh" (click)="loadMembers()">
+          <mat-icon>sync</mat-icon>
         </button>
-      }
-      @if (canDeleteCollection()) {
+        @if (canEditCollection()) {
+          <button mat-icon-button matTooltip="Edit" aria-label="Edit" (click)="editCollection()">
+            <mat-icon>edit</mat-icon>
+          </button>
+        }
+        @if (canDeleteCollection()) {
+          <button
+            mat-icon-button
+            (click)="deleteCollection()"
+            [disabled]="actionInProgress() === 'trash'"
+            matTooltip="Delete"
+            aria-label="Delete"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
         <button
           mat-icon-button
-          (click)="deleteCollection()"
-          [disabled]="actionInProgress() === 'trash'"
-          matTooltip="Delete"
-          aria-label="Delete"
+          (click)="exportCollection()"
+          [disabled]="actionInProgress() === 'export'"
+          matTooltip="Export"
+          aria-label="Export"
         >
-          <mat-icon>delete</mat-icon>
+          <mat-icon>download</mat-icon>
         </button>
-      }
-      <button
-        mat-icon-button
-        (click)="exportCollection()"
-        [disabled]="actionInProgress() === 'export'"
-        matTooltip="Export"
-        aria-label="Export"
-      >
-        <mat-icon>download</mat-icon>
-      </button>
-      <button
-        mat-icon-button
-        [matMenuTriggerFor]="moreMenu"
-        matTooltip="More actions"
-        aria-label="More actions"
-      >
-        <mat-icon>more_vert</mat-icon>
-      </button>
-      <button mat-icon-button matTooltip="Search" aria-label="Search">
-        <mat-icon>search</mat-icon>
-      </button>
+        <button
+          mat-icon-button
+          [matMenuTriggerFor]="moreMenu"
+          matTooltip="More actions"
+          aria-label="More actions"
+        >
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <button mat-icon-button matTooltip="Search" aria-label="Search">
+          <mat-icon>search</mat-icon>
+        </button>
+      </div>
+
+      <mat-menu #moreMenu="matMenu">
+        <button mat-menu-item (click)="shareCollection()">
+          <mat-icon>share</mat-icon>
+          <span>Share</span>
+        </button>
+        <button
+          mat-menu-item
+          (click)="toggleSubscription()"
+          [disabled]="actionInProgress() === 'subscribe'"
+        >
+          <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
+          <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
+        </button>
+        <button mat-menu-item (click)="toggleClipboard()">
+          <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
+          <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
+        </button>
+        <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
+          <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
+          <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
+        </button>
+        <button
+          mat-menu-item
+          (click)="exportCollection()"
+          [disabled]="actionInProgress() === 'export'"
+        >
+          <mat-icon>download</mat-icon>
+          <span>Export</span>
+        </button>
+      </mat-menu>
     </div>
 
-    <mat-menu #moreMenu="matMenu">
-      <button mat-menu-item (click)="shareCollection()">
-        <mat-icon>share</mat-icon>
-        <span>Share</span>
-      </button>
-      <button
-        mat-menu-item
-        (click)="toggleSubscription()"
-        [disabled]="actionInProgress() === 'subscribe'"
-      >
-        <mat-icon>{{ isSubscribed() ? 'notifications_active' : 'notifications' }}</mat-icon>
-        <span>{{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}</span>
-      </button>
-      <button mat-menu-item (click)="toggleClipboard()">
-        <mat-icon>{{ isInClipboard() ? 'content_paste_off' : 'content_paste' }}</mat-icon>
-        <span>{{ isInClipboard() ? 'Remove from Clipboard' : 'Add to Clipboard' }}</span>
-      </button>
-      <button mat-menu-item (click)="toggleLock()" [disabled]="actionInProgress() === 'lock'">
-        <mat-icon>{{ isLocked() ? 'lock_open' : 'lock' }}</mat-icon>
-        <span>{{ isLocked() ? 'Unlock' : 'Lock' }}</span>
-      </button>
-      <button
-        mat-menu-item
-        (click)="exportCollection()"
-        [disabled]="actionInProgress() === 'export'"
-      >
-        <mat-icon>download</mat-icon>
-        <span>Export</span>
-      </button>
-    </mat-menu>
-  </div>
-
-  <!-- Tabs -->
-  <mat-tab-group
-    class="collection-tabs"
-    animationDuration="0ms"
-    mat-stretch-tabs="false"
-    (selectedIndexChange)="onTabChange($event)"
-  >
-    <mat-tab label="View">
-      <div class="tab-content">
-        @if (loading()) {
-          <div class="tab-loading">
-            <mat-spinner diameter="36" aria-label="Loading" />
-          </div>
-        } @else if (error()) {
-          <div class="tab-error">
-            <mat-icon class="error-icon">error_outline</mat-icon>
-            <p>{{ error() }}</p>
-            <button mat-stroked-button (click)="loadMembers()">
-              <mat-icon>refresh</mat-icon> Retry
-            </button>
-          </div>
-        } @else if (members().length === 0) {
-          <div class="tab-empty">
-            <mat-icon class="empty-icon">collections_bookmark</mat-icon>
-            <p>This collection is empty</p>
-          </div>
-        } @else {
-          <div class="result-count">{{ totalSize() }} result(s)</div>
-          <div class="members-table-wrapper">
-            <table class="members-table">
-              <thead>
-                <tr>
-                  <th class="col-title">Title</th>
-                  <th class="col-modified">Modified</th>
-                  <th class="col-contributor">Last Contributor</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (doc of members(); track doc.uid) {
-                  <tr class="member-row" (click)="onRowClick(doc)">
-                    <td class="cell-title">
-                      @if (thumbnailMap()[doc.uid]; as thumb) {
-                        <img [src]="thumb" alt="" class="doc-thumb" />
-                      } @else {
-                        <mat-icon class="doc-icon">{{ docIcon(doc) }}</mat-icon>
-                      }
-                      <span class="doc-name">{{ doc.title }}</span>
-                    </td>
-                    <td class="cell-modified">{{ doc.lastModified | date: 'mediumDate' }}</td>
-                    <td class="cell-contributor">
-                      <span class="contributor-avatar">{{ contributorInitial(doc) }}</span>
-                      {{ lastContributor(doc) }}
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        }
-      </div>
-    </mat-tab>
-
-    <mat-tab label="Permissions">
-      <div class="permissions-container">
-        <!-- Permissions defined locally -->
-        <section class="perm-section">
-          <div class="perm-section-header">
-            <div class="perm-section-title" role="heading" aria-level="3">
-              Permissions defined locally
+    <!-- Tabs -->
+    <mat-tab-group
+      class="collection-tabs"
+      animationDuration="0ms"
+      mat-stretch-tabs="false"
+      (selectedIndexChange)="onTabChange($event)"
+    >
+      <mat-tab label="View">
+        <div class="tab-content">
+          @if (loading()) {
+            <div class="tab-loading">
+              <mat-spinner diameter="36" aria-label="Loading" />
             </div>
-            <button mat-button color="primary" class="perm-action-btn" (click)="addPermission()">
-              New
-            </button>
-          </div>
-          @if (localAces().length === 0) {
-            <div class="perm-empty">There are no local permissions.</div>
+          } @else if (error()) {
+            <div class="tab-error">
+              <mat-icon class="error-icon">error_outline</mat-icon>
+              <p>{{ error() }}</p>
+              <button mat-stroked-button (click)="loadMembers()">
+                <mat-icon>refresh</mat-icon> Retry
+              </button>
+            </div>
+          } @else if (members().length === 0) {
+            <div class="tab-empty">
+              <mat-icon class="empty-icon">collections_bookmark</mat-icon>
+              <p>This collection is empty</p>
+            </div>
           } @else {
-            <table class="perm-table">
-              <thead>
-                <tr>
-                  <th>User / Group</th>
-                  <th>Right</th>
-                  <th>Time Frame</th>
-                  <th>Granted by</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (ace of localAces(); track ace.id) {
+            <div class="result-count">{{ totalSize() }} result(s)</div>
+            <div class="members-table-wrapper">
+              <table class="members-table">
+                <thead>
                   <tr>
-                    <td>{{ ace.username }}</td>
-                    <td>{{ permissionLabel(ace.permission) }}</td>
-                    <td>{{ aceTimeFrame(ace) }}</td>
-                    <td>{{ ace.creator ?? '—' }}</td>
-                    <td class="perm-row-actions">
-                      <button
-                        mat-icon-button
-                        matTooltip="Edit"
-                        aria-label="Edit permission"
-                        (click)="editPermission(ace)"
-                      >
-                        <mat-icon>edit</mat-icon>
-                      </button>
-                      <button
-                        mat-icon-button
-                        matTooltip="Delete"
-                        aria-label="Delete permission"
-                        (click)="deletePermission(ace)"
-                      >
-                        <mat-icon>delete</mat-icon>
-                      </button>
-                    </td>
+                    <th class="col-title">Title</th>
+                    <th class="col-modified">Modified</th>
+                    <th class="col-contributor">Last Contributor</th>
                   </tr>
-                }
-              </tbody>
-            </table>
-          }
-        </section>
-
-        <!-- Permissions inherited from upper levels -->
-        <section class="perm-section">
-          <div class="perm-section-header">
-            <div class="perm-section-title" role="heading" aria-level="3">
-              Permissions inherited from upper levels
+                </thead>
+                <tbody>
+                  @for (doc of members(); track doc.uid) {
+                    <tr class="member-row" (click)="onRowClick(doc)">
+                      <td class="cell-title">
+                        @if (thumbnailMap()[doc.uid]; as thumb) {
+                          <img [src]="thumb" alt="" class="doc-thumb" />
+                        } @else {
+                          <mat-icon class="doc-icon">{{ docIcon(doc) }}</mat-icon>
+                        }
+                        <span class="doc-name">{{ doc.title }}</span>
+                      </td>
+                      <td class="cell-modified">{{ doc.lastModified | date: 'mediumDate' }}</td>
+                      <td class="cell-contributor">
+                        <span class="contributor-avatar">{{ contributorInitial(doc) }}</span>
+                        {{ lastContributor(doc) }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
-            <button
-              mat-button
-              color="primary"
-              class="perm-action-btn"
-              (click)="toggleInheritance()"
-              [disabled]="actionInProgress() === 'inheritance'"
-            >
-              {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
-            </button>
-          </div>
-          @if (!isInheritanceBlocked()) {
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Permissions">
+        <div class="permissions-container">
+          <!-- Permissions defined locally -->
+          <section class="perm-section">
+            <div class="perm-section-header">
+              <div class="perm-section-title" role="heading" aria-level="3">
+                Permissions defined locally
+              </div>
+              <button mat-button color="primary" class="perm-action-btn" (click)="addPermission()">
+                New
+              </button>
+            </div>
+            @if (localAces().length === 0) {
+              <div class="perm-empty">There are no local permissions.</div>
+            } @else {
+              <table class="perm-table">
+                <thead>
+                  <tr>
+                    <th>User / Group</th>
+                    <th>Right</th>
+                    <th>Time Frame</th>
+                    <th>Granted by</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (ace of localAces(); track ace.id) {
+                    <tr>
+                      <td>{{ ace.username }}</td>
+                      <td>{{ permissionLabel(ace.permission) }}</td>
+                      <td>{{ aceTimeFrame(ace) }}</td>
+                      <td>{{ ace.creator ?? '—' }}</td>
+                      <td class="perm-row-actions">
+                        <button
+                          mat-icon-button
+                          matTooltip="Edit"
+                          aria-label="Edit permission"
+                          (click)="editPermission(ace)"
+                        >
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        <button
+                          mat-icon-button
+                          matTooltip="Delete"
+                          aria-label="Delete permission"
+                          (click)="deletePermission(ace)"
+                        >
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </section>
+
+          <!-- Permissions inherited from upper levels -->
+          <section class="perm-section">
+            <div class="perm-section-header">
+              <div class="perm-section-title" role="heading" aria-level="3">
+                Permissions inherited from upper levels
+              </div>
+              <button
+                mat-button
+                color="primary"
+                class="perm-action-btn"
+                (click)="toggleInheritance()"
+                [disabled]="actionInProgress() === 'inheritance'"
+              >
+                {{ isInheritanceBlocked() ? 'Unblock' : 'Block' }}
+              </button>
+            </div>
+            @if (!isInheritanceBlocked()) {
+              <div class="perm-info-bar">
+                <span class="perm-info-accent"></span>
+                <p>
+                  If you want to explicitly control the access to this document you can block the
+                  permissions inheritance. Any change made on parent document will not affect the
+                  access conditions to this document. You and the administrators will be added to
+                  local permissions.
+                </p>
+              </div>
+            }
+            @if (isInheritanceBlocked()) {
+              <div class="perm-empty">Permissions inheritance is blocked.</div>
+            } @else if (inheritedAces().length === 0) {
+              <div class="perm-empty">No inherited permissions.</div>
+            } @else {
+              <table class="perm-table">
+                <thead>
+                  <tr>
+                    <th>User / Group</th>
+                    <th>Right</th>
+                    <th>Time Frame</th>
+                    <th>Granted by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (ace of inheritedAces(); track ace.id) {
+                    <tr>
+                      <td>{{ ace.username }}</td>
+                      <td>{{ permissionLabel(ace.permission) }}</td>
+                      <td>{{ aceTimeFrame(ace) }}</td>
+                      <td>{{ ace.creator ?? '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </section>
+
+          <!-- Permissions Assigned to External Users -->
+          <section class="perm-section">
+            <div class="perm-section-header">
+              <div class="perm-section-title" role="heading" aria-level="3">
+                Permissions Assigned to External Users
+              </div>
+              <button
+                mat-button
+                color="primary"
+                class="perm-action-btn"
+                (click)="shareWithExternal()"
+              >
+                New
+              </button>
+            </div>
             <div class="perm-info-bar">
               <span class="perm-info-accent"></span>
               <p>
-                If you want to explicitly control the access to this document you can block the
-                permissions inheritance. Any change made on parent document will not affect the
-                access conditions to this document. You and the administrators will be added to
-                local permissions.
+                Sharing to external users does not create new user accounts. External users are
+                provided a link to access this document.
               </p>
             </div>
-          }
-          @if (isInheritanceBlocked()) {
-            <div class="perm-empty">Permissions inheritance is blocked.</div>
-          } @else if (inheritedAces().length === 0) {
-            <div class="perm-empty">No inherited permissions.</div>
-          } @else {
-            <table class="perm-table">
-              <thead>
-                <tr>
-                  <th>User / Group</th>
-                  <th>Right</th>
-                  <th>Time Frame</th>
-                  <th>Granted by</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (ace of inheritedAces(); track ace.id) {
+            @if (externalAces().length === 0) {
+              <div class="perm-empty">The document is not shared with any external user.</div>
+            } @else {
+              <table class="perm-table">
+                <thead>
                   <tr>
-                    <td>{{ ace.username }}</td>
-                    <td>{{ permissionLabel(ace.permission) }}</td>
-                    <td>{{ aceTimeFrame(ace) }}</td>
-                    <td>{{ ace.creator ?? '—' }}</td>
+                    <th>User</th>
+                    <th>Right</th>
+                    <th>Time Frame</th>
+                    <th>Granted by</th>
+                    <th>Actions</th>
                   </tr>
-                }
-              </tbody>
-            </table>
-          }
-        </section>
-
-        <!-- Permissions Assigned to External Users -->
-        <section class="perm-section">
-          <div class="perm-section-header">
-            <div class="perm-section-title" role="heading" aria-level="3">
-              Permissions Assigned to External Users
-            </div>
-            <button
-              mat-button
-              color="primary"
-              class="perm-action-btn"
-              (click)="shareWithExternal()"
-            >
-              New
-            </button>
-          </div>
-          <div class="perm-info-bar">
-            <span class="perm-info-accent"></span>
-            <p>
-              Sharing to external users does not create new user accounts. External users are
-              provided a link to access this document.
-            </p>
-          </div>
-          @if (externalAces().length === 0) {
-            <div class="perm-empty">The document is not shared with any external user.</div>
-          } @else {
-            <table class="perm-table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Right</th>
-                  <th>Time Frame</th>
-                  <th>Granted by</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (ace of externalAces(); track ace.id) {
-                  <tr>
-                    <td>{{ displayUsername(ace) }}</td>
-                    <td>{{ permissionLabel(ace.permission) }}</td>
-                    <td>{{ aceTimeFrame(ace) }}</td>
-                    <td>{{ ace.creator ?? '—' }}</td>
-                    <td class="perm-row-actions">
-                      <button
-                        mat-icon-button
-                        matTooltip="Edit"
-                        aria-label="Edit permission"
-                        (click)="editExternalPermission(ace)"
-                      >
-                        <mat-icon>edit</mat-icon>
-                      </button>
-                      <button
-                        mat-icon-button
-                        matTooltip="Send notification email"
-                        aria-label="Send notification"
-                        [disabled]="actionInProgress() === 'notify-' + ace.id"
-                        (click)="sendNotificationEmail(ace)"
-                      >
-                        <mat-icon>send</mat-icon>
-                      </button>
-                      <button
-                        mat-icon-button
-                        matTooltip="Delete"
-                        aria-label="Delete permission"
-                        (click)="deletePermission(ace)"
-                      >
-                        <mat-icon>delete</mat-icon>
-                      </button>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          }
-        </section>
-      </div>
-    </mat-tab>
-
-    <mat-tab label="History">
-      <div class="history-container">
-        <!-- Filters -->
-        <div class="history-filters">
-          <div class="filter-row">
-            <mat-form-field
-              appearance="outline"
-              subscriptSizing="dynamic"
-              class="filter-field filter-field--wide"
-            >
-              <mat-label>Username</mat-label>
-              <input
-                matInput
-                placeholder="Filter by username"
-                [ngModel]="filterUsername()"
-                (ngModelChange)="filterUsername.set($event)"
-              />
-            </mat-form-field>
-          </div>
-
-          <div class="filter-row">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-              <mat-label>From</mat-label>
-              <input
-                matInput
-                [matDatepicker]="fromPicker"
-                placeholder="mm/dd/yyyy"
-                [ngModel]="filterDateFrom()"
-                (ngModelChange)="filterDateFrom.set($event)"
-              />
-              <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
-              <mat-datepicker #fromPicker />
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-              <mat-label>To</mat-label>
-              <input
-                matInput
-                [matDatepicker]="toPicker"
-                placeholder="mm/dd/yyyy"
-                [ngModel]="filterDateTo()"
-                (ngModelChange)="filterDateTo.set($event)"
-              />
-              <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
-              <mat-datepicker #toPicker />
-            </mat-form-field>
-          </div>
-
-          <div class="filter-row">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-              <mat-label>Performed Actions</mat-label>
-              <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
-                <mat-option value="">Select event actions</mat-option>
-                @for (action of availableActions(); track action.id) {
-                  <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
-              <mat-label>Event Category</mat-label>
-              <mat-select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set($event)">
-                <mat-option value="">Select event category</mat-option>
-                @for (cat of availableCategories(); track cat.id) {
-                  <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </div>
+                </thead>
+                <tbody>
+                  @for (ace of externalAces(); track ace.id) {
+                    <tr>
+                      <td>{{ displayUsername(ace) }}</td>
+                      <td>{{ permissionLabel(ace.permission) }}</td>
+                      <td>{{ aceTimeFrame(ace) }}</td>
+                      <td>{{ ace.creator ?? '—' }}</td>
+                      <td class="perm-row-actions">
+                        <button
+                          mat-icon-button
+                          matTooltip="Edit"
+                          aria-label="Edit permission"
+                          (click)="editExternalPermission(ace)"
+                        >
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                        <button
+                          mat-icon-button
+                          matTooltip="Send notification email"
+                          aria-label="Send notification"
+                          [disabled]="actionInProgress() === 'notify-' + ace.id"
+                          (click)="sendNotificationEmail(ace)"
+                        >
+                          <mat-icon>send</mat-icon>
+                        </button>
+                        <button
+                          mat-icon-button
+                          matTooltip="Delete"
+                          aria-label="Delete permission"
+                          (click)="deletePermission(ace)"
+                        >
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          </section>
         </div>
+      </mat-tab>
 
-        <!-- Table -->
-        @if (auditLoading()) {
-          <div class="history-loading">
-            <mat-spinner diameter="32" aria-label="Loading" />
+      <mat-tab label="History">
+        <div class="history-container">
+          <!-- Filters -->
+          <div class="history-filters">
+            <div class="filter-row">
+              <mat-form-field
+                appearance="outline"
+                subscriptSizing="dynamic"
+                class="filter-field filter-field--wide"
+              >
+                <mat-label>Username</mat-label>
+                <input
+                  matInput
+                  placeholder="Filter by username"
+                  [ngModel]="filterUsername()"
+                  (ngModelChange)="filterUsername.set($event)"
+                />
+              </mat-form-field>
+            </div>
+
+            <div class="filter-row">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                <mat-label>From</mat-label>
+                <input
+                  matInput
+                  [matDatepicker]="fromPicker"
+                  placeholder="mm/dd/yyyy"
+                  [ngModel]="filterDateFrom()"
+                  (ngModelChange)="filterDateFrom.set($event)"
+                />
+                <mat-datepicker-toggle matIconSuffix [for]="fromPicker" />
+                <mat-datepicker #fromPicker />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                <mat-label>To</mat-label>
+                <input
+                  matInput
+                  [matDatepicker]="toPicker"
+                  placeholder="mm/dd/yyyy"
+                  [ngModel]="filterDateTo()"
+                  (ngModelChange)="filterDateTo.set($event)"
+                />
+                <mat-datepicker-toggle matIconSuffix [for]="toPicker" />
+                <mat-datepicker #toPicker />
+              </mat-form-field>
+            </div>
+
+            <div class="filter-row">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                <mat-label>Performed Actions</mat-label>
+                <mat-select [ngModel]="filterAction()" (ngModelChange)="filterAction.set($event)">
+                  <mat-option value="">Select event actions</mat-option>
+                  @for (action of availableActions(); track action.id) {
+                    <mat-option [value]="action.id">{{ action.displayLabel }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-field">
+                <mat-label>Event Category</mat-label>
+                <mat-select
+                  [ngModel]="filterCategory()"
+                  (ngModelChange)="filterCategory.set($event)"
+                >
+                  <mat-option value="">Select event category</mat-option>
+                  @for (cat of availableCategories(); track cat.id) {
+                    <mat-option [value]="cat.id">{{ cat.displayLabel }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
           </div>
-        } @else if (filteredAuditEntries().length === 0) {
-          <div class="history-empty">
-            <mat-icon>event_busy</mat-icon>
-            <p>No history entries found.</p>
-          </div>
-        } @else {
-          <div class="history-table-wrapper">
-            <table
-              mat-table
-              [dataSource]="filteredAuditEntries()"
-              matSort
-              (matSortChange)="onAuditSort($event)"
-              class="history-table"
-            >
-              <ng-container matColumnDef="eventId">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
-                <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
-              </ng-container>
 
-              <ng-container matColumnDef="eventDate">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
-                <td mat-cell *matCellDef="let entry">
-                  {{ entry.eventDate | date: 'MMMM d, yyyy' }}
-                </td>
-              </ng-container>
+          <!-- Table -->
+          @if (auditLoading()) {
+            <div class="history-loading">
+              <mat-spinner diameter="32" aria-label="Loading" />
+            </div>
+          } @else if (filteredAuditEntries().length === 0) {
+            <div class="history-empty">
+              <mat-icon>event_busy</mat-icon>
+              <p>No history entries found.</p>
+            </div>
+          } @else {
+            <div class="history-table-wrapper">
+              <table
+                mat-table
+                [dataSource]="filteredAuditEntries()"
+                matSort
+                (matSortChange)="onAuditSort($event)"
+                class="history-table"
+              >
+                <ng-container matColumnDef="eventId">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Performed Action</th>
+                  <td mat-cell *matCellDef="let entry">{{ eventLabel(entry.eventId) }}</td>
+                </ng-container>
 
-              <ng-container matColumnDef="principalName">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
-                <td mat-cell *matCellDef="let entry">
-                  <div class="user-cell">
-                    <sat-avatar
-                      [initials]="entry.principalName"
-                      [category]="avatarColor(entry.principalName)"
-                      size="24"
-                      [borderless]="true"
-                      aria-hidden="true"
-                    />
-                    <span>{{ entry.principalName }}</span>
-                  </div>
-                </td>
-              </ng-container>
+                <ng-container matColumnDef="eventDate">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Date</th>
+                  <td mat-cell *matCellDef="let entry">
+                    {{ entry.eventDate | date: 'MMMM d, yyyy' }}
+                  </td>
+                </ng-container>
 
-              <ng-container matColumnDef="category">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
-                <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
-              </ng-container>
+                <ng-container matColumnDef="principalName">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Username</th>
+                  <td mat-cell *matCellDef="let entry">
+                    <div class="user-cell">
+                      <sat-avatar
+                        [initials]="entry.principalName"
+                        [category]="avatarColor(entry.principalName)"
+                        size="24"
+                        [borderless]="true"
+                        aria-hidden="true"
+                      />
+                      <span>{{ entry.principalName }}</span>
+                    </div>
+                  </td>
+                </ng-container>
 
-              <ng-container matColumnDef="comment">
-                <th mat-header-cell *matHeaderCellDef>Comment</th>
-                <td mat-cell *matCellDef="let entry" class="comment-cell">{{ entry.comment }}</td>
-              </ng-container>
+                <ng-container matColumnDef="category">
+                  <th mat-header-cell *matHeaderCellDef mat-sort-header>Category</th>
+                  <td mat-cell *matCellDef="let entry">{{ categoryLabel(entry.category) }}</td>
+                </ng-container>
 
-              <ng-container matColumnDef="docLifeCycle">
-                <th mat-header-cell *matHeaderCellDef>State</th>
-                <td mat-cell *matCellDef="let entry">
-                  <sat-status-tag status="info" [hideIcon]="true">{{
-                    entry.docLifeCycle
-                  }}</sat-status-tag>
-                </td>
-              </ng-container>
+                <ng-container matColumnDef="comment">
+                  <th mat-header-cell *matHeaderCellDef>Comment</th>
+                  <td mat-cell *matCellDef="let entry" class="comment-cell">{{ entry.comment }}</td>
+                </ng-container>
 
-              <tr mat-header-row *matHeaderRowDef="historyDisplayedColumns; sticky: true"></tr>
-              <tr mat-row *matRowDef="let row; columns: historyDisplayedColumns"></tr>
-            </table>
-          </div>
+                <ng-container matColumnDef="docLifeCycle">
+                  <th mat-header-cell *matHeaderCellDef>State</th>
+                  <td mat-cell *matCellDef="let entry">
+                    <sat-status-tag status="info" [hideIcon]="true">{{
+                      entry.docLifeCycle
+                    }}</sat-status-tag>
+                  </td>
+                </ng-container>
 
-          <mat-paginator
-            [length]="auditTotalSize()"
-            [pageSize]="auditPageSize()"
-            [pageIndex]="auditPageIndex()"
-            [pageSizeOptions]="[10, 20, 50]"
-            (page)="onAuditPageChange($event)"
-            showFirstLastButtons
-          />
-        }
-      </div>
-    </mat-tab>
-  </mat-tab-group>
+                <tr mat-header-row *matHeaderRowDef="historyDisplayedColumns; sticky: true"></tr>
+                <tr mat-row *matRowDef="let row; columns: historyDisplayedColumns"></tr>
+              </table>
+            </div>
+
+            <mat-paginator
+              [length]="auditTotalSize()"
+              [pageSize]="auditPageSize()"
+              [pageIndex]="auditPageIndex()"
+              [pageSizeOptions]="[10, 20, 50]"
+              (page)="onAuditPageChange($event)"
+              showFirstLastButtons
+            />
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  }
 </div>
