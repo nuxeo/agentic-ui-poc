@@ -50,18 +50,20 @@ jobs:
           npx nx run-many -t test --coverage --coverageReporters=lcov --parallel=1
         continue-on-error: true  # Don't fail the workflow if tests fail, SonarCloud will report it
 
+      # Pinned to a release tag, not @master. `sonarcloud-github-action` is deprecated and
+      # was itself a thin wrapper that delegated to this action, so we call it directly.
+      # `sonar.organization` and `sonar.projectKey` come from sonar-project.properties
+      # rather than from `args`: passing them as secrets meant an unset secret expanded to
+      # an empty string and the scanner failed with `"" is not a valid project key`, which
+      # is exactly how the first run of this workflow broke. Neither value is a secret.
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v8.2.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
 
       - name: SonarCloud Quality Gate Check
-        uses: SonarSource/sonarqube-quality-gate-action@master
+        uses: SonarSource/sonarqube-quality-gate-action@v1.2.1
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -76,8 +78,19 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const organization = '${{ secrets.SONAR_ORGANIZATION }}';
-            const projectKey = '${{ secrets.SONAR_PROJECT_KEY }}';
+            // Read the key from sonar-project.properties so this step and the scan above
+            // cannot disagree about which project they are talking about.
+            const fs = require('fs');
+            const projectKey = fs
+              .readFileSync('sonar-project.properties', 'utf8')
+              .match(/^sonar\.projectKey=(.+)$/m)?.[1]
+              .trim();
+
+            if (!projectKey) {
+              core.setFailed('Could not read sonar.projectKey from sonar-project.properties');
+              return;
+            }
+
             const prNumber = context.issue.number;
 
             // Fetch quality gate status from SonarCloud
