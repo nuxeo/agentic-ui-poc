@@ -666,7 +666,7 @@ interface ContentLakeIngestCommand {
 class ContentLakeIngestService {
     startIngest(documentUids: string[]): Observable<ContentLakeIngestCommand>;
     getStatus(commandId: string): Observable<ContentLakeIngestStatus>;
-    waitUntilComplete(commandId: string, pollIntervalMs?: number): Observable<ContentLakeIngestStatus>;
+    waitUntilComplete(commandId: string, pollIntervalMs?: number, maxPollAttempts?: number): Observable<ContentLakeIngestStatus>;
     findDuplicates(files: File[], sourceIds?: string[]): Observable<ContentLakeDuplicate[]>;
     checkIngested(documentUid: string, sourceIds?: string[]): Observable<boolean>;
     backfillIngestMarkerIfNeeded(doc: NuxeoDocument, sourceIds?: string[]): Observable<ContentLakeBackfillResult>;
@@ -679,6 +679,7 @@ interface ContentLakeIngestStatus {
     commandId: string;
     state: string;
     processed: number;
+    total?: number;
     error: boolean;
     errorCount: number;
     }
