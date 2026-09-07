@@ -40,7 +40,7 @@
       trashFilterService.layoutMode() === 'filters' ? 'Show results' : 'Show filters'
     }}"
     [attr.aria-label]="
-      '' + trashFilterService.layoutMode() === 'filters' ? 'Show results' : 'Show filters' + ''
+      trashFilterService.layoutMode() === 'filters' ? 'Show results' : 'Show filters'
     "
     type="button"
     (click)="toggleLayout()"
