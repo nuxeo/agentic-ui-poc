@@ -62,16 +62,29 @@ export class AdministrationService {
     if (params.eventIds?.length) named['eventIds'] = params.eventIds;
     if (params.category) named['eventCategory'] = params.category;
 
+    // `AUDIT_SEARCH` is not registered on Nuxeo: the server answers 500 with "Could not resolve
+    // page provider with name 'AUDIT_SEARCH'", so every call here fell straight through to
+    // `auditFallback`, which only sees eleven documents. `AUDIT_BROWSER` resolves and covers the
+    // whole repository.
+    //
+    // It does not honour `namedParameters` in any spelling — plain, `auditParams:`-prefixed and
+    // `defaults:`-prefixed were each measured returning the full unfiltered page for a bogus
+    // principal, a bogus event id and a future start date. Sending filters to it would answer 200
+    // with every row while the UI showed the filter applied, which is a worse failure than the 500
+    // it replaces. So a filtered query stays on the fallback, which filters client-side and is
+    // what has actually served this page all along. `sortBy`, `sortOrder` and paging are honoured,
+    // which is what makes the unfiltered path worth taking.
+    if (Object.keys(named).length > 0) {
+      return this.auditFallback(params, named);
+    }
+
     const automationParams: Record<string, unknown> = {
-      providerName: 'AUDIT_SEARCH',
+      providerName: 'AUDIT_BROWSER',
       currentPageIndex: params.currentPageIndex,
       pageSize: params.pageSize,
       sortBy: 'eventDate',
       sortOrder: 'desc',
     };
-    if (Object.keys(named).length > 0) {
-      automationParams['namedParameters'] = named;
-    }
 
     return this.http
       .post<unknown>(
@@ -197,12 +210,12 @@ export class AdministrationService {
 
   private normalizeAuditResponse(raw: unknown): AuditLogList {
     if (raw && typeof raw === 'object' && 'entries' in raw) {
-      return raw as AuditLogList;
+      return this.withTotalSize(raw as AuditLogList);
     }
     if (raw && typeof raw === 'object' && 'value' in raw) {
       const v = (raw as { value: unknown }).value;
       if (v && typeof v === 'object' && 'entries' in (v as object)) {
-        return v as AuditLogList;
+        return this.withTotalSize(v as AuditLogList);
       }
     }
     return {
@@ -214,11 +227,23 @@ export class AdministrationService {
     };
   }
 
+  /**
+   * `Audit.QueryWithPageProvider` reports the match count as `resultsCount` and omits `totalSize`,
+   * which is the field the audit page reads. Left unmapped, the pager takes the page length as the
+   * total and offers one page over 10,000 entries.
+   */
+  private withTotalSize(list: AuditLogList): AuditLogList {
+    if (typeof list.totalSize === 'number') {
+      return list;
+    }
+    return { ...list, totalSize: list.resultsCount ?? list.entries?.length ?? 0 };
+  }
+
   listOAuth2Providers(): Observable<NuxeoOAuth2Provider[]> {
     return this.http
-      .get<
-        NuxeoOAuth2Provider[] | { entries?: NuxeoOAuth2Provider[] }
-      >(this.api.apiUrl('/nuxeo/api/v1/oauth2/provider'))
+      .get<NuxeoOAuth2Provider[] | { entries?: NuxeoOAuth2Provider[] }>(
+        this.api.apiUrl('/nuxeo/api/v1/oauth2/provider'),
+      )
       .pipe(
         map((res) => (Array.isArray(res) ? res : (res.entries ?? []))),
         catchError(() => of([])),
