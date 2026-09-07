@@ -18,6 +18,7 @@ export default defineConfig(() => ({
     coverage: {
       reportsDirectory: '../../../coverage/libs/shared/ai-client',
       provider: 'v8' as const,
+      reporter: ['text', 'html', 'clover', 'json', 'lcov'],
     },
   },
 }));

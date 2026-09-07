@@ -25,6 +25,10 @@ export default defineConfig(() => ({
     coverage: {
       reportsDirectory: '<%= offsetFromRoot %>coverage/<%= projectRoot %>',
       provider: 'v8' as const,
+      // `lcov` is required for SonarCloud and is NOT in the Vitest v8 defaults; the other four
+      // are those defaults, kept because `scripts/beta-harness/coverage-gate.mjs` reads
+      // `coverage-final.json`, which only the `json` reporter writes.
+      reporter: ['text', 'html', 'clover', 'json', 'lcov'],
     },
   },
 }));

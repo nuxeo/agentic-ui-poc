@@ -23,6 +23,7 @@ export default defineConfig(() => ({
     coverage: {
       reportsDirectory: '../../coverage/libs/core',
       provider: 'v8' as const,
+      reporter: ['text', 'html', 'clover', 'json', 'lcov'],
     }
   },
 }));

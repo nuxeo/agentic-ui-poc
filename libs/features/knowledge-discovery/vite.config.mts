@@ -25,6 +25,7 @@ export default defineConfig(() => ({
     coverage: {
       reportsDirectory: '../../../coverage/libs/features/knowledge-discovery',
       provider: 'v8' as const,
+      reporter: ['text', 'html', 'clover', 'json', 'lcov'],
     },
   },
 }));
