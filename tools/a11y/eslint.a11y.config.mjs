@@ -16,6 +16,10 @@
  * red on pre-existing violations. This config keeps the a11y verdict independent of that
  * gate, so adopting it does not require fixing the debt first.
  *
+ * Scan size is **89 tracked templates**. A local run reports 90: `apps/nuxeo-ui/src/
+ * diagnostic.html` is gitignored, so it is present on a developer's disk and absent on a
+ * runner. The counts differ for that reason alone and neither is wrong.
+ *
  * Severities are all `error` here because this config's only consumer decides what to do
  * with them; `scripts/a11y-scan.mjs` owns the pass/fail policy, not the severity.
  *

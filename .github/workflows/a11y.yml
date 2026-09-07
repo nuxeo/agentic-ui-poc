@@ -48,8 +48,10 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
           SATORI_GH_READONLY_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
 
-      # Runs the eleven @angular-eslint/template accessibility rules over all 90 templates and
-      # fails only on violations beyond tools/a11y/baseline.json. Findings are emitted as
+      # Runs the eleven @angular-eslint/template accessibility rules over the 89 tracked
+      # templates and fails only on violations beyond tools/a11y/baseline.json. A local run
+      # reports 90 — `apps/nuxeo-ui/src/diagnostic.html` is gitignored and so exists only on a
+      # developer's disk. Findings are emitted as
       # GitHub annotations — errors for new ones, warnings for baselined ones — so they appear
       # inline on the diff, and a table goes to the job summary.
       #
