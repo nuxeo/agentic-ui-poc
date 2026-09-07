@@ -14,7 +14,7 @@ concurrency:
 permissions:
   contents: read
   packages: read
-  pull-requests: read
+  pull-requests: write  # Required to post PR comments
 
 jobs:
   sonarcloud:
@@ -59,3 +59,104 @@ jobs:
           args: >
             -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
             -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+
+      - name: SonarCloud Quality Gate Check
+        uses: SonarSource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          scanMetadataReportFile: .scannerwork/report-task.txt
+
+      - name: Post SonarCloud Results to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const organization = '${{ secrets.SONAR_ORGANIZATION }}';
+            const projectKey = '${{ secrets.SONAR_PROJECT_KEY }}';
+            const prNumber = context.issue.number;
+
+            // Fetch quality gate status from SonarCloud
+            const qualityGateUrl = `https://sonarcloud.io/api/qualitygates/project_status?projectKey=${projectKey}&pullRequest=${prNumber}`;
+
+            try {
+              const response = await fetch(qualityGateUrl, {
+                headers: {
+                  'Authorization': `Bearer ${process.env.SONAR_TOKEN}`
+                }
+              });
+
+              const data = await response.json();
+              const projectStatus = data.projectStatus;
+
+              const status = projectStatus.status;
+              const conditions = projectStatus.conditions || [];
+
+              // Build the comment
+              let comment = '## SonarCloud Analysis\n\n';
+
+              if (status === 'OK') {
+                comment += '✅ **Quality Gate: PASSED**\n\n';
+              } else if (status === 'ERROR') {
+                comment += '❌ **Quality Gate: FAILED**\n\n';
+              } else {
+                comment += `⚠️ **Quality Gate: ${status}**\n\n`;
+              }
+
+              // Add metrics table
+              if (conditions.length > 0) {
+                comment += '### Conditions\n\n';
+                comment += '| Metric | Status | Value | Threshold |\n';
+                comment += '|--------|--------|-------|----------|\n';
+
+                conditions.forEach(condition => {
+                  const statusIcon = condition.status === 'OK' ? '✅' : '❌';
+                  const metric = condition.metricKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  const value = condition.actualValue || 'N/A';
+                  const threshold = condition.errorThreshold || 'N/A';
+                  comment += `| ${metric} | ${statusIcon} | ${value} | ${threshold} |\n`;
+                });
+                comment += '\n';
+              }
+
+              // Add links
+              comment += `### 🔗 Links\n\n`;
+              comment += `- [View detailed report](https://sonarcloud.io/dashboard?id=${projectKey}&pullRequest=${prNumber})\n`;
+              comment += `- [Project dashboard](https://sonarcloud.io/dashboard?id=${projectKey})\n`;
+
+              // Find existing comment
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber
+              });
+
+              const botComment = comments.find(comment =>
+                comment.user.type === 'Bot' &&
+                comment.body.includes('SonarCloud Analysis')
+              );
+
+              // Create or update comment
+              if (botComment) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: botComment.id,
+                  body: comment
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: prNumber,
+                  body: comment
+                });
+              }
+            } catch (error) {
+              console.error('Error fetching or posting SonarCloud results:', error);
+              core.warning('Failed to post SonarCloud results to PR');
+            }
