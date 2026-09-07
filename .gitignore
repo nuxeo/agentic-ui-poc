@@ -107,3 +107,7 @@ playwright-report/
 /test-tree-api.html
 /apps/nuxeo-ui/src/diagnostic.html
 /apps/nuxeo-ui-e2e/screenshot-debug.spec.ts
+
+# SonarCloud analysis artifacts (generated during local scans)
+.scannerwork/
+.sonar/

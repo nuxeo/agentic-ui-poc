@@ -35,7 +35,9 @@
     "test": "nx test",
     "watch": "nx build --watch --configuration development",
     "beta:supply-chain": "node scripts/beta-harness/supply-chain.mjs",
-    "beta:code-scanning": "node scripts/beta-harness/code-scanning.mjs"
+    "beta:code-scanning": "node scripts/beta-harness/code-scanning.mjs",
+    "sonar:scan": "sonar-scanner",
+    "sonar:scan:local": "npm run test -- --coverage && sonar-scanner"
   },
   "lint-staged": {
     "*.ts": [
