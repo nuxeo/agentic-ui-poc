@@ -175,6 +175,46 @@ them restored. The `https`-in-production branch is exercised by clearing the `ng
 which drives Angular's real `isDevMode()` rather than mocking it — needed because `isDevMode()` is
 `true` under Vitest, so the first version of that test was silently asserting the dev path.
 
+### The Sonar quality gate cannot go green, and why that is not a defect
+
+Worth writing down because it will confuse the next reader of PR #157, where the gate is red on one
+condition: `new_security_rating` 5 (E) against a threshold of 1 (A). Everything else passes,
+`new_coverage` included at 92.6%.
+
+**All five findings pre-exist on `main`.** Every one is `S6268` on a bypass already there; they count
+as "new code" only because edits shifted their lines. Confirmed against the Sonar API for both refs:
+
+| On `main`                     | On the PR | Member                |
+| ----------------------------- | --------- | --------------------- |
+| `case-file.ts:191`            | `:198`    | `loadPreview`         |
+| `document-detail.ts:2561`     | `:2589`   | `loadPreviewFallback` |
+| `document-detail.ts:2670`     | `:2703`   | `setBlobUrl`          |
+| `document-detail.ts:3458`     | `:3506`   | `loadARenderUrl`      |
+| `tasks-page.component.ts:669` | `:690`    | `loadPreviewBlob`     |
+
+The work reduces the project-wide count 32 → 31, and two of those five (the Category C sites) went
+from unvalidated to validated-and-failing-closed. `S6268` fires on the presence of the call, not on
+whether its input is guarded, so it cannot see that difference.
+
+**The rating cannot reach A by any amount of code work.** It requires _zero_ open vulnerabilities in
+new code and one BLOCKER forces E, but Fact 4 in section 2 establishes that `iframe[src]` throws on a
+raw string — a bypass is structurally required. Consolidating every bypass into one audited helper
+still leaves that helper's own call, and a new file is entirely new code. **The floor is 1, and 1 is
+still E.**
+
+So the gate is accepted as red, which is what `sonarcloud.yml` already does via
+`continue-on-error: true` — its comment records that this repository once had CI red for 16
+consecutive runs over an unowned threshold and taught everyone to ignore it. It is not a required
+status check. This is **not** a statement that the findings are acceptable: the endgame is to finish
+A, B and D to reach the floor, then transition the residual issues to _Accepted_ with a justification
+naming this document and the allowlist entry — which needs **Administer Issues** (open question 4).
+
+Deliberately not done: `// NOSONAR`, a blanket `eslint-disable`, or an Accepted transition while the
+code is unchanged and unguarded. Each clears the number and destroys the record of the reasoning at
+the same time. What guards these instead is `sanitizer-audit.mjs`, which is stricter than `S6268` on
+the axis that matters — registration with a justification, a shrink-only budget, and two defect
+classes Sonar cannot see.
+
 ### What section 2 predicted, and what was found
 
 Section 2 predicted in writing — before the tool existed — that a `Safe*`-in-NONE-context check run
