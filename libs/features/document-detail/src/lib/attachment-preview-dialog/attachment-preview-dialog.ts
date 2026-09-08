@@ -8,8 +8,24 @@ import { SafeResourceUrl } from '@angular/platform-browser';
 export interface AttachmentPreviewData {
   name: string;
   mimeType: string;
+  /** Wrapped, for `iframe[src]` and `img[src]`. `iframe[src]` throws on a raw string. */
   blobUrl: SafeResourceUrl;
+  /**
+   * The same object URL, unwrapped, for `<source [src]>` — a `SecurityContext.NONE` binding where
+   * no sanitizer runs, so a `SafeResourceUrl` would be assigned as its `toString()` and break
+   * playback. Always populated.
+   */
   rawUrl: string;
+  /**
+   * Whether this dialog revokes `rawUrl` when it closes.
+   *
+   * The two call sites differ, and the difference used to be smuggled through `rawUrl: ''`:
+   * `previewAttachment` mints a URL solely for the dialog, so the dialog must revoke it, while
+   * `previewMainBlob` shares the URL the document viewer is still using, so revoking it would
+   * blank the page behind the dialog. Passing an empty string expressed that *and* silently
+   * removed the value `<source [src]>` needed, so ownership is now stated separately.
+   */
+  ownsRawUrl: boolean;
 }
 
 @Component({
@@ -37,11 +53,17 @@ export interface AttachmentPreviewData {
           <iframe [src]="data.blobUrl" class="viewer-frame"></iframe>
         } @else if (isVideo) {
           <video controls class="viewer-video">
-            <source [src]="data.blobUrl" [type]="data.mimeType" />
+            <!--
+              data.rawUrl, not data.blobUrl: source[src] is SecurityContext.NONE, so no sanitizer
+              runs, the SafeResourceUrl is never unwrapped, and toString() writes
+              "SafeValue must use [property]=binding: …" into src. Video and audio attachment
+              previews were broken exactly that way.
+            -->
+            <source [src]="data.rawUrl" [type]="data.mimeType" />
           </video>
         } @else if (isAudio) {
           <audio controls class="viewer-audio">
-            <source [src]="data.blobUrl" [type]="data.mimeType" />
+            <source [src]="data.rawUrl" [type]="data.mimeType" />
           </audio>
         } @else if (isText) {
           <iframe [src]="data.blobUrl" class="viewer-frame"></iframe>
@@ -265,6 +287,7 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    URL.revokeObjectURL(this.data.rawUrl);
+    // Only revoke what this dialog owns — `previewMainBlob` shares the document viewer's URL.
+    if (this.data.ownsRawUrl) URL.revokeObjectURL(this.data.rawUrl);
   }
 }

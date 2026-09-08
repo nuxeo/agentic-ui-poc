@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
+import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentViewerComponent, type VideoSource } from './document-viewer.component';
 
@@ -103,5 +104,82 @@ describe('DocumentViewerComponent', () => {
 
     expect(videoEl.currentTime).toBe(42.5);
     expect(playSpy).not.toHaveBeenCalled();
+  });
+
+  // ---- rendered attributes, with a real sanitizer ---------------------------------------------
+  //
+  // These use `TestBed.inject(DomSanitizer)` and read the DOM attribute back. Both halves matter.
+  //
+  // `document-viewer.dispatch.spec.ts` substitutes `{ toString: () => value }` for a safe value,
+  // which is a fake that behaves *correctly* in exactly the context where the real one breaks: a
+  // `SecurityContext.NONE` binding never unwraps a `Safe*` value, so Angular assigns it and the
+  // DOM coerces it with `toString()`. A stand-in whose `toString()` returns the bare URL therefore
+  // renders a working `src`, while the genuine article renders
+  // `"SafeValue must use [property]=binding: …"`. That is why audio playback and the
+  // single-source video fallback were broken with a green test suite.
+  describe('media bindings render a usable URL, not a SafeValue placeholder', () => {
+    const RAW = 'blob:http://localhost/real-object-url';
+
+    function trusted(): SafeResourceUrl {
+      return TestBed.inject(DomSanitizer).bypassSecurityTrustResourceUrl(RAW);
+    }
+
+    it('renders the raw object URL into the audio fallback source', () => {
+      fixture.componentRef.setInput('mimeType', 'audio/mpeg');
+      fixture.componentRef.setInput('blobUrl', trusted());
+      fixture.componentRef.setInput('rawBlobUrl', RAW);
+      render();
+
+      const audio = fixture.nativeElement.querySelector('audio') as HTMLAudioElement | null;
+      expect(audio).not.toBeNull();
+      expect(audio!.getAttribute('src')).toBe(RAW);
+      expect(audio!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
+
+    it('renders the raw object URL into the single-source video fallback', () => {
+      fixture.componentRef.setInput('mimeType', 'video/mp4');
+      fixture.componentRef.setInput('blobUrl', trusted());
+      fixture.componentRef.setInput('rawBlobUrl', RAW);
+      fixture.componentRef.setInput('videoSources', []);
+      render();
+
+      const source = fixture.nativeElement.querySelector(
+        'video source',
+      ) as HTMLSourceElement | null;
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('src')).toBe(RAW);
+      expect(source!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
+
+    it('renders each transcoded source URL verbatim', () => {
+      fixture.componentRef.setInput('mimeType', 'video/mp4');
+      fixture.componentRef.setInput('blobUrl', null);
+      fixture.componentRef.setInput('previewUrl', null);
+      fixture.componentRef.setInput('videoSources', [
+        { url: 'blob:http://localhost/mp4-480', mimeType: 'video/mp4', label: 'MP4 480p' },
+      ] satisfies VideoSource[]);
+      render();
+
+      const source = fixture.nativeElement.querySelector(
+        'video source',
+      ) as HTMLSourceElement | null;
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('src')).toBe('blob:http://localhost/mp4-480');
+      expect(source!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
+
+    it('keeps the wrapped value on the pdf iframe, which throws on a raw string', () => {
+      fixture.componentRef.setInput('mimeType', 'application/pdf');
+      fixture.componentRef.setInput('blobUrl', trusted());
+      fixture.componentRef.setInput('rawBlobUrl', RAW);
+      render();
+
+      // RESOURCE_URL *does* run a sanitizer, which unwraps the marker — so the attribute is the
+      // real URL here too. If this ever shows the placeholder, the two inputs have been swapped.
+      const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute('src')).toBe(RAW);
+      expect(iframe!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
   });
 });

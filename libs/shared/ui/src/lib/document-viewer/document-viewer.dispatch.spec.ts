@@ -41,7 +41,9 @@ function safeHtml(value: string): SafeHtml {
 }
 
 function videoSource(overrides: Partial<VideoSource> = {}): VideoSource {
-  return { url: safeUrl('blob:video'), mimeType: 'video/mp4', label: 'MP4 480p', ...overrides };
+  // `url` is a plain string, not a `SafeResourceUrl`: it is bound to `<source [src]>`, which is
+  // `SecurityContext.NONE`, where a `Safe*` value is never unwrapped and stringifies instead.
+  return { url: 'blob:video', mimeType: 'video/mp4', label: 'MP4 480p', ...overrides };
 }
 
 function storyboardItem(overrides: Partial<StoryboardItem> = {}): StoryboardItem {

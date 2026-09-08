@@ -77,7 +77,12 @@ export class TasksPageComponent implements OnInit {
   readonly selectedTask = signal<NuxeoTask | null>(null);
   readonly targetDoc = signal<NuxeoDocument | null>(null);
   readonly previewBlobUrl = signal<SafeResourceUrl | null>(null);
-  private rawPreviewUrl: string | null = null;
+  /**
+   * The unwrapped object URL behind `previewBlobUrl`, forwarded to the viewer's `rawBlobUrl` for
+   * its `SecurityContext.NONE` bindings (`source[src]`, `audio[src]`, `video[poster]`), where a
+   * `SafeResourceUrl` stringifies instead of being unwrapped.
+   */
+  readonly rawPreviewUrl = signal<string | null>(null);
   readonly taskLoading = signal(false);
   readonly docLoading = signal(false);
   readonly submitting = signal(false);
@@ -665,8 +670,9 @@ export class TasksPageComponent implements OnInit {
 
     this.http.get(url, { responseType: 'blob' }).subscribe({
       next: (blob) => {
-        this.rawPreviewUrl = URL.createObjectURL(blob);
-        this.previewBlobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.rawPreviewUrl));
+        const rawUrl = URL.createObjectURL(blob);
+        this.rawPreviewUrl.set(rawUrl);
+        this.previewBlobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));
       },
       error: () => {
         /* preview not available */
@@ -675,9 +681,10 @@ export class TasksPageComponent implements OnInit {
   }
 
   private clearPreviewBlob(): void {
-    if (this.rawPreviewUrl) {
-      URL.revokeObjectURL(this.rawPreviewUrl);
-      this.rawPreviewUrl = null;
+    const raw = this.rawPreviewUrl();
+    if (raw) {
+      URL.revokeObjectURL(raw);
+      this.rawPreviewUrl.set(null);
     }
     this.previewBlobUrl.set(null);
   }

@@ -116,17 +116,23 @@ export class CaseFileComponent {
   // ---- preview -------------------------------------------------------------------------------
   protected readonly blobUrl = signal<SafeResourceUrl | null>(null);
   protected readonly previewLoading = signal(false);
-  /** Held alongside the SafeResourceUrl because only the raw string can be revoked. */
-  private rawObjectUrl: string | null = null;
+  /**
+   * Held alongside the `SafeResourceUrl` because only the raw string can be revoked — and because
+   * the viewer needs it for its `SecurityContext.NONE` bindings (`source[src]`, `audio[src]`,
+   * `video[poster]`). Angular never unwraps a `Safe*` value in those, so it would be assigned as
+   * its `toString()` and break playback; the wrapped form is still required for `iframe[src]`.
+   */
+  protected readonly rawObjectUrl = signal<string | null>(null);
 
   constructor() {
     this.destroyRef.onDestroy(() => this.releaseObjectUrl());
   }
 
   private releaseObjectUrl(): void {
-    if (this.rawObjectUrl) {
-      URL.revokeObjectURL(this.rawObjectUrl);
-      this.rawObjectUrl = null;
+    const raw = this.rawObjectUrl();
+    if (raw) {
+      URL.revokeObjectURL(raw);
+      this.rawObjectUrl.set(null);
     }
   }
 
@@ -187,8 +193,9 @@ export class CaseFileComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (data) => {
-          this.rawObjectUrl = URL.createObjectURL(data);
-          this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.rawObjectUrl));
+          const rawUrl = URL.createObjectURL(data);
+          this.rawObjectUrl.set(rawUrl);
+          this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));
           this.previewLoading.set(false);
         },
         error: () => this.previewLoading.set(false),

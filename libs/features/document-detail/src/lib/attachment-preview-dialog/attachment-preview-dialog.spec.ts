@@ -44,6 +44,7 @@ function rotationOf(component: AttachmentPreviewDialogComponent): number {
 async function createDialog(
   mimeType: string,
   useRealTemplate = false,
+  overrides: Partial<AttachmentPreviewData> = {},
 ): Promise<{
   component: AttachmentPreviewDialogComponent;
   fixture: ComponentFixture<AttachmentPreviewDialogComponent>;
@@ -67,6 +68,8 @@ async function createDialog(
           mimeType,
           blobUrl: sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
           rawUrl,
+          ownsRawUrl: true,
+          ...overrides,
         }),
         deps: [DomSanitizer],
       },
@@ -242,5 +245,54 @@ describe('AttachmentPreviewDialogComponent', () => {
     // resident for the lifetime of the tab. Revoked exactly once — double-revoking is a
     // symptom of two owners, which is how a URL gets revoked while still displayed.
     expect(revoked.filter((u) => u === rawUrl)).toHaveLength(1);
+  });
+
+  it('does not revoke a blob URL it does not own', async () => {
+    // `previewMainBlob` shares the document viewer's object URL, which is still bound behind the
+    // dialog. Revoking it on close would blank the page underneath. That case used to be
+    // expressed by passing `rawUrl: ''`, which also silently starved `<source [src]>`.
+    const { fixture, rawUrl } = await createDialog('video/mp4', false, { ownsRawUrl: false });
+    fixture.destroy();
+    expect(revoked).not.toContain(rawUrl);
+  });
+
+  // ---- rendered attributes ---------------------------------------------------------------------
+  //
+  // These read the DOM rather than a component flag, and that distinction is the whole point.
+  // `source[src]` is `SecurityContext.NONE` in Angular's DOM security schema, so no sanitizer
+  // runs, a `Safe*` value is never unwrapped, and the browser coerces it with `toString()` —
+  // writing the literal string `"SafeValue must use [property]=binding: …"` into `src`. Video and
+  // audio attachment previews were broken exactly that way, and the `isVideo`/`isAudio`
+  // assertions above passed throughout, because a flag being right says nothing about what was
+  // rendered.
+  describe('media sources render a usable URL', () => {
+    it('binds the raw object URL into video source[src], not the SafeValue placeholder', async () => {
+      const { fixture, rawUrl } = await createDialog('video/mp4', true);
+      const source = fixture.nativeElement.querySelector('video source');
+
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('src')).toBe(rawUrl);
+      expect(source!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
+
+    it('binds the raw object URL into audio source[src], not the SafeValue placeholder', async () => {
+      const { fixture, rawUrl } = await createDialog('audio/mpeg', true);
+      const source = fixture.nativeElement.querySelector('audio source');
+
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('src')).toBe(rawUrl);
+      expect(source!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
+
+    it('keeps the wrapped value on iframe[src], which throws on a raw string', async () => {
+      const { fixture, rawUrl } = await createDialog('application/pdf', true);
+      const iframe = fixture.nativeElement.querySelector('iframe');
+
+      // Angular unwraps the SafeResourceUrl here because RESOURCE_URL *does* run a sanitizer.
+      // If this ever renders the placeholder, the two bindings have been swapped.
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute('src')).toBe(rawUrl);
+      expect(iframe!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
   });
 });

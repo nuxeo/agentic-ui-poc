@@ -15,7 +15,12 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 export interface VideoSource {
-  url: SafeResourceUrl;
+  /**
+   * Raw object URL, not `SafeResourceUrl`. This is bound to `<source [src]>`, which is
+   * `SecurityContext.NONE` — see `DocumentViewerComponent.rawBlobUrl` for why a `Safe*` value
+   * silently breaks there. The transcoded-video source list was broken this way.
+   */
+  url: string;
   mimeType: string;
   label?: string;
 }
@@ -97,6 +102,21 @@ export interface VideoInfo {
 })
 export class DocumentViewerComponent {
   readonly blobUrl = input<SafeResourceUrl | null>(null);
+  /**
+   * The same object URL as `blobUrl`, unwrapped.
+   *
+   * `source[src]`, `audio[src]` and `video[poster]` are `SecurityContext.NONE` in Angular's DOM
+   * security schema, which means no sanitizer runs on them — and a `Safe*` value is only ever
+   * unwrapped *by* a sanitizer. Bound into a NONE context it is therefore assigned to the DOM
+   * property as-is and coerced by `toString()`, writing the literal string
+   * `"SafeValue must use [property]=binding: …"` into `src`. Audio playback and the
+   * single-source video fallback were broken exactly that way until this input existed.
+   *
+   * So: `blobUrl` for `iframe[src]` (which conversely *throws* on a raw string) and `img[src]`,
+   * this one for the three NONE bindings. Enforced by `scripts/beta-harness/sanitizer-audit.mjs`
+   * check 4, which resolves the bound expression's type rather than matching its text.
+   */
+  readonly rawBlobUrl = input<string | null>(null);
   readonly mimeType = input<string>('');
   readonly fileName = input<string>('');
   readonly fileSize = input<string>('');
@@ -106,7 +126,8 @@ export class DocumentViewerComponent {
   readonly noteHtml = input<SafeHtml | null>(null);
   readonly videoSources = input<VideoSource[]>([]);
   readonly storyboard = input<StoryboardItem[]>([]);
-  readonly posterUrl = input<SafeResourceUrl | null>(null);
+  /** Raw string, not `SafeResourceUrl`: `video[poster]` is `SecurityContext.NONE`. See `rawBlobUrl`. */
+  readonly posterUrl = input<string | null>(null);
   readonly hasPdfRendition = input<boolean>(false);
   readonly previewUrl = input<SafeResourceUrl | null>(null);
 
