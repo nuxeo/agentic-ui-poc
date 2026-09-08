@@ -410,22 +410,50 @@ function main() {
 
   const run = (n) => only === null || only === n;
 
-  // ---- check 1: unregistered bypass -----------------------------------------------------------
+  // ---- check 1: unregistered bypass, and undeclared extra calls in a registered member ---------
+  //
+  // Keying by `file::member` alone cannot enforce "every bypass call is accounted for": a member
+  // may legitimately hold several calls (kd-citation-dialog's `highlightExcerpt` holds three), and
+  // a bare `entries.has(key)` would then wave through a fourth. So each entry declares `calls`
+  // (default 1) and the actual count is compared against it. More than declared is new debt;
+  // fewer is a stale declaration. Both are red, so the count in the allowlist stays true.
+  const callsByKey = new Map();
   for (const b of bypasses) {
     const key = `${b.file}::${b.member}`;
-    if (APPROVED_HELPERS.get(b.file) === b.member) {
+    if (!callsByKey.has(key)) callsByKey.set(key, []);
+    callsByKey.get(key).push(b);
+  }
+
+  for (const [key, calls] of callsByKey) {
+    const { file, member } = calls[0];
+    if (APPROVED_HELPERS.get(file) === member) {
       seen.add(key);
       continue;
     }
-    if (entries.has(key)) {
-      seen.add(key);
+    const entry = entries.get(key);
+    if (!entry) {
+      if (run(1)) {
+        for (const b of calls) {
+          findings.push(
+            `[1] unregistered bypass  ${b.file}:${b.line}\n` +
+              `    member '${b.member}' calls bypassSecurityTrust${b.kind} with no entry in ${ALLOWLIST_PATH}.\n` +
+              `    Add one with a justification, or route it through trustObjectUrl / renderTrustedHtml.`,
+          );
+        }
+      }
       continue;
     }
-    if (run(1)) {
+    seen.add(key);
+    const declared = entry.calls ?? 1;
+    if (calls.length !== declared && run(1)) {
       findings.push(
-        `[1] unregistered bypass  ${b.file}:${b.line}\n` +
-          `    member '${b.member}' calls bypassSecurityTrust${b.kind} with no entry in ${ALLOWLIST_PATH}.\n` +
-          `    Add one with a justification, or route it through trustObjectUrl / renderTrustedHtml.`,
+        `[1] bypass count mismatch  ${file}::${member}\n` +
+          `    ${calls.length} bypass call(s) at line(s) ${calls.map((c) => c.line).join(', ')}, ` +
+          `but the allowlist declares ${declared}.\n` +
+          (calls.length > declared
+            ? `    A registered member is not a blanket exemption. Justify the extra call(s) and\n` +
+              `    raise "calls" — the budget below counts calls, so this is new debt.`
+            : `    The declaration is stale. Lower "calls" to ${calls.length} to lock the gain in.`),
       );
     }
   }
@@ -559,10 +587,15 @@ function main() {
   }
 
   // ---- the ratchet ----------------------------------------------------------------------------
+  // Counts declared *calls*, not entries. Counting entries would let a member that already holds
+  // one bypass absorb more without moving any number the ratchet watches.
   const counts = { A: 0, B: 0, C: 0, D: 0 };
-  for (const [, e] of entries) if (counts[e.category] !== undefined) counts[e.category] += 1;
+  for (const [, e] of entries) {
+    if (counts[e.category] !== undefined) counts[e.category] += e.calls ?? 1;
+  }
   notes.push(
-    `registered bypasses: ${entries.size}  (A ${counts.A}, B ${counts.B}, C ${counts.C}, D ${counts.D})`,
+    `registered bypass calls: ${counts.A + counts.B + counts.C + counts.D} in ${entries.size} member(s)` +
+      `  (A ${counts.A}, B ${counts.B}, C ${counts.C}, D ${counts.D})`,
   );
   for (const [cat, budget] of Object.entries(raw.budgets ?? {})) {
     if (counts[cat] > budget) {

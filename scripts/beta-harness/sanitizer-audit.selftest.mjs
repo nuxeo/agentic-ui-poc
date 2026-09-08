@@ -11,9 +11,11 @@
  * once per check, asserts the audit goes red *for the expected reason*, and restores. It is
  * repeatable, so it keeps answering the question after the next refactor.
  *
- * Every perturbation is applied in memory and written back from the original bytes in a
- * `finally`, so an interrupted run cannot leave the tree dirty. It still touches real files, so
- * do not run it concurrently with a build.
+ * Every perturbation is applied in memory and written back from the original bytes in a `finally`,
+ * with SIGINT/SIGTERM/SIGHUP and `uncaughtException` handlers covering the paths `finally` does not.
+ * **SIGKILL and power loss remain uncatchable**, so the guarantee is "no dirty tree unless the
+ * process is killed outright" — not an absolute one. Recovery is `git checkout` on the paths the
+ * handler names. It touches real tracked files, so do not run it concurrently with a build.
  *
  * Usage:  node scripts/beta-harness/sanitizer-audit.selftest.mjs
  */
@@ -45,6 +47,29 @@ function restoreAll() {
   for (const [relPath, original] of backups) writeFileSync(join(ROOT, relPath), original, 'utf8');
   backups.clear();
 }
+
+// `finally` covers a thrown error but not a signal, and this perturbs real tracked files. Without
+// these handlers a Ctrl-C mid-control leaves the tree dirty, and the next reader finds a bypass in
+// their working copy that they did not write. SIGKILL and a hard power loss remain uncatchable by
+// construction: `git checkout` on the paths named in the failure output is the recovery.
+for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
+  process.on(signal, () => {
+    const touched = [...backups.keys()];
+    restoreAll();
+    if (touched.length) {
+      console.error(`\nselftest: interrupted by ${signal} — restored ${touched.join(', ')}`);
+    }
+    process.exit(130);
+  });
+}
+// A throw outside a control's `finally` (e.g. in a perturbation itself) would also skip restoration.
+process.on('uncaughtException', (err) => {
+  const touched = [...backups.keys()];
+  restoreAll();
+  if (touched.length) console.error(`selftest: crashed — restored ${touched.join(', ')}`);
+  console.error(err);
+  process.exit(1);
+});
 
 const results = [];
 
@@ -100,6 +125,35 @@ control(
       return JSON.stringify(j, null, 2);
     }),
   'unregistered bypass  libs/features/browse/src/lib/browse/browse.ts',
+);
+
+// ---- check 1: an extra bypass inside an ALREADY-REGISTERED member ---------------------------------
+// The hole this closes was real. Keying the allowlist by `file::member` alone meant a bare
+// `entries.has(key)` waved through any number of calls in a member that was already listed.
+// `highlightExcerpt` holds three, so a fourth grew genuine debt 31 -> 32 while every number the
+// ratchet watches stayed put — the pre-fix gate printed "PASS — 32 bypass call(s), all accounted
+// for". Verified by running the old script against this exact perturbation.
+control(
+  'check 1 catches an extra bypass added to an already-registered member',
+  1,
+  () =>
+    edit(
+      'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
+      (s) => {
+        const anchor = `  private highlightExcerpt(text: string, excerpt?: string): SafeHtml {\n`;
+        if (!s.includes(anchor)) {
+          throw new Error('highlightExcerpt signature changed — update this control');
+        }
+        return s.replace(
+          anchor,
+          anchor +
+            `    if (text === '__selftest__') {\n` +
+            `      return this.sanitizer.bypassSecurityTrustHtml(text);\n` +
+            `    }\n`,
+        );
+      },
+    ),
+  'bypass count mismatch',
 );
 
 // ---- check 2: a stale allowlist entry ------------------------------------------------------------

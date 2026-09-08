@@ -97,6 +97,14 @@ export class TasksPageComponent implements OnInit {
   readonly docLoading = signal(false);
   readonly submitting = signal(false);
 
+  /**
+   * Bumped on every task selection. `takeUntilDestroyed` cancels on teardown but not on *reselection*,
+   * so without this a slow response for a previously selected task can land after a faster one and
+   * overwrite `targetDoc` and the preview with stale content. Every async continuation below compares
+   * the generation it captured against the current one and drops out if it has been superseded.
+   */
+  private selectionGeneration = 0;
+
   /* ─── Form fields ─── */
   comment = '';
   participants: string[] = [];
@@ -229,6 +237,7 @@ export class TasksPageComponent implements OnInit {
   }
 
   selectTask(task: NuxeoTask): void {
+    const gen = ++this.selectionGeneration;
     this.selectedTask.set(task);
     this.targetDoc.set(null);
     this.clearPreviewBlob();
@@ -261,26 +270,33 @@ export class TasksPageComponent implements OnInit {
         properties: {},
       });
       // Still fetch full doc to get properties (file:content etc.) for preview
-      this.docLoading.set(true);
-      this.docService.getById(targetRef.uid).subscribe({
-        next: (doc) => {
-          this.targetDoc.set(doc);
-          this.docLoading.set(false);
-          this.loadPreviewBlob(doc);
-        },
-        error: () => this.docLoading.set(false),
-      });
+      this.fetchTargetDoc(targetRef.uid, gen);
     } else if (docId) {
-      this.docLoading.set(true);
-      this.docService.getById(docId).subscribe({
+      this.fetchTargetDoc(docId, gen);
+    }
+  }
+
+  /**
+   * Fetch the task's target document, ignoring the response if the selection has moved on.
+   * @param gen the `selectionGeneration` captured when this fetch was requested
+   */
+  private fetchTargetDoc(docId: string, gen: number): void {
+    this.docLoading.set(true);
+    this.docService
+      .getById(docId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
         next: (doc) => {
+          if (gen !== this.selectionGeneration) return;
           this.targetDoc.set(doc);
           this.docLoading.set(false);
-          this.loadPreviewBlob(doc);
+          this.loadPreviewBlob(doc, gen);
         },
-        error: () => this.docLoading.set(false),
+        error: () => {
+          if (gen !== this.selectionGeneration) return;
+          this.docLoading.set(false);
+        },
       });
-    }
   }
 
   private loadAndSelectTask(taskId: string): void {
@@ -665,7 +681,8 @@ export class TasksPageComponent implements OnInit {
      URL Helpers
      ════════════════════════════════════════════════════════ */
 
-  private loadPreviewBlob(doc: NuxeoDocument): void {
+  /** @param gen the `selectionGeneration` captured when this preview was requested */
+  private loadPreviewBlob(doc: NuxeoDocument, gen: number): void {
     this.clearPreviewBlob();
     const fc = doc.properties?.['file:content'] as Record<string, unknown> | null;
     if (!fc) return;
@@ -689,6 +706,11 @@ export class TasksPageComponent implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (blob) => {
+          // A response for a superseded selection must not install itself over the current preview.
+          if (gen !== this.selectionGeneration) return;
+          // Revoke whatever is currently held before replacing it, or the outgoing object URL leaks
+          // for the lifetime of the document.
+          this.clearPreviewBlob();
           const rawUrl = URL.createObjectURL(blob);
           this.rawPreviewUrl.set(rawUrl);
           this.previewBlobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));

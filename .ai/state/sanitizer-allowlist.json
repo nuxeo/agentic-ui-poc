@@ -12,6 +12,10 @@
     "`budgets` is a ratchet: the gate fails if a category exceeds its budget, so the debt can only",
     "shrink. Lower a budget in the same commit that removes entries, to lock the gain in.",
     "",
+    "Budgets count bypass CALLS, not entries. `calls` on an entry declares how many bypass calls",
+    "that member holds (default 1); the gate fails if the real count differs in either direction.",
+    "Without that, a member already on this list could absorb further bypasses silently.",
+    "",
     "Sonar reported 32 S6268 calls. 31 remain: fetchPreferredVideoSource's was deleted when",
     "VideoSource.url widened to string, because source[src] is SecurityContext.NONE and a Safe*",
     "value there stringifies rather than being unwrapped — it was breaking transcoded video.",
@@ -21,7 +25,7 @@
     "A": 14,
     "B": 7,
     "C": 2,
-    "D": 6
+    "D": 8
   },
   "sites": {
     "libs/features/browse/src/lib/browse/browse.ts": [
@@ -234,6 +238,7 @@
       {
         "member": "highlightExcerpt",
         "category": "D",
+        "calls": 3,
         "sonarKey": "AaB8mU9GUIm8e9uDh3qd,AaB8mU9GUIm8e9uDh3qe,AaB8mU9GUIm8e9uDh3qf",
         "boundTo": ["innerHTML"],
         "justification": "Three bypasses in this one member, all paired with escapeHtml, which escapes & < > \" '. Every segment is escaped and only a <mark> element is added around matches, so no attacker-controlled tag can appear. Scheduled to route through renderTrustedHtml (plan PR 3)."

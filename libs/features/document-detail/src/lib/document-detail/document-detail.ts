@@ -3910,27 +3910,32 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   previewAttachment(att: { name: string; url: string; mimeType: string }): void {
-    this.http.get(att.url, { responseType: 'blob' }).subscribe({
-      next: (blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-        this.dialog.open(AttachmentPreviewDialogComponent, {
-          width: '90vw',
-          maxWidth: '1200px',
-          maxHeight: '95vh',
-          panelClass: 'preview-dialog-panel',
-          data: {
-            name: att.name,
-            mimeType: att.mimeType,
-            blobUrl: safeUrl,
-            rawUrl: objectUrl,
-            // Minted just above for this dialog, so the dialog revokes it on close.
-            ownsRawUrl: true,
-          },
-        });
-      },
-      error: () => this.toast('Failed to load preview'),
-    });
+    this.http
+      .get(att.url, { responseType: 'blob' })
+      // Without this, navigating away while the request is in flight still mints an object URL and
+      // opens a dialog after teardown — the URL is only revoked by the dialog that never opened.
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+          this.dialog.open(AttachmentPreviewDialogComponent, {
+            width: '90vw',
+            maxWidth: '1200px',
+            maxHeight: '95vh',
+            panelClass: 'preview-dialog-panel',
+            data: {
+              name: att.name,
+              mimeType: att.mimeType,
+              blobUrl: safeUrl,
+              rawUrl: objectUrl,
+              // Minted just above for this dialog, so the dialog revokes it on close.
+              ownsRawUrl: true,
+            },
+          });
+        },
+        error: () => this.toast('Failed to load preview'),
+      });
   }
 
   openDriveDialog(): void {
