@@ -62,4 +62,5 @@ jobs:
             cat /tmp/summary.md
           } > /tmp/comment-body.md
 
-          gh pr comment "${PR_NUMBER}" --body-file /tmp/comment-body.md
+          jq -Rs '{body: .}' /tmp/comment-body.md \
+            | gh api -X POST "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --input -
