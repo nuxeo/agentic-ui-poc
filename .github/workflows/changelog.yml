@@ -17,7 +17,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          # NOTE: GITHUB_TOKEN authenticates as github-actions[bot].
+          # If branch protection is re-enabled and github-actions[bot]
+          # is not in the bypass list, this push will fail.
+          # Options: (1) add github-actions[bot] to bypass list,
+          # (2) use BOT_GITHUB_TOKEN with bypass permissions, or
+          # (3) create a PR instead of direct push.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -32,19 +38,10 @@ jobs:
             --commit-path . \
             || echo "No conventional commits found — CHANGELOG.md unchanged."
 
-      - name: Import GPG key
-        if: vars.GPG_BOT_SIGNING_ENABLED == 'true'
-        uses: crazy-max/ghaction-import-gpg@v6
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          git_user_signingkey: true
-          git_commit_gpgsign: true
-
       - name: Commit updated CHANGELOG.md if changed
         run: |
-          git config user.name "nuxeo-webui-jx-bot"
-          git config user.email "webui@hyland.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
           git diff --quiet CHANGELOG.md || (
             git add CHANGELOG.md &&
             git commit -m "chore: update CHANGELOG [skip ci]" &&
