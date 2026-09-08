@@ -672,10 +672,12 @@ export class TasksPageComponent implements OnInit {
 
     const mime = (fc['mime-type'] as string) ?? '';
     const isImg = mime.startsWith('image/');
+    // For images, fetch the thumbnail rendition for faster preview.
+    // For audio/video, fetch the main blob so the media can actually play.
     const url = this.nuxeoApi.apiUrl(
       isImg
-        ? `/nuxeo/api/v1/id/${doc.uid}/@blob/file:content`
-        : `/nuxeo/api/v1/id/${doc.uid}/@rendition/thumbnail`,
+        ? `/nuxeo/api/v1/id/${doc.uid}/@rendition/thumbnail`
+        : `/nuxeo/api/v1/id/${doc.uid}/@blob/file:content`,
     );
 
     this.http

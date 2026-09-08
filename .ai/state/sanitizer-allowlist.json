@@ -149,22 +149,22 @@
         "member": "setBlobUrl",
         "category": "B",
         "sonarKey": "AaB8mU6TUIm8e9uDh3pL",
-        "boundTo": ["iframe[src]", "img[src]", "video[src]", "audio[src]", "source[src]"],
-        "justification": "Object URL minted here from an HttpClient-fetched blob. The bypass is REQUIRED because the value reaches iframe[src], which throws on a raw string. KNOWN DEFECT: it also reaches audio[src] and source[src], which are SecurityContext.NONE — see check 4. Fix is to carry the raw string alongside for those bindings (plan PR 4)."
+        "boundTo": ["iframe[src]"],
+        "justification": "Object URL minted here from an HttpClient-fetched blob. The bypass is REQUIRED because the value reaches iframe[src], which throws on a raw string. The raw URL is carried separately in rawBlobUrl for NONE-context bindings (audio[src], source[src]) — fixed in this PR."
       },
       {
         "member": "previewMainBlob",
         "category": "B",
         "sonarKey": "AaB8mU6TUIm8e9uDh3pP",
-        "boundTo": ["iframe[src]", "img[src]", "source[src]"],
-        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. KNOWN DEFECT: also reaches source[src] (NONE); the dialog already carries rawUrl for that (plan PR 4)."
+        "boundTo": ["iframe[src]"],
+        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. The dialog now binds rawUrl directly to source[src] (NONE context) — fixed in this PR."
       },
       {
         "member": "previewAttachment",
         "category": "B",
         "sonarKey": "AaB8mU6TUIm8e9uDh3pS",
-        "boundTo": ["iframe[src]", "img[src]", "source[src]"],
-        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. Same NONE-context defect as previewMainBlob (plan PR 4)."
+        "boundTo": ["iframe[src]"],
+        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. The dialog now binds rawUrl directly to source[src] (NONE context) — fixed in this PR."
       },
       {
         "member": "loadARenderUrl",

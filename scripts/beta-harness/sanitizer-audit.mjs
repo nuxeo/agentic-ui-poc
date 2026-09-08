@@ -490,7 +490,8 @@ function main() {
         const loopVars = collectLoopVars(tpl.template);
         const lines = tpl.template.split('\n');
         for (const { element, attr } of NONE_CONTEXT_BINDINGS) {
-          const re = new RegExp(`<${element}\\b[^>]*?\\[${attr}\\]\\s*=\\s*"([^"]+)"`, 'gs');
+          // Accept both double and single quotes: [src]="..." or [src]='...'
+          const re = new RegExp(`<${element}\\b[^>]*?\\[${attr}\\]\\s*=\\s*["']([^"']+)["']`, 'gs');
           let m;
           while ((m = re.exec(tpl.template)) !== null) {
             const expr = m[1].trim();
@@ -516,12 +517,18 @@ function main() {
   // ---- check 5: unpaired trusted HTML ---------------------------------------------------------
   if (run(5)) {
     for (const [file, { sf }] of parsed) {
-      if (APPROVED_HELPERS.has(file)) continue;
+      const approvedHelper = APPROVED_HELPERS.get(file);
       eachNode(sf, (n) => {
         if (!ts.isCallExpression(n)) return;
         const callee = n.expression;
         if (!ts.isPropertyAccessExpression(callee)) return;
         if (callee.name.text !== 'bypassSecurityTrustHtml') return;
+
+        // Skip only if this bypass is inside the approved helper function
+        if (approvedHelper) {
+          const member = enclosingMemberName(n);
+          if (member === approvedHelper) return;
+        }
         let host = null;
         for (let p = n.parent; p; p = p.parent) {
           if (
