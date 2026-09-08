@@ -109,9 +109,10 @@ describe('ARenderService', () => {
     it.each([
       ['javascript:alert(1)'],
       ['data:text/html,<script>alert(1)</script>'],
-      // `file:///etc/hosts`, not `/etc/hosts`: the assertion is about the *scheme* being rejected,
-      // the path is incidental, and GitGuardian's generic-password detector flags the latter as a
-      // secret. A test fixture is not worth a failing security check for a string we do not need.
+      // The assertion here is about the `file:` *scheme* being rejected; the path is incidental.
+      // It deliberately avoids the well-known shadow-file path, which GitGuardian's
+      // generic-password detector reports as a hardcoded secret — a test fixture is not worth a
+      // failing security check for a string the test does not need.
       ['file:///etc/hosts'],
       ['not-a-url'],
       ['//protocol-relative.example'],
