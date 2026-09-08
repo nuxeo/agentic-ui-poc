@@ -649,7 +649,10 @@ describe('KdClientService', () => {
     req.flush(envelope(null));
 
     const submission = await submission$;
-    expect(submission.questionId).toMatch(/^kd-agent-7-\d+-[a-z0-9]+$/);
+    // Updated to match crypto.randomUUID() format (SonarCloud S2245 fix)
+    expect(submission.questionId).toMatch(
+      /^kd-agent-7-\d+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+    );
     expect(submission.status).toBe('Complete');
 
     const answer = await firstValueFrom(service.getAnswer(submission.questionId));

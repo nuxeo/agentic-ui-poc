@@ -109,6 +109,18 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/review-guardrails.mjs', '--base', base],
   },
+  // SonarCloud security remediation harness (section 5 of docs/sonarcloud-security-remediation-plan.md).
+  // Enforces that every DomSanitizer.bypassSecurityTrust* call is registered in
+  // .ai/state/sanitizer-allowlist.json with a written justification. Catches unregistered bypasses,
+  // stale allowlist entries, Category A regressions (redundant bypasses), Safe* values in NONE
+  // contexts (source[src], audio[src], video[poster]), and unpaired HTML sanitization.
+  // Sits next to guardrails because both are static code checks with no compilation required.
+  {
+    id: 'sanitizer-audit',
+    label: 'Sanitizer bypass audit',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/sanitizer-audit.mjs'],
+  },
   // Static, so it belongs with the cheap gates — and it guards the one thing the
   // other six structurally cannot. Lint, test, build and typecheck all check the
   // *application*; nothing checked whether the *evidence* was capable of failing.

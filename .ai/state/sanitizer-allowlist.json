@@ -1,0 +1,268 @@
+{
+  "//": [
+    "Every DomSanitizer.bypassSecurityTrust* call in apps/ and libs/ must appear here, keyed by",
+    "file and enclosing member — never by line number, which churns on every edit above it.",
+    "",
+    "The categories are from docs/sonarcloud-security-remediation-plan.md section 3:",
+    "  A  locally-minted object URL -> img[src] only. The bypass is redundant; DELETE it.",
+    "  B  locally-minted object URL -> iframe. The bypass is REQUIRED; centralise in trustObjectUrl.",
+    "  C  server- or config-supplied URL -> iframe. A real trust decision; VALIDATE then bypass.",
+    "  D  already-sanitised HTML -> innerHTML. Safe as a PAIRING; centralise in renderTrustedHtml.",
+    "",
+    "`budgets` is a ratchet: the gate fails if a category exceeds its budget, so the debt can only",
+    "shrink. Lower a budget in the same commit that removes entries, to lock the gain in.",
+    "",
+    "Sonar reported 32 S6268 calls. 31 remain: fetchPreferredVideoSource's was deleted when",
+    "VideoSource.url widened to string, because source[src] is SecurityContext.NONE and a Safe*",
+    "value there stringifies rather than being unwrapped — it was breaking transcoded video.",
+    "29 entries, not 31: kd-citation-dialog's highlightExcerpt holds three bypasses in one member."
+  ],
+  "budgets": {
+    "A": 14,
+    "B": 7,
+    "C": 2,
+    "D": 6
+  },
+  "sites": {
+    "libs/features/browse/src/lib/browse/browse.ts": [
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mU_GUIm8e9uDh3q8",
+        "boundTo": ["img[src]"],
+        "justification": "Object URL minted here from an HttpClient-fetched blob, bound only to img[src] via thumbnailMap. Angular's SAFE_URL_PATTERN accepts blob:, so the bypass changes nothing except making the string unreadable — which is why the thumbnailBlobUrls shadow array exists. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/collections/src/lib/collection-detail/collection-detail.ts": [
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mVDDUIm8e9uDh3sk",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/search/src/lib/search/search.ts": [
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mVBoUIm8e9uDh3sO",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/search/src/lib/search-queue/search-queue.component.ts": [
+      {
+        "member": "constructor",
+        "category": "A",
+        "sonarKey": "AaB8mVCwUIm8e9uDh3sh",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src], inside a constructor effect. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/assets/src/lib/assets-queue/assets-queue.component.ts": [
+      {
+        "member": "constructor",
+        "category": "A",
+        "sonarKey": "AaB8mU8yUIm8e9uDh3qX",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src], inside a constructor effect. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/assets/src/lib/asset-search-results/asset-search-results.component.ts": [
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mU8bUIm8e9uDh3qS",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/trash/src/lib/trash/trash.component.ts": [
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mU-IUIm8e9uDh3qw",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src], via thumbnailMap and TrashFilterService.resultThumbnails. Scheduled for deletion (plan PR 5) — note the shared-service consumer must change in the same commit."
+      }
+    ],
+    "libs/features/tasks/src/lib/task-detail/task-detail.component.ts": [
+      {
+        "member": "loadPreview",
+        "category": "A",
+        "sonarKey": "AaB8mU5BUIm8e9uDh3og",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] via docPreviewUrl. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/document-detail/src/lib/note-editor/note-image-picker-dialog.ts": [
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mU7tUIm8e9uDh3qA",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts": [
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mVSkUIm8e9uDh3wd",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts": [
+      {
+        "member": "loadThumbnailsForIds",
+        "category": "A",
+        "sonarKey": "AaB8mVRqUIm8e9uDh3wE",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] (clipboard rail). Scheduled for deletion (plan PR 5)."
+      },
+      {
+        "member": "loadThumbnails",
+        "category": "A",
+        "sonarKey": "AaB8mVRqUIm8e9uDh3wF",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] (favourites rail). Scheduled for deletion (plan PR 5)."
+      }
+    ],
+    "libs/features/document-detail/src/lib/document-detail/document-detail.ts": [
+      {
+        "member": "loadServerStoryboard",
+        "category": "A",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pC",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] via StoryboardItem.thumbnailUrl. Scheduled for deletion (plan PR 5); StoryboardItem.thumbnailUrl widens to string."
+      },
+      {
+        "member": "generateClientStoryboard",
+        "category": "A",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pE",
+        "boundTo": ["img[src]"],
+        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] via StoryboardItem.thumbnailUrl. Scheduled for deletion (plan PR 5)."
+      },
+      {
+        "member": "setBlobUrl",
+        "category": "B",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pL",
+        "boundTo": ["iframe[src]", "img[src]", "video[src]", "audio[src]", "source[src]"],
+        "justification": "Object URL minted here from an HttpClient-fetched blob. The bypass is REQUIRED because the value reaches iframe[src], which throws on a raw string. KNOWN DEFECT: it also reaches audio[src] and source[src], which are SecurityContext.NONE — see check 4. Fix is to carry the raw string alongside for those bindings (plan PR 4)."
+      },
+      {
+        "member": "previewMainBlob",
+        "category": "B",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pP",
+        "boundTo": ["iframe[src]", "img[src]", "source[src]"],
+        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. KNOWN DEFECT: also reaches source[src] (NONE); the dialog already carries rawUrl for that (plan PR 4)."
+      },
+      {
+        "member": "previewAttachment",
+        "category": "B",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pS",
+        "boundTo": ["iframe[src]", "img[src]", "source[src]"],
+        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. Same NONE-context defect as previewMainBlob (plan PR 4)."
+      },
+      {
+        "member": "loadARenderUrl",
+        "category": "C",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pQ",
+        "boundTo": ["iframe[src]"],
+        "mitigated": "scheme-only",
+        "residualRisk": "SCHEME IS VALIDATED, ORIGIN IS NOT. There is deliberately no origin allow-list here: a customer configures where their own ARender lives, so the allowed origin is not knowable to us (unlike loadPreviewFallback, where it must be the Nuxeo repository). What is closed is the privilege ESCALATION — javascript: becoming script execution in our own origin, with our session and DOM. What remains is inherent to the feature: whoever can edit the app-config manifest can point this iframe at any https origin. Accepted because (1) a third-party https origin in an iframe is a separate browser origin with no access to our DOM or cookies, so it is not an escalation; (2) the manifest is already a trusted Layer 0 customer surface that controls far more than this; (3) the correct control is a CSP frame-src response header, which no manifest editor can override — and NONE IS CURRENTLY SET, which is worth a ticket. NOT covered: any defect letting an untrusted party write the manifest.",
+        "justification": "MITIGATED FOR THE ESCALATION. The trusted string is `${cfg.viewerOrigin}/?url=…` and viewerOrigin comes from the customer-editable app-config manifest, so `javascript:alert(1)` there became script execution in this app's origin — a complete, non-blank, new URL()-parseable value that no completeness check catches. Now validated twice, both failing closed to null: ARenderService treats a viewerOrigin that is not an http(s) origin (https unless isDevMode) as unconfigured, so the dangerous URL is never built; and this member re-validates with navigableUrlOrNull before trusting, because a privilege boundary defended in exactly one place is one refactor from undefended. Rejection tests: arender.service.spec.ts (5 schemes, plus the production-http branch forced via ngDevMode) and document-detail.viewer.spec.ts (4 schemes) — all confirmed red with the guards removed. See residualRisk above before reading this as complete."
+      },
+      {
+        "member": "loadPreviewFallback",
+        "category": "C",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pI",
+        "boundTo": ["iframe[src]"],
+        "mitigated": true,
+        "justification": "MITIGATED. doc.contextParameters['preview'].url is server-supplied, not minted here. Now constrained by navigableUrlOrNull to same-origin or the configured NUXEO_API_ORIGIN, resolved and compared by ORIGIN rather than string prefix — `//evil.example/x` is protocol-relative and would pass a startsWith('/') test. Dropped otherwise, falling through to the viewer's 'Preview not available' placeholder. 4 rejection tests, confirmed red with the guard removed."
+      },
+      {
+        "member": "loadBlob",
+        "category": "D",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3o_",
+        "boundTo": ["innerHTML"],
+        "justification": "Paired with DOMPurify.sanitize(raw, { ADD_ATTR: ['target'] }) in the same member when loading a markdown note. Safe as a pairing; review-guardrails.mjs already fails an unpaired one. Scheduled to move into renderTrustedHtml (plan PR 3)."
+      },
+      {
+        "member": "saveNote",
+        "category": "D",
+        "sonarKey": "AaB8mU6TUIm8e9uDh3pO",
+        "boundTo": ["innerHTML"],
+        "justification": "Paired with DOMPurify.sanitize in the same member on the save round-trip. Scheduled to move into renderTrustedHtml (plan PR 3)."
+      }
+    ],
+    "libs/features/tasks/src/lib/tasks-page/tasks-page.component.ts": [
+      {
+        "member": "loadPreviewBlob",
+        "category": "B",
+        "sonarKey": "AaB8mU5eUIm8e9uDh3ol",
+        "boundTo": ["iframe[src]"],
+        "justification": "Object URL minted here from an HttpClient-fetched blob, feeds document-viewer's iframe via previewUrl(). Bypass required. Scheduled to move into trustObjectUrl (plan PR 4)."
+      }
+    ],
+    "apps/nuxeo-satori-template/src/app/pages/case-file/case-file.ts": [
+      {
+        "member": "loadPreview",
+        "category": "B",
+        "sonarKey": "AaB8mVTiUIm8e9uDh3wv",
+        "boundTo": ["iframe[src]"],
+        "justification": "Object URL minted here from an HttpClient-fetched blob, feeds document-viewer's iframe. Bypass required. This is the reference customer template, so it must use only published platform APIs — trustObjectUrl has to be exported from the platform, not shared/ (plan PR 4)."
+      }
+    ],
+    "libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts": [
+      {
+        "member": "setBlobPreview",
+        "category": "B",
+        "sonarKey": "AaB8mU9GUIm8e9uDh3qa",
+        "boundTo": ["iframe[src]", "img[src]"],
+        "justification": "Object URL minted here; reaches iframe[src] for the pdf branch, so the bypass is required. Scheduled to move into trustObjectUrl (plan PR 4)."
+      },
+      {
+        "member": "updatePdfPage",
+        "category": "B",
+        "sonarKey": "AaB8mU9GUIm8e9uDh3qc",
+        "boundTo": ["iframe[src]"],
+        "justification": "Re-wraps the object URL with a #page= fragment for the pdf iframe. Bypass required. Scheduled to move into trustObjectUrl (plan PR 4)."
+      },
+      {
+        "member": "highlightExcerpt",
+        "category": "D",
+        "sonarKey": "AaB8mU9GUIm8e9uDh3qd,AaB8mU9GUIm8e9uDh3qe,AaB8mU9GUIm8e9uDh3qf",
+        "boundTo": ["innerHTML"],
+        "justification": "Three bypasses in this one member, all paired with escapeHtml, which escapes & < > \" '. Every segment is escaped and only a <mark> element is added around matches, so no attacker-controlled tag can appear. Scheduled to route through renderTrustedHtml (plan PR 3)."
+      }
+    ],
+    "libs/features/document-detail/src/lib/note-editor/note-editor.ts": [
+      {
+        "member": "markdownHtml",
+        "category": "D",
+        "sonarKey": "AaB8mU7aUIm8e9uDh3p6",
+        "boundTo": ["innerHTML"],
+        "justification": "Paired with DOMPurify.sanitize(raw, { ADD_ATTR: ['target','rel'] }). note:note is authored by any user with write access, so this pairing is what stops stored XSS — and .ai/state/supply-chain-allowlist.json accepts a known Quill advisory on the grounds that every render path sanitises. Scheduled to move into renderTrustedHtml (plan PR 3)."
+      },
+      {
+        "member": "htmlReadonlyView",
+        "category": "D",
+        "sonarKey": "AaB8mU7aUIm8e9uDh3p7",
+        "boundTo": ["innerHTML"],
+        "justification": "Paired with DOMPurify.sanitize in the same member for the read-only Quill view. Scheduled to move into renderTrustedHtml (plan PR 3)."
+      }
+    ],
+    "apps/nuxeo-ui/src/app/pipes/ai-markdown.pipe.ts": [
+      {
+        "member": "transform",
+        "category": "D",
+        "sonarKey": "AaB8mVTDUIm8e9uDh3wo",
+        "boundTo": ["innerHTML"],
+        "justification": "escapeHtml (& < > \" — note ' is NOT escaped) then six chained regexes build <strong>, <li value=N>, <ol>, <ul>, <br>. Currently safe: after escaping no < can come from input, and the only interpolated attribute is value=\"$1\" where $1 is (\\d+). But that safety rests on six regexes staying exactly as they are, which nothing checks, and the input is AI-generated text derived from document content. Scheduled to route through DOMPurify with a six-tag allowlist (plan PR 3, site 8 — a real change, not just a move)."
+      }
+    ]
+  }
+}

@@ -342,7 +342,7 @@ export class KdClientService {
     const answer = raw ?? {};
     const questionId =
       (answer as Partial<KdAnswerResponse>).questionId ??
-      `kd-${request.agentId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      `kd-${request.agentId}-${Date.now()}-${crypto.randomUUID()}`;
     const objectReferences = normalizeObjectReferences(
       (answer as Partial<KdAnswerResponse>).objectReferences,
     );
