@@ -291,6 +291,12 @@ export {
   principalPermissionToLocalRow,
 } from './lib/utils/principal-permission-display';
 export {
+  isNavigableOrigin,
+  navigableUrlOrNull,
+  originOf,
+  type NavigableUrlPolicy,
+} from './lib/utils/navigable-url';
+export {
   mergeDocumentPermissionsContext,
   normalizeDocumentAcls,
   resolveAcePrincipal,

@@ -607,6 +607,47 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
       expect(component.previewUrl()).not.toBeNull();
       expect(component.blobLoading()).toBe(false);
     });
+
+    // Category C site 2. `contextParameters.preview.url` is server-supplied, and it is bypassed and
+    // loaded into an iframe, so it is constrained to the repository we are already talking to.
+    // `//evil.example/x` is the case a `startsWith('/')` same-origin test would have waved through.
+    it.each([
+      ['javascript:alert(1)', 'a script URL'],
+      ['data:text/html,<script>alert(1)</script>', 'a data URL'],
+      ['https://evil.example/preview/doc-1', 'a cross-origin URL'],
+      ['//evil.example/preview/doc-1', 'a protocol-relative URL'],
+    ])('drops %s from the server preview (%s)', async (url) => {
+      mockDetailService.fetchBlob.mockReturnValue(throwError(() => new Error('500')));
+      await build(
+        doc({
+          properties: {
+            'file:content': { name: 'a.txt', 'mime-type': 'text/plain', length: 10 },
+          },
+          contextParameters: { permissions: ['Read'], preview: { url } },
+        }),
+      );
+
+      // Falls through to the viewer's "Preview not available" placeholder.
+      expect(component.previewUrl()).toBeNull();
+      expect(component.blobLoading()).toBe(false);
+    });
+
+    it('keeps an absolute same-origin server preview URL', async () => {
+      mockDetailService.fetchBlob.mockReturnValue(throwError(() => new Error('500')));
+      await build(
+        doc({
+          properties: {
+            'file:content': { name: 'a.txt', 'mime-type': 'text/plain', length: 10 },
+          },
+          contextParameters: {
+            permissions: ['Read'],
+            preview: { url: `${window.location.origin}/nuxeo/preview/doc-1` },
+          },
+        }),
+      );
+
+      expect(component.previewUrl()).not.toBeNull();
+    });
   });
 
   describe('main blob retry', () => {
@@ -752,6 +793,33 @@ describe('DocumentDetailComponent — viewer, renditions and vocabularies', () =
       expect(component.arenderUrl()).not.toBeNull();
       // The iframe is keyed on this so a new URL never reuses a stale session.
       expect(component.arenderReloadId()).toBe(1);
+    });
+
+    // The point-of-trust half of the Category C fix. `ARenderService` already refuses a
+    // `viewerOrigin` that is not an http(s) origin, so reaching this component with a dangerous URL
+    // requires that check to have been bypassed or removed — which is exactly the regression this
+    // guards. The URL is about to be handed to `bypassSecurityTrustResourceUrl` and loaded into an
+    // iframe, so a `javascript:` value here is script execution in the application's origin.
+    it.each([
+      ['javascript:alert(1)'],
+      ['data:text/html,<script>alert(1)</script>'],
+      ['file:///etc/hosts'],
+      ['//evil.example/view'],
+    ])('refuses to trust a %s previewer URL', async (url) => {
+      mockARender.isAvailable.mockReturnValue(of(true));
+      mockARender.getPreviewerUrl.mockReturnValue(of(url));
+      await build(
+        doc({
+          properties: {
+            'file:content': { name: 'a.pdf', 'mime-type': 'application/pdf', digest: 'd' },
+          },
+        }),
+      );
+
+      // Null is the same state as "ARender is not deployed", which the template already renders as
+      // "Annotations are not available" — so failing closed costs the feature, not the page.
+      expect(component.arenderUrl()).toBeNull();
+      expect(component.arenderReloadId()).toBe(0);
     });
 
     it('shows no previewer when ARender is not deployed', async () => {

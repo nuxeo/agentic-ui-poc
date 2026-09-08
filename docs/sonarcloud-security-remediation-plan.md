@@ -12,8 +12,9 @@ that has since been built; section 9 records what has actually landed.
 
 ## 0. Execution status — 2026-09-08
 
-**Landed: Category E, the harness, and Category B part 2 (the NONE-context bug fix).**
-**Not started: Categories A, C, D.**
+Read the table, not this line. **Landed: E, the harness, B part 2 (the NONE-context bug fix), and
+C. Not started: A, B part 1, D.** Category C carries an accepted residual risk — see its section
+below before reading "Done" as "closed".
 
 | Category                                | Sites                  | Status                                                                                                                                                                                                                        |
 | --------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
