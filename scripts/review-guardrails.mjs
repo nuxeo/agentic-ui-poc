@@ -436,6 +436,72 @@ function checkNoNuxeoUrlInImgSrc() {
   }
 }
 
+/**
+ * `attr.foo="bar"` written as a plain attribute, without Angular's binding brackets.
+ *
+ * The `attr.` prefix is only meaningful inside `[...]`. Written bare it is not a binding at all:
+ * Angular emits a DOM attribute whose literal name is `attr.aria-label`, so
+ *
+ *     <button attr.aria-label="Download {{ view.title }}">
+ *
+ * renders `attr.aria-label="Download report.pdf"` and the button has **no accessible name**. It
+ * looks correct in review, the interpolation really does evaluate, and the result is invisible
+ * to assistive technology. There is no case where the bare form is what was meant.
+ *
+ * ## Why this needs its own check
+ *
+ * Nothing else in the toolchain sees it, and that was verified rather than assumed:
+ *
+ *   - the eleven @angular-eslint/template accessibility rules report nothing, because
+ *     `attr.aria-label` is not an `aria-*` attribute and `valid-aria` never looks at it
+ *   - SonarCloud reports nothing (it flags `Web:S6819` and `InputWithoutLabelCheck` elsewhere,
+ *     not this)
+ *   - the Angular compiler is happy: a literal attribute with an interpolation is valid HTML
+ *
+ * The one instance in this repository shipped through code review, a full WCAG 2.1 AA phase and
+ * two CI gates. It was found by an external reviewer reading the diff.
+ *
+ * Scoped to `aria-`, `role` and `title` — the attributes where a silent miss costs an accessible
+ * name. A bare `attr.colspan` is also wrong but merely cosmetic, and keeping the pattern narrow
+ * keeps it free of judgement calls.
+ */
+function checkNoAttrPrefixedLiteralAttributes() {
+  const templates = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
+
+  let scanned = 0;
+  for (const template of templates) {
+    if (!fileExists(template)) continue;
+    scanned += 1;
+
+    read(template)
+      .split('\n')
+      .forEach((line, index) => {
+        // A preceding `[` means it is the correct `[attr.foo]="…"` binding form.
+        for (const match of line.matchAll(/(.?)\battr\.((?:aria-[\w-]+)|role|title)\s*=/g)) {
+          if (match[1] === '[') continue;
+          fail(
+            `${template}:${index + 1} writes attr.${match[2]}="…" without binding brackets.\n` +
+              `    The attr. prefix only works inside [...]. As written, Angular renders a DOM\n` +
+              `    attribute literally named "attr.${match[2]}", so the element has no ${match[2]}\n` +
+              `    at all. Use ${match[2]}="…" for a static value or interpolation, or\n` +
+              `    [attr.${match[2]}]="…" to bind an expression.`,
+          );
+        }
+      });
+  }
+
+  // The repository's standing rule: a glob that finds nothing must not read as a pass. There are
+  // 89 tracked templates; a zero here means the check stopped looking.
+  if (scanned === 0) {
+    fail(
+      'checkNoAttrPrefixedLiteralAttributes scanned no templates at all, so it asserted ' +
+        'nothing. Check the template glob before trusting a pass.',
+    );
+  }
+}
+
 function checkTypeSafetyEscapes() {
   for (const [file, lines] of addedLinesByFile) {
     if (!file.endsWith('.ts')) continue;
@@ -916,6 +982,7 @@ checkDocsNumbering();
 checkVitestProjects();
 checkBlobUrlLifecycle();
 checkNoNuxeoUrlInImgSrc();
+checkNoAttrPrefixedLiteralAttributes();
 checkTypeSafetyEscapes();
 checkHardcodedSecrets();
 checkAngularDevAssets();
