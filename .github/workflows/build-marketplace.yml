@@ -1,16 +1,17 @@
 name: Build Marketplace Package
 
 on:
-  push:
-    branches:
-      - main
+  # Build-only validation, so a PR that breaks the Maven package is caught before merge.
+  # Never publishes — see the `if` on `push-to-preprod`.
   pull_request:
     branches:
       - main
-  # Manual lane, so a branch can be published to Marketplace preprod without merging to
-  # `main` first. Deliberately not tied to the `pull_request` trigger: that fires on every
-  # push to every open PR, and publishing a package per push would fill preprod with builds
-  # nobody asked for.
+
+  # The only lane that can publish, and the only lane that runs for `main`. There is
+  # deliberately no `push` trigger: every merge to `main` used to build and publish a
+  # timestamped package, which filled Marketplace preprod with builds nobody asked for.
+  # Publishing is now always someone asking for it — here, or from `release.yml`, which
+  # dispatches this workflow with publishToPreprod=true.
   workflow_dispatch:
     inputs:
       publishToPreprod:
@@ -39,7 +40,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       VERSION: ${{ steps.env.outputs.VERSION }}
-      IS_MAIN: ${{ steps.env.outputs.IS_MAIN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,14 +49,12 @@ jobs:
           set -e
           CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout | grep -v '\[' | head -n 1 | xargs)
           BASE_VERSION=${CURRENT_VERSION%-SNAPSHOT}
-          IS_MAIN=false
 
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             VERSION="${BASE_VERSION}-PR-${{ github.event.number }}-BUILD-${{ github.run_number }}"
           elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             VERSION="${BASE_VERSION}-$(date +%Y%m%d%H%M%S)"
-            IS_MAIN=true
-          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          else
             # Carries the branch in the version because these land in the same preprod list
             # as `main` builds, and a bare timestamp would make the two indistinguishable
             # once someone is looking at the Marketplace rather than at this workflow.
@@ -66,19 +64,15 @@ jobs:
               | sed -E 's#^(feature|feat|fix|chore|docs)/##' \
               | tr -c '[:alnum:]' '-' | tr -s '-' | sed 's/^-//;s/-$//' | cut -c1-24 | sed 's/-$//')
             VERSION="${BASE_VERSION}-${SLUG}-$(date +%Y%m%d%H%M%S)"
-          else
-            VERSION="${BASE_VERSION}-SNAPSHOT"
           fi
 
           echo "VERSION=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "IS_MAIN=$IS_MAIN" >> "$GITHUB_OUTPUT"
 
   build:
     needs: properties
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.properties.outputs.VERSION }}
-      IS_MAIN: ${{ needs.properties.outputs.IS_MAIN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -132,9 +126,11 @@ jobs:
   push-to-preprod:
     needs: [properties, build]
     runs-on: ubuntu-latest
-    # `main` publishes automatically; any other branch publishes only when someone asks for
-    # it explicitly through the manual lane above.
-    if: needs.properties.outputs.IS_MAIN == 'true' || github.event.inputs.publishToPreprod == 'true'
+    # Nothing publishes on its own, `main` included: the branch only decides how the version
+    # is stamped, never whether it ships. PR runs can never reach this job.
+    # Compares against the string: `github.event.inputs` stringifies booleans, so
+    # `== true` would never match, whether dispatched from the UI or `gh workflow run`.
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publishToPreprod == 'true'
     env:
       VERSION: ${{ needs.properties.outputs.VERSION }}
     steps:

@@ -33,7 +33,9 @@ mvn package                       # produces the marketplace ZIP
 npx nx build platform             # produces dist/libs/platform
 ```
 
-CI: `build-marketplace.yml` (3 jobs) on push and PR; `release.yml` on manual dispatch.
+CI: `build-marketplace.yml` (3 jobs) on PR and manual dispatch — it does not run on merge to
+`main`, and publishes to Marketplace preprod only when dispatched with `publishToPreprod`
+checked, which `release.yml` (also manual) does for a release.
 
 ---
 

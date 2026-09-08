@@ -93,4 +93,5 @@ jobs:
         run: |
           gh workflow run build-marketplace.yml \
             --ref main \
+            -f publishToPreprod=true \
             || echo "Marketplace build trigger skipped (workflow may not exist)"
