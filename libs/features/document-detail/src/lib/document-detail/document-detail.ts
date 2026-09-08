@@ -3486,6 +3486,10 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         switchMap((available) =>
           available ? this.arenderService.getPreviewerUrl(doc.uid, xpath) : of(null),
         ),
+        // The `requestedDocUid` guard below only prevents a *stale* document's result being
+        // applied; it does not unsubscribe, so without this the subscription outlives the
+        // component. Required by convention on every `.subscribe()` in this repo.
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (url) => {

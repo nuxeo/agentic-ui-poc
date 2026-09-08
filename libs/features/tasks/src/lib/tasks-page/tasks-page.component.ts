@@ -1,4 +1,5 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, DestroyRef, inject, signal, OnInit, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -67,6 +68,15 @@ export class TasksPageComponent implements OnInit {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly destroyRef = inject(DestroyRef);
+
+  constructor() {
+    // The preview object URL was only revoked when the selection changed, so navigating away while
+    // a preview was on screen leaked it for the lifetime of the tab. `review-guardrails.mjs` sees a
+    // `revokeObjectURL` in this file and is satisfied; it cannot tell that no destroy path reaches
+    // it. Pre-existing, and fixed here because this component's preview flow changed.
+    this.destroyRef.onDestroy(() => this.clearPreviewBlob());
+  }
 
   /* ─── Task list ─── */
   readonly tasks = signal<NuxeoTask[]>([]);
@@ -668,16 +678,21 @@ export class TasksPageComponent implements OnInit {
         : `/nuxeo/api/v1/id/${doc.uid}/@rendition/thumbnail`,
     );
 
-    this.http.get(url, { responseType: 'blob' }).subscribe({
-      next: (blob) => {
-        const rawUrl = URL.createObjectURL(blob);
-        this.rawPreviewUrl.set(rawUrl);
-        this.previewBlobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));
-      },
-      error: () => {
-        /* preview not available */
-      },
-    });
+    this.http
+      .get(url, { responseType: 'blob' })
+      // Without this, a request in flight when the component is destroyed still mints an object URL
+      // — after the destroy hook that would have revoked it has already run.
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const rawUrl = URL.createObjectURL(blob);
+          this.rawPreviewUrl.set(rawUrl);
+          this.previewBlobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));
+        },
+        error: () => {
+          /* preview not available */
+        },
+      });
   }
 
   private clearPreviewBlob(): void {
