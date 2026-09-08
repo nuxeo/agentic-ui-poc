@@ -7,7 +7,8 @@
 ## Current Status
 
 ✅ **CLA Assistant is active** - Comments on PRs automatically
-❌ **Bot accounts are NOT allowlisted** - AI bots trigger false CLA warnings
+✅ **Bot co-authors are automatically stripped** - See [Bot Co-Author Policy](./bot-coauthor-policy.md)
+❓ **CLA Assistant allowlist** - Repository not appearing in CLA dashboard (needs configuration)
 
 ---
 
@@ -273,7 +274,16 @@ CLA works independently of branch protection:
 
 **Goal:** CLA checks humans, allows bots
 
-**Steps:**
+**Current Approach:**
+
+This repository uses **automatic bot co-author stripping** instead of CLA allowlisting:
+
+- ✅ Bot co-authors are removed from commits automatically (see [Bot Co-Author Policy](./bot-coauthor-policy.md))
+- ✅ Only human contributors appear in git history
+- ✅ CLA checks only see human authors
+- ✅ No need to configure CLA allowlist
+
+**Steps (if CLA allowlist is needed in future):**
 
 1. Access CLA Assistant at https://cla-assistant.io/
 2. Add bot accounts to allowlist
@@ -283,5 +293,5 @@ CLA works independently of branch protection:
 **Result:**
 
 - ✅ Human contributions require CLA signature
-- ✅ Bot commits bypass CLA checks
+- ✅ Bot commits don't appear in git history (stripped automatically)
 - ✅ No false warnings about AI co-authors
