@@ -61,42 +61,43 @@
 
 1. In CLA Assistant dashboard, select `nuxeo/agentic-ui-poc`
 2. Go to **"Settings"** or **"Allowlist"** section
-3. Add bot accounts:
+3. Add bot accounts (explicit names only):
 
 ```
 github-actions[bot]
 dependabot[bot]
-claude
-cursoragent
 renovate[bot]
 ```
 
-4. **Pattern matching** (if supported):
+**Note:** With automatic bot co-author stripping (see [Bot Co-Author Policy](./bot-coauthor-policy.md)), AI assistant names like `claude` and `cursoragent` are removed from commits before they're created, so they don't need to be allowlisted.
 
-```
-*[bot]
-bot*
-```
+4. Click **"Save"**
 
-5. Click **"Save"**
+**Avoid pattern matching:** Patterns like `*[bot]` or `bot*` have ambiguous semantics and may match unintended accounts. Only use explicit bot names as documented by CLA Assistant.
 
 ### Step 3: Verify Configuration
 
-Check that CLA bot allows bot commits:
+**Note:** With automatic bot co-author stripping enabled, bot co-authors are removed before commits are created. To test CLA allowlist configuration without bot stripping, temporarily disable the hook:
 
 ```bash
-# Create a test PR with bot co-authors
-git commit -m "test: verify CLA bot allowlist
+# Temporarily rename the hook
+mv .husky/commit-msg .husky/commit-msg.bak
 
-Co-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>"
+# Create a test PR with bot author (using actual GitHub bot account)
+# Note: Use the exact GitHub login that CLA Assistant checks, not display names
+git commit --author="github-actions[bot] <github-actions[bot]@users.noreply.github.com>" \
+  -m "test: verify CLA bot allowlist"
 
 # Push and create PR
 gh pr create --title "test: CLA bot allowlist"
+
+# Restore the hook
+mv .husky/commit-msg.bak .husky/commit-msg
 ```
 
 **Expected result:**
 
-- ✅ Bot (`claude`) is NOT flagged for CLA
+- ✅ Bot account (`github-actions[bot]`) is NOT flagged for CLA
 - ✅ Human author IS checked for CLA
 - ✅ PR shows "All committers have signed the CLA"
 
@@ -128,9 +129,9 @@ If CLA Assistant supports `.clabot` or `cla.json`:
 allowlist:
   - github-actions[bot]
   - dependabot[bot]
-  - claude
-  - cursoragent
-  - '*[bot]' # Pattern: all accounts ending with [bot]
+  - renovate[bot]
+  # Only explicit bot names - avoid glob patterns which may have
+  # ambiguous semantics (e.g., *[bot] is a character class in some syntaxes)
 
 require-signed: true
 label: cla-signed
@@ -152,13 +153,16 @@ gh pr create
 
 ### Test 2: Bot Co-Author (Should Be Allowed)
 
+**Note:** With bot co-author stripping enabled, this test is no longer needed. Bot co-authors are automatically removed before commits are created.
+
 ```bash
+# If testing without bot stripping (hook disabled):
 git commit -m "feat: AI-assisted feature
 
-Co-authored-by: Claude Sonnet 4.5 <noreply@anthropic.com>"
+Co-authored-by: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 gh pr create
 
-# Expected: CLA bot allows 'claude', only checks human
+# Expected: CLA bot allows bot account, only checks human
 ```
 
 ### Test 3: Bot-Only Commit (Should Be Allowed)
@@ -230,11 +234,11 @@ CLAassistant commented:
 
 CLA works independently of branch protection:
 
-| Feature               | Purpose             | Blocks Merge?         |
-| --------------------- | ------------------- | --------------------- |
-| **CLA**               | Legal agreement     | ✅ Yes (until signed) |
-| **Branch Protection** | Code review, tests  | ✅ Yes (until passed) |
-| **GPG Signing**       | Commit authenticity | ❌ No (optional)      |
+| Feature               | Purpose             | Blocks Merge?                               |
+| --------------------- | ------------------- | ------------------------------------------- |
+| **CLA**               | Legal agreement     | ✅ Yes (until signed)                       |
+| **Branch Protection** | Code review, tests  | ✅ Yes (until passed)                       |
+| **GPG Signing**       | Commit authenticity | ⚠️ Optional (blocks if required by ruleset) |
 
 **CLA + Branch Protection:**
 
