@@ -233,6 +233,10 @@ function templatesFor(tsFile, sf, text) {
   const out = [];
   eachNode(sf, (n) => {
     if (!ts.isPropertyAssignment(n) || !n.name) return;
+
+    // Only process template/templateUrl if it's inside a @Component decorator
+    if (!isInComponentDecorator(n, sf)) return;
+
     const key = n.name.getText(sf);
     if (key === 'template') {
       const init = n.initializer;
@@ -264,6 +268,38 @@ function templatesFor(tsFile, sf, text) {
     }
   });
   return out;
+}
+
+/**
+ * Check if a node is inside a @Component decorator's argument object literal.
+ * Walks up the parent chain to find if this property is within a decorator named "Component".
+ */
+function isInComponentDecorator(node, sf) {
+  let current = node.parent;
+
+  // Walk up to find the ObjectLiteralExpression that contains this property
+  while (current && !ts.isObjectLiteralExpression(current)) {
+    current = current.parent;
+  }
+  if (!current) return false;
+
+  // Check if this object literal is the argument to a @Component decorator
+  const objLiteral = current;
+  if (!objLiteral.parent || !ts.isCallExpression(objLiteral.parent)) return false;
+
+  const callExpr = objLiteral.parent;
+  if (!callExpr.parent || !ts.isDecorator(callExpr.parent)) return false;
+
+  const decorator = callExpr.parent;
+  const decoratorExpr = decorator.expression;
+
+  // Check if the decorator is named "Component"
+  if (ts.isCallExpression(decoratorExpr)) {
+    const decoratorName = decoratorExpr.expression.getText(sf);
+    return decoratorName === 'Component';
+  }
+
+  return false;
 }
 
 /**

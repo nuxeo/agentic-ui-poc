@@ -102,6 +102,7 @@ function ensureFreshDist() {
     cwd: ROOT,
     encoding: 'utf8',
     shell: process.platform === 'win32',
+    maxBuffer: 10 * 1024 * 1024, // 10MB buffer to handle large build output
   });
 
   if (built.status !== 0) {
