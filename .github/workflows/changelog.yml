@@ -32,10 +32,19 @@ jobs:
             --commit-path . \
             || echo "No conventional commits found — CHANGELOG.md unchanged."
 
+      - name: Import GPG key
+        if: vars.GPG_BOT_SIGNING_ENABLED == 'true'
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
       - name: Commit updated CHANGELOG.md if changed
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "nuxeo-webui-jx-bot"
+          git config user.email "webui@hyland.com"
           git diff --quiet CHANGELOG.md || (
             git add CHANGELOG.md &&
             git commit -m "chore: update CHANGELOG [skip ci]" &&
