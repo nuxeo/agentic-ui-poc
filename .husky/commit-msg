@@ -1,0 +1,1 @@
+node scripts/strip-bot-coauthors.mjs "$1"

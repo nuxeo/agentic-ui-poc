@@ -1,66 +1,202 @@
 name: PR Review Summary
 
+# Aggregates a pull request's outstanding review feedback into a single, continuously updated
+# comment, followed by a prompt to hand to a coding agent.
+#
+# Runs on every submitted review. Note that a review submitted by the Copilot reviewer bot leaves
+# the run at `action_required` until a maintainer approves it — GitHub gates bot-triggered runs, and
+# that gate is evaluated before any job condition, so no `if` can avoid it. That cost is accepted
+# deliberately: automatic aggregation is worth an occasional approval click.
 on:
   pull_request_review:
     types: [submitted]
-  issue_comment:
-    types: [created]
 
 permissions:
   contents: read
   pull-requests: write
 
+# Explicit, because the jq/JSON handling below is not shell-agnostic: `echo` interprets backslash
+# escapes in dash and zsh but not in bash, and that difference silently corrupts JSON.
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  # Two reviews landing together would otherwise race to upsert the same comment and could both
+  # create one, which defeats the "single comment" property this workflow exists to provide.
+  group: pr-review-summary-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
 jobs:
-  collect-review-comments:
-    if: |
-      (github.event_name == 'issue_comment' &&
-       contains(github.event.comment.body, '/fix-comments') &&
-       github.event.issue.pull_request != null) ||
-      (github.event_name == 'pull_request_review' &&
-       github.event.review.state == 'CHANGES_REQUESTED')
+  summarise-review-feedback:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Collect all open review comments
+      # No `actions/checkout`: every step talks to the API and nothing reads the tree. A workflow
+      # holding `pull-requests: write` should not check out pull request code it has no use for.
+      - name: Collect open review threads, review bodies and PR comments
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number }}
+          set -euo pipefail
+          OWNER="${REPO%/*}"
+          NAME="${REPO#*/}"
 
-          echo "## Open PR Review Comments — PR #${PR_NUMBER}" > /tmp/summary.md
-          echo "" >> /tmp/summary.md
-          echo "The following comments need to be addressed:" >> /tmp/summary.md
-          echo "" >> /tmp/summary.md
+          # Review threads come from GraphQL, not `GET /pulls/{n}/comments`, because REST does not
+          # expose `isResolved` or `isOutdated` at all. This workflow previously used REST and
+          # printed every comment ever left under the heading "need to be addressed" — including
+          # ones already fixed. On the PR that prompted this rewrite, both threads were outdated
+          # and unresolved, and both had already been dealt with.
+          gh api graphql --paginate \
+            -F owner="$OWNER" -F name="$NAME" -F number="$PR_NUMBER" \
+            -f query='
+              query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+                repository(owner:$owner,name:$name){
+                  pullRequest(number:$number){
+                    reviewThreads(first:50, after:$endCursor){
+                      pageInfo{ hasNextPage endCursor }
+                      nodes{
+                        isResolved
+                        isOutdated
+                        path
+                        line
+                        comments(first:1){ nodes{ author{ login } body } }
+                      }
+                    }
+                  }
+                }
+              }' \
+            --jq '.data.repository.pullRequest.reviewThreads.nodes[]' > /tmp/threads.jsonl
 
-          gh api repos/${{ github.repository }}/pulls/${PR_NUMBER}/comments \
-            | jq -r '.[] | "### `\(.path)` line \(.line // "N/A")\n> \(.body)\n"' \
-            >> /tmp/summary.md
+          gh api graphql --paginate \
+            -F owner="$OWNER" -F name="$NAME" -F number="$PR_NUMBER" \
+            -f query='
+              query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+                repository(owner:$owner,name:$name){
+                  pullRequest(number:$number){
+                    reviews(first:50, after:$endCursor){
+                      pageInfo{ hasNextPage endCursor }
+                      nodes{ author{ login } state body }
+                    }
+                  }
+                }
+              }' \
+            --jq '.data.repository.pullRequest.reviews.nodes[] | select(.body != "")' > /tmp/reviews.jsonl
 
-          cat /tmp/summary.md
+          gh api graphql --paginate \
+            -F owner="$OWNER" -F name="$NAME" -F number="$PR_NUMBER" \
+            -f query='
+              query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+                repository(owner:$owner,name:$name){
+                  pullRequest(number:$number){
+                    comments(first:50, after:$endCursor){
+                      pageInfo{ hasNextPage endCursor }
+                      nodes{ author{ login } body }
+                    }
+                  }
+                }
+              }' \
+            --jq '.data.repository.pullRequest.comments.nodes[]' > /tmp/comments.jsonl
 
-      - name: Post summary as PR comment with agent instructions
+          # `--paginate` emits one result per page, so every file is newline-delimited JSON rather
+          # than a single array. `jq -s` reassembles them; the previous REST call had no
+          # `--paginate` at all and silently stopped at 30 comments.
+          jq -s '[.[] | select(.isResolved == false and .isOutdated == false)]' \
+            /tmp/threads.jsonl > /tmp/open-threads.json
+          jq -s '[.[] | select(.isResolved or .isOutdated)] | length' \
+            /tmp/threads.jsonl > /tmp/settled-count.txt
+
+          OPEN_COUNT=$(jq 'length' /tmp/open-threads.json)
+          SETTLED_COUNT=$(cat /tmp/settled-count.txt)
+          echo "open=$OPEN_COUNT settled=$SETTLED_COUNT" >> "$GITHUB_STEP_SUMMARY"
+          echo "OPEN_COUNT=$OPEN_COUNT" >> "$GITHUB_ENV"
+
+      - name: Upsert the summary comment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          MARKER: '<!-- pr-review-summary -->'
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number || github.event.issue.number }}
+          set -euo pipefail
 
-          # Build the comment body in a file to avoid YAML/shell quoting issues
           {
-            echo "## Agent Fix Ready"
+            echo "$MARKER"
+            echo "## PR Review Summary"
             echo ""
-            echo "To fix all review comments automatically, open Cursor Agent and run:"
+
+            if [ "$(jq 'length' /tmp/open-threads.json)" -eq 0 ]; then
+              echo "No unresolved review threads. 🎉"
+            else
+              echo "### Unresolved review threads"
+              echo ""
+              jq -r '.[] |
+                "#### `\(.path)` line \(.line // "n/a") — @\(.comments.nodes[0].author.login // "unknown")\n\n\((.comments.nodes[0].body // "") | split("\n") | map("> " + .) | join("\n"))\n"
+              ' /tmp/open-threads.json
+            fi
+
+            SETTLED=$(cat /tmp/settled-count.txt)
+            if [ "$SETTLED" -gt 0 ]; then
+              echo ""
+              echo "_${SETTLED} thread(s) omitted as resolved or outdated._"
+            fi
+
+            if [ -s /tmp/reviews.jsonl ]; then
+              echo ""
+              echo "### Review summaries"
+              echo ""
+              jq -rs '.[] | "#### @\(.author.login // "unknown") — \(.state)\n\n\(.body | split("\n") | map("> " + .) | join("\n"))\n"' /tmp/reviews.jsonl
+            fi
+
+            # The bot's own comment is excluded by marker, or each run would quote the previous one
+            # and the comment would grow without bound.
+            #
+            # Written to a file rather than held in a variable and echoed back: `echo` interprets
+            # backslash escapes in some shells, which turns the `\n` inside a JSON string into a
+            # real newline and makes the document unparseable. That is a shell-dependent break, so
+            # the round-trip is avoided rather than guarded.
+            if [ -s /tmp/comments.jsonl ]; then
+              jq -s --arg m "$MARKER" '[.[] | select((.body | contains($m)) == false)]' \
+                /tmp/comments.jsonl > /tmp/visible-comments.json
+              if [ "$(jq 'length' /tmp/visible-comments.json)" -gt 0 ]; then
+                echo ""
+                echo "### PR comments"
+                echo ""
+                jq -r '.[] | "#### @\(.author.login // "unknown")\n\n\(.body | split("\n") | map("> " + .) | join("\n"))\n"' /tmp/visible-comments.json
+              fi
+            fi
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "### Agent Fix Ready"
+            echo ""
+            echo "To address the unresolved items above, open Cursor Agent and run:"
             echo ""
             echo "    fix all PR review comments on PR #${PR_NUMBER}"
             echo ""
             echo "The agent will fetch these comments, implement fixes following project"
             echo "conventions (AGENTS/08-bug-patterns.md, AGENTS/07-security.md), and"
             echo "push a follow-up commit."
-            echo ""
-            echo "---"
-            echo ""
-            cat /tmp/summary.md
-          } > /tmp/comment-body.md
+          } > /tmp/body.md
 
-          jq -Rs '{body: .}' /tmp/comment-body.md \
-            | gh api -X POST "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --input -
+          # Deliberately not `head -n1` on the `gh` pipeline: under `pipefail`, `head` closing the
+          # pipe early makes `gh` exit non-zero and fails the step.
+          IDS=$(gh api --paginate "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq ".[] | select(.body | startswith(\"$MARKER\")) | .id")
+          EXISTING=$(printf '%s\n' "$IDS" | head -n1)
+
+          if [ -n "$EXISTING" ]; then
+            jq -Rs '{body: .}' /tmp/body.md \
+              | gh api -X PATCH "repos/${REPO}/issues/comments/${EXISTING}" --input -
+            echo "updated comment ${EXISTING}"
+          elif [ "${OPEN_COUNT}" -gt 0 ]; then
+            jq -Rs '{body: .}' /tmp/body.md \
+              | gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" --input -
+            echo "created a new summary comment"
+          else
+            # Nothing outstanding and no existing comment: stay quiet rather than posting a
+            # "nothing to do" comment on every clean review.
+            echo "nothing unresolved and no existing comment — not posting"
+          fi

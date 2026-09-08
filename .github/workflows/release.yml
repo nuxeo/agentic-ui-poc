@@ -18,7 +18,7 @@ on:
 
 permissions:
   contents: write
-  actions: write  # Required to trigger marketplace workflow
+  actions: write
 
 jobs:
   release:
@@ -27,7 +27,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.BOT_GITHUB_TOKEN }}
+          # NOTE: GITHUB_TOKEN authenticates as github-actions[bot].
+          # If branch protection is re-enabled and github-actions[bot]
+          # is not in the bypass list, git push will fail on line 67.
+          # Options: (1) add github-actions[bot] to bypass list,
+          # (2) use BOT_GITHUB_TOKEN with bypass permissions, or
+          # (3) create a PR instead of direct push.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -39,19 +45,10 @@ jobs:
         env:
           SATORI_GH_READONLY_TOKEN: ${{ secrets.SATORI_GH_READONLY_TOKEN }}
 
-      - name: Import GPG key
-        if: vars.GPG_BOT_SIGNING_ENABLED == 'true'
-        uses: crazy-max/ghaction-import-gpg@v6
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-          git_user_signingkey: true
-          git_commit_gpgsign: true
-
       - name: Configure git
         run: |
-          git config user.name "nuxeo-webui-jx-bot"
-          git config user.email "webui@hyland.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Bump version
         id: version
@@ -94,4 +91,5 @@ jobs:
         run: |
           gh workflow run build-marketplace.yml \
             --ref main \
+            -f publishToPreprod=true \
             || echo "Marketplace build trigger skipped (workflow may not exist)"
