@@ -306,7 +306,7 @@ made different claims and neither disclosed it. Four were added to CI that day, 
 | Workflow                | Trigger                                  | Does                                                                                  |
 | ----------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------- |
 | `ci.yml`                | push to `main`/`feature/**`/`fix/**`, PR | guardrails, static gates, lint, test, typecheck, published-package gates, bundle size |
-| `build-marketplace.yml` | push, PR                                 | Maven build of the marketplace package (3 jobs)                                       |
+| `build-marketplace.yml` | PR, manual                               | Maven build of the marketplace package (3 jobs); publishes to preprod only on request |
 | `release.yml`           | manual                                   | Release                                                                               |
 | `changelog.yml`         | push, manual                             | Changelog generation                                                                  |
 | `dead-code.yml`         | weekly, Mon 06:00 UTC                    | Dead-code sweep                                                                       |
