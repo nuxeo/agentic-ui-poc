@@ -4,7 +4,7 @@
 
 ### 1. Created Husky Commit-Msg Hook
 
-**File:** [`.husky/commit-msg`](.husky/commit-msg)
+**File:** [`.husky/commit-msg`](../.husky/commit-msg)
 
 ```bash
 node scripts/strip-bot-coauthors.mjs "$1"
@@ -14,7 +14,7 @@ This hook runs **automatically on every commit** for all developers.
 
 ### 2. Created Stripping Script
 
-**File:** [`scripts/strip-bot-coauthors.mjs`](scripts/strip-bot-coauthors.mjs)
+**File:** [`scripts/strip-bot-coauthors.mjs`](../scripts/strip-bot-coauthors.mjs)
 
 **Removes these bot co-authors:**
 
@@ -334,16 +334,20 @@ Our workflows use `github-actions[bot]` as the commit author:
 
 If your CI adds co-author trailers, they'll be stripped if they match bot patterns.
 
-**To preserve a CI bot co-author:**
+**To strip a CI bot co-author:**
 
-Add it to the allowlist in `scripts/strip-bot-coauthors.mjs`:
+Add its pattern to `BOT_PATTERNS` in `scripts/strip-bot-coauthors.mjs`:
 
 ```js
 const BOT_PATTERNS = [
   // ... existing patterns ...
-  /^Co-authored-by:\s+my-ci-bot\s+<.*>$/im,
+  /^Co-authored-by:\s+my-ci-bot\s+<.*>$/gim, // Note: use 'gim' flags
 ];
 ```
+
+**To preserve a CI bot co-author:**
+
+Simply don't add it to `BOT_PATTERNS`. Only bots matching the patterns are stripped; all others are kept.
 
 ---
 

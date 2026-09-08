@@ -280,12 +280,13 @@ CLA works independently of branch protection:
 
 **Current Approach:**
 
-This repository uses **automatic bot co-author stripping** instead of CLA allowlisting:
+This repository uses **automatic bot co-author stripping** to reduce CLA allowlist needs:
 
-- ✅ Bot co-authors are removed from commits automatically (see [Bot Co-Author Policy](./bot-coauthor-policy.md))
-- ✅ Only human contributors appear in git history
-- ✅ CLA checks only see human authors
-- ✅ No need to configure CLA allowlist
+- ✅ Bot **co-authors** are removed from commits automatically (see [Bot Co-Author Policy](./bot-coauthor-policy.md))
+- ✅ CLA checks don't see AI assistant co-authors (claude, cursoragent)
+- ⚠️ Bot **authors** (e.g., Dependabot PRs) still need CLA allowlisting
+
+**Note:** The hook strips `Co-authored-by` trailers but doesn't change commit authors. PRs opened by bot accounts (like Dependabot) still require those bots to be allowlisted in CLA Assistant.
 
 **Steps (if CLA allowlist is needed in future):**
 

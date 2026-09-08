@@ -17,6 +17,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # NOTE: GITHUB_TOKEN authenticates as github-actions[bot].
+          # If branch protection is re-enabled and github-actions[bot]
+          # is not in the bypass list, this push will fail.
+          # Options: (1) add github-actions[bot] to bypass list,
+          # (2) use BOT_GITHUB_TOKEN with bypass permissions, or
+          # (3) create a PR instead of direct push.
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4

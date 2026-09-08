@@ -16,31 +16,39 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const BOT_PATTERNS = [
-  /^Co-authored-by:\s+github-actions\[bot\]\s+<.*>$/im,
-  /^Co-authored-by:\s+dependabot\[bot\]\s+<.*>$/im,
-  /^Co-authored-by:\s+renovate\[bot\]\s+<.*>$/im,
-  /^Co-authored-by:\s+Claude\s+.*<.*@anthropic\.com>$/im,
-  /^Co-authored-by:\s+Cursor\s+.*<.*@cursor\.com>$/im,
-  /^Co-authored-by:\s+cursoragent.*$/im,
+  /^Co-authored-by:\s+github-actions\[bot\]\s+<.*>$/gim,
+  /^Co-authored-by:\s+dependabot\[bot\]\s+<.*>$/gim,
+  /^Co-authored-by:\s+renovate\[bot\]\s+<.*>$/gim,
+  /^Co-authored-by:\s+Claude\s+.*<.*@anthropic\.com>$/gim,
+  /^Co-authored-by:\s+Cursor\s+.*<.*@cursor\.com>$/gim,
+  /^Co-authored-by:\s+cursoragent.*$/gim,
 ];
 
 function stripBotCoauthors(message) {
   let cleaned = message;
+  let removedAny = false;
 
   for (const pattern of BOT_PATTERNS) {
-    cleaned = cleaned.replace(pattern, '');
+    if (pattern.test(cleaned)) {
+      removedAny = true;
+      pattern.lastIndex = 0; // Reset regex state
+      cleaned = cleaned.replace(pattern, '');
+    }
   }
 
-  // Remove multiple consecutive blank lines
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  // Only clean up formatting if we actually removed bot co-authors
+  if (removedAny) {
+    // Remove multiple consecutive blank lines left by removed trailers
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
 
-  // Remove trailing whitespace
-  cleaned = cleaned.replace(/[ \t]+$/gm, '');
+    // Remove trailing whitespace on lines
+    cleaned = cleaned.replace(/[ \t]+$/gm, '');
 
-  // Ensure single trailing newline
-  cleaned = cleaned.trimEnd() + '\n';
+    // Ensure single trailing newline
+    cleaned = cleaned.trimEnd() + '\n';
+  }
 
-  return cleaned;
+  return { cleaned, removedAny };
 }
 
 // Main
@@ -52,9 +60,9 @@ if (!commitMsgFile) {
 
 try {
   const originalMessage = readFileSync(commitMsgFile, 'utf8');
-  const cleanedMessage = stripBotCoauthors(originalMessage);
+  const { cleaned: cleanedMessage, removedAny } = stripBotCoauthors(originalMessage);
 
-  if (originalMessage !== cleanedMessage) {
+  if (removedAny) {
     writeFileSync(commitMsgFile, cleanedMessage, 'utf8');
     console.log('✓ Removed bot co-authors from commit message');
   }
