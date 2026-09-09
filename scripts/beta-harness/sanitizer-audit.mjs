@@ -102,17 +102,64 @@ const BYPASS_RE = /^bypassSecurityTrust(Url|ResourceUrl|Html|Style|Script)$/;
  * ordinary TypeScript that compiles to the same property read, so it was a one-character evasion of
  * the entire gate.
  *
- * Only a string literal counts. `sanitizer[name]` with a computed name is not resolvable here, and
- * pretending otherwise would be the syntactic guessing this file has been burned by; an indirect
- * bypass that this cannot name is not silently admitted either, because check 5's indirect-reference
- * finding still fires on the reference that produced `name`.
+ * A literal index is read directly, so this keeps working with no checker. A non-literal one is
+ * resolved **through the checker**, because a string constant is the next spelling along and the
+ * comment here used to decline it on the grounds that resolving it "would be the syntactic guessing
+ * this file has been burned by". It is the opposite of that: asking `getTypeAtLocation` for a
+ * string-literal type is the compiler answering, which is precisely what closed the alias class in
+ * check 4 and the identity class in check 5.
+ *
+ * The same comment claimed nothing was silently admitted by the limit, "because check 5's
+ * indirect-reference finding still fires on the reference that produced `name`". It does not, and
+ * `const M = 'bypassSecurityTrustHtml'; sanitizer[M](raw)` is why: `M` is a string, not a reference
+ * to the member, so there is no indirect read for that finding to see. Run against the pre-fix
+ * script with raw markdown passed to it, checks 1, 3 and 5 all printed
+ * `PASS — 31 bypass call(s), all accounted for`.
  * @returns {string|null}
  */
-function accessedMemberName(node) {
+function accessedMemberName(node, checker) {
   if (ts.isPropertyAccessExpression(node)) return node.name.text;
-  if (ts.isElementAccessExpression(node)) {
-    const arg = node.argumentExpression;
-    if (arg && (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) return arg.text;
+  if (!ts.isElementAccessExpression(node)) return null;
+
+  const arg = node.argumentExpression;
+  if (!arg) return null;
+  if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return arg.text;
+  // A numeric index is an array read, not a member name; short-circuiting it keeps the checker out
+  // of the hot path for the many `a[0]` in the tree.
+  if (!checker || ts.isNumericLiteral(arg)) return null;
+
+  let type;
+  try {
+    type = checker.getTypeAtLocation(arg);
+  } catch {
+    return null;
+  }
+  for (const part of type?.isUnionOrIntersection?.() ? type.types : [type]) {
+    if (part?.isStringLiteral?.()) return part.value;
+  }
+  return null;
+}
+
+/**
+ * The property a binding element destructures, when it names one explicitly.
+ *
+ * `{ bypassSecurityTrustHtml }` carries no `propertyName`, so matching on the bound name was right
+ * for it. `{ 'bypassSecurityTrustHtml': trust }` and `{ ['bypassSecurityTrustHtml']: trust }` do
+ * carry one, and the identifier-only test fell through to the bound name — reading the local alias
+ * `trust`, which matches nothing. Verified against the pre-fix script: check 1 printed
+ * `PASS — 31 bypass call(s), all accounted for` with the quoted form in place.
+ * @returns {string|null}
+ */
+function destructuredPropertyName(element) {
+  const name = element.propertyName;
+  if (!name) return null;
+  if (ts.isIdentifier(name)) return name.text;
+  if (ts.isStringLiteral(name) || ts.isNoSubstitutionTemplateLiteral(name)) return name.text;
+  if (
+    ts.isComputedPropertyName(name) &&
+    (ts.isStringLiteral(name.expression) || ts.isNoSubstitutionTemplateLiteral(name.expression))
+  ) {
+    return name.expression.text;
   }
   return null;
 }
@@ -260,7 +307,7 @@ function enclosingMemberName(node) {
  * allowlist entry, which is why `calls` is deduplicated by line.
  * @returns {{member: string, kind: string, line: number, indirect: boolean}[]}
  */
-function collectBypasses(sf) {
+function collectBypasses(sf, checker) {
   const found = [];
   const seenLines = new Set();
 
@@ -280,7 +327,7 @@ function collectBypasses(sf) {
   eachNode(sf, (n) => {
     // `x.bypassSecurityTrustHtml(...)` / `x['bypassSecurityTrustHtml'](...)` — the direct forms.
     if (ts.isCallExpression(n)) {
-      const name = accessedMemberName(n.expression);
+      const name = accessedMemberName(n.expression, checker);
       if (name && BYPASS_RE.test(name)) {
         record(n, name, false);
         return;
@@ -290,7 +337,7 @@ function collectBypasses(sf) {
     // The same member read in any position that is not the callee of its own call — `.bind`,
     // an assignment, an argument, a return.
     if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) {
-      const name = accessedMemberName(n);
+      const name = accessedMemberName(n, checker);
       if (name && BYPASS_RE.test(name)) {
         const isOwnCallee = ts.isCallExpression(n.parent) && n.parent.expression === n;
         if (!isOwnCallee) record(n, name, true);
@@ -299,7 +346,7 @@ function collectBypasses(sf) {
 
     // `const { bypassSecurityTrustHtml } = this.sanitizer;`
     if (ts.isBindingElement(n) && n.name && ts.isIdentifier(n.name)) {
-      const bound = n.propertyName && ts.isIdentifier(n.propertyName) ? n.propertyName.text : n.name.text;
+      const bound = destructuredPropertyName(n) ?? n.name.text;
       if (BYPASS_RE.test(bound)) record(n, bound, true);
     }
   });
@@ -329,6 +376,7 @@ function isInertTransformArg(arg) {
  * in what the code does.
  */
 function declarationHash(node, checker) {
+  if (!checker) return null;
   const callee = node.expression;
   const target = ts.isPropertyAccessExpression(callee) ? callee.name : callee;
   let symbol = checker.getSymbolAtLocation(target);
@@ -359,6 +407,8 @@ function declarationHash(node, checker) {
  * their real declaration site — which is either the reviewed one or it is not.
  */
 function resolveCalleeDeclaration(node, checker) {
+  // No checker means no proof of identity, and check 5 rejects what it cannot prove.
+  if (!checker) return null;
   const callee = node.expression;
   const target = ts.isPropertyAccessExpression(callee) ? callee.name : callee;
   if (!ts.isIdentifier(target) && !ts.isPrivateIdentifier(target)) return null;
@@ -1013,11 +1063,31 @@ function main() {
     }
   }
 
+  // A node handed to the checker must belong to the checker's own program: one from a detached
+  // `ts.createSourceFile` throws inside the compiler. So every walk below takes the program's copy of
+  // a file, and falls back to the detached parse with no checker — which fails closed rather than
+  // skipping, since `accessedMemberName` still reads literal spellings and
+  // `resolveCalleeDeclaration` returns null without a checker, so check 5 reports.
+  /** @type {Map<string, {sf: ts.SourceFile, checker: ts.TypeChecker|null}>} */
+  const audited = new Map();
+  const detachedOnly = [];
+  for (const [file, { sf }] of parsed) {
+    const fromProgram = program.getSourceFile(join(ROOT, file));
+    audited.set(file, { sf: fromProgram ?? sf, checker: fromProgram ? checker : null });
+    if (!fromProgram) detachedOnly.push(file);
+  }
+  if (detachedOnly.length > 0) {
+    notes.push(
+      `${detachedOnly.length} file(s) are not in the type program, so only literal spellings were ` +
+        `resolved in them and every unproven case in them is reported: ${detachedOnly.join(', ')}`,
+    );
+  }
+
   // ---- collect every bypass, with its true enclosing member -----------------------------------
   /** @type {{file:string,member:string,kind:string,line:number}[]} */
   const bypasses = [];
-  for (const [file, { sf }] of parsed) {
-    for (const b of collectBypasses(sf)) bypasses.push({ file, ...b });
+  for (const [file, { sf, checker: fileChecker }] of audited) {
+    for (const b of collectBypasses(sf, fileChecker)) bypasses.push({ file, ...b });
   }
 
   if (printOnly) {
@@ -1132,10 +1202,10 @@ function main() {
   // Known category A and B debt is recorded in the allowlist and suppressed here; the budget
   // ratchet below is what forces it down. An *unrecorded* one is a regression.
   if (run(3)) {
-    for (const [file, { sf }] of parsed) {
+    for (const [file, { sf, checker: fileChecker }] of audited) {
       eachNode(sf, (n) => {
         if (!ts.isCallExpression(n)) return;
-        const bypassName = accessedMemberName(n.expression);
+        const bypassName = accessedMemberName(n.expression, fileChecker);
         if (!bypassName || !/^bypassSecurityTrust(Url|ResourceUrl)$/.test(bypassName)) return;
         const member = enclosingMemberName(n);
         const key = `${file}::${member}`;
@@ -1270,16 +1340,14 @@ function main() {
           `    renderTrustedHtml.`,
       );
     }
-    // Iterated from the PROGRAM's source files, not the standalone-parsed ones. A `TypeChecker` can
-    // only resolve nodes belonging to its own program — handing it a node from a detached
-    // `ts.createSourceFile` throws inside the compiler rather than returning nothing.
-    for (const file of parsed.keys()) {
-      const sf = program.getSourceFile(join(ROOT, file));
-      if (!sf) continue;
+    // `audited` rather than the program directly: this used to look the file up itself and
+    // `continue` when the program did not carry it, which made an unchecked file indistinguishable
+    // from a clean one in the output.
+    for (const [file, { sf, checker: fileChecker }] of audited) {
       const approvedHelper = APPROVED_HELPERS.get(file);
       eachNode(sf, (n) => {
         if (!ts.isCallExpression(n)) return;
-        if (accessedMemberName(n.expression) !== 'bypassSecurityTrustHtml') return;
+        if (accessedMemberName(n.expression, fileChecker) !== 'bypassSecurityTrustHtml') return;
 
         // Skip only if this bypass is inside the approved helper function
         if (approvedHelper) {
@@ -1300,7 +1368,7 @@ function main() {
         }
         const arg = n.arguments?.[0];
         if (!arg) return; // no argument is a compile error, not this gate's business
-        const sanitized = sanitizerReaches(arg, host ?? sf, sf, checker, approvedSanitisers);
+        const sanitized = sanitizerReaches(arg, host ?? sf, sf, fileChecker, approvedSanitisers);
         if (!sanitized) {
           findings.push(
             `[5] unsanitised trusted HTML  ${file}:${lineOf(sf, n)}\n` +

@@ -28,6 +28,7 @@ const ROOT = resolve(import.meta.dirname, '..', '..');
 const AUDIT = 'scripts/beta-harness/sanitizer-audit.mjs';
 const ALLOWLIST = '.ai/state/sanitizer-allowlist.json';
 const VIEWER_TS = 'libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts';
+const NOTE_EDITOR = 'libs/features/document-detail/src/lib/note-editor/note-editor.ts';
 
 /** Runs the audit and returns { code, out }. */
 function runAudit(extraArgs = []) {
@@ -183,6 +184,76 @@ control(
             `    }\n`,
         );
       },
+    ),
+  'bypass count mismatch',
+);
+
+// ---- check 1: element access whose index is a constant rather than a literal ---------------------
+// The control above covers the literal spelling. `accessedMemberName` deliberately stopped there,
+// on the stated grounds that resolving a computed index "would be the syntactic guessing this file
+// has been burned by" and that nothing was silently admitted because "check 5's indirect-reference
+// finding still fires on the reference that produced `name`".
+//
+// The first is backwards — asking `getTypeAtLocation` for a string-literal type is the compiler
+// answering, which is what closed the alias class in check 4 — and the second is simply not true:
+// `M` is a string, not a reference to the member, so there is no indirect read for check 5 to see.
+// Verified against the pre-fix script with raw markdown handed to it: checks 1, 3 and 5 each
+// printed "PASS — 31 bypass call(s), all accounted for".
+control(
+  'check 1 catches a bypass whose element-access index is a string constant',
+  1,
+  () =>
+    edit(NOTE_EDITOR, (s) => {
+      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      return s.replace(
+        anchor,
+        `    const BYPASS_KEY = 'bypassSecurityTrustHtml';\n` +
+          `    if (raw === '__selftest__') {\n` +
+          `      return this.sanitizer[BYPASS_KEY](raw);\n` +
+          `    }\n` +
+          anchor,
+      );
+    }),
+  'bypass count mismatch',
+);
+
+control(
+  'check 5 checks the pairing of a bypass whose index is a string constant',
+  5,
+  // Being counted is not being checked, and this is the half that matters: the argument is `raw`,
+  // the user-authored markdown, not the DOMPurify output. A bypass check 5 cannot see is stored XSS
+  // with the gate green.
+  () =>
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        `    const BYPASS_KEY = 'bypassSecurityTrustHtml';\n` +
+          `    if (raw === '__selftest__') {\n` +
+          `      return this.sanitizer[BYPASS_KEY](raw);\n` +
+          `    }\n` +
+          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+      ),
+    ),
+  'unsanitised trusted HTML',
+);
+
+// ---- check 1: destructuring under a quoted property name ----------------------------------------
+// `{ bypassSecurityTrustHtml }` carries no `propertyName`, so matching the bound name was right for
+// it. `{ 'bypassSecurityTrustHtml': trust }` does carry one, and the identifier-only test fell
+// through to the bound name — reading the local alias `trust`, which matches nothing. Verified
+// against the pre-fix script: "PASS — 31 bypass call(s), all accounted for".
+control(
+  'check 1 catches a bypass destructured under a quoted property name',
+  1,
+  () =>
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        `    const { 'bypassSecurityTrustHtml': trust } = this.sanitizer;\n` +
+          '    void trust;\n' +
+          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+      ),
     ),
   'bypass count mismatch',
 );
@@ -472,7 +543,6 @@ control(
 );
 
 // ---- check 5: the ways review showed the provenance walk could still be fooled ------------------
-const NOTE_EDITOR = 'libs/features/document-detail/src/lib/note-editor/note-editor.ts';
 
 control(
   'check 5 rejects a function that is merely NAMED like a sanitiser',
