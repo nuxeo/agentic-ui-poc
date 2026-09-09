@@ -399,7 +399,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-298 exported symbol(s).
+297 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
