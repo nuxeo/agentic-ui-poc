@@ -346,19 +346,26 @@ control(
 );
 
 control(
-  'check 4 sees through an alias declared in another file',
+  'check 4 sees through an alias imported from another file',
   4,
   () => {
-    // Declared where the component does not — the case that made the per-file shape map a silent
-    // pass, and the one ordinary refactoring produces by moving a type into a shared models file.
+    // A type declared where the component is not, reached by a real import — which is what ordinary
+    // refactoring produces when a type moves into a shared models file. This is resolved through the
+    // checker now, so the import has to be genuine; a bare name that does not resolve is a different
+    // case, covered below.
     edit('libs/shared/nuxeo-client/src/lib/utils/navigable-url.ts', (s) =>
-      `export type CrossFileMediaUrl = import('@angular/platform-browser').SafeResourceUrl;\n${s}`,
+      `${s}\nexport type CrossFileMediaUrl = import('@angular/platform-browser').SafeResourceUrl;\n`,
     );
     edit(VIEWER_TS, (s) =>
-      s.replace(
-        'readonly posterUrl = input<string | null>(null);',
-        'readonly posterUrl = input<CrossFileMediaUrl | null>(null);',
-      ),
+      s
+        .replace(
+          "import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';",
+          "import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';\nimport type { CrossFileMediaUrl } from '@nuxeo-satori/platform/nuxeo-client';",
+        )
+        .replace(
+          'readonly posterUrl = input<string | null>(null);',
+          'readonly posterUrl = input<CrossFileMediaUrl | null>(null);',
+        ),
     );
   },
   'document-viewer.component.html',
@@ -368,12 +375,13 @@ control(
   'check 4 reports a NONE-context binding whose type it cannot resolve',
   4,
   () =>
-    // No type argument and no annotation, so the resolver returns "cannot tell". It must report
-    // rather than skip: every documented evasion surfaced as unresolvable, not as benign.
+    // `any` is the checker declining to answer, not an answer. Treating it as a resolution would
+    // reinstate the silent pass: `any` is not `Safe*`, so the binding would sail through. An
+    // unresolvable alias produces the error type and lands here too.
     edit(VIEWER_TS, (s) =>
       s.replace(
         'readonly posterUrl = input<string | null>(null);',
-        'readonly posterUrl = input(null as unknown as string | null);',
+        'readonly posterUrl = input<any>(null);',
       ),
     ),
   'unresolvable type in a NONE context',
@@ -470,15 +478,17 @@ control(
 );
 
 control(
-  'check 5 rejects an escapeHtml that returns its input unchanged',
+  'check 5 lapses a registered sanitiser once its body is edited',
   5,
   () =>
-    // Dead marker text used to satisfy the helper check: it searched the declaration for `&lt;`
-    // without asking what the function returns.
+    // The one hole a reviewed-registry design leaves: identity alone would keep accepting a helper
+    // that has since been edited into a no-op. Each entry is pinned to a hash of the declaration it
+    // was reviewed as, so any change to what the code does lapses the registration until someone
+    // re-reviews and re-pins. Whitespace is normalised first, so reformatting does not.
     edit('libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts', (s) => {
       const out = s.replace(
         /private escapeHtml\(value: string\): string \{/,
-        'private escapeHtml(value: string): string {\n    return value;\n    // eslint-disable-next-line no-unreachable',
+        'private escapeHtml(value: string): string {\n    if (value === "") return value;',
       );
       if (out === s) throw new Error('kd-citation-dialog escapeHtml signature changed — update control');
       return out;
