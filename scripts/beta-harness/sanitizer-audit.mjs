@@ -618,6 +618,21 @@ const STRING_TRANSFORMS = new Set([
 ]);
 
 /**
+ * Whether a binary operator assigns to its left operand.
+ *
+ * `=` and every compound form. Only `EqualsToken` was tested, so `clean += raw` was not recorded as
+ * a source of `clean` and the provenance walk never saw the appended value — verified silent on this
+ * repository with attacker-authored markdown concatenated onto a DOMPurify result.
+ *
+ * All of them, not just `+=`: the arithmetic ones cannot produce a string in practice, but "cannot
+ * in practice" is the reasoning that produced this hole. An assignment is a new value for the
+ * variable, and check 5 has to see every new value or it is proving nothing.
+ */
+function isAssignmentOperator(kind) {
+  return kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment;
+}
+
+/**
  * Whether the value in `expr` demonstrably came from a sanitiser.
  *
  * Check 5 used to ask a weaker question: does the enclosing member's *text* contain
@@ -723,26 +738,51 @@ function sanitizerReaches(expr, host, sf, checker, approvedSanitisers) {
     // must trace back to a sanitiser. `html = html.replace(...)` self-references, which the `seen`
     // guard would otherwise reject, so a self-reference is skipped rather than failed — the other
     // sources of the same variable still have to pass.
+    //
+    // Sources are matched by **symbol**, not by name, and **every** assignment operator counts. Both
+    // of those were fail-open, and both were reproduced on this repository before being fixed:
+    //
+    //   - Collecting every same-named declaration in the member let an unrelated *shadow* vouch for
+    //     the variable that actually reaches the bypass. A parameter contributes no source at all, so
+    //     for `trust(clean: string)` an inner `const clean = DOMPurify.sanitize(...)` in a branch that
+    //     never runs was the *only* source collected, and "every source is sanitised" was satisfied
+    //     by a value that never gets there. `getSymbolAtLocation` distinguishes the two `clean`s.
+    //   - Only `EqualsToken` was recorded, so `clean += raw` was not a source at all:
+    //     `let clean = DOMPurify.sanitize(raw); clean += raw;` passed with attacker-authored markdown
+    //     concatenated onto the sanitised string. Every assignment operator is recorded now, and the
+    //     appended value has to be sanitised on its own — `+=` puts `d.right` in the independent set,
+    //     which is the same treatment `x = x + untrusted` already got through the `+` walk.
     if (ts.isIdentifier(node)) {
       const name = node.text;
       if (safeNames.has(name)) return true;
       if (seen.has(name)) return false;
       seen.add(name);
 
+      // The declaration this identifier actually refers to. Without a checker there is nothing to
+      // resolve with, and nothing can be proven anyway — `isSanitiser` already rejects everything —
+      // so the name comparison is kept as an inert fallback rather than a second code path.
+      const symbol = checker ? checker.getSymbolAtLocation(node) : null;
+      const isSameBinding = (candidate) => {
+        if (!symbol) return candidate.text === name;
+        const candidateSymbol = checker.getSymbolAtLocation(candidate);
+        return candidateSymbol !== undefined && candidateSymbol === symbol;
+      };
+
       const sources = [];
       eachNode(host, (d) => {
-        if (ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) && d.name.text === name) {
+        if (ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) && isSameBinding(d.name)) {
           if (d.initializer) sources.push(d.initializer);
         }
         if (
           ts.isBinaryExpression(d) &&
-          d.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          isAssignmentOperator(d.operatorToken.kind) &&
           ts.isIdentifier(d.left) &&
-          d.left.text === name
+          isSameBinding(d.left)
         ) {
           sources.push(d.right);
         }
       });
+      // No source at all is the parameter case, among others: nothing to trace, nothing proven.
       if (sources.length === 0) return false;
 
       const selfReferential = (source) =>

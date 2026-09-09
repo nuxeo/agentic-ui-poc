@@ -960,6 +960,71 @@ control(
   'unsanitised trusted HTML',
 );
 
+// ---- check 5: the two fail-open paths in the provenance walk ------------------------------------
+//
+// Both were silent on this repository before the fix, and both hand attacker-authored markdown to
+// `bypassSecurityTrustHtml` with the gate printing "PASS — 31 bypass call(s), all accounted for".
+control(
+  'check 5 rejects raw text appended by a compound assignment',
+  5,
+  // `sanitizerReaches` collected only `EqualsToken` assignments as sources of a variable, so
+  // `clean += raw` was not a source at all: the walk saw the sanitised initialiser, never the
+  // appended value. Every assignment operator is recorded now, and `+=` puts its right-hand side in
+  // the independent set, which is the same treatment `clean = clean + raw` already received.
+  () =>
+    edit(NOTE_EDITOR, (s) => {
+      const before = `    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
+        '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      if (!s.includes(before)) throw new Error('note-editor markdownHtml changed — update this control');
+      return s.replace(
+        before,
+        `    let clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
+          '    clean += raw;\n' +
+          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+      );
+    }),
+  'unsanitised trusted HTML',
+);
+
+control(
+  'check 5 does not let a same-named shadow vouch for an unsanitised parameter',
+  5,
+  // Sources were gathered by identifier **text** across the whole member, so any same-named
+  // declaration counted. A parameter contributes no source at all, so for `trustShadowed(clean)` the
+  // inner `const clean = DOMPurify.sanitize(...)` — in a branch that never runs, and whose value
+  // never reaches the bypass — was the *only* source collected, and "every source is sanitised" was
+  // satisfied by a value that is not the one being trusted. Sources are matched by checker symbol
+  // now, so the two `clean`s are different bindings and the parameter has no source: nothing to
+  // trace, nothing proven, reported.
+  () =>
+    edit(NOTE_EDITOR, (s) => {
+      const before = `  readonly markdownHtml = computed(() => {\n` +
+        '    if (!this.isMarkdown()) return null;\n' +
+        "    const raw = renderNoteMarkdown(this.content() ?? '');\n" +
+        `    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
+        '    return this.sanitizer.bypassSecurityTrustHtml(clean);\n' +
+        '  });';
+      if (!s.includes(before)) throw new Error('note-editor markdownHtml changed — update this control');
+      return s.replace(
+        before,
+        `  readonly markdownHtml = computed(() => {\n` +
+          '    if (!this.isMarkdown()) return null;\n' +
+          "    const raw = renderNoteMarkdown(this.content() ?? '');\n" +
+          '    return this.trustShadowed(raw);\n' +
+          '  });\n' +
+          '\n' +
+          '  private trustShadowed(clean: string): SafeHtml {\n' +
+          "    if (clean === '__never__') {\n" +
+          `      const clean = DOMPurify.sanitize('x', { ADD_ATTR: ['target', 'rel'] });\n` +
+          '      void clean;\n' +
+          '    }\n' +
+          '    return this.sanitizer.bypassSecurityTrustHtml(clean);\n' +
+          '  }',
+      );
+    }),
+  'unsanitised trusted HTML',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',

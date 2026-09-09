@@ -20,7 +20,7 @@ below before reading "Done" as "closed".
 | --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
 | **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (39 negative controls + 5 green baselines + 2 silence assertions — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (41 negative controls + 5 green baselines + 2 silence assertions — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
 | **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
 | **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                                                           |
 | **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                                                             |
@@ -919,6 +919,17 @@ must be reported; it did not change what makes the check sound.
   `noImplicitAny` — the libraries enable `strict` in their own tsconfigs — so that index is an error
   to `nx build` and not an error to this audit's own checker.
 
+- **Check 5's provenance walk resolves a variable by symbol, and sees every assignment.** Two
+  fail-open paths, both reproduced silent on this repository with attacker-authored markdown reaching
+  `bypassSecurityTrustHtml`. Sources were gathered by identifier *text* across the whole member, so
+  any same-named declaration counted: a parameter contributes no source at all, so for
+  `trustShadowed(clean: string)` an inner `const clean = DOMPurify.sanitize(…)` in a branch that
+  never runs was the only source collected, and "every source is sanitised" was satisfied by a value
+  that never reaches the bypass. And only `EqualsToken` was recorded, so `clean += raw` was not a
+  source at all. Sources now match by checker symbol, and every assignment operator counts — `+=`
+  puts its right-hand side in the independent set, the same treatment `clean = clean + raw` already
+  got. "The arithmetic operators cannot produce a string in practice" is deliberately not relied on;
+  that shape of reasoning is what produced the hole.
 - **A budget ratchet.** `budgets` in the allowlist caps bypass **calls** per category — calls, not
   entries, so one member cannot absorb more without moving a number. It already worked once: deleting
   `fetchPreferredVideoSource`'s bypass made its entry stale, check 2 said so, and B ratcheted 8 → 7 in
@@ -934,7 +945,7 @@ must be reported; it did not change what makes the check sound.
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **46 assertions, of which only 39 are negative controls** —
+  one red run pasted into a PR. It reports **48 assertions, of which only 41 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 7 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **2 silence assertions**: check 4 must stay quiet while walking its longest path to an alias that
