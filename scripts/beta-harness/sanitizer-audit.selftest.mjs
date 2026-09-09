@@ -732,6 +732,77 @@ control(
   'Safe* value in a NONE context',
 );
 
+// ---- check 4: template discovery must not depend on how the decorator is spelled ---------------
+//
+// Template discovery tested `decoratorExpr.expression.getText(sf) !== 'Component'`, so it was
+// fail-open on every spelling but one. `import { Component as NgComponent } from '@angular/core';
+// @NgComponent({ … })` is ordinary TypeScript and produced no template entry at all — check 4 had
+// nothing to report on, and returned `PASS` on a `SafeResourceUrl` bound to `video[poster]`.
+// `@ngCore.Component({ … })` was invisible the same way.
+//
+// Resolving the identifier to Angular's own `Component` through the checker closes those two and
+// leaves the same shape of hole one step out, which the third control here is for: a decorator that
+// merely *refers* to `Component` resolves to the referrer, not to Angular. So discovery does not
+// establish the decorator's identity at all — `template`/`templateUrl` inside a decorator argument
+// is the evidence, and any decorator qualifies. There is then no import to rename to switch the
+// check off.
+//
+// Each control retypes `posterUrl` to `SafeResourceUrl` — a real defect, as the plain `[poster]`
+// control already establishes — and changes only how the decorator is written.
+const decoratorSpelling = (rewrite) => {
+  edit(VIEWER_TS, (s) => {
+    const retyped = s.replace(
+      'readonly posterUrl = input<string | null>(null);',
+      'readonly posterUrl = input<SafeResourceUrl | null>(null);',
+    );
+    if (retyped === s) throw new Error('document-viewer posterUrl changed — update these controls');
+    const out = rewrite(retyped);
+    if (out === retyped) throw new Error('decorator rewrite matched nothing — update these controls');
+    return out;
+  });
+};
+
+/** Renames the `Component` import to `NgComponent`, leaving the decorator site to the caller. */
+const aliasCoreComponentImport = (s) =>
+  s.replace(/import \{([^}]*)\} from '@angular\/core';/, (whole, names) =>
+    whole.replace(names, names.replace('Component,', 'Component as NgComponent,')),
+  );
+
+control(
+  'check 4 finds a template behind an aliased Component decorator',
+  4,
+  () =>
+    decoratorSpelling((s) => aliasCoreComponentImport(s).replace('@Component({', '@NgComponent({')),
+  'Safe* value in a NONE context',
+);
+
+control(
+  'check 4 finds a template behind a namespaced Component decorator',
+  4,
+  () =>
+    decoratorSpelling((s) =>
+      s
+        .replace("import {\n  Component,", "import * as ngCore from '@angular/core';\nimport {\n  Component,")
+        .replace('@Component({', '@ngCore.Component({'),
+    ),
+  'Safe* value in a NONE context',
+);
+
+control(
+  'check 4 finds a template behind a decorator that only refers to Component',
+  4,
+  // The case symbol resolution does not reach: `Wrapped` resolves to the local `const`, not to
+  // Angular, so an identity check would skip the template. Discovery does not ask.
+  () =>
+    decoratorSpelling((s) =>
+      aliasCoreComponentImport(s).replace(
+        '@Component({',
+        'const Wrapped = NgComponent;\n\n@Wrapped({',
+      ),
+    ),
+  'Safe* value in a NONE context',
+);
+
 control(
   'check 4 reports a template Angular itself cannot parse',
   4,

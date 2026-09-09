@@ -20,7 +20,7 @@ below before reading "Done" as "closed".
 | --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
 | **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (36 negative controls + 5 green baselines + 2 silence assertions — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (39 negative controls + 5 green baselines + 2 silence assertions — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
 | **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
 | **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                                                           |
 | **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                                                             |
@@ -861,6 +861,19 @@ on this repository. Enumerating the bindings the compiler found closes the class
 alternation. A template that will not parse is **reported**, since no bindings and unreadable are
 otherwise indistinguishable.
 
+**And template discovery no longer depends on how the decorator is spelled.** It matched the
+decorator's callee text against `Component`, which was fail-open on every other spelling:
+`import { Component as NgComponent }; @NgComponent({ … })` produced no template entry at all, so
+check 4 returned `PASS` on a `SafeResourceUrl` bound to `video[poster]`, and `@ngCore.Component({ … })`
+was invisible the same way. Resolving the identifier to Angular's `Component` through the checker
+closes both and leaves the hole one step further out — a decorator that merely _refers_ to `Component`
+resolves to the referrer. So discovery does not establish the decorator's identity at all:
+`template`/`templateUrl` inside a decorator argument is the evidence, and any decorator qualifies.
+That is inclusive rather than fail-open, on the asymmetry check 4 trades on everywhere else — a
+template scanned that nothing compiles costs at most one finding on a dormant binding, and there is
+no import left to rename to switch the check off. Establishing identity is the right tool for
+check 5, where the question is "is this the reviewed sanitiser"; it is the wrong tool here.
+
 **None of that is what makes check 4 trustworthy. It fails closed.** A NONE-context binding whose type
 cannot be resolved is _reported_, and `any`, `unknown` and the error type count as unresolved rather
 than as answers — they are the checker declining, not answering. That reverses what this section once
@@ -921,7 +934,7 @@ must be reported; it did not change what makes the check sound.
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **43 assertions, of which only 36 are negative controls** —
+  one red run pasted into a PR. It reports **46 assertions, of which only 39 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 7 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **2 silence assertions**: check 4 must stay quiet while walking its longest path to an alias that

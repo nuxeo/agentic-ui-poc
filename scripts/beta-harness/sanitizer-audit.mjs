@@ -785,7 +785,7 @@ function templatesFor(tsFile, sf) {
     if (!ts.isPropertyAssignment(n) || !n.name) return;
 
     // Only `template`/`templateUrl` on a `@Component`, and only with the class that owns it.
-    const classDecl = componentClassOf(n, sf);
+    const classDecl = componentClassOf(n);
     if (!classDecl) return;
 
     const key = n.name.getText(sf);
@@ -824,6 +824,42 @@ function templatesFor(tsFile, sf) {
 }
 
 /**
+ * Whether a decorator call could carry a component template.
+ *
+ * This tested `decoratorExpr.expression.getText(sf) !== 'Component'` — the same decide-by-source-text
+ * mistake the rest of this file has been rewritten twice to stop making, and here in the **fail-open**
+ * direction. `import { Component as NgComponent } from '@angular/core'; @NgComponent({ … })` is
+ * ordinary TypeScript and produced no template entry at all, so check 4 had nothing to report on.
+ * Verified: aliasing the decorator on `document-viewer.component.ts` while binding a
+ * `SafeResourceUrl` to `video[poster]` returned the audit to
+ * `PASS — 31 bypass call(s), all accounted for`. `@ngCore.Component({ … })` was invisible the same
+ * way.
+ *
+ * Resolving the identifier through the checker to Angular's own `Component` closes both, and was the
+ * first fix here. It is **not** what this does, because it leaves the same shape of hole one step
+ * further out: a decorator that wraps or re-exports `Component` from the application's own code
+ * resolves to the wrapper, and the template would be skipped again. Establishing identity is the
+ * right tool for check 5, where the question is "is this the reviewed sanitiser". It is the wrong
+ * tool here.
+ *
+ * The question check 4 actually needs answered is not "is this Angular's decorator" but "is there a
+ * template here, and which class does it belong to". `template`/`templateUrl` inside a decorator
+ * argument is itself the evidence, so **any** decorator qualifies, and the identity of the decorator
+ * never has to be established.
+ *
+ * That is inclusive rather than fail-open, and the asymmetry is the justification: a template
+ * scanned that no Angular decorator ever compiles can at worst produce one finding on a dormant
+ * binding — which is the same trade check 4 already takes everywhere else, since a false positive
+ * costs one allowlist line and a false negative is a shipped defect. There is also no way to switch
+ * the check off by renaming an import.
+ */
+function couldCarryComponentTemplate(decoratorCall) {
+  const callee = decoratorCall.expression;
+  const target = ts.isPropertyAccessExpression(callee) ? callee.name : callee;
+  return ts.isIdentifier(target);
+}
+
+/**
  * The class whose `@Component` decorator this property assignment belongs to, or `null`.
  *
  * It used to answer only *whether* the property was inside a `@Component`, and check 4 then resolved
@@ -837,7 +873,7 @@ function templatesFor(tsFile, sf) {
  * The owning class is the only correct answer, so it is carried through to check 4 rather than
  * rediscovered there.
  */
-function componentClassOf(node, sf) {
+function componentClassOf(node) {
   let current = node.parent;
 
   // Up to the ObjectLiteralExpression holding this property.
@@ -853,7 +889,7 @@ function componentClassOf(node, sf) {
   if (!decorator || !ts.isDecorator(decorator)) return null;
   const decoratorExpr = decorator.expression;
   if (!ts.isCallExpression(decoratorExpr)) return null;
-  if (decoratorExpr.expression.getText(sf) !== 'Component') return null;
+  if (!couldCarryComponentTemplate(decoratorExpr)) return null;
 
   // And the decorator hangs off the class this template belongs to.
   const classDecl = decorator.parent;
