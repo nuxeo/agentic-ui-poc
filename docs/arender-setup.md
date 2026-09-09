@@ -190,30 +190,51 @@ The ARender Docker images are built for `linux/amd64`. On Apple Silicon (M1/M2/M
 | Text Handler   | 8899         | Change `ports` for `document-text-handler` |
 | Converter      | 19999        | Change `ports` for `document-converter`    |
 
-If you change the ARender UI port, also update the `ARENDER_CONFIG` provider in the Angular app (see below).
+If you change the ARender UI port, also update `integrations.arender` in the runtime manifest (see below).
 
 ## Angular Configuration
 
-The `ARENDER_CONFIG` injection token in `libs/shared/nuxeo-client/src/lib/arender.config.ts` controls the ARender URLs:
+**There is no default. ARender is off unless you configure it.**
 
-| Property           | Default                         | Description                             |
-| ------------------ | ------------------------------- | --------------------------------------- |
-| `viewerOrigin`     | `http://localhost:9080`         | ARender UI URL as seen by the browser   |
-| `nuxeoInternalUrl` | `http://nuxeo-auth-proxy/nuxeo` | Nuxeo URL as seen by ARender containers |
+`ARENDER_CONFIG` is `InjectionToken<ARenderConfig | null>` and its default factory returns `null`.
+It used to compile in `http://localhost:9080` and `http://nuxeo-auth-proxy/nuxeo`, which meant a
+shipped build with no configuration pointed the annotation viewer at the _user's own_ machine over
+plaintext. Those defaults were removed (Sonar `S5332`), so an unconfigured deployment now shows
+"Annotations are not available" on the document's Annotations tab — that placeholder is the expected
+state, not a bug.
 
-Override in `app.config.ts` if needed:
+Configure it through the **runtime app-config manifest**, not by providing the token in
+`app.config.ts`. The manifest is Layer 0, so a deployment changes it without rebuilding:
 
-```typescript
-import { ARENDER_CONFIG } from '@nuxeo-satori/platform/nuxeo-client';
-
+```json
 {
-  provide: ARENDER_CONFIG,
-  useValue: {
-    viewerOrigin: 'http://localhost:9090',        // custom ARender port
-    nuxeoInternalUrl: 'http://nuxeo-auth-proxy/nuxeo',
-  },
+  "integrations": {
+    "arender": {
+      "viewerOrigin": "https://arender.example.com",
+      "nuxeoInternalUrl": "http://nuxeo-auth-proxy/nuxeo"
+    }
+  }
 }
 ```
+
+| Property           | Required | Constraints                                                                                                                               |
+| ------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. `https:` in production; `http:` only in a dev build.                                               |
+| `nuxeoInternalUrl` | yes      | Nuxeo as the **ARender containers** see it, through the auth-proxy sidecar. Plain `http:` is fine — it is never navigated by the browser. |
+
+Both are mandatory and validated in two places, so a partial or malformed configuration disables
+ARender rather than half-enabling it:
+
+- `bootstrap-config.ts` yields `null` unless the merged manifest has **both** endpoints non-blank.
+  A blank endpoint is worse than none: `fetch('')` resolves against the application's own origin, so
+  an availability probe would report a viewer that is not deployed.
+- `ARenderService` additionally requires each endpoint to be an absolute `http(s)` base with **no
+  query string, no fragment and no userinfo**. Both values have parameters appended to them, and a
+  base carrying its own `?` or `#` absorbs the appended `url` parameter so the viewer receives no
+  document.
+
+For local development the compose file above publishes the ARender UI on host port 9080, so a dev
+manifest uses `"viewerOrigin": "http://localhost:9080"`.
 
 ## File Reference
 

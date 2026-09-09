@@ -293,7 +293,91 @@ control(
       if (out === s) throw new Error('note-editor.ts no longer calls DOMPurify.sanitize — update this control');
       return out;
     }),
-  'unpaired trusted HTML  libs/features/document-detail/src/lib/note-editor/note-editor.ts',
+  // Finding renamed from "unpaired" to "unsanitised" when check 5 stopped asking whether a sanitiser
+  // was *nearby* and started asking whether its result actually reaches the bypass.
+  'unsanitised trusted HTML  libs/features/document-detail/src/lib/note-editor/note-editor.ts',
+);
+
+// ---- check 4: the evasions review found, each of which used to pass silently ---------------------
+//
+// The control above proves the resolver can walk a `@for` variable into a same-file interface. It
+// cannot prove the resolver understands *types*, and it did not: review demonstrated that
+// `type MediaUrl = SafeResourceUrl` reduced to the text `MediaUrl`, which `mentionsSafe` does not
+// match. Each control here is one of those evasions, and each was verified red before the fix.
+
+const VIEWER_TS = 'libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts';
+
+control(
+  'check 4 sees through a local type alias',
+  4,
+  () =>
+    edit(VIEWER_TS, (s) =>
+      s
+        .replace(
+          'export interface VideoSource {',
+          'type MediaUrl = SafeResourceUrl;\n\nexport interface VideoSource {',
+        )
+        .replace(
+          'readonly posterUrl = input<string | null>(null);',
+          'readonly posterUrl = input<MediaUrl | null>(null);',
+        ),
+    ),
+  'document-viewer.component.html',
+);
+
+control(
+  'check 4 sees through an alias declared in another file',
+  4,
+  () => {
+    // Declared where the component does not — the case that made the per-file shape map a silent
+    // pass, and the one ordinary refactoring produces by moving a type into a shared models file.
+    edit('libs/shared/nuxeo-client/src/lib/utils/navigable-url.ts', (s) =>
+      `export type CrossFileMediaUrl = import('@angular/platform-browser').SafeResourceUrl;\n${s}`,
+    );
+    edit(VIEWER_TS, (s) =>
+      s.replace(
+        'readonly posterUrl = input<string | null>(null);',
+        'readonly posterUrl = input<CrossFileMediaUrl | null>(null);',
+      ),
+    );
+  },
+  'document-viewer.component.html',
+);
+
+control(
+  'check 4 reports a NONE-context binding whose type it cannot resolve',
+  4,
+  () =>
+    // No type argument and no annotation, so the resolver returns "cannot tell". It must report
+    // rather than skip: every documented evasion surfaced as unresolvable, not as benign.
+    edit(VIEWER_TS, (s) =>
+      s.replace(
+        'readonly posterUrl = input<string | null>(null);',
+        'readonly posterUrl = input(null as unknown as string | null);',
+      ),
+    ),
+  'unresolvable type in a NONE context',
+);
+
+// ---- check 5: a decoy sanitiser must not satisfy the pairing -------------------------------------
+control(
+  'check 5 rejects a sanitiser whose result never reaches the bypass',
+  5,
+  () =>
+    edit('libs/features/document-detail/src/lib/note-editor/note-editor.ts', (s) => {
+      // The DOMPurify call stays — it is the decoy. What changes is that the bypass now receives
+      // raw content instead of the sanitised result. The previous check only asked whether the text
+      // `DOMPurify.sanitize(` appeared in the member, so it passed on exactly this.
+      const out = s.replace(
+        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        'return this.sanitizer.bypassSecurityTrustHtml(this.content() ?? "");',
+      );
+      if (out === s) {
+        throw new Error('note-editor.ts no longer matches the decoy control — update it');
+      }
+      return out;
+    }),
+  'unsanitised trusted HTML',
 );
 
 // ---- the ratchet ---------------------------------------------------------------------------------
@@ -306,7 +390,33 @@ control(
       j.budgets.A -= 1;
       return JSON.stringify(j, null, 2);
     }),
-  'category A has 14 entries, budget is 13',
+  'budget is 13',
+);
+
+control(
+  'the ratchet cannot be removed by deleting the budgets object',
+  null,
+  () =>
+    // `Object.entries(raw.budgets ?? {})` iterated nothing, so deleting the key turned the ceiling
+    // off and the gate stayed green. Removing a ratchet must be louder than lowering it.
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      delete j.budgets;
+      return JSON.stringify(j, null, 2);
+    }),
+  "has no 'budgets' object",
+);
+
+control(
+  'the ratchet rejects a category with no numeric budget',
+  null,
+  () =>
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      delete j.budgets.D;
+      return JSON.stringify(j, null, 2);
+    }),
+  'category D has no numeric budget',
 );
 
 // ---- report -------------------------------------------------------------------------------------

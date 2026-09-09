@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { isNavigableOrigin, navigableUrlOrNull, originOf } from './navigable-url';
+import {
+  isNavigableBaseUrl,
+  isNavigableOrigin,
+  navigableUrlOrNull,
+  originOf,
+} from './navigable-url';
 
 /**
  * The negative cases are the point of this file. A validator that only has happy-path tests is a
@@ -170,4 +175,43 @@ describe('isNavigableOrigin', () => {
       expect(isNavigableOrigin(value as string | null, true)).toBe(false);
     },
   );
+});
+
+describe('isNavigableBaseUrl', () => {
+  it('accepts an https origin, with or without a path', () => {
+    expect(isNavigableBaseUrl('https://viewer.example.com')).toBe(true);
+    // A path is legitimate — a viewer can be hosted under a prefix — and appending parameters to
+    // it is well defined.
+    expect(isNavigableBaseUrl('https://viewer.example.com/arender')).toBe(true);
+  });
+
+  it('rejects http unless insecure is permitted', () => {
+    expect(isNavigableBaseUrl('http://localhost:9080')).toBe(false);
+    expect(isNavigableBaseUrl('http://localhost:9080', true)).toBe(true);
+  });
+
+  // The three exclusions that distinguish this from `isNavigableOrigin`. Each is a URL a caller
+  // would append `?url=` to and get something that does not carry a top-level `url` parameter, or
+  // that leaks a credential into an iframe navigation.
+  it.each([
+    ['a query string', 'https://viewer.example.com/app?tenant=x'],
+    ['a fragment', 'https://viewer.example.com/app#frag'],
+    ['userinfo with a password', 'https://user:pass@viewer.example.com'],
+    ['userinfo without a password', 'https://user@viewer.example.com'],
+  ])('rejects a base carrying %s', (_label, value) => {
+    expect(isNavigableBaseUrl(value, true)).toBe(false);
+  });
+
+  it('accepts a trailing question mark, which carries no parameter', () => {
+    // `new URL()` normalises an empty query away, so `search` is `''` and there is nothing for an
+    // appended parameter to collide with. Rejecting this would be stricter than the defect
+    // requires — the harm came from concatenating onto a *populated* query, not from a stray `?`.
+    expect(isNavigableBaseUrl('https://viewer.example.com/app?', true)).toBe(true);
+  });
+
+  it('rejects everything isNavigableOrigin rejected', () => {
+    for (const value of ['javascript:alert(1)', '', null, 'viewer.example.com', '//host/x']) {
+      expect(isNavigableBaseUrl(value as string | null, true)).toBe(false);
+    }
+  });
 });

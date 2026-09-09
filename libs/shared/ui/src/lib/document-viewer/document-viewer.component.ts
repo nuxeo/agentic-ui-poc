@@ -114,7 +114,8 @@ export class DocumentViewerComponent {
    *
    * So: `blobUrl` for `iframe[src]` (which conversely *throws* on a raw string) and `img[src]`,
    * this one for the three NONE bindings. Enforced by `scripts/beta-harness/sanitizer-audit.mjs`
-   * check 4, which resolves the bound expression's type rather than matching its text.
+   * check 4, which follows the bound expression to a type declaration and — crucially — reports any
+   * NONE-context binding whose type it cannot resolve, rather than assuming it is safe.
    */
   readonly rawBlobUrl = input<string | null>(null);
   readonly mimeType = input<string>('');

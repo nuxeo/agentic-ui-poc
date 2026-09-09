@@ -36,8 +36,18 @@ export interface ARenderConfig {
  *     the very filename pattern where hardcoded configuration is most likely to live.
  *
  * There is deliberately no fallback now. A deployment that wants ARender supplies both values in
- * its manifest; anything less is `null`, which matches `bootstrap-config.ts` already refusing half
- * an ARender configuration on the grounds that half is worse than none.
+ * its manifest; anything less is `null`.
+ *
+ * Completeness is enforced **twice, in different layers**, and neither is redundant:
+ *
+ *   - `bootstrap-config.ts`'s `completeARenderConfig` returns `null` unless the merged result has
+ *     both endpoints non-blank, so a half-configured manifest never reaches the token.
+ *   - `ARenderService` re-checks, and additionally requires each endpoint to be an absolute http(s)
+ *     base with no query, fragment or userinfo — because it builds parameters onto them.
+ *
+ * An earlier version of this comment claimed `bootstrap-config.ts` already refused half a
+ * configuration when it did not: the merge filled the missing half with `''`, producing precisely
+ * the object the comment said was impossible. The prose is not the contract; the check is.
  */
 export const ARENDER_CONFIG = new InjectionToken<ARenderConfig | null>('ARENDER_CONFIG', {
   providedIn: 'root',

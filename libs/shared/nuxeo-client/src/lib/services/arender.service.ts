@@ -2,7 +2,7 @@ import { inject, Injectable, isDevMode } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { ARENDER_CONFIG, type ARenderConfig } from '../arender.config';
 import { CURRENT_USERNAME } from '../current-user.token';
-import { isNavigableOrigin, navigableUrlOrNull } from '../utils/navigable-url';
+import { isNavigableBaseUrl } from '../utils/navigable-url';
 
 /**
  * ARender annotation viewer integration.
@@ -61,15 +61,40 @@ export class ARenderService {
     const cfg = this.rawCfg;
     if (!cfg) return null;
 
-    // Navigated in an iframe — the load-bearing check.
-    if (!isNavigableOrigin(cfg.viewerOrigin, isDevMode())) return null;
+    // Navigated in an iframe — the load-bearing check. `isNavigableBaseUrl`, not
+    // `isNavigableOrigin`: both URL builders below add parameters to this value, and a base
+    // carrying its own query or fragment silently absorbs them so no top-level `url` parameter
+    // survives. See that function for the three cases it rejects and why.
+    if (!isNavigableBaseUrl(cfg.viewerOrigin, isDevMode())) return null;
 
     // Not navigated by the browser: this is encoded into the `url=` parameter and fetched by
-    // ARender's own server through the auth-proxy sidecar, so it is legitimately plain http. It
-    // still has to be a well-formed absolute http(s) URL rather than anything at all.
-    if (!navigableUrlOrNull(cfg.nuxeoInternalUrl, { allowInsecure: true })) return null;
+    // ARender's own server through the auth-proxy sidecar, so it is legitimately plain http. It is
+    // still a base that gets a path appended, so it carries the same no-query/no-fragment
+    // requirement — a `#` here would truncate the nxfile path ARender is asked to fetch.
+    if (!isNavigableBaseUrl(cfg.nuxeoInternalUrl, true)) return null;
 
     return cfg;
+  }
+
+  /**
+   * `base` with `url` parameters and the acting user attached.
+   *
+   * Built with `URL`/`searchParams` rather than string concatenation. Concatenation was the defect:
+   * `${viewerOrigin}/?url=${encodeURIComponent(...)}` assumes `viewerOrigin` has no query and no
+   * fragment of its own, and produced a URL with no top-level `url` parameter whenever it did.
+   * `searchParams.append` is also what makes the two-document diff case correct — `url` legitimately
+   * appears twice, which a `set`-based or hand-built approach gets wrong.
+   */
+  private buildViewerUrl(base: string, nxfileUrls: string[]): string {
+    const url = new URL(base);
+    for (const nxfileUrl of nxfileUrls) {
+      url.searchParams.append('url', nxfileUrl);
+    }
+    const user = this.currentUsername();
+    if (user) {
+      url.searchParams.set('user', user);
+    }
+    return url.toString();
   }
 
   /**
@@ -88,7 +113,7 @@ export class ARenderService {
     if (!cfg) return of(null);
 
     const nxfileUrl = `${cfg.nuxeoInternalUrl}/nxfile/default/${docUid}/${blobXPath}`;
-    return of(this.withUser(`${cfg.viewerOrigin}/?url=${encodeURIComponent(nxfileUrl)}`));
+    return of(this.buildViewerUrl(cfg.viewerOrigin, [nxfileUrl]));
   }
 
   /**
@@ -101,11 +126,7 @@ export class ARenderService {
 
     const leftUrl = `${cfg.nuxeoInternalUrl}/nxfile/default/${leftDocUid}/file:content`;
     const rightUrl = `${cfg.nuxeoInternalUrl}/nxfile/default/${rightDocUid}/file:content`;
-    return of(
-      this.withUser(
-        `${cfg.viewerOrigin}/?url=${encodeURIComponent(leftUrl)}&url=${encodeURIComponent(rightUrl)}`,
-      ),
-    );
+    return of(this.buildViewerUrl(cfg.viewerOrigin, [leftUrl, rightUrl]));
   }
 
   /**
@@ -131,11 +152,5 @@ export class ARenderService {
           subscriber.complete();
         });
     });
-  }
-
-  /** Appends the acting user so ARender attributes annotations to them. */
-  private withUser(viewerUrl: string): string {
-    const user = this.currentUsername();
-    return user ? `${viewerUrl}&user=${encodeURIComponent(user)}` : viewerUrl;
   }
 }

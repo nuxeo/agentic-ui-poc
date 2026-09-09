@@ -116,13 +116,49 @@ export function originOf(value: string | null | undefined): string | null {
 }
 
 /**
- * Whether `origin` is usable as the base of a navigable URL: absolute, http(s), and `https:` unless
- * insecure is explicitly permitted. Used to reject a configured viewer origin before anything is
- * built from it.
+ * Whether `value` is usable as the **base** of a URL this code will build parameters onto:
+ * absolute, http(s), `https:` unless insecure is permitted, and carrying no query, fragment or
+ * userinfo. A path is allowed — a viewer legitimately lives at `https://host/arender`.
+ *
+ * The last three exclusions are the point, and each is a defect this rejects rather than a
+ * theoretical tidiness rule:
+ *
+ *   - **Query.** A caller appending `?url=…` to `https://host/app?tenant=x` produces
+ *     `…?tenant=x/?url=…`, where the whole suffix is part of `tenant`'s *value*. There is no
+ *     top-level `url` parameter, so the viewer receives no document.
+ *   - **Fragment.** Everything after `#` stays in the browser and is never sent, so
+ *     `https://host#frag` swallows the parameter entirely.
+ *   - **Userinfo.** `https://user:pass@host` embeds a credential in a URL that gets navigated in
+ *     an iframe and written into `document.referrer` and history. It is also the classic
+ *     look-alike host trick, since the part before `@` reads like the destination.
+ *
+ * Callers that build parameters onto this base must still use `URL`/`searchParams` rather than
+ * string concatenation; this check makes that safe, it does not make it unnecessary.
+ */
+export function isNavigableBaseUrl(
+  value: string | null | undefined,
+  allowInsecure = false,
+): boolean {
+  if (navigableUrlOrNull(value, { allowInsecure }) === null) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(value as string);
+  } catch {
+    return false;
+  }
+  return (
+    parsed.search === '' && parsed.hash === '' && parsed.username === '' && parsed.password === ''
+  );
+}
+
+/**
+ * @deprecated Prefer {@link isNavigableBaseUrl}. This name promised "is an origin" while accepting
+ * a query, fragment and userinfo, and two callers built `?url=…` onto the result — see
+ * `isNavigableBaseUrl` for what that produced. Retained only so the name resolves; it now delegates.
  */
 export function isNavigableOrigin(
   value: string | null | undefined,
   allowInsecure = false,
 ): boolean {
-  return navigableUrlOrNull(value, { allowInsecure }) !== null;
+  return isNavigableBaseUrl(value, allowInsecure);
 }

@@ -32,7 +32,7 @@
     "ng": "ng",
     "prepare": "husky",
     "review:guardrails": "node scripts/review-guardrails.mjs",
-    "review:preflight": "npm run review:guardrails && npm run beta:sanitizers && npx nx affected -t lint && npx nx affected -t test",
+    "review:preflight": "npm run review:guardrails && npm run beta:sanitizers && npm run beta:sanitizers-selftest && npx nx affected -t lint && npx nx affected -t test",
     "start": "nx serve",
     "test": "nx test",
     "watch": "nx build --watch --configuration development",

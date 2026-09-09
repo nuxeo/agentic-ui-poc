@@ -291,6 +291,7 @@ export {
   principalPermissionToLocalRow,
 } from './lib/utils/principal-permission-display';
 export {
+  isNavigableBaseUrl,
   isNavigableOrigin,
   navigableUrlOrNull,
   originOf,

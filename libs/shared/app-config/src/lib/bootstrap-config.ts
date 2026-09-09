@@ -46,7 +46,13 @@ export interface AppBrandingConfig {
   readonly documentTitle: string;
 }
 
-/** ARender annotation viewer endpoints. `null` keeps the values compiled into the client. */
+/**
+ * ARender annotation viewer endpoints, or `null` when ARender is not deployed.
+ *
+ * `null` means **no annotation viewer**, not "fall back to a compiled default" — there are no
+ * compiled defaults any more. `ARENDER_CONFIG` is nullable and defaults to `null`, and the UI shows
+ * "Annotations are not available".
+ */
 export interface AppARenderConfig {
   readonly viewerOrigin: string;
   readonly nuxeoInternalUrl: string;
@@ -333,21 +339,42 @@ function readStringRecord(value: unknown): Readonly<Record<string, string>> {
   return record;
 }
 
+/**
+ * An ARender configuration only if the manifest supplies **both** endpoints non-blank, otherwise
+ * `null`.
+ *
+ * Falls back to `base` per field so a partial override still merges over an existing complete
+ * configuration; it is the *result* that must be complete, not the patch.
+ */
+function completeARenderConfig(
+  patch: Record<string, unknown>,
+  base: AppARenderConfig | null,
+): AppARenderConfig | null {
+  const viewerOrigin = readString(patch, 'viewerOrigin', base?.viewerOrigin ?? '').trim();
+  const nuxeoInternalUrl = readString(
+    patch,
+    'nuxeoInternalUrl',
+    base?.nuxeoInternalUrl ?? '',
+  ).trim();
+  if (!viewerOrigin || !nuxeoInternalUrl) return null;
+  return { viewerOrigin, nuxeoInternalUrl };
+}
+
 function mergeIntegrations(base: AppIntegrationsConfig, value: unknown): AppIntegrationsConfig {
   if (!isRecord(value)) return base;
   const arender = value['arender'];
   return {
-    // Both endpoints are required: half an ARender configuration is worse than none.
-    arender: isRecord(arender)
-      ? {
-          viewerOrigin: readString(arender, 'viewerOrigin', base.arender?.viewerOrigin ?? ''),
-          nuxeoInternalUrl: readString(
-            arender,
-            'nuxeoInternalUrl',
-            base.arender?.nuxeoInternalUrl ?? '',
-          ),
-        }
-      : base.arender,
+    // Both endpoints are required: half an ARender configuration is worse than none, because a
+    // blank endpoint is not inert. `fetch('')` resolves against the *application's own* origin, so
+    // an availability probe would report a viewer that is not deployed, and the URL built from it
+    // would be same-origin.
+    //
+    // This used to be a comment only. The merge filled a missing half from
+    // `base.arender?.… ?? ''`, and since `base.arender` is `null` that produced an object with one
+    // blank endpoint — exactly the state the comment said was rejected. `ARenderService` guards it
+    // too, and deliberately keeps doing so, but the layer that claims to enforce the contract now
+    // actually does.
+    arender: isRecord(arender) ? completeARenderConfig(arender, base.arender) : base.arender,
     knowledgeDiscoveryOperations: {
       ...base.knowledgeDiscoveryOperations,
       ...readStringRecord(value['knowledgeDiscoveryOperations']),

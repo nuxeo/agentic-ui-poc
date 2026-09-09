@@ -20,18 +20,35 @@
  *
  * The first cut of this script used regexes for "enclosing member" and emitted 100+ findings
  * naming things like `of`, `pipe`, `subscribe` and `if` as members. A gate nobody can read is a
- * gate that gets switched off, so it resolves types through the compiler API instead —
- * `typescript` is already a dependency, so this costs no install.
+ * gate that gets switched off, so it walks the TypeScript **AST** via `ts.createSourceFile`
+ * instead — `typescript` is already a dependency, so this costs no install.
  *
  * Check 4 is the one that most needed it. Angular's DOM security schema puts `source[src]`,
  * `audio[src]` and `video[poster]` in `SecurityContext.NONE`, where **no sanitiser runs** and so
  * a `Safe*` value is never unwrapped — it is assigned to the DOM property and coerced by
  * `toString()`, writing the literal string `"SafeValue must use [property]=binding: …"` into
- * `src`. Deciding whether a binding is affected therefore means resolving the *type* the
+ * `src`. Deciding whether a binding is affected therefore means following the *type* the
  * expression carries, hopping through interfaces (`src.url` → `VideoSource.url`) and `@for` loop
- * variables. Pattern-matching the expression text cannot do that, and section 5.1 of the plan is
- * explicit that a template check which cannot see through an alias is worse than none because it
- * will be trusted wrongly.
+ * variables. Pattern-matching the expression text cannot do that.
+ *
+ * ## What this is NOT, and what makes that safe
+ *
+ * There is **no `ts.Program` and no `TypeChecker` here.** Type resolution is syntactic: annotation
+ * text, plus declarations gathered from every parsed file, plus alias expansion. An earlier version
+ * of this comment claimed it "resolves types", and the claim was believed — including in review —
+ * while `type MediaUrl = SafeResourceUrl; posterUrl = input<MediaUrl>()` sailed through, because the
+ * text `MediaUrl` does not match `/Safe…/`.
+ *
+ * A syntactic resolver has a knowable failure mode: it either resolves a type or it does not. So the
+ * honesty of check 4 does not rest on the resolver being complete — it rests on **failing closed**.
+ * An unresolvable NONE-context binding is reported, not skipped. That converts every gap in this
+ * resolver, present and future, from a silent pass into a visible finding. Adding a real
+ * `TypeChecker` would shrink the set of things it must report; it would not change what makes it
+ * trustworthy.
+ *
+ * Section 5.1 of the plan is explicit that a template check which cannot see through an alias is
+ * worse than none, because it will be trusted wrongly. It was. Hence both the alias expansion and
+ * the fail-closed default.
  *
  * Usage:
  *   node scripts/beta-harness/sanitizer-audit.mjs
@@ -39,6 +56,7 @@
  *   node scripts/beta-harness/sanitizer-audit.mjs --only 4         # run one check (for evidence)
  */
 
+import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import ts from 'typescript';
@@ -173,14 +191,29 @@ function collectBypasses(sf) {
 function memberTypeText(decl, sf) {
   if (decl.type) return decl.type.getText(sf);
   const init = decl.initializer;
-  if (init && ts.isCallExpression(init)) {
-    if (init.typeArguments?.length) return init.typeArguments.map((t) => t.getText(sf)).join(' | ');
-    // `input.required<T>()` — the type args hang off the inner call.
-    const inner = init.expression;
-    if (ts.isPropertyAccessExpression(inner) && init.typeArguments?.length) {
-      return init.typeArguments.map((t) => t.getText(sf)).join(' | ');
-    }
+  if (!init || !ts.isCallExpression(init)) return null;
+
+  // `signal<T>()`, `input<T>()`, `computed<T>()` — type args on the call itself.
+  if (init.typeArguments?.length) {
+    return init.typeArguments.map((t) => t.getText(sf)).join(' | ');
   }
+
+  // `input.required<T>()` — the type args hang off the *inner* call expression. The previous
+  // version re-tested `init.typeArguments?.length` here, which the branch above has already
+  // returned on, so this was unreachable and `input.required<SafeResourceUrl>()` resolved to
+  // `null` — i.e. "cannot tell", i.e. silently unchecked.
+  const inner = init.expression;
+  if (ts.isPropertyAccessExpression(inner) && ts.isCallExpression(inner.expression)) {
+    const innerArgs = inner.expression.typeArguments;
+    if (innerArgs?.length) return innerArgs.map((t) => t.getText(sf)).join(' | ');
+  }
+
+  // `bypassSecurityTrust*` called directly into a signal: `signal(this.sanitizer.bypass…())` has no
+  // type argument at all, but its type is not in doubt. Read the initializer instead of giving up.
+  const argText = init.arguments?.length ? init.arguments.map((a) => a.getText(sf)).join(' ') : '';
+  const fromBypass = argText.match(/bypassSecurityTrust(Url|ResourceUrl|Html|Style|Script)\b/);
+  if (fromBypass) return `Safe${fromBypass[1]}`;
+
   return null;
 }
 
@@ -191,6 +224,8 @@ function memberTypeText(decl, sf) {
 function collectTypeShapes(sf) {
   const interfaces = new Map();
   const members = new Map();
+  /** `type X = Y` where Y is a reference rather than a literal — the alias evasion. */
+  const aliases = new Map();
 
   eachNode(sf, (n) => {
     if (ts.isInterfaceDeclaration(n) || (ts.isTypeAliasDeclaration(n) && ts.isTypeLiteralNode(n.type))) {
@@ -203,6 +238,11 @@ function collectTypeShapes(sf) {
       }
       interfaces.set(n.name.getText(sf), props);
     }
+    // `type MediaUrl = SafeResourceUrl` — NOT a type literal, so the branch above skips it, and
+    // before this the annotation text `MediaUrl` never matched `mentionsSafe`.
+    if (ts.isTypeAliasDeclaration(n) && !ts.isTypeLiteralNode(n.type)) {
+      aliases.set(n.name.getText(sf), n.type.getText(sf));
+    }
     if (ts.isPropertyDeclaration(n) && n.name && !ts.isComputedPropertyName(n.name)) {
       const t = memberTypeText(n, sf);
       if (t) members.set(n.name.getText(sf), t);
@@ -212,7 +252,187 @@ function collectTypeShapes(sf) {
     }
   });
 
-  return { interfaces, members };
+  return { interfaces, members, aliases };
+}
+
+/**
+ * Every interface and type alias in the repository, keyed by name.
+ *
+ * Per-file shapes are not enough: an interface or alias declared in one file and imported into a
+ * component resolved to `null` — "cannot tell" — and check 4 treats that as "do not flag". Moving
+ * `VideoSource` into a shared models file, which is ordinary refactoring, would therefore have
+ * silently switched the check off for the binding it exists to guard.
+ *
+ * Names are global here rather than import-resolved. Two same-named types in different files would
+ * merge, which can only ever *widen* what the check considers Safe-typed — it cannot hide one.
+ * @returns {{interfaces: Map<string, Map<string,string>>, aliases: Map<string,string>}}
+ */
+function collectGlobalTypes(parsed) {
+  const interfaces = new Map();
+  const aliases = new Map();
+  for (const [, { sf }] of parsed) {
+    const shapes = collectTypeShapes(sf);
+    for (const [name, props] of shapes.interfaces) if (!interfaces.has(name)) interfaces.set(name, props);
+    for (const [name, target] of shapes.aliases) if (!aliases.has(name)) aliases.set(name, target);
+  }
+  return { interfaces, aliases };
+}
+
+/**
+ * Follow `type A = B; type B = SafeResourceUrl` to the end, so the text tested for `Safe*` is the
+ * resolved target rather than whatever local name the author chose.
+ *
+ * Depth-capped and cycle-guarded: a self-referential alias is a compile error, not this gate's
+ * problem, and it must not hang the build.
+ */
+function expandAliases(typeText, aliases, seen = new Set()) {
+  if (!typeText) return typeText;
+  let out = typeText;
+  for (let depth = 0; depth < 8; depth += 1) {
+    const names = out.match(/\b[A-Z][\w$]*\b/g) ?? [];
+    const next = names.find((name) => aliases.has(name) && !seen.has(name));
+    if (!next) break;
+    seen.add(next);
+    out = out.replace(new RegExp(`\\b${next}\\b`, 'g'), aliases.get(next));
+  }
+  return out;
+}
+
+/**
+ * Matched on the *final* name of the callee, so `DOMPurify.sanitize`, `this.escapeHtml` and a bare
+ * `renderTrustedHtml` all count. Matching the whole callee text does not work: the real call sites
+ * are `this.escapeHtml(text)`.
+ */
+const SANITISER_NAMES = new Set(['sanitize', 'escapeHtml', 'renderTrustedHtml']);
+
+/** String transforms that carry sanitised-ness through: `escaped.replace(...)` is still escaped. */
+const STRING_TRANSFORMS = new Set([
+  'replace',
+  'replaceAll',
+  'trim',
+  'slice',
+  'substring',
+  'concat',
+  'toString',
+  'padStart',
+  'padEnd',
+  'join',
+]);
+
+/**
+ * Whether the value in `expr` demonstrably came from a sanitiser.
+ *
+ * Check 5 used to ask a weaker question: does the enclosing member's *text* contain
+ * `DOMPurify.sanitize(` anywhere? That passes on
+ *
+ *     const heading = DOMPurify.sanitize(this.staticTitle);   // sanitised, and unused below
+ *     return this.sanitizer.bypassSecurityTrustHtml(note);    // attacker-authored, untouched
+ *
+ * — a decoy satisfies the guard while user-authored HTML is trusted raw. That guard is what
+ * `.ai/state/supply-chain-allowlist.json` cites as its reason for accepting the Quill XSS advisory,
+ * so "a sanitiser is nearby" was doing load-bearing work it could not support.
+ *
+ * This follows the argument instead: a direct sanitiser call, a template literal or concatenation
+ * whose parts are each sanitised, or a local `const`/`let` in the same member assigned from one.
+ * Anything it cannot trace is reported — the same fail-closed stance as check 4, for the same
+ * reason: the alternative is a guard that is silent precisely when it is being evaded.
+ */
+function sanitizerReaches(expr, host, sf) {
+  const seen = new Set();
+  /** Names already proven sanitised, so a self-referential transform can reference them. */
+  const safeNames = new Set();
+
+  const calleeName = (node) => {
+    const callee = node.expression;
+    if (ts.isPropertyAccessExpression(callee)) return callee.name.text;
+    if (ts.isIdentifier(callee)) return callee.text;
+    return null;
+  };
+
+  const walk = (node, depth) => {
+    if (!node || depth > 8) return false;
+
+    if (ts.isCallExpression(node)) {
+      const name = calleeName(node);
+      if (name && SANITISER_NAMES.has(name)) return true;
+      // `sanitised.replace(...)` stays sanitised. `ai-markdown.pipe` builds its output as a chain of
+      // exactly these on an already-escaped string.
+      if (
+        name &&
+        STRING_TRANSFORMS.has(name) &&
+        ts.isPropertyAccessExpression(node.expression) &&
+        walk(node.expression.expression, depth + 1)
+      ) {
+        return true;
+      }
+      return false;
+    }
+    // `cond ? a : b`, `a ?? b`, `(a)` — safe only if every branch that can reach the bypass is.
+    if (ts.isParenthesizedExpression(node)) return walk(node.expression, depth + 1);
+    if (ts.isConditionalExpression(node)) {
+      return walk(node.whenTrue, depth + 1) && walk(node.whenFalse, depth + 1);
+    }
+    if (ts.isBinaryExpression(node)) {
+      return walk(node.left, depth + 1) && walk(node.right, depth + 1);
+    }
+    // A template literal is safe if every interpolation is. Its literal chunks are author-written.
+    if (ts.isTemplateExpression(node)) {
+      return node.templateSpans.every((span) => walk(span.expression, depth + 1));
+    }
+    if (ts.isNoSubstitutionTemplateLiteral(node) || ts.isStringLiteral(node)) return true;
+
+    // An identifier: every value it can hold must be sanitised, not merely its declaration.
+    //
+    // Following only the initialiser would accept
+    //     let html = escapeHtml(x);
+    //     html = req.body;            // <- reassigned to something untrusted
+    // so the declaration *and* every assignment inside this member are collected, and all of them
+    // must trace back to a sanitiser. `html = html.replace(...)` self-references, which the `seen`
+    // guard would otherwise reject, so a self-reference is skipped rather than failed — the other
+    // sources of the same variable still have to pass.
+    if (ts.isIdentifier(node)) {
+      const name = node.text;
+      if (safeNames.has(name)) return true;
+      if (seen.has(name)) return false;
+      seen.add(name);
+
+      const sources = [];
+      eachNode(host, (d) => {
+        if (ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) && d.name.text === name) {
+          if (d.initializer) sources.push(d.initializer);
+        }
+        if (
+          ts.isBinaryExpression(d) &&
+          d.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+          ts.isIdentifier(d.left) &&
+          d.left.text === name
+        ) {
+          sources.push(d.right);
+        }
+      });
+      if (sources.length === 0) return false;
+
+      const selfReferential = (source) =>
+        (source.getText(sf).match(new RegExp(`\\b${name}\\b`, 'g')) ?? []).length > 0;
+      const independent = sources.filter((source) => !selfReferential(source));
+      if (independent.length === 0) return false;
+      if (!independent.every((source) => walk(source, depth + 1))) return false;
+
+      // Every independent source is sanitised, so the variable is — provisionally. Now the
+      // self-referential assignments have to preserve that, which is where `html = html + untrusted`
+      // is caught: `+` requires both operands to pass, and `untrusted` does not.
+      safeNames.add(name);
+      const carried = sources
+        .filter(selfReferential)
+        .every((source) => walk(source, depth + 1));
+      if (!carried) safeNames.delete(name);
+      return carried;
+    }
+
+    return false;
+  };
+
+  return walk(expr, 0);
 }
 
 const mentionsSafe = (typeText) => /\bSafe(Url|ResourceUrl|Html|Style|Script|Value)\b/.test(typeText);
@@ -375,6 +595,40 @@ const MIN_JUSTIFICATION = 40;
  * blank or one-word justification is the same hole with extra steps, hence the length floor.
  * @returns {{raw: object, entries: Map<string, object>, malformed: string[]}}
  */
+const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The `budgets` object as of the merge base with `origin/main`, or `null` if it cannot be read.
+ *
+ * Read through `git show` rather than the working tree, because the working tree's copy is the thing
+ * being ratcheted. Returns `null` — reported as a note, not a pass — when there is no git, no
+ * `origin/main`, or no allowlist at the base (its first commit). Silence would be worse: an
+ * unreadable base must not look like an enforced one.
+ */
+function budgetsAtBase() {
+  const base = (() => {
+    for (const ref of ['origin/main', 'main']) {
+      const r = spawnSync('git', ['merge-base', 'HEAD', ref], { cwd: ROOT, encoding: 'utf8' });
+      if (r.status === 0 && r.stdout.trim()) return r.stdout.trim();
+    }
+    return null;
+  })();
+  if (!base) return null;
+
+  const shown = spawnSync('git', ['show', `${base}:${ALLOWLIST_PATH}`], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  if (shown.status !== 0) return null;
+  try {
+    const parsedBase = JSON.parse(shown.stdout);
+    return isRecord(parsedBase.budgets) ? parsedBase.budgets : null;
+  } catch {
+    return null;
+  }
+}
+
 function loadAllowlist() {
   const raw = JSON.parse(readFileSync(join(ROOT, ALLOWLIST_PATH), 'utf8'));
   const entries = new Map();
@@ -567,9 +821,27 @@ function main() {
   }
 
   // ---- check 4: Safe* value in a SecurityContext.NONE binding ---------------------------------
+  //
+  // Fails CLOSED. A binding whose type this cannot resolve is reported, not skipped.
+  //
+  // "Cannot tell, so do not flag" is the right default for a broad check, and it is what checks 1-3
+  // do. It is the wrong default here, for two reasons. The population is tiny — six NONE-context
+  // bindings in the whole repository — so a false positive costs one allowlist line, while a false
+  // negative is a shipped defect of exactly the kind this check was written after. And every
+  // documented evasion (a type alias, an imported interface, `computed()` with no type argument, an
+  // `as` cast) surfaced as *unresolvable*, not as resolving to something benign. Under-reporting was
+  // therefore indistinguishable from passing, which is how the check could be green while the thing
+  // it guards was broken.
   if (run(4)) {
+    const globalTypes = collectGlobalTypes(parsed);
     for (const [file, { sf, text }] of parsed) {
       const shapes = collectTypeShapes(sf);
+      // Local declarations win; imported and cross-file ones fall back to the repository-wide map.
+      const merged = {
+        interfaces: new Map([...globalTypes.interfaces, ...shapes.interfaces]),
+        members: shapes.members,
+        aliases: new Map([...globalTypes.aliases, ...shapes.aliases]),
+      };
       for (const tpl of templatesFor(file, sf, text)) {
         const loopVars = collectLoopVars(tpl.template);
         for (const { element, attr } of NONE_CONTEXT_BINDINGS) {
@@ -578,8 +850,25 @@ function main() {
           let m;
           while ((m = re.exec(tpl.template)) !== null) {
             const expr = m[1].trim();
-            const type = resolveExpressionType(expr, shapes, loopVars);
-            if (!type || !mentionsSafe(type)) continue;
+            const raw = resolveExpressionType(expr, merged, loopVars);
+            const type = expandAliases(raw, merged.aliases);
+
+            if (!type) {
+              const lineInTpl = tpl.template.slice(0, m.index).split('\n').length;
+              const where = tpl.htmlFile
+                ? `${tpl.htmlFile}:${lineInTpl}`
+                : `${tpl.tsFile}:${tpl.offsetLine + lineInTpl - 1}`;
+              findings.push(
+                `[4] unresolvable type in a NONE context  ${where}\n` +
+                  `    <${element} [${attr}]="${expr}"> — this check could not determine the bound type.\n` +
+                  `    ${element}[${attr}] is SecurityContext.NONE: no sanitiser runs, so a Safe* value here is\n` +
+                  `    never unwrapped and stringifies into the attribute. Because it cannot rule that out, it\n` +
+                  `    reports. Give the member an explicit type annotation the audit can read, or bind a\n` +
+                  `    plainly-typed string.`,
+              );
+              continue;
+            }
+            if (!mentionsSafe(type)) continue;
             const lineInTpl = tpl.template.slice(0, m.index).split('\n').length;
             const where = tpl.htmlFile
               ? `${tpl.htmlFile}:${lineInTpl}`
@@ -624,15 +913,15 @@ function main() {
             break;
           }
         }
-        const body = (host ?? sf).getText(sf);
-        const paired =
-          /DOMPurify\.sanitize\s*\(/.test(body) ||
-          /\bescapeHtml\s*\(/.test(body) ||
-          /\brenderTrustedHtml\s*\(/.test(body);
-        if (!paired) {
+        const arg = n.arguments?.[0];
+        if (!arg) return; // no argument is a compile error, not this gate's business
+        const sanitized = sanitizerReaches(arg, host ?? sf, sf);
+        if (!sanitized) {
           findings.push(
-            `[5] unpaired trusted HTML  ${file}:${lineOf(sf, n)}\n` +
-              `    member '${enclosingMemberName(n)}' trusts HTML with no DOMPurify.sanitize / escapeHtml beside it.\n` +
+            `[5] unsanitised trusted HTML  ${file}:${lineOf(sf, n)}\n` +
+              `    member '${enclosingMemberName(n)}' passes '${arg.getText(sf).slice(0, 60)}' to\n` +
+              `    bypassSecurityTrustHtml, and this check could not trace that value back to\n` +
+              `    DOMPurify.sanitize / escapeHtml / renderTrustedHtml.\n` +
               `    Safety here is a pairing, not a property of either half. note:note is user-authored, so an\n` +
               `    unpaired render path is stored XSS.`,
           );
@@ -652,17 +941,55 @@ function main() {
     `registered bypass calls: ${counts.A + counts.B + counts.C + counts.D} in ${entries.size} member(s)` +
       `  (A ${counts.A}, B ${counts.B}, C ${counts.C}, D ${counts.D})`,
   );
-  for (const [cat, budget] of Object.entries(raw.budgets ?? {})) {
-    if (counts[cat] > budget) {
-      findings.push(
-        `[ratchet] category ${cat} has ${counts[cat]} entries, budget is ${budget}.\n` +
-          `    The budget may only decrease. Lower it in ${ALLOWLIST_PATH} as entries are removed.`,
-      );
-    } else if (counts[cat] < budget) {
-      notes.push(
-        `category ${cat} is under budget (${counts[cat]} < ${budget}) — lower the budget to ${counts[cat]} to lock the gain in.`,
-      );
+  // A budget read only from the working tree is not a ratchet. Both halves of the comparison were
+  // in the same editable file, so a contributor could raise a number, reclassify an entry into a
+  // roomier category, or delete `budgets` entirely — `?? {}` then iterated nothing and the gate went
+  // green. The claim "the counts may shrink and never grow" was unenforced.
+  //
+  // So the ceiling comes from the merge base, which the contributor cannot edit in their own commit.
+  const CATEGORIES = ['A', 'B', 'C', 'D'];
+  const baseBudgets = budgetsAtBase();
+
+  if (!isRecord(raw.budgets)) {
+    findings.push(
+      `[ratchet] ${ALLOWLIST_PATH} has no 'budgets' object.\n` +
+        `    Without it the ratchet iterates nothing and this gate passes by omission, which is how a\n` +
+        `    ceiling gets removed rather than lowered.`,
+    );
+  } else {
+    for (const cat of CATEGORIES) {
+      const budget = raw.budgets[cat];
+      if (typeof budget !== 'number') {
+        findings.push(
+          `[ratchet] category ${cat} has no numeric budget in ${ALLOWLIST_PATH}.\n` +
+            `    Every category needs one; a missing key is indistinguishable from an unlimited one.`,
+        );
+        continue;
+      }
+      if (counts[cat] > budget) {
+        findings.push(
+          `[ratchet] category ${cat} has ${counts[cat]} bypass call(s), budget is ${budget}.\n` +
+            `    Remove the bypass, or justify a new entry — the budget is a ceiling, not a target.`,
+        );
+      }
+      if (baseBudgets && typeof baseBudgets[cat] === 'number' && budget > baseBudgets[cat]) {
+        findings.push(
+          `[ratchet] category ${cat}'s budget rose from ${baseBudgets[cat]} to ${budget}.\n` +
+            `    A budget may only decrease. Raising it in the same change that needs the headroom is\n` +
+            `    exactly what the ratchet exists to prevent.`,
+        );
+      }
+      if (counts[cat] < budget) {
+        notes.push(
+          `category ${cat} is under budget (${counts[cat]} < ${budget}) — lower the budget to ${counts[cat]} to lock the gain in.`,
+        );
+      }
     }
+  }
+  if (!baseBudgets) {
+    notes.push(
+      'could not read budgets at the merge base, so only the current ceiling was enforced — a raised budget would not be caught in this run',
+    );
   }
 
   // ---- report ---------------------------------------------------------------------------------

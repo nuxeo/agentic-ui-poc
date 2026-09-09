@@ -218,12 +218,58 @@ describe('ARenderService', () => {
       expect(url).not.toContain('user=');
     });
 
-    it('url-encodes a username containing reserved characters', async () => {
+    it('encodes a username containing reserved characters so it round-trips', async () => {
       const service = setup(CONFIGURED, 'a b&c');
 
       const url = await firstValueFrom(service.getPreviewerUrl('doc-1'));
 
-      expect(url).toContain(`&user=${encodeURIComponent('a b&c')}`);
+      // Asserts the decoded value, not one particular spelling of the encoding. `URLSearchParams`
+      // writes a space as `+` where `encodeURIComponent` writes `%20`; both are correct for a query
+      // string and any form-encoded parser reads them identically. Pinning the spelling made this
+      // test fail when the builder moved to `URL`/`searchParams` even though the `user` parameter
+      // still carried exactly the right name.
+      expect(new URL(url!).searchParams.get('user')).toBe('a b&c');
+      expect(url).not.toContain('a b&c');
+    });
+
+    // The defect this suite previously could not see: `isNavigableOrigin` accepted a base carrying
+    // its own query or fragment, and the builder concatenated `/?url=...` onto it as text. With
+    // `?tenant=x` the whole suffix became part of `tenant`'s value; with `#frag` it stayed in the
+    // fragment and was never sent. Either way ARender received no document, and every assertion
+    // here was `toContain('url=')` — which passes on both broken URLs.
+    describe.each([
+      ['a query string', 'https://arender.example/app?tenant=x'],
+      ['a fragment', 'https://arender.example/app#frag'],
+      ['userinfo', 'https://user:pass@arender.example'],
+    ])('when viewerOrigin carries %s', (_label, viewerOrigin) => {
+      it('treats the configuration as unusable rather than building a broken URL', async () => {
+        const service = setup({ viewerOrigin, nuxeoInternalUrl: 'https://proxy.internal/nuxeo' });
+
+        await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toBeNull();
+        await expect(firstValueFrom(service.getDiffUrl('a', 'b'))).resolves.toBeNull();
+        await expect(firstValueFrom(service.isAvailable())).resolves.toBe(false);
+      });
+    });
+
+    it('rejects a nuxeoInternalUrl with a fragment, which would truncate the nxfile path', async () => {
+      const service = setup({
+        viewerOrigin: 'https://arender.example',
+        nuxeoInternalUrl: 'http://nuxeo-auth-proxy/nuxeo#x',
+      });
+
+      await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toBeNull();
+    });
+
+    it('produces exactly one top-level url parameter naming the nxfile path', async () => {
+      const service = setup(CONFIGURED);
+
+      const url = await firstValueFrom(service.getPreviewerUrl('doc-1'));
+
+      // `getAll`, not `toContain`: the point is that `url` is a real top-level parameter with the
+      // right value, which string matching cannot distinguish from `url=` buried in another value.
+      const params = new URL(url!).searchParams.getAll('url');
+      expect(params).toHaveLength(1);
+      expect(params[0]).toContain('/nxfile/default/doc-1/file:content');
     });
 
     it('builds a diff URL carrying both documents', async () => {

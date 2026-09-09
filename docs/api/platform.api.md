@@ -399,7 +399,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-297 exported symbol(s).
+298 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1781,6 +1781,7 @@ function isMailSendError(err: unknown): boolean;
 function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean;
 function isManagedDirectoryName(name: string): boolean;
 function isMarkdownNoteFormat(mimeType: string): boolean;
+function isNavigableBaseUrl(value: string | null | undefined, allowInsecure?: boolean): boolean;
 function isNavigableOrigin(value: string | null | undefined, allowInsecure?: boolean): boolean;
 function isPermissionDeniedError(err: unknown): boolean;
 function isPowerUserFromGroups(groups: readonly string[]): boolean;
