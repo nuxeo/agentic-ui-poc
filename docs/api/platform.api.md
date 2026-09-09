@@ -399,7 +399,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-298 exported symbol(s).
+299 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1821,6 +1821,7 @@ function readClipboardDocs(): ClipboardDoc[];
 function readContentLakeIngestMarker(doc: NuxeoDocument): string | null;
 function readGroupsFromMe(me: unknown): string[];
 function renderNoteMarkdown(text: string): string;
+function renderTrustedHtml(sanitizer: DomSanitizer, html: string, config?: Parameters<typeof DOMPurify.sanitize>[1]): SafeHtml;
 function resolveAcePrincipal(value: unknown): string;
 function resolveCreatableSubtypes(doc: NuxeoDocument): string[];
 function resolveImportBlobDocType(file: File, allowedTypes: readonly string[]): string;

@@ -107,6 +107,7 @@ import {
   mailSendFailureMessage,
   readClipboardDocs,
   writeClipboardDocs,
+  renderTrustedHtml,
   toBrowseRouterUrlForReturnMode,
   trustObjectUrl,
   type BrowseReturnMode,
@@ -133,7 +134,6 @@ import {
   type KeEnrichmentResult,
 } from '@agentic-ui/shared/ke-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
-import DOMPurify from 'dompurify';
 import {
   catchError,
   debounceTime,
@@ -1851,8 +1851,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.noteContent.set(noteText);
       if (noteMime === 'text/markdown') {
         const rawHtml = this.renderMarkdown(noteText);
-        const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
-        this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
+        this.noteHtml.set(renderTrustedHtml(this.sanitizer, rawHtml, { ADD_ATTR: ['target'] }));
       }
       this.blobLoading.set(false);
       return;
@@ -3377,8 +3376,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.noteContent.set(body);
           if (mime === 'text/markdown') {
             const rawHtml = this.renderMarkdown(body);
-            const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
-            this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
+            this.noteHtml.set(renderTrustedHtml(this.sanitizer, rawHtml, { ADD_ATTR: ['target'] }));
           } else {
             this.noteHtml.set(null);
           }

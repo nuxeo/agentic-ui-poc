@@ -29,6 +29,29 @@ const AUDIT = 'scripts/beta-harness/sanitizer-audit.mjs';
 const ALLOWLIST = '.ai/state/sanitizer-allowlist.json';
 const VIEWER_TS = 'libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts';
 const NOTE_EDITOR = 'libs/features/document-detail/src/lib/note-editor/note-editor.ts';
+
+/**
+ * The line inside `note-editor.ts`'s `markdownHtml` that injection-style perturbations anchor on.
+ *
+ * Category D moved this file's inline `bypassSecurityTrustHtml` calls into `renderTrustedHtml`, so
+ * the anchor is no longer itself a bypass — the perturbation supplies that, which is what these
+ * controls were always really doing. Defined once because the old anchor was duplicated in eighteen
+ * places, and every one of them had to be found by running the selftest and reading a stack trace.
+ */
+const NOTE_EDITOR_ANCHOR =
+  "    return renderTrustedHtml(this.sanitizer, raw, { ADD_ATTR: ['target', 'rel'] });";
+
+/**
+ * `render-trusted-html.ts` and the one bypass left in it.
+ *
+ * Mutation-style controls — the ones that change what an EXISTING bypass receives, rather than
+ * injecting a new one — have to live where a bypass actually is. After Category D that is the two
+ * helpers, so those controls point here.
+ */
+const HTML_HELPER = 'libs/shared/nuxeo-client/src/lib/utils/render-trusted-html.ts';
+const HTML_HELPER_BYPASS = '  return sanitizer.bypassSecurityTrustHtml(clean);';
+/** The helper's sanitise call — the other half of the pairing these controls perturb. */
+const HTML_HELPER_SANITISE = '  const clean = DOMPurify.sanitize(html, config);';
 const KD_CITATION =
   'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts';
 const BASE_REF = 'refs/remotes/origin/main';
@@ -267,7 +290,12 @@ control(
   1,
   () =>
     edit(NOTE_EDITOR, (s) => {
-      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      // Anchored on the `renderTrustedHtml` call, not the raw bypass it replaced: Category D moved
+      // every inline `bypassSecurityTrustHtml` in this file into that helper. The perturbation still
+      // has to introduce a *bypass* to be a valid control for checks 1 and 5, so it injects one here
+      // rather than rewriting an existing one.
+      const anchor =
+        "    return renderTrustedHtml(this.sanitizer, raw, { ADD_ATTR: ['target', 'rel'] });";
       if (!s.includes(anchor))
         throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
@@ -290,17 +318,23 @@ control(
   // read site for the provenance walk to follow, which is what check 5's indirect finding is for —
   // and it only fires because the assignment form is now recorded as a bypass at all.
   () =>
-    edit(NOTE_EDITOR, (s) =>
-      s.replace(
-        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+    edit(NOTE_EDITOR, (s) => {
+      // Same re-anchoring as the control above: this file's inline bypasses moved into
+      // `renderTrustedHtml` with Category D.
+      const anchor =
+        "    return renderTrustedHtml(this.sanitizer, raw, { ADD_ATTR: ['target', 'rel'] });";
+      if (!s.includes(anchor))
+        throw new Error('note-editor.ts markdownHtml changed — update this control');
+      return s.replace(
+        anchor,
         `    let trust!: (v: string) => SafeHtml;\n` +
           `    ({ bypassSecurityTrustHtml: trust } = this.sanitizer);\n` +
           `    if (raw === '__selftest__') {\n` +
           `      return trust(raw);\n` +
           `    }\n` +
-          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
-      ),
-    ),
+          anchor,
+      );
+    }),
   'indirect trusted HTML',
 );
 
@@ -316,7 +350,9 @@ control(
 {
   try {
     edit(NOTE_EDITOR, (s) => {
-      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      // Re-anchored for Category D, as above.
+      const anchor =
+        "    return renderTrustedHtml(this.sanitizer, raw, { ADD_ATTR: ['target', 'rel'] });";
       if (!s.includes(anchor))
         throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
@@ -359,8 +395,11 @@ control(
     edit(
       'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
       (s) => {
+        // Re-anchored for Category D: highlightExcerpt's three inline bypasses now go through
+        // `renderTrustedHtml`. The control still needs two bypasses on ONE source line, so it
+        // injects them rather than duplicating an existing call.
         const anchor =
-          '      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n    }\n\n    const matchIndex';
+          '      return renderTrustedHtml(this.sanitizer, this.escapeHtml(text), allowMarkOnly);\n    }\n\n    const matchIndex';
         if (!s.includes(anchor))
           throw new Error('highlightExcerpt changed shape — update this control');
         return s.replace(
@@ -388,7 +427,7 @@ control(
   1,
   () =>
     edit(NOTE_EDITOR, (s) => {
-      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      const anchor = NOTE_EDITOR_ANCHOR;
       if (!s.includes(anchor))
         throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
@@ -412,12 +451,12 @@ control(
   () =>
     edit(NOTE_EDITOR, (s) =>
       s.replace(
-        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        NOTE_EDITOR_ANCHOR,
         `    const BYPASS_KEY = 'bypassSecurityTrustHtml';\n` +
           `    if (raw === '__selftest__') {\n` +
           `      return this.sanitizer[BYPASS_KEY](raw);\n` +
           `    }\n` +
-          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+          NOTE_EDITOR_ANCHOR,
       ),
     ),
   'unsanitised trusted HTML',
@@ -439,7 +478,7 @@ control(
   1,
   () =>
     edit(NOTE_EDITOR, (s) => {
-      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      const anchor = NOTE_EDITOR_ANCHOR;
       if (!s.includes(anchor))
         throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
@@ -466,7 +505,7 @@ control(
   1,
   () =>
     edit(NOTE_EDITOR, (s) => {
-      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      const anchor = NOTE_EDITOR_ANCHOR;
       if (!s.includes(anchor))
         throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
@@ -490,13 +529,13 @@ control(
   () =>
     edit(NOTE_EDITOR, (s) =>
       s.replace(
-        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        NOTE_EDITOR_ANCHOR,
         `    let key = 'bypassSecurityTrustHtml';\n` +
           `    const { [key]: trust } = this.sanitizer;\n` +
           `    if (raw === '__selftest__') {\n` +
           `      return trust(raw);\n` +
           `    }\n` +
-          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+          NOTE_EDITOR_ANCHOR,
       ),
     ),
   'unnameable DomSanitizer member',
@@ -538,10 +577,10 @@ control(
   () =>
     edit(NOTE_EDITOR, (s) =>
       s.replace(
-        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        NOTE_EDITOR_ANCHOR,
         `    const { 'bypassSecurityTrustHtml': trust } = this.sanitizer;\n` +
           '    void trust;\n' +
-          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+          NOTE_EDITOR_ANCHOR,
       ),
     ),
   'bypass count mismatch',
@@ -703,7 +742,7 @@ control(
   'check 5 catches bypassSecurityTrustHtml with no sanitiser beside it',
   5,
   () =>
-    edit('libs/features/document-detail/src/lib/note-editor/note-editor.ts', (s) => {
+    edit(HTML_HELPER, (s) => {
       // Neutralise the sanitiser call while leaving the bypass in place.
       const out = s.replace(/DOMPurify\.sanitize\(/g, 'passThroughForSelftest(');
       if (out === s)
@@ -919,12 +958,12 @@ control(
   'check 5 rejects a sanitiser whose result never reaches the bypass',
   5,
   () =>
-    edit('libs/features/document-detail/src/lib/note-editor/note-editor.ts', (s) => {
+    edit(HTML_HELPER, (s) => {
       // The DOMPurify call stays — it is the decoy. What changes is that the bypass now receives
       // raw content instead of the sanitised result. The previous check only asked whether the text
       // `DOMPurify.sanitize(` appeared in the member, so it passed on exactly this.
       const out = s.replace(
-        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        HTML_HELPER_BYPASS,
         'return this.sanitizer.bypassSecurityTrustHtml(this.content() ?? "");',
       );
       if (out === s) {
@@ -943,10 +982,10 @@ control(
   () =>
     // Matching the final callee name accepted any `sanitize()`. An identity function of that name
     // satisfied the guard while doing nothing — the decoy problem one level down.
-    edit(NOTE_EDITOR, (s) =>
+    edit(HTML_HELPER, (s) =>
       s.replace(
-        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
-        'const sanitize = (v: string) => v;\n    return this.sanitizer.bypassSecurityTrustHtml(sanitize(this.content() ?? ""));',
+        HTML_HELPER_BYPASS,
+        'const sanitize = (v: string) => v;\n    return sanitizer.bypassSecurityTrustHtml(sanitize(html));',
       ),
     ),
   'unsanitised trusted HTML',
@@ -958,10 +997,10 @@ control(
   () =>
     // `escaped.replace(/x/, raw)` was accepted purely because the receiver was sanitised, even though
     // the replacement is attacker-controlled.
-    edit(NOTE_EDITOR, (s) =>
+    edit(HTML_HELPER, (s) =>
       s.replace(
-        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
-        'return this.sanitizer.bypassSecurityTrustHtml(clean.replace("x", this.content() ?? ""));',
+        HTML_HELPER_BYPASS,
+        'return sanitizer.bypassSecurityTrustHtml(clean.replace("x", html));',
       ),
     ),
   'unsanitised trusted HTML',
@@ -974,10 +1013,10 @@ control(
     // Indirect bypasses became visible to check 1, so they are registered and budgeted — but the
     // provenance walk has no argument to follow at a reference site, so being counted is not being
     // checked.
-    edit(NOTE_EDITOR, (s) =>
+    edit(HTML_HELPER, (s) =>
       s.replace(
-        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
-        'const trust = this.sanitizer.bypassSecurityTrustHtml.bind(this.sanitizer);\n    return trust(clean);',
+        HTML_HELPER_BYPASS,
+        'const trust = sanitizer.bypassSecurityTrustHtml.bind(this.sanitizer);\n    return trust(clean);',
       ),
     ),
   'indirect trusted HTML',
@@ -1037,10 +1076,10 @@ control(
   () =>
     // Identity by callee text accepted anything named right. The real helper arrives by import; a
     // local function of the same name is by construction not it.
-    edit(NOTE_EDITOR, (s) =>
+    edit(HTML_HELPER, (s) =>
       s.replace(
-        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
-        'const renderTrustedHtml = (v: string) => v;\n    return this.sanitizer.bypassSecurityTrustHtml(renderTrustedHtml(this.content() ?? ""));',
+        HTML_HELPER_BYPASS,
+        'const renderTrustedHtml = (v: string) => v;\n    return sanitizer.bypassSecurityTrustHtml(renderTrustedHtml(html));',
       ),
     ),
   'unsanitised trusted HTML',
@@ -1058,17 +1097,17 @@ control(
   // appended value. Every assignment operator is recorded now, and `+=` puts its right-hand side in
   // the independent set, which is the same treatment `clean = clean + raw` already received.
   () =>
-    edit(NOTE_EDITOR, (s) => {
-      const before =
-        `    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
-        '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+    edit(HTML_HELPER, (s) => {
+      // Re-pointed for Category D: the sanitise-then-bypass pairing this control perturbs now lives
+      // in `renderTrustedHtml` rather than in each caller.
+      const before = HTML_HELPER_SANITISE + '\n' + HTML_HELPER_BYPASS;
       if (!s.includes(before))
-        throw new Error('note-editor markdownHtml changed — update this control');
+        throw new Error('renderTrustedHtml changed shape — update this control');
       return s.replace(
         before,
-        `    let clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
-          '    clean += raw;\n' +
-          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        '  let clean = DOMPurify.sanitize(html, config);\n' +
+          '  clean += html;\n' +
+          HTML_HELPER_BYPASS,
       );
     }),
   'unsanitised trusted HTML',
@@ -1085,31 +1124,25 @@ control(
   // now, so the two `clean`s are different bindings and the parameter has no source: nothing to
   // trace, nothing proven, reported.
   () =>
-    edit(NOTE_EDITOR, (s) => {
-      const before =
-        `  readonly markdownHtml = computed(() => {\n` +
-        '    if (!this.isMarkdown()) return null;\n' +
-        "    const raw = renderNoteMarkdown(this.content() ?? '');\n" +
-        `    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
-        '    return this.sanitizer.bypassSecurityTrustHtml(clean);\n' +
-        '  });';
+    edit(HTML_HELPER, (s) => {
+      // Re-pointed for Category D. The shape this control needs is a member that sanitises into a
+      // local and then bypasses it, which is now `renderTrustedHtml` itself. The perturbation moves
+      // the bypass into a helper whose PARAMETER shadows the sanitised local's name, so a
+      // text-matched source lookup would find the wrong binding.
+      const before = HTML_HELPER_SANITISE + '\n' + HTML_HELPER_BYPASS;
       if (!s.includes(before))
-        throw new Error('note-editor markdownHtml changed — update this control');
+        throw new Error('renderTrustedHtml changed shape — update this control');
       return s.replace(
         before,
-        `  readonly markdownHtml = computed(() => {\n` +
-          '    if (!this.isMarkdown()) return null;\n' +
-          "    const raw = renderNoteMarkdown(this.content() ?? '');\n" +
-          '    return this.trustShadowed(raw);\n' +
-          '  });\n' +
+        '  return trustShadowed(sanitizer, html);\n' +
+          '}\n' +
           '\n' +
-          '  private trustShadowed(clean: string): SafeHtml {\n' +
-          "    if (clean === '__never__') {\n" +
-          `      const clean = DOMPurify.sanitize('x', { ADD_ATTR: ['target', 'rel'] });\n` +
-          '      void clean;\n' +
-          '    }\n' +
-          '    return this.sanitizer.bypassSecurityTrustHtml(clean);\n' +
-          '  }',
+          'function trustShadowed(sanitizer: DomSanitizer, clean: string): SafeHtml {\n' +
+          "  if (clean === '__never__') {\n" +
+          "    const clean = DOMPurify.sanitize('x');\n" +
+          '    void clean;\n' +
+          '  }\n' +
+          HTML_HELPER_BYPASS,
       );
     }),
   'unsanitised trusted HTML',
@@ -1372,18 +1405,20 @@ control(
     repointBaseTo('HEAD');
     edit(ALLOWLIST, (s) => {
       const j = JSON.parse(s);
-      const entry = (j.sites[KD_CITATION] ?? []).find((e) => e.member === 'highlightExcerpt');
-      // The only entry in the allowlist declaring more than one call, and the member the per-call
-      // counting was introduced for. If it stops declaring 3, this control is asserting a number
-      // that no longer means anything.
-      if (!entry || entry.calls !== 3) {
-        throw new Error('highlightExcerpt no longer declares 3 calls — update this control');
+      // Category D consolidated `highlightExcerpt`'s three bypasses into `renderTrustedHtml`, so no
+      // entry declares more than one call any more. The invariant is unchanged — a member must not
+      // absorb more calls than the merge base declared — and 1 -> 2 exercises it exactly as 3 -> 4
+      // did. Anchored on the helper because that is where the remaining HTML bypass lives.
+      const entry = (j.sites[HTML_HELPER] ?? []).find((e) => e.member === 'renderTrustedHtml');
+      const declared = entry?.calls ?? 1;
+      if (!entry || declared !== 1) {
+        throw new Error('renderTrustedHtml no longer declares 1 call — update this control');
       }
-      entry.calls = 4;
+      entry.calls = 2;
       return JSON.stringify(j, null, 2);
     });
   },
-  'declared 3 bypass call(s) at the merge base and now declares 4',
+  'declared 1 bypass call(s) at the merge base and now declares 2',
 );
 
 // The two controls above would also pass if the base were unreadable and some *other* finding

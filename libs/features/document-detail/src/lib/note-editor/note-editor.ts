@@ -33,6 +33,7 @@ import {
   isHtmlNoteFormat,
   isMarkdownNoteFormat,
   renderNoteMarkdown,
+  renderTrustedHtml,
   sanitizeDocumentName,
   titleFromFileName,
   type NuxeoDocument,
@@ -109,14 +110,14 @@ export class NoteEditorComponent {
   readonly markdownHtml = computed(() => {
     if (!this.isMarkdown()) return null;
     const raw = renderNoteMarkdown(this.content() ?? '');
-    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });
-    return this.sanitizer.bypassSecurityTrustHtml(clean);
+    return renderTrustedHtml(this.sanitizer, raw, { ADD_ATTR: ['target', 'rel'] });
   });
 
   readonly htmlReadonlyView = computed(() => {
     if (!this.isHtml()) return null;
-    const clean = DOMPurify.sanitize(this.content() ?? '', { ADD_ATTR: ['target', 'rel'] });
-    return this.sanitizer.bypassSecurityTrustHtml(clean);
+    return renderTrustedHtml(this.sanitizer, this.content() ?? '', {
+      ADD_ATTR: ['target', 'rel'],
+    });
   });
 
   constructor() {

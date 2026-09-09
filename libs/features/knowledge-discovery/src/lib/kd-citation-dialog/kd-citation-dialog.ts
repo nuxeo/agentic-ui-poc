@@ -22,6 +22,7 @@ import {
 } from '@agentic-ui/shared/kd-client';
 import {
   DocumentDetailService,
+  renderTrustedHtml,
   trustObjectUrl,
   type NuxeoDocument,
 } from '@nuxeo-satori/platform/nuxeo-client';
@@ -281,21 +282,35 @@ export class KdCitationDialogComponent implements OnDestroy {
     this.previewMode.set('unsupported');
   }
 
+  /**
+   * `<mark>` around the cited excerpt, everything else escaped.
+   *
+   * Routed through `renderTrustedHtml` rather than bypassing directly, so the only markup that can
+   * reach `innerHTML` is what DOMPurify's allow-list permits — `mark` and its `class`. The local
+   * `escapeHtml` still runs first and is still what makes the concatenation safe; DOMPurify is a
+   * second, independent check rather than a replacement for it. That matters because the safety of
+   * this member previously rested entirely on `escapeHtml` covering every interpolated segment,
+   * which nothing enforced.
+   */
   private highlightExcerpt(text: string, excerpt?: string): SafeHtml {
+    const allowMarkOnly = { ALLOWED_TAGS: ['mark'], ALLOWED_ATTR: ['class'] };
+
     if (!excerpt?.trim()) {
-      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));
+      return renderTrustedHtml(this.sanitizer, this.escapeHtml(text), allowMarkOnly);
     }
 
     const matchIndex = text.toLowerCase().indexOf(excerpt.toLowerCase());
     if (matchIndex === -1) {
-      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));
+      return renderTrustedHtml(this.sanitizer, this.escapeHtml(text), allowMarkOnly);
     }
 
     const before = this.escapeHtml(text.slice(0, matchIndex));
     const highlighted = this.escapeHtml(text.slice(matchIndex, matchIndex + excerpt.length));
     const after = this.escapeHtml(text.slice(matchIndex + excerpt.length));
-    return this.sanitizer.bypassSecurityTrustHtml(
+    return renderTrustedHtml(
+      this.sanitizer,
       `${before}<mark class="kd-citation-dialog__highlight">${highlighted}</mark>${after}`,
+      allowMarkOnly,
     );
   }
 
