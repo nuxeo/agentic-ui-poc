@@ -1025,6 +1025,60 @@ control(
   'unsanitised trusted HTML',
 );
 
+// ---- check 1: the reviewed-sanitiser registry must carry its own review ------------------------
+//
+// The `sanitisers` list is the entire basis on which check 5 admits anything, and the written
+// rationale is the control — five rounds established that "this function escapes HTML" cannot be
+// proven from syntax. Bypass entries have enforced a trimmed 40-character floor since the gate was
+// written. This list only tested `typeof justification === 'string'`, so `""` satisfied it, while the
+// comment at the call site asserted that unexplained entries were dropped.
+//
+// Verified before the fix on the working tree: blanking `kd-citation-dialog::escapeHtml`'s
+// justification, and separately reducing it to `"safe"`, left checks 1 *and* 5 green with the helper
+// still admitted as a sanitiser.
+const sanitiserEntry = (mutate) =>
+  edit(ALLOWLIST, (s) => {
+    const j = JSON.parse(s);
+    if (!Array.isArray(j.sanitisers) || j.sanitisers.length === 0) {
+      throw new Error('the sanitisers registry is empty — update these controls');
+    }
+    mutate(j.sanitisers[0]);
+    return JSON.stringify(j, null, 2);
+  });
+
+control(
+  'check 1 rejects a sanitiser registry entry whose justification is blank',
+  1,
+  () => sanitiserEntry((entry) => { entry.justification = ''; }),
+  'no "justification"',
+);
+
+control(
+  'check 1 rejects a sanitiser registry justification below the length floor',
+  1,
+  // A blank check alone is defeated by typing "safe", which is the same floor bypass entries have.
+  () => sanitiserEntry((entry) => { entry.justification = 'safe'; }),
+  'under the 40 minimum',
+);
+
+control(
+  'check 1 rejects a sanitiser registry entry with no pinned sha',
+  1,
+  // Without the hash, registration could not lapse when the helper is edited into a no-op — which is
+  // the one hole a reviewed-list design otherwise leaves, and the reason the pin exists at all.
+  () => sanitiserEntry((entry) => { delete entry.sha; }),
+  'no "sha"',
+);
+
+control(
+  'check 5 stops admitting a helper whose registry entry is unusable',
+  5,
+  // Reporting at the registry is not enough on its own: the entry must also be *dropped*, or the
+  // helper would keep vouching for the bypass while check 1 complained about the paperwork.
+  () => sanitiserEntry((entry) => { entry.justification = ''; }),
+  'unsanitised trusted HTML',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',

@@ -1277,6 +1277,66 @@ function loadAllowlist() {
   return { raw, entries, malformed };
 }
 
+/**
+ * The reviewed-sanitiser registry, with entries that do not carry what it claims to require rejected.
+ *
+ * The `sanitisers` list is the entire basis on which check 5 admits anything: five rounds established
+ * that "this function escapes HTML" cannot be proven from syntax, so a human reviews each helper once
+ * and records *why*. The written rationale is the control. Bypass entries have enforced a trimmed
+ * `MIN_JUSTIFICATION` floor since the gate was written, for exactly that reason.
+ *
+ * This list did not. It tested `typeof s.justification === 'string'`, so `""` satisfied it — and the
+ * comment above the call site asserted the opposite, that "entries without a justification are
+ * dropped, so an unexplained addition grants nothing". Verified against the working tree: blanking
+ * `kd-citation-dialog::escapeHtml`'s justification, and separately reducing it to `"safe"`, left both
+ * check 1 and check 5 green with the helper still admitted. The stricter registry was enforcing
+ * bookkeeping on the debt it is winding down and nothing at all on the one it is winding up.
+ *
+ * A rejected entry is **reported** as well as dropped. Dropping alone is fail-closed — check 5 stops
+ * admitting the helper and reports the bypass as unsanitised — but it reports the wrong thing, at the
+ * call site rather than at the registry entry that is actually malformed, which is how a five-minute
+ * fix becomes an afternoon.
+ * @returns {{approvedSanitisers: Map<string,string>, malformed: string[]}}
+ */
+function loadApprovedSanitisers(raw) {
+  const approvedSanitisers = new Map();
+  const malformed = [];
+  const list = Array.isArray(raw.sanitisers) ? raw.sanitisers : [];
+
+  for (const [index, entry] of list.entries()) {
+    const where = isRecord(entry) && typeof entry.site === 'string' ? entry.site : `sanitisers[${index}]`;
+    if (!isRecord(entry) || typeof entry.site !== 'string' || entry.site.trim() === '') {
+      malformed.push(`sanitisers[${index}]: no "site", so it can never match a declaration.`);
+      continue;
+    }
+    if (typeof entry.sha !== 'string' || entry.sha.trim() === '') {
+      malformed.push(
+        `${where}: no "sha". Registration is pinned to the declaration as reviewed, so without it an ` +
+          `edit to the helper could not lapse the review.`,
+      );
+      continue;
+    }
+    const justification = typeof entry.justification === 'string' ? entry.justification.trim() : '';
+    if (justification === '') {
+      malformed.push(
+        `${where}: no "justification". A sanitiser is admitted on a written review or not at all — ` +
+          `this registry is the only reason check 5 accepts anything.`,
+      );
+      continue;
+    }
+    if (justification.length < MIN_JUSTIFICATION) {
+      malformed.push(
+        `${where}: "justification" is ${justification.length} characters, under the ` +
+          `${MIN_JUSTIFICATION} minimum — state what makes the helper safe, not that it is.`,
+      );
+      continue;
+    }
+    approvedSanitisers.set(entry.site, entry.sha);
+  }
+
+  return { approvedSanitisers, malformed };
+}
+
 function main() {
   const tsFiles = [...findFiles('apps', ['.ts']), ...findFiles('libs', ['.ts'])];
   const findings = [];
@@ -1353,26 +1413,15 @@ function main() {
   const { raw, entries, malformed } = allowlist;
   const seen = new Set();
 
-  // Sanitiser declarations reviewed once by a human and enforced here by identity. Entries without a
-  // justification are dropped, so an unexplained addition grants nothing.
-  const approvedSanitisers = new Map(
-    (Array.isArray(raw.sanitisers) ? raw.sanitisers : [])
-      .filter(
-        (s) =>
-          isRecord(s) &&
-          typeof s.site === 'string' &&
-          typeof s.justification === 'string' &&
-          typeof s.sha === 'string',
-      )
-      .map((s) => [s.site, s.sha]),
-  );
+  // Sanitiser declarations reviewed once by a human and enforced here by identity.
+  const { approvedSanitisers, malformed: malformedSanitisers } = loadApprovedSanitisers(raw);
 
   const run = (n) => only === null || only === n;
 
   // Reported under check 1: an entry that does not carry a justification is not a registration, so
   // treating it as one is the same failure as having no entry at all.
   if (run(1)) {
-    for (const m of malformed) {
+    for (const m of [...malformed, ...malformedSanitisers]) {
       findings.push(`[1] unusable allowlist entry  ${m}`);
     }
     // Also check 1's business: it owns "every bypass is accounted for", and a member it cannot name
