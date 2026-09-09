@@ -158,6 +158,35 @@ control(
   'bypass count mismatch',
 );
 
+// ---- check 1: a bypass reached through element access rather than property access -----------------
+// `sanitizer['bypassSecurityTrustHtml'](x)` is an `ElementAccessExpression`. Every place that looked
+// for a bypass tested `ts.isPropertyAccessExpression` only, so the bracketed spelling — ordinary
+// TypeScript compiling to the same property read — was invisible to registration, to the declared
+// call count, to the category budget and to checks 3 and 5. Verified against the pre-fix script
+// against this exact perturbation: it printed "PASS — 31 bypass call(s), all accounted for".
+control(
+  'check 1 catches a bypass written with element access instead of property access',
+  1,
+  () =>
+    edit(
+      'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
+      (s) => {
+        const anchor = `  private highlightExcerpt(text: string, excerpt?: string): SafeHtml {\n`;
+        if (!s.includes(anchor)) {
+          throw new Error('highlightExcerpt signature changed — update this control');
+        }
+        return s.replace(
+          anchor,
+          anchor +
+            `    if (text === '__selftest__') {\n` +
+            `      return this.sanitizer['bypassSecurityTrustHtml'](text);\n` +
+            `    }\n`,
+        );
+      },
+    ),
+  'bypass count mismatch',
+);
+
 // ---- check 1: an entry with no written justification ---------------------------------------------
 // The gate's premise is "registered *with a justification*". Keying on `file::member` alone made
 // `{ "member": "loadPreview" }` sufficient, so the gate enforced bookkeeping rather than review.
@@ -369,6 +398,40 @@ control(
     );
   },
   'document-viewer.component.html',
+);
+
+control(
+  'check 4 sees a NONE-context binding written with Angular bind- syntax',
+  4,
+  () =>
+    // `bind-src="…"` is the canonical form `[src]="…"` desugars to, so it reaches the identical
+    // `SecurityContext.NONE` property — but the scanner was a regex asking for the bracket spelling
+    // and did not match it. `<audio bind-src="blobUrl()">` therefore bound a `SafeResourceUrl` into
+    // a NONE context while check 4 stayed green; verified against the pre-fix script, which reported
+    // no finding for this file. The scanner now uses Angular's own `parseTemplate`, so the two
+    // spellings are indistinguishable to it by construction rather than by a wider alternation.
+    edit('libs/shared/ui/src/lib/document-viewer/document-viewer.component.html', (s) => {
+      const out = s.replace(
+        '<audio [src]="rawBlobUrl()" controls class="viewer-audio"></audio>',
+        '<audio bind-src="blobUrl()" controls class="viewer-audio"></audio>',
+      );
+      if (out === s) throw new Error('the audio binding changed shape — update this control');
+      return out;
+    }),
+  'Safe* value in a NONE context',
+);
+
+control(
+  'check 4 reports a template Angular itself cannot parse',
+  4,
+  () =>
+    // A template that will not parse yields no bindings, which is indistinguishable from a template
+    // with none. Reported rather than skipped, for the same reason an unresolvable type is: the check
+    // must not be silent precisely where it can see least.
+    edit('libs/shared/ui/src/lib/document-viewer/document-viewer.component.html', (s) =>
+      s.replace('<audio [src]="rawBlobUrl()"', '@if (true) {\n<audio [src]="rawBlobUrl()"'),
+    ),
+  'unparsable template',
 );
 
 control(

@@ -31,24 +31,32 @@
  * expression carries, hopping through interfaces (`src.url` → `VideoSource.url`) and `@for` loop
  * variables. Pattern-matching the expression text cannot do that.
  *
- * ## What this is NOT, and what makes that safe
+ * ## How check 4 decides, and what makes that safe
  *
- * There is **no `ts.Program` and no `TypeChecker` here.** Type resolution is syntactic: annotation
- * text, plus declarations gathered from every parsed file, plus alias expansion. An earlier version
- * of this comment claimed it "resolves types", and the claim was believed — including in review —
- * while `type MediaUrl = SafeResourceUrl; posterUrl = input<MediaUrl>()` sailed through, because the
- * text `MediaUrl` does not match `/Safe…/`.
+ * It asks the compiler. `createTypeProgram` builds a real `ts.Program` over `apps/` and `libs/`, and
+ * `resolveTemplateType` resolves each binding through its `TypeChecker`. Five rounds before that,
+ * type resolution was syntactic — annotation text, declarations gathered by name, alias expansion —
+ * and each round found a spelling that slipped past it: `type MediaUrl = SafeResourceUrl`, an
+ * imported interface, a *lowercase* alias, an `input.required<T>()`. Each fix closed one spelling;
+ * none could close the class, because "does this text look like a Safe type" is not the question.
+ * The syntactic resolver is gone rather than dormant — keeping a superseded security implementation
+ * beside the live one is how the wrong half gets maintained.
  *
- * A syntactic resolver has a knowable failure mode: it either resolves a type or it does not. So the
- * honesty of check 4 does not rest on the resolver being complete — it rests on **failing closed**.
- * An unresolvable NONE-context binding is reported, not skipped. That converts every gap in this
- * resolver, present and future, from a silent pass into a visible finding. Adding a real
- * `TypeChecker` would shrink the set of things it must report; it would not change what makes it
- * trustworthy.
+ * Templates are parsed with Angular's own `parseTemplate` for the same reason. A regex asking for
+ * `[src]="…"` matched one spelling of a binding and missed `bind-src="…"`, which is the canonical
+ * form of the identical property binding, and `[attr.src]="…"`, which reaches the same NONE-context
+ * attribute. The compiler's parser enumerates the bindings a template actually has instead of being
+ * asked about one syntax at a time.
+ *
+ * Neither of those is what makes check 4 trustworthy. **It fails closed.** A NONE-context binding
+ * whose type the checker cannot resolve — `any`, `unknown` and the error type included, since those
+ * are the checker declining to answer rather than answering — is reported, not skipped, and so is a
+ * template that will not parse. That is what converts every remaining gap, present and future, from
+ * a silent pass into a visible finding.
  *
  * Section 5.1 of the plan is explicit that a template check which cannot see through an alias is
- * worse than none, because it will be trusted wrongly. It was. Hence both the alias expansion and
- * the fail-closed default.
+ * worse than none, because it will be trusted wrongly. It was, for five rounds. Hence the checker
+ * and the fail-closed default.
  *
  * Usage:
  *   node scripts/beta-harness/sanitizer-audit.mjs
@@ -56,6 +64,7 @@
  *   node scripts/beta-harness/sanitizer-audit.mjs --only 4         # run one check (for evidence)
  */
 
+import { BindingType, TmplAstRecursiveVisitor, parseTemplate } from '@angular/compiler';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -84,6 +93,31 @@ const APPROVED_HELPERS = new Map([]);
 const BYPASS_RE = /^bypassSecurityTrust(Url|ResourceUrl|Html|Style|Script)$/;
 
 /**
+ * The member name a callee reads, whether it is written `x.member` or `x['member']`.
+ *
+ * `sanitizer['bypassSecurityTrustHtml'](raw)` is an `ElementAccessExpression`, and every place that
+ * looked for a bypass tested `ts.isPropertyAccessExpression` only. So the bracketed spelling was
+ * invisible to `collectBypasses` — hence to registration, to the declared-call count and to the
+ * category budget — and invisible to checks 3 and 5, which walk for the call themselves. It is
+ * ordinary TypeScript that compiles to the same property read, so it was a one-character evasion of
+ * the entire gate.
+ *
+ * Only a string literal counts. `sanitizer[name]` with a computed name is not resolvable here, and
+ * pretending otherwise would be the syntactic guessing this file has been burned by; an indirect
+ * bypass that this cannot name is not silently admitted either, because check 5's indirect-reference
+ * finding still fires on the reference that produced `name`.
+ * @returns {string|null}
+ */
+function accessedMemberName(node) {
+  if (ts.isPropertyAccessExpression(node)) return node.name.text;
+  if (ts.isElementAccessExpression(node)) {
+    const arg = node.argumentExpression;
+    if (arg && (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg))) return arg.text;
+  }
+  return null;
+}
+
+/**
  * Angular's `SecurityContext.NONE` members, verified against
  * `@angular/compiler/fesm2022/compiler.mjs` (the DOM security schema). No sanitiser runs on
  * these, so a `Safe*` value bound here stringifies and silently breaks playback.
@@ -102,6 +136,23 @@ const NONE_CONTEXT_BINDINGS = [
   { element: 'img', attr: 'srcset' },
   { element: 'source', attr: 'srcset' },
 ];
+
+/** `NONE_CONTEXT_BINDINGS` keyed for lookup while walking a parsed template. */
+const NONE_CONTEXT_BY_ELEMENT = new Map();
+for (const { element, attr } of NONE_CONTEXT_BINDINGS) {
+  if (!NONE_CONTEXT_BY_ELEMENT.has(element)) NONE_CONTEXT_BY_ELEMENT.set(element, new Set());
+  NONE_CONTEXT_BY_ELEMENT.get(element).add(attr);
+}
+
+/**
+ * Binding kinds that put their value into the DOM property or attribute this check guards.
+ *
+ * `Property` covers both `[src]="…"` and `bind-src="…"` — the parser reports them identically,
+ * which is the point of parsing rather than matching text. `Attribute` is `[attr.src]="…"`, which
+ * reaches the same NONE-context attribute by a different route, and `TwoWay` is `[(src)]="…"`.
+ * `Class`, `Style` and the animation kinds cannot carry a URL and are not included.
+ */
+const URL_CARRYING_BINDING_TYPES = new Set([BindingType.Property, BindingType.Attribute, BindingType.TwoWay]);
 
 const argv = process.argv.slice(2);
 const printOnly = argv.includes('--print');
@@ -227,20 +278,23 @@ function collectBypasses(sf) {
   };
 
   eachNode(sf, (n) => {
-    // `x.bypassSecurityTrustHtml(...)` — the direct form.
-    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
-      const name = n.expression.name.text;
-      if (BYPASS_RE.test(name)) {
+    // `x.bypassSecurityTrustHtml(...)` / `x['bypassSecurityTrustHtml'](...)` — the direct forms.
+    if (ts.isCallExpression(n)) {
+      const name = accessedMemberName(n.expression);
+      if (name && BYPASS_RE.test(name)) {
         record(n, name, false);
         return;
       }
     }
 
-    // `x.bypassSecurityTrustHtml` in any position that is not the callee of its own call — `.bind`,
+    // The same member read in any position that is not the callee of its own call — `.bind`,
     // an assignment, an argument, a return.
-    if (ts.isPropertyAccessExpression(n) && BYPASS_RE.test(n.name.text)) {
-      const isOwnCallee = ts.isCallExpression(n.parent) && n.parent.expression === n;
-      if (!isOwnCallee) record(n, n.name.text, true);
+    if (ts.isPropertyAccessExpression(n) || ts.isElementAccessExpression(n)) {
+      const name = accessedMemberName(n);
+      if (name && BYPASS_RE.test(name)) {
+        const isOwnCallee = ts.isCallExpression(n.parent) && n.parent.expression === n;
+        if (!isOwnCallee) record(n, name, true);
+      }
     }
 
     // `const { bypassSecurityTrustHtml } = this.sanitizer;`
@@ -252,162 +306,6 @@ function collectBypasses(sf) {
 
   return found;
 }
-
-/**
- * The text of the type a class member carries. Handles the three shapes this codebase uses:
- * an explicit annotation, and `signal<T>()` / `input<T>()` / `computed<T>()` type arguments.
- */
-function memberTypeText(decl, sf) {
-  if (decl.type) return decl.type.getText(sf);
-  const init = decl.initializer;
-  if (!init || !ts.isCallExpression(init)) return null;
-
-  // `signal<T>()`, `input<T>()`, `computed<T>()` — type args on the call itself.
-  if (init.typeArguments?.length) {
-    return init.typeArguments.map((t) => t.getText(sf)).join(' | ');
-  }
-
-  // `input.required<T>()` — the type args hang off the *inner* call expression. The previous
-  // version re-tested `init.typeArguments?.length` here, which the branch above has already
-  // returned on, so this was unreachable and `input.required<SafeResourceUrl>()` resolved to
-  // `null` — i.e. "cannot tell", i.e. silently unchecked.
-  const inner = init.expression;
-  if (ts.isPropertyAccessExpression(inner) && ts.isCallExpression(inner.expression)) {
-    const innerArgs = inner.expression.typeArguments;
-    if (innerArgs?.length) return innerArgs.map((t) => t.getText(sf)).join(' | ');
-  }
-
-  // `bypassSecurityTrust*` called directly into a signal: `signal(this.sanitizer.bypass…())` has no
-  // type argument at all, but its type is not in doubt. Read the initializer instead of giving up.
-  const argText = init.arguments?.length ? init.arguments.map((a) => a.getText(sf)).join(' ') : '';
-  const fromBypass = argText.match(/bypassSecurityTrust(Url|ResourceUrl|Html|Style|Script)\b/);
-  if (fromBypass) return `Safe${fromBypass[1]}`;
-
-  return null;
-}
-
-/**
- * Interface and type-alias property types, plus class member types, for one file.
- * @returns {{interfaces: Map<string, Map<string,string>>, members: Map<string,string>}}
- */
-function collectTypeShapes(sf) {
-  const interfaces = new Map();
-  const members = new Map();
-  /** `type X = Y` where Y is a reference rather than a literal — the alias evasion. */
-  const aliases = new Map();
-
-  eachNode(sf, (n) => {
-    if (ts.isInterfaceDeclaration(n) || (ts.isTypeAliasDeclaration(n) && ts.isTypeLiteralNode(n.type))) {
-      const props = new Map();
-      const holder = ts.isInterfaceDeclaration(n) ? n : n.type;
-      for (const m of holder.members) {
-        if (ts.isPropertySignature(m) && m.name && m.type) {
-          props.set(m.name.getText(sf), m.type.getText(sf));
-        }
-      }
-      interfaces.set(n.name.getText(sf), props);
-    }
-    // `type MediaUrl = SafeResourceUrl` — NOT a type literal, so the branch above skips it, and
-    // before this the annotation text `MediaUrl` never matched `mentionsSafe`.
-    if (ts.isTypeAliasDeclaration(n) && !ts.isTypeLiteralNode(n.type)) {
-      aliases.set(n.name.getText(sf), n.type.getText(sf));
-    }
-    if (ts.isPropertyDeclaration(n) && n.name && !ts.isComputedPropertyName(n.name)) {
-      const t = memberTypeText(n, sf);
-      if (t) members.set(n.name.getText(sf), t);
-    }
-    if (ts.isGetAccessorDeclaration(n) && n.name && n.type) {
-      members.set(n.name.getText(sf), n.type.getText(sf));
-    }
-  });
-
-  return { interfaces, members, aliases };
-}
-
-/**
- * Every interface and type alias in the repository, keyed by name.
- *
- * Per-file shapes are not enough: an interface or alias declared in one file and imported into a
- * component resolved to `null` — "cannot tell" — and check 4 treats that as "do not flag". Moving
- * `VideoSource` into a shared models file, which is ordinary refactoring, would therefore have
- * silently switched the check off for the binding it exists to guard.
- *
- * Names are global here rather than import-resolved, so two same-named types in different files
- * collide. **Collisions resolve towards Safe, not towards first-declared.**
- *
- * First-declared was the original behaviour, and the comment here claimed it "can only widen what the
- * check considers Safe-typed — it cannot hide one". That was false, and this repository can
- * demonstrate it: there are two unrelated `Fact` interfaces. An earlier `type MediaUrl = string`
- * would have won over a later imported `MediaUrl = SafeResourceUrl`, and check 4 would have resolved
- * the binding to a plain string — a silent pass, not even the fail-closed report.
- *
- * So a name already present is overwritten when the new declaration mentions `Safe*` and the kept one
- * does not. That makes the collision behaviour actually match the claim: it can only ever move a
- * binding towards being reported, never away.
- * @returns {{interfaces: Map<string, Map<string,string>>, aliases: Map<string,string>}}
- */
-function collectGlobalTypes(parsed) {
-  const interfaces = new Map();
-  const aliases = new Map();
-
-  /** Keep whichever declaration is more likely to make check 4 report. */
-  const preferSafer = (map, name, candidate, mentions) => {
-    if (!map.has(name)) {
-      map.set(name, candidate);
-      return;
-    }
-    if (mentions(candidate) && !mentions(map.get(name))) map.set(name, candidate);
-  };
-
-  for (const [, { sf }] of parsed) {
-    const shapes = collectTypeShapes(sf);
-    for (const [name, props] of shapes.interfaces) {
-      // An interface "mentions Safe" if any of its property types does.
-      preferSafer(interfaces, name, props, (p) => [...p.values()].some(mentionsSafe));
-    }
-    for (const [name, target] of shapes.aliases) {
-      preferSafer(aliases, name, target, mentionsSafe);
-    }
-  }
-  return { interfaces, aliases };
-}
-
-/**
- * Follow `type A = B; type B = SafeResourceUrl` to the end, so the text tested for `Safe*` is the
- * resolved target rather than whatever local name the author chose.
- *
- * Depth-capped and cycle-guarded: a self-referential alias is a compile error, not this gate's
- * problem, and it must not hang the build.
- */
-function expandAliases(typeText, aliases, seen = new Set()) {
-  if (!typeText) return typeText;
-  let out = typeText;
-  for (let depth = 0; depth < 8; depth += 1) {
-    // Every valid identifier, not just capitalised ones. TypeScript permits a lowercase type name,
-    // so `type mediaUrl = SafeResourceUrl` was left as the text `mediaUrl` and passed. Non-alias
-    // identifiers such as `string` and `null` simply miss the map, so widening costs nothing.
-    const names = out.match(/\b[A-Za-z_$][\w$]*\b/g) ?? [];
-    const next = names.find((name) => aliases.has(name) && !seen.has(name));
-    if (!next) break;
-    seen.add(next);
-    out = out.replace(new RegExp(`\\b${next}\\b`, 'g'), aliases.get(next));
-  }
-  return out;
-}
-
-/**
- * Callees accepted as sanitisers, by *qualified* shape rather than by final name alone.
- *
- * Matching the final name only — which this did, to reach the real `this.escapeHtml(text)` call sites
- * — accepts any function that happens to be called `sanitize`. `const sanitize = (v) => v;` beside
- * `bypassSecurityTrustHtml(sanitize(raw))` satisfied the guard while doing nothing, which is the same
- * decoy problem one level down from the one this check was rewritten to close.
- *
- * `DOMPurify.sanitize` and `renderTrustedHtml` are fixed identities. `escapeHtml` is accepted only
- * when the file declares one that demonstrably escapes — see `declaresRealEscapeHtml` — because it is
- * a local convention in this repository rather than an import from a known package.
- */
-const QUALIFIED_SANITISERS = new Set(['DOMPurify.sanitize', 'renderTrustedHtml']);
 
 /**
  * A transform argument that cannot introduce unchecked text: a literal, a regex, or a number.
@@ -424,106 +322,6 @@ function isInertTransformArg(arg) {
   );
 }
 
-/**
- * Whether **every** `escapeHtml` declared in `sf` returns a value derived from a `replace` call.
- *
- * The previous version searched the declaration's text for `&lt;`/`&amp;`, which proves nothing about
- * what the function returns: `escapeHtml(v) { const marker = '&lt;'; return v; }` passed on dead
- * marker text. It also short-circuited on the first match, so one real helper vouched for any
- * same-named decoy elsewhere in the file.
- *
- * `every`, not `some` — a real implementation must not bless a decoy — and the test is on the
- * returned expression rather than the body text, which is the difference between "an entity appears
- * somewhere" and "the value handed back was transformed".
- */
-function declaresRealEscapeHtml(sf) {
-  const decls = [];
-  eachNode(sf, (n) => {
-    const isEscapeDecl =
-      (ts.isMethodDeclaration(n) || ts.isFunctionDeclaration(n) || ts.isPropertyDeclaration(n)) &&
-      n.name &&
-      !ts.isComputedPropertyName(n.name) &&
-      n.name.getText(sf) === 'escapeHtml';
-    if (isEscapeDecl) decls.push(n);
-  });
-  if (decls.length === 0) return false;
-
-  const derivesFromReplace = (expr, decl, depth = 0) => {
-    if (!expr || depth > 6) return false;
-    if (ts.isParenthesizedExpression(expr)) return derivesFromReplace(expr.expression, decl, depth + 1);
-    if (ts.isCallExpression(expr)) {
-      const callee = expr.expression;
-      if (!ts.isPropertyAccessExpression(callee)) return false;
-      if (callee.name.text === 'replace' || callee.name.text === 'replaceAll') return true;
-      return derivesFromReplace(callee.expression, decl, depth + 1);
-    }
-    if (ts.isIdentifier(expr)) {
-      let init = null;
-      eachNode(decl, (d) => {
-        if (init) return;
-        if (ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) && d.name.text === expr.text) {
-          init = d.initializer ?? null;
-        }
-      });
-      return derivesFromReplace(init, decl, depth + 1);
-    }
-    return false;
-  };
-
-  return decls.every((decl) => {
-    const text = decl.getText(sf);
-    if (!text.includes('&lt;') && !text.includes('&amp;')) return false;
-
-    // Only this function's own returns. Descending into nested functions is wrong: the callback in
-    // `text.replace(/[&<>"]/g, (c) => map[c])` is not what `escapeHtml` returns, and treating its body
-    // as a return made the real `ai-markdown.pipe` helper fail.
-    const fn = ts.isPropertyDeclaration(decl)
-      ? decl.initializer && (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))
-        ? decl.initializer
-        : null
-      : decl;
-    if (!fn) return false;
-
-    const returns = [];
-    if (ts.isArrowFunction(fn) && fn.body && !ts.isBlock(fn.body)) {
-      returns.push(fn.body); // concise body is an implicit return
-    } else if (fn.body) {
-      const collect = (node) => {
-        if (ts.isReturnStatement(node)) {
-          if (node.expression) returns.push(node.expression);
-          return;
-        }
-        // Stop at a nested function boundary — its returns belong to it, not to `fn`.
-        if (
-          node !== fn &&
-          (ts.isArrowFunction(node) ||
-            ts.isFunctionExpression(node) ||
-            ts.isFunctionDeclaration(node) ||
-            ts.isMethodDeclaration(node))
-        ) {
-          return;
-        }
-        node.forEachChild(collect);
-      };
-      collect(fn.body);
-    }
-    if (returns.length === 0) return false;
-    return returns.every((r) => derivesFromReplace(r, decl));
-  });
-}
-
-/**
- * The declaration a call's callee actually resolves to, as `file::name`, or `null`.
- *
- * This replaces three successive attempts to establish sanitiser identity from syntax — full callee
- * text, then final callee name, then "a same-named import exists in this file" — each of which review
- * defeated in one line. The last was the clearest lesson: an import existing *somewhere* in a file
- * says nothing about what a particular callee resolves to, because a local declaration can shadow it.
- *
- * Only the checker knows. `getSymbolAtLocation` follows aliases to the declaration that will actually
- * run, so a shadowing local, an identity function of the right name, and a re-export all reduce to
- * their real declaration site — which is either the reviewed one or it is not.
- */
 /**
  * A short hash of the declaration a call resolves to, with whitespace normalised.
  *
@@ -548,6 +346,18 @@ function declarationHash(node, checker) {
   return createHash('sha256').update(normalised).digest('hex').slice(0, 16);
 }
 
+/**
+ * The declaration a call's callee actually resolves to, as `file::name`, or `null`.
+ *
+ * This replaces three successive attempts to establish sanitiser identity from syntax — full callee
+ * text, then final callee name, then "a same-named import exists in this file" — each of which review
+ * defeated in one line. The last was the clearest lesson: an import existing *somewhere* in a file
+ * says nothing about what a particular callee resolves to, because a local declaration can shadow it.
+ *
+ * Only the checker knows. `getSymbolAtLocation` follows aliases to the declaration that will actually
+ * run, so a shadowing local, an identity function of the right name, and a re-export all reduce to
+ * their real declaration site — which is either the reviewed one or it is not.
+ */
 function resolveCalleeDeclaration(node, checker) {
   const callee = node.expression;
   const target = ts.isPropertyAccessExpression(callee) ? callee.name : callee;
@@ -739,9 +549,6 @@ function sanitizerReaches(expr, host, sf, checker, approvedSanitisers) {
   return walk(expr, 0);
 }
 
-const mentionsSafe = (typeText) => /\bSafe(Url|ResourceUrl|Html|Style|Script|Value)\b/.test(typeText);
-const elementTypeOf = (typeText) =>
-  typeText.replace(/\s*\|\s*(null|undefined)/g, '').replace(/\[\]$/, '').replace(/^readonly\s+/, '').trim();
 
 // ---------------------------------------------------------------------------------------------
 // templates
@@ -827,60 +634,74 @@ function isInComponentDecorator(node, sf) {
 }
 
 /**
- * Resolve the type text a template expression carries.
- *
- * Handles the shapes that actually appear: `blobUrl()`, `data.blobUrl`, `src.url` where `src` is
- * a `@for` loop variable, and optional chaining. Returns null when it cannot tell — the caller
- * treats "cannot tell" as "do not flag", so this gate under-reports rather than crying wolf.
+ * Walks a parsed template collecting NONE-context bindings, with the `@for` variables in scope at
+ * each one.
  */
-function resolveExpressionType(expr, shapes, loopVars) {
-  // Take the first operand of a `??` / `||` and drop a trailing `!`.
-  const cleaned = expr.split(/\?\?|\|\|/)[0].trim().replace(/!$/, '');
-  // Split `a()?.b.c` into ['a', 'b', 'c'].
-  const path = cleaned
-    .replace(/\(\s*\)/g, '')
-    .replace(/\?\./g, '.')
-    .split('.')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (path.length === 0) return null;
-  if (path.some((p) => /[^\w$]/.test(p))) return null; // calls with args, index access — out of scope
+class NoneContextBindingCollector extends TmplAstRecursiveVisitor {
+  constructor() {
+    super();
+    /** @type {{element:string, attr:string, expr:string, line:number, loopVars:Map<string,string>}[]} */
+    this.bindings = [];
+    this.loopVars = new Map();
+  }
 
-  const [firstSegment, ...rest] = path;
-  let root = firstSegment;
-
-  // A `@for (src of videoSources(); …)` loop variable resolves to the element type.
-  if (loopVars.has(root)) {
-    const iterated = loopVars.get(root);
-    const iteratedType = shapes.members.get(iterated);
-    if (!iteratedType) return null;
-    root = null;
-    let current = elementTypeOf(iteratedType);
-    for (const prop of rest) {
-      const iface = shapes.interfaces.get(current);
-      if (!iface || !iface.has(prop)) return null;
-      current = elementTypeOf(iface.get(prop));
+  visitElement(element) {
+    const guarded = NONE_CONTEXT_BY_ELEMENT.get(element.name);
+    if (guarded) {
+      for (const input of element.inputs) {
+        if (!URL_CARRYING_BINDING_TYPES.has(input.type)) continue;
+        if (!guarded.has(input.name)) continue;
+        this.bindings.push({
+          element: element.name,
+          attr: input.name,
+          expr: (input.value?.source ?? '').trim(),
+          line: input.sourceSpan.start.line + 1,
+          loopVars: new Map(this.loopVars),
+        });
+      }
     }
-    return current;
+    super.visitElement(element);
   }
 
-  let current = shapes.members.get(root);
-  if (!current) return null;
-  for (const prop of rest) {
-    const iface = shapes.interfaces.get(elementTypeOf(current));
-    if (!iface || !iface.has(prop)) return null;
-    current = iface.get(prop);
+  visitForLoopBlock(block) {
+    const outer = this.loopVars;
+    this.loopVars = new Map(outer);
+    // `resolveTemplateType` looks the iterated expression up as a class member, so `videoSources()`
+    // is recorded as `videoSources`. Anything more complex simply fails to resolve, and check 4
+    // reports rather than skips — which is the correct answer for an iteration it cannot follow.
+    this.loopVars.set(block.item.name, (block.expression?.source ?? '').trim().replace(/\(\s*\)$/, ''));
+    super.visitForLoopBlock(block);
+    this.loopVars = outer;
   }
-  return current;
 }
 
-/** `@for (x of expr(); track …)` → Map<'x','expr'> */
-function collectLoopVars(template) {
-  const vars = new Map();
-  const re = /@for\s*\(\s*(\w+)\s+of\s+([\w$]+)\s*\(\s*\)/g;
-  let m;
-  while ((m = re.exec(template)) !== null) vars.set(m[1], m[2]);
-  return vars;
+/**
+ * Every NONE-context binding in one template, or the reason the template could not be read.
+ *
+ * Parsed with Angular's own `parseTemplate` rather than matched with a regex. The regex asked for
+ * one spelling — `<audio [src]="…">` — and Angular accepts three that reach the identical DOM
+ * property: `bind-src="…"` is the canonical form the bracket syntax desugars to, `[attr.src]="…"`
+ * writes the same attribute, and `[(src)]="…"` binds it two-way. `<audio bind-src="blobUrl()">`
+ * therefore put a `Safe*` value into a NONE context while check 4 stayed green. Enumerating the
+ * bindings the compiler found closes the class instead of adding a fourth alternation.
+ *
+ * A template that will not parse yields no bindings, so the failure is returned rather than
+ * swallowed — the caller reports it, on the same fail-closed grounds as an unresolvable type.
+ * @returns {{bindings: object[], parseError: string|null}}
+ */
+function noneContextBindingsIn(template, templateName) {
+  let parsed;
+  try {
+    parsed = parseTemplate(template, templateName);
+  } catch (err) {
+    return { bindings: [], parseError: err instanceof Error ? err.message : String(err) };
+  }
+  if (parsed.errors?.length) {
+    return { bindings: [], parseError: parsed.errors.map((e) => e.msg ?? String(e)).join('; ') };
+  }
+  const collector = new NoneContextBindingCollector();
+  for (const node of parsed.nodes) node.visit(collector);
+  return { bindings: collector.bindings, parseError: null };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -1314,9 +1135,8 @@ function main() {
     for (const [file, { sf }] of parsed) {
       eachNode(sf, (n) => {
         if (!ts.isCallExpression(n)) return;
-        const callee = n.expression;
-        if (!ts.isPropertyAccessExpression(callee)) return;
-        if (!/^bypassSecurityTrust(Url|ResourceUrl)$/.test(callee.name.text)) return;
+        const bypassName = accessedMemberName(n.expression);
+        if (!bypassName || !/^bypassSecurityTrust(Url|ResourceUrl)$/.test(bypassName)) return;
         const member = enclosingMemberName(n);
         const key = `${file}::${member}`;
         if (entries.has(key) || APPROVED_HELPERS.get(file) === member) return;
@@ -1367,60 +1187,66 @@ function main() {
       const classes = programFile ? classesIn(programFile) : [];
 
       for (const tpl of templates) {
-        const loopVars = collectLoopVars(tpl.template);
-        for (const { element, attr } of NONE_CONTEXT_BINDINGS) {
-          // Accept both double and single quotes: [src]="..." or [src]='...'
-          const re = new RegExp(`<${element}\\b[^>]*?\\[${attr}\\]\\s*=\\s*["']([^"']+)["']`, 'gs');
-          let m;
-          while ((m = re.exec(tpl.template)) !== null) {
-            const expr = m[1].trim();
-            const lineInTpl = tpl.template.slice(0, m.index).split('\n').length;
-            const where = tpl.htmlFile
-              ? `${tpl.htmlFile}:${lineInTpl}`
-              : `${tpl.tsFile}:${tpl.offsetLine + lineInTpl - 1}`;
+        const templateName = tpl.htmlFile ?? tpl.tsFile;
+        const placeOf = (lineInTpl) =>
+          tpl.htmlFile ? `${tpl.htmlFile}:${lineInTpl}` : `${tpl.tsFile}:${tpl.offsetLine + lineInTpl - 1}`;
 
-            // EVERY alternative, not just the first. `a() ?? b()` hands Angular `b` whenever `a` is
-            // null, so a Safe value on any branch reproduces the defect.
-            const branches = expressionAlternatives(expr);
-            let safeBranch = null;
-            let unresolved = null;
+        const { bindings, parseError } = noneContextBindingsIn(tpl.template, templateName);
+        if (parseError) {
+          findings.push(
+            `[4] unparsable template  ${templateName}\n` +
+              `    Angular's own parser rejected it: ${parseError}\n` +
+              `    A template that cannot be parsed cannot be scanned for NONE-context bindings, and a\n` +
+              `    check that skipped it would be silent exactly where it is least able to see. Fix the\n` +
+              `    template, or the component will not compile either.`,
+          );
+          continue;
+        }
 
-            for (const branch of branches) {
-              // Any class in the file may own the template; the first that resolves the path wins.
-              let resolved = null;
-              for (const classDecl of classes) {
-                resolved = resolveTemplateType(branch, classDecl, checker, loopVars);
-                if (resolved) break;
-              }
-              if (!resolved) {
-                unresolved = branch;
-                break;
-              }
-              if (typeIsSafe(resolved, checker)) {
-                safeBranch = { branch, text: checker.typeToString(resolved) };
-                break;
-              }
+        for (const { element, attr, expr, line, loopVars } of bindings) {
+          const where = placeOf(line);
+
+          // EVERY alternative, not just the first. `a() ?? b()` hands Angular `b` whenever `a` is
+          // null, so a Safe value on any branch reproduces the defect.
+          const branches = expressionAlternatives(expr);
+          let safeBranch = null;
+          let unresolved = branches.length === 0 ? expr : null;
+
+          for (const branch of branches) {
+            // Any class in the file may own the template; the first that resolves the path wins.
+            let resolved = null;
+            for (const classDecl of classes) {
+              resolved = resolveTemplateType(branch, classDecl, checker, loopVars);
+              if (resolved) break;
             }
-
-            if (unresolved !== null) {
-              findings.push(
-                `[4] unresolvable type in a NONE context  ${where}\n` +
-                  `    <${element} [${attr}]="${expr}"> — the type of '${unresolved}' could not be determined.\n` +
-                  `    ${element}[${attr}] is SecurityContext.NONE: no sanitiser runs, so a Safe* value here is\n` +
-                  `    never unwrapped and stringifies into the attribute. Because it cannot rule that out, it\n` +
-                  `    reports. Bind a plainly-typed member the checker can resolve.`,
-              );
-              continue;
+            if (!resolved) {
+              unresolved = branch;
+              break;
             }
-            if (!safeBranch) continue;
-            findings.push(
-              `[4] Safe* value in a NONE context  ${where}\n` +
-                `    <${element} [${attr}]="${expr}"> — branch '${safeBranch.branch}' resolves to '${safeBranch.text}'.\n` +
-                `    ${element}[${attr}] is SecurityContext.NONE: no sanitiser runs, the Safe* value is never\n` +
-                `    unwrapped, and toString() writes "SafeValue must use [property]=binding: …" into ${attr}.\n` +
-                `    Bind the raw string here and keep the Safe* value for iframe[src].`,
-            );
+            if (typeIsSafe(resolved, checker)) {
+              safeBranch = { branch, text: checker.typeToString(resolved) };
+              break;
+            }
           }
+
+          if (unresolved !== null) {
+            findings.push(
+              `[4] unresolvable type in a NONE context  ${where}\n` +
+                `    <${element} [${attr}]="${expr}"> — the type of '${unresolved}' could not be determined.\n` +
+                `    ${element}[${attr}] is SecurityContext.NONE: no sanitiser runs, so a Safe* value here is\n` +
+                `    never unwrapped and stringifies into the attribute. Because it cannot rule that out, it\n` +
+                `    reports. Bind a plainly-typed member the checker can resolve.`,
+            );
+            continue;
+          }
+          if (!safeBranch) continue;
+          findings.push(
+            `[4] Safe* value in a NONE context  ${where}\n` +
+              `    <${element} [${attr}]="${expr}"> — branch '${safeBranch.branch}' resolves to '${safeBranch.text}'.\n` +
+              `    ${element}[${attr}] is SecurityContext.NONE: no sanitiser runs, the Safe* value is never\n` +
+              `    unwrapped, and toString() writes "SafeValue must use [property]=binding: …" into ${attr}.\n` +
+              `    Bind the raw string here and keep the Safe* value for iframe[src].`,
+          );
         }
       }
     }
@@ -1453,9 +1279,7 @@ function main() {
       const approvedHelper = APPROVED_HELPERS.get(file);
       eachNode(sf, (n) => {
         if (!ts.isCallExpression(n)) return;
-        const callee = n.expression;
-        if (!ts.isPropertyAccessExpression(callee)) return;
-        if (callee.name.text !== 'bypassSecurityTrustHtml') return;
+        if (accessedMemberName(n.expression) !== 'bypassSecurityTrustHtml') return;
 
         // Skip only if this bypass is inside the approved helper function
         if (approvedHelper) {
