@@ -829,7 +829,13 @@ function templatesFor(tsFile, sf, checker) {
     const classDecl = componentClassOf(n);
     if (!classDecl) return;
 
-    const key = n.name.getText(sf);
+    // `n.name.getText(sf)` returns `'templateUrl'` **with the quotes** for a quoted key, so
+    // `@Component({ 'templateUrl': './viewer.html' })` compared unequal and the component was
+    // skipped entirely — the fourth fail-open spelling in this discovery path, after the binding
+    // syntax, the decorator and the template value. `assignmentPropertyName` is the resolver the
+    // bypass collector already uses for exactly this question, so a quoted, computed or
+    // constant-keyed metadata property resolves to the same name an identifier does.
+    const { name: key } = assignmentPropertyName(n, checker);
     if (key !== 'template' && key !== 'templateUrl') return;
 
     const value = staticStringValue(n.initializer, checker);

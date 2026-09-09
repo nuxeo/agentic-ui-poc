@@ -1132,6 +1132,56 @@ control(
   'unreadable template value',
 );
 
+// ---- check 4: the metadata key, not just the metadata value -------------------------------------
+//
+// `templatesFor` read the key with `n.name.getText(sf)`, which returns `'templateUrl'` **with the
+// quotes** for a quoted key — so `@Component({ 'templateUrl': './viewer.html' })` compared unequal
+// and the component was skipped entirely. Verified: with `posterUrl` retyped to `SafeResourceUrl`,
+// quoting the key returned check 4 to `PASS`.
+//
+// The fourth fail-open spelling in this one discovery path, after the binding syntax, the decorator
+// and the template value. It is fixed by reusing `assignmentPropertyName` — the resolver the bypass
+// collector already uses for this exact question — rather than by normalising quotes, so a computed
+// and a constant key resolve too.
+const metadataKey = (spelling, prelude = '') =>
+  edit(VIEWER_TS, (s) => {
+    const retyped = s.replace(
+      'readonly posterUrl = input<string | null>(null);',
+      'readonly posterUrl = input<SafeResourceUrl | null>(null);',
+    );
+    if (retyped === s) throw new Error('document-viewer posterUrl changed — update these controls');
+    const withPrelude = prelude ? retyped.replace('@Component({', `${prelude}\n\n@Component({`) : retyped;
+    const out = withPrelude.replace(
+      "templateUrl: './document-viewer.component.html',",
+      `${spelling}: './document-viewer.component.html',`,
+    );
+    if (out === withPrelude) {
+      throw new Error('document-viewer templateUrl changed — update these controls');
+    }
+    return out;
+  });
+
+control(
+  'check 4 finds a template behind a quoted metadata key',
+  4,
+  () => metadataKey("'templateUrl'"),
+  'Safe* value in a NONE context',
+);
+
+control(
+  'check 4 finds a template behind a computed metadata key',
+  4,
+  () => metadataKey("['templateUrl']"),
+  'Safe* value in a NONE context',
+);
+
+control(
+  'check 4 finds a template behind a metadata key held in a constant',
+  4,
+  () => metadataKey('[TPL_KEY]', "const TPL_KEY = 'templateUrl' as const;"),
+  'Safe* value in a NONE context',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',
