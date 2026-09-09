@@ -29,6 +29,9 @@ const AUDIT = 'scripts/beta-harness/sanitizer-audit.mjs';
 const ALLOWLIST = '.ai/state/sanitizer-allowlist.json';
 const VIEWER_TS = 'libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts';
 const NOTE_EDITOR = 'libs/features/document-detail/src/lib/note-editor/note-editor.ts';
+const KD_CITATION =
+  'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts';
+const BASE_REF = 'refs/remotes/origin/main';
 
 /** Runs the audit and returns { code, out }. */
 function runAudit(extraArgs = []) {
@@ -42,12 +45,74 @@ function edit(relPath, transform) {
   const original = readFileSync(abs, 'utf8');
   if (!backups.has(relPath)) backups.set(relPath, original);
   const next = transform(original);
-  if (next === original) throw new Error(`perturbation for ${relPath} changed nothing — the selftest would be vacuous`);
+  if (next === original)
+    throw new Error(`perturbation for ${relPath} changed nothing — the selftest would be vacuous`);
   writeFileSync(abs, next, 'utf8');
 }
 function restoreAll() {
   for (const [relPath, original] of backups) writeFileSync(join(ROOT, relPath), original, 'utf8');
   backups.clear();
+  if (restoreBaseRef) {
+    const restore = restoreBaseRef;
+    restoreBaseRef = null;
+    restore();
+  }
+}
+
+const git = (...args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
+
+/** Set by `repointBaseTo`, run by `restoreAll` — so the signal handlers below cover it too. */
+let restoreBaseRef = null;
+
+/**
+ * Points `refs/remotes/origin/main` at `commitish` until the next `restoreAll()`.
+ *
+ * The two merge-base ratchet invariants — a budget above the base's, and a member declaring more
+ * calls than the base declared — cannot be reached by perturbing the working tree, because the
+ * whole point of reading the ceiling from the merge base is that a contributor cannot edit it.
+ * That is also why they were the two invariants no control had ever observed red: with **both**
+ * comparisons stubbed out, the selftest still reported `PASS — 51 negative control(s)`.
+ *
+ * Worse, they are inert on this branch rather than merely untested. The allowlist was *added* by
+ * this branch, so it does not exist at the merge base with `origin/main`, `allowlistAtBase()`
+ * returns `null`, and every run prints `could not read budgets at the merge base`. The ceiling that
+ * the plan describes as uneditable is currently not consulted at all.
+ *
+ * So the base is moved instead of the tree. Repointing the remote-tracking ref at `HEAD` makes the
+ * "merge base" the committed allowlist, and a working-tree perturbation is then measured against
+ * it exactly as a real second PR would be. Nothing in `sanitizer-audit.mjs` changes, and no
+ * override is added to it — an env var or flag that relocated the ceiling would be a way to switch
+ * the ratchet off in CI, which is the opposite of the point.
+ *
+ * The ref is restored through `restoreAll`, so `finally`, the signal handlers and
+ * `uncaughtException` all cover it. `git fetch origin` is the recovery if the process is killed
+ * outright: a stale remote-tracking ref would silently change what every later audit compares
+ * against, which is worth being loud about.
+ */
+function repointBaseTo(commitish) {
+  if (restoreBaseRef) throw new Error('base ref already repointed — nesting is not supported');
+
+  const resolved = git('rev-parse', '--verify', `${commitish}^{commit}`);
+  if (resolved.status !== 0) throw new Error(`selftest: cannot resolve ${commitish}`);
+
+  const before = git('rev-parse', '--verify', BASE_REF);
+  const had = before.status === 0;
+  const previous = had ? before.stdout.trim() : null;
+
+  restoreBaseRef = () => {
+    const r = had ? git('update-ref', BASE_REF, previous) : git('update-ref', '-d', BASE_REF);
+    if (r.status !== 0) {
+      console.error(
+        `\nselftest: could not restore ${BASE_REF} — run 'git fetch origin' to repair it`,
+      );
+    }
+  };
+
+  const set = git('update-ref', BASE_REF, resolved.stdout.trim());
+  if (set.status !== 0) {
+    restoreBaseRef = null;
+    throw new Error(`selftest: could not repoint ${BASE_REF}`);
+  }
 }
 
 // `finally` covers a thrown error but not a signal, and this perturbs real tracked files. Without
@@ -203,7 +268,8 @@ control(
   () =>
     edit(NOTE_EDITOR, (s) => {
       const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
-      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      if (!s.includes(anchor))
+        throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
         anchor,
         `    let trust!: (v: string) => SafeHtml;\n` +
@@ -251,7 +317,8 @@ control(
   try {
     edit(NOTE_EDITOR, (s) => {
       const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
-      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      if (!s.includes(anchor))
+        throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
         anchor,
         '    const notAPattern = { bypassSecurityTrustHtml: (v: string) => v };\n' +
@@ -289,15 +356,19 @@ control(
   'check 1 counts two bypasses written on the same source line as two',
   1,
   () =>
-    edit('libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts', (s) => {
-      const anchor =
-        '      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n    }\n\n    const matchIndex';
-      if (!s.includes(anchor)) throw new Error('highlightExcerpt changed shape — update this control');
-      return s.replace(
-        anchor,
-        '      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text)) ?? this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n    }\n\n    const matchIndex',
-      );
-    }),
+    edit(
+      'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
+      (s) => {
+        const anchor =
+          '      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n    }\n\n    const matchIndex';
+        if (!s.includes(anchor))
+          throw new Error('highlightExcerpt changed shape — update this control');
+        return s.replace(
+          anchor,
+          '      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text)) ?? this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n    }\n\n    const matchIndex',
+        );
+      },
+    ),
   'bypass count mismatch',
 );
 
@@ -318,7 +389,8 @@ control(
   () =>
     edit(NOTE_EDITOR, (s) => {
       const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
-      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      if (!s.includes(anchor))
+        throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
         anchor,
         `    const BYPASS_KEY = 'bypassSecurityTrustHtml';\n` +
@@ -368,7 +440,8 @@ control(
   () =>
     edit(NOTE_EDITOR, (s) => {
       const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
-      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      if (!s.includes(anchor))
+        throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
         anchor,
         `    let key = 'bypassSecurityTrustHtml';\n` +
@@ -394,7 +467,8 @@ control(
   () =>
     edit(NOTE_EDITOR, (s) => {
       const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
-      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      if (!s.includes(anchor))
+        throw new Error('note-editor.ts markdownHtml changed — update this control');
       return s.replace(
         anchor,
         `    const key = 'bypassSecurityTrustHtml' as const;\n` +
@@ -513,11 +587,11 @@ control(
   () => {
     edit(AUDIT, (s) => {
       const marker = `const APPROVED_HELPERS = new Map([`;
-      if (!s.includes(marker)) throw new Error('APPROVED_HELPERS shape changed — update this control');
+      if (!s.includes(marker))
+        throw new Error('APPROVED_HELPERS shape changed — update this control');
       return s.replace(
         marker,
-        marker +
-          `\n  ['libs/features/browse/src/lib/browse/browse.ts', 'loadThumbnails'],`,
+        marker + `\n  ['libs/features/browse/src/lib/browse/browse.ts', 'loadThumbnails'],`,
       );
     });
     edit(ALLOWLIST, (s) => {
@@ -632,7 +706,8 @@ control(
     edit('libs/features/document-detail/src/lib/note-editor/note-editor.ts', (s) => {
       // Neutralise the sanitiser call while leaving the bypass in place.
       const out = s.replace(/DOMPurify\.sanitize\(/g, 'passThroughForSelftest(');
-      if (out === s) throw new Error('note-editor.ts no longer calls DOMPurify.sanitize — update this control');
+      if (out === s)
+        throw new Error('note-editor.ts no longer calls DOMPurify.sanitize — update this control');
       return out;
     }),
   // Finding renamed from "unpaired" to "unsanitised" when check 5 stopped asking whether a sanitiser
@@ -686,12 +761,15 @@ control(
     // satisfied a bare `document-viewer.component.html` expectation. The control therefore proved the
     // fail-closed default (already covered by its own control) and said nothing about alias
     // resolution, which is the thing it exists to assert.
-    edit('libs/shared/nuxeo-client/src/lib/utils/navigable-url.ts', (s) =>
-      `${s}\nexport type CrossFileMediaUrl = import('@angular/platform-browser').SafeResourceUrl;\n`,
+    edit(
+      'libs/shared/nuxeo-client/src/lib/utils/navigable-url.ts',
+      (s) =>
+        `${s}\nexport type CrossFileMediaUrl = import('@angular/platform-browser').SafeResourceUrl;\n`,
     );
     edit('libs/shared/nuxeo-client/src/index.ts', (s) => {
       const anchor = "} from './lib/utils/navigable-url';";
-      if (!s.includes(anchor)) throw new Error('navigable-url barrel export changed — update this control');
+      if (!s.includes(anchor))
+        throw new Error('navigable-url barrel export changed — update this control');
       return s.replace(anchor, `  type CrossFileMediaUrl,\n${anchor}`);
     });
     edit(VIEWER_TS, (s) =>
@@ -708,7 +786,7 @@ control(
   },
   // The SPECIFIC finding, not merely the file name. `unresolvable type` would also name this file,
   // and accepting that is exactly how the control came to assert nothing.
-  "[4] Safe* value in a NONE context  libs/shared/ui/src/lib/document-viewer/document-viewer.component.html",
+  '[4] Safe* value in a NONE context  libs/shared/ui/src/lib/document-viewer/document-viewer.component.html',
 );
 
 control(
@@ -757,7 +835,8 @@ const decoratorSpelling = (rewrite) => {
     );
     if (retyped === s) throw new Error('document-viewer posterUrl changed — update these controls');
     const out = rewrite(retyped);
-    if (out === retyped) throw new Error('decorator rewrite matched nothing — update these controls');
+    if (out === retyped)
+      throw new Error('decorator rewrite matched nothing — update these controls');
     return out;
   });
 };
@@ -782,7 +861,10 @@ control(
   () =>
     decoratorSpelling((s) =>
       s
-        .replace("import {\n  Component,", "import * as ngCore from '@angular/core';\nimport {\n  Component,")
+        .replace(
+          'import {\n  Component,',
+          "import * as ngCore from '@angular/core';\nimport {\n  Component,",
+        )
         .replace('@Component({', '@ngCore.Component({'),
     ),
   'Safe* value in a NONE context',
@@ -934,14 +1016,18 @@ control(
     // that has since been edited into a no-op. Each entry is pinned to a hash of the declaration it
     // was reviewed as, so any change to what the code does lapses the registration until someone
     // re-reviews and re-pins. Whitespace is normalised first, so reformatting does not.
-    edit('libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts', (s) => {
-      const out = s.replace(
-        /private escapeHtml\(value: string\): string \{/,
-        'private escapeHtml(value: string): string {\n    if (value === "") return value;',
-      );
-      if (out === s) throw new Error('kd-citation-dialog escapeHtml signature changed — update control');
-      return out;
-    }),
+    edit(
+      'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
+      (s) => {
+        const out = s.replace(
+          /private escapeHtml\(value: string\): string \{/,
+          'private escapeHtml(value: string): string {\n    if (value === "") return value;',
+        );
+        if (out === s)
+          throw new Error('kd-citation-dialog escapeHtml signature changed — update control');
+        return out;
+      },
+    ),
   'unsanitised trusted HTML',
 );
 
@@ -973,9 +1059,11 @@ control(
   // the independent set, which is the same treatment `clean = clean + raw` already received.
   () =>
     edit(NOTE_EDITOR, (s) => {
-      const before = `    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
+      const before =
+        `    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
         '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
-      if (!s.includes(before)) throw new Error('note-editor markdownHtml changed — update this control');
+      if (!s.includes(before))
+        throw new Error('note-editor markdownHtml changed — update this control');
       return s.replace(
         before,
         `    let clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
@@ -998,13 +1086,15 @@ control(
   // trace, nothing proven, reported.
   () =>
     edit(NOTE_EDITOR, (s) => {
-      const before = `  readonly markdownHtml = computed(() => {\n` +
+      const before =
+        `  readonly markdownHtml = computed(() => {\n` +
         '    if (!this.isMarkdown()) return null;\n' +
         "    const raw = renderNoteMarkdown(this.content() ?? '');\n" +
         `    const clean = DOMPurify.sanitize(raw, { ADD_ATTR: ['target', 'rel'] });\n` +
         '    return this.sanitizer.bypassSecurityTrustHtml(clean);\n' +
         '  });';
-      if (!s.includes(before)) throw new Error('note-editor markdownHtml changed — update this control');
+      if (!s.includes(before))
+        throw new Error('note-editor markdownHtml changed — update this control');
       return s.replace(
         before,
         `  readonly markdownHtml = computed(() => {\n` +
@@ -1049,7 +1139,10 @@ const sanitiserEntry = (mutate) =>
 control(
   'check 1 rejects a sanitiser registry entry whose justification is blank',
   1,
-  () => sanitiserEntry((entry) => { entry.justification = ''; }),
+  () =>
+    sanitiserEntry((entry) => {
+      entry.justification = '';
+    }),
   'no "justification"',
 );
 
@@ -1057,7 +1150,10 @@ control(
   'check 1 rejects a sanitiser registry justification below the length floor',
   1,
   // A blank check alone is defeated by typing "safe", which is the same floor bypass entries have.
-  () => sanitiserEntry((entry) => { entry.justification = 'safe'; }),
+  () =>
+    sanitiserEntry((entry) => {
+      entry.justification = 'safe';
+    }),
   'under the 40 minimum',
 );
 
@@ -1066,7 +1162,10 @@ control(
   1,
   // Without the hash, registration could not lapse when the helper is edited into a no-op — which is
   // the one hole a reviewed-list design otherwise leaves, and the reason the pin exists at all.
-  () => sanitiserEntry((entry) => { delete entry.sha; }),
+  () =>
+    sanitiserEntry((entry) => {
+      delete entry.sha;
+    }),
   'no "sha"',
 );
 
@@ -1075,7 +1174,10 @@ control(
   5,
   // Reporting at the registry is not enough on its own: the entry must also be *dropped*, or the
   // helper would keep vouching for the bypass while check 1 complained about the paperwork.
-  () => sanitiserEntry((entry) => { entry.justification = ''; }),
+  () =>
+    sanitiserEntry((entry) => {
+      entry.justification = '';
+    }),
   'unsanitised trusted HTML',
 );
 
@@ -1150,7 +1252,9 @@ const metadataKey = (spelling, prelude = '') =>
       'readonly posterUrl = input<SafeResourceUrl | null>(null);',
     );
     if (retyped === s) throw new Error('document-viewer posterUrl changed — update these controls');
-    const withPrelude = prelude ? retyped.replace('@Component({', `${prelude}\n\n@Component({`) : retyped;
+    const withPrelude = prelude
+      ? retyped.replace('@Component({', `${prelude}\n\n@Component({`)
+      : retyped;
     const out = withPrelude.replace(
       "templateUrl: './document-viewer.component.html',",
       `${spelling}: './document-viewer.component.html',`,
@@ -1197,6 +1301,14 @@ control(
   'but its budget is still',
 );
 
+/** The allowlist as committed, for expectations that must not be pinned to today's numbers. */
+const allowlistNow = () => JSON.parse(readFileSync(join(ROOT, ALLOWLIST), 'utf8'));
+const declaredCalls = (j, cat) =>
+  Object.values(j.sites)
+    .flat()
+    .filter((e) => e.category === cat)
+    .reduce((n, e) => n + (e.calls ?? 1), 0);
+
 control(
   'the ratchet catches a category growing past its budget',
   null,
@@ -1206,8 +1318,96 @@ control(
       j.budgets.A -= 1;
       return JSON.stringify(j, null, 2);
     }),
-  'budget is 13',
+  // Derived, not written down. This expected `budget is 13`, which is category A's budget minus one
+  // *today*; the remediation this document plans lowers that budget, so the control would have
+  // started failing while the ratchet worked perfectly. Reading both numbers from the allowlist
+  // asserts the whole diagnostic — more specific than the old substring, and it cannot go stale.
+  (() => {
+    const j = allowlistNow();
+    return `category A has ${declaredCalls(j, 'A')} bypass call(s), budget is ${j.budgets.A - 1}`;
+  })(),
 );
+
+// ---- the ratchet: the half that reads the merge base --------------------------------------------
+//
+// The four controls around this comment all perturb the *current* tree, and the ratchet's two
+// merge-base comparisons were therefore never exercised: raising a budget goes red because it
+// leaves headroom, and lowering one goes red because the count exceeds it — both current-tree
+// invariants. Verified by stubbing out both merge-base comparisons: the selftest still reported
+// `PASS — 51 negative control(s)`, so "a budget rose from the base" and "a member absorbed more
+// calls than the base declared" had no control behind them at all.
+//
+// See `repointBaseTo` for why the base is moved rather than the tree, and for the more serious
+// finding underneath: on this branch those two comparisons are not merely untested but **inert**,
+// because the allowlist does not exist at the merge base for this PR.
+//
+// Each control below asserts the merge-base diagnostic specifically. Other findings do fire
+// alongside — the ratchet is deliberately hard to violate in only one dimension, since growing a
+// declared count also breaks the count-matches-code check — so the specific substring is what makes
+// these controls mean anything rather than the exit code.
+//
+// NOT YET VERIFIED: that each control fails with `matched: false` when its own comparison is
+// stubbed out. Both go red today and match their diagnostic, but the mutation that would prove they
+// depend on the merge-base comparison rather than on a co-firing finding has not been run. Until it
+// has, treat these two as controls whose specificity is argued, not observed.
+
+control(
+  'the ratchet catches a budget raised above the merge base',
+  null,
+  () => {
+    repointBaseTo('HEAD');
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      j.budgets.A += 1;
+      return JSON.stringify(j, null, 2);
+    });
+  },
+  "category A's budget rose from",
+);
+
+control(
+  'the ratchet catches a member absorbing more calls than the merge base declared',
+  null,
+  () => {
+    repointBaseTo('HEAD');
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      const entry = (j.sites[KD_CITATION] ?? []).find((e) => e.member === 'highlightExcerpt');
+      // The only entry in the allowlist declaring more than one call, and the member the per-call
+      // counting was introduced for. If it stops declaring 3, this control is asserting a number
+      // that no longer means anything.
+      if (!entry || entry.calls !== 3) {
+        throw new Error('highlightExcerpt no longer declares 3 calls — update this control');
+      }
+      entry.calls = 4;
+      return JSON.stringify(j, null, 2);
+    });
+  },
+  'declared 3 bypass call(s) at the merge base and now declares 4',
+);
+
+// The two controls above would also pass if the base were unreadable and some *other* finding
+// happened to carry their text, so this asserts the plumbing they depend on: with a base that
+// carries an allowlist, the audit stops saying it could not read one. That note is the tell that
+// the ceiling is not being consulted, and it is printed on every run of this branch today.
+{
+  try {
+    repointBaseTo('HEAD');
+    const { out } = runAudit();
+    const read = !out.includes('could not read budgets at the merge base');
+    results.push({
+      name: 'the merge-base ceiling is read when the base carries an allowlist',
+      pass: read,
+      red: !read,
+      matched: true,
+      expect: 'no "could not read budgets at the merge base" note',
+      out,
+      kind: 'specificity',
+    });
+  } finally {
+    restoreAll();
+  }
+}
 
 control(
   'the ratchet cannot be removed by deleting the budgets object',
@@ -1242,7 +1442,11 @@ control(
 // a check can fail. Collapsing all three into one total reads as "N checks proven able to fail",
 // which is the "evidence must assert the claim, not the pulse" failure `CLAUDE.md` warns about —
 // and this summary previously did exactly that, reporting 13 as though all 13 were red-on-purpose.
-const KIND_LABEL = { negative: 'RED-ON-PURPOSE', baseline: 'baseline (green)', specificity: 'silence' };
+const KIND_LABEL = {
+  negative: 'RED-ON-PURPOSE',
+  baseline: 'baseline (green)',
+  specificity: 'silence',
+};
 console.log('\nsanitizer-audit selftest\n');
 let failed = 0;
 for (const r of results) {
@@ -1264,7 +1468,9 @@ const negatives = tally('negative');
 
 console.log('');
 if (failed > 0) {
-  console.log(`selftest: FAIL — ${failed} of ${results.length} assertions did not behave as expected.`);
+  console.log(
+    `selftest: FAIL — ${failed} of ${results.length} assertions did not behave as expected.`,
+  );
   console.log('A check that cannot be made to fail is decoration. Fix the check, not the control.');
   process.exit(1);
 }
