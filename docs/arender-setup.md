@@ -207,14 +207,14 @@ state, not a bug.
 Configure it in the **Layer 0 bootstrap file**, not by providing the token in `app.config.ts`. It is
 read before authentication, so a deployment changes it without rebuilding:
 
-| Where | Path |
-| ---------------- | ---------------------------------------------------------------------- |
-| Production URL | `/nuxeo/agentic-ui-config/bootstrap.json` |
-| On disk | `<server.home>/nxserver/nuxeo.war/agentic-ui-config/bootstrap.json` |
-| Under `nx serve` | `/agentic-ui-config/bootstrap.json` |
+| Where            | Path                                                                |
+| ---------------- | ------------------------------------------------------------------- |
+| Production URL   | `/nuxeo/agentic-ui-config/bootstrap.json`                           |
+| On disk          | `<server.home>/nxserver/nuxeo.war/agentic-ui-config/bootstrap.json` |
+| Under `nx serve` | `/agentic-ui-config/bootstrap.json`                                 |
 
 **Not the runtime manifest.** Those are two different stores, and this document previously named the
-wrong one. The runtime manifest is a Nuxeo *document*, fetched after login, whose repository path is
+wrong one. The runtime manifest is a Nuxeo _document_, fetched after login, whose repository path is
 itself a bootstrap field; its schema is `AppRuntimeManifest` (`navItems`, `actions`, `rules`,
 `presets`, `featureToggles`, `labels`, `extensions`) and it has no `integrations` key at all. An
 operator who put this block there would see no error and no annotation viewer.
@@ -254,7 +254,7 @@ ARender rather than half-enabling it:
   document.
 
 For local development the compose file above publishes the ARender UI on host port 9080, so a dev
-manifest uses `"viewerOrigin": "http://localhost:9080"`.
+bootstrap file uses `"viewerOrigin": "http://localhost:9080"`.
 
 ## File Reference
 
