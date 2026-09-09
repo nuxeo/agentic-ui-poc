@@ -24,15 +24,15 @@ function assertSafeConfig(config?: Parameters<typeof DOMPurify.sanitize>[1]): vo
       return blocked.has(normalized);
     });
 
-  if (hasBlockedValue(cfg.ALLOWED_TAGS, BLOCKED_TAGS) || hasBlockedValue(cfg.ADD_TAGS, BLOCKED_TAGS)) {
+  if (hasBlockedValue(cfg['ALLOWED_TAGS'], BLOCKED_TAGS)) {
     throw new Error('renderTrustedHtml: active-content tags are not allowed');
   }
 
   if (
-    hasBlockedValue(cfg.ALLOWED_ATTR, BLOCKED_ATTRS) ||
-    hasBlockedValue(cfg.ADD_ATTR, BLOCKED_ATTRS) ||
-    hasBlockedValue(cfg.ALLOWED_ATTR, new Set<string>(), true) ||
-    hasBlockedValue(cfg.ADD_ATTR, new Set<string>(), true)
+    hasBlockedValue(cfg['ALLOWED_ATTR'], BLOCKED_ATTRS) ||
+    hasBlockedValue(cfg['ADD_ATTR'], BLOCKED_ATTRS) ||
+    hasBlockedValue(cfg['ALLOWED_ATTR'], new Set<string>(), true) ||
+    hasBlockedValue(cfg['ADD_ATTR'], new Set<string>(), true)
   ) {
     throw new Error('renderTrustedHtml: executable attributes are not allowed');
   }
