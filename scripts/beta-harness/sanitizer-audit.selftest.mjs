@@ -27,6 +27,7 @@ import { join, resolve } from 'node:path';
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const AUDIT = 'scripts/beta-harness/sanitizer-audit.mjs';
 const ALLOWLIST = '.ai/state/sanitizer-allowlist.json';
+const VIEWER_TS = 'libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts';
 
 /** Runs the audit and returns { code, out }. */
 function runAudit(extraArgs = []) {
@@ -266,20 +267,41 @@ control(
   'document-viewer.component.html',
 );
 
-// And the inverse: with the real types in place, check 4 must be silent on that file. A check that
-// fires either way is not keying on the type at all.
+// Specificity: check 4 must stay silent while doing all of its work.
+//
+// This used to re-run `--only 4` on the unperturbed tree and assert `document-viewer.component.html`
+// was absent — which the green baseline above already implies, since exit 0 means no findings at all.
+// It could not fail unless the baseline had, so it asserted nothing and inflated the tally.
+//
+// It now perturbs the tree so the resolver walks its longest path — `@for` loop variable, to the
+// iterated member, to `VideoSource[]`, to the element type, to the `url` property, then through an
+// alias — and lands on a type that is NOT `Safe*`. A check that fired here would be keying on
+// "resolved a type reference" rather than on what the type resolves to, and the alias expansion added
+// for the evasions above is exactly the machinery that could get that wrong.
 {
-  const { out } = runAudit(['--only', '4']);
-  const quiet = !out.includes('document-viewer.component.html');
-  results.push({
-    name: 'check 4 is silent once the same binding resolves to string',
-    pass: quiet,
-    red: !quiet,
-    matched: true,
-    expect: 'no document-viewer finding while VideoSource.url is string',
-    out,
-    kind: 'specificity',
-  });
+  try {
+    edit(VIEWER_TS, (s) =>
+      s
+        .replace(
+          'export interface VideoSource {',
+          'type PlainMediaUrl = string;\n\nexport interface VideoSource {',
+        )
+        .replace(/^(\s*)url: string;$/m, '$1url: PlainMediaUrl;'),
+    );
+    const { code, out } = runAudit(['--only', '4']);
+    const quiet = code === 0 && !out.includes('document-viewer.component.html');
+    results.push({
+      name: 'check 4 stays silent when the alias it expands resolves to a plain string',
+      pass: quiet,
+      red: !quiet,
+      matched: true,
+      expect: 'no document-viewer finding while VideoSource.url aliases string',
+      out,
+      kind: 'specificity',
+    });
+  } finally {
+    restoreAll();
+  }
 }
 
 // ---- check 5: unpaired trusted HTML --------------------------------------------------------------
@@ -304,8 +326,6 @@ control(
 // cannot prove the resolver understands *types*, and it did not: review demonstrated that
 // `type MediaUrl = SafeResourceUrl` reduced to the text `MediaUrl`, which `mentionsSafe` does not
 // match. Each control here is one of those evasions, and each was verified red before the fix.
-
-const VIEWER_TS = 'libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts';
 
 control(
   'check 4 sees through a local type alias',

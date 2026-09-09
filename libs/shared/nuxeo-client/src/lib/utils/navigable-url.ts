@@ -75,6 +75,21 @@ export function navigableUrlOrNull(
 ): string | null {
   if (typeof candidate !== 'string' || candidate.trim() === '') return null;
 
+  // Reject anything the URL parser would silently rewrite, because this function returns the
+  // ORIGINAL string. The WHATWG parser strips tabs, CR and LF anywhere in a URL and trims leading
+  // and trailing C0/space, so `https://ok.example/\r\nX-Injected: 1` validates as
+  // `https://ok.example/X-Injected:%201` while the value handed back still carries the raw CRLF.
+  // The browser normalises again when it navigates, so this is not an injection into the iframe —
+  // but validator and consumer disagreeing about which bytes were approved is precisely the gap a
+  // validator exists to close, and any consumer that logs the string or hands it to a non-URL parser
+  // sees the control characters. Rejecting is cheap; no legitimate endpoint contains them.
+  // Checked by code point rather than with a regex: a character class spelling these out literally
+  // trips `no-control-regex`, and the intent reads more plainly this way.
+  for (let i = 0; i < candidate.length; i += 1) {
+    const code = candidate.charCodeAt(i);
+    if (code <= 0x20 || code === 0x7f) return null;
+  }
+
   let parsed: URL;
   try {
     // A relative candidate needs a base; without one this throws and we reject, which is correct

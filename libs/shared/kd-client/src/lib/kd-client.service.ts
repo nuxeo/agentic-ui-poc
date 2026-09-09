@@ -42,6 +42,28 @@ type NuxeoDocumentSummary = {
   properties?: Record<string, unknown>;
 };
 
+/**
+ * Suffix that makes a client-side correlation id unique. Not a token, not a nonce, grants nothing.
+ *
+ * `crypto.randomUUID` is a **secure-context-only** API, so on a build served from a plain `http://`
+ * origin that is not `localhost` — an ordinary on-prem deployment — it is `undefined` and calling it
+ * throws. That would take out every Knowledge Discovery answer whose payload omits a `questionId`,
+ * which is a worse outcome than the Sonar finding (`S2245`) that prompted the change: that rule is
+ * about unpredictability, and a correlation id does not need it.
+ *
+ * So: use `randomUUID` when it exists, fall back to `getRandomValues`, and only then to
+ * `Math.random`. The fallback is deliberately reachable and deliberately non-cryptographic.
+ */
+function correlationSuffix(): string {
+  const webCrypto = globalThis.crypto;
+  if (typeof webCrypto?.randomUUID === 'function') return webCrypto.randomUUID();
+  if (typeof webCrypto?.getRandomValues === 'function') {
+    const bytes = webCrypto.getRandomValues(new Uint8Array(8));
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  return Math.random().toString(36).slice(2, 10);
+}
+
 const STRONG_CITATION_SCORE = 0.1;
 const INSUFFICIENT_ANSWER_TEXT = "I don't have enough information to answer this question.";
 
@@ -342,7 +364,7 @@ export class KdClientService {
     const answer = raw ?? {};
     const questionId =
       (answer as Partial<KdAnswerResponse>).questionId ??
-      `kd-${request.agentId}-${Date.now()}-${crypto.randomUUID()}`;
+      `kd-${request.agentId}-${Date.now()}-${correlationSuffix()}`;
     const objectReferences = normalizeObjectReferences(
       (answer as Partial<KdAnswerResponse>).objectReferences,
     );

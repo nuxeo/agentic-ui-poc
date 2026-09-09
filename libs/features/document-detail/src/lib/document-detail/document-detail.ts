@@ -1063,12 +1063,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private resetState(): void {
     this.metadataRefreshAttempt = 0;
     this.blobLoadGeneration += 1;
+    // `resetViewerState()` above now revokes and clears `rawBlobUrl`, so the block that used to
+    // repeat it here is gone. Two places doing the same cleanup is how they drift apart.
     this.resetViewerState();
-    const previousRaw = this.rawBlobUrl();
-    if (previousRaw) {
-      URL.revokeObjectURL(previousRaw);
-      this.rawBlobUrl.set(null);
-    }
     this.doc.set(null);
     this.blobUrl.set(null);
     this.blobLoading.set(false);
@@ -2580,10 +2577,18 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     // talking to: either same-origin — which is how it arrives behind the dev proxy, where
     // NUXEO_API_ORIGIN is '' — or the configured Nuxeo origin. Anything else is dropped, and the
     // viewer falls through to its "Preview not available" placeholder.
+    //
+    // `allowInsecure` covers dev mode OR an application already served over plaintext. Gating it on
+    // `isDevMode()` alone silently removed the preview fallback from any production build served
+    // over `http://` — an ordinary on-prem deployment — because the URL is same-origin and so
+    // necessarily `http:` too. An iframe is only a downgrade relative to its host document; where
+    // the host is already plaintext there is nothing to downgrade, and the origin allow-list below
+    // is what actually constrains where it can point.
+    const hostIsInsecure = window.location.protocol === 'http:';
     const safe = navigableUrlOrNull(previewCtx?.url, {
       base: window.location.origin,
       allowedOrigins: [window.location.origin, originOf(this.nuxeoApiOrigin)],
-      allowInsecure: isDevMode(),
+      allowInsecure: isDevMode() || hostIsInsecure,
     });
     if (safe) {
       this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(safe));
@@ -2594,6 +2599,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private resetViewerState(): void {
     this.blobUrl.set(null);
+    // `rawBlobUrl` belongs here, beside `blobUrl`, not only in `resetState`.
+    //
+    // `loadBlob` calls this on its own, so the two viewer inputs could disagree: `blobUrl` null
+    // while `rawBlobUrl` still held the *previous* document's object URL. That is not inert. If the
+    // blob fetch then falls through to `loadPreviewFallback`, `previewUrl` is set, so
+    // `contentType()` gets past its "nothing to show" guard and dispatches on MIME — and for
+    // `audio/*` the template binds `<audio [src]="rawBlobUrl()">`, rendering the old document's
+    // audio under the new document's title.
+    this.revokeRawBlobUrl();
     this.noteContent.set(null);
     this.noteHtml.set(null);
     this.noteSaving.set(false);
@@ -2692,9 +2706,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return renderNoteMarkdown(text);
   }
 
-  private setBlobUrl(blob: Blob): void {
+  /** Revoke the current raw object URL and clear the signal. The only place that pairing lives. */
+  private revokeRawBlobUrl(): void {
     const previousRaw = this.rawBlobUrl();
     if (previousRaw) URL.revokeObjectURL(previousRaw);
+    this.rawBlobUrl.set(null);
+  }
+
+  private setBlobUrl(blob: Blob): void {
+    this.revokeRawBlobUrl();
     const rawUrl = URL.createObjectURL(blob);
     this.rawBlobUrl.set(rawUrl);
     // Both forms are kept deliberately: the wrapped one for `iframe[src]`, which throws on a raw

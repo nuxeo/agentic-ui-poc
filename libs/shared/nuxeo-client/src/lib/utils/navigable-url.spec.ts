@@ -202,6 +202,17 @@ describe('isNavigableBaseUrl', () => {
     expect(isNavigableBaseUrl(value, true)).toBe(false);
   });
 
+  it.each([
+    ['a CRLF', 'https://ok.example/\r\nX-Injected: 1'],
+    ['a tab', 'https://ok.\texample/x'],
+    ['a leading space', ' https://ok.example/x'],
+    ['a trailing newline', 'https://ok.example/x\n'],
+  ])('rejects a candidate containing %s', (_label, value) => {
+    // The function returns the original string, so it must not approve one the URL parser would
+    // rewrite — otherwise the validator and the consumer disagree about which bytes were approved.
+    expect(navigableUrlOrNull(value, { allowInsecure: true })).toBeNull();
+  });
+
   it('accepts a trailing question mark, which carries no parameter', () => {
     // `new URL()` normalises an empty query away, so `search` is `''` and there is nothing for an
     // appended parameter to collide with. Rejecting this would be stricter than the defect

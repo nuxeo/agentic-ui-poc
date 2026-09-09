@@ -64,11 +64,21 @@ import ts from 'typescript';
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const ALLOWLIST_PATH = '.ai/state/sanitizer-allowlist.json';
 
-/** The two helpers permitted to hold a bypass, once the plan's PRs 3 and 4 land. */
-const APPROVED_HELPERS = new Map([
-  ['libs/shared/security/src/lib/trust-object-url.ts', 'trustObjectUrl'],
-  ['libs/shared/ui/src/lib/render-trusted-html.ts', 'renderTrustedHtml'],
-]);
+/**
+ * The helpers permitted to hold a bypass — **empty until they exist.**
+ *
+ * This used to name `libs/shared/security/src/lib/trust-object-url.ts` and
+ * `libs/shared/ui/src/lib/render-trusted-html.ts`, neither of which is in the tree; they arrive with
+ * the plan's PRs 3 and 4. Two things were wrong with pre-registering them. The exemptions could
+ * never fire, so checks 3 and 5 carried dead branches whose only exercise was a selftest control
+ * that patched this map inside the script. And it silently pre-approved whatever later appears at
+ * those paths, matched by exact member name — so a helper landing under a different export name gets
+ * no exemption while one landing with a *matching* name gets an unreviewed one.
+ *
+ * `assertApprovedHelpersExist` keeps this honest in the other direction: once an entry is added, the
+ * file must exist, so the map cannot rot back into naming nothing.
+ */
+const APPROVED_HELPERS = new Map([]);
 
 const BYPASS_RE = /^bypassSecurityTrust(Url|ResourceUrl|Html|Style|Script)$/;
 
@@ -81,6 +91,15 @@ const NONE_CONTEXT_BINDINGS = [
   { element: 'source', attr: 'src' },
   { element: 'audio', attr: 'src' },
   { element: 'video', attr: 'poster' },
+  // Derived from the same `registerContext(SecurityContext.URL, …)` list: it registers only
+  // `*|formAction`, `area|href`, `a|href`, `a|xlink:href`, `form|action`, `img|src` and `video|src`.
+  // Everything else that takes a URL is therefore NONE, including these. Nothing in the repository
+  // binds them today, so they are a guard against a future binding rather than a live defect — but
+  // the previous list of three read as exhaustive, which is how a checked set becomes a stale one.
+  { element: 'track', attr: 'src' },
+  { element: 'input', attr: 'src' },
+  { element: 'img', attr: 'srcset' },
+  { element: 'source', attr: 'srcset' },
 ];
 
 const argv = process.argv.slice(2);
@@ -166,21 +185,70 @@ function enclosingMemberName(node) {
   return '<module>';
 }
 
-/** @returns {{member: string, kind: string, line: number}[]} */
+/**
+ * Every place a `bypassSecurityTrust*` member is reached, whether it is *called* there or merely
+ * referenced.
+ *
+ * Matching only `CallExpression`s with a `PropertyAccessExpression` callee — which is what this did
+ * — does not survive one line of indirection. Both of these reported zero bypasses and PASS:
+ *
+ *     const trust = this.sanitizer.bypassSecurityTrustResourceUrl.bind(this.sanitizer);
+ *     trust(u);
+ *
+ *     const { bypassSecurityTrustHtml } = this.sanitizer;
+ *     bypassSecurityTrustHtml.call(this.sanitizer, raw);
+ *
+ * That matters beyond the count: checks 1, 3 and 5 and the ratchet are all driven from this list, so
+ * an invisible bypass is unregistered, unbudgeted and unchecked for sanitisation, while the
+ * allowlist's own header promises that *every* `bypassSecurityTrust*` call appears in it.
+ *
+ * A reference is recorded rather than only a call because that is where the escape happens — once
+ * the function is in a variable, its call site is an ordinary identifier this cannot recognise. A
+ * direct call and a reference to the same member in the same enclosing member collapse to one
+ * allowlist entry, which is why `calls` is deduplicated by line.
+ * @returns {{member: string, kind: string, line: number, indirect: boolean}[]}
+ */
 function collectBypasses(sf) {
   const found = [];
-  eachNode(sf, (n) => {
-    if (!ts.isCallExpression(n)) return;
-    const callee = n.expression;
-    if (!ts.isPropertyAccessExpression(callee)) return;
-    const name = callee.name.text;
-    if (!BYPASS_RE.test(name)) return;
+  const seenLines = new Set();
+
+  const record = (node, name, indirect) => {
+    const line = lineOf(sf, node);
+    const key = `${line}:${name}`;
+    if (seenLines.has(key)) return;
+    seenLines.add(key);
     found.push({
-      member: enclosingMemberName(n),
+      member: enclosingMemberName(node),
       kind: name.replace('bypassSecurityTrust', ''),
-      line: lineOf(sf, n),
+      line,
+      indirect,
     });
+  };
+
+  eachNode(sf, (n) => {
+    // `x.bypassSecurityTrustHtml(...)` — the direct form.
+    if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression)) {
+      const name = n.expression.name.text;
+      if (BYPASS_RE.test(name)) {
+        record(n, name, false);
+        return;
+      }
+    }
+
+    // `x.bypassSecurityTrustHtml` in any position that is not the callee of its own call — `.bind`,
+    // an assignment, an argument, a return.
+    if (ts.isPropertyAccessExpression(n) && BYPASS_RE.test(n.name.text)) {
+      const isOwnCallee = ts.isCallExpression(n.parent) && n.parent.expression === n;
+      if (!isOwnCallee) record(n, n.name.text, true);
+    }
+
+    // `const { bypassSecurityTrustHtml } = this.sanitizer;`
+    if (ts.isBindingElement(n) && n.name && ts.isIdentifier(n.name)) {
+      const bound = n.propertyName && ts.isIdentifier(n.propertyName) ? n.propertyName.text : n.name.text;
+      if (BYPASS_RE.test(bound)) record(n, bound, true);
+    }
   });
+
   return found;
 }
 
@@ -597,6 +665,14 @@ const MIN_JUSTIFICATION = 40;
  */
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 
+const fileExists = (relPath) => {
+  try {
+    return statSync(join(ROOT, relPath)).isFile();
+  } catch {
+    return false;
+  }
+};
+
 /**
  * The `budgets` object as of the merge base with `origin/main`, or `null` if it cannot be read.
  *
@@ -605,7 +681,8 @@ const isRecord = (value) => typeof value === 'object' && value !== null && !Arra
  * `origin/main`, or no allowlist at the base (its first commit). Silence would be worse: an
  * unreadable base must not look like an enforced one.
  */
-function budgetsAtBase() {
+/** The whole allowlist at the merge base, or `null` if it cannot be read. */
+function allowlistAtBase() {
   const base = (() => {
     for (const ref of ['origin/main', 'main']) {
       const r = spawnSync('git', ['merge-base', 'HEAD', ref], { cwd: ROOT, encoding: 'utf8' });
@@ -622,11 +699,23 @@ function budgetsAtBase() {
   });
   if (shown.status !== 0) return null;
   try {
-    const parsedBase = JSON.parse(shown.stdout);
-    return isRecord(parsedBase.budgets) ? parsedBase.budgets : null;
+    return JSON.parse(shown.stdout);
   } catch {
     return null;
   }
+}
+
+/** `file::member` -> declared `calls` at the merge base. */
+function declaredCallsAtBase(baseAllowlist) {
+  const out = new Map();
+  if (!baseAllowlist || !isRecord(baseAllowlist.sites)) return out;
+  for (const [file, list] of Object.entries(baseAllowlist.sites)) {
+    if (!Array.isArray(list)) continue;
+    for (const e of list) {
+      if (e && typeof e.member === 'string') out.set(`${file}::${e.member}`, e.calls ?? 1);
+    }
+  }
+  return out;
 }
 
 function loadAllowlist() {
@@ -670,6 +759,18 @@ function main() {
   const tsFiles = [...findFiles('apps', ['.ts']), ...findFiles('libs', ['.ts'])];
   const findings = [];
   const notes = [];
+
+  // An exemption naming a file that does not exist is an exemption for whatever later appears at
+  // that path, granted before anyone reviewed it.
+  for (const [file, member] of APPROVED_HELPERS) {
+    if (!fileExists(file)) {
+      findings.push(
+        `[helpers] APPROVED_HELPERS exempts '${member}' in ${file}, which does not exist.\n` +
+          `    Add the entry in the change that lands the helper, not before it — otherwise the\n` +
+          `    exemption pre-approves an unreviewed file at that path.`,
+      );
+    }
+  }
 
   // Parse every file once; checks share the result.
   const parsed = new Map();
@@ -948,7 +1049,25 @@ function main() {
   //
   // So the ceiling comes from the merge base, which the contributor cannot edit in their own commit.
   const CATEGORIES = ['A', 'B', 'C', 'D'];
-  const baseBudgets = budgetsAtBase();
+  const baseAllowlist = allowlistAtBase();
+  const baseBudgets = isRecord(baseAllowlist?.budgets) ? baseAllowlist.budgets : null;
+
+  // A category total is not a fine enough ceiling on its own. `highlightExcerpt` declares 3 calls
+  // under D; if a later change removes a different D entry, freeing one, and grows that member to 4,
+  // the total is unchanged and the audit passes — one member quietly absorbing more bypasses is
+  // exactly the shape the per-call counting was introduced to stop.
+  const baseCalls = declaredCallsAtBase(baseAllowlist);
+  for (const [key, e] of entries) {
+    const before = baseCalls.get(key);
+    const now = e.calls ?? 1;
+    if (typeof before === 'number' && now > before) {
+      findings.push(
+        `[ratchet] ${key} declared ${before} bypass call(s) at the merge base and now declares ${now}.\n` +
+          `    An individual member may not absorb more bypasses, even where the category total is\n` +
+          `    unchanged because another entry shrank.`,
+      );
+    }
+  }
 
   if (!isRecord(raw.budgets)) {
     findings.push(
