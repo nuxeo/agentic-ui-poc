@@ -374,7 +374,18 @@ function mergeIntegrations(base: AppIntegrationsConfig, value: unknown): AppInte
     // blank endpoint — exactly the state the comment said was rejected. `ARenderService` guards it
     // too, and deliberately keeps doing so, but the layer that claims to enforce the contract now
     // actually does.
-    arender: isRecord(arender) ? completeARenderConfig(arender, base.arender) : base.arender,
+    // `null` is handled before the record check, matching `readNullableString`'s
+    // `value === null ? null : fallback`. Without it, `{ integrations: { arender: null } }` fell
+    // through to `base.arender` and preserved whatever was already configured — so a
+    // higher-priority manifest could not turn the integration *off*, only reconfigure it. That
+    // contradicts the contract this change introduced, which is that `null` means no annotation
+    // viewer.
+    arender:
+      arender === null
+        ? null
+        : isRecord(arender)
+          ? completeARenderConfig(arender, base.arender)
+          : base.arender,
     knowledgeDiscoveryOperations: {
       ...base.knowledgeDiscoveryOperations,
       ...readStringRecord(value['knowledgeDiscoveryOperations']),

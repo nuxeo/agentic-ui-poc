@@ -156,6 +156,35 @@ describe('mergeBootstrapConfig', () => {
     expect(merged.integrations.arender).toBeNull();
   });
 
+  it('lets an explicit null turn a configured integration off', () => {
+    // `isRecord(null)` is false, so this used to fall through to the base and preserve the old
+    // configuration — a higher-priority manifest could reconfigure ARender but never disable it,
+    // which contradicts `null` meaning "no annotation viewer".
+    const complete = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: {
+        arender: { viewerOrigin: 'https://a.example', nuxeoInternalUrl: 'http://nuxeo/nuxeo' },
+      },
+    });
+
+    const disabled = mergeBootstrapConfig(complete, { integrations: { arender: null } });
+
+    expect(complete.integrations.arender).not.toBeNull();
+    expect(disabled.integrations.arender).toBeNull();
+  });
+
+  it('leaves a configured integration alone when the key is absent', () => {
+    // The counterpart: absent must not mean disabled, or every partial manifest would wipe it.
+    const complete = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: {
+        arender: { viewerOrigin: 'https://a.example', nuxeoInternalUrl: 'http://nuxeo/nuxeo' },
+      },
+    });
+
+    const untouched = mergeBootstrapConfig(complete, { integrations: {} });
+
+    expect(untouched.integrations.arender).toEqual(complete.integrations.arender);
+  });
+
   it('lets a partial override merge over an already-complete configuration', () => {
     // It is the *result* that must be complete, not the patch. A deployment overriding only the
     // viewer origin on top of a complete base is a legitimate manifest, not a half configuration.

@@ -834,21 +834,49 @@ Sonar's 32 `S6268` findings without being told what to look for.
 Check 4 is where this mattered most. Deciding whether `<source [src]="src.url">` is affected means
 resolving `src` to a `@for` loop variable, the loop to `videoSources()`, that to `VideoSource[]`, the
 element to `VideoSource`, and finally `.url` — four hops. Section 5.1 warned that "a template check
-that cannot see through an alias is a check that will be trusted wrongly"; resolving types is how
-that warning is answered. Where the resolver cannot tell, it stays silent, so the check
-under-reports rather than crying wolf.
+that cannot see through an alias is a check that will be trusted wrongly".
+
+**It was trusted wrongly.** Review established that the resolver is syntactic — there is no
+`TypeChecker` — so `type MediaUrl = SafeResourceUrl` reduced to the text `MediaUrl` and passed, as did
+any imported interface. Two things changed in response, and the second is the load-bearing one:
+
+- Aliases are expanded and declarations are gathered repository-wide, with name collisions resolving
+  towards `Safe` so a duplicate cannot hide one.
+- **Check 4 fails closed.** A NONE-context binding whose type it cannot resolve is _reported_.
+
+That reverses what this section previously claimed — that where the resolver cannot tell it stays
+silent and "under-reports rather than crying wolf". Silence was the defect, not a conservative
+default: every documented evasion surfaced as _unresolvable_ rather than as resolving to something
+benign, so under-reporting was indistinguishable from passing. With six such bindings in the whole
+repository, a false positive costs one allowlist line and a false negative is a shipped defect.
+
+The consequence worth keeping in mind is that the guarantee now rests on the fail-closed default
+rather than on the resolver being complete. Adding a real `ts.Program`/`TypeChecker` would shrink the
+set of bindings that must be reported; it would not change what makes the check trustworthy.
 
 **Additions to the design:**
 
-- **A budget ratchet.** `budgets` in the allowlist caps entries per category; exceeding a budget
-  fails the gate. Debt can only shrink. This is what makes the remaining categories verifiable
-  rather than self-reported — and it already worked: deleting `fetchPreferredVideoSource`'s bypass
-  made its entry stale, check 2 said so, and B ratcheted 8 → 7 in the same commit.
+- **A budget ratchet.** `budgets` in the allowlist caps bypass **calls** per category — calls, not
+  entries, so one member cannot absorb more without moving a number. It already worked once: deleting
+  `fetchPreferredVideoSource`'s bypass made its entry stale, check 2 said so, and B ratcheted 8 → 7 in
+  the same commit.
+
+  "Debt can only shrink" was prose before it was code, and review found three ways round it. Both
+  halves of the comparison lived in the same editable file, so raising a budget in the change that
+  needed the headroom passed; deleting the `budgets` key turned the ceiling off entirely, because
+  `Object.entries(raw.budgets ?? {})` iterated nothing; and leaving a budget above the count after a
+  removal left slack for a later change to refill. All three now fail: budgets and per-entry `calls`
+  are compared against the **merge base**, which a contributor cannot edit in their own commit; a
+  missing `budgets` object or a non-numeric category is a finding; and stale headroom is a finding, so
+  a removal and its budget reduction must land together.
+
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **16 assertions, of which only 10 are negative controls** —
+  one red run pasted into a PR. It reports **26 assertions, of which only 20 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 6 are **5 green baselines** (so a red cannot be pre-existing noise) and
-  **1 silence assertion** (check 4 must stay quiet once a binding resolves to `string`). Those 6 assert
+  **1 silence assertion** (check 4 must stay quiet while walking its longest path to an alias that
+  resolves to a plain `string` — which distinguishes "keys on what the type resolves to" from
+  "resolved a type reference"). Those 6 assert
   green and are **not** evidence that a check can fail, so the runner labels every row by kind and
   reports the three counts separately.
 
