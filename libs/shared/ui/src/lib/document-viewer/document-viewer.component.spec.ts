@@ -136,6 +136,25 @@ describe('DocumentViewerComponent', () => {
       expect(audio!.getAttribute('src')).not.toContain('SafeValue must use');
     });
 
+    // `video[poster]` is the sixth NONE-context binding and the only one this suite did not cover.
+    // It is also the one most able to regress unnoticed: section 0 of the plan records it as
+    // *dormant* — `posterUrl` is only ever set to `null` today — so nothing in the app would
+    // demonstrate a regression, and narrowing its type is the whole reason it is safe.
+    it('renders the raw poster URL into video[poster], not a SafeValue placeholder', () => {
+      const POSTER = 'blob:http://localhost/poster-object-url';
+      fixture.componentRef.setInput('mimeType', 'video/mp4');
+      fixture.componentRef.setInput('blobUrl', trusted());
+      fixture.componentRef.setInput('rawBlobUrl', RAW);
+      fixture.componentRef.setInput('videoSources', []);
+      fixture.componentRef.setInput('posterUrl', POSTER);
+      render();
+
+      const video = fixture.nativeElement.querySelector('video') as HTMLVideoElement | null;
+      expect(video).not.toBeNull();
+      expect(video!.getAttribute('poster')).toBe(POSTER);
+      expect(video!.getAttribute('poster')).not.toContain('SafeValue must use');
+    });
+
     it('renders the raw object URL into the single-source video fallback', () => {
       fixture.componentRef.setInput('mimeType', 'video/mp4');
       fixture.componentRef.setInput('blobUrl', trusted());
