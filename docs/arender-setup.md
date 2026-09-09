@@ -190,7 +190,8 @@ The ARender Docker images are built for `linux/amd64`. On Apple Silicon (M1/M2/M
 | Text Handler   | 8899         | Change `ports` for `document-text-handler` |
 | Converter      | 19999        | Change `ports` for `document-converter`    |
 
-If you change the ARender UI port, also update `integrations.arender` in the runtime manifest (see below).
+If you change the ARender UI port, also update `integrations.arender` in the Layer 0 bootstrap
+file, `agentic-ui-config/bootstrap.json` (see below).
 
 ## Angular Configuration
 
@@ -203,8 +204,26 @@ plaintext. Those defaults were removed (Sonar `S5332`), so an unconfigured deplo
 "Annotations are not available" on the document's Annotations tab — that placeholder is the expected
 state, not a bug.
 
-Configure it through the **runtime app-config manifest**, not by providing the token in
-`app.config.ts`. The manifest is Layer 0, so a deployment changes it without rebuilding:
+Configure it in the **Layer 0 bootstrap file**, not by providing the token in `app.config.ts`. It is
+read before authentication, so a deployment changes it without rebuilding:
+
+| Where | Path |
+| ---------------- | ---------------------------------------------------------------------- |
+| Production URL | `/nuxeo/agentic-ui-config/bootstrap.json` |
+| On disk | `<server.home>/nxserver/nuxeo.war/agentic-ui-config/bootstrap.json` |
+| Under `nx serve` | `/agentic-ui-config/bootstrap.json` |
+
+**Not the runtime manifest.** Those are two different stores, and this document previously named the
+wrong one. The runtime manifest is a Nuxeo *document*, fetched after login, whose repository path is
+itself a bootstrap field; its schema is `AppRuntimeManifest` (`navItems`, `actions`, `rules`,
+`presets`, `featureToggles`, `labels`, `extensions`) and it has no `integrations` key at all. An
+operator who put this block there would see no error and no annotation viewer.
+
+The directory is a **sibling** of the application bundle, not a file inside it: the marketplace
+installer copies the packaged `web` directory over the deployed one with `overwrite="true"`, so
+anything under `.../agentic-ui/` is replaced on every upgrade, while `.../agentic-ui-config/` is
+installed by a separate non-overwriting step and survives. See `resolveBootstrapConfigUrl` in
+`app-config.tokens.ts`.
 
 ```json
 {
@@ -225,7 +244,8 @@ Configure it through the **runtime app-config manifest**, not by providing the t
 Both are mandatory and validated in two places, so a partial or malformed configuration disables
 ARender rather than half-enabling it:
 
-- `bootstrap-config.ts` yields `null` unless the merged manifest has **both** endpoints non-blank.
+- `bootstrap-config.ts` yields `null` unless the merged bootstrap config has **both** endpoints
+  non-blank.
   A blank endpoint is worse than none: `fetch('')` resolves against the application's own origin, so
   an availability probe would report a viewer that is not deployed.
 - `ARenderService` additionally requires each endpoint to be an absolute `http(s)` base with **no
