@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   isNavigableBaseUrl,
-  isNavigableOrigin,
   navigableUrlOrNull,
   originOf,
 } from './navigable-url';
@@ -159,24 +158,6 @@ describe('originOf', () => {
   });
 });
 
-describe('isNavigableOrigin', () => {
-  it('accepts an https origin', () => {
-    expect(isNavigableOrigin('https://viewer.example.com')).toBe(true);
-  });
-
-  it('rejects an http origin unless insecure is permitted', () => {
-    expect(isNavigableOrigin('http://localhost:9080')).toBe(false);
-    expect(isNavigableOrigin('http://localhost:9080', true)).toBe(true);
-  });
-
-  it.each([['javascript:alert(1)'], [''], [null], ['viewer.example.com']])(
-    'rejects %s',
-    (value) => {
-      expect(isNavigableOrigin(value as string | null, true)).toBe(false);
-    },
-  );
-});
-
 describe('isNavigableBaseUrl', () => {
   it('accepts an https origin, with or without a path', () => {
     expect(isNavigableBaseUrl('https://viewer.example.com')).toBe(true);
@@ -190,7 +171,7 @@ describe('isNavigableBaseUrl', () => {
     expect(isNavigableBaseUrl('http://localhost:9080', true)).toBe(true);
   });
 
-  // The three exclusions that distinguish this from `isNavigableOrigin`. Each is a URL a caller
+  // The three exclusions that distinguish a usable *base* from a bare origin check. Each is a URL a caller
   // would append `?url=` to and get something that does not carry a top-level `url` parameter, or
   // that leaks a credential into an iframe navigation.
   it.each([
@@ -235,7 +216,9 @@ describe('isNavigableBaseUrl', () => {
     expect(isNavigableBaseUrl('https://viewer.example.com/a%23b', true)).toBe(true);
   });
 
-  it('rejects everything isNavigableOrigin rejected', () => {
+  // The inputs the origin-only predicate this replaced also rejected, kept as coverage after that
+  // alias was removed: a base must be absolute, http(s), and a real origin rather than a prefix.
+  it('rejects a non-absolute, non-http or protocol-relative value', () => {
     for (const value of ['javascript:alert(1)', '', null, 'viewer.example.com', '//host/x']) {
       expect(isNavigableBaseUrl(value as string | null, true)).toBe(false);
     }

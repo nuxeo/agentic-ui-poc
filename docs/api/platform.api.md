@@ -1782,7 +1782,6 @@ function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean;
 function isManagedDirectoryName(name: string): boolean;
 function isMarkdownNoteFormat(mimeType: string): boolean;
 function isNavigableBaseUrl(value: string | null | undefined, allowInsecure?: boolean): boolean;
-function isNavigableOrigin(value: string | null | undefined, allowInsecure?: boolean): boolean;
 function isPermissionDeniedError(err: unknown): boolean;
 function isPowerUserFromGroups(groups: readonly string[]): boolean;
 function isRepositoryRootPath(path: string | null | undefined): boolean;

@@ -292,7 +292,6 @@ export {
 } from './lib/utils/principal-permission-display';
 export {
   isNavigableBaseUrl,
-  isNavigableOrigin,
   navigableUrlOrNull,
   originOf,
   type NavigableUrlPolicy,

@@ -68,7 +68,7 @@ export class ARenderService {
     if (!cfg) return null;
 
     // Navigated in an iframe — the load-bearing check. `isNavigableBaseUrl`, not
-    // `isNavigableOrigin`: both URL builders below add parameters to this value, and a base
+    // a bare origin check: both URL builders below add parameters to this value, and a base
     // carrying its own query or fragment silently absorbs them so no top-level `url` parameter
     // survives. See that function for the three cases it rejects and why.
     if (!isNavigableBaseUrl(cfg.viewerOrigin, isDevMode())) return null;

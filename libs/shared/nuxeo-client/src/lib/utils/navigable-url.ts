@@ -176,15 +176,3 @@ export function isNavigableBaseUrl(
   }
   return parsed.username === '' && parsed.password === '';
 }
-
-/**
- * @deprecated Prefer {@link isNavigableBaseUrl}. This name promised "is an origin" while accepting
- * a query, fragment and userinfo, and two callers built `?url=…` onto the result — see
- * `isNavigableBaseUrl` for what that produced. Retained only so the name resolves; it now delegates.
- */
-export function isNavigableOrigin(
-  value: string | null | undefined,
-  allowInsecure = false,
-): boolean {
-  return isNavigableBaseUrl(value, allowInsecure);
-}

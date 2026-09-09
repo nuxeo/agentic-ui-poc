@@ -99,7 +99,7 @@ blank — it is complete, well-formed, and `new URL()` parses it without complai
 difficulty of this category: the dangerous value looks exactly like a valid one.
 
 **New helper:** `libs/shared/nuxeo-client/src/lib/utils/navigable-url.ts` — `navigableUrlOrNull`,
-`originOf`, `isNavigableOrigin`. 43 tests, overwhelmingly negative cases.
+`originOf`. 43 tests, overwhelmingly negative cases.
 
 It **resolves and compares origins** rather than testing string prefixes, and that is the
 load-bearing design choice. The obvious same-origin test, `candidate.startsWith('/')`, accepts
@@ -280,7 +280,7 @@ Two honest caveats:
   | `ARENDER_CONFIG`                                                            | `InjectionToken<ARenderConfig>`        | `InjectionToken<ARenderConfig \| null>`  |
   | `ARenderService.getPreviewerUrl`                                            | `Observable<string>`                   | `Observable<string \| null>`             |
   | `ARenderService.getDiffUrl`                                                 | `Observable<string>`                   | `Observable<string \| null>`             |
-  | `navigableUrlOrNull`, `originOf`, `isNavigableOrigin`, `NavigableUrlPolicy` | —                                      | added (non-breaking)                     |
+  | `navigableUrlOrNull`, `originOf`, `NavigableUrlPolicy`                     | —                                      | added (non-breaking)                     |
 
   In every case the old signature described behaviour the code did not have: the `Safe*` types could
   not work in a `NONE` context and their inner string cannot be read back out, the token could
