@@ -368,26 +368,35 @@ function enclosingMemberName(node) {
  * allowlist's own header promises that *every* `bypassSecurityTrust*` call appears in it.
  *
  * A reference is recorded rather than only a call because that is where the escape happens — once
- * the function is in a variable, its call site is an ordinary identifier this cannot recognise. A
- * direct call and a reference to the same member in the same enclosing member collapse to one
- * allowlist entry, which is why `calls` is deduplicated by line.
+ * the function is in a variable, its call site is an ordinary identifier this cannot recognise.
+ *
+ * Deduplication is by **AST node position**, not by line. Keying on the line meant two bypass calls
+ * written on one line counted as one, and the count is not cosmetic: it is compared against the
+ * entry's declared `calls`, summed into the category budget and ratcheted per member against the
+ * merge base. Demonstrated on this repository — putting a fourth `bypassSecurityTrustHtml` on a line
+ * that already held one in `highlightExcerpt`, whose entry declares 3, left check 1 printing
+ * `PASS — 31 bypass call(s), all accounted for` with four bypasses in the member.
+ *
+ * The position also does what the line was there for. Two records can only collide when they are the
+ * same node, so a construct visited by more than one branch of the walk still collapses to one entry,
+ * while two genuinely separate calls stay two however they are formatted.
  * @returns {{bypasses: {member: string, kind: string, line: number, indirect: boolean}[], unnameable: {member: string, line: number, text: string}[]}}
  */
 function collectBypasses(sf, checker) {
   const found = [];
   /** Element accesses on a `DomSanitizer` whose member could not be named — reported by check 1. */
   const unnameable = [];
-  const seenLines = new Set();
+  /** Keyed by node start offset, so formatting cannot merge two bypasses into one. */
+  const seenNodes = new Set();
 
   const record = (node, name, indirect) => {
-    const line = lineOf(sf, node);
-    const key = `${line}:${name}`;
-    if (seenLines.has(key)) return;
-    seenLines.add(key);
+    const key = `${node.getStart(sf)}:${name}`;
+    if (seenNodes.has(key)) return;
+    seenNodes.add(key);
     found.push({
       member: enclosingMemberName(node),
       kind: name.replace('bypassSecurityTrust', ''),
-      line,
+      line: lineOf(sf, node),
       indirect,
     });
   };
@@ -415,12 +424,12 @@ function collectBypasses(sf, checker) {
       // there is no literal type for the checker to return, and no separate property read for
       // check 5's indirect finding to see either.
       if (!name && ts.isElementAccessExpression(n) && isDomSanitizerExpression(n.expression, checker)) {
-        const line = lineOf(sf, n);
-        if (!seenLines.has(`${line}:<unnameable>`)) {
-          seenLines.add(`${line}:<unnameable>`);
+        const key = `${n.getStart(sf)}:<unnameable>`;
+        if (!seenNodes.has(key)) {
+          seenNodes.add(key);
           unnameable.push({
             member: enclosingMemberName(n),
-            line,
+            line: lineOf(sf, n),
             text: n.getText(sf).slice(0, 60),
           });
         }
@@ -441,12 +450,12 @@ function collectBypasses(sf, checker) {
       ) {
         // The same backstop the element-access path has: a computed key that does not resolve names
         // no member, so the local it binds could be any of them. Reported rather than assumed benign.
-        const line = lineOf(sf, n);
-        if (!seenLines.has(`${line}:<unnameable>`)) {
-          seenLines.add(`${line}:<unnameable>`);
+        const key = `${n.getStart(sf)}:<unnameable>`;
+        if (!seenNodes.has(key)) {
+          seenNodes.add(key);
           unnameable.push({
             member: enclosingMemberName(n),
-            line,
+            line: lineOf(sf, n),
             text: n.getText(sf).slice(0, 60),
           });
         }

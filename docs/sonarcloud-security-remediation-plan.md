@@ -20,7 +20,7 @@ below before reading "Done" as "closed".
 | --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
 | **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (33 negative controls + 5 green baselines + 1 silence assertion — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (34 negative controls + 5 green baselines + 1 silence assertion — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
 | **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
 | **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                                                           |
 | **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                                                             |
@@ -888,7 +888,7 @@ must be reported; it did not change what makes the check sound.
   on promising that every `bypassSecurityTrust*` call appears in it. Four spellings were absent:
   `sanitizer['bypassSecurityTrustHtml'](raw)` and its template-literal form, both now read directly;
   `const M = 'bypassSecurityTrustHtml'; sanitizer[M](raw)`, resolved through the `TypeChecker` to a
-  string-literal type, because a *constant* index is the next spelling along and asking the compiler
+  string-literal type, because a _constant_ index is the next spelling along and asking the compiler
   is what closed the equivalent class in check 4; and `{ 'bypassSecurityTrustHtml': trust }`, where a
   quoted destructured property name made the identifier-only test read the local alias instead. Each
   was verified silent first: with raw user markdown passed to it, the pre-fix gate printed
@@ -905,6 +905,7 @@ must be reported; it did not change what makes the check sound.
   defence, because `createTypeProgram` loads `tsconfig.base.json`, which sets neither `strict` nor
   `noImplicitAny` — the libraries enable `strict` in their own tsconfigs — so that index is an error
   to `nx build` and not an error to this audit's own checker.
+
 - **A budget ratchet.** `budgets` in the allowlist caps bypass **calls** per category — calls, not
   entries, so one member cannot absorb more without moving a number. It already worked once: deleting
   `fetchPreferredVideoSource`'s bypass made its entry stale, check 2 said so, and B ratcheted 8 → 7 in
@@ -920,7 +921,7 @@ must be reported; it did not change what makes the check sound.
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **39 assertions, of which only 33 are negative controls** —
+  one red run pasted into a PR. It reports **40 assertions, of which only 34 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 6 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **1 silence assertion** (check 4 must stay quiet while walking its longest path to an alias that

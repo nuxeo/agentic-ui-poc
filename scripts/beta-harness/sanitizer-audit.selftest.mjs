@@ -188,6 +188,32 @@ control(
   'bypass count mismatch',
 );
 
+// ---- check 1: two bypasses sharing one source line -----------------------------------------------
+// The collector deduplicated by `${line}:${name}`, so two calls to the same member written on one
+// line counted as one. That is not cosmetic: the count is compared against the entry's declared
+// `calls`, summed into the category budget, and ratcheted per member against the merge base, so a
+// bypass hidden on an existing line evaded all three at once.
+//
+// This adds a FOURTH `bypassSecurityTrustHtml` to `highlightExcerpt`, whose entry declares 3, on the
+// line that already holds one. Verified against 2f860a1: `--only 1` printed
+// "PASS — 31 bypass call(s), all accounted for" — the total unchanged with four bypasses in a member
+// declared to hold three. Deduplication is by AST node position now, so formatting cannot merge two.
+control(
+  'check 1 counts two bypasses written on the same source line as two',
+  1,
+  () =>
+    edit('libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts', (s) => {
+      const anchor =
+        '      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n    }\n\n    const matchIndex';
+      if (!s.includes(anchor)) throw new Error('highlightExcerpt changed shape — update this control');
+      return s.replace(
+        anchor,
+        '      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text)) ?? this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n    }\n\n    const matchIndex',
+      );
+    }),
+  'bypass count mismatch',
+);
+
 // ---- check 1: element access whose index is a constant rather than a literal ---------------------
 // The control above covers the literal spelling. `accessedMemberName` deliberately stopped there,
 // on the stated grounds that resolving a computed index "would be the syntactic guessing this file
