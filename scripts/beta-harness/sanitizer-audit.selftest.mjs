@@ -85,7 +85,7 @@ function control(name, check, perturb, expect) {
     const { code, out } = runAudit(check === null ? [] : ['--only', String(check)]);
     const red = code !== 0;
     const matched = out.includes(expect);
-    results.push({ name, pass: red && matched, red, matched, expect, out });
+    results.push({ name, pass: red && matched, red, matched, expect, out, kind: 'negative' });
   } finally {
     restoreAll();
   }
@@ -109,6 +109,7 @@ function control(name, check, perturb, expect) {
       matched: true,
       expect: '(exit 0)',
       out,
+      kind: 'baseline',
     });
   }
 }
@@ -154,6 +155,63 @@ control(
       },
     ),
   'bypass count mismatch',
+);
+
+// ---- check 1: an entry with no written justification ---------------------------------------------
+// The gate's premise is "registered *with a justification*". Keying on `file::member` alone made
+// `{ "member": "loadPreview" }` sufficient, so the gate enforced bookkeeping rather than review.
+control(
+  'check 1 rejects an allowlist entry whose justification is blank',
+  1,
+  () =>
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      j.sites['libs/features/browse/src/lib/browse/browse.ts'][0].justification = '';
+      return JSON.stringify(j, null, 2);
+    }),
+  'no "justification"',
+);
+
+// ---- check 1: a justification too short to be one ------------------------------------------------
+// A blank check alone is trivially defeated by typing "safe", so there is a length floor.
+control(
+  'check 1 rejects a placeholder justification below the length floor',
+  1,
+  () =>
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      j.sites['libs/features/browse/src/lib/browse/browse.ts'][0].justification = 'safe';
+      return JSON.stringify(j, null, 2);
+    }),
+  'under the 40 minimum',
+);
+
+// ---- check 1: an approved helper is not exempt from registration ---------------------------------
+// Being the sanctioned place to hold a bypass is a reason to register it, not to skip registration.
+// The exemption previously also skipped call counting and the budget, so a second bypass inside a
+// helper would have passed silently. Simulated by pointing APPROVED_HELPERS at a real registered
+// member and removing its entry: if the exemption were still in force, check 1 would stay green.
+control(
+  'check 1 still requires registration for an approved helper member',
+  1,
+  () => {
+    edit(AUDIT, (s) => {
+      const marker = `const APPROVED_HELPERS = new Map([`;
+      if (!s.includes(marker)) throw new Error('APPROVED_HELPERS shape changed — update this control');
+      return s.replace(
+        marker,
+        marker +
+          `\n  ['libs/features/browse/src/lib/browse/browse.ts', 'loadThumbnails'],`,
+      );
+    });
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      delete j.sites['libs/features/browse/src/lib/browse/browse.ts'];
+      j.budgets.A -= 1; // keep the ratchet quiet so only check 1 is under test
+      return JSON.stringify(j, null, 2);
+    });
+  },
+  'This is an approved helper, which is exactly why it needs an entry',
 );
 
 // ---- check 2: a stale allowlist entry ------------------------------------------------------------
@@ -220,6 +278,7 @@ control(
     matched: true,
     expect: 'no document-viewer finding while VideoSource.url is string',
     out,
+    kind: 'specificity',
   });
 }
 
@@ -251,10 +310,17 @@ control(
 );
 
 // ---- report -------------------------------------------------------------------------------------
-console.log('\nsanitizer-audit negative controls\n');
+// The row kinds are reported separately on purpose. Only `negative` rows are negative controls —
+// they perturb the tree and assert the audit goes red for a named reason. `baseline` rows assert
+// GREEN, and `specificity` asserts silence; both are necessary context but neither is evidence that
+// a check can fail. Collapsing all three into one total reads as "N checks proven able to fail",
+// which is the "evidence must assert the claim, not the pulse" failure `CLAUDE.md` warns about —
+// and this summary previously did exactly that, reporting 13 as though all 13 were red-on-purpose.
+const KIND_LABEL = { negative: 'RED-ON-PURPOSE', baseline: 'baseline (green)', specificity: 'silence' };
+console.log('\nsanitizer-audit selftest\n');
 let failed = 0;
 for (const r of results) {
-  console.log(`  ${r.pass ? 'PASS' : 'FAIL'}  ${r.name}`);
+  console.log(`  ${r.pass ? 'PASS' : 'FAIL'}  [${KIND_LABEL[r.kind]}]  ${r.name}`);
   if (!r.pass) {
     failed += 1;
     console.log(`        expected: ${r.expect}`);
@@ -267,10 +333,20 @@ for (const r of results) {
     );
   }
 }
+const tally = (k) => results.filter((r) => r.kind === k).length;
+const negatives = tally('negative');
+
 console.log('');
 if (failed > 0) {
-  console.log(`selftest: FAIL — ${failed} of ${results.length} controls did not behave as expected.`);
+  console.log(`selftest: FAIL — ${failed} of ${results.length} assertions did not behave as expected.`);
   console.log('A check that cannot be made to fail is decoration. Fix the check, not the control.');
   process.exit(1);
 }
-console.log(`selftest: PASS — ${results.length} controls, every check observed failing on purpose.`);
+console.log(
+  `selftest: PASS — ${negatives} negative control(s) observed red on purpose; ` +
+    `${tally('baseline')} green baseline(s) and ${tally('specificity')} silence assertion(s) as context. ` +
+    `${results.length} assertions total.`,
+);
+console.log(
+  '  Only the negative controls prove a check can fail. The baselines assert green and are not evidence of that.',
+);

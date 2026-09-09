@@ -40,7 +40,7 @@
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import ts from 'typescript';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
@@ -229,7 +229,7 @@ const elementTypeOf = (typeText) =>
  * NONE-context defects, so scanning `.html` alone would miss them.
  * @returns {{template: string, offsetLine: number, tsFile: string, htmlFile: string|null}[]}
  */
-function templatesFor(tsFile, sf, text) {
+function templatesFor(tsFile, sf, _text) {
   const out = [];
   eachNode(sf, (n) => {
     if (!ts.isPropertyAssignment(n) || !n.name) return;
@@ -322,7 +322,8 @@ function resolveExpressionType(expr, shapes, loopVars) {
   if (path.length === 0) return null;
   if (path.some((p) => /[^\w$]/.test(p))) return null; // calls with args, index access — out of scope
 
-  let [root, ...rest] = path;
+  const [firstSegment, ...rest] = path;
+  let root = firstSegment;
 
   // A `@for (src of videoSources(); …)` loop variable resolves to the element type.
   if (loopVars.has(root)) {
@@ -362,13 +363,53 @@ function collectLoopVars(template) {
 // the checks
 // ---------------------------------------------------------------------------------------------
 
+/** A justification of fewer than this many characters is a placeholder, not a rationale. */
+const MIN_JUSTIFICATION = 40;
+
+/**
+ * Load the allowlist, rejecting entries that do not carry what the gate claims to require.
+ *
+ * The whole premise is "a bypass is registered *with a written justification*". Accepting an entry
+ * on `file::member` alone made `{ "member": "loadPreview" }` sufficient — check 1 passed and the
+ * bypass was reported as accounted for, so the gate enforced bookkeeping rather than review. A
+ * blank or one-word justification is the same hole with extra steps, hence the length floor.
+ * @returns {{raw: object, entries: Map<string, object>, malformed: string[]}}
+ */
 function loadAllowlist() {
   const raw = JSON.parse(readFileSync(join(ROOT, ALLOWLIST_PATH), 'utf8'));
   const entries = new Map();
+  const malformed = [];
+
   for (const [file, list] of Object.entries(raw.sites ?? {})) {
-    for (const e of list) entries.set(`${file}::${e.member}`, { ...e, file });
+    for (const e of list) {
+      const where = `${file}::${e.member ?? '<no member>'}`;
+      if (typeof e.member !== 'string' || e.member.trim() === '') {
+        malformed.push(`${file}: an entry has no "member", so it can never match a bypass.`);
+        continue;
+      }
+      const j = typeof e.justification === 'string' ? e.justification.trim() : '';
+      if (j === '') {
+        malformed.push(
+          `${where}: no "justification". A bypass is registered with a written rationale or not at all.`,
+        );
+      } else if (j.length < MIN_JUSTIFICATION) {
+        malformed.push(
+          `${where}: "justification" is ${j.length} characters, under the ${MIN_JUSTIFICATION} minimum — ` +
+            `state what makes the bypass safe, not that it is.`,
+        );
+      }
+      if (!['A', 'B', 'C', 'D'].includes(e.category)) {
+        malformed.push(
+          `${where}: category ${JSON.stringify(e.category)} is not one of A, B, C, D, so the ratchet cannot count it.`,
+        );
+      }
+      if (e.calls !== undefined && (!Number.isInteger(e.calls) || e.calls < 1)) {
+        malformed.push(`${where}: "calls" must be a positive integer, got ${JSON.stringify(e.calls)}.`);
+      }
+      entries.set(`${file}::${e.member}`, { ...e, file });
+    }
   }
-  return { raw, entries };
+  return { raw, entries, malformed };
 }
 
 function main() {
@@ -405,10 +446,18 @@ function main() {
     console.error(`sanitizer-audit: cannot read ${ALLOWLIST_PATH} — ${err.message}`);
     return 1;
   }
-  const { raw, entries } = allowlist;
+  const { raw, entries, malformed } = allowlist;
   const seen = new Set();
 
   const run = (n) => only === null || only === n;
+
+  // Reported under check 1: an entry that does not carry a justification is not a registration, so
+  // treating it as one is the same failure as having no entry at all.
+  if (run(1)) {
+    for (const m of malformed) {
+      findings.push(`[1] unusable allowlist entry  ${m}`);
+    }
+  }
 
   // ---- check 1: unregistered bypass, and undeclared extra calls in a registered member ---------
   //
@@ -426,18 +475,25 @@ function main() {
 
   for (const [key, calls] of callsByKey) {
     const { file, member } = calls[0];
-    if (APPROVED_HELPERS.get(file) === member) {
-      seen.add(key);
-      continue;
-    }
+    // NOTE: an approved helper is deliberately NOT exempt from check 1. Being the one sanctioned
+    // place to hold a bypass is a reason to register it with a justification, not a reason to skip
+    // registration — and skipping it also skipped declared-call counting and the category budget,
+    // so a second bypass inside a helper would have passed silently. The plan's own sample entry in
+    // section 5.1 is a helper entry, which is the shape this now requires. Checks 3 and 5 keep their
+    // exemptions, because those two ask "is this bypass redundant / unpaired", and the helper is
+    // where the non-redundant, paired one is supposed to live.
     const entry = entries.get(key);
     if (!entry) {
       if (run(1)) {
+        const isHelper = APPROVED_HELPERS.get(file) === member;
         for (const b of calls) {
           findings.push(
             `[1] unregistered bypass  ${b.file}:${b.line}\n` +
               `    member '${b.member}' calls bypassSecurityTrust${b.kind} with no entry in ${ALLOWLIST_PATH}.\n` +
-              `    Add one with a justification, or route it through trustObjectUrl / renderTrustedHtml.`,
+              (isHelper
+                ? `    This is an approved helper, which is exactly why it needs an entry: the audited\n` +
+                  `    bypass is the one a reviewer must be able to find. Register it with a justification.`
+                : `    Add one with a justification, or route it through trustObjectUrl / renderTrustedHtml.`),
           );
         }
       }
@@ -516,7 +572,6 @@ function main() {
       const shapes = collectTypeShapes(sf);
       for (const tpl of templatesFor(file, sf, text)) {
         const loopVars = collectLoopVars(tpl.template);
-        const lines = tpl.template.split('\n');
         for (const { element, attr } of NONE_CONTEXT_BINDINGS) {
           // Accept both double and single quotes: [src]="..." or [src]='...'
           const re = new RegExp(`<${element}\\b[^>]*?\\[${attr}\\]\\s*=\\s*["']([^"']+)["']`, 'gs');

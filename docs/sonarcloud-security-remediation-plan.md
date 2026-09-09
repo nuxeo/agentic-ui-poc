@@ -16,16 +16,16 @@ Read the table, not this line. **Landed: E, the harness, B part 2 (the NONE-cont
 C. Not started: A, B part 1, D.** Category C carries an accepted residual risk — see its section
 below before reading "Done" as "closed".
 
-| Category                                | Sites                  | Status                                                                                                                                                                                                                        |
-| --------------------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                    |
-| **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build. |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries), `sanitizer-audit.selftest.mjs` (12 negative controls). Registered in `verify-gate.mjs` and `review:preflight`.        |
-| **B part 2** — `Safe*` in NONE contexts | 6 bindings             | **Done, and this was a live defect, not a lint finding.** See below.                                                                                                                                                          |
-| **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                |
-| **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                  |
-| **C** — validate then bypass            | 2                      | **Done.** Both sites validated, failing closed. This was the highest actual risk in the set. See below.                                                                                                                       |
-| **D** — centralise trusted HTML         | 6 entries / 8 calls    | Not started. Existing `review-guardrails.mjs:909` pairing check still covers it.                                                                                                                                              |
+| Category                                | Sites                  | Status                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                       |
+| **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                    |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries), `sanitizer-audit.selftest.mjs` (10 negative controls + 5 green baselines + 1 silence assertion). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **B part 2** — `Safe*` in NONE contexts | 6 bindings             | **Done, and this was a live defect, not a lint finding.** See below.                                                                                                                                                                                             |
+| **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                   |
+| **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                     |
+| **C** — validate then bypass            | 2                      | **Done.** Both sites validated, failing closed. This was the highest actual risk in the set. See below.                                                                                                                                                          |
+| **D** — centralise trusted HTML         | 6 entries / 8 calls    | Not started. Existing `review-guardrails.mjs:909` pairing check still covers it.                                                                                                                                                                                 |
 
 Bypass count: **32 → 31**. One was deleted outright (below). Category B's budget is ratcheted to 7.
 
@@ -817,7 +817,8 @@ Section 5 was the design. This is what exists, and where it differs.
 
 ```bash
 npm run beta:sanitizers            # the gate
-npm run beta:sanitizers-selftest   # 12 negative controls — prove the gate can fail
+npm run beta:sanitizers-selftest   # 10 negative controls — prove the gate can fail
+                                   # (+5 green baselines and 1 silence assertion for context)
 npm run beta:gate -- --gates sanitizer-audit
 node scripts/beta-harness/sanitizer-audit.mjs --print      # dump every bypass as JSON
 node scripts/beta-harness/sanitizer-audit.mjs --only 4     # one check, for evidence capture
@@ -843,11 +844,24 @@ under-reports rather than crying wolf.
   fails the gate. Debt can only shrink. This is what makes the remaining categories verifiable
   rather than self-reported — and it already worked: deleting `fetchPreferredVideoSource`'s bypass
   made its entry stale, check 2 said so, and B ratcheted 8 → 7 in the same commit.
-- **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into 12 repeatable controls rather
-  than one red run pasted into a PR. Each perturbs the tree, asserts the audit goes red _for the
-  expected reason_, and restores from the original bytes in a `finally`. It includes green baselines,
-  so a red cannot be pre-existing noise, and a vacuity guard that fails if a perturbation changes
-  nothing — which is how it caught its own staleness once the code was fixed.
+- **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
+  one red run pasted into a PR. It reports **16 assertions, of which only 10 are negative controls** —
+  each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
+  the original bytes. The other 6 are **5 green baselines** (so a red cannot be pre-existing noise) and
+  **1 silence assertion** (check 4 must stay quiet once a binding resolves to `string`). Those 6 assert
+  green and are **not** evidence that a check can fail, so the runner labels every row by kind and
+  reports the three counts separately.
+
+  This distinction is here because the count was previously misreported. The summary said
+  "13 controls, every check observed failing on purpose" while 5 of the 13 asserted green, and this
+  document claimed 12 negative controls when there were 7. That is precisely the failure `CLAUDE.md`
+  names — _"evidence must assert the claim, not the pulse … state which checks are load-bearing and
+  which are negative, so a total is not read as all meaningful"_ — committed in the file whose whole
+  job is to stop it. Caught in review, not by any gate.
+
+  It also carries a vacuity guard that fails if a perturbation changes nothing, which is how it caught
+  its own staleness once the code was fixed, and SIGINT/SIGTERM/SIGHUP handlers because `finally` does
+  not run on a signal. SIGKILL remains uncatchable; the header says so.
 
 **Not yet built** (they belong with the categories they serve): the `renderTrustedHtml` and
 `trustObjectUrl` helpers, so the two `APPROVED_HELPERS` paths in the gate are currently

@@ -241,6 +241,11 @@ export class TasksPageComponent implements OnInit {
     this.selectedTask.set(task);
     this.targetDoc.set(null);
     this.clearPreviewBlob();
+    // Reset here, not only in the response handlers. A superseded response returns early on the
+    // generation guard without clearing this, and a selection with no target document never starts
+    // a request to clear it — so without this line, selecting a task with no document while another
+    // is still loading leaves its "No document" placeholder stuck on "Loading...".
+    this.docLoading.set(false);
     this.resetForm();
     this.router.navigate(['/tasks', task.id], { replaceUrl: true });
 
@@ -691,8 +696,16 @@ export class TasksPageComponent implements OnInit {
     // Audio and video need the real blob, not a thumbnail image: the viewer dispatches on the
     // document's own MIME type, so a thumbnail rendition would be handed to <audio>/<video>.
     // Everything else that is not an image previews as a thumbnail image of itself.
+    //
+    // The `application/(g|m)xf` arm mirrors `DocumentViewerComponent.contentType`, which classifies
+    // those broadcast containers as 'video'. Matching only `video/` here left them fetching a
+    // thumbnail that the viewer then fed to <video>. If that classifier gains a MIME type, this
+    // must follow — the two are coupled by the viewer's dispatch and nothing enforces it.
     const needsOwnBlob =
-      mime.startsWith('image/') || mime.startsWith('audio/') || mime.startsWith('video/');
+      /^image\//.test(mime) ||
+      /^audio\//.test(mime) ||
+      /^video\//.test(mime) ||
+      /^application\/(g|m)xf$/.test(mime);
     const url = this.nuxeoApi.apiUrl(
       needsOwnBlob
         ? `/nuxeo/api/v1/id/${doc.uid}/@blob/file:content`
