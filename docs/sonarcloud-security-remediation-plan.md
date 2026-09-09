@@ -181,20 +181,29 @@ Worth writing down because it will confuse the next reader of PR #157, where the
 condition: `new_security_rating` 5 (E) against a threshold of 1 (A). Everything else passes,
 `new_coverage` included at 92.6%.
 
-**All five findings pre-exist on `main`.** Every one is `S6268` on a bypass already there; they count
-as "new code" only because edits shifted their lines. Confirmed against the Sonar API for both refs:
+**All of the findings pre-exist on `main`.** Every one is `S6268` on a bypass already there; they
+count as "new code" only because edits shifted their lines. Re-confirmed against the Sonar API for
+both refs at `f865a85` — the count is **six**, not the five first recorded here, and every line
+number has moved:
 
-| On `main`                     | On the PR | Member                |
-| ----------------------------- | --------- | --------------------- |
-| `case-file.ts:191`            | `:198`    | `loadPreview`         |
-| `document-detail.ts:2561`     | `:2589`   | `loadPreviewFallback` |
-| `document-detail.ts:2670`     | `:2703`   | `setBlobUrl`          |
-| `document-detail.ts:3458`     | `:3506`   | `loadARenderUrl`      |
-| `tasks-page.component.ts:669` | `:690`    | `loadPreviewBlob`     |
+| On `main`                     | On the PR | Member                | Category |
+| ----------------------------- | --------- | --------------------- | -------- |
+| `case-file.ts:191`            | `:220`    | `loadPreview`         | B        |
+| `document-detail.ts:2561`     | `:2594`   | `loadPreviewFallback` | C        |
+| `document-detail.ts:2670`     | `:2723`   | `setBlobUrl`          | B        |
+| `document-detail.ts:3424`     | `:3478`   | `previewMainBlob`     | B        |
+| `document-detail.ts:3458`     | `:3526`   | `loadARenderUrl`      | C        |
+| `tasks-page.component.ts:669` | `:729`    | `loadPreviewBlob`     | B        |
 
-The work reduces the project-wide count 32 → 31, and two of those five (the Category C sites) went
-from unvalidated to validated-and-failing-closed. `S6268` fires on the presence of the call, not on
-whether its input is guarded, so it cannot see that difference.
+`previewMainBlob` is the sixth and is **not a new bypass** — the project-wide total is still 32 → 31.
+A later commit on this branch edited its line, which is all it takes for Sonar to reclassify an
+untouched call as new code. Worth stating plainly, because this number will drift again on the next
+edit: it counts the lines this branch has touched, not the debt. All six are registered in
+`sanitizer-allowlist.json`, which is the count that means something.
+
+Two of the six (the Category C sites) went from unvalidated to validated-and-failing-closed. `S6268`
+fires on the presence of the call, not on whether its input is guarded, so it cannot see that
+difference.
 
 **The rating cannot reach A by any amount of code work.** It requires _zero_ open vulnerabilities in
 new code and one BLOCKER forces E, but Fact 4 in section 2 establishes that `iframe[src]` throws on a
