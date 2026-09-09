@@ -382,7 +382,10 @@ function expandAliases(typeText, aliases, seen = new Set()) {
   if (!typeText) return typeText;
   let out = typeText;
   for (let depth = 0; depth < 8; depth += 1) {
-    const names = out.match(/\b[A-Z][\w$]*\b/g) ?? [];
+    // Every valid identifier, not just capitalised ones. TypeScript permits a lowercase type name,
+    // so `type mediaUrl = SafeResourceUrl` was left as the text `mediaUrl` and passed. Non-alias
+    // identifiers such as `string` and `null` simply miss the map, so widening costs nothing.
+    const names = out.match(/\b[A-Za-z_$][\w$]*\b/g) ?? [];
     const next = names.find((name) => aliases.has(name) && !seen.has(name));
     if (!next) break;
     seen.add(next);
@@ -406,14 +409,6 @@ function expandAliases(typeText, aliases, seen = new Set()) {
 const QUALIFIED_SANITISERS = new Set(['DOMPurify.sanitize', 'renderTrustedHtml']);
 
 /**
- * Whether `sf` declares an `escapeHtml` that actually escapes.
- *
- * Checked by looking for the markup entities in its body: an implementation that does not produce
- * `&lt;` or `&amp;` is not escaping HTML, whatever it is called. Crude, but it distinguishes the real
- * `kd-citation-dialog` and `ai-markdown.pipe` helpers from an identity function of the same name, and
- * it fails closed — an `escapeHtml` this cannot recognise simply does not count as a sanitiser.
- */
-/**
  * A transform argument that cannot introduce unchecked text: a literal, a regex, or a number.
  *
  * `escaped.replace(/x/g, '&amp;')` is fine — the replacement is author-written. `escaped.replace(/x/,
@@ -428,20 +423,118 @@ function isInertTransformArg(arg) {
   );
 }
 
+/**
+ * Whether **every** `escapeHtml` declared in `sf` returns a value derived from a `replace` call.
+ *
+ * The previous version searched the declaration's text for `&lt;`/`&amp;`, which proves nothing about
+ * what the function returns: `escapeHtml(v) { const marker = '&lt;'; return v; }` passed on dead
+ * marker text. It also short-circuited on the first match, so one real helper vouched for any
+ * same-named decoy elsewhere in the file.
+ *
+ * `every`, not `some` — a real implementation must not bless a decoy — and the test is on the
+ * returned expression rather than the body text, which is the difference between "an entity appears
+ * somewhere" and "the value handed back was transformed".
+ */
 function declaresRealEscapeHtml(sf) {
-  let real = false;
+  const decls = [];
   eachNode(sf, (n) => {
-    if (real) return;
     const isEscapeDecl =
       (ts.isMethodDeclaration(n) || ts.isFunctionDeclaration(n) || ts.isPropertyDeclaration(n)) &&
       n.name &&
       !ts.isComputedPropertyName(n.name) &&
       n.name.getText(sf) === 'escapeHtml';
-    if (!isEscapeDecl) return;
-    const body = n.getText(sf);
-    if (body.includes('&lt;') || body.includes('&amp;')) real = true;
+    if (isEscapeDecl) decls.push(n);
   });
-  return real;
+  if (decls.length === 0) return false;
+
+  const derivesFromReplace = (expr, decl, depth = 0) => {
+    if (!expr || depth > 6) return false;
+    if (ts.isParenthesizedExpression(expr)) return derivesFromReplace(expr.expression, decl, depth + 1);
+    if (ts.isCallExpression(expr)) {
+      const callee = expr.expression;
+      if (!ts.isPropertyAccessExpression(callee)) return false;
+      if (callee.name.text === 'replace' || callee.name.text === 'replaceAll') return true;
+      return derivesFromReplace(callee.expression, decl, depth + 1);
+    }
+    if (ts.isIdentifier(expr)) {
+      let init = null;
+      eachNode(decl, (d) => {
+        if (init) return;
+        if (ts.isVariableDeclaration(d) && ts.isIdentifier(d.name) && d.name.text === expr.text) {
+          init = d.initializer ?? null;
+        }
+      });
+      return derivesFromReplace(init, decl, depth + 1);
+    }
+    return false;
+  };
+
+  return decls.every((decl) => {
+    const text = decl.getText(sf);
+    if (!text.includes('&lt;') && !text.includes('&amp;')) return false;
+
+    // Only this function's own returns. Descending into nested functions is wrong: the callback in
+    // `text.replace(/[&<>"]/g, (c) => map[c])` is not what `escapeHtml` returns, and treating its body
+    // as a return made the real `ai-markdown.pipe` helper fail.
+    const fn = ts.isPropertyDeclaration(decl)
+      ? decl.initializer && (ts.isArrowFunction(decl.initializer) || ts.isFunctionExpression(decl.initializer))
+        ? decl.initializer
+        : null
+      : decl;
+    if (!fn) return false;
+
+    const returns = [];
+    if (ts.isArrowFunction(fn) && fn.body && !ts.isBlock(fn.body)) {
+      returns.push(fn.body); // concise body is an implicit return
+    } else if (fn.body) {
+      const collect = (node) => {
+        if (ts.isReturnStatement(node)) {
+          if (node.expression) returns.push(node.expression);
+          return;
+        }
+        // Stop at a nested function boundary — its returns belong to it, not to `fn`.
+        if (
+          node !== fn &&
+          (ts.isArrowFunction(node) ||
+            ts.isFunctionExpression(node) ||
+            ts.isFunctionDeclaration(node) ||
+            ts.isMethodDeclaration(node))
+        ) {
+          return;
+        }
+        node.forEachChild(collect);
+      };
+      collect(fn.body);
+    }
+    if (returns.length === 0) return false;
+    return returns.every((r) => derivesFromReplace(r, decl));
+  });
+}
+
+/**
+ * Whether `name` in `sf` refers to something **imported** rather than declared locally.
+ *
+ * Check 5 identified sanitisers by callee text, so a local `function renderTrustedHtml(v) { return v; }`
+ * or a shadowing `const DOMPurify = { sanitize: (v) => v }` was accepted and let raw HTML through with
+ * the gate green. Import provenance is the cheapest proxy for identity without a `TypeChecker`: the
+ * real `DOMPurify` and the real `renderTrustedHtml` both arrive by import, and anything declared
+ * locally under those names is by construction not them.
+ *
+ * Fails closed — a name this cannot trace to an import does not count as a sanitiser.
+ */
+function isImportedName(sf, name) {
+  let imported = false;
+  eachNode(sf, (n) => {
+    if (imported || !ts.isImportDeclaration(n) || !n.importClause) return;
+    const clause = n.importClause;
+    if (clause.name && clause.name.text === name) imported = true;
+    const named = clause.namedBindings;
+    if (named && ts.isNamespaceImport(named) && named.name.text === name) imported = true;
+    if (named && ts.isNamedImports(named)) {
+      for (const el of named.elements) if (el.name.text === name) imported = true;
+    }
+  });
+  return imported;
 }
 
 /**
@@ -495,14 +588,21 @@ function sanitizerReaches(expr, host, sf) {
     return null;
   };
 
-  /** Accepts only known sanitiser identities, not anything sharing a method name. */
+  /**
+   * Accepts only sanitiser identities this can *prove*, not anything sharing a name.
+   *
+   * `DOMPurify.sanitize` and `renderTrustedHtml` additionally have to be imported: a local identity
+   * function or a shadowing `const DOMPurify = { sanitize: (v) => v }` carries the right text and does
+   * nothing. `escapeHtml` is a local convention here, so it is admitted only where every declaration
+   * of that name in the file returns a `replace`-derived value.
+   */
   const isSanitiser = (node) => {
     const callee = node.expression;
-    // `DOMPurify.sanitize(...)`, `renderTrustedHtml(...)` — including through a receiver such as
-    // `this.` — matched on the qualified tail so a bare `sanitize()` does not count.
     const text = callee.getText(sf).replace(/^this\./, '');
-    if (QUALIFIED_SANITISERS.has(text)) return true;
-    // `escapeHtml` / `this.escapeHtml`, only where this file declares a real one.
+    if (QUALIFIED_SANITISERS.has(text)) {
+      const root = text.split('.')[0];
+      return isImportedName(sf, root);
+    }
     return escapeHtmlIsReal && calleeName(node) === 'escapeHtml';
   };
 

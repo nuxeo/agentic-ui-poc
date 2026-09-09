@@ -871,7 +871,7 @@ set of bindings that must be reported; it would not change what makes the check 
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **26 assertions, of which only 20 are negative controls** —
+  one red run pasted into a PR. It reports **29 assertions, of which only 23 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 6 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **1 silence assertion** (check 4 must stay quiet while walking its longest path to an alias that

@@ -449,6 +449,58 @@ control(
   'indirect trusted HTML',
 );
 
+control(
+  'check 4 sees through a LOWERCASE type alias',
+  4,
+  () =>
+    // Alias expansion scanned only capitalised identifiers. TypeScript permits a lowercase type name,
+    // so this evaded the whole mechanism added for the capitalised case.
+    edit(VIEWER_TS, (s) =>
+      s
+        .replace(
+          'export interface VideoSource {',
+          'type mediaUrl = SafeResourceUrl;\n\nexport interface VideoSource {',
+        )
+        .replace(
+          'readonly posterUrl = input<string | null>(null);',
+          'readonly posterUrl = input<mediaUrl | null>(null);',
+        ),
+    ),
+  'document-viewer.component.html',
+);
+
+control(
+  'check 5 rejects an escapeHtml that returns its input unchanged',
+  5,
+  () =>
+    // Dead marker text used to satisfy the helper check: it searched the declaration for `&lt;`
+    // without asking what the function returns.
+    edit('libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts', (s) => {
+      const out = s.replace(
+        /private escapeHtml\(value: string\): string \{/,
+        'private escapeHtml(value: string): string {\n    return value;\n    // eslint-disable-next-line no-unreachable',
+      );
+      if (out === s) throw new Error('kd-citation-dialog escapeHtml signature changed — update control');
+      return out;
+    }),
+  'unsanitised trusted HTML',
+);
+
+control(
+  'check 5 rejects a locally-declared renderTrustedHtml that is not the real one',
+  5,
+  () =>
+    // Identity by callee text accepted anything named right. The real helper arrives by import; a
+    // local function of the same name is by construction not it.
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        'const renderTrustedHtml = (v: string) => v;\n    return this.sanitizer.bypassSecurityTrustHtml(renderTrustedHtml(this.content() ?? ""));',
+      ),
+    ),
+  'unsanitised trusted HTML',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',
