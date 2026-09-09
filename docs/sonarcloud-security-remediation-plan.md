@@ -20,7 +20,7 @@ below before reading "Done" as "closed".
 | --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
 | **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (31 negative controls + 5 green baselines + 1 silence assertion — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (33 negative controls + 5 green baselines + 1 silence assertion — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
 | **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
 | **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                                                           |
 | **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                                                             |
@@ -894,6 +894,11 @@ must be reported; it did not change what makes the check sound.
   was verified silent first: with raw user markdown passed to it, the pre-fix gate printed
   `PASS — 31 bypass call(s), all accounted for` — the count not merely wrong but unchanged.
 
+  Element access and computed destructuring resolve their key through **one** shared function, which
+  is the durable half of this. They previously had a copy each, so teaching the element-access one to
+  resolve a constant left `const key = 'bypass…' as const; const { [key]: trust } = sanitizer` open —
+  the identical evasion one syntax along, found by the next review round.
+
   Naming cannot reach every case, so there is a backstop rather than a gap: `let key = 'bypass…'`
   widens to `string`, leaving no literal type to resolve, and an element access on a `DomSanitizer`
   whose member does not resolve is **reported**. "It would not compile" is not available as a
@@ -915,7 +920,7 @@ must be reported; it did not change what makes the check sound.
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **37 assertions, of which only 31 are negative controls** —
+  one red run pasted into a PR. It reports **39 assertions, of which only 33 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 6 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **1 silence assertion** (check 4 must stay quiet while walking its longest path to an alias that

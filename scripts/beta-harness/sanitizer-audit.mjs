@@ -121,16 +121,29 @@ function accessedMemberName(node, checker) {
   if (ts.isPropertyAccessExpression(node)) return node.name.text;
   if (!ts.isElementAccessExpression(node)) return null;
 
-  const arg = node.argumentExpression;
-  if (!arg) return null;
-  if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return arg.text;
-  // A numeric index is an array read, not a member name; short-circuiting it keeps the checker out
-  // of the hot path for the many `a[0]` in the tree.
-  if (!checker || ts.isNumericLiteral(arg)) return null;
+  return keyExpressionName(node.argumentExpression, checker);
+}
+
+/**
+ * The member name a key expression denotes — a literal read directly, anything else resolved through
+ * the checker as a string-literal type — or `null`.
+ *
+ * Shared by element access (`sanitizer[key]`) and computed destructuring
+ * (`const { [key]: trust } = sanitizer`). They were fixed one at a time and the second was missed:
+ * closing `sanitizer[key](raw)` while leaving `const { [key]: trust } = sanitizer; trust(raw)` open
+ * left the identical evasion one syntax along, which is the mistake this file keeps making. One
+ * function now answers the question for both.
+ */
+function keyExpressionName(key, checker) {
+  if (!key) return null;
+  if (ts.isStringLiteral(key) || ts.isNoSubstitutionTemplateLiteral(key)) return key.text;
+  // A numeric key is an array read, not a member name; short-circuiting it keeps the checker out of
+  // the hot path for the many `a[0]` in the tree.
+  if (!checker || ts.isNumericLiteral(key)) return null;
 
   let type;
   try {
-    type = checker.getTypeAtLocation(arg);
+    type = checker.getTypeAtLocation(key);
   } catch {
     return null;
   }
@@ -174,6 +187,27 @@ function isDomSanitizerExpression(node, checker) {
 }
 
 /**
+ * Whether a binding element is destructuring a `DomSanitizer`.
+ *
+ * The initialiser lives on the enclosing `VariableDeclaration` (or parameter), not on the element,
+ * so it is reached through the parents rather than read off `n`.
+ */
+function isDomSanitizerDestructuring(element, checker) {
+  if (!checker) return false;
+  for (let p = element.parent; p; p = p.parent) {
+    if (ts.isVariableDeclaration(p)) {
+      return p.initializer ? isDomSanitizerExpression(p.initializer, checker) : false;
+    }
+    if (ts.isParameter(p)) return isDomSanitizerExpression(p, checker);
+    if (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+      return isDomSanitizerExpression(p.right, checker);
+    }
+    if (ts.isSourceFile(p)) break;
+  }
+  return false;
+}
+
+/**
  * The property a binding element destructures, when it names one explicitly.
  *
  * `{ bypassSecurityTrustHtml }` carries no `propertyName`, so matching on the bound name was right
@@ -181,20 +215,19 @@ function isDomSanitizerExpression(node, checker) {
  * carry one, and the identifier-only test fell through to the bound name — reading the local alias
  * `trust`, which matches nothing. Verified against the pre-fix script: check 1 printed
  * `PASS — 31 bypass call(s), all accounted for` with the quoted form in place.
+ *
+ * A computed key goes through `keyExpressionName`, the same resolution element access uses, so
+ * `const key = 'bypassSecurityTrustHtml' as const; const { [key]: trust } = sanitizer` is named.
+ * That case was open for one round because element access and destructuring each had their own copy
+ * of the logic and only one was fixed — the reason there is now a single shared function.
  * @returns {string|null}
  */
-function destructuredPropertyName(element) {
+function destructuredPropertyName(element, checker) {
   const name = element.propertyName;
   if (!name) return null;
   if (ts.isIdentifier(name)) return name.text;
-  if (ts.isStringLiteral(name) || ts.isNoSubstitutionTemplateLiteral(name)) return name.text;
-  if (
-    ts.isComputedPropertyName(name) &&
-    (ts.isStringLiteral(name.expression) || ts.isNoSubstitutionTemplateLiteral(name.expression))
-  ) {
-    return name.expression.text;
-  }
-  return null;
+  if (ts.isComputedPropertyName(name)) return keyExpressionName(name.expression, checker);
+  return keyExpressionName(name, checker);
 }
 
 /**
@@ -396,8 +429,28 @@ function collectBypasses(sf, checker) {
 
     // `const { bypassSecurityTrustHtml } = this.sanitizer;`
     if (ts.isBindingElement(n) && n.name && ts.isIdentifier(n.name)) {
-      const bound = destructuredPropertyName(n) ?? n.name.text;
-      if (BYPASS_RE.test(bound)) record(n, bound, true);
+      const declared = destructuredPropertyName(n, checker);
+      const bound = declared ?? n.name.text;
+      if (BYPASS_RE.test(bound)) {
+        record(n, bound, true);
+      } else if (
+        declared === null &&
+        n.propertyName &&
+        ts.isComputedPropertyName(n.propertyName) &&
+        isDomSanitizerDestructuring(n, checker)
+      ) {
+        // The same backstop the element-access path has: a computed key that does not resolve names
+        // no member, so the local it binds could be any of them. Reported rather than assumed benign.
+        const line = lineOf(sf, n);
+        if (!seenLines.has(`${line}:<unnameable>`)) {
+          seenLines.add(`${line}:<unnameable>`);
+          unnameable.push({
+            member: enclosingMemberName(n),
+            line,
+            text: n.getText(sf).slice(0, 60),
+          });
+        }
+      }
     }
   });
 

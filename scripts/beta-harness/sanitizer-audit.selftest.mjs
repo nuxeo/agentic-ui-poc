@@ -268,6 +268,53 @@ control(
   'unnameable DomSanitizer member',
 );
 
+// ---- check 1: computed destructuring, the same evasion one syntax along -------------------------
+// Element access and destructuring each had their own copy of the key-naming logic, and only the
+// element-access one was taught to resolve a constant. So closing `sanitizer[key](raw)` left
+// `const key = 'bypassSecurityTrustHtml' as const; const { [key]: trust } = sanitizer; trust(raw)`
+// wide open — verified: checks 1 and 5 both printed "PASS — 31 bypass call(s), all accounted for".
+// One shared `keyExpressionName` now answers for both, so the next spelling cannot be closed in one
+// place and left open in the other.
+control(
+  'check 1 counts a bypass destructured under a computed constant key',
+  1,
+  () =>
+    edit(NOTE_EDITOR, (s) => {
+      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      return s.replace(
+        anchor,
+        `    const key = 'bypassSecurityTrustHtml' as const;\n` +
+          `    const { [key]: trust } = this.sanitizer;\n` +
+          `    if (raw === '__selftest__') {\n` +
+          `      return trust(raw);\n` +
+          `    }\n` +
+          anchor,
+      );
+    }),
+  'bypass count mismatch',
+);
+
+control(
+  'check 1 reports a DomSanitizer destructuring whose computed key it cannot name',
+  1,
+  // `let` widens to `string`, so there is no literal type to resolve and no member name to record.
+  // The local it binds could be any member of the sanitizer, so it reports rather than assuming.
+  () =>
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        `    let key = 'bypassSecurityTrustHtml';\n` +
+          `    const { [key]: trust } = this.sanitizer;\n` +
+          `    if (raw === '__selftest__') {\n` +
+          `      return trust(raw);\n` +
+          `    }\n` +
+          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+      ),
+    ),
+  'unnameable DomSanitizer member',
+);
+
 // ---- check 4: a same-named member on another class in the file ----------------------------------
 // Check 4 used to resolve a template expression against "whichever class in the file resolves the
 // path first". One valid file defeats that: declare a class ahead of the component with a same-named
