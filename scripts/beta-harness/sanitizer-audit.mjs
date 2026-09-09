@@ -141,6 +141,39 @@ function accessedMemberName(node, checker) {
 }
 
 /**
+ * Whether an expression's type is Angular's `DomSanitizer`.
+ *
+ * The backstop for an element access whose member cannot be named. Resolving a constant index
+ * through the checker covers `as const` and an explicit literal type, but a `let`-widened `string`
+ * has no literal type to resolve, and `sanitizer[widened](raw)` would go back to being invisible.
+ *
+ * "It would not compile" is not available as a defence here. `createTypeProgram` loads
+ * `tsconfig.base.json`, which sets **neither `strict` nor `noImplicitAny`** — the libraries turn
+ * `strict` on in their own tsconfigs — so indexing `DomSanitizer` with a `string` is an error to
+ * `nx build` and not an error to this audit's own checker. Depending on another gate to catch it is
+ * how a hole ends up owned by nobody.
+ *
+ * So the object's type is the thing asked about: an element access on a `DomSanitizer` whose member
+ * this cannot name is reported. The member is unknown, so it cannot be classified, budgeted or
+ * paired — and a bypass this cannot name must not become a bypass it cannot see.
+ */
+function isDomSanitizerExpression(node, checker) {
+  if (!checker) return false;
+  let type;
+  try {
+    type = checker.getTypeAtLocation(node);
+  } catch {
+    return false;
+  }
+  if (!type) return false;
+  for (const part of type.isUnionOrIntersection?.() ? type.types : [type]) {
+    const name = part?.aliasSymbol?.getName() ?? part?.getSymbol?.()?.getName();
+    if (name === 'DomSanitizer') return true;
+  }
+  return false;
+}
+
+/**
  * The property a binding element destructures, when it names one explicitly.
  *
  * `{ bypassSecurityTrustHtml }` carries no `propertyName`, so matching on the bound name was right
@@ -305,10 +338,12 @@ function enclosingMemberName(node) {
  * the function is in a variable, its call site is an ordinary identifier this cannot recognise. A
  * direct call and a reference to the same member in the same enclosing member collapse to one
  * allowlist entry, which is why `calls` is deduplicated by line.
- * @returns {{member: string, kind: string, line: number, indirect: boolean}[]}
+ * @returns {{bypasses: {member: string, kind: string, line: number, indirect: boolean}[], unnameable: {member: string, line: number, text: string}[]}}
  */
 function collectBypasses(sf, checker) {
   const found = [];
+  /** Element accesses on a `DomSanitizer` whose member could not be named — reported by check 1. */
+  const unnameable = [];
   const seenLines = new Set();
 
   const record = (node, name, indirect) => {
@@ -342,6 +377,21 @@ function collectBypasses(sf, checker) {
         const isOwnCallee = ts.isCallExpression(n.parent) && n.parent.expression === n;
         if (!isOwnCallee) record(n, name, true);
       }
+      // Fails closed on the one thing naming cannot reach: an element access on a `DomSanitizer`
+      // whose member this cannot name. `let key = 'bypassSecurityTrustHtml'` widens to `string`, so
+      // there is no literal type for the checker to return, and no separate property read for
+      // check 5's indirect finding to see either.
+      if (!name && ts.isElementAccessExpression(n) && isDomSanitizerExpression(n.expression, checker)) {
+        const line = lineOf(sf, n);
+        if (!seenLines.has(`${line}:<unnameable>`)) {
+          seenLines.add(`${line}:<unnameable>`);
+          unnameable.push({
+            member: enclosingMemberName(n),
+            line,
+            text: n.getText(sf).slice(0, 60),
+          });
+        }
+      }
     }
 
     // `const { bypassSecurityTrustHtml } = this.sanitizer;`
@@ -351,7 +401,7 @@ function collectBypasses(sf, checker) {
     }
   });
 
-  return found;
+  return { bypasses: found, unnameable };
 }
 
 /**
@@ -610,13 +660,14 @@ function sanitizerReaches(expr, host, sf, checker, approvedSanitisers) {
  * NONE-context defects, so scanning `.html` alone would miss them.
  * @returns {{template: string, offsetLine: number, tsFile: string, htmlFile: string|null}[]}
  */
-function templatesFor(tsFile, sf, _text) {
+function templatesFor(tsFile, sf) {
   const out = [];
   eachNode(sf, (n) => {
     if (!ts.isPropertyAssignment(n) || !n.name) return;
 
-    // Only process template/templateUrl if it's inside a @Component decorator
-    if (!isInComponentDecorator(n, sf)) return;
+    // Only `template`/`templateUrl` on a `@Component`, and only with the class that owns it.
+    const classDecl = componentClassOf(n, sf);
+    if (!classDecl) return;
 
     const key = n.name.getText(sf);
     if (key === 'template') {
@@ -627,6 +678,7 @@ function templatesFor(tsFile, sf, _text) {
           offsetLine: lineOf(sf, init),
           tsFile,
           htmlFile: null,
+          classDecl,
         });
       }
     }
@@ -641,6 +693,7 @@ function templatesFor(tsFile, sf, _text) {
             offsetLine: 0,
             tsFile,
             htmlFile,
+            classDecl,
           });
         } catch {
           /* template missing is a compile error, not this gate's business */
@@ -652,35 +705,40 @@ function templatesFor(tsFile, sf, _text) {
 }
 
 /**
- * Check if a node is inside a @Component decorator's argument object literal.
- * Walks up the parent chain to find if this property is within a decorator named "Component".
+ * The class whose `@Component` decorator this property assignment belongs to, or `null`.
+ *
+ * It used to answer only *whether* the property was inside a `@Component`, and check 4 then resolved
+ * template expressions against "whichever class in the file resolves the path first". That is a
+ * silent pass waiting to happen, and it happens in one valid file: declare a class before the
+ * component with a same-named member of a plain type, and the real component's `SafeResourceUrl`
+ * member is never consulted. Reproduced with a two-class file — a `PosterDecoy` exposing
+ * `posterUrl(): string | null` ahead of the component whose `posterUrl` is
+ * `input<SafeResourceUrl | null>()` — and check 4 printed PASS on a live defect.
+ *
+ * The owning class is the only correct answer, so it is carried through to check 4 rather than
+ * rediscovered there.
  */
-function isInComponentDecorator(node, sf) {
+function componentClassOf(node, sf) {
   let current = node.parent;
 
-  // Walk up to find the ObjectLiteralExpression that contains this property
+  // Up to the ObjectLiteralExpression holding this property.
   while (current && !ts.isObjectLiteralExpression(current)) {
     current = current.parent;
   }
-  if (!current) return false;
+  if (!current) return null;
 
-  // Check if this object literal is the argument to a @Component decorator
-  const objLiteral = current;
-  if (!objLiteral.parent || !ts.isCallExpression(objLiteral.parent)) return false;
-
-  const callExpr = objLiteral.parent;
-  if (!callExpr.parent || !ts.isDecorator(callExpr.parent)) return false;
-
-  const decorator = callExpr.parent;
+  // That object literal must be the argument of a `@Component(...)` decorator.
+  const call = current.parent;
+  if (!call || !ts.isCallExpression(call)) return null;
+  const decorator = call.parent;
+  if (!decorator || !ts.isDecorator(decorator)) return null;
   const decoratorExpr = decorator.expression;
+  if (!ts.isCallExpression(decoratorExpr)) return null;
+  if (decoratorExpr.expression.getText(sf) !== 'Component') return null;
 
-  // Check if the decorator is named "Component"
-  if (ts.isCallExpression(decoratorExpr)) {
-    const decoratorName = decoratorExpr.expression.getText(sf);
-    return decoratorName === 'Component';
-  }
-
-  return false;
+  // And the decorator hangs off the class this template belongs to.
+  const classDecl = decorator.parent;
+  return classDecl && ts.isClassDeclaration(classDecl) ? classDecl : null;
 }
 
 /**
@@ -874,15 +932,6 @@ function typeIsSafe(type, checker, depth = 0) {
     if (element && typeIsSafe(element, checker, depth + 1)) return true;
   }
   return false;
-}
-
-/** The class declarations in `sf`, so a template's expressions can be resolved against members. */
-function classesIn(sf) {
-  const out = [];
-  eachNode(sf, (n) => {
-    if (ts.isClassDeclaration(n)) out.push(n);
-  });
-  return out;
 }
 
 /**
@@ -1086,8 +1135,12 @@ function main() {
   // ---- collect every bypass, with its true enclosing member -----------------------------------
   /** @type {{file:string,member:string,kind:string,line:number}[]} */
   const bypasses = [];
+  /** `DomSanitizer` element accesses whose member could not be named; reported by check 1. */
+  const unnameableAccesses = [];
   for (const [file, { sf, checker: fileChecker }] of audited) {
-    for (const b of collectBypasses(sf, fileChecker)) bypasses.push({ file, ...b });
+    const collected = collectBypasses(sf, fileChecker);
+    for (const b of collected.bypasses) bypasses.push({ file, ...b });
+    for (const u of collected.unnameable) unnameableAccesses.push({ file, ...u });
   }
 
   if (printOnly) {
@@ -1126,6 +1179,19 @@ function main() {
   if (run(1)) {
     for (const m of malformed) {
       findings.push(`[1] unusable allowlist entry  ${m}`);
+    }
+    // Also check 1's business: it owns "every bypass is accounted for", and a member it cannot name
+    // cannot be accounted for. Reported unconditionally rather than only when the name looks like a
+    // bypass, because the name is precisely what is unavailable.
+    for (const u of unnameableAccesses) {
+      findings.push(
+        `[1] unnameable DomSanitizer member  ${u.file}:${u.line}\n` +
+          `    member '${u.member}' reads '${u.text}' — an element access on a DomSanitizer whose\n` +
+          `    member name does not resolve to a string literal, so it cannot be told from a bypass.\n` +
+          `    A member this cannot name cannot be registered, categorised, budgeted or checked for\n` +
+          `    sanitiser pairing, so it reports. Index the sanitizer with a literal, or call the\n` +
+          `    member directly.`,
+      );
     }
   }
 
@@ -1248,13 +1314,12 @@ function main() {
   // therefore indistinguishable from passing, which is how the check could be green while the thing
   // it guards was broken.
   if (run(4)) {
-    for (const [file, { sf, text }] of parsed) {
-      const templates = templatesFor(file, sf, text);
+    for (const [file, { sf, checker: fileChecker }] of audited) {
+      // Templates are read from the program's copy of the file, so `tpl.classDecl` is a node the
+      // checker can resolve. Without a checker there is nothing to resolve against, and every
+      // binding in the file is reported — the fail-closed default, not a gap.
+      const templates = templatesFor(file, sf);
       if (templates.length === 0) continue;
-
-      // The program only carries files it was given; a template's component must be one of them.
-      const programFile = program.getSourceFile(join(ROOT, file));
-      const classes = programFile ? classesIn(programFile) : [];
 
       for (const tpl of templates) {
         const templateName = tpl.htmlFile ?? tpl.tsFile;
@@ -1283,18 +1348,19 @@ function main() {
           let unresolved = branches.length === 0 ? expr : null;
 
           for (const branch of branches) {
-            // Any class in the file may own the template; the first that resolves the path wins.
-            let resolved = null;
-            for (const classDecl of classes) {
-              resolved = resolveTemplateType(branch, classDecl, checker, loopVars);
-              if (resolved) break;
-            }
+            // Only the class that OWNS this template. Trying every class in the file and taking the
+            // first that resolved meant a same-named member on an unrelated class declared earlier
+            // could answer for the component — masking a `SafeResourceUrl` behind a `string` and
+            // passing on a live defect.
+            const resolved = fileChecker
+              ? resolveTemplateType(branch, tpl.classDecl, fileChecker, loopVars)
+              : null;
             if (!resolved) {
               unresolved = branch;
               break;
             }
-            if (typeIsSafe(resolved, checker)) {
-              safeBranch = { branch, text: checker.typeToString(resolved) };
+            if (typeIsSafe(resolved, fileChecker)) {
+              safeBranch = { branch, text: fileChecker.typeToString(resolved) };
               break;
             }
           }

@@ -238,6 +238,61 @@ control(
   'unsanitised trusted HTML',
 );
 
+// ---- check 1: element access whose member cannot be named at all ---------------------------------
+// Resolving a constant index covers `as const` and an explicit literal type, but `let` widens to
+// `string`, so there is no literal type for the checker to return — and no separate property read
+// for check 5's indirect finding to see either. "It would not compile" is not a defence available
+// here: `createTypeProgram` loads `tsconfig.base.json`, which sets neither `strict` nor
+// `noImplicitAny` (the libraries turn `strict` on in their own tsconfigs), so indexing
+// `DomSanitizer` with a `string` is an error to `nx build` and not an error to this audit's checker.
+//
+// So the object's type is the backstop: an element access on a `DomSanitizer` whose member does not
+// resolve is reported, because a member this cannot name cannot be registered, categorised,
+// budgeted or paired.
+control(
+  'check 1 reports a DomSanitizer element access whose member it cannot name',
+  1,
+  () =>
+    edit(NOTE_EDITOR, (s) => {
+      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      return s.replace(
+        anchor,
+        `    let key = 'bypassSecurityTrustHtml';\n` +
+          `    if (raw === '__selftest__') {\n` +
+          `      return this.sanitizer[key](raw);\n` +
+          `    }\n` +
+          anchor,
+      );
+    }),
+  'unnameable DomSanitizer member',
+);
+
+// ---- check 4: a same-named member on another class in the file ----------------------------------
+// Check 4 used to resolve a template expression against "whichever class in the file resolves the
+// path first". One valid file defeats that: declare a class ahead of the component with a same-named
+// member of a plain type, and the component's own `SafeResourceUrl` member is never consulted.
+// Verified red before the fix — the audit printed PASS on a live defect.
+control(
+  'check 4 resolves against the component that owns the template, not another class in the file',
+  4,
+  () => {
+    edit(VIEWER_TS, (s) => {
+      const next = s.replace(
+        'readonly posterUrl = input<string | null>(null);',
+        'readonly posterUrl = input<SafeResourceUrl | null>(null);',
+      );
+      if (next === s) throw new Error('document-viewer posterUrl changed — update this control');
+      // Declared BEFORE the component, so a first-match-wins resolver reaches it first.
+      return next.replace(
+        'export interface VideoSource {',
+        'export class PosterDecoy {\n  readonly posterUrl = (): string | null => null;\n}\n\nexport interface VideoSource {',
+      );
+    });
+  },
+  'Safe* value in a NONE context',
+);
+
 // ---- check 1: destructuring under a quoted property name ----------------------------------------
 // `{ bypassSecurityTrustHtml }` carries no `propertyName`, so matching the bound name was right for
 // it. `{ 'bypassSecurityTrustHtml': trust }` does carry one, and the identifier-only test fell
