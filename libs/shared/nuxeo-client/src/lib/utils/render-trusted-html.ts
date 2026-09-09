@@ -43,9 +43,10 @@ function assertSafeConfig(config?: Parameters<typeof DOMPurify.sanitize>[1]): vo
  *
  * ## Why this exists
  *
- * `[innerHTML]` requires a `SafeHtml` value — binding a raw string throws in development and is
- * stripped in production. So the bypass is unavoidable, and consolidating the 8 inline calls that
- * pair a sanitizer with a bypass makes two things true:
+ * Angular accepts raw strings for `[innerHTML]` and applies its own HTML sanitizer. This helper
+ * keeps the repository's reviewed DOMPurify output together with the audited bypass, so the 8
+ * formerly inline sanitize-then-bypass sites share one implementation and one security rationale.
+ * Consolidating them makes two things true:
  *
  *   1. The justification ("safe as a PAIRING") lives in one place.
  *   2. `scripts/beta-harness/sanitizer-audit.mjs` can enforce that every innerHTML bypass goes

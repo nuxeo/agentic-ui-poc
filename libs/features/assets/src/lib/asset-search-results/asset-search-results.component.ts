@@ -306,6 +306,7 @@ export class AssetSearchResultsComponent {
   readonly selectionService = inject(SelectionService);
 
   readonly thumbnailMap = signal<Record<string, string | null>>({});
+  private thumbnailGeneration = 0;
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   readonly loading = signal(true);
@@ -318,6 +319,7 @@ export class AssetSearchResultsComponent {
     tap(() => {
       this.loading.set(true);
       this.error.set(null);
+      this.beginThumbnailBatch();
     }),
     switchMap((params) =>
       this.assetService.searchAssets(buildApiParams(params)).pipe(
@@ -356,6 +358,8 @@ export class AssetSearchResultsComponent {
   readonly gridSortOrder = signal<'asc' | 'desc'>('asc');
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearThumbnails());
+
     effect(() => {
       const params = this.queryParams();
       const apiSortBy = params.get('sortBy') ?? 'dc:created';
@@ -913,19 +917,36 @@ export class AssetSearchResultsComponent {
   }
 
   private loadThumbnails(assets: AssetResult[]): void {
+    const generation = this.thumbnailGeneration;
+    this.clearThumbnails();
     for (const asset of assets) {
-      if (this.thumbnailMap()[asset.id]) continue;
       this.documentDetailService
         .fetchThumbnail(asset.id)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
-          if (!blob) return;
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [asset.id]: url,
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[asset.id];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [asset.id]: url,
+            };
+          });
         });
     }
+  }
+
+  private beginThumbnailBatch(): void {
+    this.thumbnailGeneration += 1;
+  }
+
+  private clearThumbnails(): void {
+    for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);
+    this.thumbnailMap.set({});
   }
 }

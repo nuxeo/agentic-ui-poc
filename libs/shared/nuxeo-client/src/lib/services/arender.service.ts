@@ -87,15 +87,6 @@ export class ARenderService {
   }
 
   /**
-   * `base` with `url` parameters and the acting user attached.
-   *
-   * Built with `URL`/`searchParams` rather than string concatenation. Concatenation was the defect:
-   * `${viewerOrigin}/?url=${encodeURIComponent(...)}` assumes `viewerOrigin` has no query and no
-   * fragment of its own, and produced a URL with no top-level `url` parameter whenever it did.
-   * `searchParams.append` is also what makes the two-document diff case correct — `url` legitimately
-   * appears twice, which a `set`-based or hand-built approach gets wrong.
-   */
-  /**
    * `<nuxeoInternalUrl>/nxfile/default/<uid>/<xpath>`, resolved rather than concatenated.
    *
    * Concatenation was a second instance of the defect `buildViewerUrl` was already written to
@@ -120,6 +111,15 @@ export class ARenderService {
     return new URL(`nxfile/default/${encodeURIComponent(docUid)}/${blobXPath}`, withSlash).toString();
   }
 
+  /**
+   * `base` with `url` parameters and the acting user attached.
+   *
+   * Built with `URL`/`searchParams` rather than string concatenation. Concatenation was the defect:
+   * `${viewerOrigin}/?url=${encodeURIComponent(...)}` assumes `viewerOrigin` has no query and no
+   * fragment of its own, and produced a URL with no top-level `url` parameter whenever it did.
+   * `searchParams.append` is also what makes the two-document diff case correct — `url` legitimately
+   * appears twice, which a `set`-based or hand-built approach gets wrong.
+   */
   private buildViewerUrl(base: string, nxfileUrls: string[]): string {
     const url = new URL(base);
     // Preserve the trailing slash the string-concatenation version always produced. It wrote

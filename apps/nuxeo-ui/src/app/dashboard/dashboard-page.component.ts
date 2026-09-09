@@ -326,11 +326,10 @@ export class DashboardPageComponent {
   }
 
   /**
-   * Every blob url handed to the template, so each can be revoked.
+   * Every blob URL currently owned by this page.
    *
-   * A plain array rather than deriving them from `thumbnailMap`: that map holds
-   * `SafeUrl` values from `bypassSecurityTrustUrl`, whose underlying string is not
-   * readable back out. Tracking at creation is the only point where the raw url exists.
+   * `thumbnailMap` now stores the raw object-URL strings directly, so teardown derives from the map
+   * itself and revokes each current entry on destroy.
    */
   private revokeThumbnails(): void {
     for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);

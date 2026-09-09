@@ -131,10 +131,13 @@ export class TrashComponent {
 
   readonly actionInProgress = signal<Set<string>>(new Set());
   readonly thumbnailMap = signal<Record<string, string | null>>({});
+  private thumbnailGeneration = 0;
   readonly saving = signal(false);
   readonly deletingSavedSearch = signal(false);
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearThumbnails());
+
     effect(
       () => {
         this.trashFilterService.filters();
@@ -150,6 +153,7 @@ export class TrashComponent {
     this.loading.set(true);
     this.error.set(null);
     this.trashFilterService.resultsLoading.set(true);
+    this.beginThumbnailBatch();
     const f = this.trashFilterService.filters();
     const sortField = SORT_FIELD_MAP[this.sortBy()] ?? 'dc:created';
     this.trashService
@@ -620,18 +624,41 @@ export class TrashComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
+    const generation = this.thumbnailGeneration;
+    this.clearThumbnails();
     for (const doc of docs) {
-      if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
-          if (!blob) return;
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          const safeUrl = url;
-          this.thumbnailMap.update((m) => ({ ...m, [doc.uid]: safeUrl }));
-          this.trashFilterService.resultThumbnails.update((m) => ({ ...m, [doc.uid]: safeUrl }));
+          this.setThumbnail(doc.uid, url);
         });
     }
+  }
+
+  private beginThumbnailBatch(): void {
+    this.thumbnailGeneration += 1;
+  }
+
+  private clearThumbnails(): void {
+    const urls = new Set(
+      [...Object.values(this.thumbnailMap()), ...Object.values(this.trashFilterService.resultThumbnails())]
+        .filter((url): url is string => !!url),
+    );
+    for (const url of urls) URL.revokeObjectURL(url);
+    this.thumbnailMap.set({});
+    this.trashFilterService.resultThumbnails.set({});
+  }
+
+  private setThumbnail(uid: string, url: string): void {
+    const previous = this.thumbnailMap()[uid] ?? this.trashFilterService.resultThumbnails()[uid];
+    if (previous && previous !== url) URL.revokeObjectURL(previous);
+    this.thumbnailMap.update((m) => ({ ...m, [uid]: url }));
+    this.trashFilterService.resultThumbnails.update((m) => ({ ...m, [uid]: url }));
   }
 }

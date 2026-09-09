@@ -1295,13 +1295,11 @@ export class NavDrawerComponent {
   }
 
   /**
-   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
-   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out.
+   * Blob URLs currently owned by the drawer.
    *
-   * One array for both loaders — `loadThumbnailsForIds` (clipboard) and
-   * `loadThumbnails` (favourites) — because they share `thumbnailMap` and so share its
-   * lifetime. The drawer is long-lived, and neither loader revoked anything, so a
-   * session accumulated one un-revoked blob per document ever shown in it.
+   * Both loaders (`loadThumbnailsForIds` for clipboard and `loadThumbnails` for favourites) write
+   * raw object-URL strings into `thumbnailMap`, so teardown can revoke the map's current values
+   * directly on destroy.
    */
   private revokeThumbnails(): void {
     for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);

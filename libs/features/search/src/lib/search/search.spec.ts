@@ -8,7 +8,7 @@ import {
 } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, throwError, type Observable } from 'rxjs';
+import { Subject, of, throwError, type Observable } from 'rxjs';
 import { vi } from 'vitest';
 
 import { SearchComponent } from './search';
@@ -248,6 +248,50 @@ describe('SearchComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('thumbnail lifecycle', () => {
+    it('revokes the previous batch before loading a new one', () => {
+      mockDocumentDetailService.fetchThumbnail.mockReturnValue(of(new Blob(['thumb'])));
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+      expect(component.thumbnailMap()['doc1']).toBe('blob:mock/1');
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc2' })]);
+
+      expect(revoked).toContain('blob:mock/1');
+      expect(component.thumbnailMap()).toEqual({ doc2: 'blob:mock/2' });
+    });
+
+    it('ignores stale thumbnail responses from an older batch', () => {
+      const thumbs = new Subject<Blob | null>();
+      mockDocumentDetailService.fetchThumbnail.mockReturnValue(thumbs.asObservable());
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([]);
+
+      thumbs.next(new Blob(['late']));
+      thumbs.complete();
+
+      expect(created).toHaveLength(0);
+      expect(component.thumbnailMap()).toEqual({});
+    });
+
+    it('revokes tracked thumbnails on destroy', () => {
+      mockDocumentDetailService.fetchThumbnail.mockReturnValue(of(new Blob(['thumb'])));
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+      expect(created).toContain('blob:mock/1');
+
+      fixture.destroy();
+
+      expect(revoked).toContain('blob:mock/1');
+    });
   });
 
   describe('toggleQuickFilter', () => {

@@ -178,6 +178,7 @@ export class SearchComponent {
   readonly selectionService = inject(SelectionService);
 
   readonly thumbnailMap = signal<Record<string, string | null>>({});
+  private thumbnailGeneration = 0;
 
   // AI Search state
   readonly aiSearchMode = signal(false);
@@ -217,6 +218,7 @@ export class SearchComponent {
     tap(() => {
       this.loading.set(true);
       this.error.set(null);
+      this.beginThumbnailBatch();
     }),
     switchMap(([params, drawerFilters]) => {
       const quickFilters = params.get('quickFilters') ?? '';
@@ -300,7 +302,9 @@ export class SearchComponent {
         map((response) => response.items),
         tap((items) => {
           this.loading.set(false);
-          this.loadThumbnails(items);
+          if (!this.aiSearchMode() || !this.aiSearchExecuted()) {
+            this.loadThumbnails(items);
+          }
         }),
         catchError(() => {
           this.searchAggregationService.aggregations.set({});
@@ -939,6 +943,8 @@ export class SearchComponent {
   }
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearThumbnails());
+
     this.aiSuggestSubject
       .pipe(
         debounceTime(400),
@@ -957,7 +963,11 @@ export class SearchComponent {
   toggleAiSearch(): void {
     const next = !this.aiSearchMode();
     this.aiSearchMode.set(next);
-    if (!next) this.resetAiSearchState();
+    if (!next) {
+      this.resetAiSearchState();
+      this.beginThumbnailBatch();
+      this.loadThumbnails(this.results());
+    }
   }
 
   onAiQueryInput(value: string): void {
@@ -999,6 +1009,7 @@ export class SearchComponent {
 
   private runNxqlQuery(nxql: string): void {
     this.loading.set(true);
+    this.beginThumbnailBatch();
     this.nuxeoApi
       .nxqlSearch(nxql, 40, {
         properties: 'dublincore,file,common',
@@ -1043,20 +1054,37 @@ export class SearchComponent {
   }
 
   private loadThumbnails(items: SearchResultItem[]): void {
+    const generation = this.thumbnailGeneration;
+    this.clearThumbnails();
     for (const item of items) {
-      if (this.thumbnailMap()[item.id]) continue;
       this.documentDetailService
         .fetchThumbnail(item.id)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
-          if (!blob) return;
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [item.id]: url,
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[item.id];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [item.id]: url,
+            };
+          });
         });
     }
+  }
+
+  private beginThumbnailBatch(): void {
+    this.thumbnailGeneration += 1;
+  }
+
+  private clearThumbnails(): void {
+    for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);
+    this.thumbnailMap.set({});
   }
 
   private resetAiSearchState(): void {

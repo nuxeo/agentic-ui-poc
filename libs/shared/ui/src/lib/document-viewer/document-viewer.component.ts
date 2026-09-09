@@ -117,7 +117,7 @@ export class DocumentViewerComponent {
    * check 4, which follows the bound expression to a type declaration and — crucially — reports any
    * NONE-context binding whose type it cannot resolve, rather than assuming it is safe.
    */
-  readonly rawBlobUrl = input.required<string | null>();
+  readonly rawBlobUrl = input<string | null>(null);
   readonly mimeType = input<string>('');
   readonly fileName = input<string>('');
   readonly fileSize = input<string>('');
