@@ -331,17 +331,42 @@ function collectTypeShapes(sf) {
  * `VideoSource` into a shared models file, which is ordinary refactoring, would therefore have
  * silently switched the check off for the binding it exists to guard.
  *
- * Names are global here rather than import-resolved. Two same-named types in different files would
- * merge, which can only ever *widen* what the check considers Safe-typed — it cannot hide one.
+ * Names are global here rather than import-resolved, so two same-named types in different files
+ * collide. **Collisions resolve towards Safe, not towards first-declared.**
+ *
+ * First-declared was the original behaviour, and the comment here claimed it "can only widen what the
+ * check considers Safe-typed — it cannot hide one". That was false, and this repository can
+ * demonstrate it: there are two unrelated `Fact` interfaces. An earlier `type MediaUrl = string`
+ * would have won over a later imported `MediaUrl = SafeResourceUrl`, and check 4 would have resolved
+ * the binding to a plain string — a silent pass, not even the fail-closed report.
+ *
+ * So a name already present is overwritten when the new declaration mentions `Safe*` and the kept one
+ * does not. That makes the collision behaviour actually match the claim: it can only ever move a
+ * binding towards being reported, never away.
  * @returns {{interfaces: Map<string, Map<string,string>>, aliases: Map<string,string>}}
  */
 function collectGlobalTypes(parsed) {
   const interfaces = new Map();
   const aliases = new Map();
+
+  /** Keep whichever declaration is more likely to make check 4 report. */
+  const preferSafer = (map, name, candidate, mentions) => {
+    if (!map.has(name)) {
+      map.set(name, candidate);
+      return;
+    }
+    if (mentions(candidate) && !mentions(map.get(name))) map.set(name, candidate);
+  };
+
   for (const [, { sf }] of parsed) {
     const shapes = collectTypeShapes(sf);
-    for (const [name, props] of shapes.interfaces) if (!interfaces.has(name)) interfaces.set(name, props);
-    for (const [name, target] of shapes.aliases) if (!aliases.has(name)) aliases.set(name, target);
+    for (const [name, props] of shapes.interfaces) {
+      // An interface "mentions Safe" if any of its property types does.
+      preferSafer(interfaces, name, props, (p) => [...p.values()].some(mentionsSafe));
+    }
+    for (const [name, target] of shapes.aliases) {
+      preferSafer(aliases, name, target, mentionsSafe);
+    }
   }
   return { interfaces, aliases };
 }
@@ -367,24 +392,75 @@ function expandAliases(typeText, aliases, seen = new Set()) {
 }
 
 /**
- * Matched on the *final* name of the callee, so `DOMPurify.sanitize`, `this.escapeHtml` and a bare
- * `renderTrustedHtml` all count. Matching the whole callee text does not work: the real call sites
- * are `this.escapeHtml(text)`.
+ * Callees accepted as sanitisers, by *qualified* shape rather than by final name alone.
+ *
+ * Matching the final name only — which this did, to reach the real `this.escapeHtml(text)` call sites
+ * — accepts any function that happens to be called `sanitize`. `const sanitize = (v) => v;` beside
+ * `bypassSecurityTrustHtml(sanitize(raw))` satisfied the guard while doing nothing, which is the same
+ * decoy problem one level down from the one this check was rewritten to close.
+ *
+ * `DOMPurify.sanitize` and `renderTrustedHtml` are fixed identities. `escapeHtml` is accepted only
+ * when the file declares one that demonstrably escapes — see `declaresRealEscapeHtml` — because it is
+ * a local convention in this repository rather than an import from a known package.
  */
-const SANITISER_NAMES = new Set(['sanitize', 'escapeHtml', 'renderTrustedHtml']);
+const QUALIFIED_SANITISERS = new Set(['DOMPurify.sanitize', 'renderTrustedHtml']);
 
-/** String transforms that carry sanitised-ness through: `escaped.replace(...)` is still escaped. */
+/**
+ * Whether `sf` declares an `escapeHtml` that actually escapes.
+ *
+ * Checked by looking for the markup entities in its body: an implementation that does not produce
+ * `&lt;` or `&amp;` is not escaping HTML, whatever it is called. Crude, but it distinguishes the real
+ * `kd-citation-dialog` and `ai-markdown.pipe` helpers from an identity function of the same name, and
+ * it fails closed — an `escapeHtml` this cannot recognise simply does not count as a sanitiser.
+ */
+/**
+ * A transform argument that cannot introduce unchecked text: a literal, a regex, or a number.
+ *
+ * `escaped.replace(/x/g, '&amp;')` is fine — the replacement is author-written. `escaped.replace(/x/,
+ * raw)` is not, and has to be proven sanitised on its own.
+ */
+function isInertTransformArg(arg) {
+  return (
+    ts.isStringLiteral(arg) ||
+    ts.isNoSubstitutionTemplateLiteral(arg) ||
+    ts.isRegularExpressionLiteral(arg) ||
+    ts.isNumericLiteral(arg)
+  );
+}
+
+function declaresRealEscapeHtml(sf) {
+  let real = false;
+  eachNode(sf, (n) => {
+    if (real) return;
+    const isEscapeDecl =
+      (ts.isMethodDeclaration(n) || ts.isFunctionDeclaration(n) || ts.isPropertyDeclaration(n)) &&
+      n.name &&
+      !ts.isComputedPropertyName(n.name) &&
+      n.name.getText(sf) === 'escapeHtml';
+    if (!isEscapeDecl) return;
+    const body = n.getText(sf);
+    if (body.includes('&lt;') || body.includes('&amp;')) real = true;
+  });
+  return real;
+}
+
+/**
+ * String transforms that carry sanitised-ness through from their *receiver*.
+ *
+ * Deliberately excludes `concat` and `join`, and every argument is still checked: `escaped.concat(raw)`
+ * and `escaped.replace(/x/, raw)` append attacker-controlled text to a sanitised receiver, and marking
+ * them safe purely because the receiver was sanitised is how the decoy gets back in through the side
+ * door. Only transforms that cannot introduce unchecked text remain.
+ */
 const STRING_TRANSFORMS = new Set([
   'replace',
   'replaceAll',
   'trim',
   'slice',
   'substring',
-  'concat',
   'toString',
-  'padStart',
-  'padEnd',
-  'join',
+  'toLowerCase',
+  'toUpperCase',
 ]);
 
 /**
@@ -410,6 +486,8 @@ function sanitizerReaches(expr, host, sf) {
   /** Names already proven sanitised, so a self-referential transform can reference them. */
   const safeNames = new Set();
 
+  const escapeHtmlIsReal = declaresRealEscapeHtml(sf);
+
   const calleeName = (node) => {
     const callee = node.expression;
     if (ts.isPropertyAccessExpression(callee)) return callee.name.text;
@@ -417,19 +495,32 @@ function sanitizerReaches(expr, host, sf) {
     return null;
   };
 
+  /** Accepts only known sanitiser identities, not anything sharing a method name. */
+  const isSanitiser = (node) => {
+    const callee = node.expression;
+    // `DOMPurify.sanitize(...)`, `renderTrustedHtml(...)` — including through a receiver such as
+    // `this.` — matched on the qualified tail so a bare `sanitize()` does not count.
+    const text = callee.getText(sf).replace(/^this\./, '');
+    if (QUALIFIED_SANITISERS.has(text)) return true;
+    // `escapeHtml` / `this.escapeHtml`, only where this file declares a real one.
+    return escapeHtmlIsReal && calleeName(node) === 'escapeHtml';
+  };
+
   const walk = (node, depth) => {
     if (!node || depth > 8) return false;
 
     if (ts.isCallExpression(node)) {
+      if (isSanitiser(node)) return true;
+      // `sanitised.replace(...)` stays sanitised — but only if every argument is too.
+      // `escaped.replace(/x/, raw)` splices attacker text into an escaped string, so the receiver
+      // being clean says nothing about the result.
       const name = calleeName(node);
-      if (name && SANITISER_NAMES.has(name)) return true;
-      // `sanitised.replace(...)` stays sanitised. `ai-markdown.pipe` builds its output as a chain of
-      // exactly these on an already-escaped string.
       if (
         name &&
         STRING_TRANSFORMS.has(name) &&
         ts.isPropertyAccessExpression(node.expression) &&
-        walk(node.expression.expression, depth + 1)
+        walk(node.expression.expression, depth + 1) &&
+        (node.arguments ?? []).every((a) => isInertTransformArg(a) || walk(a, depth + 1))
       ) {
         return true;
       }
@@ -989,6 +1080,22 @@ function main() {
 
   // ---- check 5: unpaired trusted HTML ---------------------------------------------------------
   if (run(5)) {
+    // An indirect HTML bypass has no argument at the reference site, so the provenance walk below
+    // cannot see what it will be called with. `collectBypasses` records these now, so they are
+    // registered and budgeted — but being *counted* is not being *checked*, and
+    // `const trust = sanitizer.bypassSecurityTrustHtml.bind(sanitizer); trust(raw)` would otherwise
+    // skip the pairing check entirely. Reported rather than traced: indirection through a variable is
+    // exactly what this check cannot follow, and it has no legitimate use here.
+    for (const b of bypasses) {
+      if (b.kind !== 'Html' || !b.indirect) continue;
+      findings.push(
+        `[5] indirect trusted HTML  ${b.file}:${b.line}\n` +
+          `    member '${b.member}' takes a reference to bypassSecurityTrustHtml instead of calling it.\n` +
+          `    Once it is in a variable this check cannot see what it is called with, so the sanitiser\n` +
+          `    pairing cannot be established. Call it directly, or route the HTML through\n` +
+          `    renderTrustedHtml.`,
+      );
+    }
     for (const [file, { sf }] of parsed) {
       const approvedHelper = APPROVED_HELPERS.get(file);
       eachNode(sf, (n) => {
@@ -1098,9 +1205,19 @@ function main() {
             `    exactly what the ratchet exists to prevent.`,
         );
       }
+      // Stale headroom is a finding, not a note.
+      //
+      // As a note it left the ratchet unenforced in the direction that actually matters: one change
+      // removes a bypass without lowering the budget, and a later change drops a *different* bypass
+      // into the slack. Neither the current nor the merge-base budget rises, so both pass, and the
+      // debt is back where it started while the ceiling never moved. Requiring the removal and the
+      // lowering to land together is what makes "counts may shrink and never grow" true.
       if (counts[cat] < budget) {
-        notes.push(
-          `category ${cat} is under budget (${counts[cat]} < ${budget}) — lower the budget to ${counts[cat]} to lock the gain in.`,
+        findings.push(
+          `[ratchet] category ${cat} has ${counts[cat]} bypass call(s) but its budget is still ${budget}.\n` +
+            `    Lower the budget to ${counts[cat]} in this change. Leaving the headroom lets a later\n` +
+            `    change reintroduce a bypass into the slack without raising any budget, which is the\n` +
+            `    ratchet slipping rather than holding.`,
         );
       }
     }

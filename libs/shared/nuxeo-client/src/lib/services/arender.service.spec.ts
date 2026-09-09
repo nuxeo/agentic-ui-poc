@@ -260,6 +260,22 @@ describe('ARenderService', () => {
       await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toBeNull();
     });
 
+    // The string builder wrote `${viewerOrigin}/?url=`, so a path-prefixed viewer always got a
+    // trailing slash. `new URL()` does not add one, and `/arender` and `/arender/` are different
+    // routes — so moving to `searchParams` could have repointed every prefixed deployment.
+    it.each([
+      ['a bare origin', 'https://arender.example', '/'],
+      ['a path prefix without a trailing slash', 'https://arender.example/arender', '/arender/'],
+      ['a path prefix with a trailing slash', 'https://arender.example/arender/', '/arender/'],
+    ])('keeps the trailing-slash contract for %s', async (_label, viewerOrigin, expectedPath) => {
+      const service = setup({ viewerOrigin, nuxeoInternalUrl: 'https://proxy.internal/nuxeo' });
+
+      const url = await firstValueFrom(service.getPreviewerUrl('doc-1'));
+
+      expect(new URL(url!).pathname).toBe(expectedPath);
+      expect(new URL(url!).searchParams.getAll('url')).toHaveLength(1);
+    });
+
     it('produces exactly one top-level url parameter naming the nxfile path', async () => {
       const service = setup(CONFIGURED);
 

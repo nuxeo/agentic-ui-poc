@@ -87,6 +87,12 @@ export class ARenderService {
    */
   private buildViewerUrl(base: string, nxfileUrls: string[]): string {
     const url = new URL(base);
+    // Preserve the trailing slash the string-concatenation version always produced. It wrote
+    // `${viewerOrigin}/?url=…`, so a configured prefix of `https://host/arender` yielded
+    // `/arender/?url=…`; `new URL()` alone would yield `/arender?url=…`, and those are distinct
+    // routes on the viewer. Moving to `URL`/`searchParams` was meant to fix parameter placement,
+    // not to silently repoint a path-prefixed deployment.
+    if (!url.pathname.endsWith('/')) url.pathname = `${url.pathname}/`;
     for (const nxfileUrl of nxfileUrls) {
       url.searchParams.append('url', nxfileUrl);
     }

@@ -42,6 +42,9 @@ type NuxeoDocumentSummary = {
   properties?: Record<string, unknown>;
 };
 
+/** Monotonic within a page load, which is all the final fallback needs to be. */
+let correlationCounter = 0;
+
 /**
  * Suffix that makes a client-side correlation id unique. Not a token, not a nonce, grants nothing.
  *
@@ -51,8 +54,12 @@ type NuxeoDocumentSummary = {
  * which is a worse outcome than the Sonar finding (`S2245`) that prompted the change: that rule is
  * about unpredictability, and a correlation id does not need it.
  *
- * So: use `randomUUID` when it exists, fall back to `getRandomValues`, and only then to
- * `Math.random`. The fallback is deliberately reachable and deliberately non-cryptographic.
+ * The last resort is a **counter, not `Math.random()`**. Falling back to `Math.random` would put the
+ * exact API `S2245` flags back into the file, so the finding could keep firing on the fallback even
+ * though the normal path uses `randomUUID` — remediating a rule by moving the flagged call two lines
+ * down is not remediating it. A counter is also strictly better here: the id already embeds
+ * `Date.now()`, and within one page load a counter cannot collide, whereas six base-36 random
+ * characters can.
  */
 function correlationSuffix(): string {
   const webCrypto = globalThis.crypto;
@@ -61,7 +68,8 @@ function correlationSuffix(): string {
     const bytes = webCrypto.getRandomValues(new Uint8Array(8));
     return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   }
-  return Math.random().toString(36).slice(2, 10);
+  correlationCounter += 1;
+  return `seq${correlationCounter}`;
 }
 
 const STRONG_CITATION_SCORE = 0.1;

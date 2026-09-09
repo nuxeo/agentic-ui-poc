@@ -400,7 +400,70 @@ control(
   'unsanitised trusted HTML',
 );
 
+// ---- check 5: the ways review showed the provenance walk could still be fooled ------------------
+const NOTE_EDITOR = 'libs/features/document-detail/src/lib/note-editor/note-editor.ts';
+
+control(
+  'check 5 rejects a function that is merely NAMED like a sanitiser',
+  5,
+  () =>
+    // Matching the final callee name accepted any `sanitize()`. An identity function of that name
+    // satisfied the guard while doing nothing — the decoy problem one level down.
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        'const sanitize = (v: string) => v;\n    return this.sanitizer.bypassSecurityTrustHtml(sanitize(this.content() ?? ""));',
+      ),
+    ),
+  'unsanitised trusted HTML',
+);
+
+control(
+  'check 5 rejects raw text spliced into a sanitised string by a transform argument',
+  5,
+  () =>
+    // `escaped.replace(/x/, raw)` was accepted purely because the receiver was sanitised, even though
+    // the replacement is attacker-controlled.
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        'return this.sanitizer.bypassSecurityTrustHtml(clean.replace("x", this.content() ?? ""));',
+      ),
+    ),
+  'unsanitised trusted HTML',
+);
+
+control(
+  'check 5 rejects an HTML bypass taken by reference rather than called',
+  5,
+  () =>
+    // Indirect bypasses became visible to check 1, so they are registered and budgeted — but the
+    // provenance walk has no argument to follow at a reference site, so being counted is not being
+    // checked.
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        'return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        'const trust = this.sanitizer.bypassSecurityTrustHtml.bind(this.sanitizer);\n    return trust(clean);',
+      ),
+    ),
+  'indirect trusted HTML',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
+control(
+  'the ratchet rejects headroom left behind by a removal',
+  null,
+  () =>
+    // Under-budget used to be a note. That left the slack for a later change to reintroduce a bypass
+    // into without raising any budget — the ratchet slipping rather than holding.
+    edit(ALLOWLIST, (s) => {
+      const j = JSON.parse(s);
+      j.budgets.A += 1;
+      return JSON.stringify(j, null, 2);
+    }),
+  'but its budget is still',
+);
+
 control(
   'the ratchet catches a category growing past its budget',
   null,
