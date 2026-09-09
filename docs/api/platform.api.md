@@ -1512,7 +1512,7 @@ class SelectionService {
     readonly selectedItems: () => {
     id: string;
     name: string;
-    preview: SafeUrl | null;
+    preview: string | null;
     type: string | undefined;
     }[];
     toggle(id: string, label?: string, preview?: SelectionPreview, type?: string): void;
@@ -1579,7 +1579,7 @@ class TrashFilterService {
     readonly filters: i0.WritableSignal<TrashFilters>;
     readonly layoutMode: i0.WritableSignal<TrashLayoutMode>;
     readonly results: i0.WritableSignal<TrashResultItem[]>;
-    readonly resultThumbnails: i0.WritableSignal<Record<string, SafeUrl>>;
+    readonly resultThumbnails: i0.WritableSignal<Record<string, string | null>>;
     readonly totalResults: i0.WritableSignal<number>;
     readonly resultsLoading: i0.WritableSignal<boolean>;
     readonly savedSearchVersion: i0.WritableSignal<number>;

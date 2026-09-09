@@ -1,5 +1,4 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { SafeUrl } from '@angular/platform-browser';
 
 export interface TrashFilters {
   fullText: string;

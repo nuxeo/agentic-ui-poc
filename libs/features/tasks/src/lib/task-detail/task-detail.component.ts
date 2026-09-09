@@ -316,7 +316,7 @@ export class TaskDetailComponent implements OnInit {
    */
   readonly docPreviewUrl = signal<string | null>(null);
 
-  /** The raw string behind {@link docPreviewUrl}: a SafeUrl cannot be read back out. */
+  /** Retained handle for revoking {@link docPreviewUrl} on destroy. */
   private rawPreviewUrl: string | null = null;
 
   private loadPreview(doc: NuxeoDocument): void {
