@@ -7,7 +7,7 @@ import { CURRENT_USERNAME } from '../current-user.token';
 import { ARenderService } from './arender.service';
 
 /**
- * ARender is optional: `integrations.arender` in the runtime app-config manifest defaults to
+ * ARender is optional: `integrations.arender` in the Layer 0 bootstrap file defaults to
  * `null`, and no manifest in this repository sets it. So "not configured" is not an edge case, it
  * is the default deployment, and every method has to answer for it.
  *
@@ -101,7 +101,7 @@ describe('ARenderService', () => {
 
   // The Category C attack, at the layer that can stop it before a URL is even built.
   //
-  // `viewerOrigin` comes from the runtime app-config manifest, which is a customer-editable surface.
+  // `viewerOrigin` comes from the Layer 0 bootstrap file, which is a customer-editable surface.
   // A `javascript:` value is complete, non-blank and accepted by `new URL()`, so it passes every
   // check that predates this one — and it ends up string-concatenated, bypassed, and loaded into an
   // iframe, which is script execution in this application's origin from a config value.
@@ -232,7 +232,7 @@ describe('ARenderService', () => {
       expect(url).not.toContain('a b&c');
     });
 
-    // The defect this suite previously could not see: `isNavigableOrigin` accepted a base carrying
+    // The defect this suite previously could not see: the origin-only predicate accepted a base carrying
     // its own query or fragment, and the builder concatenated `/?url=...` onto it as text. With
     // `?tenant=x` the whole suffix became part of `tenant`'s value; with `#frag` it stayed in the
     // fragment and was never sent. Either way ARender received no document, and every assertion
