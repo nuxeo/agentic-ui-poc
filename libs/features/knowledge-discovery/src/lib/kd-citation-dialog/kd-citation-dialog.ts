@@ -20,7 +20,11 @@ import {
   type KdAnswerResponse,
   type KdIndexedReference,
 } from '@agentic-ui/shared/kd-client';
-import { DocumentDetailService, type NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  DocumentDetailService,
+  trustObjectUrl,
+  type NuxeoDocument,
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface KdCitationDialogData {
   answer: KdAnswerResponse;
@@ -249,9 +253,7 @@ export class KdCitationDialogComponent implements OnDestroy {
   private setBlobPreview(blob: Blob, mode: PreviewMode, pageNumber?: number): void {
     const rawUrl = URL.createObjectURL(blob);
     this.blobUrls.push(rawUrl);
-    this.previewUrl.set(
-      this.sanitizer.bypassSecurityTrustResourceUrl(this.buildPreviewUrl(rawUrl, pageNumber)),
-    );
+    this.previewUrl.set(trustObjectUrl(this.sanitizer, this.buildPreviewUrl(rawUrl, pageNumber)));
     this.previewMode.set(mode);
     this.loadingDocument.set(false);
   }
@@ -262,7 +264,7 @@ export class KdCitationDialogComponent implements OnDestroy {
       return;
     }
     this.previewUrl.set(
-      this.sanitizer.bypassSecurityTrustResourceUrl(this.buildPreviewUrl(currentUrl, pageNumber)),
+      trustObjectUrl(this.sanitizer, this.buildPreviewUrl(currentUrl, pageNumber)),
     );
   }
 

@@ -28,6 +28,7 @@ import {
   DocumentService,
   NuxeoApiBase,
   CURRENT_USERNAME,
+  trustObjectUrl,
 } from '@nuxeo-satori/platform/nuxeo-client';
 
 import { DocumentViewerComponent } from '@nuxeo-satori/platform/ui';
@@ -726,7 +727,7 @@ export class TasksPageComponent implements OnInit {
           this.clearPreviewBlob();
           const rawUrl = URL.createObjectURL(blob);
           this.rawPreviewUrl.set(rawUrl);
-          this.previewBlobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));
+          this.previewBlobUrl.set(trustObjectUrl(this.sanitizer, rawUrl));
         },
         error: () => {
           /* preview not available */

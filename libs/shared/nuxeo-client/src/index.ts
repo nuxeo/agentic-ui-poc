@@ -296,6 +296,7 @@ export {
   originOf,
   type NavigableUrlPolicy,
 } from './lib/utils/navigable-url';
+export { trustObjectUrl } from './lib/utils/trust-object-url';
 export {
   mergeDocumentPermissionsContext,
   normalizeDocumentAcls,

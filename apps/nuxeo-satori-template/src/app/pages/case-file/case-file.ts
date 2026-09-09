@@ -7,6 +7,7 @@ import { catchError, map, of, startWith } from 'rxjs';
 import {
   DocumentDetailService,
   SearchService,
+  trustObjectUrl,
   type NuxeoDocument,
   type SearchResultItem,
 } from '@nuxeo-satori/platform/nuxeo-client';
@@ -217,7 +218,7 @@ export class CaseFileComponent {
           this.releaseObjectUrl();
           const rawUrl = URL.createObjectURL(data);
           this.rawObjectUrl.set(rawUrl);
-          this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));
+          this.blobUrl.set(trustObjectUrl(this.sanitizer, rawUrl));
           this.previewLoading.set(false);
         },
         error: () => {

@@ -108,6 +108,7 @@ import {
   readClipboardDocs,
   writeClipboardDocs,
   toBrowseRouterUrlForReturnMode,
+  trustObjectUrl,
   type BrowseReturnMode,
   type ClipboardDoc,
 } from '@nuxeo-satori/platform/nuxeo-client';
@@ -2720,7 +2721,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     // Both forms are kept deliberately: the wrapped one for `iframe[src]`, which throws on a raw
     // string, and the raw one for `source[src]` / `audio[src]` / `video[poster]`, which are
     // SecurityContext.NONE and would stringify the wrapper into the attribute.
-    this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl));
+    this.blobUrl.set(trustObjectUrl(this.sanitizer, rawUrl));
 
     const doc = this.doc();
     if (doc && this.mimeType().startsWith('video/') && this.storyboard().length === 0) {
@@ -3475,7 +3476,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   previewMainBlob(): void {
     const rawUrl = this.rawBlobUrl();
     if (!rawUrl) return;
-    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl);
+    const safeUrl = trustObjectUrl(this.sanitizer, rawUrl);
     this.dialog.open(AttachmentPreviewDialogComponent, {
       width: '90vw',
       maxWidth: '1200px',
@@ -3938,7 +3939,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (blob) => {
           const objectUrl = URL.createObjectURL(blob);
-          const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
+          const safeUrl = trustObjectUrl(this.sanitizer, objectUrl);
           this.dialog.open(AttachmentPreviewDialogComponent, {
             width: '90vw',
             maxWidth: '1200px',

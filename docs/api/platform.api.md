@@ -399,7 +399,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-297 exported symbol(s).
+298 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1842,6 +1842,7 @@ function toAdfHxBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrlForReturnMode(mode: BrowseReturnMode, nuxeoPath: string): string;
 function topLevelNuxeoFolderPath(nuxeoPath: string): string | null;
+function trustObjectUrl(sanitizer: DomSanitizer, url: string | null | undefined): SafeResourceUrl | null;
 function userWorkspaceBrowseRouterUrl(nuxeoPath: string): string | null;
 function userWorkspaceOwnerFromPath(nuxeoPath: string): string | null;
 function userWorkspaceRootFromPath(nuxeoPath: string): string | null;

@@ -16,14 +16,14 @@
     "that member holds (default 1); the gate fails if the real count differs in either direction.",
     "Without that, a member already on this list could absorb further bypasses silently.",
     "",
-    "Sonar reported 32 S6268 calls. 31 remain: fetchPreferredVideoSource's was deleted when",
-    "VideoSource.url widened to string, because source[src] is SecurityContext.NONE and a Safe*",
-    "value there stringifies rather than being unwrapped — it was breaking transcoded video.",
-    "29 entries, not 31: kd-citation-dialog's highlightExcerpt holds three bypasses in one member."
+    "Sonar reported 32 S6268 calls. 25 remain: fetchPreferredVideoSource's was deleted when",
+    "VideoSource.url widened to string (source[src] is NONE and a Safe* there stringifies), and 7",
+    "Category B inline bypasses were consolidated into the single trustObjectUrl helper.",
+    "23 entries, not 25: kd-citation-dialog's highlightExcerpt holds three bypasses in one member."
   ],
   "budgets": {
     "A": 14,
-    "B": 7,
+    "B": 1,
     "C": 2,
     "D": 8
   },
@@ -150,27 +150,6 @@
         "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] via StoryboardItem.thumbnailUrl. Scheduled for deletion (plan PR 5)."
       },
       {
-        "member": "setBlobUrl",
-        "category": "B",
-        "sonarKey": "AaB8mU6TUIm8e9uDh3pL",
-        "boundTo": ["iframe[src]"],
-        "justification": "Object URL minted here from an HttpClient-fetched blob. The bypass is REQUIRED because the value reaches iframe[src], which throws on a raw string. The raw URL is carried separately in rawBlobUrl for NONE-context bindings (audio[src], source[src]) — fixed in this PR."
-      },
-      {
-        "member": "previewMainBlob",
-        "category": "B",
-        "sonarKey": "AaB8mU6TUIm8e9uDh3pP",
-        "boundTo": ["iframe[src]"],
-        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. The dialog now binds rawUrl directly to source[src] (NONE context) — fixed in this PR."
-      },
-      {
-        "member": "previewAttachment",
-        "category": "B",
-        "sonarKey": "AaB8mU6TUIm8e9uDh3pS",
-        "boundTo": ["iframe[src]"],
-        "justification": "Object URL minted here, required for iframe[src] in attachment-preview-dialog. The dialog now binds rawUrl directly to source[src] (NONE context) — fixed in this PR."
-      },
-      {
         "member": "loadARenderUrl",
         "category": "C",
         "sonarKey": "AaB8mU6TUIm8e9uDh3pQ",
@@ -202,39 +181,16 @@
         "justification": "Paired with DOMPurify.sanitize in the same member on the save round-trip. Scheduled to move into renderTrustedHtml (plan PR 3)."
       }
     ],
-    "libs/features/tasks/src/lib/tasks-page/tasks-page.component.ts": [
+    "libs/shared/nuxeo-client/src/lib/utils/trust-object-url.ts": [
       {
-        "member": "loadPreviewBlob",
+        "member": "trustObjectUrl",
         "category": "B",
-        "sonarKey": "AaB8mU5eUIm8e9uDh3ol",
+        "sonarKey": "NEW",
         "boundTo": ["iframe[src]"],
-        "justification": "Object URL minted here from an HttpClient-fetched blob, feeds document-viewer's iframe via previewUrl(). Bypass required. Scheduled to move into trustObjectUrl (plan PR 4)."
-      }
-    ],
-    "apps/nuxeo-satori-template/src/app/pages/case-file/case-file.ts": [
-      {
-        "member": "loadPreview",
-        "category": "B",
-        "sonarKey": "AaB8mVTiUIm8e9uDh3wv",
-        "boundTo": ["iframe[src]"],
-        "justification": "Object URL minted here from an HttpClient-fetched blob, feeds document-viewer's iframe. Bypass required. This is the reference customer template, so it must use only published platform APIs — trustObjectUrl has to be exported from the platform, not shared/ (plan PR 4)."
+        "justification": "The centralized helper for Category B: wraps locally-minted object URLs with bypassSecurityTrustResourceUrl after validating the blob: scheme. Replaces 7 inline bypasses across document-detail (3), tasks-page (1), case-file (1), kd-citation-dialog (2). The bypass is REQUIRED because iframe[src] throws on a raw string, and the scheme check closes the escalation — a non-blob URL (including javascript:, data:, or one from config/server) is rejected and returns null. Caller owns lifecycle (URL.revokeObjectURL). 15 tests, mostly negative cases."
       }
     ],
     "libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts": [
-      {
-        "member": "setBlobPreview",
-        "category": "B",
-        "sonarKey": "AaB8mU9GUIm8e9uDh3qa",
-        "boundTo": ["iframe[src]", "img[src]"],
-        "justification": "Object URL minted here; reaches iframe[src] for the pdf branch, so the bypass is required. Scheduled to move into trustObjectUrl (plan PR 4)."
-      },
-      {
-        "member": "updatePdfPage",
-        "category": "B",
-        "sonarKey": "AaB8mU9GUIm8e9uDh3qc",
-        "boundTo": ["iframe[src]"],
-        "justification": "Re-wraps the object URL with a #page= fragment for the pdf iframe. Bypass required. Scheduled to move into trustObjectUrl (plan PR 4)."
-      },
       {
         "member": "highlightExcerpt",
         "category": "D",
