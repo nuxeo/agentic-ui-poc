@@ -1079,6 +1079,59 @@ control(
   'unsanitised trusted HTML',
 );
 
+// ---- check 4: the template value, not just the template syntax ---------------------------------
+//
+// `templatesFor` accepted only a literal `template`/`templateUrl`. Angular's compiler statically
+// evaluates more than that, so an ordinary refactor removed a component from the audit entirely:
+// moving the template to a module constant returned check 4 to `PASS` on a `SafeResourceUrl` bound
+// to `video[poster]` — the gate silent on a live defect because of *where the string was written*.
+//
+// The value is resolved through the checker as a string-literal type, which covers a `const`, an
+// `as const`, and an imported or re-exported constant. What it cannot resolve is reported, so a
+// template it could not read is never mistaken for a component that has none.
+const constantTemplate = (declaration) =>
+  edit(VIEWER_TS, (s) => {
+    const retyped = s.replace(
+      'readonly posterUrl = input<string | null>(null);',
+      'readonly posterUrl = input<SafeResourceUrl | null>(null);',
+    );
+    if (retyped === s) throw new Error('document-viewer posterUrl changed — update these controls');
+    const withConst = retyped.replace('@Component({', `${declaration}\n\n@Component({`);
+    const referenced = withConst.replace(
+      "templateUrl: './document-viewer.component.html',",
+      'template: VIEWER_TEMPLATE,',
+    );
+    if (referenced === withConst) {
+      throw new Error('document-viewer templateUrl changed — update these controls');
+    }
+    return referenced;
+  });
+
+const POSTER_TEMPLATE = `'<video [poster]="posterUrl()"></video>'`;
+
+control(
+  'check 4 reads a template referenced through a constant',
+  4,
+  () => constantTemplate(`const VIEWER_TEMPLATE = ${POSTER_TEMPLATE};`),
+  'Safe* value in a NONE context',
+);
+
+control(
+  'check 4 reads a template referenced through an as-const constant',
+  4,
+  () => constantTemplate(`const VIEWER_TEMPLATE = ${POSTER_TEMPLATE} as const;`),
+  'Safe* value in a NONE context',
+);
+
+control(
+  'check 4 reports a template value it cannot resolve to a string',
+  4,
+  // `let` widens to `string`, so there is no literal type to read. Reported, not skipped — the same
+  // fail-closed stance as an unresolvable binding type or an unparsable template.
+  () => constantTemplate(`let VIEWER_TEMPLATE = ${POSTER_TEMPLATE};`),
+  'unreadable template value',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',

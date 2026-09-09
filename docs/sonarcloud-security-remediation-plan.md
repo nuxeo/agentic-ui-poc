@@ -20,7 +20,7 @@ below before reading "Done" as "closed".
 | --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
 | **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (45 negative controls + 5 green baselines + 2 silence assertions — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (48 negative controls + 5 green baselines + 2 silence assertions — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
 | **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
 | **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                                                           |
 | **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                                                             |
@@ -883,6 +883,14 @@ template scanned that nothing compiles costs at most one finding on a dormant bi
 no import left to rename to switch the check off. Establishing identity is the right tool for
 check 5, where the question is "is this the reviewed sanitiser"; it is the wrong tool here.
 
+**And it reads the template's *value*, not only a literal.** `templatesFor` accepted a literal
+`template`/`templateUrl` and nothing else, while Angular's compiler statically evaluates more — so
+moving a template to a module constant removed the component from the audit entirely and returned
+check 4 to `PASS` on a `SafeResourceUrl` bound to `video[poster]`. The value now resolves through the
+checker as a string-literal type, covering a `const`, an `as const`, and an imported or re-exported
+constant; a value that does not resolve is **reported**, so a template the audit could not read is
+never mistaken for a component that has none.
+
 **None of that is what makes check 4 trustworthy. It fails closed.** A NONE-context binding whose type
 cannot be resolved is _reported_, and `any`, `unknown` and the error type count as unresolved rather
 than as answers — they are the checker declining, not answering. That reverses what this section once
@@ -964,7 +972,7 @@ must be reported; it did not change what makes the check sound.
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **52 assertions, of which only 45 are negative controls** —
+  one red run pasted into a PR. It reports **55 assertions, of which only 48 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 7 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **2 silence assertions**: check 4 must stay quiet while walking its longest path to an alias that

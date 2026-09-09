@@ -819,8 +819,9 @@ function sanitizerReaches(expr, host, sf, checker, approvedSanitisers) {
  * NONE-context defects, so scanning `.html` alone would miss them.
  * @returns {{template: string, offsetLine: number, tsFile: string, htmlFile: string|null}[]}
  */
-function templatesFor(tsFile, sf) {
+function templatesFor(tsFile, sf, checker) {
   const out = [];
+  const unresolved = [];
   eachNode(sf, (n) => {
     if (!ts.isPropertyAssignment(n) || !n.name) return;
 
@@ -829,38 +830,88 @@ function templatesFor(tsFile, sf) {
     if (!classDecl) return;
 
     const key = n.name.getText(sf);
-    if (key === 'template') {
-      const init = n.initializer;
-      if (ts.isNoSubstitutionTemplateLiteral(init) || ts.isStringLiteral(init)) {
-        out.push({
-          template: init.text,
-          offsetLine: lineOf(sf, init),
-          tsFile,
-          htmlFile: null,
-          classDecl,
-        });
-      }
+    if (key !== 'template' && key !== 'templateUrl') return;
+
+    const value = staticStringValue(n.initializer, checker);
+    if (value === null) {
+      // A `@Component` whose template value this cannot read is a component whose bindings were
+      // never enumerated, so it is reported rather than skipped — the same stance as a template
+      // Angular's parser rejects.
+      unresolved.push({
+        tsFile,
+        key,
+        line: lineOf(sf, n),
+        text: n.initializer ? n.initializer.getText(sf).slice(0, 60) : '<missing>',
+      });
+      return;
     }
-    if (key === 'templateUrl') {
-      const init = n.initializer;
-      if (ts.isStringLiteral(init)) {
-        const dir = tsFile.split('/').slice(0, -1).join('/');
-        const htmlFile = join(dir, init.text).replace(/\\/g, '/');
-        try {
-          out.push({
-            template: readFileSync(join(ROOT, htmlFile), 'utf8'),
-            offsetLine: 0,
-            tsFile,
-            htmlFile,
-            classDecl,
-          });
-        } catch {
-          /* template missing is a compile error, not this gate's business */
-        }
-      }
+
+    if (key === 'template') {
+      out.push({
+        template: value,
+        // An inline template's findings are reported against the initialiser's line. That is only
+        // exact for a literal written in place; for a value read from elsewhere the offset is the
+        // reference, which is the closest honest anchor available.
+        offsetLine: lineOf(sf, n.initializer),
+        tsFile,
+        htmlFile: null,
+        classDecl,
+      });
+      return;
+    }
+
+    const dir = tsFile.split('/').slice(0, -1).join('/');
+    const htmlFile = join(dir, value).replace(/\\/g, '/');
+    try {
+      out.push({
+        template: readFileSync(join(ROOT, htmlFile), 'utf8'),
+        offsetLine: 0,
+        tsFile,
+        htmlFile,
+        classDecl,
+      });
+    } catch {
+      /* template missing is a compile error, not this gate's business */
     }
   });
-  return out;
+  return { templates: out, unresolved };
+}
+
+/**
+ * The string a `template`/`templateUrl` initialiser evaluates to, or `null`.
+ *
+ * A literal is read directly; anything else is resolved through the checker as a string-literal
+ * type. This accepted **only** literals, and Angular's compiler statically evaluates more than
+ * that, so an ordinary refactor removed a component from the audit entirely:
+ *
+ *     const VIEWER_TEMPLATE = '<video [poster]="posterUrl()"></video>';
+ *     @Component({ template: VIEWER_TEMPLATE })
+ *
+ * Verified — with `posterUrl` retyped to `SafeResourceUrl`, moving the template to a constant
+ * returned check 4 to `PASS`. Angular compiles that and reaches the same unsanitised DOM property,
+ * so the gate was silent on a live defect because of where the string was written.
+ *
+ * Asking the checker for a literal type covers a `const`, an `as const`, and an imported or
+ * re-exported constant, which is the same move that closed the bypass index and the sanitiser
+ * identity. What it cannot resolve — a `let`-widened string, a concatenation, a function call — the
+ * caller **reports**, so the set of templates this understands can only grow, and a template it
+ * cannot read is never mistaken for a component that has none.
+ */
+function staticStringValue(node, checker) {
+  if (!node) return null;
+  if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+  if (!checker) return null;
+  let type;
+  try {
+    type = checker.getTypeAtLocation(node);
+  } catch {
+    return null;
+  }
+  if (!type) return null;
+  for (const part of type.isUnionOrIntersection?.() ? type.types : [type]) {
+    if (part?.isStringLiteral?.()) return part.value;
+  }
+  return null;
 }
 
 /**
@@ -1562,7 +1613,17 @@ function main() {
       // Templates are read from the program's copy of the file, so `tpl.classDecl` is a node the
       // checker can resolve. Without a checker there is nothing to resolve against, and every
       // binding in the file is reported — the fail-closed default, not a gap.
-      const templates = templatesFor(file, sf);
+      const { templates, unresolved: unreadableTemplates } = templatesFor(file, sf, fileChecker);
+      for (const u of unreadableTemplates) {
+        findings.push(
+          `[4] unreadable template value  ${u.tsFile}:${u.line}\n` +
+            `    @Component's '${u.key}' is '${u.text}', which does not resolve to a string.\n` +
+            `    Angular statically evaluates more than a literal, so this component's bindings were\n` +
+            `    never enumerated and a Safe* value in a NONE context here would go unseen. Reported\n` +
+            `    rather than skipped. Write the ${u.key} as a literal, or as a const the checker can\n` +
+            `    resolve.`,
+        );
+      }
       if (templates.length === 0) continue;
 
       for (const tpl of templates) {
