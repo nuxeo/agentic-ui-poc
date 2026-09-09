@@ -188,6 +188,56 @@ control(
   'bypass count mismatch',
 );
 
+// ---- check 1 and 5: destructuring by ASSIGNMENT rather than declaration --------------------------
+// `const { bypassSecurityTrustHtml: trust } = sanitizer` is a declaration and its left side is a
+// binding pattern. `({ bypassSecurityTrustHtml: trust } = sanitizer)` is an assignment, and
+// TypeScript parses that left side as an object *literal* — a `PropertyAssignment`, not a
+// `BindingElement`. So the collector saw no binding element, no property access and no element
+// access on the sanitizer, and the `trust(raw)` afterwards is an ordinary identifier call.
+//
+// Verified against 5fe82d4: an unsanitised HTML bypass written this way left the audit at
+// "PASS — 31 bypass call(s), all accounted for" — outside checks 1 and 5 and outside the budget.
+control(
+  'check 1 catches a bypass destructured by assignment rather than declaration',
+  1,
+  () =>
+    edit(NOTE_EDITOR, (s) => {
+      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      return s.replace(
+        anchor,
+        `    let trust!: (v: string) => SafeHtml;\n` +
+          `    ({ bypassSecurityTrustHtml: trust } = this.sanitizer);\n` +
+          `    if (raw === '__selftest__') {\n` +
+          `      return trust(raw);\n` +
+          `    }\n` +
+          anchor,
+      );
+    }),
+  'bypass count mismatch',
+);
+
+control(
+  'check 5 reports a bypass destructured by assignment as indirect, so it is checked and not merely counted',
+  5,
+  // Being counted is not being checked. Once the function is in a local there is no argument at the
+  // read site for the provenance walk to follow, which is what check 5's indirect finding is for —
+  // and it only fires because the assignment form is now recorded as a bypass at all.
+  () =>
+    edit(NOTE_EDITOR, (s) =>
+      s.replace(
+        '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+        `    let trust!: (v: string) => SafeHtml;\n` +
+          `    ({ bypassSecurityTrustHtml: trust } = this.sanitizer);\n` +
+          `    if (raw === '__selftest__') {\n` +
+          `      return trust(raw);\n` +
+          `    }\n` +
+          '    return this.sanitizer.bypassSecurityTrustHtml(clean);',
+      ),
+    ),
+  'indirect trusted HTML',
+);
+
 // ---- check 1: two bypasses sharing one source line -----------------------------------------------
 // The collector deduplicated by `${line}:${name}`, so two calls to the same member written on one
 // line counted as one. That is not cosmetic: the count is compared against the entry's declared
@@ -581,9 +631,22 @@ control(
     // refactoring produces when a type moves into a shared models file. This is resolved through the
     // checker now, so the import has to be genuine; a bare name that does not resolve is a different
     // case, covered below.
+    //
+    // The alias must also be RE-EXPORTED from the package barrel. Without that step this control was
+    // passing for the wrong reason: `@nuxeo-satori/platform/nuxeo-client` maps to `src/index.ts`,
+    // whose export list is explicit, so the import resolved to the error type, check 4 fell back to
+    // its `unresolvable type in a NONE context` finding, and that finding names the same file — which
+    // satisfied a bare `document-viewer.component.html` expectation. The control therefore proved the
+    // fail-closed default (already covered by its own control) and said nothing about alias
+    // resolution, which is the thing it exists to assert.
     edit('libs/shared/nuxeo-client/src/lib/utils/navigable-url.ts', (s) =>
       `${s}\nexport type CrossFileMediaUrl = import('@angular/platform-browser').SafeResourceUrl;\n`,
     );
+    edit('libs/shared/nuxeo-client/src/index.ts', (s) => {
+      const anchor = "} from './lib/utils/navigable-url';";
+      if (!s.includes(anchor)) throw new Error('navigable-url barrel export changed — update this control');
+      return s.replace(anchor, `  type CrossFileMediaUrl,\n${anchor}`);
+    });
     edit(VIEWER_TS, (s) =>
       s
         .replace(
@@ -596,7 +659,9 @@ control(
         ),
     );
   },
-  'document-viewer.component.html',
+  // The SPECIFIC finding, not merely the file name. `unresolvable type` would also name this file,
+  // and accepting that is exactly how the control came to assert nothing.
+  "[4] Safe* value in a NONE context  libs/shared/ui/src/lib/document-viewer/document-viewer.component.html",
 );
 
 control(

@@ -231,6 +231,36 @@ function destructuredPropertyName(element, checker) {
 }
 
 /**
+ * The member an **assignment**-pattern property reads, and whether its key was resolvable.
+ *
+ * `const { bypassSecurityTrustHtml: trust } = sanitizer` is a declaration, so its left side is a
+ * binding pattern made of `BindingElement`s. `({ bypassSecurityTrustHtml: trust } = sanitizer)` is
+ * an assignment, and TypeScript parses that left side as an **object literal** — a
+ * `PropertyAssignment` or `ShorthandPropertyAssignment`, not a `BindingElement`. So the collector
+ * saw no binding element, no property access and no element access on the sanitizer, and `trust(raw)`
+ * afterwards is an ordinary identifier call. Verified against 5fe82d4: an unsanitised HTML bypass
+ * written this way left the audit at `PASS — 31 bypass call(s), all accounted for`, outside checks 1
+ * and 5 and outside the budget.
+ *
+ * `computed` distinguishes "this key names nothing" from "this key is not computed at all", so the
+ * caller can fail closed on the former exactly as it does for a bracketed index.
+ * @returns {{name: string|null, computed: boolean}}
+ */
+function assignmentPropertyName(property, checker) {
+  if (ts.isShorthandPropertyAssignment(property)) {
+    return { name: property.name.text, computed: false };
+  }
+  if (!ts.isPropertyAssignment(property)) return { name: null, computed: false };
+
+  const name = property.name;
+  if (ts.isIdentifier(name)) return { name: name.text, computed: false };
+  if (ts.isComputedPropertyName(name)) {
+    return { name: keyExpressionName(name.expression, checker), computed: true };
+  }
+  return { name: keyExpressionName(name, checker), computed: false };
+}
+
+/**
  * Angular's `SecurityContext.NONE` members, verified against
  * `@angular/compiler/fesm2022/compiler.mjs` (the DOM security schema). No sanitiser runs on
  * these, so a `Safe*` value bound here stringifies and silently breaks playback.
@@ -458,6 +488,33 @@ function collectBypasses(sf, checker) {
             line: lineOf(sf, n),
             text: n.getText(sf).slice(0, 60),
           });
+        }
+      }
+    }
+
+    // `({ bypassSecurityTrustHtml: trust } = this.sanitizer)` — the ASSIGNMENT form. Its left side is
+    // an object literal, not a binding pattern, so the branch above never sees it.
+    if (
+      ts.isBinaryExpression(n) &&
+      n.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isObjectLiteralExpression(n.left)
+    ) {
+      const fromSanitizer = isDomSanitizerExpression(n.right, checker);
+      for (const property of n.left.properties) {
+        const { name, computed } = assignmentPropertyName(property, checker);
+        if (name && BYPASS_RE.test(name)) {
+          record(property, name, true);
+        } else if (name === null && computed && fromSanitizer) {
+          // Same fail-closed rule as everywhere else a key will not resolve.
+          const key = `${property.getStart(sf)}:<unnameable>`;
+          if (!seenNodes.has(key)) {
+            seenNodes.add(key);
+            unnameable.push({
+              member: enclosingMemberName(property),
+              line: lineOf(sf, property),
+              text: n.getText(sf).slice(0, 60),
+            });
+          }
         }
       }
     }
