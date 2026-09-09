@@ -238,6 +238,43 @@ control(
   'indirect trusted HTML',
 );
 
+// Specificity for the two controls above, and the reason the collector asks for the assignment's
+// right-hand side rather than merely recognising the property name.
+//
+// An `ObjectLiteralExpression` is a destructuring pattern only when it is the target of an
+// assignment. In an ordinary expression position it is a value, and
+// `{ bypassSecurityTrustHtml: (v) => v }` there names no bypass at all — treating it as one would
+// invent a phantom call, push the member past its declared `calls`, and make the count wrong in the
+// direction that produces false failures rather than silent passes. Both directions matter: a gate
+// that cries wolf gets switched off, which is how the silent passes come back.
+{
+  try {
+    edit(NOTE_EDITOR, (s) => {
+      const anchor = '    return this.sanitizer.bypassSecurityTrustHtml(clean);';
+      if (!s.includes(anchor)) throw new Error('note-editor.ts markdownHtml changed — update this control');
+      return s.replace(
+        anchor,
+        '    const notAPattern = { bypassSecurityTrustHtml: (v: string) => v };\n' +
+          '    void notAPattern;\n' +
+          anchor,
+      );
+    });
+    const { code, out } = runAudit(['--only', '1']);
+    const quiet = code === 0;
+    results.push({
+      name: 'check 1 stays silent for an object literal used as a value rather than as a pattern',
+      pass: quiet,
+      red: !quiet,
+      matched: true,
+      expect: 'no finding for a non-pattern object literal that names the member',
+      out,
+      kind: 'specificity',
+    });
+  } finally {
+    restoreAll();
+  }
+}
+
 // ---- check 1: two bypasses sharing one source line -----------------------------------------------
 // The collector deduplicated by `${line}:${name}`, so two calls to the same member written on one
 // line counted as one. That is not cosmetic: the count is compared against the entry's declared
@@ -542,7 +579,12 @@ control(
     edit('libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts', (s) =>
       s.replace(/^(\s*)url: string;$/m, '$1url: SafeResourceUrl;'),
     ),
-  'document-viewer.component.html',
+  // The specific finding, not just the file name. `[4] unresolvable type in a NONE context`
+  // names the file too, so a file-name expectation is satisfied whether check 4 *resolved* the
+  // type or *gave up* on it — and this control claims the former. Review caught one sibling
+  // control passing through the fail-closed path for exactly that reason; the weakness was in all
+  // of them, so all of them now name the finding they mean.
+  'Safe* value in a NONE context',
 );
 
 // Specificity: check 4 must stay silent while doing all of its work.
@@ -620,7 +662,12 @@ control(
           'readonly posterUrl = input<MediaUrl | null>(null);',
         ),
     ),
-  'document-viewer.component.html',
+  // The specific finding, not just the file name. `[4] unresolvable type in a NONE context`
+  // names the file too, so a file-name expectation is satisfied whether check 4 *resolved* the
+  // type or *gave up* on it — and this control claims the former. Review caught one sibling
+  // control passing through the fail-closed path for exactly that reason; the weakness was in all
+  // of them, so all of them now name the finding they mean.
+  'Safe* value in a NONE context',
 );
 
 control(
@@ -800,7 +847,12 @@ control(
           'readonly posterUrl = input<mediaUrl | null>(null);',
         ),
     ),
-  'document-viewer.component.html',
+  // The specific finding, not just the file name. `[4] unresolvable type in a NONE context`
+  // names the file too, so a file-name expectation is satisfied whether check 4 *resolved* the
+  // type or *gave up* on it — and this control claims the former. Review caught one sibling
+  // control passing through the fail-closed path for exactly that reason; the weakness was in all
+  // of them, so all of them now name the finding they mean.
+  'Safe* value in a NONE context',
 );
 
 control(

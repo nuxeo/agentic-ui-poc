@@ -20,7 +20,7 @@ below before reading "Done" as "closed".
 | --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
 | **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (36 negative controls + 5 green baselines + 1 silence assertion — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (36 negative controls + 5 green baselines + 2 silence assertions — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
 | **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
 | **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                                                           |
 | **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                                                             |
@@ -921,14 +921,26 @@ must be reported; it did not change what makes the check sound.
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **42 assertions, of which only 36 are negative controls** —
+  one red run pasted into a PR. It reports **43 assertions, of which only 36 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
-  the original bytes. The other 6 are **5 green baselines** (so a red cannot be pre-existing noise) and
-  **1 silence assertion** (check 4 must stay quiet while walking its longest path to an alias that
+  the original bytes. The other 7 are **5 green baselines** (so a red cannot be pre-existing noise) and
+  **2 silence assertions**: check 4 must stay quiet while walking its longest path to an alias that
   resolves to a plain `string` — which distinguishes "keys on what the type resolves to" from
-  "resolved a type reference"). Those 6 assert
+  "resolved a type reference" — and check 1 must stay quiet for an object literal used as a *value*
+  rather than as a destructuring pattern, which is the false-failure direction of the assignment-form
+  fix. Those 7 assert
   green and are **not** evidence that a check can fail, so the runner labels every row by kind and
   reports the three counts separately.
+
+  **"For the expected reason" has to be specific enough to distinguish two findings.** Four check 4
+  controls expected only `document-viewer.component.html`, which appears in
+  `[4] Safe* value in a NONE context` *and* in `[4] unresolvable type in a NONE context` — so each
+  passed whether the resolver resolved the type or gave up on it, while claiming the former. One of
+  them was in fact passing through the fail-closed path: it added a cross-file alias to
+  `navigable-url.ts` but never exported it from the barrel the package alias points at, so the import
+  resolved to the error type. All four now name the finding they mean, and putting the barrel export
+  back only in that control's perturbation is what turns it from red-for-the-wrong-reason into a pass
+  — verified by removing it again and watching the control fail with `matched: false`.
 
   This distinction is here because the count was previously misreported, twice. The summary said
   "13 controls, every check observed failing on purpose" while 5 of the 13 asserted green, and this
