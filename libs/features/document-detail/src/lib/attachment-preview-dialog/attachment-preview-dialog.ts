@@ -28,6 +28,32 @@ export interface AttachmentPreviewData {
   ownsRawUrl: boolean;
 }
 
+/**
+ * The text types rendered in the preview iframe — an allow-list, not a `text/*` prefix test.
+ *
+ * The prefix test was a live stored-XSS hole. `text/html` satisfies `startsWith('text/')`, and the
+ * iframe loads a `blob:` URL, which **inherits the creating page's origin**. So previewing an
+ * uploaded `.html` attachment executed its scripts under our origin, with `document.cookie`,
+ * `localStorage` and `window.parent` all reachable. Anyone who could attach a file to a document
+ * could run script against every user who previewed it.
+ *
+ * This is the same lesson `navigable-url.ts` records for schemes, one layer up: enumerating what is
+ * safe is a filter, and testing a prefix is not. Adding a `text/html` special case would leave
+ * `text/xsl`, `application/xhtml+xml` and the next active text type nobody thought of.
+ *
+ * Consequence: HTML attachments now fall through to "Preview not available". Restoring an HTML
+ * preview safely means a sandboxed iframe (`sandbox` without `allow-same-origin`, so the document
+ * gets an opaque origin) or routing the text through `renderTrustedHtml`. Neither is done here —
+ * closing the hole and adding a feature are separate changes.
+ */
+const PREVIEWABLE_TEXT_TYPES = new Set([
+  'text/plain',
+  'text/csv',
+  'text/xml',
+  'application/json',
+  'application/xml',
+]);
+
 @Component({
   selector: 'lib-attachment-preview-dialog',
   standalone: true,
@@ -189,12 +215,12 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
     return this.data.mimeType.startsWith('audio/');
   }
 
+  /** See {@link PREVIEWABLE_TEXT_TYPES} — an allow-list, because `text/html` is executable. */
   get isText(): boolean {
-    return (
-      this.data.mimeType.startsWith('text/') ||
-      this.data.mimeType === 'application/json' ||
-      this.data.mimeType === 'application/xml'
-    );
+    // Strip any `; charset=utf-8` parameter before matching, and normalise case: a media type is
+    // case-insensitive, so `TEXT/HTML` must not slip past the allow-list either.
+    const essence = this.data.mimeType.split(';', 1)[0].trim().toLowerCase();
+    return PREVIEWABLE_TEXT_TYPES.has(essence);
   }
 
   zoomIn(): void {

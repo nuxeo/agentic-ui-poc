@@ -1054,7 +1054,12 @@ export class SearchComponent {
   }
 
   private loadThumbnails(items: SearchResultItem[]): void {
-    const generation = this.thumbnailGeneration;
+    // Mint a new generation rather than reading the current one. Reading it let two loaders share
+    // a generation — a standard search and an AI search can both resolve under the same
+    // `beginThumbnailBatch()` — so the first load's in-flight callbacks still matched
+    // `this.thumbnailGeneration` after the second call's `clearThumbnails()` and repopulated the
+    // map with thumbnails belonging to the previous result set.
+    const generation = ++this.thumbnailGeneration;
     this.clearThumbnails();
     for (const item of items) {
       this.documentDetailService

@@ -624,7 +624,10 @@ export class TrashComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
-    const generation = this.thumbnailGeneration;
+    // Mint a new generation rather than reading the current one — two overlapping trash searches
+    // could otherwise both capture the generation set by one `beginThumbnailBatch()`, letting the
+    // first search's late callbacks pass the guard and reappear after the second cleared them.
+    const generation = ++this.thumbnailGeneration;
     this.clearThumbnails();
     for (const doc of docs) {
       this.detailService
@@ -647,8 +650,10 @@ export class TrashComponent {
 
   private clearThumbnails(): void {
     const urls = new Set(
-      [...Object.values(this.thumbnailMap()), ...Object.values(this.trashFilterService.resultThumbnails())]
-        .filter((url): url is string => !!url),
+      [
+        ...Object.values(this.thumbnailMap()),
+        ...Object.values(this.trashFilterService.resultThumbnails()),
+      ].filter((url): url is string => !!url),
     );
     for (const url of urls) URL.revokeObjectURL(url);
     this.thumbnailMap.set({});

@@ -256,13 +256,17 @@ describe('SearchComponent', () => {
 
       component['beginThumbnailBatch']();
       component['loadThumbnails']([resultItem({ id: 'doc1' })]);
-      expect(component.thumbnailMap()['doc1']).toBe('blob:mock/1');
+      // Same reason as the destroy test below: `blobSeq` is not reset between tests, so the URLs are
+      // read back rather than named. This one passed only because it runs first.
+      const first = created[0];
+      expect(component.thumbnailMap()['doc1']).toBe(first);
 
       component['beginThumbnailBatch']();
       component['loadThumbnails']([resultItem({ id: 'doc2' })]);
 
-      expect(revoked).toContain('blob:mock/1');
-      expect(component.thumbnailMap()).toEqual({ doc2: 'blob:mock/2' });
+      const second = created[1];
+      expect(revoked).toContain(first);
+      expect(component.thumbnailMap()).toEqual({ doc2: second });
     });
 
     it('ignores stale thumbnail responses from an older batch', () => {
@@ -281,16 +285,58 @@ describe('SearchComponent', () => {
       expect(component.thumbnailMap()).toEqual({});
     });
 
+    /**
+     * The regression test for the shared-generation race. `loadThumbnails` used to read
+     * `this.thumbnailGeneration` instead of incrementing it, so two loaders invoked under a single
+     * `beginThumbnailBatch()` — which happens when a standard search and an AI search both resolve —
+     * captured the same value. The first loader's in-flight callbacks then still matched the current
+     * generation after the second loader's `clearThumbnails()`, and repopulated the map from the
+     * abandoned result set.
+     *
+     * Verified by reverting the `++` and watching this go red, per the repo rule that a guard is not
+     * evidence until it has been seen to fail.
+     */
+    it('drops a late response from an earlier loader in the same batch', () => {
+      const firstThumbs = new Subject<Blob | null>();
+      const secondThumbs = new Subject<Blob | null>();
+      mockDocumentDetailService.fetchThumbnail
+        .mockReturnValueOnce(firstThumbs.asObservable())
+        .mockReturnValueOnce(secondThumbs.asObservable());
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+      component['loadThumbnails']([resultItem({ id: 'doc2' })]);
+
+      firstThumbs.next(new Blob(['stale']));
+      firstThumbs.complete();
+      expect(created).toHaveLength(0);
+      expect(component.thumbnailMap()).toEqual({});
+
+      // The positive control: the current loader is still honoured, so the guard is discriminating
+      // rather than rejecting everything — which is how this test would pass for the wrong reason.
+      secondThumbs.next(new Blob(['fresh']));
+      secondThumbs.complete();
+      expect(created).toHaveLength(1);
+      expect(component.thumbnailMap()).toEqual({ doc2: created[0] });
+    });
+
     it('revokes tracked thumbnails on destroy', () => {
       mockDocumentDetailService.fetchThumbnail.mockReturnValue(of(new Blob(['thumb'])));
 
       component['beginThumbnailBatch']();
       component['loadThumbnails']([resultItem({ id: 'doc1' })]);
-      expect(created).toContain('blob:mock/1');
+
+      // Read the minted URL back rather than naming `blob:mock/1`. `created` and `revoked` are
+      // cleared in `beforeEach` but `blobSeq` is not, so the sequence number depends on how many
+      // URLs earlier tests minted — hardcoding it made this test pass only while it happened to run
+      // first, and it was already failing on arrival for exactly that reason.
+      expect(created).toHaveLength(1);
+      const url = created[0];
+      expect(component.thumbnailMap()['doc1']).toBe(url);
 
       fixture.destroy();
 
-      expect(revoked).toContain('blob:mock/1');
+      expect(revoked).toContain(url);
     });
   });
 

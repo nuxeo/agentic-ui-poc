@@ -124,15 +124,46 @@ describe('AttachmentPreviewDialogComponent', () => {
       expect(component.isVideo).toBe(false);
     });
 
-    it('treats text/*, application/json and application/xml as text', async () => {
-      const plain = await createDialog('text/plain');
-      expect(plain.component.isText).toBe(true);
+    it('treats the inert text types as text', async () => {
+      for (const mime of [
+        'text/plain',
+        'text/csv',
+        'text/xml',
+        'application/json',
+        'application/xml',
+      ]) {
+        const { component } = await createDialog(mime);
+        expect(component.isText, mime).toBe(true);
+      }
+    });
 
-      const json = await createDialog('application/json');
-      expect(json.component.isText).toBe(true);
+    it('ignores a charset parameter and letter case when matching', async () => {
+      const withCharset = await createDialog('text/plain; charset=utf-8');
+      expect(withCharset.component.isText).toBe(true);
 
-      const xml = await createDialog('application/xml');
-      expect(xml.component.isText).toBe(true);
+      const upper = await createDialog('TEXT/PLAIN');
+      expect(upper.component.isText).toBe(true);
+    });
+
+    /**
+     * The load-bearing half. `isText` used to be `startsWith('text/')`, which matched `text/html`
+     * and rendered it in an iframe on a `blob:` URL — and a blob URL inherits the creating page's
+     * origin, so an uploaded HTML attachment ran script against our own origin. Every case here is
+     * a type that must NOT reach the iframe; `text/plain` above is the positive control proving the
+     * allow-list still admits something.
+     */
+    it('refuses to preview executable text types in the iframe', async () => {
+      for (const mime of [
+        'text/html',
+        'text/xsl',
+        'application/xhtml+xml',
+        'image/svg+xml',
+        'text/html; charset=utf-8',
+        'TEXT/HTML',
+      ]) {
+        const { component } = await createDialog(mime);
+        expect(component.isText, mime).toBe(false);
+      }
     });
 
     it('classifies an unknown binary type as none of the previewable kinds', async () => {

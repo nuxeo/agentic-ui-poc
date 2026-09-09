@@ -917,7 +917,10 @@ export class AssetSearchResultsComponent {
   }
 
   private loadThumbnails(assets: AssetResult[]): void {
-    const generation = this.thumbnailGeneration;
+    // Mint a new generation rather than reading the current one — two overlapping asset searches
+    // could otherwise both capture the generation set by one `beginThumbnailBatch()`, letting the
+    // first search's late callbacks pass the guard and reappear after the second cleared them.
+    const generation = ++this.thumbnailGeneration;
     this.clearThumbnails();
     for (const asset of assets) {
       this.documentDetailService
