@@ -19,8 +19,8 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
  *
  * That `url` is a `blob:` URL. Anything else — including a blank string, a relative path, or
  * another scheme — is rejected and returns `null`, which every caller already treats as "no preview
- * available". An object URL that arrived from configuration or a server response was not minted by
- * this document, so accepting one would be a mistake rather than a bypass.
+ * available". Provenance is a caller precondition: the helper cannot prove a `blob:` URL was minted
+ * by this document.
  *
  * `DomSanitizer` is passed in rather than injected so this can be a pure function, making it easier
  * to test and reason about. The helper does not own the sanitizer instance.
@@ -38,10 +38,8 @@ export function trustObjectUrl(
 ): SafeResourceUrl | null {
   if (typeof url !== 'string' || url.trim() === '') return null;
 
-  // The only legitimate case is a `blob:` URL minted by this document. Anything else — including
-  // a different scheme, a relative path, or a `blob:` URL from configuration/server (which was not
-  // minted here) — is rejected. `new URL()` is not needed: the scheme is enough, and parsing a
-  // deliberately-malicious input is exactly what we want to avoid.
+  // Scheme guard only. Provenance is caller-owned: pass only object URLs from
+  // `URL.createObjectURL(blob)` in this document.
   if (!url.startsWith('blob:')) return null;
 
   return sanitizer.bypassSecurityTrustResourceUrl(url);

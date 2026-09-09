@@ -29,6 +29,10 @@ const AUDIT = 'scripts/beta-harness/sanitizer-audit.mjs';
 const ALLOWLIST = '.ai/state/sanitizer-allowlist.json';
 const VIEWER_TS = 'libs/shared/ui/src/lib/document-viewer/document-viewer.component.ts';
 const NOTE_EDITOR = 'libs/features/document-detail/src/lib/note-editor/note-editor.ts';
+const DOCUMENT_DETAIL = 'libs/features/document-detail/src/lib/document-detail/document-detail.ts';
+const TRUST_OBJECT_URL = 'libs/shared/nuxeo-client/src/lib/utils/trust-object-url.ts';
+const CHECK1_SITE = TRUST_OBJECT_URL;
+const CHECK1_CATEGORY = 'B';
 
 /**
  * The line inside `note-editor.ts`'s `markdownHtml` that injection-style perturbations anchor on.
@@ -125,9 +129,7 @@ function repointBaseTo(commitish) {
   restoreBaseRef = () => {
     const r = had ? git('update-ref', BASE_REF, previous) : git('update-ref', '-d', BASE_REF);
     if (r.status !== 0) {
-      console.error(
-        `\nselftest: could not restore ${BASE_REF} — run 'git fetch origin' to repair it`,
-      );
+      throw new Error(`selftest: could not restore ${BASE_REF} — run 'git fetch origin' to repair it`);
     }
   };
 
@@ -211,11 +213,11 @@ control(
   () =>
     edit(ALLOWLIST, (s) => {
       const j = JSON.parse(s);
-      delete j.sites['libs/features/browse/src/lib/browse/browse.ts'];
-      j.budgets.A -= 1; // keep the ratchet quiet so only check 1 is under test
+      delete j.sites[CHECK1_SITE];
+      j.budgets[CHECK1_CATEGORY] -= 1; // keep the ratchet quiet so only check 1 is under test
       return JSON.stringify(j, null, 2);
     }),
-  'unregistered bypass  libs/features/browse/src/lib/browse/browse.ts',
+  `unregistered bypass  ${CHECK1_SITE}`,
 );
 
 // ---- check 1: an extra bypass inside an ALREADY-REGISTERED member ---------------------------------
@@ -595,7 +597,7 @@ control(
   () =>
     edit(ALLOWLIST, (s) => {
       const j = JSON.parse(s);
-      j.sites['libs/features/browse/src/lib/browse/browse.ts'][0].justification = '';
+      j.sites[CHECK1_SITE][0].justification = '';
       return JSON.stringify(j, null, 2);
     }),
   'no "justification"',
@@ -609,7 +611,7 @@ control(
   () =>
     edit(ALLOWLIST, (s) => {
       const j = JSON.parse(s);
-      j.sites['libs/features/browse/src/lib/browse/browse.ts'][0].justification = 'safe';
+      j.sites[CHECK1_SITE][0].justification = 'safe';
       return JSON.stringify(j, null, 2);
     }),
   'under the 40 minimum',
@@ -630,13 +632,13 @@ control(
         throw new Error('APPROVED_HELPERS shape changed — update this control');
       return s.replace(
         marker,
-        marker + `\n  ['libs/features/browse/src/lib/browse/browse.ts', 'loadThumbnails'],`,
+        marker + `\n  ['${DOCUMENT_DETAIL}', 'loadPreviewFallback'],`,
       );
     });
     edit(ALLOWLIST, (s) => {
       const j = JSON.parse(s);
-      delete j.sites['libs/features/browse/src/lib/browse/browse.ts'];
-      j.budgets.A -= 1; // keep the ratchet quiet so only check 1 is under test
+      delete j.sites[DOCUMENT_DETAIL];
+      j.budgets.C -= 2; // keep the ratchet quiet so only check 1 is under test
       return JSON.stringify(j, null, 2);
     });
   },
@@ -650,32 +652,33 @@ control(
   () =>
     edit(ALLOWLIST, (s) => {
       const j = JSON.parse(s);
-      j.sites['libs/features/browse/src/lib/browse/browse.ts'].push({
+      j.sites[CHECK1_SITE].push({
         member: 'aMemberThatDoesNotExist',
-        category: 'A',
+        category: CHECK1_CATEGORY,
         sonarKey: 'selftest',
         justification: 'selftest perturbation',
       });
-      j.budgets.A += 1;
+      j.budgets[CHECK1_CATEGORY] += 1;
       return JSON.stringify(j, null, 2);
     }),
-  'stale allowlist entry  libs/features/browse/src/lib/browse/browse.ts::aMemberThatDoesNotExist',
+  `stale allowlist entry  ${CHECK1_SITE}::aMemberThatDoesNotExist`,
 );
 
 // ---- check 3: a redundant bypass on a locally-minted object URL ----------------------------------
-// Removing the allowlist entry exposes the same call to check 3, which is the check that has to
-// keep working once PR 5 has deleted these: it is what stops one being reintroduced.
+// Category A bypasses have been deleted from the tree, so this control injects one and asserts
+// check 3 still rejects it.
 control(
   'check 3 catches an unrecorded bypass on a URL.createObjectURL result',
   3,
   () =>
-    edit(ALLOWLIST, (s) => {
-      const j = JSON.parse(s);
-      delete j.sites['libs/features/browse/src/lib/browse/browse.ts'];
-      j.budgets.A -= 1;
-      return JSON.stringify(j, null, 2);
+    edit(DOCUMENT_DETAIL, (s) => {
+      const anchor = '    const rawUrl = URL.createObjectURL(blob);\n';
+      if (!s.includes(anchor)) {
+        throw new Error('document-detail object URL anchor changed — update this control');
+      }
+      return s.replace(anchor, `${anchor}    this.sanitizer.bypassSecurityTrustUrl(rawUrl);\n`);
     }),
-  'redundant bypass  libs/features/browse/src/lib/browse/browse.ts',
+  'redundant bypass',
 );
 
 // ---- check 4: a Safe* value in a NONE context ----------------------------------------------------

@@ -51,7 +51,7 @@ describe('trustObjectUrl', () => {
     expect(trustObjectUrl(sanitizer, '/api/blob')).toBeNull();
   });
 
-  it('rejects a blob URL that did not originate from createObjectURL', () => {
+  it('accepts blob URLs and relies on caller-owned provenance', () => {
     setup();
     // This is a well-formed blob URL, but the origin is wrong. Object URLs are scoped to the
     // document that created them: a `blob:` URL from a different origin (or from configuration/

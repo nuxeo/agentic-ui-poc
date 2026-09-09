@@ -352,10 +352,14 @@ export class CollectionDetailComponent {
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [doc.uid]: url,
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[doc.uid];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [doc.uid]: url,
+            };
+          });
         });
     }
   }
