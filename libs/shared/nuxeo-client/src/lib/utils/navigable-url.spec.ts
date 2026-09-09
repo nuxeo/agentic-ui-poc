@@ -213,11 +213,26 @@ describe('isNavigableBaseUrl', () => {
     expect(navigableUrlOrNull(value, { allowInsecure: true })).toBeNull();
   });
 
-  it('accepts a trailing question mark, which carries no parameter', () => {
-    // `new URL()` normalises an empty query away, so `search` is `''` and there is nothing for an
-    // appended parameter to collide with. Rejecting this would be stricter than the defect
-    // requires — the harm came from concatenating onto a *populated* query, not from a stray `?`.
-    expect(isNavigableBaseUrl('https://viewer.example.com/app?', true)).toBe(true);
+  // This assertion used to be the opposite, on the reasoning that "the harm came from concatenating
+  // onto a *populated* query, not from a stray `?`". That was wrong, and review produced the
+  // counterexample: `nuxeoInternalUrl` has a path appended to it as **text**, so
+  // `http://proxy/nuxeo?` + `/nxfile/default/uid/file:content` is a URL whose path is only `/nuxeo`
+  // with the nxfile path demoted to a query string, and `#` puts it in a fragment that never
+  // reaches the server. `new URL()` normalising the empty query away is precisely what made it
+  // invisible to the old check.
+  it.each([
+    ['a trailing question mark', 'https://viewer.example.com/app?'],
+    ['a trailing hash', 'https://viewer.example.com/app#'],
+    ['a bare question mark on an origin', 'https://viewer.example.com?'],
+  ])('rejects a base ending in %s, which appending would silently absorb', (_label, value) => {
+    expect(isNavigableBaseUrl(value, true)).toBe(false);
+  });
+
+  it('still accepts a percent-encoded delimiter, which is not a delimiter', () => {
+    // `%3F` and `%23` are ordinary path characters; rejecting them would be stricter than the
+    // defect requires and would break a legitimately encoded path segment.
+    expect(isNavigableBaseUrl('https://viewer.example.com/a%3Fb', true)).toBe(true);
+    expect(isNavigableBaseUrl('https://viewer.example.com/a%23b', true)).toBe(true);
   });
 
   it('rejects everything isNavigableOrigin rejected', () => {

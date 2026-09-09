@@ -143,6 +143,16 @@ export function originOf(value: string | null | undefined): string | null {
  *     top-level `url` parameter, so the viewer receives no document.
  *   - **Fragment.** Everything after `#` stays in the browser and is never sent, so
  *     `https://host#frag` swallows the parameter entirely.
+ *   - **A bare delimiter**, which is why the test is on the raw text and not on `parsed.search`
+ *     and `parsed.hash`. `new URL('http://proxy/nuxeo?').search` is `''` and `.hash` is `''`, so a
+ *     value ending in `?` or `#` passed a check whose whole purpose is to establish that appending
+ *     to it is safe — and appending to it is exactly what breaks: `http://proxy/nuxeo?` plus
+ *     `/nxfile/default/<uid>/file:content` is a URL whose path is only `/nuxeo`, with the nxfile
+ *     path demoted to a query string. `#` is worse: the suffix becomes a fragment and never
+ *     reaches the server at all. Both are silent — ARender fetches the wrong resource rather than
+ *     failing. Rejecting the raw characters covers the non-empty cases too, since a base carrying
+ *     a real query or fragment must contain the delimiter that introduces it. A percent-encoded
+ *     `%3F` or `%23` is not a delimiter and is unaffected.
  *   - **Userinfo.** `https://user:pass@host` embeds a credential in a URL that gets navigated in
  *     an iframe and written into `document.referrer` and history. It is also the classic
  *     look-alike host trick, since the part before `@` reads like the destination.
@@ -155,15 +165,16 @@ export function isNavigableBaseUrl(
   allowInsecure = false,
 ): boolean {
   if (navigableUrlOrNull(value, { allowInsecure }) === null) return false;
+  const raw = value as string;
+  // The raw text, not `parsed.search`/`parsed.hash` — see the note on a bare delimiter above.
+  if (raw.includes('?') || raw.includes('#')) return false;
   let parsed: URL;
   try {
-    parsed = new URL(value as string);
+    parsed = new URL(raw);
   } catch {
     return false;
   }
-  return (
-    parsed.search === '' && parsed.hash === '' && parsed.username === '' && parsed.password === ''
-  );
+  return parsed.username === '' && parsed.password === '';
 }
 
 /**

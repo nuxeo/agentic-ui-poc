@@ -260,6 +260,25 @@ describe('ARenderService', () => {
       await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toBeNull();
     });
 
+    // A *bare* delimiter, which passed validation until review found it: `new URL(...).search` and
+    // `.hash` are both `''` for a URL ending in `?` or `#`, so the check that existed to prove
+    // "appending to this base is safe" accepted the two bases appending to which is not safe.
+    // Appended as text, `http://nuxeo-auth-proxy/nuxeo?` yields a request whose path is only
+    // `/nuxeo` and whose nxfile suffix is a query string — ARender fetches the repository root
+    // instead of the blob, and reports no error while doing it.
+    it.each([
+      ['a trailing question mark', 'http://nuxeo-auth-proxy/nuxeo?'],
+      ['a trailing hash', 'http://nuxeo-auth-proxy/nuxeo#'],
+    ])(
+      'rejects a nuxeoInternalUrl ending in %s rather than pointing ARender at the wrong resource',
+      async (_label, nuxeoInternalUrl) => {
+        const service = setup({ viewerOrigin: 'https://arender.example', nuxeoInternalUrl });
+
+        await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toBeNull();
+        await expect(firstValueFrom(service.getDiffUrl('a', 'b'))).resolves.toBeNull();
+      },
+    );
+
     // The string builder wrote `${viewerOrigin}/?url=`, so a path-prefixed viewer always got a
     // trailing slash. `new URL()` does not add one, and `/arender` and `/arender/` are different
     // routes — so moving to `searchParams` could have repointed every prefixed deployment.
@@ -274,6 +293,26 @@ describe('ARenderService', () => {
 
       expect(new URL(url!).pathname).toBe(expectedPath);
       expect(new URL(url!).searchParams.getAll('url')).toHaveLength(1);
+    });
+
+    // The nxfile URL is resolved with `new URL()` rather than concatenated, so the base's trailing
+    // slash cannot change the path it addresses. Asserted on the decoded `url` parameter, because
+    // the failure this guards — `/nuxeo//nxfile/...` or `/nxfile/...` with `/nuxeo` dropped — is a
+    // path difference that `toContain` on the whole URL would not distinguish.
+    it.each([
+      ['no trailing slash', 'https://proxy.internal/nuxeo', '/nuxeo/nxfile/default/doc-1/file:content'],
+      ['a trailing slash', 'https://proxy.internal/nuxeo/', '/nuxeo/nxfile/default/doc-1/file:content'],
+      ['a bare origin', 'https://proxy.internal', '/nxfile/default/doc-1/file:content'],
+      ['a two-segment path', 'https://proxy.internal/a/b', '/a/b/nxfile/default/doc-1/file:content'],
+    ])('resolves the nxfile path against a base with %s', async (_label, nuxeoInternalUrl, expectedPath) => {
+      const service = setup({ viewerOrigin: 'https://arender.example', nuxeoInternalUrl });
+
+      const url = await firstValueFrom(service.getPreviewerUrl('doc-1'));
+
+      const nxfile = new URL(new URL(url!).searchParams.getAll('url')[0]);
+      expect(nxfile.pathname).toBe(expectedPath);
+      expect(nxfile.search).toBe('');
+      expect(nxfile.hash).toBe('');
     });
 
     it('produces exactly one top-level url parameter naming the nxfile path', async () => {

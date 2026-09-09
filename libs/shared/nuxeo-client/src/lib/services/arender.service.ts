@@ -71,6 +71,10 @@ export class ARenderService {
     // ARender's own server through the auth-proxy sidecar, so it is legitimately plain http. It is
     // still a base that gets a path appended, so it carries the same no-query/no-fragment
     // requirement — a `#` here would truncate the nxfile path ARender is asked to fetch.
+    //
+    // `isNavigableBaseUrl` rejects a *bare* `?` or `#` as well as a populated one, which it did not
+    // until review found the gap: `new URL('http://proxy/nuxeo?').search` is `''`, so that value
+    // satisfied a check whose entire purpose was to establish that appending to it is safe.
     if (!isNavigableBaseUrl(cfg.nuxeoInternalUrl, true)) return null;
 
     return cfg;
@@ -85,6 +89,31 @@ export class ARenderService {
    * `searchParams.append` is also what makes the two-document diff case correct — `url` legitimately
    * appears twice, which a `set`-based or hand-built approach gets wrong.
    */
+  /**
+   * `<nuxeoInternalUrl>/nxfile/default/<uid>/<xpath>`, resolved rather than concatenated.
+   *
+   * Concatenation was a second instance of the defect `buildViewerUrl` was already written to
+   * avoid, and it survived because `isNavigableBaseUrl` was accepting a base it should not have:
+   * `http://proxy/nuxeo?` + `/nxfile/default/uid/file:content` is a URL whose path is only
+   * `/nuxeo`, with the nxfile path demoted to a query string, so ARender fetches the Nuxeo root
+   * instead of the blob and reports no error. With `#` the suffix becomes a fragment and is never
+   * sent at all.
+   *
+   * The validator now rejects those bases, and this resolves structurally so the *shape* of the
+   * bug is unavailable rather than merely unreachable — two independent guards, as elsewhere in
+   * this file, because one function should not be the only thing between a customer-editable
+   * manifest and a wrong fetch.
+   *
+   * `uid` is encoded; `xpath` is not, because `file:content` must keep its colon and Nuxeo's
+   * nxfile route expects the raw xpath.
+   */
+  private buildNxfileUrl(base: string, docUid: string, blobXPath: string): string {
+    // A trailing slash is required or `new URL()` resolves the relative path against the base's
+    // *parent*, turning `http://proxy/nuxeo` into `http://proxy/nxfile/…`.
+    const withSlash = base.endsWith('/') ? base : `${base}/`;
+    return new URL(`nxfile/default/${encodeURIComponent(docUid)}/${blobXPath}`, withSlash).toString();
+  }
+
   private buildViewerUrl(base: string, nxfileUrls: string[]): string {
     const url = new URL(base);
     // Preserve the trailing slash the string-concatenation version always produced. It wrote
@@ -118,7 +147,7 @@ export class ARenderService {
     const cfg = this.cfg;
     if (!cfg) return of(null);
 
-    const nxfileUrl = `${cfg.nuxeoInternalUrl}/nxfile/default/${docUid}/${blobXPath}`;
+    const nxfileUrl = this.buildNxfileUrl(cfg.nuxeoInternalUrl, docUid, blobXPath);
     return of(this.buildViewerUrl(cfg.viewerOrigin, [nxfileUrl]));
   }
 
@@ -130,8 +159,8 @@ export class ARenderService {
     const cfg = this.cfg;
     if (!cfg) return of(null);
 
-    const leftUrl = `${cfg.nuxeoInternalUrl}/nxfile/default/${leftDocUid}/file:content`;
-    const rightUrl = `${cfg.nuxeoInternalUrl}/nxfile/default/${rightDocUid}/file:content`;
+    const leftUrl = this.buildNxfileUrl(cfg.nuxeoInternalUrl, leftDocUid, 'file:content');
+    const rightUrl = this.buildNxfileUrl(cfg.nuxeoInternalUrl, rightDocUid, 'file:content');
     return of(this.buildViewerUrl(cfg.viewerOrigin, [leftUrl, rightUrl]));
   }
 
