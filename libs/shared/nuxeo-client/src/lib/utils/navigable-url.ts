@@ -9,7 +9,7 @@
  * The bypass is therefore only as safe as the string handed to it, and two of ours do not originate
  * in our own code:
  *
- *   - the ARender viewer origin, from the **customer-editable** runtime app-config manifest;
+ *   - the ARender viewer origin, from the **customer-editable** Layer 0 bootstrap file;
  *   - the Nuxeo `preview` URL, from a **server** REST response.
  *
  * A manifest setting `viewerOrigin` to `javascript:alert(1)` is a complete, non-blank, perfectly

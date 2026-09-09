@@ -19,8 +19,10 @@ export interface ARenderConfig {
 /**
  * ARender annotation viewer configuration, or `null` when ARender is not deployed.
  *
- * **Nullable, and `null` is the default.** `integrations.arender` in the runtime app-config
- * manifest defaults to `null` and no manifest in this repository sets it, so an unconfigured
+ * **Nullable, and `null` is the default.** `integrations.arender` in the Layer 0 bootstrap file
+ * (`agentic-ui-config/bootstrap.json`, read before authentication — *not* the post-auth runtime
+ * manifest, which has no `integrations` key) defaults to `null` and nothing in this repository sets
+ * it, so an unconfigured
  * deployment is the normal case, not an edge case. Callers must handle `null`; `ARenderService`
  * does, and degrades to "Annotations are not available".
  *

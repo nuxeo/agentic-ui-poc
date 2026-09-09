@@ -8,7 +8,7 @@ import { isNavigableBaseUrl } from '../utils/navigable-url';
  * ARender annotation viewer integration.
  *
  * **Every method must answer for an absent configuration.** `ARENDER_CONFIG` is `null` whenever
- * `integrations.arender` is not set in the runtime manifest, which is the default for every
+ * `integrations.arender` is not set in the Layer 0 bootstrap file, which is the default for every
  * deployment in this repository. Before the guards below existed, `null` produced a
  * `TypeError: Cannot read properties of null` in all three methods — and the reason nobody noticed
  * is worth keeping:
@@ -40,10 +40,16 @@ export class ARenderService {
    * **2. A blank endpoint** — worse than `null`, because `fetch('')` resolves against the
    * *application's own* origin, so `isAvailable()` would report a viewer as present and
    * `getPreviewerUrl` would build a same-origin `/?url=…` that then gets trusted into an iframe.
-   * That state is reachable: `bootstrap-config.ts`'s `mergeIntegrations` carries the comment "Both
-   * endpoints are required: half an ARender configuration is worse than none" and does not enforce
-   * it — a manifest naming only `viewerOrigin` yields `nuxeoInternalUrl: ''`, because the missing
-   * half falls back to `base.arender?.nuxeoInternalUrl ?? ''` and `base.arender` is `null`.
+   *
+   * This check is now **defence in depth for direct providers**, not a patch over the layer below.
+   * It was written when `bootstrap-config.ts`'s `mergeIntegrations` carried the comment "Both
+   * endpoints are required: half an ARender configuration is worse than none" without enforcing it,
+   * so a bootstrap file naming only `viewerOrigin` produced `nuxeoInternalUrl: ''`. That was fixed
+   * in this same change: `completeARenderConfig` returns `null` unless the merged result has both
+   * endpoints non-blank, so the bootstrap path can no longer deliver this state. Anything providing
+   * `ARENDER_CONFIG` directly — a test, or a custom provider in an app config — still can, which is
+   * why the guard stays. Describing it as compensating for the bootstrap layer would be describing
+   * code that no longer runs.
    *
    * **3. A `viewerOrigin` that is not an http(s) origin.** This is the one that matters most.
    * `viewerOrigin` is string-concatenated into a URL which is then bypassed and loaded into an
