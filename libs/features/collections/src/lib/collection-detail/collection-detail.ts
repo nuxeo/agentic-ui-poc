@@ -2,7 +2,6 @@ import { Component, DestroyRef, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -116,7 +115,6 @@ export class CollectionDetailComponent {
   private readonly directoryService = inject(DirectoryService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly adminAccess = inject(ADMIN_ACCESS_CHECKS);
@@ -134,7 +132,7 @@ export class CollectionDetailComponent {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly totalSize = signal(0);
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -339,7 +337,7 @@ export class CollectionDetailComponent {
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
     // The reset that made the leak unbounded: `thumbnailMap.set({})` dropped the last
-    // batch's `SafeUrl`s without revoking the blobs behind them, so every navigation to
+    // batch's URLs without revoking the blobs behind them, so every navigation to
     // another collection pinned another batch in memory for the life of the document.
     this.revokeThumbnails();
     this.thumbnailMap.set({});
@@ -354,25 +352,18 @@ export class CollectionDetailComponent {
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+            [doc.uid]: url,
           }));
         });
     }
   }
 
-  /**
-   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
-   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out. This is
-   * the only point where the raw url exists.
-   */
-  private readonly thumbnailBlobUrls: string[] = [];
-
   private revokeThumbnails(): void {
-    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
-    this.thumbnailBlobUrls.length = 0;
+    for (const url of Object.values(this.thumbnailMap())) {
+      if (url) URL.revokeObjectURL(url);
+    }
   }
 
   private canLoadThumbnail(doc: NuxeoDocument): boolean {

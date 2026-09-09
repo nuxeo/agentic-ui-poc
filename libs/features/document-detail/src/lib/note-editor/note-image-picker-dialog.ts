@@ -9,7 +9,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -55,14 +54,13 @@ export class NoteImagePickerDialogComponent implements OnInit {
   );
   private readonly searchService = inject(SearchService);
   private readonly documentDetailService = inject(DocumentDetailService);
-  private readonly sanitizer = inject(DomSanitizer);
   readonly selectionService = inject(SelectionService);
 
   private readonly blobUrls: string[] = [];
   private selectionSnapshot: {
     ids: Set<string>;
     labels: Map<string, string>;
-    previews: Map<string, SafeUrl | string | null>;
+    previews: Map<string, string | null>;
     types: Map<string, string>;
   } | null = null;
 
@@ -71,7 +69,7 @@ export class NoteImagePickerDialogComponent implements OnInit {
   readonly searchError = signal<string | null>(null);
   readonly results = signal<NuxeoDocument[]>([]);
   readonly totalSize = signal(0);
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
   private readonly selectedDocByUid = signal<Map<string, NuxeoDocument>>(new Map());
 
   readonly resultsLabel = computed(() => {
@@ -261,7 +259,7 @@ export class NoteImagePickerDialogComponent implements OnInit {
         if (!result) return;
         this.thumbnailMap.update((map) => ({
           ...map,
-          [result.uid]: this.sanitizer.bypassSecurityTrustUrl(result.url),
+          [result.uid]: result.url,
         }));
       });
   }

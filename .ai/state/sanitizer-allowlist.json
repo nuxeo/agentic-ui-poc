@@ -16,141 +16,22 @@
     "that member holds (default 1); the gate fails if the real count differs in either direction.",
     "Without that, a member already on this list could absorb further bypasses silently.",
     "",
-    "Sonar reported 32 S6268 calls. 18 remain: fetchPreferredVideoSource's was deleted when",
+    "Sonar reported 32 S6268 calls. 4 remain: fetchPreferredVideoSource's was deleted when",
     "VideoSource.url widened to string (source[src] is NONE and a Safe* there stringifies), 7",
-    "Category B bypasses were consolidated into trustObjectUrl, and 8 Category D bypasses into",
-    "renderTrustedHtml. What is left is 14 Category A (still to delete), the 2 Category C trust",
-    "decisions, and one call each inside the two helpers — which is the structural floor, since",
-    "iframe[src] and [innerHTML] both refuse a raw string."
+    "Category B bypasses were consolidated into trustObjectUrl, 8 Category D bypasses into",
+    "renderTrustedHtml, and 14 Category A bypasses deleted (object URLs bound to img[src], where",
+    "Angular's SAFE_URL_PATTERN already accepts blob:). What is left is the 2 Category C trust",
+    "decisions (ARender + server preview URLs) and one call each inside the two helpers \u2014 which is",
+    "the structural floor, since iframe[src] and [innerHTML] both refuse a raw string."
   ],
   "budgets": {
-    "A": 14,
+    "A": 0,
     "B": 1,
     "C": 2,
     "D": 1
   },
   "sites": {
-    "libs/features/browse/src/lib/browse/browse.ts": [
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mU_GUIm8e9uDh3q8",
-        "boundTo": ["img[src]"],
-        "justification": "Object URL minted here from an HttpClient-fetched blob, bound only to img[src] via thumbnailMap. Angular's SAFE_URL_PATTERN accepts blob:, so the bypass changes nothing except making the string unreadable \u2014 which is why the thumbnailBlobUrls shadow array exists. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "libs/features/collections/src/lib/collection-detail/collection-detail.ts": [
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mVDDUIm8e9uDh3sk",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "libs/features/search/src/lib/search/search.ts": [
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mVBoUIm8e9uDh3sO",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "libs/features/search/src/lib/search-queue/search-queue.component.ts": [
-      {
-        "member": "constructor",
-        "category": "A",
-        "sonarKey": "AaB8mVCwUIm8e9uDh3sh",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src], inside a constructor effect. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "libs/features/assets/src/lib/assets-queue/assets-queue.component.ts": [
-      {
-        "member": "constructor",
-        "category": "A",
-        "sonarKey": "AaB8mU8yUIm8e9uDh3qX",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src], inside a constructor effect. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "libs/features/assets/src/lib/asset-search-results/asset-search-results.component.ts": [
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mU8bUIm8e9uDh3qS",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "libs/features/trash/src/lib/trash/trash.component.ts": [
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mU-IUIm8e9uDh3qw",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src], via thumbnailMap and TrashFilterService.resultThumbnails. Scheduled for deletion (plan PR 5) \u2014 note the shared-service consumer must change in the same commit."
-      }
-    ],
-    "libs/features/tasks/src/lib/task-detail/task-detail.component.ts": [
-      {
-        "member": "loadPreview",
-        "category": "A",
-        "sonarKey": "AaB8mU5BUIm8e9uDh3og",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] via docPreviewUrl. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "libs/features/document-detail/src/lib/note-editor/note-image-picker-dialog.ts": [
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mU7tUIm8e9uDh3qA",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "apps/nuxeo-ui/src/app/dashboard/dashboard-page.component.ts": [
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mVSkUIm8e9uDh3wd",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src]. Scheduled for deletion (plan PR 5)."
-      }
-    ],
-    "apps/nuxeo-ui/src/app/shell/nav-drawer/nav-drawer.component.ts": [
-      {
-        "member": "loadThumbnailsForIds",
-        "category": "A",
-        "sonarKey": "AaB8mVRqUIm8e9uDh3wE",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] (clipboard rail). Scheduled for deletion (plan PR 5)."
-      },
-      {
-        "member": "loadThumbnails",
-        "category": "A",
-        "sonarKey": "AaB8mVRqUIm8e9uDh3wF",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] (favourites rail). Scheduled for deletion (plan PR 5)."
-      }
-    ],
     "libs/features/document-detail/src/lib/document-detail/document-detail.ts": [
-      {
-        "member": "loadServerStoryboard",
-        "category": "A",
-        "sonarKey": "AaB8mU6TUIm8e9uDh3pC",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] via StoryboardItem.thumbnailUrl. Scheduled for deletion (plan PR 5); StoryboardItem.thumbnailUrl widens to string."
-      },
-      {
-        "member": "generateClientStoryboard",
-        "category": "A",
-        "sonarKey": "AaB8mU6TUIm8e9uDh3pE",
-        "boundTo": ["img[src]"],
-        "justification": "Redundant bypass on a locally-minted object URL bound only to img[src] via StoryboardItem.thumbnailUrl. Scheduled for deletion (plan PR 5)."
-      },
       {
         "member": "loadARenderUrl",
         "category": "C",

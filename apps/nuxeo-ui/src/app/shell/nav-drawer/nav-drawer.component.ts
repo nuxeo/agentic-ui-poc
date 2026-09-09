@@ -65,7 +65,6 @@ import {
   ExtensionRuleContextService,
   type ExtensionElement,
 } from '@nuxeo-satori/platform/extensions';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import {
@@ -117,7 +116,6 @@ export class NavDrawerComponent {
   private readonly detailService = inject(DocumentDetailService);
   private readonly docService = inject(DocumentService);
   private readonly authService = inject(AuthService);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly router = inject(Router);
   private readonly extensions = inject(AppExtensionsService);
   private readonly componentRegistry = inject(ExtensionComponentRegistry);
@@ -209,7 +207,7 @@ export class NavDrawerComponent {
 
   readonly favorites = signal<NuxeoDocument[]>([]);
   readonly favoritesLoading = signal(false);
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
 
   // Recently Viewed
   readonly recentlyViewed = signal<NuxeoDocument[]>([]);
@@ -1178,10 +1176,9 @@ export class NavDrawerComponent {
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
-            [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+            [uid]: url,
           }));
         });
     }
@@ -1302,11 +1299,8 @@ export class NavDrawerComponent {
    * lifetime. The drawer is long-lived, and neither loader revoked anything, so a
    * session accumulated one un-revoked blob per document ever shown in it.
    */
-  private readonly thumbnailBlobUrls: string[] = [];
-
   private revokeThumbnails(): void {
-    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
-    this.thumbnailBlobUrls.length = 0;
+    for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
@@ -1321,10 +1315,9 @@ export class NavDrawerComponent {
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+            [doc.uid]: url,
           }));
         });
     }

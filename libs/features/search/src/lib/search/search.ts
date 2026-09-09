@@ -13,7 +13,6 @@ import {
   debounceTime,
   distinctUntilChanged,
 } from 'rxjs';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -170,7 +169,6 @@ export class SearchComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
@@ -179,7 +177,7 @@ export class SearchComponent {
   readonly featureFlags = inject(AiFeatureFlagService);
   readonly selectionService = inject(SelectionService);
 
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
 
   // AI Search state
   readonly aiSearchMode = signal(false);
@@ -414,7 +412,7 @@ export class SearchComponent {
     } else {
       const rows = this.displayResults();
       const labels: Record<string, string> = {};
-      const previews: Record<string, SafeUrl | null> = {};
+      const previews: Record<string, string | null> = {};
       rows.forEach((row) => {
         labels[row.id] = row.name;
         previews[row.id] = this.thumbnailMap()[row.id] ?? null;
@@ -1055,7 +1053,7 @@ export class SearchComponent {
           const url = URL.createObjectURL(blob);
           this.thumbnailMap.update((m) => ({
             ...m,
-            [item.id]: this.sanitizer.bypassSecurityTrustUrl(url),
+            [item.id]: url,
           }));
         });
     }

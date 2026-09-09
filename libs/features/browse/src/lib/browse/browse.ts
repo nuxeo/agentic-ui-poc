@@ -13,7 +13,6 @@ import {
 import { NavigationEnd, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of, Subject, timer, EMPTY } from 'rxjs';
 import {
@@ -207,7 +206,6 @@ export class BrowseComponent {
   private readonly directoryService = inject(DirectoryService);
   private readonly tagService = inject(TagService);
   readonly selectionService = inject(SelectionService);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly extensions = inject(AppExtensionsService);
   private readonly ruleContext = inject(ExtensionRuleContextService);
   private readonly actionRegistry = inject(ExtensionActionRegistry);
@@ -222,7 +220,7 @@ export class BrowseComponent {
   readonly error = signal<string | null>(null);
   readonly currentDoc = signal<NuxeoDocument | null>(null);
   readonly totalSize = signal(0);
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
   private currentNuxeoPath = '/';
   /** Skips the initial contentRefreshTick effect run to avoid duplicate folder loads. */
   private lastSeenContentRefreshTick = -1;
@@ -230,7 +228,6 @@ export class BrowseComponent {
   private lastSeenClipboardPasteTick = -1;
   /** Clipboard paste results not yet visible in @children (eventual consistency on Cloud). */
   private readonly pendingPasteEntries = new Map<string, NuxeoDocument>();
-  private readonly thumbnailBlobUrls: string[] = [];
   readonly browsePath = signal('/');
   private readonly browsePath$ = new Subject<string>();
 
@@ -740,10 +737,9 @@ export class BrowseComponent {
 
     this.destroyRef.onDestroy(() => {
       this.clipboardTargetService.clear();
-      for (const url of this.thumbnailBlobUrls) {
-        URL.revokeObjectURL(url);
+      for (const url of Object.values(this.thumbnailMap())) {
+        if (url) URL.revokeObjectURL(url);
       }
-      this.thumbnailBlobUrls.length = 0;
     });
 
     this.tagSearch$
@@ -856,10 +852,9 @@ export class BrowseComponent {
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
     if (reset) {
-      for (const url of this.thumbnailBlobUrls) {
-        URL.revokeObjectURL(url);
+      for (const url of Object.values(this.thumbnailMap())) {
+        if (url) URL.revokeObjectURL(url);
       }
-      this.thumbnailBlobUrls.length = 0;
       this.thumbnailMap.set({});
     }
     for (const doc of docs) {
@@ -872,10 +867,9 @@ export class BrowseComponent {
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
           this.thumbnailMap.update((m) => ({
             ...m,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
+            [doc.uid]: url,
           }));
         });
     }

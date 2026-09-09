@@ -2,7 +2,6 @@ import { Component, computed, inject, signal, DestroyRef, effect } from '@angula
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { switchMap, map, catchError, of, tap, finalize } from 'rxjs';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -298,7 +297,6 @@ export class AssetSearchResultsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly assetService = inject(AssetService);
   private readonly aggregationService = inject(AssetAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
@@ -307,7 +305,7 @@ export class AssetSearchResultsComponent {
   private readonly searchService = inject(SearchService);
   readonly selectionService = inject(SelectionService);
 
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   readonly loading = signal(true);
@@ -925,7 +923,7 @@ export class AssetSearchResultsComponent {
           const url = URL.createObjectURL(blob);
           this.thumbnailMap.update((m) => ({
             ...m,
-            [asset.id]: this.sanitizer.bypassSecurityTrustUrl(url),
+            [asset.id]: url,
           }));
         });
     }

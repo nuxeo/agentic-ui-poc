@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, signal, untracked, DestroyRef } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -90,7 +89,6 @@ export class TrashComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly trashService = inject(TrashService);
   private readonly searchService = inject(SearchService);
   private readonly detailService = inject(DocumentDetailService);
@@ -132,7 +130,7 @@ export class TrashComponent {
   );
 
   readonly actionInProgress = signal<Set<string>>(new Set());
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
   readonly saving = signal(false);
   readonly deletingSavedSearch = signal(false);
 
@@ -414,7 +412,7 @@ export class TrashComponent {
     } else {
       const docs = this.documents();
       const labels: Record<string, string> = {};
-      const previews: Record<string, SafeUrl | null> = {};
+      const previews: Record<string, string | null> = {};
       docs.forEach((doc) => {
         labels[doc.uid] = doc.title;
         previews[doc.uid] = this.thumbnailMap()[doc.uid] ?? null;
@@ -630,7 +628,7 @@ export class TrashComponent {
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
-          const safeUrl = this.sanitizer.bypassSecurityTrustUrl(url);
+          const safeUrl = url;
           this.thumbnailMap.update((m) => ({ ...m, [doc.uid]: safeUrl }));
           this.trashFilterService.resultThumbnails.update((m) => ({ ...m, [doc.uid]: safeUrl }));
         });

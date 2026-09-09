@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import {
@@ -37,13 +36,12 @@ interface ActiveFilter {
 export class SearchQueueComponent {
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly detailService = inject(DocumentDetailService);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
   private readonly objectUrls = new Map<string, string>();
   private readonly inFlight = new Set<string>();
 
   readonly items = computed(() => this.searchAggregationService.items());
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
   readonly selectedItemId = input<string>('');
   readonly activeFilters = input<ActiveFilter[]>([]);
   readonly switchToFilter = output<void>();
@@ -72,7 +70,7 @@ export class SearchQueueComponent {
             this.objectUrls.set(item.id, url);
             this.thumbnailMap.update((current) => ({
               ...current,
-              [item.id]: this.sanitizer.bypassSecurityTrustUrl(url),
+              [item.id]: url,
             }));
           });
       }
@@ -99,7 +97,7 @@ export class SearchQueueComponent {
     this.quickFilterToggled.emit(value);
   }
 
-  thumbnailFor(id: string): SafeUrl | null {
+  thumbnailFor(id: string): string | null {
     return this.thumbnailMap()[id] ?? null;
   }
 }

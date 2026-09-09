@@ -12,7 +12,7 @@ import { renderTrustedHtml } from '@nuxeo-satori/platform/nuxeo-client';
 const AI_MARKDOWN_POLICY = {
   ALLOWED_TAGS: ['strong', 'ol', 'ul', 'li', 'br'],
   ALLOWED_ATTR: ['class', 'value'],
-} as const;
+};
 
 @Pipe({ name: 'aiMarkdown', standalone: true })
 export class AiMarkdownPipe implements PipeTransform {

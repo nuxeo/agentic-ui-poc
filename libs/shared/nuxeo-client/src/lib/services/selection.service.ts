@@ -1,11 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { SafeUrl } from '@angular/platform-browser';
 import { Observable } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { DocumentDetailService } from './document-detail.service';
 import type { NuxeoDocument } from '../models/document.model';
 
-type SelectionPreview = SafeUrl | string | null;
+type SelectionPreview = string | null;
 
 @Injectable({ providedIn: 'root' })
 export class SelectionService {

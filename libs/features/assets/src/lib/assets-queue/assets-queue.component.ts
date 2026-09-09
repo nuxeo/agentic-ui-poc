@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatIconModule } from '@angular/material/icon';
 import {
   AssetAggregationService,
@@ -30,13 +29,12 @@ import { catchError, of } from 'rxjs';
 export class AssetsQueueComponent {
   private readonly assetAggregationService = inject(AssetAggregationService);
   private readonly detailService = inject(DocumentDetailService);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
   private readonly objectUrls = new Map<string, string>();
   private readonly inFlight = new Set<string>();
 
   readonly items = computed(() => this.assetAggregationService.items());
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
   readonly selectedItemId = input<string>('');
   readonly itemSelected = output<AssetQueueItem>();
 
@@ -62,7 +60,7 @@ export class AssetsQueueComponent {
             this.objectUrls.set(item.id, url);
             this.thumbnailMap.update((current) => ({
               ...current,
-              [item.id]: this.sanitizer.bypassSecurityTrustUrl(url),
+              [item.id]: url,
             }));
           });
       }
@@ -81,7 +79,7 @@ export class AssetsQueueComponent {
     this.itemSelected.emit(item);
   }
 
-  thumbnailFor(id: string): SafeUrl | null {
+  thumbnailFor(id: string): string | null {
     return this.thumbnailMap()[id] ?? null;
   }
 }

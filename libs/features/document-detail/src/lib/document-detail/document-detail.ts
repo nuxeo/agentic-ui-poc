@@ -293,7 +293,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly browseContext = inject(BrowseContextService);
   private readonly directoryService = inject(DirectoryService);
   private readonly http = inject(HttpClient);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly nuxeoApi = inject(NuxeoApiBase);
@@ -301,6 +300,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly arenderService = inject(ARenderService);
+  private readonly sanitizer = inject(DomSanitizer);
   /** `''` when the dev proxy is in use, in which case preview URLs arrive same-origin. */
   private readonly nuxeoApiOrigin = inject(NUXEO_API_ORIGIN);
   private readonly tagService = inject(TagService);
@@ -2337,7 +2337,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.storyboardObjectUrls.push(rawUrl);
           items.push({
             timecode: result.entry.timecode,
-            thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+            thumbnailUrl: rawUrl,
             label: result.entry.label,
           });
         }
@@ -2458,7 +2458,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.storyboardObjectUrls.push(rawUrl);
         items.push({
           timecode,
-          thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+          thumbnailUrl: rawUrl,
           label: this.formatStoryboardTimecode(timecode),
         });
       }

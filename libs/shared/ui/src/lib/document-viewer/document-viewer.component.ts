@@ -27,7 +27,7 @@ export interface VideoSource {
 
 export interface StoryboardItem {
   timecode: number;
-  thumbnailUrl: SafeResourceUrl;
+  thumbnailUrl: string | null;
   label: string;
 }
 
