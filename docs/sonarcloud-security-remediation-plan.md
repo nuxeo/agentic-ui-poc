@@ -975,10 +975,30 @@ must be reported; it did not change what makes the check sound.
   halves of the comparison lived in the same editable file, so raising a budget in the change that
   needed the headroom passed; deleting the `budgets` key turned the ceiling off entirely, because
   `Object.entries(raw.budgets ?? {})` iterated nothing; and leaving a budget above the count after a
-  removal left slack for a later change to refill. All three now fail: budgets and per-entry `calls`
-  are compared against the **merge base**, which a contributor cannot edit in their own commit; a
-  missing `budgets` object or a non-numeric category is a finding; and stale headroom is a finding, so
-  a removal and its budget reduction must land together.
+  removal left slack for a later change to refill. Two of those three now fail on any run: a missing
+  `budgets` object or a non-numeric category is a finding, and stale headroom is a finding, so a
+  removal and its budget reduction must land together. Both have negative controls.
+
+  **The third — comparing against the merge base — is written but has never executed, and this
+  document previously claimed it as enforcing.** `allowlistAtBase()` reads the allowlist through
+  `git show <merge-base>:…`, and the allowlist **does not exist** at `b46853a` because this branch is
+  the change that introduces it. So the two merge-base invariants (a budget that rose since the base,
+  and a member whose declared `calls` rose since the base) are inert here; the audit says as much on
+  every run — _"could not read budgets at the merge base, so only the current ceiling was
+  enforced"_ — and that note is the honest reading of what the ratchet currently is.
+
+  Measured rather than inferred: instrumenting both comparisons and running the audit plus all 58
+  selftest assertions produced **zero** executions of either. So neither has been observed red on
+  purpose, and every existing ratchet control fails for a *current-tree* reason (headroom, or count
+  over budget) — deleting the merge-base code entirely would leave the suite green. They should
+  begin working once this PR lands and a later branch has an allowlist at its merge base, but
+  "should" is the word that this gate exists to eliminate.
+
+  **Not fixed here, and it wants its own change.** Proving them needs either a git fixture (a
+  temporary commit or worktree carrying a base allowlist) or extracting the two comparisons into a
+  pure function the selftest can drive directly with a synthetic base. The second is the better
+  design — no runtime seam in a security gate, real red-on-purpose coverage — and it is a refactor
+  with a decision in it, not a patch.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
   one red run pasted into a PR. It reports **58 assertions, of which only 51 are negative controls** —
