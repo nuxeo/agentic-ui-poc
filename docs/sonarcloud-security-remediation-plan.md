@@ -10,22 +10,22 @@ that has since been built; section 9 records what has actually landed.
 
 ---
 
-## 0. Execution status — 2026-09-08
+## 0. Execution status — 2026-09-09
 
 Read the table, not this line. **Landed: E, the harness, B part 2 (the NONE-context bug fix), and
 C. Not started: A, B part 1, D.** Category C carries an accepted residual risk — see its section
 below before reading "Done" as "closed".
 
-| Category                                | Sites                  | Status                                                                                                                                                                                                                                                                                             |
-| --------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                         |
-| **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                      |
-| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries), `sanitizer-audit.selftest.mjs` (10 negative controls + 5 green baselines + 1 silence assertion). Registered in `verify-gate.mjs` and `review:preflight`.                                   |
-| **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one. |
-| **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                     |
-| **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                       |
-| **C** — validate then bypass            | 2                      | **Done.** Both sites validated, failing closed. This was the highest actual risk in the set. See below.                                                                                                                                                                                            |
-| **D** — centralise trusted HTML         | 6 entries / 8 calls    | Not started. Existing `review-guardrails.mjs:909` pairing check still covers it.                                                                                                                                                                                                                   |
+| Category                                | Sites                  | Status                                                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
+| **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
+| **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json` (29 entries / 31 calls), `sanitizer-audit.selftest.mjs` (26 negative controls + 5 green baselines + 1 silence assertion — section 6a explains why those are three counts and not one). Registered in `verify-gate.mjs` and `review:preflight`. |
+| **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
+| **B part 1** — `trustObjectUrl`         | 7                      | Not started. Bypasses still inline; recorded in the allowlist.                                                                                                                                                                                                                                                                           |
+| **A** — redundant bypasses              | 14                     | Not started.                                                                                                                                                                                                                                                                                                                             |
+| **C** — validate then bypass            | 2                      | **Done.** Both sites validated, failing closed. This was the highest actual risk in the set. See below.                                                                                                                                                                                                                                  |
+| **D** — centralise trusted HTML         | 6 entries / 8 calls    | Not started. Existing `review-guardrails.mjs:909` pairing check still covers it.                                                                                                                                                                                                                                                         |
 
 Bypass count: **32 → 31**. One was deleted outright (below). Category B's budget is ratcheted to 7.
 
@@ -817,8 +817,9 @@ Section 5 was the design. This is what exists, and where it differs.
 
 ```bash
 npm run beta:sanitizers            # the gate
-npm run beta:sanitizers-selftest   # 10 negative controls — prove the gate can fail
-                                   # (+5 green baselines and 1 silence assertion for context)
+npm run beta:sanitizers-selftest   # the negative controls — prove the gate can fail. The runner
+                                   # prints the three counts by kind; do not restate them here, a
+                                   # hardcoded copy of that number has already gone stale twice.
 npm run beta:gate -- --gates sanitizer-audit
 node scripts/beta-harness/sanitizer-audit.mjs --print      # dump every bypass as JSON
 node scripts/beta-harness/sanitizer-audit.mjs --only 4     # one check, for evidence capture
@@ -836,23 +837,42 @@ resolving `src` to a `@for` loop variable, the loop to `videoSources()`, that to
 element to `VideoSource`, and finally `.url` — four hops. Section 5.1 warned that "a template check
 that cannot see through an alias is a check that will be trusted wrongly".
 
-**It was trusted wrongly.** Review established that the resolver is syntactic — there is no
-`TypeChecker` — so `type MediaUrl = SafeResourceUrl` reduced to the text `MediaUrl` and passed, as did
-any imported interface. Two things changed in response, and the second is the load-bearing one:
+**It was trusted wrongly, for five rounds.** The resolver was syntactic — annotation text,
+declarations gathered by name, alias expansion, no `TypeChecker` — so `type MediaUrl = SafeResourceUrl`
+reduced to the text `MediaUrl` and passed, as did an imported interface, a _lowercase_ alias and
+`input.required<T>()`. Each round closed one spelling and the next round found another, because "does
+this text look like a Safe type" is not the question the check needs answered.
 
-- Aliases are expanded and declarations are gathered repository-wide, with name collisions resolving
-  towards `Safe` so a duplicate cannot hide one.
-- **Check 4 fails closed.** A NONE-context binding whose type it cannot resolve is _reported_.
+**Check 4 now asks the compiler.** `createTypeProgram` builds a real `ts.Program` over `apps/` and
+`libs/`, and `resolveTemplateType` resolves each binding through its `TypeChecker`
+(`sanitizer-audit.mjs`, the "the type checker" section). Aliases, imports, re-exports, generics and
+inference all reduce identically and by construction, which retires that class of evasion rather than
+deflecting its next instance. It costs about 2.5s over ~350 files, against a gate that was 0.7s. The
+syntactic resolver was **deleted**, not left dormant: keeping the superseded security implementation
+beside the live one is how the wrong half ends up maintained, and its comments already contradicted
+what ran.
 
-That reverses what this section previously claimed — that where the resolver cannot tell it stays
-silent and "under-reports rather than crying wolf". Silence was the defect, not a conservative
-default: every documented evasion surfaced as _unresolvable_ rather than as resolving to something
-benign, so under-reporting was indistinguishable from passing. With six such bindings in the whole
-repository, a false positive costs one allowlist line and a false negative is a shipped defect.
+**Templates are parsed with Angular's own `parseTemplate`, for the same reason.** The scanner was a
+regex asking for `[src]="…"`, which matched one spelling of a binding. `bind-src="…"` is the canonical
+form the bracket syntax desugars to and reaches the identical `SecurityContext.NONE` property;
+`[attr.src]="…"` reaches the same attribute. `<audio bind-src="blobUrl()">` therefore bound a
+`SafeResourceUrl` into a NONE context while check 4 stayed green — verified against the pre-fix script
+on this repository. Enumerating the bindings the compiler found closes the class instead of adding an
+alternation. A template that will not parse is **reported**, since no bindings and unreadable are
+otherwise indistinguishable.
 
-The consequence worth keeping in mind is that the guarantee now rests on the fail-closed default
-rather than on the resolver being complete. Adding a real `ts.Program`/`TypeChecker` would shrink the
-set of bindings that must be reported; it would not change what makes the check trustworthy.
+**None of that is what makes check 4 trustworthy. It fails closed.** A NONE-context binding whose type
+cannot be resolved is _reported_, and `any`, `unknown` and the error type count as unresolved rather
+than as answers — they are the checker declining, not answering. That reverses what this section once
+claimed, that where the resolver cannot tell it stays silent and "under-reports rather than crying
+wolf". Silence was the defect: every documented evasion surfaced as _unresolvable_ rather than as
+resolving to something benign, so under-reporting was indistinguishable from passing. With six such
+bindings in the whole repository, a false positive costs one allowlist line and a false negative is a
+shipped defect.
+
+The consequence worth keeping in mind is unchanged by the checker: the guarantee rests on the
+fail-closed default, not on the resolver being complete. The checker shrank the set of bindings that
+must be reported; it did not change what makes the check sound.
 
 **Additions to the design:**
 
@@ -871,7 +891,7 @@ set of bindings that must be reported; it would not change what makes the check 
   a removal and its budget reduction must land together.
 
 - **`sanitizer-audit.selftest.mjs`** turns "break it on purpose" into repeatable controls rather than
-  one red run pasted into a PR. It reports **29 assertions, of which only 23 are negative controls** —
+  one red run pasted into a PR. It reports **32 assertions, of which only 26 are negative controls** —
   each perturbing the tree, asserting the audit goes red _for the expected reason_, and restoring from
   the original bytes. The other 6 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **1 silence assertion** (check 4 must stay quiet while walking its longest path to an alias that
@@ -880,20 +900,25 @@ set of bindings that must be reported; it would not change what makes the check 
   green and are **not** evidence that a check can fail, so the runner labels every row by kind and
   reports the three counts separately.
 
-  This distinction is here because the count was previously misreported. The summary said
+  This distinction is here because the count was previously misreported, twice. The summary said
   "13 controls, every check observed failing on purpose" while 5 of the 13 asserted green, and this
-  document claimed 12 negative controls when there were 7. That is precisely the failure `CLAUDE.md`
-  names — _"evidence must assert the claim, not the pulse … state which checks are load-bearing and
-  which are negative, so a total is not read as all meaningful"_ — committed in the file whose whole
-  job is to stop it. Caught in review, not by any gate.
+  document claimed 12 negative controls when there were 7. It then said 10 in two places while the
+  selftest ran 23 and this section said 23 — three statements of one number, drifting apart. That is
+  precisely the failure `CLAUDE.md` names — _"evidence must assert the claim, not the pulse … state
+  which checks are load-bearing and which are negative, so a total is not read as all meaningful"_ —
+  committed twice in the file whose whole job is to stop it. Caught in review both times, not by any
+  gate. **The runner's own output is the count that cannot drift; the numbers above are dated to the
+  commit that last touched them.**
 
   It also carries a vacuity guard that fails if a perturbation changes nothing, which is how it caught
   its own staleness once the code was fixed, and SIGINT/SIGTERM/SIGHUP handlers because `finally` does
   not run on a signal. SIGKILL remains uncatchable; the header says so.
 
 **Not yet built** (they belong with the categories they serve): the `renderTrustedHtml` and
-`trustObjectUrl` helpers, so the two `APPROVED_HELPERS` paths in the gate are currently
-forward-looking; and the `.cursor/rules/security.mdc` agent-facing rules from section 5.4.
+`trustObjectUrl` helpers. `APPROVED_HELPERS` is consequently **empty**, not pre-populated with the
+two paths they will occupy — pre-registering them granted an unreviewed exemption to whatever later
+appeared at those paths, and left checks 3 and 5 carrying branches nothing exercised. Also not built:
+the `.cursor/rules/security.mdc` agent-facing rules from section 5.4.
 
 ---
 
