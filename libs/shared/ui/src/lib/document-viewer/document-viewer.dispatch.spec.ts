@@ -47,7 +47,7 @@ function videoSource(overrides: Partial<VideoSource> = {}): VideoSource {
 }
 
 function storyboardItem(overrides: Partial<StoryboardItem> = {}): StoryboardItem {
-  return { timecode: 5, thumbnailUrl: safeUrl('blob:thumb'), label: '0:05', ...overrides };
+  return { timecode: 5, thumbnailUrl: 'blob:thumb', label: '0:05', ...overrides };
 }
 
 function pictureInfo(overrides: Partial<PictureInfo> = {}): PictureInfo {
@@ -84,6 +84,8 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
     mimeType: string;
     fileName: string;
     blobUrl: SafeResourceUrl | null;
+    rawBlobUrl: string | null;
+    posterUrl: string | null;
     previewUrl: SafeResourceUrl | null;
     noteContent: string | null;
     noteHtml: SafeHtml | null;
@@ -102,6 +104,8 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
     mimeType: '',
     fileName: '',
     blobUrl: null,
+    rawBlobUrl: null,
+    posterUrl: null,
     previewUrl: null,
     noteContent: null,
     noteHtml: null,

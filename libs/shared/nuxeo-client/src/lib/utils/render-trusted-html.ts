@@ -1,6 +1,43 @@
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 
+const ALLOWED_CONFIG_KEYS = new Set(['ALLOWED_TAGS', 'ALLOWED_ATTR', 'ADD_ATTR']);
+const BLOCKED_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'style', 'link', 'meta', 'base']);
+const BLOCKED_ATTRS = new Set(['srcdoc']);
+
+function assertSafeConfig(config?: Parameters<typeof DOMPurify.sanitize>[1]): void {
+  if (!config) return;
+  const cfg = config as Record<string, unknown>;
+
+  for (const key of Object.keys(cfg)) {
+    if (!ALLOWED_CONFIG_KEYS.has(key)) {
+      throw new Error(`renderTrustedHtml: unsupported DOMPurify config key "${key}"`);
+    }
+  }
+
+  const hasBlockedValue = (values: unknown, blocked: Set<string>, blockOnPrefix = false): boolean =>
+    Array.isArray(values) &&
+    values.some((value) => {
+      if (typeof value !== 'string') return true;
+      const normalized = value.toLowerCase();
+      if (blockOnPrefix) return normalized.startsWith('on');
+      return blocked.has(normalized);
+    });
+
+  if (hasBlockedValue(cfg.ALLOWED_TAGS, BLOCKED_TAGS) || hasBlockedValue(cfg.ADD_TAGS, BLOCKED_TAGS)) {
+    throw new Error('renderTrustedHtml: active-content tags are not allowed');
+  }
+
+  if (
+    hasBlockedValue(cfg.ALLOWED_ATTR, BLOCKED_ATTRS) ||
+    hasBlockedValue(cfg.ADD_ATTR, BLOCKED_ATTRS) ||
+    hasBlockedValue(cfg.ALLOWED_ATTR, new Set<string>(), true) ||
+    hasBlockedValue(cfg.ADD_ATTR, new Set<string>(), true)
+  ) {
+    throw new Error('renderTrustedHtml: executable attributes are not allowed');
+  }
+}
+
 /**
  * Wraps HTML with `bypassSecurityTrustHtml` after sanitizing it through DOMPurify.
  *
@@ -23,18 +60,15 @@ import DOMPurify from 'dompurify';
  *
  * `DomSanitizer` is passed in rather than injected so this can be a pure function.
  *
- * ## What it does NOT do
- *
- * It does not validate that the caller's config is safe — that is a review concern, not a runtime
- * one. `ADD_TAGS: ['script']` would be unsafe, and this helper cannot stop it. The contract is that
- * the caller provides a DOMPurify config appropriate for their threat model, and this helper applies
- * it faithfully.
+ * Only a narrow config subset is accepted (`ALLOWED_TAGS`, `ALLOWED_ATTR`, `ADD_ATTR`), and active
+ * content is rejected (`script`/`iframe` tags, `on*`/`srcdoc` attributes).
  */
 export function renderTrustedHtml(
   sanitizer: DomSanitizer,
   html: string,
   config?: Parameters<typeof DOMPurify.sanitize>[1],
 ): SafeHtml {
+  assertSafeConfig(config);
   const clean = DOMPurify.sanitize(html, config);
   return sanitizer.bypassSecurityTrustHtml(clean);
 }

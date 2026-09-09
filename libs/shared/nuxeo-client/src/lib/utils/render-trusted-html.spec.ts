@@ -128,6 +128,32 @@ describe('renderTrustedHtml', () => {
     });
   });
 
+  describe('unsafe config is rejected', () => {
+    it('rejects unsupported DOMPurify config keys', () => {
+      expect(() =>
+        rendered('<p>ok</p>', {
+          FORBID_TAGS: ['script'],
+        } as Parameters<typeof renderTrustedHtml>[2]),
+      ).toThrow(/unsupported DOMPurify config key/);
+    });
+
+    it('rejects active-content tags in ALLOWED_TAGS', () => {
+      expect(() =>
+        rendered('<script>alert(1)</script>', {
+          ALLOWED_TAGS: ['script'],
+        }),
+      ).toThrow(/active-content tags/);
+    });
+
+    it('rejects executable attributes in ADD_ATTR', () => {
+      expect(() =>
+        rendered('<p onclick="alert(1)">x</p>', {
+          ADD_ATTR: ['onclick'],
+        }),
+      ).toThrow(/executable attributes/);
+    });
+  });
+
   describe('edge cases', () => {
     it('renders empty HTML as empty', () => {
       expect(rendered('')).toBe('');
