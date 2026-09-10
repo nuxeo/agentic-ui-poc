@@ -774,10 +774,28 @@ export class TasksPageComponent implements OnInit {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   }
 
+  /** The document's own content type, from metadata. Describes the *document*, not what we fetched. */
   mimeType(): string {
     const doc = this.targetDoc();
     const fc = doc?.properties?.['file:content'] as Record<string, unknown> | undefined;
     return (fc?.['mime-type'] as string) ?? '';
+  }
+
+  /**
+   * What to tell the viewer the blob *is* — the served type once a blob has arrived, metadata before.
+   *
+   * These genuinely differ here, and passing metadata was a live bug. `loadPreviewBlob` only fetches
+   * the real blob for image/audio/video; for everything else it fetches `@rendition/thumbnail`, which
+   * is an image. So a PDF task document handed the viewer `application/pdf` while the blob behind the
+   * URL was a PNG. That was harmless-looking until the viewer began checking the served type, at
+   * which point `contentType()` saw a PDF claim with a non-PDF blob and correctly refused to render
+   * anything — the preview went blank.
+   *
+   * Describing the blob is also the more correct dispatch: the thumbnail now takes the `image` branch
+   * and renders in `<img>` rather than being displayed inside an iframe.
+   */
+  viewerMimeType(): string {
+    return this.previewBlobType() || this.mimeType();
   }
 
   fileName(): string {

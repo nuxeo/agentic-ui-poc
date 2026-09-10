@@ -737,6 +737,9 @@ export class BrowseComponent {
 
     this.destroyRef.onDestroy(() => {
       this.clipboardTargetService.clear();
+      // SelectionService is root-scoped and outlives this component, so its retained previews would
+      // dangle past teardown too.
+      this.selectionService.forgetPreviews();
       for (const url of Object.values(this.thumbnailMap())) {
         if (url) URL.revokeObjectURL(url);
       }
@@ -852,6 +855,10 @@ export class BrowseComponent {
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
     if (reset) {
+      // Drop the selection layer's copies first: it retains these exact strings and the shell
+      // topbar binds them into `<img [src]>`, and selection survives a folder change.
+      // See `SelectionService.forgetPreviews`.
+      this.selectionService.forgetPreviews();
       for (const url of Object.values(this.thumbnailMap())) {
         if (url) URL.revokeObjectURL(url);
       }

@@ -425,9 +425,19 @@ Admin console operations (users, groups, system info).
 ## ArenderService (`arender.service.ts`)
 
 ```typescript
-getViewerUrl(blobUrl: string): string
-isAvailable(): Promise<boolean>
+getPreviewerUrl(docUid: string, blobXPath = 'file:content'): Observable<string | null>
+getDiffUrl(leftDocUid: string, rightDocUid: string): Observable<string | null>
+isAvailable(): Observable<boolean>
 ```
+
+**`null` is a real return value, not an error.** All three depend on `ARENDER_CONFIG`, which is
+`InjectionToken<ARenderConfig | null>` — a customer need not configure ARender, and the config is
+also rejected outright if `viewerOrigin` or `nuxeoInternalUrl` fails `isNavigableBaseUrl`. Callers
+must handle `null` rather than treating it as a failed request.
+
+This block previously documented `getViewerUrl(blobUrl: string): string` and
+`isAvailable(): Promise<boolean>`, neither of which existed — a signature the code had never had.
+Consumers reading it would have built against a synchronous, non-nullable contract.
 
 ---
 
