@@ -1089,7 +1089,13 @@ export class SearchComponent {
   private runNxqlQuery(nxql: string, generation: number): void {
     // `aiNxqlLoading`, not `loading` — this request does not own the standard pipeline's flag.
     this.aiNxqlLoading.set(true);
-    this.beginThumbnailBatch();
+    // Deliberately does NOT claim the thumbnail batch. The standard results stay on screen until this
+    // request succeeds, and `loadThumbnails` mints its own generation when it does — so claiming here
+    // only mattered if the request FAILED, in which case every standard thumbnail response still in
+    // flight was discarded by the generation check and the error path reloaded none of them. Permanent
+    // missing thumbnails, from invalidating a batch this method might never refill.
+    //
+    // Same rule as the standard tap above: only invalidate a batch you are going to own.
     this.nuxeoApi
       .nxqlSearch(nxql, 40, {
         properties: 'dublincore,file,common',

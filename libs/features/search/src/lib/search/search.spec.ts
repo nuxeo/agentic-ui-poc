@@ -896,6 +896,23 @@ describe('SearchComponent', () => {
         expect(component['thumbnailGeneration']).toBe(before);
       });
 
+      it('does not claim the batch when starting an AI NXQL request', () => {
+        /**
+         * The standard results stay on screen until the AI request succeeds, and `loadThumbnails`
+         * mints its own generation when it does. Claiming here only mattered if the request FAILED:
+         * every standard thumbnail response still in flight was then discarded by the generation
+         * check, and the error path reloaded none of them — permanently missing thumbnails from
+         * invalidating a batch this method might never refill.
+         */
+        const pending = new Subject<{ entries: never[] }>();
+        mockNuxeoApiBase.nxqlSearch.mockReturnValue(pending.asObservable());
+
+        const before = component['thumbnailGeneration'];
+        component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
+
+        expect(component['thumbnailGeneration']).toBe(before);
+      });
+
       it('claims the batch when the standard results are what is on screen', () => {
         // The positive control, in both of the ways standard results can own the display.
         component.aiSearchMode.set(false);
