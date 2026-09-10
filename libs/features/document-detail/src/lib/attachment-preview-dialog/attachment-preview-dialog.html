@@ -25,11 +25,11 @@
           "SafeValue must use [property]=binding: …" into src. Video and audio attachment
           previews were broken exactly that way.
         -->
-        <source [src]="data.rawUrl" [type]="data.mimeType" />
+        <source [src]="data.rawUrl" [type]="sourceType" />
       </video>
     } @else if (isAudio) {
       <audio controls class="viewer-audio">
-        <source [src]="data.rawUrl" [type]="data.mimeType" />
+        <source [src]="data.rawUrl" [type]="sourceType" />
       </audio>
     } @else if (isText) {
       <iframe [src]="data.blobUrl" [title]="data.name" class="viewer-frame"></iframe>

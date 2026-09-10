@@ -222,6 +222,37 @@ describe('AttachmentPreviewDialogComponent', () => {
     });
   });
 
+  describe('the source type hint', () => {
+    /**
+     * `type` decides whether the browser even attempts a source — per spec it skips one whose declared
+     * type it does not support. Advertising the document metadata type while the blob is something else
+     * can therefore skip a playable source: the same metadata/served disagreement as `blobType`, in the
+     * attribute rather than the URL.
+     */
+    it('advertises the served type, not the metadata type', async () => {
+      const { fixture } = await createDialog('video/quicktime', true, {
+        blobType: 'video/mp4',
+      });
+      const source = fixture.nativeElement.querySelector(
+        'video source',
+      ) as HTMLSourceElement | null;
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('type')).toBe('video/mp4');
+      expect(source!.getAttribute('type')).not.toBe('video/quicktime');
+    });
+
+    it('falls back to the metadata type when the server sent no Content-Type', async () => {
+      // Not `type=""`: an empty declared type is not a supported type, so the browser would skip the
+      // source outright — worse than a possibly-wrong hint.
+      const { fixture } = await createDialog('audio/mpeg', true, { blobType: '' });
+      const source = fixture.nativeElement.querySelector(
+        'audio source',
+      ) as HTMLSourceElement | null;
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('type')).toBe('audio/mpeg');
+    });
+  });
+
   describe('accessibility', () => {
     /**
      * An iframe with no accessible name is announced as just "frame". Both preview iframes take their

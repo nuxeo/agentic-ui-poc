@@ -272,3 +272,43 @@ describe('insecureAllowedForHost', () => {
     expect(isNavigableBaseUrl('http://arender.internal?', allow)).toBe(false);
   });
 });
+
+/**
+ * Userinfo, on the GENERAL validator rather than only the base one.
+ *
+ * `origin` excludes credentials — `new URL('https://user:pass@app.example/x').origin` is exactly
+ * `'https://app.example'` — so an `allowedOrigins` policy cannot see them, and this function returns
+ * the original string, meaning `user:pass@` reached the iframe. Review found it while
+ * `isNavigableBaseUrl` had been rejecting it all along, so the base validator was safe and the general
+ * one guarding both Category C bypasses was not.
+ */
+describe('navigableUrlOrNull rejects embedded credentials', () => {
+  const policy = { allowedOrigins: ['https://app.example'] };
+
+  it('rejects a username and password that pass the origin allow-list', () => {
+    // The precondition that makes this a real hole, asserted so the test cannot pass for the wrong
+    // reason: the origin genuinely does match.
+    expect(new URL('https://user:password@app.example/preview').origin).toBe('https://app.example');
+    expect(navigableUrlOrNull('https://user:password@app.example/preview', policy)).toBeNull();
+  });
+
+  it('rejects a username with no password', () => {
+    expect(navigableUrlOrNull('https://user@app.example/preview', policy)).toBeNull();
+  });
+
+  it('rejects a password with an empty username', () => {
+    expect(navigableUrlOrNull('https://:password@app.example/preview', policy)).toBeNull();
+  });
+
+  it('rejects credentials even with no origin allow-list at all', () => {
+    // The allow-list is not what closes this, so removing it must not reopen it.
+    expect(navigableUrlOrNull('https://user:password@app.example/preview')).toBeNull();
+  });
+
+  it('still accepts the same URL without credentials', () => {
+    // The positive control. Without it, a validator that rejected everything would pass the four above.
+    expect(navigableUrlOrNull('https://app.example/preview', policy)).toBe(
+      'https://app.example/preview',
+    );
+  });
+});

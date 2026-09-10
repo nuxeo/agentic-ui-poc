@@ -102,6 +102,19 @@ export function navigableUrlOrNull(
   if (!NAVIGABLE_SCHEMES.has(parsed.protocol)) return null;
   if (parsed.protocol === 'http:' && !policy.allowInsecure) return null;
 
+  // Userinfo, rejected here and not only in `isNavigableBaseUrl`.
+  //
+  // `origin` excludes credentials: `new URL('https://user:pass@app.example/x').origin` is exactly
+  // `'https://app.example'`, so the `allowedOrigins` check below cannot see them and a
+  // credential-bearing URL passed a same-origin policy. This function returns the ORIGINAL string, so
+  // what reached the iframe still carried `user:pass@` — written into `document.referrer` and history,
+  // and the classic look-alike-host trick, since the part before `@` reads like the destination.
+  //
+  // `isNavigableBaseUrl` already rejected this, which meant the base validator was safe while the
+  // general validator guarding both Category C bypasses was not. The repository rule is credentials
+  // from the environment only, never in a URL.
+  if (parsed.username !== '' || parsed.password !== '') return null;
+
   if (policy.allowedOrigins) {
     const allowed = policy.allowedOrigins
       .map((origin) => originOf(origin))
@@ -174,6 +187,9 @@ export function isNavigableBaseUrl(
   } catch {
     return false;
   }
+  // Redundant since `navigableUrlOrNull` now rejects userinfo too, and kept deliberately: this file's
+  // stated idiom is two independent checks for a privilege boundary, and a base URL is appended to
+  // before navigation. Whichever runs first, the answer is the same.
   return parsed.username === '' && parsed.password === '';
 }
 

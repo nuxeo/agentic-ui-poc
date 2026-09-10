@@ -251,6 +251,23 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
   }
 
   /**
+   * The `type` hint for `<source>`: the served type when we have one, metadata otherwise.
+   *
+   * `type` is a hint the browser uses to decide whether to even attempt a source — per spec it skips a
+   * source whose declared type it does not support. So advertising the *document metadata* type while
+   * the blob is something else can make it skip a perfectly playable source, which is the same
+   * metadata/served disagreement that motivated `blobType`, showing up in the attribute rather than the
+   * URL. Fixing `rawUrl` alone left this half.
+   *
+   * Falls back to `mimeType` when the server sent no `Content-Type`, rather than emitting `type=""` —
+   * an empty declared type is not a supported type, so it would make the browser skip the source
+   * outright, which is worse than a possibly-wrong hint.
+   */
+  get sourceType(): string {
+    return this.data.blobType || this.data.mimeType;
+  }
+
+  /**
    * See {@link PREVIEWABLE_TEXT_TYPES} — an allow-list, because `text/html` is executable.
    *
    * Both the declared and the served type must be on it. Checking only the declared one left the
