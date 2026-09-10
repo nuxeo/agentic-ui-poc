@@ -37,16 +37,16 @@ Recovery: restore a known-good lock, merge only the new entries, run
 
 ## 2. Run
 
-| Command                                              | Purpose                                             |
-| ---------------------------------------------------- | --------------------------------------------------- |
-| `npx nx serve nuxeo-ui` · `npm run dev`              | The product on `:4200`, proxying `/nuxeo` → `:8080` |
-| `npx nx serve nuxeo-satori-template`                 | The forkable customer template                      |
-| `npx nx build nuxeo-ui --configuration=production`   | Production build                                    |
-| `npx nx build platform`                              | The publishable package → `dist/libs/platform`      |
-| `npm run watch`                                      | Build in watch mode                                 |
-| `docker compose -f arender-docker-compose.yml up -d` | ARender document viewer                             |
-| `docker compose -f mailpit-docker-compose.yml up -d` | Local SMTP                                          |
-| `mvn package`                                        | The marketplace package (needs Java 17+)            |
+| Command                                                                      | Purpose                                             |
+| ---------------------------------------------------------------------------- | --------------------------------------------------- |
+| `npx nx serve nuxeo-ui` · `npm run dev`                                      | The product on `:4200`, proxying `/nuxeo` → `:8080` |
+| `npx nx serve nuxeo-satori-template`                                         | The forkable customer template                      |
+| `npx nx build nuxeo-ui --configuration=production`                           | Production build                                    |
+| `npx nx build platform`                                                      | The publishable package → `dist/libs/platform`      |
+| `npm run watch`                                                              | Build in watch mode                                 |
+| `docker compose -f arender-docker-compose.yml --env-file .env.arender up -d` | ARender document viewer                             |
+| `docker compose -f mailpit-docker-compose.yml up -d`                         | Local SMTP                                          |
+| `mvn package`                                                                | The marketplace package (needs Java 17+)            |
 
 ---
 
