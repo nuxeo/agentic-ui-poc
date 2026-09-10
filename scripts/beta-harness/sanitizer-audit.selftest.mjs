@@ -1507,10 +1507,23 @@ control(
 // declared count also breaks the count-matches-code check — so the specific substring is what makes
 // these controls mean anything rather than the exit code.
 //
-// NOT YET VERIFIED: that each control fails with `matched: false` when its own comparison is
-// stubbed out. Both go red today and match their diagnostic, but the mutation that would prove they
-// depend on the merge-base comparison rather than on a co-firing finding has not been run. Until it
-// has, treat these two as controls whose specificity is argued, not observed.
+// VERIFIED, and this is what the run showed. Each merge-base comparison was stubbed out
+// independently in `sanitizer-audit.mjs` and the selftest re-run:
+//
+//   stub the per-member comparison  ->  'the ratchet catches a member absorbing more calls…'
+//                                       went red: true   matched: false
+//   stub the budget comparison      ->  'the ratchet catches a budget raised above the merge base'
+//                                       went red: true   matched: false
+//
+// `went red: true` with `matched: false` is exactly the signal that was missing. Both controls still
+// exit non-zero when their own comparison is gone — a co-firing finding does that — but neither
+// produces its own diagnostic, which is what proves the assertion is carried by the merge-base check
+// rather than by the noise beside it. That is why these two assert a substring instead of an exit code.
+//
+// The caveat this replaces said their specificity was "argued, not observed". It was accurate when
+// written, and review was right that leaving it while the PR described the harness as fully verified
+// made the description overstate the evidence. The mutation is cheap; the honest note was not a
+// substitute for running it.
 
 control(
   'the ratchet catches a budget raised above the merge base',
