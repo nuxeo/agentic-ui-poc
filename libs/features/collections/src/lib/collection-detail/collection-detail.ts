@@ -135,6 +135,8 @@ export class CollectionDetailComponent {
   readonly thumbnailMap = signal<Record<string, string | null>>({});
   /** Batch token for thumbnail loads, so a superseded response cannot write. */
   private thumbnailGeneration = 0;
+  /** Request token for the members load — see `loadMembers` for why the two are separate. */
+  private memberGeneration = 0;
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -320,21 +322,41 @@ export class CollectionDetailComponent {
   }
 
   loadMembers(): void {
+    // Claimed at request start, and checked on BOTH callbacks.
+    //
+    // The thumbnail generation below does not cover this, because it is minted from *inside* the
+    // members response — so it orders thumbnail batches against each other and leaves the members
+    // request itself unguarded. Navigating A -> B starts two member requests; if B resolves first and
+    // A lands afterwards, A overwrote `members` and `totalSize` with the previous collection's data
+    // and its `loadThumbnails` then took the newest thumbnail generation, discarding B's images too.
+    //
+    // The uid is captured as well as the counter: the route can change between request and response,
+    // and the uid is what the user is actually looking at.
+    const generation = ++this.memberGeneration;
+    const requestedUid = this.collectionUid;
     this.loading.set(true);
     this.error.set(null);
 
-    this.collectionService.getCollectionMembers(this.collectionUid, 50).subscribe({
-      next: (res) => {
-        this.members.set(res.entries);
-        this.totalSize.set(res.totalSize);
-        this.loading.set(false);
-        this.loadThumbnails(res.entries);
-      },
-      error: () => {
-        this.error.set('Failed to load collection contents.');
-        this.loading.set(false);
-      },
-    });
+    this.collectionService
+      .getCollectionMembers(requestedUid, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (generation !== this.memberGeneration || requestedUid !== this.collectionUid) return;
+          this.members.set(res.entries);
+          this.totalSize.set(res.totalSize);
+          this.loading.set(false);
+          this.loadThumbnails(res.entries);
+        },
+        error: () => {
+          // Guarded too, and it has to clear `loading` only for the request that still owns it — a
+          // stale failure would otherwise show an error over a newer collection's results. The
+          // superseding call already set `loading` true for itself.
+          if (generation !== this.memberGeneration || requestedUid !== this.collectionUid) return;
+          this.error.set('Failed to load collection contents.');
+          this.loading.set(false);
+        },
+      });
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {

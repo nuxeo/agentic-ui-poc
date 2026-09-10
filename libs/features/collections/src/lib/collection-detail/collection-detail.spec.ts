@@ -7,7 +7,7 @@ import {
   Router,
   withDisabledInitialNavigation,
 } from '@angular/router';
-import { of, throwError, type Observable } from 'rxjs';
+import { Subject, of, throwError, type Observable } from 'rxjs';
 import { vi } from 'vitest';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -1165,6 +1165,75 @@ describe('CollectionDetailComponent', () => {
     it('should have avatarColor function available', () => {
       expect(component.avatarColor).toBeDefined();
       expect(typeof component.avatarColor).toBe('function');
+    });
+  });
+
+  /**
+   * A stale members response must not replace a newer collection's.
+   *
+   * The thumbnail generation does not cover this: it is minted from *inside* the members response, so
+   * it orders thumbnail batches against each other and leaves the members request itself unguarded.
+   * Navigating A -> B starts two member requests; with B resolving first, A's late response overwrote
+   * `members` and `totalSize`, and its `loadThumbnails` then took the newest thumbnail generation and
+   * discarded B's images too — so the older collection won outright.
+   */
+  describe('overlapping member requests', () => {
+    function docs(...uids: string[]): NuxeoDocument[] {
+      return uids.map((uid) => ({ uid, title: uid, type: 'File' }) as unknown as NuxeoDocument);
+    }
+
+    it('ignores a members response superseded by a newer load', () => {
+      const first = new Subject<{ entries: NuxeoDocument[]; totalSize: number }>();
+      const second = new Subject<{ entries: NuxeoDocument[]; totalSize: number }>();
+      mockCollectionService.getCollectionMembers
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+
+      component.loadMembers();
+      component.loadMembers();
+
+      // The later request resolves first.
+      second.next({ entries: docs('doc-B'), totalSize: 1 });
+      second.complete();
+      expect(component.members().map((d) => d.uid)).toEqual(['doc-B']);
+
+      // The earlier one lands afterwards and must be discarded.
+      first.next({ entries: docs('doc-A'), totalSize: 99 });
+      first.complete();
+      expect(component.members().map((d) => d.uid)).toEqual(['doc-B']);
+      expect(component.totalSize()).toBe(1);
+    });
+
+    it('ignores a stale failure rather than showing an error over newer results', () => {
+      const first = new Subject<{ entries: NuxeoDocument[]; totalSize: number }>();
+      const second = new Subject<{ entries: NuxeoDocument[]; totalSize: number }>();
+      mockCollectionService.getCollectionMembers
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+
+      component.loadMembers();
+      component.loadMembers();
+
+      second.next({ entries: docs('doc-B'), totalSize: 1 });
+      second.complete();
+
+      first.error(new Error('boom'));
+      expect(component.error()).toBeNull();
+      expect(component.loading()).toBe(false);
+      expect(component.members().map((d) => d.uid)).toEqual(['doc-B']);
+    });
+
+    it('still applies a members response that nothing superseded', () => {
+      // The positive control, so the guard is discriminating rather than dropping everything.
+      const only = new Subject<{ entries: NuxeoDocument[]; totalSize: number }>();
+      mockCollectionService.getCollectionMembers.mockReturnValueOnce(only.asObservable());
+
+      component.loadMembers();
+      only.next({ entries: docs('doc-A'), totalSize: 1 });
+      only.complete();
+
+      expect(component.members().map((d) => d.uid)).toEqual(['doc-A']);
+      expect(component.loading()).toBe(false);
     });
   });
 });
