@@ -157,6 +157,45 @@ describe('renderTrustedHtml', () => {
         }),
       ).toThrow(/executable attributes/);
     });
+
+    /**
+     * The regression test for a fail-open guard. `ADD_ATTR` is typed
+     * `string[] | ((attributeName, tagName) => boolean)` in DOMPurify 3.4, and the first version of
+     * `assertSafeConfig` tested each value with `Array.isArray(values) && …` — so a predicate was
+     * reported as "no blocked value found" and passed straight through to DOMPurify, which then
+     * honoured it and re-admitted every attribute.
+     *
+     * This was confirmed as exploitable before being fixed, not merely suspected: rendering
+     * `<p onclick="alert(1)">x</p>` with `{ ADD_ATTR: () => true }` put
+     * `<p onclick="alert(1)">x</p>` into the DOM, wrapped as `SafeHtml`.
+     */
+    it('rejects a predicate where a string array is required', () => {
+      expect(() =>
+        rendered('<p onclick="alert(1)">x</p>', {
+          ADD_ATTR: () => true,
+        } as unknown as Parameters<typeof renderTrustedHtml>[2]),
+      ).toThrow(/must be an array of strings/);
+    });
+
+    it('rejects every other non-array shape for an accepted key', () => {
+      for (const value of ['onclick', 42, true, {}, null, [['onclick']], ['ok', 7]]) {
+        expect(() =>
+          rendered('<p>x</p>', {
+            ADD_ATTR: value,
+          } as unknown as Parameters<typeof renderTrustedHtml>[2]),
+        ).toThrow(/must be an array of strings/);
+      }
+    });
+
+    it('treats an explicitly undefined key as absent rather than malformed', () => {
+      // So `{ ALLOWED_TAGS: condition ? [...] : undefined }` stays usable. `<em>` is stripped here
+      // because this falls through to DOMPurify's default config, which is the point: no throw.
+      expect(() =>
+        rendered('<p>ok</p>', {
+          ALLOWED_TAGS: undefined,
+        } as Parameters<typeof renderTrustedHtml>[2]),
+      ).not.toThrow();
+    });
   });
 
   describe('edge cases', () => {

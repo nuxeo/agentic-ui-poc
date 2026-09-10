@@ -2,39 +2,60 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 
 const ALLOWED_CONFIG_KEYS = new Set(['ALLOWED_TAGS', 'ALLOWED_ATTR', 'ADD_ATTR']);
-const BLOCKED_TAGS = new Set(['script', 'iframe', 'object', 'embed', 'style', 'link', 'meta', 'base']);
+const BLOCKED_TAGS = new Set([
+  'script',
+  'iframe',
+  'object',
+  'embed',
+  'style',
+  'link',
+  'meta',
+  'base',
+]);
 const BLOCKED_ATTRS = new Set(['srcdoc']);
 
+/**
+ * Rejects any config this helper is not prepared to reason about.
+ *
+ * Every accepted key must be an array of strings, and the type check **fails closed**. The first
+ * version of this guard did not: each test began `Array.isArray(values) &&`, so a value of any other
+ * shape was reported as "nothing blocked found" and waved through. `ADD_ATTR` is typed
+ * `string[] | ((attributeName, tagName) => boolean)` in DOMPurify 3.4, so `{ ADD_ATTR: () => true }`
+ * skipped every check and re-admitted executable attributes. That was not theoretical — rendered
+ * through this helper it produced `<p onclick="alert(1)">x</p>` in the DOM, wrapped as `SafeHtml`.
+ *
+ * Hence the shape check comes first and throws, rather than being folded into the value scan where a
+ * non-array can only ever look like an absence of evidence.
+ */
 function assertSafeConfig(config?: Parameters<typeof DOMPurify.sanitize>[1]): void {
   if (!config) return;
   const cfg = config as Record<string, unknown>;
 
-  for (const key of Object.keys(cfg)) {
+  for (const [key, value] of Object.entries(cfg)) {
     if (!ALLOWED_CONFIG_KEYS.has(key)) {
       throw new Error(`renderTrustedHtml: unsupported DOMPurify config key "${key}"`);
     }
-  }
 
-  const hasBlockedValue = (values: unknown, blocked: Set<string>, blockOnPrefix = false): boolean =>
-    Array.isArray(values) &&
-    values.some((value) => {
-      if (typeof value !== 'string') return true;
-      const normalized = value.toLowerCase();
-      if (blockOnPrefix) return normalized.startsWith('on');
-      return blocked.has(normalized);
-    });
+    // An explicitly-undefined key is the same as an absent one, so a caller may write
+    // `{ ALLOWED_TAGS: condition ? [...] : undefined }` without tripping the shape check.
+    if (value === undefined) continue;
 
-  if (hasBlockedValue(cfg['ALLOWED_TAGS'], BLOCKED_TAGS)) {
-    throw new Error('renderTrustedHtml: active-content tags are not allowed');
-  }
+    if (!Array.isArray(value) || value.some((entry) => typeof entry !== 'string')) {
+      throw new Error(`renderTrustedHtml: "${key}" must be an array of strings`);
+    }
 
-  if (
-    hasBlockedValue(cfg['ALLOWED_ATTR'], BLOCKED_ATTRS) ||
-    hasBlockedValue(cfg['ADD_ATTR'], BLOCKED_ATTRS) ||
-    hasBlockedValue(cfg['ALLOWED_ATTR'], new Set<string>(), true) ||
-    hasBlockedValue(cfg['ADD_ATTR'], new Set<string>(), true)
-  ) {
-    throw new Error('renderTrustedHtml: executable attributes are not allowed');
+    const normalized = value.map((entry: string) => entry.toLowerCase());
+
+    if (key === 'ALLOWED_TAGS' && normalized.some((entry) => BLOCKED_TAGS.has(entry))) {
+      throw new Error('renderTrustedHtml: active-content tags are not allowed');
+    }
+
+    if (
+      (key === 'ALLOWED_ATTR' || key === 'ADD_ATTR') &&
+      normalized.some((entry) => entry.startsWith('on') || BLOCKED_ATTRS.has(entry))
+    ) {
+      throw new Error('renderTrustedHtml: executable attributes are not allowed');
+    }
   }
 }
 

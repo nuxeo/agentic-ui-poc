@@ -54,6 +54,9 @@ describe('DocumentViewerComponent', () => {
   it('shows the video info card when metadata is present', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
+    // Required alongside `blobUrl`: a non-null `blobUrl` takes the single-source video path, whose
+    // `<video [src]>` is `SecurityContext.NONE` and so reads `rawBlobUrl`.
+    fixture.componentRef.setInput('rawBlobUrl', 'blob:mock-video');
     fixture.componentRef.setInput('videoInfo', { duration: 12, width: 1920, height: 1080 });
     render();
 
@@ -93,6 +96,7 @@ describe('DocumentViewerComponent', () => {
   it('seeks without auto-playing (Web UI parity)', async () => {
     fixture.componentRef.setInput('mimeType', 'video/mp4');
     fixture.componentRef.setInput('blobUrl', 'blob:mock-video' as VideoSource['url']);
+    fixture.componentRef.setInput('rawBlobUrl', 'blob:mock-video');
     fixture.componentRef.setInput('loading', false);
     render();
 

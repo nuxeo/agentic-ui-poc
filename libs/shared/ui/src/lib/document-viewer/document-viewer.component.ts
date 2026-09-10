@@ -117,7 +117,20 @@ export class DocumentViewerComponent {
    * check 4, which follows the bound expression to a type declaration and — crucially — reports any
    * NONE-context binding whose type it cannot resolve, rather than assuming it is safe.
    */
-  readonly rawBlobUrl = input<string | null>(null);
+  /**
+   * Required, not optional with a `null` default — the default is what made this fail silently.
+   *
+   * `audio[src]` and the single-source `video[src]` fallback are `SecurityContext.NONE`, so they need
+   * the raw string; `blobUrl` is a `SafeResourceUrl` and stringifies to
+   * `"SafeValue must use [property]=binding: …"` there. A consumer that omits this input keeps
+   * compiling and renders a null source, which is exactly the silent breakage this PR exists to fix —
+   * so omitting it has to be a compile error, not a runtime shrug.
+   *
+   * This was made required in `3d6638f` and reverted to optional in `511b22e`; restoring it. All
+   * three in-repo consumers already pass it, so the only thing the requirement breaks is an external
+   * consumer that would otherwise have shipped broken audio.
+   */
+  readonly rawBlobUrl = input.required<string | null>();
   readonly mimeType = input<string>('');
   readonly fileName = input<string>('');
   readonly fileSize = input<string>('');
