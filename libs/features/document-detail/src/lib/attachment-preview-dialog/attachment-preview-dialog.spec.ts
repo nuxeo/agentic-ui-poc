@@ -125,13 +125,7 @@ describe('AttachmentPreviewDialogComponent', () => {
     });
 
     it('treats the inert text types as text', async () => {
-      for (const mime of [
-        'text/plain',
-        'text/csv',
-        'text/xml',
-        'application/json',
-        'application/xml',
-      ]) {
+      for (const mime of ['text/plain', 'text/csv', 'application/json']) {
         const { component } = await createDialog(mime);
         expect(component.isText, mime).toBe(true);
       }
@@ -149,8 +143,12 @@ describe('AttachmentPreviewDialogComponent', () => {
      * The load-bearing half. `isText` used to be `startsWith('text/')`, which matched `text/html`
      * and rendered it in an iframe on a `blob:` URL — and a blob URL inherits the creating page's
      * origin, so an uploaded HTML attachment ran script against our own origin. Every case here is
-     * a type that must NOT reach the iframe; `text/plain` above is the positive control proving the
-     * allow-list still admits something.
+     * a type that must NOT reach the iframe; the inert types above are the positive control proving
+     * the allow-list still admits something.
+     *
+     * The XML cases are the second round of this: XML is parsed as markup, so namespaced SVG script
+     * runs and an `<?xml-stylesheet type="text/xsl">` instruction can pull in XSLT that emits
+     * scripted HTML. Rejecting `image/svg+xml` alone left that path open.
      */
     it('refuses to preview executable text types in the iframe', async () => {
       for (const mime of [
@@ -158,8 +156,12 @@ describe('AttachmentPreviewDialogComponent', () => {
         'text/xsl',
         'application/xhtml+xml',
         'image/svg+xml',
+        'text/xml',
+        'application/xml',
+        'application/rss+xml',
         'text/html; charset=utf-8',
         'TEXT/HTML',
+        'Text/XML',
       ]) {
         const { component } = await createDialog(mime);
         expect(component.isText, mime).toBe(false);

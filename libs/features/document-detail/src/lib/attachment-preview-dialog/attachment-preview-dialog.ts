@@ -41,18 +41,27 @@ export interface AttachmentPreviewData {
  * safe is a filter, and testing a prefix is not. Adding a `text/html` special case would leave
  * `text/xsl`, `application/xhtml+xml` and the next active text type nobody thought of.
  *
- * Consequence: HTML attachments now fall through to "Preview not available". Restoring an HTML
- * preview safely means a sandboxed iframe (`sandbox` without `allow-same-origin`, so the document
- * gets an opaque origin) or routing the text through `renderTrustedHtml`. Neither is done here —
- * closing the hole and adding a feature are separate changes.
+ * **XML is not on this list, and that is not an oversight.** `text/xml` and `application/xml` are
+ * parsed as markup, so a generic XML document is an execution vector twice over: namespaced content
+ * runs (`<svg:svg><svg:script>`), and an `<?xml-stylesheet type="text/xsl" href="…"?>` instruction
+ * pulls in XSLT that can emit scripted HTML. Rejecting `image/svg+xml` while admitting `text/xml`
+ * closed the front door and left the side one open. Only formats the browser will not parse as
+ * markup remain.
+ *
+ * Consequence: HTML and XML attachments now fall through to "Preview not available". Restoring
+ * either safely means a sandboxed iframe (`sandbox` without `allow-same-origin`, so the document
+ * gets an opaque origin) or decoding to text and escaping it. Neither is done here — closing the
+ * hole and adding a feature are separate changes.
+ *
+ * **Residual risk, not closed by this list.** `isText` reads the *document metadata* mime type,
+ * while the iframe renders according to the `Content-Type` Nuxeo serves for the blob, which is what
+ * `HttpClient` puts on the `Blob`. Those are two different values. If metadata can say `text/plain`
+ * while the served type is `text/html`, this allow-list passes and the iframe still parses markup.
+ * Whether Nuxeo permits that disagreement is a server-side question this file cannot answer, and
+ * the structural control is a CSP `frame-src`/`sandbox` policy — the same gap the ARender iframe
+ * records.
  */
-const PREVIEWABLE_TEXT_TYPES = new Set([
-  'text/plain',
-  'text/csv',
-  'text/xml',
-  'application/json',
-  'application/xml',
-]);
+const PREVIEWABLE_TEXT_TYPES = new Set(['text/plain', 'text/csv', 'application/json']);
 
 @Component({
   selector: 'lib-attachment-preview-dialog',

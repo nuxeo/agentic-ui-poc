@@ -15,10 +15,15 @@ import { renderTrustedHtml } from './render-trusted-html';
  * precisely the defect class this helper exists to prevent, so a test that cannot detect it is not
  * evidence. Binding to `[innerHTML]` and reading `innerHTML` back is the only way to assert what
  * actually reaches the DOM.
+ *
+ * The one-line host template is external because `AGENTS/08-bug-patterns.md` section 10 requires it
+ * of every component and does not exempt test hosts. Three other spec files in this repo do use
+ * inline hosts, so this is the first to comply rather than the only exception; those predate the
+ * rule being enforced in review and are worth a follow-up.
  */
 @Component({
   standalone: true,
-  template: `<div [innerHTML]="html()"></div>`,
+  templateUrl: './render-trusted-html.host.html',
 })
 class HostComponent {
   readonly html = signal<SafeHtml | null>(null);
