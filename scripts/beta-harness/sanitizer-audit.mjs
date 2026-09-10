@@ -823,7 +823,15 @@ function templatesFor(tsFile, sf, checker) {
   const out = [];
   const unresolved = [];
   eachNode(sf, (n) => {
-    if (!ts.isPropertyAssignment(n) || !n.name) return;
+    // Shorthand counts. `@Component({ templateUrl })` with `const templateUrl = './viewer.html'` is a
+    // `ShorthandPropertyAssignment`, not a `PropertyAssignment`, and Angular statically evaluates it
+    // perfectly well — but this predicate skipped it silently, recording neither the template nor an
+    // unreadable-template finding. That is the fifth fail-open spelling in this discovery path, after
+    // the binding syntax, the decorator, the template value and the quoted key, and it is the same
+    // shape every time: a form the compiler understands and the audit does not, which reads as "this
+    // component has no template" rather than "this component was not examined".
+    const shorthand = ts.isShorthandPropertyAssignment(n);
+    if (!shorthand && (!ts.isPropertyAssignment(n) || !n.name)) return;
 
     // Only `template`/`templateUrl` on a `@Component`, and only with the class that owns it.
     const classDecl = componentClassOf(n);
@@ -835,10 +843,13 @@ function templatesFor(tsFile, sf, checker) {
     // syntax, the decorator and the template value. `assignmentPropertyName` is the resolver the
     // bypass collector already uses for exactly this question, so a quoted, computed or
     // constant-keyed metadata property resolves to the same name an identifier does.
-    const { name: key } = assignmentPropertyName(n, checker);
+    // For shorthand the name IS the key and also the value expression: `{ templateUrl }` names the
+    // property and reads the identifier of the same name.
+    const key = shorthand ? n.name.text : assignmentPropertyName(n, checker).name;
     if (key !== 'template' && key !== 'templateUrl') return;
 
-    const value = staticStringValue(n.initializer, checker);
+    const valueExpr = shorthand ? n.name : n.initializer;
+    const value = staticStringValue(valueExpr, checker);
     if (value === null) {
       // A `@Component` whose template value this cannot read is a component whose bindings were
       // never enumerated, so it is reported rather than skipped — the same stance as a template
@@ -847,7 +858,7 @@ function templatesFor(tsFile, sf, checker) {
         tsFile,
         key,
         line: lineOf(sf, n),
-        text: n.initializer ? n.initializer.getText(sf).slice(0, 60) : '<missing>',
+        text: valueExpr ? valueExpr.getText(sf).slice(0, 60) : '<missing>',
       });
       return;
     }
@@ -858,7 +869,7 @@ function templatesFor(tsFile, sf, checker) {
         // An inline template's findings are reported against the initialiser's line. That is only
         // exact for a literal written in place; for a value read from elsewhere the offset is the
         // reference, which is the closest honest anchor available.
-        offsetLine: lineOf(sf, n.initializer),
+        offsetLine: lineOf(sf, valueExpr),
         tsFile,
         htmlFile: null,
         classDecl,

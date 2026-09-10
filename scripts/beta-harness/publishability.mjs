@@ -221,8 +221,40 @@ const manifestDeps = new Set([
   ...Object.keys(pkg.peerDependencies ?? {}),
 ]);
 
+/**
+ * Every `.mjs` the `exports` map actually points at, not the hard-coded five.
+ *
+ * The `fesm` list above is a deliberate, explicit expectation for check 2 — those five bundles must
+ * exist. It is the wrong source for *this* check, which asks a question about the whole published
+ * surface: add a sixth entry point and its bundle was silently omitted, so an undeclared runtime
+ * dependency reachable only through it still passed. A gate that shrinks as the package grows is the
+ * fail-open shape this file keeps finding elsewhere.
+ *
+ * The union with `fesm` is kept so a missing expected bundle is still caught by check 2 rather than
+ * quietly dropping out of both.
+ */
+function publishedBundleNames() {
+  const found = new Set(fesm);
+  const walk = (node) => {
+    if (typeof node === 'string') {
+      const m = /^\.\/fesm2022\/(.+\.mjs)$/.exec(node);
+      if (m) found.add(m[1]);
+      return;
+    }
+    if (node && typeof node === 'object') for (const v of Object.values(node)) walk(v);
+  };
+  walk(pkg.exports ?? {});
+  return [...found].sort();
+}
+
+const scanned = publishedBundleNames();
+const extras = scanned.filter((name) => !fesm.includes(name));
+if (extras.length > 0) {
+  notes.push(`import scan covers ${extras.length} bundle(s) beyond the expected five: ${extras.join(', ')}`);
+}
+
 const externalImports = new Map();
-for (const name of fesm) {
+for (const name of scanned) {
   const file = join(DIST, 'fesm2022', name);
   if (!existsSync(file)) continue;
   const text = readFileSync(file, 'utf8');

@@ -1346,6 +1346,40 @@ control(
   'Safe* value in a NONE context',
 );
 
+// ---- check 4: SHORTHAND metadata ----------------------------------------------------------------
+//
+// `@Component({ templateUrl })` with `const templateUrl = './viewer.html'` is a
+// `ShorthandPropertyAssignment`, not a `PropertyAssignment`. `templatesFor`'s predicate tested only the
+// latter, so the component was skipped with no template recorded AND no unreadable-template finding —
+// it read as a component that has none. Angular statically evaluates this form perfectly well.
+//
+// The fifth fail-open spelling in this one discovery path, after the binding syntax, the decorator, the
+// template value and the quoted key. Found in review, not by this file, which is the point of adding it
+// here: the four controls above cover the spellings someone thought of.
+control(
+  'check 4 finds a template behind a shorthand metadata property',
+  4,
+  () =>
+    edit(VIEWER_TS, (s) => {
+      const retyped = s.replace(
+        'readonly posterUrl = input<string | null>(null);',
+        'readonly posterUrl = input<SafeResourceUrl | null>(null);',
+      );
+      if (retyped === s) throw new Error('document-viewer posterUrl changed — update this control');
+      const out = retyped
+        .replace(
+          '@Component({',
+          "const templateUrl = './document-viewer.component.html';\n\n@Component({",
+        )
+        .replace("templateUrl: './document-viewer.component.html',", 'templateUrl,');
+      if (out === retyped || !out.includes('  templateUrl,')) {
+        throw new Error('document-viewer templateUrl changed — update this control');
+      }
+      return out;
+    }),
+  'Safe* value in a NONE context',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',
