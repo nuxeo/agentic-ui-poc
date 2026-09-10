@@ -238,7 +238,7 @@ installed by a separate non-overwriting step and survives. See `resolveBootstrap
 
 | Property           | Required | Constraints                                                                                                                               |
 | ------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Use `https:` when the app is served over HTTPS; `http:` is allowed in development or when the app itself is served over HTTP. |
+| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Must be no less secure than the page framing it — see below.                                       |
 | `nuxeoInternalUrl` | yes      | Nuxeo as the **ARender containers** see it, through the auth-proxy sidecar. Plain `http:` is fine — it is never navigated by the browser. |
 
 Both are mandatory and validated in two places, so a partial or malformed configuration disables
@@ -252,6 +252,28 @@ ARender rather than half-enabling it:
   query string, no fragment and no userinfo**. Both values have parameters appended to them, and a
   base carrying its own `?` or `#` absorbs the appended `url` parameter so the viewer receives no
   document.
+
+### When is `http:` accepted for `viewerOrigin`?
+
+The rule is **host-relative**, not build-relative. `insecureAllowedForHost()` accepts `http:` when
+either holds:
+
+| Application served over      | `http:` viewerOrigin | Why                                                                                                                                                                                                                              |
+| ---------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `http://…` (typical on-prem) | **accepted**         | An iframe is a downgrade only relative to its host document. Where the page is already plaintext there is nothing to downgrade, and anyone able to tamper with the framed viewer can already tamper with the page delivering it. |
+| `https://…`                  | **rejected**         | This is the real downgrade: a plaintext viewer inside a secure page, carrying annotations.                                                                                                                                       |
+| any, dev build               | accepted             | Local ARender runs on `http://localhost:9080`.                                                                                                                                                                                   |
+
+This corrects an earlier version of this table which said `http:` was permitted "only in a dev
+build". That was never what the preview-fallback path did, and after review it is no longer what
+ARender does either — the previous wording would have led an operator to believe a supported on-prem
+configuration was invalid. If your application is served over `https:`, ARender must be too.
+
+Being allowed to use `http:` does not relax anything else: the no-query/no-fragment/no-userinfo
+requirements above still apply, and there is deliberately **no origin allow-list** on
+`viewerOrigin` — a customer configures where their own ARender lives, which is recorded as an
+accepted residual risk. The structural control for that is a CSP `frame-src` header, which is not
+currently set.
 
 For local development the compose file above publishes the ARender UI on host port 9080, so a dev
 bootstrap file uses `"viewerOrigin": "http://localhost:9080"`.
