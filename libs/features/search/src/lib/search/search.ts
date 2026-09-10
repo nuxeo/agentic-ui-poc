@@ -204,6 +204,18 @@ export class SearchComponent {
   private readonly aiSuggestSubject = new Subject<string>();
 
   readonly loading = signal(true);
+  /**
+   * Loading owned by the AI NXQL request specifically, kept separate from {@link loading}.
+   *
+   * `loading` belongs to the standard `results$` pipeline, which sets it on every route/filter change.
+   * When `runNxqlQuery` also wrote to it, `supersedeAiRequest` had to clear it — and that clear could
+   * land while a *standard* search was still in flight, hiding the spinner and rendering the previous
+   * results, because every view mode below is gated on `!loading()`. Superseding AI work must only
+   * release AI-owned loading, so the two are no longer the same flag.
+   */
+  readonly aiNxqlLoading = signal(false);
+  /** Either request is in flight. What the template gates on, so neither can hide the other's spinner. */
+  readonly busy = computed(() => this.loading() || this.aiNxqlLoading());
   readonly error = signal<string | null>(null);
   readonly quickFilterOptions = QUICK_FILTER_OPTIONS;
   readonly selectedQuickFilters = signal<Set<string>>(new Set());
@@ -1013,7 +1025,9 @@ export class SearchComponent {
    */
   private supersedeAiRequest(): number {
     const generation = ++this.aiRequestGeneration;
-    this.loading.set(false);
+    // Only AI-owned flags. `loading` belongs to the standard pipeline; clearing it here hid the
+    // spinner for a standard search that was still running — see `aiNxqlLoading`.
+    this.aiNxqlLoading.set(false);
     this.aiLoading.set(false);
     return generation;
   }
@@ -1055,7 +1069,8 @@ export class SearchComponent {
    * and cancels its predecessor; this one subscribes imperatively, so it needs the comparison.
    */
   private runNxqlQuery(nxql: string, generation: number): void {
-    this.loading.set(true);
+    // `aiNxqlLoading`, not `loading` — this request does not own the standard pipeline's flag.
+    this.aiNxqlLoading.set(true);
     this.beginThumbnailBatch();
     this.nuxeoApi
       .nxqlSearch(nxql, 40, {
@@ -1089,7 +1104,7 @@ export class SearchComponent {
           }));
           this.aiResults.set(items);
           this.aiSearchExecuted.set(true);
-          this.loading.set(false);
+          this.aiNxqlLoading.set(false);
           this.aiLoading.set(false);
           this.loadThumbnails(items);
         },
@@ -1098,7 +1113,7 @@ export class SearchComponent {
           // error banner and clear its loading state.
           if (generation !== this.aiRequestGeneration) return;
           this.aiError.set('NXQL query execution failed. The generated query may be invalid.');
-          this.loading.set(false);
+          this.aiNxqlLoading.set(false);
           this.aiLoading.set(false);
         },
       });

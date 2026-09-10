@@ -198,13 +198,13 @@
     </div>
   </div>
 
-  @if (loading()) {
+  @if (busy()) {
     <div class="results-loading">
       <mat-spinner diameter="32" aria-label="Loading" />
     </div>
   }
 
-  @if (!loading() && viewMode() === 'grid') {
+  @if (!busy() && viewMode() === 'grid') {
     <div class="grid-container">
       <div class="grid-action-bar">
         <div class="grid-actions-left">
@@ -302,7 +302,7 @@
     </div>
   }
 
-  @if (!loading() && viewMode() === 'table') {
+  @if (!busy() && viewMode() === 'table') {
     <div class="list-wrapper">
       @if (columnPanelOpen()) {
         <button
@@ -414,7 +414,7 @@
     </div>
   }
 
-  @if (!loading() && viewMode() === 'list') {
+  @if (!busy() && viewMode() === 'list') {
     <div class="list-action-bar">
       <div class="list-actions-left">
         <mat-select

@@ -811,34 +811,67 @@ describe('SearchComponent', () => {
      * spinner with no request behind it. These two cover both supersede paths.
      */
     describe('superseding an AI request releases its loading state', () => {
-      it('clears loading when the user leaves AI mode mid-request', () => {
+      it('clears AI loading when the user leaves AI mode mid-request', () => {
         const pending = new Subject<{ entries: never[] }>();
         mockNuxeoApiBase.nxqlSearch.mockReturnValue(pending.asObservable());
 
         component.aiSearchMode.set(true);
         component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
-        expect(component.loading()).toBe(true);
+        expect(component.aiNxqlLoading()).toBe(true);
 
         component.toggleAiSearch();
 
         // The pending callbacks will now return at the guard, so leaving AI mode has to release this.
-        expect(component.loading()).toBe(false);
+        expect(component.aiNxqlLoading()).toBe(false);
         expect(component.aiLoading()).toBe(false);
       });
 
-      it('clears loading when a new AI search supersedes a running NXQL request', () => {
+      it('clears AI loading when a new AI search supersedes a running NXQL request', () => {
         const pendingNxql = new Subject<{ entries: never[] }>();
         mockNuxeoApiBase.nxqlSearch.mockReturnValue(pendingNxql.asObservable());
         component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
-        expect(component.loading()).toBe(true);
+        expect(component.aiNxqlLoading()).toBe(true);
 
         // A new AI search starts. If its `nlToNxql` phase fails before `runNxqlQuery` runs, nothing
-        // else would ever reset `loading`.
+        // else would ever reset the flag.
         mockAiGatewayService.nlToNxql.mockReturnValue(throwError(() => new Error('nl failed')));
         component.aiQuery.set('another query');
         component.executeAiSearch();
 
-        expect(component.loading()).toBe(false);
+        expect(component.aiNxqlLoading()).toBe(false);
+      });
+
+      /**
+       * The other half, and the reason the two flags are separate.
+       *
+       * `loading` belongs to the standard `results$` pipeline. When `runNxqlQuery` shared it,
+       * `supersedeAiRequest` had to clear it — and that clear could land while a *standard* search was
+       * still in flight. Every view mode is gated on `!busy()`, so the spinner disappeared and the
+       * PREVIOUS results rendered as if they were current.
+       */
+      it('does not release loading owned by an in-flight standard search', () => {
+        // A standard search is running: the `results$` pipeline sets this on every route/filter change.
+        component.loading.set(true);
+
+        // The user exits AI mode, or starts another AI search, while that request is still going.
+        component.aiSearchMode.set(true);
+        component.toggleAiSearch();
+
+        expect(component.loading()).toBe(true);
+        expect(component.busy()).toBe(true);
+      });
+
+      it('reports busy while either request is in flight', () => {
+        component.loading.set(false);
+        component.aiNxqlLoading.set(false);
+        expect(component.busy()).toBe(false);
+
+        component.aiNxqlLoading.set(true);
+        expect(component.busy()).toBe(true);
+
+        component.aiNxqlLoading.set(false);
+        component.loading.set(true);
+        expect(component.busy()).toBe(true);
       });
     });
 
