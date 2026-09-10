@@ -72,6 +72,7 @@ import {
   ARenderService,
   NUXEO_API_ORIGIN,
   navigableUrlOrNull,
+  insecureAllowedForHost,
   originOf,
   TagService,
   ContentLakeIngestService,
@@ -3532,7 +3533,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           // one refactor away from being undefended. Rejecting leaves `arenderUrl` null, which the
           // template renders as "Annotations are not available" — the same path as ARender not
           // being deployed.
-          const safe = navigableUrlOrNull(url, { allowInsecure: isDevMode() });
+          // Host-aware, matching `ARenderService` and the preview fallback. Left on a bare
+          // `isDevMode()` this second check would reject on an http host what the first now allows,
+          // so ARender would still be dead for on-prem plaintext — the defence-in-depth pair has to
+          // agree on the policy, not just both be present.
+          const safe = navigableUrlOrNull(url, {
+            allowInsecure: insecureAllowedForHost(isDevMode()),
+          });
           if (safe) {
             this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(safe));
             this.arenderReloadId.update((n) => n + 1);

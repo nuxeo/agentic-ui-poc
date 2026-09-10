@@ -399,7 +399,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-300 exported symbol(s).
+301 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1772,6 +1772,7 @@ function hasDocumentPermission(doc: NuxeoDocument | null | undefined, permission
 function hasDocumentPermissionsEnricher(doc: NuxeoDocument | null | undefined): boolean;
 function hasInsertablePictureBlob(doc: NuxeoDocument): boolean;
 function inferBlobDocTypeFromFile(file: File): string;
+function insecureAllowedForHost(isDevMode: boolean, hostProtocol?: string): boolean;
 function isAdfHxBrowseRouterUrl(routerUrl: string): boolean;
 function isBlobHoldingDocType(docType: string): boolean;
 function isBrowsableNavNode(doc: NuxeoDocument | null): boolean;

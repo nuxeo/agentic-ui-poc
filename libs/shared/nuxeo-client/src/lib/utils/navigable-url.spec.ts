@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  insecureAllowedForHost,
   isNavigableBaseUrl,
   navigableUrlOrNull,
   originOf,
@@ -222,5 +223,52 @@ describe('isNavigableBaseUrl', () => {
     for (const value of ['javascript:alert(1)', '', null, 'viewer.example.com', '//host/x']) {
       expect(isNavigableBaseUrl(value as string | null, true)).toBe(false);
     }
+  });
+});
+
+/**
+ * `insecureAllowedForHost` exists because the same question was answered two different ways.
+ *
+ * The preview-fallback path allowed `http:` when the host document was itself `http:`; the two ARender
+ * sites passed a bare `isDevMode()`. So ARender was silently dead on every on-prem plaintext
+ * deployment while the repository documented the opposite policy. These tests pin the answer.
+ */
+describe('insecureAllowedForHost', () => {
+  it('allows insecure in dev mode regardless of the host protocol', () => {
+    expect(insecureAllowedForHost(true, 'https:')).toBe(true);
+  });
+
+  it('allows insecure in production when the host is itself plaintext', () => {
+    // The on-prem case that was broken: an `http:` iframe inside an `http:` document is not a
+    // downgrade, and refusing it removed ARender without adding any security.
+    expect(insecureAllowedForHost(false, 'http:')).toBe(true);
+  });
+
+  it('refuses insecure in production when the host is secure', () => {
+    // The load-bearing negative. If this returns true, an https application is allowed to frame a
+    // plaintext viewer — the actual downgrade the check exists to prevent.
+    expect(insecureAllowedForHost(false, 'https:')).toBe(false);
+  });
+
+  it('refuses insecure when the host protocol is unknown', () => {
+    // Fails closed rather than assuming plaintext is fine.
+    expect(insecureAllowedForHost(false, '')).toBe(false);
+  });
+
+  it('reads the real host protocol when none is passed', () => {
+    // Proves the default argument is wired, not just the injectable path. jsdom serves the suite from
+    // `http://localhost`, so production + default must agree with production + explicit 'http:'.
+    expect(insecureAllowedForHost(false)).toBe(
+      insecureAllowedForHost(false, window.location.protocol),
+    );
+  });
+
+  it('still gates the base-URL check it feeds, rather than replacing it', () => {
+    // Being allowed to use `http:` does not make a bad base acceptable: userinfo and a stray query
+    // are still rejected on a plaintext host.
+    const allow = insecureAllowedForHost(false, 'http:');
+    expect(isNavigableBaseUrl('http://arender.internal', allow)).toBe(true);
+    expect(isNavigableBaseUrl('http://user:pass@arender.internal', allow)).toBe(false);
+    expect(isNavigableBaseUrl('http://arender.internal?', allow)).toBe(false);
   });
 });

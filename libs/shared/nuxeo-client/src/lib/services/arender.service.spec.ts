@@ -138,10 +138,22 @@ describe('ARenderService', () => {
       );
     });
 
-    it('rejects a plaintext http viewer origin in a production build', async () => {
+    it('permits a plaintext http viewer origin in production when the host is also plaintext', async () => {
       // Angular's `isDevMode()` reads the `ngDevMode` global, so clearing it exercises the real
       // production branch rather than a mock of it. Scoped and restored, because a false
       // `ngDevMode` changes other Angular behaviour too.
+      //
+      // This assertion was inverted until review caught it. It required a production build to reject
+      // `http:` unconditionally, which silently disabled ARender on every on-prem plaintext
+      // deployment — while `document-detail`'s preview fallback had already reasoned out the opposite
+      // and applied a host-aware policy only to itself. An iframe is a downgrade relative to its host
+      // document; where the host is already `http:` there is nothing to downgrade, and a network
+      // attacker who could tamper with the iframe already owns the page delivering it.
+      //
+      // jsdom serves this suite from `http://localhost`, so this is the on-prem case. The genuine
+      // downgrade — an `https:` host framing an `http:` viewer — is asserted directly against the
+      // policy in `navigable-url.spec.ts` (`insecureAllowedForHost(false, 'https:') === false`),
+      // because jsdom refuses to redefine `location.protocol`.
       const previous = (globalThis as { ngDevMode?: unknown }).ngDevMode;
       (globalThis as { ngDevMode?: unknown }).ngDevMode = false;
       try {
@@ -150,8 +162,31 @@ describe('ARenderService', () => {
           nuxeoInternalUrl: 'https://proxy.internal/nuxeo',
         });
 
-        // A plaintext document in an iframe is a downgrade, and ARender carries annotations.
-        await expect(firstValueFrom(service.isAvailable())).resolves.toBe(false);
+        // `getPreviewerUrl`, not `isAvailable`. `isAvailable` does a real `fetch` of the viewer
+        // origin, which jsdom cannot complete, so it answers `false` whether the config was accepted
+        // or the host was simply unreachable — the original assertion here could not tell those
+        // apart. `getPreviewerUrl` returns null if and only if the config was rejected.
+        await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toContain(
+          'http://viewer.example.com/?url=',
+        );
+      } finally {
+        (globalThis as { ngDevMode?: unknown }).ngDevMode = previous;
+      }
+    });
+
+    it('still rejects a viewer origin that is unusable for reasons other than its scheme', async () => {
+      // The negative that survives the policy change: being allowed to use `http:` does not make a
+      // bad base acceptable. Userinfo is rejected on any host, in production, which keeps this
+      // describe block from having only positive cases after the change above.
+      const previous = (globalThis as { ngDevMode?: unknown }).ngDevMode;
+      (globalThis as { ngDevMode?: unknown }).ngDevMode = false;
+      try {
+        const service = setup({
+          viewerOrigin: 'http://user:pass@viewer.example.com',
+          nuxeoInternalUrl: 'https://proxy.internal/nuxeo',
+        });
+
+        // Same reasoning as above: only `getPreviewerUrl` distinguishes rejection from unreachability.
         await expect(firstValueFrom(service.getPreviewerUrl('doc-1'))).resolves.toBeNull();
       } finally {
         (globalThis as { ngDevMode?: unknown }).ngDevMode = previous;
@@ -300,20 +335,35 @@ describe('ARenderService', () => {
     // the failure this guards — `/nuxeo//nxfile/...` or `/nxfile/...` with `/nuxeo` dropped — is a
     // path difference that `toContain` on the whole URL would not distinguish.
     it.each([
-      ['no trailing slash', 'https://proxy.internal/nuxeo', '/nuxeo/nxfile/default/doc-1/file:content'],
-      ['a trailing slash', 'https://proxy.internal/nuxeo/', '/nuxeo/nxfile/default/doc-1/file:content'],
+      [
+        'no trailing slash',
+        'https://proxy.internal/nuxeo',
+        '/nuxeo/nxfile/default/doc-1/file:content',
+      ],
+      [
+        'a trailing slash',
+        'https://proxy.internal/nuxeo/',
+        '/nuxeo/nxfile/default/doc-1/file:content',
+      ],
       ['a bare origin', 'https://proxy.internal', '/nxfile/default/doc-1/file:content'],
-      ['a two-segment path', 'https://proxy.internal/a/b', '/a/b/nxfile/default/doc-1/file:content'],
-    ])('resolves the nxfile path against a base with %s', async (_label, nuxeoInternalUrl, expectedPath) => {
-      const service = setup({ viewerOrigin: 'https://arender.example', nuxeoInternalUrl });
+      [
+        'a two-segment path',
+        'https://proxy.internal/a/b',
+        '/a/b/nxfile/default/doc-1/file:content',
+      ],
+    ])(
+      'resolves the nxfile path against a base with %s',
+      async (_label, nuxeoInternalUrl, expectedPath) => {
+        const service = setup({ viewerOrigin: 'https://arender.example', nuxeoInternalUrl });
 
-      const url = await firstValueFrom(service.getPreviewerUrl('doc-1'));
+        const url = await firstValueFrom(service.getPreviewerUrl('doc-1'));
 
-      const nxfile = new URL(new URL(url!).searchParams.getAll('url')[0]);
-      expect(nxfile.pathname).toBe(expectedPath);
-      expect(nxfile.search).toBe('');
-      expect(nxfile.hash).toBe('');
-    });
+        const nxfile = new URL(new URL(url!).searchParams.getAll('url')[0]);
+        expect(nxfile.pathname).toBe(expectedPath);
+        expect(nxfile.search).toBe('');
+        expect(nxfile.hash).toBe('');
+      },
+    );
 
     it('produces exactly one top-level url parameter naming the nxfile path', async () => {
       const service = setup(CONFIGURED);

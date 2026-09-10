@@ -294,6 +294,7 @@ export {
   isNavigableBaseUrl,
   navigableUrlOrNull,
   originOf,
+  insecureAllowedForHost,
   type NavigableUrlPolicy,
 } from './lib/utils/navigable-url';
 export { trustObjectUrl } from './lib/utils/trust-object-url';

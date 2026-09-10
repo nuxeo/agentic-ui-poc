@@ -176,3 +176,33 @@ export function isNavigableBaseUrl(
   }
   return parsed.username === '' && parsed.password === '';
 }
+
+/**
+ * Whether a plaintext `http:` destination is acceptable given where this document is served from.
+ *
+ * `true` in dev mode, or when the application itself is on `http:`.
+ *
+ * ## Why this is a shared function rather than an inline expression
+ *
+ * An iframe is only a downgrade *relative to its host document*. Where the host is already plaintext
+ * — an ordinary on-prem deployment — there is nothing to downgrade, and refusing `http:` there does
+ * not add security, it silently removes the feature.
+ *
+ * That reasoning was written out at the preview-fallback site and applied only there. The two ARender
+ * sites kept passing a bare `isDevMode()`, so ARender was silently disabled for exactly the
+ * deployments the reasoning was about, while the repository documented the opposite policy. One
+ * function means the next caller cannot get a different answer to the same question.
+ *
+ * This is **not** a licence for `http:` generally. It says "no worse than the host", which is why the
+ * ARender viewer origin still gets `isNavigableBaseUrl` and the preview fallback still gets an origin
+ * allow-list. Neither of those is replaced by this.
+ */
+export function insecureAllowedForHost(
+  isDevMode: boolean,
+  // Injectable, and defaulted rather than read inline, so the policy can be tested without mutating
+  // `window.location` — jsdom refuses to redefine `protocol`, which is how a test for this ends up
+  // asserting nothing. Callers pass nothing and get the real host.
+  hostProtocol: string = typeof window === 'undefined' ? '' : (window.location?.protocol ?? ''),
+): boolean {
+  return isDevMode || hostProtocol === 'http:';
+}

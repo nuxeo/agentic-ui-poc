@@ -2,7 +2,7 @@ import { inject, Injectable, isDevMode } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { ARENDER_CONFIG, type ARenderConfig } from '../arender.config';
 import { CURRENT_USERNAME } from '../current-user.token';
-import { isNavigableBaseUrl } from '../utils/navigable-url';
+import { isNavigableBaseUrl, insecureAllowedForHost } from '../utils/navigable-url';
 
 /**
  * ARender annotation viewer integration.
@@ -71,7 +71,13 @@ export class ARenderService {
     // a bare origin check: both URL builders below add parameters to this value, and a base
     // carrying its own query or fragment silently absorbs them so no top-level `url` parameter
     // survives. See that function for the three cases it rejects and why.
-    if (!isNavigableBaseUrl(cfg.viewerOrigin, isDevMode())) return null;
+    // `insecureAllowedForHost`, not a bare `isDevMode()`. An iframe is a downgrade only relative to
+    // its host document, so refusing `http:` when the application is itself served over `http:` — an
+    // ordinary on-prem deployment — silently disabled ARender for exactly those deployments without
+    // making anything safer. The preview-fallback path in `document-detail` already reasoned this out
+    // and applied it only there; this site kept the stricter check, so the repository documented one
+    // policy and implemented another.
+    if (!isNavigableBaseUrl(cfg.viewerOrigin, insecureAllowedForHost(isDevMode()))) return null;
 
     // Not navigated by the browser: this is encoded into the `url=` parameter and fetched by
     // ARender's own server through the auth-proxy sidecar, so it is legitimately plain http. It is
@@ -108,7 +114,10 @@ export class ARenderService {
     // A trailing slash is required or `new URL()` resolves the relative path against the base's
     // *parent*, turning `http://proxy/nuxeo` into `http://proxy/nxfile/…`.
     const withSlash = base.endsWith('/') ? base : `${base}/`;
-    return new URL(`nxfile/default/${encodeURIComponent(docUid)}/${blobXPath}`, withSlash).toString();
+    return new URL(
+      `nxfile/default/${encodeURIComponent(docUid)}/${blobXPath}`,
+      withSlash,
+    ).toString();
   }
 
   /**
