@@ -15,7 +15,8 @@
         [style.transform]="'scale(' + zoom() + ')'"
       />
     } @else if (isPdf) {
-      <iframe [src]="data.blobUrl" class="viewer-frame"></iframe>
+      <!-- `title` is the iframe's accessible name; without it a screen reader announces only "frame". -->
+      <iframe [src]="data.blobUrl" [title]="data.name" class="viewer-frame"></iframe>
     } @else if (isVideo) {
       <video controls class="viewer-video">
         <!--
@@ -31,7 +32,7 @@
         <source [src]="data.rawUrl" [type]="data.mimeType" />
       </audio>
     } @else if (isText) {
-      <iframe [src]="data.blobUrl" class="viewer-frame"></iframe>
+      <iframe [src]="data.blobUrl" [title]="data.name" class="viewer-frame"></iframe>
     } @else {
       <div class="viewer-unsupported">
         <mat-icon class="unsupported-icon">insert_drive_file</mat-icon>

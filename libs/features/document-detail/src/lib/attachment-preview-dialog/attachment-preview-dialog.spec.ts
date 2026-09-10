@@ -222,6 +222,32 @@ describe('AttachmentPreviewDialogComponent', () => {
     });
   });
 
+  describe('accessibility', () => {
+    /**
+     * An iframe with no accessible name is announced as just "frame". Both preview iframes take their
+     * name from the attachment, which is the only thing that distinguishes them to a screen reader.
+     */
+    it('names the pdf preview iframe after the attachment', async () => {
+      const { fixture } = await createDialog('application/pdf', true, {
+        name: 'quarterly-report.pdf',
+        blobType: 'application/pdf',
+      });
+      const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute('title')).toBe('quarterly-report.pdf');
+    });
+
+    it('names the text preview iframe after the attachment', async () => {
+      const { fixture } = await createDialog('text/plain', true, {
+        name: 'notes.txt',
+        blobType: 'text/plain',
+      });
+      const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute('title')).toBe('notes.txt');
+    });
+  });
+
   describe('zoom', () => {
     it('steps in and out by a quarter', async () => {
       const { component } = await createDialog('image/png');

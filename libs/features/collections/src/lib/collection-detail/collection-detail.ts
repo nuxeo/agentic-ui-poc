@@ -133,6 +133,8 @@ export class CollectionDetailComponent {
   readonly error = signal<string | null>(null);
   readonly totalSize = signal(0);
   readonly thumbnailMap = signal<Record<string, string | null>>({});
+  /** Batch token for thumbnail loads, so a superseded response cannot write. */
+  private thumbnailGeneration = 0;
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -336,6 +338,9 @@ export class CollectionDetailComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
+    // Same guard as the Search, Trash, Assets and Browse loaders: a request started for the previous
+    // collection could otherwise resolve after the reset below and insert stale data.
+    const generation = ++this.thumbnailGeneration;
     // The reset that made the leak unbounded: `thumbnailMap.set({})` dropped the last
     // batch's URLs without revoking the blobs behind them, so every navigation to
     // another collection pinned another batch in memory for the life of the document.
@@ -350,7 +355,10 @@ export class CollectionDetailComponent {
           takeUntilDestroyed(this.destroyRef),
         )
         .subscribe((blob) => {
-          if (!blob) return;
+          // Drop a response from a superseded batch. Without this a thumbnail request started for the
+          // previous collection could resolve after the reset above and reinsert a stale blob URL —
+          // and the map is also the revocation ledger, so the leaked URL is then never revoked.
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
           this.thumbnailMap.update((m) => {
             const previous = m[doc.uid];

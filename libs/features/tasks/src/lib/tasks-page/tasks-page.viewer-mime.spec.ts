@@ -202,6 +202,25 @@ describe('TasksPageComponent — the MIME type bound to the viewer', () => {
 
       // The load-bearing assertion: the older request must not win.
       expect(component.selectedTask()?.id).toBe('task-B');
+      // And the page must not be stuck loading. The superseded response returns at the generation
+      // guard before its own `taskLoading.set(false)`, so the click has to clear it.
+      expect(component.taskLoading()).toBe(false);
+    });
+
+    it('clears taskLoading as soon as a direct selection supersedes the route request', () => {
+      const routeTask = new Subject<unknown>();
+      const taskService = TestBed.inject(TaskService) as unknown as {
+        getTask: ReturnType<typeof vi.fn>;
+      };
+      taskService.getTask.mockReturnValue(routeTask.asObservable());
+
+      component['loadAndSelectTask']('task-A');
+      expect(component.taskLoading()).toBe(true);
+
+      component.selectTask({ id: 'task-B', name: 'Chosen' } as never);
+
+      // Cleared at selection time, not left to a response that will never clear it.
+      expect(component.taskLoading()).toBe(false);
     });
 
     it('still applies a route task response when nothing superseded it', () => {

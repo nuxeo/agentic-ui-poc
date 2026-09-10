@@ -249,6 +249,12 @@ export class TasksPageComponent implements OnInit {
     // a request to clear it — so without this line, selecting a task with no document while another
     // is still loading leaves its "No document" placeholder stuck on "Loading...".
     this.docLoading.set(false);
+    // `taskLoading` needs the same treatment, for the same reason, and did not get it when
+    // `loadAndSelectTask` gained its generation guard: the superseded route response now returns at
+    // the guard *before* reaching `taskLoading.set(false)`, so a click during a pending route load
+    // left the page on its loading state permanently. The trap was already documented two lines up
+    // for `docLoading`; the guard reintroduced it one field over.
+    this.taskLoading.set(false);
     this.resetForm();
     this.router.navigate(['/tasks', task.id], { replaceUrl: true });
 

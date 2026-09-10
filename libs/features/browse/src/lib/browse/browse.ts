@@ -206,6 +206,8 @@ export class BrowseComponent {
   private readonly directoryService = inject(DirectoryService);
   private readonly tagService = inject(TagService);
   readonly selectionService = inject(SelectionService);
+  /** Batch token for thumbnail loads, so a superseded response cannot write. */
+  private thumbnailGeneration = 0;
   private readonly extensions = inject(AppExtensionsService);
   private readonly ruleContext = inject(ExtensionRuleContextService);
   private readonly actionRegistry = inject(ExtensionActionRegistry);
@@ -854,6 +856,10 @@ export class BrowseComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
+    // Minted on every invocation, including a non-resetting one: two loaders can otherwise share a
+    // generation and the earlier one's callbacks survive the later one's reset. Same guard as the
+    // Search, Trash and Assets loaders.
+    const generation = ++this.thumbnailGeneration;
     if (reset) {
       // Drop the selection layer's copies first: it retains these exact strings and the shell
       // topbar binds them into `<img [src]>`, and selection survives a folder change.
@@ -872,7 +878,10 @@ export class BrowseComponent {
           takeUntilDestroyed(this.destroyRef),
         )
         .subscribe((blob) => {
-          if (!blob) return;
+          // Drop a response from a superseded batch. Without this a thumbnail request started for the
+          // previous folder could resolve after the reset above and reinsert a stale blob URL —
+          // and the map is also the revocation ledger, so the leaked URL is then never revoked.
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
           this.thumbnailMap.update((m) => {
             const previous = m[doc.uid];
