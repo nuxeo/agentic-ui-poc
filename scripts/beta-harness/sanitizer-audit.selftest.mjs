@@ -75,36 +75,77 @@ function injectKdRegisteredSanitiserBypass(s) {
   );
 }
 
+/**
+ * The base the next audit run should compare against, or `null` for the real one.
+ *
+ * Passed to the child process rather than written to `refs/remotes/origin/main`. Repointing that ref
+ * was the sharpest edge in this file: it mutated shared repository state, a crash between repoint and
+ * restore left the user's remote-tracking ref wrong, and the recovery was `git fetch origin` — which is
+ * not something a gate run should ever make necessary. An environment variable is scoped to one child
+ * process and cannot outlive it.
+ */
+let baseRefOverride = null;
+
 /** Runs the audit and returns { code, out }. */
 function runAudit(extraArgs = []) {
-  const r = spawnSync('node', [AUDIT, ...extraArgs], { cwd: ROOT, encoding: 'utf8' });
+  const env = { ...process.env };
+  if (baseRefOverride) env['SANITIZER_AUDIT_BASE_REF'] = baseRefOverride;
+  else delete env['SANITIZER_AUDIT_BASE_REF'];
+  const r = spawnSync('node', [AUDIT, ...extraArgs], { cwd: ROOT, encoding: 'utf8', env });
   return { code: r.status, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
 }
 
+/**
+ * `relPath -> { original, written }` for every file a control has perturbed.
+ *
+ * `written` is kept as well as `original` so restoration can tell "still holds my perturbation" from
+ * "someone else has written this since". Blind restoration would silently discard a concurrent edit —
+ * an IDE save while a control is running — by putting back bytes captured before it.
+ */
 const backups = new Map();
 function edit(relPath, transform) {
   const abs = join(ROOT, relPath);
-  const original = readFileSync(abs, 'utf8');
-  if (!backups.has(relPath)) backups.set(relPath, original);
-  const next = transform(original);
+  const current = readFileSync(abs, 'utf8');
+  const original = backups.get(relPath)?.original ?? current;
+  const next = transform(current);
   if (next === original)
     throw new Error(`perturbation for ${relPath} changed nothing — the selftest would be vacuous`);
   writeFileSync(abs, next, 'utf8');
+  backups.set(relPath, { original, written: next });
 }
 function restoreAll() {
-  for (const [relPath, original] of backups) writeFileSync(join(ROOT, relPath), original, 'utf8');
+  const clobbered = [];
+  for (const [relPath, { original, written }] of backups) {
+    const abs = join(ROOT, relPath);
+    // Only restore what still holds this run's perturbation. If the bytes differ, something outside
+    // this process wrote the file, and overwriting it with a snapshot taken before that write would
+    // destroy work this script has no business touching. Reported instead, loudly, because a
+    // perturbed file left in place is also not something to be quiet about.
+    let onDisk;
+    try {
+      onDisk = readFileSync(abs, 'utf8');
+    } catch {
+      onDisk = null;
+    }
+    if (onDisk !== null && onDisk !== written) {
+      clobbered.push(relPath);
+      continue;
+    }
+    writeFileSync(abs, original, 'utf8');
+  }
   backups.clear();
-  if (restoreBaseRef) {
-    const restore = restoreBaseRef;
-    restoreBaseRef = null;
-    restore();
+  baseRefOverride = null;
+  if (clobbered.length > 0) {
+    console.error(
+      `\nselftest: NOT restoring ${clobbered.join(', ')} — changed by something else mid-run.\n` +
+        `  Those files may still hold a perturbation. Check them, and use 'git diff' before committing.`,
+    );
   }
 }
 
 const git = (...args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
 
 /** Set by `repointBaseTo`, run by `restoreAll` — so the signal handlers below cover it too. */
-let restoreBaseRef = null;
 
 /**
  * Points `refs/remotes/origin/main` at `commitish` until the next `restoreAll()`.
@@ -132,27 +173,10 @@ let restoreBaseRef = null;
  * against, which is worth being loud about.
  */
 function repointBaseTo(commitish) {
-  if (restoreBaseRef) throw new Error('base ref already repointed — nesting is not supported');
-
+  if (baseRefOverride) throw new Error('base already overridden — nesting is not supported');
   const resolved = git('rev-parse', '--verify', `${commitish}^{commit}`);
   if (resolved.status !== 0) throw new Error(`selftest: cannot resolve ${commitish}`);
-
-  const before = git('rev-parse', '--verify', BASE_REF);
-  const had = before.status === 0;
-  const previous = had ? before.stdout.trim() : null;
-
-  restoreBaseRef = () => {
-    const r = had ? git('update-ref', BASE_REF, previous) : git('update-ref', '-d', BASE_REF);
-    if (r.status !== 0) {
-      throw new Error(`selftest: could not restore ${BASE_REF} — run 'git fetch origin' to repair it`);
-    }
-  };
-
-  const set = git('update-ref', BASE_REF, resolved.stdout.trim());
-  if (set.status !== 0) {
-    restoreBaseRef = null;
-    throw new Error(`selftest: could not repoint ${BASE_REF}`);
-  }
+  baseRefOverride = resolved.stdout.trim();
 }
 
 // `finally` covers a thrown error but not a signal, and this perturbs real tracked files. Without

@@ -1329,7 +1329,12 @@ const fileExists = (relPath) => {
 /** The whole allowlist at the merge base, or `null` if it cannot be read. */
 function allowlistAtBase() {
   const base = (() => {
-    for (const ref of ['origin/main', 'main']) {
+    // An explicit override, so a caller can ask "what would the ratchet say against THIS base" without
+    // rewriting `refs/remotes/origin/main` in the user's repository. The selftest uses it: repointing a
+    // real remote-tracking ref to exercise a control mutated shared state that a crash could leave
+    // wrong, and `git fetch` is not something a gate should make necessary.
+    const override = process.env['SANITIZER_AUDIT_BASE_REF'];
+    for (const ref of override ? [override] : ['origin/main', 'main']) {
       const r = spawnSync('git', ['merge-base', 'HEAD', ref], { cwd: ROOT, encoding: 'utf8' });
       if (r.status === 0 && r.stdout.trim()) return r.stdout.trim();
     }
