@@ -782,7 +782,7 @@ describe('SearchComponent', () => {
       first.complete();
       expect(component.aiGeneratedNxql()).toBe('SELECT * FROM B');
       expect(component.aiExplanation()).toBe('from B');
-      expect(mockNuxeoApiBase.nxqlSearch.mock.calls.length).toBe(queriesBefore);
+      expect(mockNuxeoApiBase.nxqlSearch.mock.calls).toHaveLength(queriesBefore);
     });
 
     it('ignores an AI response that arrives after AI mode is switched off', () => {

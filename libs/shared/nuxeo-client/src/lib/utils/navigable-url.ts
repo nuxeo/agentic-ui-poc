@@ -98,8 +98,11 @@ export function navigableUrlOrNull(
   // Checked by code point rather than with a regex: a character class spelling these out literally
   // trips `no-control-regex`, and the intent reads more plainly this way.
   for (let i = 0; i < candidate.length; i += 1) {
-    const code = candidate.charCodeAt(i);
-    if (code <= 0x20 || code === 0x7f) return null;
+    // `codePointAt`, not `charCodeAt`. Equivalent for this check — every value tested for is in the
+    // BMP and none is a surrogate — and it avoids the code-unit-vs-code-point trap for any future
+    // reader who widens the range.
+    const code = candidate.codePointAt(i);
+    if (code !== undefined && (code <= 0x20 || code === 0x7f)) return null;
   }
 
   let parsed: URL;

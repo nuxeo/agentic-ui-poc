@@ -69,11 +69,15 @@ export class SearchQueueComponent {
       // per-id revoke-before-replace below only covers re-fetching the SAME id; it never saw an id
       // that simply stopped being in the results.
       this.activeIds = new Set(queueItems.map((item) => item.id));
-      for (const [id, url] of [...this.objectUrls]) {
+      // Collected first, deleted after: iterating the Map directly avoids the spread, and deferring
+      // the deletes avoids mutating the collection being walked at all.
+      const departed: string[] = [];
+      for (const [id, url] of this.objectUrls) {
         if (this.activeIds.has(id)) continue;
         URL.revokeObjectURL(url);
-        this.objectUrls.delete(id);
+        departed.push(id);
       }
+      for (const id of departed) this.objectUrls.delete(id);
       const stale = Object.keys(thumbnailMap).filter((id) => !this.activeIds.has(id));
       if (stale.length > 0) {
         this.thumbnailMap.update((current) => {
