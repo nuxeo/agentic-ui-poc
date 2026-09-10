@@ -208,6 +208,7 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
 
   describe('MIME dispatch, in the documented priority order', () => {
     const blobUrl = safeUrl('blob:doc');
+    const previewUrl = safeUrl('/nuxeo/preview');
 
     it('dispatches image, video and audio by MIME family', () => {
       setInputs({ mimeType: 'image/png', blobUrl });
@@ -305,6 +306,54 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
      * served type that must NOT reach one; the cases above are the positive controls, since they all
      * run with `blobType: 'application/pdf'`.
      */
+    /**
+     * The server-rendered preview is a fallback, so it has to be reachable for a document whose MIME
+     * type is recognised. `loadPreviewFallback` sets only `previewUrl`; `blobUrl` and `blobType` stay
+     * empty. With the branches ordered by MIME first, each recognised type reached its own branch and
+     * shadowed the fallback — rendering an iframe or `<img>` bound to a null URL before the served-type
+     * gate, and 'none' after it.
+     */
+    describe('the server preview fallback is reachable for recognised MIME types', () => {
+      const recognised = [
+        'application/pdf',
+        'image/png',
+        'video/mp4',
+        'audio/mpeg',
+        'text/plain',
+        'text/markdown',
+        'application/octet-stream',
+      ];
+
+      for (const mime of recognised) {
+        it(`falls back to the preview URL for ${mime} when no blob was fetched`, () => {
+          setInputs({ mimeType: mime, blobUrl: null, blobType: '', previewUrl });
+          expect(component.contentType()).toBe('preview');
+        });
+      }
+
+      it('still prefers a local blob over the preview URL when both exist', () => {
+        // The positive control: this must not turn into "always prefer preview".
+        setInputs({ mimeType: 'image/png', blobUrl, blobType: 'image/png', previewUrl });
+        expect(component.contentType()).toBe('image');
+      });
+
+      it('still prefers transcoded video sources over the preview URL', () => {
+        // Those are usable content, not a fallback.
+        setInputs({
+          mimeType: 'video/mp4',
+          blobUrl: null,
+          videoSources: [videoSource()],
+          previewUrl,
+        });
+        expect(component.contentType()).toBe('video');
+      });
+
+      it('reports none when there is no blob, no source and no preview', () => {
+        setInputs({ mimeType: 'application/pdf', blobUrl: null, previewUrl: null });
+        expect(component.contentType()).toBe('none');
+      });
+    });
+
     describe('the iframe branches require the served type to be PDF', () => {
       it('refuses a native pdf whose served type is html', () => {
         setInputs({ mimeType: 'application/pdf', blobUrl, blobType: 'text/html' });

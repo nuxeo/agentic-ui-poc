@@ -225,6 +225,18 @@ export class DocumentViewerComponent {
       return 'none';
     }
 
+    // The server-rendered preview has to be reachable BEFORE metadata dispatch.
+    //
+    // `loadPreviewFallback` is what runs when the local blob could not be fetched: it sets only
+    // `previewUrl`, leaving `blobUrl` and `blobType` empty. Every branch below assumes a local blob, so
+    // with the branches ordered by MIME first, a recognised type reached its own branch and never got
+    // here — a PDF returned 'pdf' and rendered an iframe bound to a null `blobUrl`, and after the
+    // served-type gate landed it returned 'none' instead. Both are the fallback being shadowed rather
+    // than used; the gate changed the symptom, not the cause.
+    //
+    // Transcoded video sources still win, because those are usable content rather than a fallback.
+    if (!this.blobUrl() && this.videoSources().length === 0 && this.previewUrl()) return 'preview';
+
     if (/^image\//.test(mime)) return 'image';
     if (/^video\//.test(mime) || /^application\/(g|m)xf$/.test(mime)) return 'video';
     if (/^audio\//.test(mime)) return 'audio';
