@@ -1,4 +1,4 @@
-import { Component, provideZonelessChangeDetection, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DomSanitizer, type SafeResourceUrl } from '@angular/platform-browser';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -45,7 +45,6 @@ describe("Angular's security context for media bindings", () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [SecurityContextHost],
-      providers: [provideZonelessChangeDetection()],
     });
     const fixture = TestBed.createComponent(SecurityContextHost);
     fixture.componentInstance.safe.set(
