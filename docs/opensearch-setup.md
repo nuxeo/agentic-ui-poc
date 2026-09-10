@@ -60,11 +60,11 @@ services:
     container_name: opensearch
     environment:
       - discovery.type=single-node
-      - plugins.security.disabled=true
+      # The entrypoint reads this env var, not the plugins.security.disabled
+      # setting. Setting it here is what skips install_demo_configuration.sh,
+      # so no OPENSEARCH_INITIAL_ADMIN_PASSWORD is needed at all.
+      - DISABLE_SECURITY_PLUGIN=true
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
-      # Only read by the image when the security plugin is enabled, which it is
-      # not here. Export your own value; never commit one.
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?export a strong password first}
     ports:
       - 9200:9200
       - 9600:9600
