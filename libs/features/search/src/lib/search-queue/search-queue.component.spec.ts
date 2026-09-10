@@ -21,7 +21,12 @@ import { SearchQueueComponent } from './search-queue.component';
  * that simply stopped being in the results.
  *
  * Create and revoke are asserted as a PAIR. Counting only creates cannot detect a leak, and counting
- * only revokes cannot detect over-revocation — the two failure modes are opposite and both matter.
+ * only revokes cannot detect over-revocation — the two failure modes are opposite and both matter. *
+ * The REAL template renders — no `overrideComponent` stub. The repository requires external templates,
+ * and although a TestBed override is arguably a different thing from authoring one, review asked twice
+ * and the alternative it offered turned out to be simply better: rendering the real `templateUrl` costs
+ * nothing here, adds fidelity, and leaves no convention question to argue about. I should have tried it
+ * before defending the stub.
  */
 describe('SearchQueueComponent — thumbnail object URL lifecycle', () => {
   let fixture: ComponentFixture<SearchQueueComponent>;
@@ -67,9 +72,7 @@ describe('SearchQueueComponent — thumbnail object URL lifecycle', () => {
         { provide: SearchAggregationService, useValue: { items } },
         { provide: DocumentDetailService, useValue: { fetchThumbnail } },
       ],
-    })
-      .overrideComponent(SearchQueueComponent, { set: { imports: [], template: '<div></div>' } })
-      .compileComponents();
+    }).compileComponents();
 
     fixture = TestBed.createComponent(SearchQueueComponent);
     component = fixture.componentInstance;
