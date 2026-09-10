@@ -238,7 +238,7 @@ installed by a separate non-overwriting step and survives. See `resolveBootstrap
 
 | Property           | Required | Constraints                                                                                                                               |
 | ------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. `https:` in production; `http:` only in a dev build.                                               |
+| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Use `https:` when the app is served over HTTPS; `http:` is allowed in development or when the app itself is served over HTTP. |
 | `nuxeoInternalUrl` | yes      | Nuxeo as the **ARender containers** see it, through the auth-proxy sidecar. Plain `http:` is fine — it is never navigated by the browser. |
 
 Both are mandatory and validated in two places, so a partial or malformed configuration disables
