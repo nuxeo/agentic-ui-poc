@@ -179,6 +179,8 @@ export class SearchComponent {
 
   readonly thumbnailMap = signal<Record<string, string | null>>({});
   private thumbnailGeneration = 0;
+  /** Sequence for the imperative NXQL request, so a superseded response cannot write. */
+  private nxqlGeneration = 0;
 
   // AI Search state
   readonly aiSearchMode = signal(false);
@@ -1008,6 +1010,11 @@ export class SearchComponent {
   }
 
   private runNxqlQuery(nxql: string): void {
+    // Same guard as `TrashComponent.search()`, and for the same reason: the standard search path in
+    // this file is driven through `switchMap` and so cancels its predecessor, but this one subscribes
+    // imperatively, so a slow earlier query could land after a later one and overwrite its results.
+    // Copilot flagged only the trash instance; this is the same defect in the same shape.
+    const generation = ++this.nxqlGeneration;
     this.loading.set(true);
     this.beginThumbnailBatch();
     this.nuxeoApi
@@ -1018,6 +1025,7 @@ export class SearchComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
+          if (generation !== this.nxqlGeneration) return;
           const items: SearchResultItem[] = (result.entries ?? []).map((doc) => ({
             id: doc.uid,
             title: doc.title,
@@ -1046,6 +1054,9 @@ export class SearchComponent {
           this.loadThumbnails(items);
         },
         error: () => {
+          // Guarded too: a stale failure would otherwise replace a newer query's results with an
+          // error banner and clear its loading state.
+          if (generation !== this.nxqlGeneration) return;
           this.aiError.set('NXQL query execution failed. The generated query may be invalid.');
           this.loading.set(false);
           this.aiLoading.set(false);

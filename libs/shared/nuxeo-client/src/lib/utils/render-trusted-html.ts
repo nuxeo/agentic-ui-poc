@@ -1,7 +1,26 @@
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import DOMPurify from 'dompurify';
 
-const ALLOWED_CONFIG_KEYS = new Set(['ALLOWED_TAGS', 'ALLOWED_ATTR', 'ADD_ATTR']);
+/**
+ * The only config this helper accepts, as a type rather than as a runtime surprise.
+ *
+ * The parameter used to be DOMPurify's own `Config`, which types roughly 40 options and permits
+ * `ADD_ATTR` to be a predicate. `assertSafeConfig` throws for all but three keys and for any
+ * non-array value, so a consumer could write a config that type-checked and then threw at runtime —
+ * the compiler actively pointed the wrong way. This type is the guard's contract expressed where the
+ * caller can see it, so an unsupported option is a compile error and the runtime check becomes the
+ * backstop for untyped callers rather than the only line of defence.
+ */
+export interface TrustedHtmlConfig {
+  /** Elements to keep. Active-content tags are rejected — see {@link BLOCKED_TAGS}. */
+  ALLOWED_TAGS?: string[];
+  /** Attributes to keep. `on*` handlers and `srcdoc` are rejected. */
+  ALLOWED_ATTR?: string[];
+  /** Attributes to keep *in addition to* DOMPurify's defaults. Same restrictions as ALLOWED_ATTR. */
+  ADD_ATTR?: string[];
+}
+
+const ALLOWED_CONFIG_KEYS = new Set<string>(['ALLOWED_TAGS', 'ALLOWED_ATTR', 'ADD_ATTR']);
 const BLOCKED_TAGS = new Set([
   'script',
   'iframe',
@@ -27,7 +46,7 @@ const BLOCKED_ATTRS = new Set(['srcdoc']);
  * Hence the shape check comes first and throws, rather than being folded into the value scan where a
  * non-array can only ever look like an absence of evidence.
  */
-function assertSafeConfig(config?: Parameters<typeof DOMPurify.sanitize>[1]): void {
+function assertSafeConfig(config?: TrustedHtmlConfig): void {
   if (!config) return;
   const cfg = config as Record<string, unknown>;
 
@@ -88,7 +107,7 @@ function assertSafeConfig(config?: Parameters<typeof DOMPurify.sanitize>[1]): vo
 export function renderTrustedHtml(
   sanitizer: DomSanitizer,
   html: string,
-  config?: Parameters<typeof DOMPurify.sanitize>[1],
+  config?: TrustedHtmlConfig,
 ): SafeHtml {
   assertSafeConfig(config);
   const clean = DOMPurify.sanitize(html, config);

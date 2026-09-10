@@ -132,6 +132,8 @@ export class TrashComponent {
   readonly actionInProgress = signal<Set<string>>(new Set());
   readonly thumbnailMap = signal<Record<string, string | null>>({});
   private thumbnailGeneration = 0;
+  /** Sequence for search requests, so a superseded response cannot write. See `search()`. */
+  private searchGeneration = 0;
   readonly saving = signal(false);
   readonly deletingSavedSearch = signal(false);
 
@@ -150,6 +152,15 @@ export class TrashComponent {
   }
 
   search(): void {
+    // Every response is checked against this before it is allowed to write anything.
+    //
+    // `beginThumbnailBatch()` alone did not make overlapping searches safe, because the request
+    // never compared it: if A starts, B starts and completes, then A completes, A still overwrote
+    // `documents`, `totalResults` and the shared filter-service results with its stale entries, and
+    // its `loadThumbnails` then cleared B's thumbnails in favour of its own. The sibling components
+    // avoid this structurally by driving search through `switchMap`, which cancels the previous
+    // request; this one subscribes imperatively, so it needs the guard.
+    const generation = ++this.searchGeneration;
     this.loading.set(true);
     this.error.set(null);
     this.trashFilterService.resultsLoading.set(true);
@@ -169,6 +180,7 @@ export class TrashComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res: NuxeoDocumentList) => {
+          if (generation !== this.searchGeneration) return;
           const entries = res.entries ?? [];
           this.documents.set(entries);
           this.totalResults.set(res.resultsCount ?? entries.length);
@@ -181,6 +193,9 @@ export class TrashComponent {
           this.loadThumbnails(entries);
         },
         error: () => {
+          // Guarded too: a stale failure would otherwise show an error over a newer search's
+          // successful results and clear its loading state.
+          if (generation !== this.searchGeneration) return;
           this.error.set('Failed to load trashed documents.');
           this.loading.set(false);
           this.trashFilterService.resultsLoading.set(false);

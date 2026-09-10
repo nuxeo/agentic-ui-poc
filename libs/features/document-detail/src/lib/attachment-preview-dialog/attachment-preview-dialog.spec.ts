@@ -66,6 +66,9 @@ async function createDialog(
         useFactory: (sanitizer: DomSanitizer): AttachmentPreviewData => ({
           name: 'report.bin',
           mimeType,
+          // Defaults to agreeing with the metadata type, which is the normal case. Tests that care
+          // about the metadata/served mismatch override it explicitly.
+          blobType: mimeType,
           blobUrl: sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
           rawUrl,
           ownsRawUrl: true,
@@ -166,6 +169,47 @@ describe('AttachmentPreviewDialogComponent', () => {
         const { component } = await createDialog(mime);
         expect(component.isText, mime).toBe(false);
       }
+    });
+
+    /**
+     * The metadata/served-type mismatch. The browser parses the iframe document by the served
+     * `Content-Type`, not by what the document record claims, so checking only `mimeType` let an
+     * HTML-served blob through under a `text/plain` or `application/pdf` record.
+     *
+     * The empty-`blobType` cases are the no-`Content-Type` scenario, where the browser would sniff:
+     * `''` is not on the allow-list, so the branch is refused rather than guessed at.
+     */
+    it('refuses the iframe when the served type disagrees with the metadata type', async () => {
+      const cases: Array<[string, string]> = [
+        ['text/plain', 'text/html'],
+        ['application/json', 'text/html'],
+        ['text/csv', 'application/xhtml+xml'],
+        ['text/plain', ''],
+      ];
+      for (const [mimeType, blobType] of cases) {
+        const { component } = await createDialog(mimeType, false, { blobType });
+        expect(component.isText, `${mimeType} served as "${blobType}"`).toBe(false);
+      }
+    });
+
+    it('refuses a PDF whose served type is not PDF', async () => {
+      const served = await createDialog('application/pdf', false, { blobType: 'text/html' });
+      expect(served.component.isPdf).toBe(false);
+
+      const absent = await createDialog('application/pdf', false, { blobType: '' });
+      expect(absent.component.isPdf).toBe(false);
+
+      // Positive control: agreement still previews, so the gate is discriminating rather than
+      // refusing every PDF.
+      const agreed = await createDialog('application/pdf', false, { blobType: 'application/pdf' });
+      expect(agreed.component.isPdf).toBe(true);
+    });
+
+    it('accepts a served type that carries a charset parameter', async () => {
+      const { component } = await createDialog('text/plain', false, {
+        blobType: 'text/plain; charset=utf-8',
+      });
+      expect(component.isText).toBe(true);
     });
 
     it('classifies an unknown binary type as none of the previewable kinds', async () => {

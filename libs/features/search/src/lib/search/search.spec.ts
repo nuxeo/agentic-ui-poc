@@ -687,6 +687,56 @@ describe('SearchComponent', () => {
       expect(mockAiGatewayService.nlToNxql).toHaveBeenCalledWith('test query');
     });
 
+    /**
+     * The regression test for a stale NXQL response overwriting a newer one.
+     *
+     * The standard search path in this component is driven through `switchMap`, so it cancels its
+     * predecessor. `runNxqlQuery` subscribes imperatively and did not compare a generation, so a slow
+     * first query landing after a fast second one replaced the second's results — the same defect
+     * Copilot reported in `TrashComponent.search()`.
+     *
+     * Verified by reverting the `++this.nxqlGeneration` guard and watching this go red.
+     */
+    it('ignores an NXQL response superseded by a later query', () => {
+      const first = new Subject<{ entries: { uid: string; title: string }[] }>();
+      const second = new Subject<{ entries: { uid: string; title: string }[] }>();
+      mockNuxeoApiBase.nxqlSearch
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+
+      component['runNxqlQuery']('SELECT * FROM Document WHERE a');
+      component['runNxqlQuery']('SELECT * FROM Document WHERE b');
+
+      // The later query resolves first, as the faster one.
+      second.next({ entries: [{ uid: 'b', title: 'From B' }] });
+      second.complete();
+      expect(component.aiResults().map((r) => r.id)).toEqual(['b']);
+
+      // The earlier one lands afterwards and must be discarded rather than replacing B.
+      first.next({ entries: [{ uid: 'a', title: 'From A' }] });
+      first.complete();
+      expect(component.aiResults().map((r) => r.id)).toEqual(['b']);
+    });
+
+    it('ignores an NXQL failure superseded by a later query', () => {
+      const first = new Subject<{ entries: never[] }>();
+      const second = new Subject<{ entries: { uid: string; title: string }[] }>();
+      mockNuxeoApiBase.nxqlSearch
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+
+      component['runNxqlQuery']('SELECT * FROM Document WHERE a');
+      component['runNxqlQuery']('SELECT * FROM Document WHERE b');
+
+      second.next({ entries: [{ uid: 'b', title: 'From B' }] });
+      second.complete();
+
+      // A stale failure must not put an error banner over the newer query's results.
+      first.error(new Error('boom'));
+      expect(component.aiError()).toBeNull();
+      expect(component.aiResults().map((r) => r.id)).toEqual(['b']);
+    });
+
     it('should not execute AI search with empty query', () => {
       component.aiQuery.set('');
       component.executeAiSearch();

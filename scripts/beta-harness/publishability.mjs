@@ -150,6 +150,68 @@ if (declared === 0) {
   notes.push(`${declared} ɵɵngDeclare* declarations across ${fesm.length} bundles, 0 ɵɵdefine*`);
 }
 
+// ------------------------------ 2b. every external import is a declared dependency ----
+
+/**
+ * A bare import left in the bundle is a runtime dependency whether or not the manifest says so.
+ *
+ * ng-packagr does not inline third-party code: `import DOMPurify from 'dompurify'` survives into the
+ * FESM output verbatim. If that specifier is in neither `dependencies` nor `peerDependencies`, npm
+ * has not been told to install it, so the package resolves fine inside this monorepo — where the
+ * root `node_modules` happens to contain it — and fails on `import` for anyone who installs it from
+ * the registry. Every other check here passed while `dompurify` was undeclared, including
+ * `npm publish --dry-run`, because none of them reads the bundles' import graph.
+ *
+ * Self-references between entry points are skipped: `@nuxeo-satori/platform/ui` importing
+ * `@nuxeo-satori/platform` is the package's own `exports` map, not an external dependency.
+ */
+const manifestDeps = new Set([
+  ...Object.keys(pkg.dependencies ?? {}),
+  ...Object.keys(pkg.peerDependencies ?? {}),
+]);
+
+const externalImports = new Map();
+for (const name of fesm) {
+  const file = join(DIST, 'fesm2022', name);
+  if (!existsSync(file)) continue;
+  const text = readFileSync(file, 'utf8');
+  // Only real module specifiers: the `from '…'` of an import/export statement. Matching bare
+  // quoted strings anywhere would pick up string literals out of the code itself.
+  for (const match of text.matchAll(/\b(?:import|export)\b[^;'"]*?\bfrom\s*['"]([^'"]+)['"]/g)) {
+    const spec = match[1];
+    if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('node:')) continue;
+    const parts = spec.split('/');
+    const packageName = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+    if (packageName === pkg.name || spec.startsWith(`${pkg.name}/`)) continue;
+    if (!externalImports.has(packageName)) externalImports.set(packageName, new Set());
+    externalImports.get(packageName).add(name);
+  }
+}
+
+const undeclared = [...externalImports.keys()].filter((name) => !manifestDeps.has(name)).sort();
+if (undeclared.length > 0) {
+  for (const name of undeclared) {
+    fail(
+      `Bundle imports "${name}" but the built package.json declares it nowhere.\n` +
+        `    Imported by: ${[...externalImports.get(name)].sort().join(', ')}\n` +
+        '    Add it to `dependencies` (plus `allowedNonPeerDependencies` in ng-package.json) or to\n' +
+        '    `peerDependencies`, otherwise a consumer install cannot resolve it.',
+    );
+  }
+} else if (externalImports.size === 0) {
+  // A bundle with no external imports at all means the regex stopped matching, not that the
+  // package became dependency-free — it imports @angular/core at minimum.
+  fail(
+    'Found no external imports in any bundle, which cannot be right for an Angular library.\n' +
+      '    Treat this as the check having broken rather than as a clean result.',
+  );
+} else {
+  notes.push(
+    `${externalImports.size} external import(s) across the bundles, all declared: ` +
+      `${[...externalImports.keys()].sort().join(', ')}`,
+  );
+}
+
 // -------------------------------------------- 3. npm publish --dry-run succeeds ----
 
 const staging = mkdtempSync(join(tmpdir(), 'satori-publishability-'));

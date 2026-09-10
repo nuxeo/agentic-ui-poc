@@ -434,6 +434,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
    * of being unwrapped. `blobUrl` remains the wrapped value for `iframe[src]`.
    */
   readonly rawBlobUrl = signal<string | null>(null);
+  /** `Blob.type` of the main blob, i.e. the served `Content-Type`. Gates the preview iframe. */
+  private readonly mainBlobType = signal<string>('');
   private videoObjectUrls: string[] = [];
   private storyboardObjectUrls: string[] = [];
   /** A storyboard load is already running for the current document. */
@@ -2711,12 +2713,16 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     const previousRaw = this.rawBlobUrl();
     if (previousRaw) URL.revokeObjectURL(previousRaw);
     this.rawBlobUrl.set(null);
+    this.mainBlobType.set('');
   }
 
   private setBlobUrl(blob: Blob): void {
     this.revokeRawBlobUrl();
     const rawUrl = URL.createObjectURL(blob);
     this.rawBlobUrl.set(rawUrl);
+    // Retained for the preview dialog's iframe gate: it must decide on the type the server actually
+    // served, not on the document metadata, which can disagree. See AttachmentPreviewData.blobType.
+    this.mainBlobType.set(blob.type);
     // Both forms are kept deliberately: the wrapped one for `iframe[src]`, which throws on a raw
     // string, and the raw one for `source[src]` / `audio[src]` / `video[poster]`, which are
     // SecurityContext.NONE and would stringify the wrapper into the attribute.
@@ -3483,6 +3489,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data: {
         name: this.fileName(),
         mimeType: this.mimeType(),
+        blobType: this.mainBlobType(),
         blobUrl: safeUrl,
         rawUrl,
         // The document viewer behind this dialog is still bound to the same object URL.
@@ -3946,6 +3953,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
             data: {
               name: att.name,
               mimeType: att.mimeType,
+              // The served type, not the metadata one — the iframe gate needs what the browser
+              // will actually parse by.
+              blobType: blob.type,
               blobUrl: safeUrl,
               rawUrl: objectUrl,
               // Minted just above for this dialog, so the dialog revokes it on close.

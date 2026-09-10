@@ -8,6 +8,16 @@ import { SafeResourceUrl } from '@angular/platform-browser';
 export interface AttachmentPreviewData {
   name: string;
   mimeType: string;
+  /**
+   * The `type` of the `Blob` the object URL was minted from — i.e. the `Content-Type` the server
+   * actually served, which is what the browser parses the iframe document by.
+   *
+   * Separate from `mimeType` on purpose. `mimeType` is the document *metadata*, and gating the
+   * iframe on metadata alone was a hole: a document recorded as `text/plain` but served as
+   * `text/html` passed the allow-list and then parsed as markup. See
+   * {@link PREVIEWABLE_TEXT_TYPES}.
+   */
+  blobType: string;
   /** Wrapped, for `iframe[src]` and `img[src]`. `iframe[src]` throws on a raw string. */
   blobUrl: SafeResourceUrl;
   /**
@@ -53,13 +63,17 @@ export interface AttachmentPreviewData {
  * gets an opaque origin) or decoding to text and escaping it. Neither is done here — closing the
  * hole and adding a feature are separate changes.
  *
- * **Residual risk, not closed by this list.** `isText` reads the *document metadata* mime type,
- * while the iframe renders according to the `Content-Type` Nuxeo serves for the blob, which is what
- * `HttpClient` puts on the `Blob`. Those are two different values. If metadata can say `text/plain`
- * while the served type is `text/html`, this allow-list passes and the iframe still parses markup.
- * Whether Nuxeo permits that disagreement is a server-side question this file cannot answer, and
- * the structural control is a CSP `frame-src`/`sandbox` policy — the same gap the ARender iframe
- * records.
+ * **The metadata/served-type mismatch, now closed.** An earlier version of this note recorded the
+ * mismatch as an unfixable residual risk: `isText` read the document metadata while the browser
+ * parses by the served `Content-Type`, so `text/plain` metadata on an HTML-served blob still reached
+ * the iframe. Calling that unanswerable was wrong — the caller holds the `Blob`, so its `type` can
+ * simply be passed in. Both the declared type and {@link AttachmentPreviewData.blobType} must now be
+ * on this list, which also fails closed when the server sends no `Content-Type` at all (`blob.type`
+ * is `''`, which is not on the list, so no sniffing opportunity).
+ *
+ * A CSP `frame-src`/`sandbox` policy is still the structural control and is still absent — the same
+ * gap the ARender iframe records. This check reduces what reaches the iframe; it does not replace a
+ * header.
  */
 const PREVIEWABLE_TEXT_TYPES = new Set(['text/plain', 'text/csv', 'application/json']);
 
@@ -212,8 +226,18 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
     return this.data.mimeType.startsWith('image/');
   }
 
+  /**
+   * Both the declared and the served type must be PDF, because this is an iframe branch.
+   *
+   * A document recorded as `application/pdf` but served as `text/html` would otherwise render as
+   * scripted HTML in a same-origin blob iframe. An absent `Content-Type` (`blob.type === ''`) also
+   * fails this, which is deliberate: it is the case where the browser would otherwise sniff.
+   */
   get isPdf(): boolean {
-    return this.data.mimeType === 'application/pdf';
+    return (
+      this.essence(this.data.mimeType) === 'application/pdf' &&
+      this.essence(this.data.blobType) === 'application/pdf'
+    );
   }
 
   get isVideo(): boolean {
@@ -224,12 +248,27 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
     return this.data.mimeType.startsWith('audio/');
   }
 
-  /** See {@link PREVIEWABLE_TEXT_TYPES} — an allow-list, because `text/html` is executable. */
+  /**
+   * See {@link PREVIEWABLE_TEXT_TYPES} — an allow-list, because `text/html` is executable.
+   *
+   * Both the declared and the served type must be on it. Checking only the declared one left the
+   * mismatch open: `text/plain` metadata on an HTML-served blob reached the iframe and parsed.
+   */
   get isText(): boolean {
-    // Strip any `; charset=utf-8` parameter before matching, and normalise case: a media type is
-    // case-insensitive, so `TEXT/HTML` must not slip past the allow-list either.
-    const essence = this.data.mimeType.split(';', 1)[0].trim().toLowerCase();
-    return PREVIEWABLE_TEXT_TYPES.has(essence);
+    return (
+      PREVIEWABLE_TEXT_TYPES.has(this.essence(this.data.mimeType)) &&
+      PREVIEWABLE_TEXT_TYPES.has(this.essence(this.data.blobType))
+    );
+  }
+
+  /**
+   * The media type without parameters, lowercased.
+   *
+   * A media type is case-insensitive and may carry `; charset=utf-8`, so `TEXT/HTML` and
+   * `text/html; charset=utf-8` must not slip past an allow-list keyed on `text/html`.
+   */
+  private essence(value: string): string {
+    return value.split(';', 1)[0].trim().toLowerCase();
   }
 
   zoomIn(): void {

@@ -399,7 +399,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-299 exported symbol(s).
+300 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1630,6 +1630,12 @@ class TrashService {
     static ɵprov: i0.ɵɵInjectableDeclaration<TrashService>;
     }
 }
+interface TrustedHtmlConfig {
+    ALLOWED_TAGS?: string[];
+    ALLOWED_ATTR?: string[];
+    ADD_ATTR?: string[];
+    }
+}
 interface UserGroupSuggestion {
     id: string;
     displayLabel: string;
@@ -1821,7 +1827,7 @@ function readClipboardDocs(): ClipboardDoc[];
 function readContentLakeIngestMarker(doc: NuxeoDocument): string | null;
 function readGroupsFromMe(me: unknown): string[];
 function renderNoteMarkdown(text: string): string;
-function renderTrustedHtml(sanitizer: DomSanitizer, html: string, config?: Parameters<typeof DOMPurify.sanitize>[1]): SafeHtml;
+function renderTrustedHtml(sanitizer: DomSanitizer, html: string, config?: TrustedHtmlConfig): SafeHtml;
 function resolveAcePrincipal(value: unknown): string;
 function resolveCreatableSubtypes(doc: NuxeoDocument): string[];
 function resolveImportBlobDocType(file: File, allowedTypes: readonly string[]): string;
