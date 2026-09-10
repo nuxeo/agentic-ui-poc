@@ -72,28 +72,25 @@ docker network create nuxeo-net
 
 ## Step 3: Configure Nuxeo Credentials
 
-The nginx auth-proxy injects Basic Auth when ARender fetches blobs from Nuxeo. Credentials are loaded from the `NUXEO_BASIC_AUTH` variable in `.env.arender` — **never hardcoded in config files**.
+The nginx auth-proxy injects Basic Auth when ARender fetches blobs from Nuxeo. Credentials are loaded from the `NUXEO_BASIC_AUTH` variable in `.env.arender` — **never hardcoded in config files, and never committed**.
 
-The default value in `.env.arender` is `QWRtaW5pc3RyYXRvcjpBZG1pbmlzdHJhdG9y` (base64 for `Administrator:Administrator`). To use different credentials:
+`.env.arender` is gitignored, so create it once from the template:
 
 ```bash
-echo -n "username:password" | base64
+cp .env.arender.example .env.arender
 ```
 
-Then update `.env.arender`:
+Then generate the base64 value for your own local Nuxeo account and put it in the file:
+
+```bash
+echo -n "<username>:<password>" | base64
+```
 
 ```
 NUXEO_BASIC_AUTH=<your-base64-output>
 ```
 
-For example, for `john:s3cret`:
-
-```bash
-echo -n "john:s3cret" | base64
-# Output: am9objpzM2NyZXQ=
-```
-
-Then set `NUXEO_BASIC_AUTH=am9objpzM2NyZXQ=` in `.env.arender`.
+If `NUXEO_BASIC_AUTH` is missing or empty, `docker compose` refuses to start the proxy and tells you so, rather than bringing up an nginx that sends a blank `Authorization` header and 401s on every blob.
 
 ## Step 4: Verify Nuxeo Port
 
@@ -280,8 +277,9 @@ bootstrap file uses `"viewerOrigin": "http://localhost:9080"`.
 
 ## File Reference
 
-| File                         | Purpose                                               |
-| ---------------------------- | ----------------------------------------------------- |
-| `arender-docker-compose.yml` | Docker Compose for all ARender + nginx proxy services |
-| `.env.arender`               | ARender image version                                 |
-| `nginx-arender-proxy.conf`   | Nginx config that injects Basic Auth for Nuxeo        |
+| File                         | Purpose                                                 |
+| ---------------------------- | ------------------------------------------------------- |
+| `arender-docker-compose.yml` | Docker Compose for all ARender + nginx proxy services   |
+| `.env.arender.example`       | Template for the above — the file that is in git        |
+| `.env.arender`               | ARender image version and Nuxeo credential (gitignored) |
+| `nginx-arender-proxy.conf`   | Nginx config that injects Basic Auth for Nuxeo          |

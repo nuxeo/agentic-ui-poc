@@ -38,7 +38,7 @@ marketplace package.
 | [`nuxeo-conf/`](../../nuxeo-conf)                                                           | Server-side Nuxeo config fragments for local dev                                          | Yes                                                        |
 | `pom.xml`                                                                                   | Maven parent — modules: `apps/nuxeo-ui`, `nuxeo-agentic-core`, `nuxeo-agentic-ui-package` | Rarely                                                     |
 | `angular.json`, `nx.json`, `tsconfig.base.json`, `eslint.config.mjs`, `vitest.workspace.ts` | Workspace configuration                                                                   | Carefully                                                  |
-| `*-docker-compose.yml`, `nginx-arender-proxy.conf`, `.env.arender`                          | ARender and Mailpit for local dev                                                         | Yes                                                        |
+| `*-docker-compose.yml`, `nginx-arender-proxy.conf`, `.env.arender.example`                  | ARender and Mailpit for local dev                                                         | Yes                                                        |
 | `CLAUDE.md`, `AGENTS.md`, `.windsurfrules`                                                  | Tool adapters onto `AGENTS/`                                                              | Yes                                                        |
 | `README.charter.md`, `NUXEO_MARKETPLACE_GUIDE.md`                                           | Charter and packaging guide                                                               | Rarely                                                     |
 

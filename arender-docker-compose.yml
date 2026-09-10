@@ -11,7 +11,9 @@ services:
     image: nginx:alpine
     container_name: nuxeo-auth-proxy
     environment:
-      - "NUXEO_BASIC_AUTH=${NUXEO_BASIC_AUTH}"
+      # Required: an empty value makes nginx send a blank Basic header, so every
+      # blob download 401s with nothing in the compose output to explain why.
+      - "NUXEO_BASIC_AUTH=${NUXEO_BASIC_AUTH:?copy .env.arender.example to .env.arender and set NUXEO_BASIC_AUTH}"
     volumes:
       - ./nginx-arender-proxy.conf:/etc/nginx/templates/default.conf.template:ro
     extra_hosts:
