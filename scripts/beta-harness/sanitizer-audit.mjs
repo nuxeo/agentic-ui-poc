@@ -1193,6 +1193,21 @@ function typeIsSafe(type, checker, depth = 0) {
     // `SafeResourceUrl[]` and other array wrappers.
     const element = checker.getElementTypeOfArrayType?.(part);
     if (element && typeIsSafe(element, checker, depth + 1)) return true;
+    // Base types. `interface MediaUrl extends SafeResourceUrl {}` still carries Angular's wrapper at
+    // runtime and still stringifies in a NONE context, but its own symbol is named `MediaUrl`, so the
+    // name test above read it as an ordinary type and the binding was never flagged. Inheritance was
+    // the one way to hold a `Safe*` value that this function did not look through — an alias, an
+    // import, a re-export, a generic instantiation and an array all already resolved.
+    //
+    // The `depth > 6` bound above is the cycle protection: `A extends B`, `B extends A` does not
+    // compile, but a deep or self-referential generic hierarchy could still recurse, and the cap
+    // returns false rather than hanging. That is the one place this function is deliberately
+    // fail-OPEN, and it is bounded by a depth no real Angular type reaches.
+    if (part.isClassOrInterface?.()) {
+      for (const base of checker.getBaseTypes(part) ?? []) {
+        if (typeIsSafe(base, checker, depth + 1)) return true;
+      }
+    }
   }
   return false;
 }

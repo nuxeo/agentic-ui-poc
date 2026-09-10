@@ -1380,6 +1380,37 @@ control(
   'Safe* value in a NONE context',
 );
 
+// ---- check 4: a Safe* type reached through INHERITANCE -------------------------------------------
+//
+// `typeIsSafe` resolved an alias, an import, a re-export, a generic instantiation and an array — every
+// way of holding a `Safe*` value except extending one. `interface MediaUrl extends SafeResourceUrl {}`
+// has its own symbol named `MediaUrl`, so the name test read it as an ordinary type and the NONE-context
+// binding was never flagged, while the value still carries Angular's wrapper and still stringifies.
+//
+// The sixth fail-open spelling in this discovery path. Like the fifth, it came from review rather than
+// from this file.
+control(
+  'check 4 sees a Safe* type reached through interface inheritance',
+  4,
+  () =>
+    edit(VIEWER_TS, (s) => {
+      const out = s
+        .replace(
+          '@Component({',
+          'interface MediaUrl extends SafeResourceUrl {}\n\n@Component({',
+        )
+        .replace(
+          'readonly posterUrl = input<string | null>(null);',
+          'readonly posterUrl = input<MediaUrl | null>(null);',
+        );
+      if (!out.includes('interface MediaUrl') || !out.includes('input<MediaUrl | null>')) {
+        throw new Error('document-viewer posterUrl changed — update this control');
+      }
+      return out;
+    }),
+  'Safe* value in a NONE context',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',

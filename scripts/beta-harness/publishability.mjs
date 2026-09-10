@@ -180,10 +180,20 @@ if (declared === 0) {
  * dynamic import injected mid-bundle, both of which the first two approaches passed.
  */
 
-/** Every module specifier in `text`, from anywhere in the file. */
+/**
+ * Every module specifier in `text`, from anywhere in the file, plus every module load whose specifier
+ * is **not** a string literal.
+ *
+ * The second list is the point. `import(expr)` and `require(expr)` with a computed specifier were
+ * silently dropped, so a bundle could load an undeclared external package through a variable and this
+ * gate would still report every import as declared — the same fail-open shape as the regex it replaced,
+ * one level further in. They are now returned and reported: a specifier this cannot read is a specifier
+ * whose declaration cannot be checked, which is not the same as an import that is fine.
+ */
 function moduleSpecifiersOf(text, fileName) {
   const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
   const specifiers = [];
+  const unreadable = [];
 
   const visit = (node) => {
     if (
@@ -197,8 +207,16 @@ function moduleSpecifiersOf(text, fileName) {
     if (ts.isCallExpression(node) && node.arguments.length > 0) {
       const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
       const isRequire = ts.isIdentifier(node.expression) && node.expression.text === 'require';
-      if ((isDynamicImport || isRequire) && ts.isStringLiteralLike(node.arguments[0])) {
-        specifiers.push(node.arguments[0].text);
+      if (isDynamicImport || isRequire) {
+        if (ts.isStringLiteralLike(node.arguments[0])) {
+          specifiers.push(node.arguments[0].text);
+        } else {
+          unreadable.push({
+            kind: isDynamicImport ? 'import()' : 'require()',
+            line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
+            text: node.arguments[0].getText(source).slice(0, 60),
+          });
+        }
       }
     }
 
@@ -214,7 +232,7 @@ function moduleSpecifiersOf(text, fileName) {
   };
 
   visit(source);
-  return specifiers;
+  return { specifiers, unreadable };
 }
 const manifestDeps = new Set([
   ...Object.keys(pkg.dependencies ?? {}),
@@ -261,7 +279,16 @@ for (const name of scanned) {
   // Deliberately no per-bundle "zero specifiers means the scan broke" check: the package root
   // legitimately has none, exporting only a frozen list of entry point names. The scanner is
   // sanity-checked once below instead, against a specifier that must be present.
-  for (const spec of moduleSpecifiersOf(text, name)) {
+  const { specifiers, unreadable } = moduleSpecifiersOf(text, name);
+  for (const load of unreadable) {
+    fail(
+      `fesm2022/${name}:${load.line} loads a module through a non-literal ${load.kind} specifier: ${load.text}\n` +
+        '    The specifier cannot be read statically, so whether its target is declared cannot be\n' +
+        '    checked. Use a literal specifier, or if the target can only ever resolve inside this\n' +
+        '    package, say so here explicitly rather than leaving the scan silent about it.',
+    );
+  }
+  for (const spec of specifiers) {
     if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('node:')) continue;
     const parts = spec.split('/');
     const packageName = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
