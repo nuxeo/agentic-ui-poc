@@ -59,6 +59,21 @@ const HTML_HELPER_SANITISE = '  const clean = DOMPurify.sanitize(html, config);'
 const KD_CITATION =
   'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts';
 const BASE_REF = 'refs/remotes/origin/main';
+const KD_REGISTERED_SANITISER_BYPASS =
+  "      return renderTrustedHtml(this.sanitizer, this.escapeHtml(text), allowMarkOnly);";
+
+function injectKdRegisteredSanitiserBypass(s) {
+  if (!s.includes(KD_REGISTERED_SANITISER_BYPASS)) {
+    throw new Error('highlightExcerpt changed shape — update this control');
+  }
+  return s.replace(
+    KD_REGISTERED_SANITISER_BYPASS,
+    "      if (text === '__selftest__') {\n" +
+      '        return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));\n' +
+      '      }\n' +
+      KD_REGISTERED_SANITISER_BYPASS,
+  );
+}
 
 /** Runs the audit and returns { code, out }. */
 function runAudit(extraArgs = []) {
@@ -275,7 +290,7 @@ control(
         );
       },
     ),
-  'bypass count mismatch',
+  'unregistered bypass  libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
 );
 
 // ---- check 1 and 5: destructuring by ASSIGNMENT rather than declaration --------------------------
@@ -310,7 +325,7 @@ control(
           anchor,
       );
     }),
-  'bypass count mismatch',
+  'unregistered bypass  libs/features/document-detail/src/lib/note-editor/note-editor.ts',
 );
 
 control(
@@ -410,7 +425,7 @@ control(
         );
       },
     ),
-  'bypass count mismatch',
+  'sanitizer-audit: FAIL — 2 finding(s)',
 );
 
 // ---- check 1: element access whose index is a constant rather than a literal ---------------------
@@ -441,7 +456,7 @@ control(
           anchor,
       );
     }),
-  'bypass count mismatch',
+  'unregistered bypass  libs/features/document-detail/src/lib/note-editor/note-editor.ts',
 );
 
 control(
@@ -520,7 +535,7 @@ control(
           anchor,
       );
     }),
-  'bypass count mismatch',
+  'unregistered bypass  libs/features/document-detail/src/lib/note-editor/note-editor.ts',
 );
 
 control(
@@ -585,7 +600,7 @@ control(
           NOTE_EDITOR_ANCHOR,
       ),
     ),
-  'bypass count mismatch',
+  'unregistered bypass  libs/features/document-detail/src/lib/note-editor/note-editor.ts',
 );
 
 // ---- check 1: an entry with no written justification ---------------------------------------------
@@ -749,12 +764,12 @@ control(
       // Neutralise the sanitiser call while leaving the bypass in place.
       const out = s.replace(/DOMPurify\.sanitize\(/g, 'passThroughForSelftest(');
       if (out === s)
-        throw new Error('note-editor.ts no longer calls DOMPurify.sanitize — update this control');
+        throw new Error('render-trusted-html.ts no longer calls DOMPurify.sanitize — update this control');
       return out;
     }),
   // Finding renamed from "unpaired" to "unsanitised" when check 5 stopped asking whether a sanitiser
   // was *nearby* and started asking whether its result actually reaches the bypass.
-  'unsanitised trusted HTML  libs/features/document-detail/src/lib/note-editor/note-editor.ts',
+  'unsanitised trusted HTML  libs/shared/nuxeo-client/src/lib/utils/render-trusted-html.ts',
 );
 
 // ---- check 4: the evasions review found, each of which used to pass silently ---------------------
@@ -1053,24 +1068,23 @@ control(
 control(
   'check 5 lapses a registered sanitiser once its body is edited',
   5,
-  () =>
+  () => {
     // The one hole a reviewed-registry design leaves: identity alone would keep accepting a helper
-    // that has since been edited into a no-op. Each entry is pinned to a hash of the declaration it
-    // was reviewed as, so any change to what the code does lapses the registration until someone
-    // re-reviews and re-pins. Whitespace is normalised first, so reformatting does not.
-    edit(
-      'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
-      (s) => {
-        const out = s.replace(
-          /private escapeHtml\(value: string\): string \{/,
-          'private escapeHtml(value: string): string {\n    if (value === "") return value;',
-        );
-        if (out === s)
-          throw new Error('kd-citation-dialog escapeHtml signature changed — update control');
-        return out;
-      },
-    ),
-  'unsanitised trusted HTML',
+    // that has since been edited into a no-op. Category D moved the live bypass out of this file, so
+    // the control first reintroduces a bypass whose argument flows through the *registered* sanitiser,
+    // then edits that sanitiser's body to lapse the pinned review.
+    edit(KD_CITATION, injectKdRegisteredSanitiserBypass);
+    edit(KD_CITATION, (s) => {
+      const out = s.replace(
+        /private escapeHtml\(value: string\): string \{/,
+        'private escapeHtml(value: string): string {\n    if (value === "") return value;',
+      );
+      if (out === s)
+        throw new Error('kd-citation-dialog escapeHtml signature changed — update control');
+      return out;
+    });
+  },
+  'unsanitised trusted HTML  libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
 );
 
 control(
@@ -1210,11 +1224,13 @@ control(
   5,
   // Reporting at the registry is not enough on its own: the entry must also be *dropped*, or the
   // helper would keep vouching for the bypass while check 1 complained about the paperwork.
-  () =>
+  () => {
+    edit(KD_CITATION, injectKdRegisteredSanitiserBypass);
     sanitiserEntry((entry) => {
       entry.justification = '';
-    }),
-  'unsanitised trusted HTML',
+    });
+  },
+  'unsanitised trusted HTML  libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
 );
 
 // ---- check 4: the template value, not just the template syntax ---------------------------------
