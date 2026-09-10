@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SafeResourceUrl } from '@angular/platform-browser';
+// Shared rather than local: see the note on the helper — one normalisation for three checks.
+import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface AttachmentPreviewData {
   name: string;
@@ -235,8 +237,8 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
    */
   get isPdf(): boolean {
     return (
-      this.essence(this.data.mimeType) === 'application/pdf' &&
-      this.essence(this.data.blobType) === 'application/pdf'
+      mediaTypeEssence(this.data.mimeType) === 'application/pdf' &&
+      mediaTypeEssence(this.data.blobType) === 'application/pdf'
     );
   }
 
@@ -256,19 +258,9 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
    */
   get isText(): boolean {
     return (
-      PREVIEWABLE_TEXT_TYPES.has(this.essence(this.data.mimeType)) &&
-      PREVIEWABLE_TEXT_TYPES.has(this.essence(this.data.blobType))
+      PREVIEWABLE_TEXT_TYPES.has(mediaTypeEssence(this.data.mimeType)) &&
+      PREVIEWABLE_TEXT_TYPES.has(mediaTypeEssence(this.data.blobType))
     );
-  }
-
-  /**
-   * The media type without parameters, lowercased.
-   *
-   * A media type is case-insensitive and may carry `; charset=utf-8`, so `TEXT/HTML` and
-   * `text/html; charset=utf-8` must not slip past an allow-list keyed on `text/html`.
-   */
-  private essence(value: string): string {
-    return value.split(';', 1)[0].trim().toLowerCase();
   }
 
   zoomIn(): void {

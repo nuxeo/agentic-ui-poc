@@ -206,3 +206,20 @@ export function insecureAllowedForHost(
 ): boolean {
   return isDevMode || hostProtocol === 'http:';
 }
+
+/**
+ * A media type without its parameters, lowercased — e.g. `TEXT/HTML; charset=utf-8` -> `text/html`.
+ *
+ * Shared because it guards three separate security decisions, and a normalisation that differs
+ * between them is a bypass. A media type is case-insensitive and may carry parameters, so an equality
+ * test or allow-list lookup written against the raw string is defeated by `TEXT/HTML` or
+ * `application/pdf; version=1.7`.
+ *
+ * Used wherever a *served* `Content-Type` is compared before a `blob:` URL reaches an iframe — the
+ * attachment preview dialog, `DocumentViewerComponent`, and the citation dialog. Those iframes are
+ * same-origin with the application, so admitting an HTML-served blob is script execution in our
+ * origin; see `PREVIEWABLE_TEXT_TYPES` for the full reasoning.
+ */
+export function mediaTypeEssence(value: string | null | undefined): string {
+  return (value ?? '').split(';', 1)[0].trim().toLowerCase();
+}

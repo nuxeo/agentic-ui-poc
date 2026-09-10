@@ -399,7 +399,7 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-301 exported symbol(s).
+302 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
@@ -1798,6 +1798,7 @@ function isSafeHttpUrl(url: string): boolean;
 function isUserWorkspacePath(nuxeoPath: string): boolean;
 function l10nEntryLabel(entry: L10nDirectoryEntry): string;
 function mailSendFailureMessage(context: 'add' | 'update' | 'send'): string;
+function mediaTypeEssence(value: string | null | undefined): string;
 function mergeCreateDocumentBody(template: NuxeoCreateDocumentTemplate, docType: string, nameFallback: string, overrides: Record<string, unknown>): Record<string, unknown>;
 function mergeDocumentPermissionsContext(existing: NuxeoDocument, updated: NuxeoDocument, options?: MergeDocumentPermissionsContextOptions): NuxeoDocument;
 function navigableUrlOrNull(candidate: string | null | undefined, policy?: NavigableUrlPolicy): string | null;

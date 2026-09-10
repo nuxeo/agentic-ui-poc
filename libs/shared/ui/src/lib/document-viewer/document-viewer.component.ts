@@ -13,6 +13,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+// Shared rather than local: this normalisation guards three separate served-type checks, and a
+// divergence between them would be a bypass.
+import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface VideoSource {
   /**
@@ -75,16 +78,6 @@ export interface VideoInfo {
   videoCodec?: string;
   audioCodec?: string;
   frameRate?: number;
-}
-
-/**
- * A media type without its parameters, lowercased.
- *
- * A media type is case-insensitive and may carry `; charset=utf-8`, so an equality test against
- * `application/pdf` must not be fooled by `APPLICATION/PDF` or `application/pdf; version=1.7`.
- */
-function mediaTypeEssence(value: string): string {
-  return value.split(';', 1)[0].trim().toLowerCase();
 }
 
 /**
