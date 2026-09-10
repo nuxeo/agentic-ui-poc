@@ -33,13 +33,7 @@ const RAW = 'blob:http://localhost/real-object-url';
  */
 @Component({
   standalone: true,
-  template: `
-    <audio><source [src]="safe()" type="audio/mpeg" /></audio>
-    <video [poster]="safe()"><source [src]="safe()" type="video/mp4" /></video>
-    <video class="plain-src" [src]="safe()"></video>
-    <img [src]="safe()" alt="" />
-    <a [href]="safe()">link</a>
-  `,
+  templateUrl: './angular-security-context.spec.html',
 })
 class SecurityContextHost {
   readonly safe = signal<SafeResourceUrl | null>(null);
