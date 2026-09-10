@@ -2,9 +2,24 @@ import { InjectionToken } from '@angular/core';
 
 export interface ARenderConfig {
   /**
-   * Base URL of the ARender UI as seen by the browser. Per-deployment, and it must be an absolute
-   * `https:` origin in production — it is navigated in an `iframe`, so it is a privilege boundary
-   * rather than a cosmetic setting.
+   * Base URL of the ARender UI as seen by the browser. Per-deployment, and a privilege boundary rather
+   * than a cosmetic setting: it is navigated in an `iframe`.
+   *
+   * Must be an absolute `http(s)` origin with **no query string, no fragment and no userinfo** — both
+   * URL builders append parameters to it, and a base carrying its own `?` or `#` absorbs them.
+   *
+   * **The scheme rule is host-relative, not build-relative.** `http:` is rejected only where it would
+   * downgrade the page framing it:
+   *
+   * | Application served over | `http:` viewerOrigin |
+   * | ----------------------- | -------------------- |
+   * | `https://…`             | rejected — the real downgrade |
+   * | `http://…` (on-prem)    | accepted — nothing to downgrade |
+   * | any, dev build          | accepted |
+   *
+   * An earlier version of this comment said it "must be `https:` in production", which was never what
+   * the preview-fallback path did and is not what `ARenderService` does — a consumer following it would
+   * have rejected a supported on-prem configuration. See `insecureAllowedForHost`.
    */
   viewerOrigin: string;
 

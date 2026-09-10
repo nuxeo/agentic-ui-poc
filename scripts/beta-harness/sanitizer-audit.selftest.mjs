@@ -1411,6 +1411,42 @@ control(
   'Safe* value in a NONE context',
 );
 
+// ---- check 4: a Safe* type reached through a DEEP hierarchy ---------------------------------------
+//
+// The base-type walk had a depth cap that returned "not a Safe* type" on exhaustion, so a chain long
+// enough to exceed it was fail-open — and the cap was documented as a deliberate exception in a file
+// whose whole stance is that what it cannot determine, it reports. Cycles are now prevented by type
+// identity instead, and exhausting the (much larger) cap reports as indeterminate.
+//
+// Seven links, which is more than the old cap of six and well within what TypeScript accepts.
+control(
+  'check 4 sees a Safe* type reached through a deep interface chain',
+  4,
+  () =>
+    edit(VIEWER_TS, (s) => {
+      const chain = [
+        'interface MediaUrl1 extends SafeResourceUrl {}',
+        'interface MediaUrl2 extends MediaUrl1 {}',
+        'interface MediaUrl3 extends MediaUrl2 {}',
+        'interface MediaUrl4 extends MediaUrl3 {}',
+        'interface MediaUrl5 extends MediaUrl4 {}',
+        'interface MediaUrl6 extends MediaUrl5 {}',
+        'interface MediaUrl7 extends MediaUrl6 {}',
+      ].join('\n');
+      const out = s
+        .replace('@Component({', `${chain}\n\n@Component({`)
+        .replace(
+          'readonly posterUrl = input<string | null>(null);',
+          'readonly posterUrl = input<MediaUrl7 | null>(null);',
+        );
+      if (!out.includes('interface MediaUrl7') || !out.includes('input<MediaUrl7 | null>')) {
+        throw new Error('document-viewer posterUrl changed — update this control');
+      }
+      return out;
+    }),
+  'Safe* value in a NONE context',
+);
+
 // ---- the ratchet ---------------------------------------------------------------------------------
 control(
   'the ratchet rejects headroom left behind by a removal',

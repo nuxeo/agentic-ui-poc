@@ -274,7 +274,23 @@ if (extras.length > 0) {
 const externalImports = new Map();
 for (const name of scanned) {
   const file = join(DIST, 'fesm2022', name);
-  if (!existsSync(file)) continue;
+  if (!existsSync(file)) {
+    // A bundle the `exports` map points at but which is not on disk.
+    //
+    // Continuing silently was fail-open: the fixed five are asserted present by check 2, but a newly
+    // added sixth export could point at a missing FESM file and still pass this "whole published
+    // surface" scan — and `npm publish --dry-run` does not validate export targets either, so nothing
+    // would have caught it. An export that does not resolve is a broken package, and it is also a
+    // bundle whose imports were never read.
+    if (!fesm.includes(name)) {
+      fail(
+        `The exports map points at fesm2022/${name}, which is not present.\n` +
+          '    An export target that does not exist is a broken package, and its imports were also\n' +
+          '    never scanned. Build it, or remove the export.',
+      );
+    }
+    continue;
+  }
   const text = readFileSync(file, 'utf8');
   // Deliberately no per-bundle "zero specifiers means the scan broke" check: the package root
   // legitimately has none, exporting only a frozen list of entry point names. The scanner is

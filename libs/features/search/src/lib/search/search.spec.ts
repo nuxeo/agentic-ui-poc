@@ -875,6 +875,39 @@ describe('SearchComponent', () => {
       });
     });
 
+    /**
+     * A standard search must not invalidate thumbnails it is not going to reload.
+     *
+     * `beginThumbnailBatch()` ran on every query-param/drawer-filter change, while the response path
+     * deliberately skips `loadThumbnails` when AI results are displayed. So a filter change during a
+     * completed AI search killed every AI thumbnail request still in flight and loaded nothing to
+     * replace them — the thumbnails just vanished.
+     */
+    describe('thumbnail batch ownership', () => {
+      it('leaves the batch alone while AI results are displayed', () => {
+        component.aiSearchMode.set(true);
+        component.aiSearchExecuted.set(true);
+
+        const before = component['thumbnailGeneration'];
+        expect(component['standardResultsOwnThumbnails']()).toBe(false);
+        // Invalidating here would strand the AI thumbnails, because nothing reloads them.
+        if (component['standardResultsOwnThumbnails']()) component['beginThumbnailBatch']();
+
+        expect(component['thumbnailGeneration']).toBe(before);
+      });
+
+      it('claims the batch when the standard results are what is on screen', () => {
+        // The positive control, in both of the ways standard results can own the display.
+        component.aiSearchMode.set(false);
+        component.aiSearchExecuted.set(true);
+        expect(component['standardResultsOwnThumbnails']()).toBe(true);
+
+        component.aiSearchMode.set(true);
+        component.aiSearchExecuted.set(false);
+        expect(component['standardResultsOwnThumbnails']()).toBe(true);
+      });
+    });
+
     it('should not execute AI search with empty query', () => {
       component.aiQuery.set('');
       component.executeAiSearch();

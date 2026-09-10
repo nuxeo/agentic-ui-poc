@@ -1180,36 +1180,76 @@ function unwrapSignal(type, checker) {
  * Resolved through the symbol, not the printed name, so an alias — of any capitalisation — an import,
  * a re-export or a generic instantiation all reduce to the same answer.
  */
-function typeIsSafe(type, checker, depth = 0) {
-  if (!type || depth > 6) return false;
-  for (const part of constituents(type)) {
-    const unwrapped = unwrapSignal(part, checker);
-    if (unwrapped !== part) {
-      if (typeIsSafe(unwrapped, checker, depth + 1)) return true;
-      continue;
+/**
+ * How deep a type hierarchy this will walk before giving up.
+ *
+ * Generous, because cycles are handled by identity below rather than by this cap, so the cap only
+ * fires for a genuinely deep chain. Exhausting it is reported as indeterminate, never as safe.
+ */
+const MAX_TYPE_DEPTH = 24;
+
+/**
+ * Whether `type` is, or wraps, one of Angular's `Safe*` marker interfaces.
+ *
+ * Returns a tri-state, and the third state is the point. Review found the previous version fail-OPEN
+ * for a valid hierarchy: an interface can extend another six times before reaching `SafeResourceUrl`,
+ * and a depth cap that `return false`d on exhaustion classified that as "not a Safe* type", allowing
+ * the wrapped value into a NONE-context binding. Worse, I had written that carve-out into a comment as
+ * deliberate — in a file whose entire stated stance is that what it cannot determine, it reports.
+ *
+ * So: cycles are now prevented by tracking type identity, which is what the cap was standing in for,
+ * and exhausting `MAX_TYPE_DEPTH` sets `indeterminate` so the caller routes it to the same
+ * "unresolvable type in a NONE context" finding as an unreadable expression. Resolved through symbols
+ * rather than printed names, so an alias of any capitalisation, an import, a re-export, a generic
+ * instantiation, an array and now a base type all reduce to the same answer.
+ *
+ * @returns {{safe: boolean, indeterminate: boolean}}
+ */
+function classifySafeType(type, checker) {
+  const seen = new Set();
+  let indeterminate = false;
+
+  /** @returns {boolean} true as soon as any constituent is a `Safe*` marker. */
+  const walk = (current, depth) => {
+    if (!current) return false;
+    if (depth > MAX_TYPE_DEPTH) {
+      indeterminate = true;
+      return false;
     }
-    const symbol = part.aliasSymbol ?? part.getSymbol();
-    if (symbol && SAFE_TYPE_NAME.test(symbol.getName())) return true;
-    // `SafeResourceUrl[]` and other array wrappers.
-    const element = checker.getElementTypeOfArrayType?.(part);
-    if (element && typeIsSafe(element, checker, depth + 1)) return true;
-    // Base types. `interface MediaUrl extends SafeResourceUrl {}` still carries Angular's wrapper at
-    // runtime and still stringifies in a NONE context, but its own symbol is named `MediaUrl`, so the
-    // name test above read it as an ordinary type and the binding was never flagged. Inheritance was
-    // the one way to hold a `Safe*` value that this function did not look through — an alias, an
-    // import, a re-export, a generic instantiation and an array all already resolved.
-    //
-    // The `depth > 6` bound above is the cycle protection: `A extends B`, `B extends A` does not
-    // compile, but a deep or self-referential generic hierarchy could still recurse, and the cap
-    // returns false rather than hanging. That is the one place this function is deliberately
-    // fail-OPEN, and it is bounded by a depth no real Angular type reaches.
-    if (part.isClassOrInterface?.()) {
-      for (const base of checker.getBaseTypes(part) ?? []) {
-        if (typeIsSafe(base, checker, depth + 1)) return true;
+    for (const part of constituents(current)) {
+      // Identity, not depth, is what makes this terminate. A self-referential or mutually recursive
+      // generic can revisit the same type object forever; seeing it twice adds nothing.
+      if (seen.has(part)) continue;
+      seen.add(part);
+
+      const unwrapped = unwrapSignal(part, checker);
+      if (unwrapped !== part) {
+        if (walk(unwrapped, depth + 1)) return true;
+        continue;
+      }
+
+      const symbol = part.aliasSymbol ?? part.getSymbol();
+      if (symbol && SAFE_TYPE_NAME.test(symbol.getName())) return true;
+
+      // `SafeResourceUrl[]` and other array wrappers.
+      const element = checker.getElementTypeOfArrayType?.(part);
+      if (element && walk(element, depth + 1)) return true;
+
+      // Base types. `interface MediaUrl extends SafeResourceUrl {}` still carries Angular's wrapper at
+      // runtime and still stringifies in a NONE context, but its own symbol is named `MediaUrl`, so the
+      // name test above read it as an ordinary type and the binding was never flagged.
+      if (part.isClassOrInterface?.()) {
+        for (const base of checker.getBaseTypes(part) ?? []) {
+          if (walk(base, depth + 1)) return true;
+        }
       }
     }
-  }
-  return false;
+    return false;
+  };
+
+  const safe = walk(type, 0);
+  // A hierarchy that turned out to contain a `Safe*` type is not indeterminate, whatever else it hit.
+  return { safe, indeterminate: indeterminate && !safe };
 }
 
 /**
@@ -1696,7 +1736,15 @@ function main() {
               unresolved = branch;
               break;
             }
-            if (typeIsSafe(resolved, fileChecker)) {
+            const { safe, indeterminate } = classifySafeType(resolved, fileChecker);
+            if (indeterminate) {
+              // A hierarchy too deep to walk is a type this could not decide about, which is the same
+              // situation as an expression it could not resolve — so it takes the same reporting path
+              // rather than being read as "not a Safe* type".
+              unresolved = branch;
+              break;
+            }
+            if (safe) {
               safeBranch = { branch, text: fileChecker.typeToString(resolved) };
               break;
             }

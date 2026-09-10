@@ -240,7 +240,12 @@ export class SearchComponent {
     tap(() => {
       this.loading.set(true);
       this.error.set(null);
-      this.beginThumbnailBatch();
+      // Only invalidate the thumbnail batch if the standard results are going to own the displayed
+      // thumbnails. This was unconditional, and the response path below deliberately skips
+      // `loadThumbnails` while AI results are on screen — so a query-param or drawer-filter change
+      // during a completed AI search bumped the generation, killed every AI thumbnail request still in
+      // flight, and then loaded nothing to replace them. The thumbnails simply disappeared.
+      if (this.standardResultsOwnThumbnails()) this.beginThumbnailBatch();
     }),
     switchMap(([params, drawerFilters]) => {
       const quickFilters = params.get('quickFilters') ?? '';
@@ -324,7 +329,7 @@ export class SearchComponent {
         map((response) => response.items),
         tap((items) => {
           this.loading.set(false);
-          if (!this.aiSearchMode() || !this.aiSearchExecuted()) {
+          if (this.standardResultsOwnThumbnails()) {
             this.loadThumbnails(items);
           }
         }),
@@ -1023,6 +1028,19 @@ export class SearchComponent {
    * both of these call sites. Each time the guard was added and the release was not. Stating it once
    * here is the only version that stops the fourth.
    */
+  /**
+   * Whether the standard search results are what the user is looking at.
+   *
+   * One predicate for two sites that must agree: the `tap` that invalidates the thumbnail batch, and
+   * the response handler that loads it. They were written as separate expressions — an unconditional
+   * `beginThumbnailBatch()` and a guarded `loadThumbnails` — so a standard search fired while AI results
+   * were displayed invalidated the AI thumbnails and then loaded no replacement. Invalidating a batch
+   * nobody is going to refill is strictly worse than leaving it alone.
+   */
+  private standardResultsOwnThumbnails(): boolean {
+    return !this.aiSearchMode() || !this.aiSearchExecuted();
+  }
+
   private supersedeAiRequest(): number {
     const generation = ++this.aiRequestGeneration;
     // Only AI-owned flags. `loading` belongs to the standard pipeline; clearing it here hid the
