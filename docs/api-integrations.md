@@ -1441,7 +1441,7 @@ Returns users and groups sorted by creation date descending (newest first), usin
     "lastName": "Doe",
     "company": "Hyland",
     "email": "jdoe@example.com",
-    "password": "Secret123",
+    "password": "<password>",
     "groups": ["members"]
   }
 }

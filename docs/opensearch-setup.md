@@ -62,7 +62,9 @@ services:
       - discovery.type=single-node
       - plugins.security.disabled=true
       - OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=N3wP@ssw0rd!
+      # Only read by the image when the security plugin is enabled, which it is
+      # not here. Export your own value; never commit one.
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:?export a strong password first}
     ports:
       - 9200:9200
       - 9600:9600
