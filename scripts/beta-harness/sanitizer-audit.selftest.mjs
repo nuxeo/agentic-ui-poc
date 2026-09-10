@@ -245,22 +245,30 @@ control(
   'check 1 catches an extra bypass added to an already-registered member',
   1,
   () =>
-    edit(
-      'libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts',
-      (s) => {
-        const anchor = `  private highlightExcerpt(text: string, excerpt?: string): SafeHtml {\n`;
-        if (!s.includes(anchor)) {
-          throw new Error('highlightExcerpt signature changed — update this control');
-        }
-        return s.replace(
-          anchor,
-          anchor +
-            `    if (text === '__selftest__') {\n` +
-            `      return this.sanitizer.bypassSecurityTrustHtml(text);\n` +
-            `    }\n`,
-        );
-      },
-    ),
+    edit('libs/shared/nuxeo-client/src/lib/utils/render-trusted-html.ts', (s) => {
+      // Retargeted at `renderTrustedHtml`, and the reason is the whole point of this control.
+      //
+      // It needs a member that IS registered, so a second call trips the per-member `calls`
+      // invariant. It used to inject into `highlightExcerpt` — but Category D consolidated that
+      // member's three bypasses into `renderTrustedHtml`, leaving `highlightExcerpt` with no entry.
+      // The audit then correctly reported "unregistered bypass" instead, so the control went red for
+      // the right reason about the wrong thing and stopped exercising the count invariant at all.
+      //
+      // That is the failure mode this whole file exists to prevent, one level up: a negative control
+      // that still fails, and so still looks like it is working, while no longer testing what it
+      // claims. Retarget rather than relax the expectation.
+      const anchor = `  const clean = DOMPurify.sanitize(html, config);\n`;
+      if (!s.includes(anchor)) {
+        throw new Error('renderTrustedHtml body changed — update this control');
+      }
+      return s.replace(
+        anchor,
+        anchor +
+          `  if (html === '__selftest__') {\n` +
+          `    return sanitizer.bypassSecurityTrustHtml(clean);\n` +
+          `  }\n`,
+      );
+    }),
   'bypass count mismatch',
 );
 

@@ -1,7 +1,7 @@
 {
   "//": [
     "Every DomSanitizer.bypassSecurityTrust* call in apps/ and libs/ must appear here, keyed by",
-    "file and enclosing member \u2014 never by line number, which churns on every edit above it.",
+    "file and enclosing member — never by line number, which churns on every edit above it.",
     "",
     "The categories are from docs/sonarcloud-security-remediation-plan.md section 3:",
     "  A  locally-minted object URL -> img[src] only. The bypass is redundant; DELETE it.",
@@ -21,8 +21,19 @@
     "Category B bypasses were consolidated into trustObjectUrl, 8 Category D bypasses into",
     "renderTrustedHtml, and 14 Category A bypasses deleted (object URLs bound to img[src], where",
     "Angular's SAFE_URL_PATTERN already accepts blob:). What is left is the 2 Category C trust",
-    "decisions (ARender + server preview URLs) and one call each inside the two helpers \u2014 which is",
-    "the structural floor, since iframe[src] and [innerHTML] both refuse a raw string."
+    "decisions (ARender + server preview URLs) and one call each inside the two helpers — which is",
+    "the floor for two different reasons, which are worth not conflating:",
+    "",
+    "  trustObjectUrl is STRUCTURAL. iframe[src] is SecurityContext.RESOURCE_URL, and Angular throws on",
+    "  a raw string there, so something has to produce a SafeResourceUrl.",
+    "",
+    "  renderTrustedHtml is a POLICY boundary, not structural. [innerHTML] accepts a raw string and runs",
+    "  Angular's own HTML sanitizer on it — verified by observation, not assumed: binding",
+    "  '<p>ok</p><script>alert(1)</script><em>keep</em>' renders '<p>ok</p><em>keep</em>' and does not",
+    "  throw. The bypass exists so the output of DOMPurify with a per-site reviewed allow-list is what",
+    "  reaches the DOM, audited in one place, rather than Angular's fixed policy. An earlier version of",
+    "  this note claimed [innerHTML] 'refuses a raw string' too, which was false and contradicted",
+    "  render-trusted-html.ts's own docblock."
   ],
   "budgets": {
     "A": 0,
@@ -38,8 +49,8 @@
         "sonarKey": "AaB8mU6TUIm8e9uDh3pQ",
         "boundTo": ["iframe[src]"],
         "mitigated": "scheme-only",
-        "residualRisk": "SCHEME IS VALIDATED, ORIGIN IS NOT. There is deliberately no origin allow-list here: a customer configures where their own ARender lives, so the allowed origin is not knowable to us (unlike loadPreviewFallback, where it must be the Nuxeo repository). What is closed is the privilege ESCALATION \u2014 javascript: becoming script execution in our own origin, with our session and DOM. What remains is inherent to the feature: whoever can edit the app-config manifest can point this iframe at any https origin. Accepted because (1) a third-party https origin in an iframe is a separate browser origin with no access to our DOM or cookies, so it is not an escalation; (2) the manifest is already a trusted Layer 0 customer surface that controls far more than this; (3) the correct control is a CSP frame-src response header, which no manifest editor can override \u2014 and NONE IS CURRENTLY SET, which is worth a ticket. NOT covered: any defect letting an untrusted party write the manifest.",
-        "justification": "MITIGATED FOR THE ESCALATION. The trusted string is `${cfg.viewerOrigin}/?url=\u2026` and viewerOrigin comes from the customer-editable app-config manifest, so `javascript:alert(1)` there became script execution in this app's origin \u2014 a complete, non-blank, new URL()-parseable value that no completeness check catches. Now validated twice, both failing closed to null: ARenderService treats a viewerOrigin that is not an http(s) origin (https unless isDevMode) as unconfigured, so the dangerous URL is never built; and this member re-validates with navigableUrlOrNull before trusting, because a privilege boundary defended in exactly one place is one refactor from undefended. Rejection tests: arender.service.spec.ts (5 schemes, plus the production-http branch forced via ngDevMode) and document-detail.viewer.spec.ts (4 schemes) \u2014 all confirmed red with the guards removed. See residualRisk above before reading this as complete."
+        "residualRisk": "SCHEME IS VALIDATED, ORIGIN IS NOT. There is deliberately no origin allow-list here: a customer configures where their own ARender lives, so the allowed origin is not knowable to us (unlike loadPreviewFallback, where it must be the Nuxeo repository). What is closed is the privilege ESCALATION — javascript: becoming script execution in our own origin, with our session and DOM. What remains is inherent to the feature: whoever can edit the app-config manifest can point this iframe at any https origin. Accepted because (1) a third-party https origin in an iframe is a separate browser origin with no access to our DOM or cookies, so it is not an escalation; (2) the manifest is already a trusted Layer 0 customer surface that controls far more than this; (3) the correct control is a CSP frame-src response header, which no manifest editor can override — and NONE IS CURRENTLY SET, which is worth a ticket. NOT covered: any defect letting an untrusted party write the manifest.",
+        "justification": "MITIGATED FOR THE ESCALATION. The trusted string is `${cfg.viewerOrigin}/?url=…` and viewerOrigin comes from the customer-editable app-config manifest, so `javascript:alert(1)` there became script execution in this app's origin — a complete, non-blank, new URL()-parseable value that no completeness check catches. Now validated twice, both failing closed to null: ARenderService treats a viewerOrigin that is not an http(s) origin (https unless isDevMode) as unconfigured, so the dangerous URL is never built; and this member re-validates with navigableUrlOrNull before trusting, because a privilege boundary defended in exactly one place is one refactor from undefended. Rejection tests: arender.service.spec.ts (5 schemes, plus the production-http branch forced via ngDevMode) and document-detail.viewer.spec.ts (4 schemes) — all confirmed red with the guards removed. See residualRisk above before reading this as complete."
       },
       {
         "member": "loadPreviewFallback",
@@ -47,7 +58,7 @@
         "sonarKey": "AaB8mU6TUIm8e9uDh3pI",
         "boundTo": ["iframe[src]"],
         "mitigated": true,
-        "justification": "MITIGATED. doc.contextParameters['preview'].url is server-supplied, not minted here. Now constrained by navigableUrlOrNull to same-origin or the configured NUXEO_API_ORIGIN, resolved and compared by ORIGIN rather than string prefix \u2014 `//evil.example/x` is protocol-relative and would pass a startsWith('/') test. Dropped otherwise, falling through to the viewer's 'Preview not available' placeholder. 4 rejection tests, confirmed red with the guard removed."
+        "justification": "MITIGATED. doc.contextParameters['preview'].url is server-supplied, not minted here. Now constrained by navigableUrlOrNull to same-origin or the configured NUXEO_API_ORIGIN, resolved and compared by ORIGIN rather than string prefix — `//evil.example/x` is protocol-relative and would pass a startsWith('/') test. Dropped otherwise, falling through to the viewer's 'Preview not available' placeholder. 4 rejection tests, confirmed red with the guard removed."
       }
     ],
     "libs/shared/nuxeo-client/src/lib/utils/trust-object-url.ts": [
@@ -56,7 +67,7 @@
         "category": "B",
         "sonarKey": "NEW",
         "boundTo": ["iframe[src]"],
-        "justification": "The centralized helper for Category B: wraps locally-minted object URLs with bypassSecurityTrustResourceUrl after validating the blob: scheme. Replaces 7 inline bypasses across document-detail (3), tasks-page (1), case-file (1), kd-citation-dialog (2). The bypass is REQUIRED because iframe[src] throws on a raw string, and the scheme check closes the escalation \u2014 a non-blob URL (including javascript:, data:, or one from config/server) is rejected and returns null. Caller owns lifecycle (URL.revokeObjectURL). 15 tests, mostly negative cases."
+        "justification": "The centralized helper for Category B: wraps locally-minted object URLs with bypassSecurityTrustResourceUrl after validating the blob: scheme. Replaces 7 inline bypasses across document-detail (3), tasks-page (1), case-file (1), kd-citation-dialog (2). The bypass is REQUIRED because iframe[src] throws on a raw string, and the scheme check closes the escalation — a non-blob URL (including javascript:, data:, or one from config/server) is rejected and returns null. Caller owns lifecycle (URL.revokeObjectURL). 15 tests, mostly negative cases."
       }
     ],
     "libs/shared/nuxeo-client/src/lib/utils/render-trusted-html.ts": [
@@ -65,14 +76,14 @@
         "category": "D",
         "sonarKey": "NEW",
         "boundTo": ["innerHTML"],
-        "justification": "The centralised helper for Category D: runs DOMPurify.sanitize with a caller-supplied config, then wraps the result. Replaces 8 inline bypasses across note-editor (2), document-detail (2), kd-citation-dialog (3) and ai-markdown.pipe (1). The bypass is REQUIRED because [innerHTML] refuses a raw string. Two of the eight were more than a move: kd-citation-dialog's highlightExcerpt and ai-markdown.pipe previously relied on a local escapeHtml alone, with no DOMPurify at all, and both now get an explicit tag allow-list as a second independent check. 16 tests that RENDER the result and read the DOM back \u2014 9 confirmed red when the sanitise call is removed, which an assertion on the return value cannot detect because SafeHtml is opaque."
+        "justification": "The centralised helper for Category D: runs DOMPurify.sanitize with a caller-supplied config, then wraps the result. Replaces 8 inline bypasses across note-editor (2), document-detail (2), kd-citation-dialog (3) and ai-markdown.pipe (1). The bypass is REQUIRED because [innerHTML] refuses a raw string. Two of the eight were more than a move: kd-citation-dialog's highlightExcerpt and ai-markdown.pipe previously relied on a local escapeHtml alone, with no DOMPurify at all, and both now get an explicit tag allow-list as a second independent check. 16 tests that RENDER the result and read the DOM back — 9 confirmed red when the sanitise call is removed, which an assertion on the return value cannot detect because SafeHtml is opaque."
       }
     ]
   },
   "sanitisers": [
     {
       "site": "libs/features/knowledge-discovery/src/lib/kd-citation-dialog/kd-citation-dialog.ts::escapeHtml",
-      "justification": "Reviewed: replaces & < > \" and ' with entities before any interpolation, and highlightExcerpt escapes every segment it concatenates. Admitted by identity, not by inference \u2014 see the sanitisers note in scripts/beta-harness/sanitizer-audit.mjs.",
+      "justification": "Reviewed: replaces & < > \" and ' with entities before any interpolation, and highlightExcerpt escapes every segment it concatenates. Admitted by identity, not by inference — see the sanitisers note in scripts/beta-harness/sanitizer-audit.mjs.",
       "sha": "04b4668d9bf4dd65"
     },
     {
