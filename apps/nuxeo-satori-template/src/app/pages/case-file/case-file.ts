@@ -124,6 +124,8 @@ export class CaseFileComponent {
    * its `toString()` and break playback; the wrapped form is still required for `iframe[src]`.
    */
   protected readonly rawObjectUrl = signal<string | null>(null);
+  /** `Blob.type` of the previewed blob. See `DocumentViewerComponent.blobType`. */
+  protected readonly objectBlobType = signal<string>('');
 
   /**
    * Bumped on every selection. `takeUntilDestroyed` cancels on teardown but not on *reselection*, so
@@ -138,6 +140,7 @@ export class CaseFileComponent {
   }
 
   private releaseObjectUrl(): void {
+    this.objectBlobType.set('');
     const raw = this.rawObjectUrl();
     if (raw) {
       URL.revokeObjectURL(raw);
@@ -218,6 +221,8 @@ export class CaseFileComponent {
           this.releaseObjectUrl();
           const rawUrl = URL.createObjectURL(data);
           this.rawObjectUrl.set(rawUrl);
+          // The served Content-Type, which is what gates the viewer's iframe branches.
+          this.objectBlobType.set(data.type);
           this.blobUrl.set(trustObjectUrl(this.sanitizer, rawUrl));
           this.previewLoading.set(false);
         },

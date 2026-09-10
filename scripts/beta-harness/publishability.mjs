@@ -72,6 +72,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import ts from 'typescript';
 
 const DIST = resolve('dist/libs/platform');
 
@@ -164,7 +165,57 @@ if (declared === 0) {
  *
  * Self-references between entry points are skipped: `@nuxeo-satori/platform/ui` importing
  * `@nuxeo-satori/platform` is the package's own `exports` map, not an external dependency.
+ *
+ * Specifiers come from a full AST walk. Two earlier attempts were both fail-open:
+ *
+ *   1. A regex for `… from '…'`, which review pointed out omits the forms that need no `from` — a
+ *      side-effect import (`import 'pkg'`) and a dynamic one (`import('pkg')`).
+ *   2. `ts.preProcessFile`, which looked like the right tool and is not. It reads only a file's
+ *      leading import prologue, so it reported 7 specifiers for the nuxeo-client bundle and missed
+ *      the mid-file `import('./reports')` that is plainly in it. A dynamic import of an undeclared
+ *      package sits in the middle of compiled code, which is exactly where it stops looking.
+ *
+ * So the walk below visits every node and collects static imports and re-exports, dynamic
+ * `import()`, `require()`, and `import x = require()`. Verified against a side-effect import and a
+ * dynamic import injected mid-bundle, both of which the first two approaches passed.
  */
+
+/** Every module specifier in `text`, from anywhere in the file. */
+function moduleSpecifiersOf(text, fileName) {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const specifiers = [];
+
+  const visit = (node) => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+    ) {
+      specifiers.push(node.moduleSpecifier.text);
+    }
+
+    if (ts.isCallExpression(node) && node.arguments.length > 0) {
+      const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const isRequire = ts.isIdentifier(node.expression) && node.expression.text === 'require';
+      if ((isDynamicImport || isRequire) && ts.isStringLiteralLike(node.arguments[0])) {
+        specifiers.push(node.arguments[0].text);
+      }
+    }
+
+    if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      ts.isStringLiteralLike(node.moduleReference.expression)
+    ) {
+      specifiers.push(node.moduleReference.expression.text);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(source);
+  return specifiers;
+}
 const manifestDeps = new Set([
   ...Object.keys(pkg.dependencies ?? {}),
   ...Object.keys(pkg.peerDependencies ?? {}),
@@ -175,10 +226,10 @@ for (const name of fesm) {
   const file = join(DIST, 'fesm2022', name);
   if (!existsSync(file)) continue;
   const text = readFileSync(file, 'utf8');
-  // Only real module specifiers: the `from '…'` of an import/export statement. Matching bare
-  // quoted strings anywhere would pick up string literals out of the code itself.
-  for (const match of text.matchAll(/\b(?:import|export)\b[^;'"]*?\bfrom\s*['"]([^'"]+)['"]/g)) {
-    const spec = match[1];
+  // Deliberately no per-bundle "zero specifiers means the scan broke" check: the package root
+  // legitimately has none, exporting only a frozen list of entry point names. The scanner is
+  // sanity-checked once below instead, against a specifier that must be present.
+  for (const spec of moduleSpecifiersOf(text, name)) {
     if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('node:')) continue;
     const parts = spec.split('/');
     const packageName = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
@@ -186,6 +237,23 @@ for (const name of fesm) {
     if (!externalImports.has(packageName)) externalImports.set(packageName, new Set());
     externalImports.get(packageName).add(name);
   }
+}
+
+/**
+ * The scanner's own control.
+ *
+ * "Did it find anything at all" is too weak to be worth much: `@angular/core` alone satisfies it, so
+ * the count stays plausible even if the scan degrades to catching one syntax form. Anchoring on a
+ * specifier that must be present in a named bundle means a scan that silently stops seeing imports
+ * fails here rather than reporting a shorter list as a clean result.
+ */
+const SCANNER_CONTROL = { bundle: 'nuxeo-satori-platform-ui.mjs', specifier: '@angular/core' };
+if (!externalImports.get(SCANNER_CONTROL.specifier)?.has(SCANNER_CONTROL.bundle)) {
+  fail(
+    `Import scan did not find "${SCANNER_CONTROL.specifier}" in ${SCANNER_CONTROL.bundle}.\n` +
+      '    That import is not optional for this bundle, so this means the scan is no longer\n' +
+      '    reading the module graph — not that the dependency went away.',
+  );
 }
 
 const undeclared = [...externalImports.keys()].filter((name) => !manifestDeps.has(name)).sort();
@@ -198,13 +266,6 @@ if (undeclared.length > 0) {
         '    `peerDependencies`, otherwise a consumer install cannot resolve it.',
     );
   }
-} else if (externalImports.size === 0) {
-  // A bundle with no external imports at all means the regex stopped matching, not that the
-  // package became dependency-free — it imports @angular/core at minimum.
-  fail(
-    'Found no external imports in any bundle, which cannot be right for an Angular library.\n' +
-      '    Treat this as the check having broken rather than as a clean result.',
-  );
 } else {
   notes.push(
     `${externalImports.size} external import(s) across the bundles, all declared: ` +

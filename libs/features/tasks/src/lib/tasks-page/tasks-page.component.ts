@@ -94,6 +94,8 @@ export class TasksPageComponent implements OnInit {
    * `SafeResourceUrl` stringifies instead of being unwrapped.
    */
   readonly rawPreviewUrl = signal<string | null>(null);
+  /** `Blob.type` of the preview blob. See `DocumentViewerComponent.blobType`. */
+  readonly previewBlobType = signal<string>('');
   readonly taskLoading = signal(false);
   readonly docLoading = signal(false);
   readonly submitting = signal(false);
@@ -727,6 +729,8 @@ export class TasksPageComponent implements OnInit {
           this.clearPreviewBlob();
           const rawUrl = URL.createObjectURL(blob);
           this.rawPreviewUrl.set(rawUrl);
+          // The served Content-Type, which is what gates the viewer's iframe branches.
+          this.previewBlobType.set(blob.type);
           this.previewBlobUrl.set(trustObjectUrl(this.sanitizer, rawUrl));
         },
         error: () => {
@@ -741,6 +745,7 @@ export class TasksPageComponent implements OnInit {
       URL.revokeObjectURL(raw);
       this.rawPreviewUrl.set(null);
     }
+    this.previewBlobType.set('');
     this.previewBlobUrl.set(null);
   }
 

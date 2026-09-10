@@ -101,6 +101,7 @@ const mockSelectionService = {
   toggle: vi.fn(),
   selectAll: vi.fn(),
   clear: vi.fn(),
+  forgetPreviews: vi.fn(),
   deleteSelected: vi.fn(() => of([])),
 };
 

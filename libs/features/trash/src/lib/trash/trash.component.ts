@@ -664,6 +664,10 @@ export class TrashComponent {
   }
 
   private clearThumbnails(): void {
+    // Drop the selection layer's copies FIRST. It retains these exact strings and binds them into
+    // `<img [src]>` in the shell topbar, and selection survives a new search — so revoking without
+    // this leaves selected items pointing at revoked blob URLs. See `SelectionService.forgetPreviews`.
+    this.selectionService.forgetPreviews();
     const urls = new Set(
       [
         ...Object.values(this.thumbnailMap()),

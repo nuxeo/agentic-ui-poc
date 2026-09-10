@@ -434,8 +434,13 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
    * of being unwrapped. `blobUrl` remains the wrapped value for `iframe[src]`.
    */
   readonly rawBlobUrl = signal<string | null>(null);
-  /** `Blob.type` of the main blob, i.e. the served `Content-Type`. Gates the preview iframe. */
-  private readonly mainBlobType = signal<string>('');
+  /**
+   * `Blob.type` of the main blob, i.e. the served `Content-Type`.
+   *
+   * Read by the template, so not private: it gates both the attachment dialog and the embedded
+   * viewer's iframe branches, which must decide on what was served rather than on metadata.
+   */
+  readonly mainBlobType = signal<string>('');
   private videoObjectUrls: string[] = [];
   private storyboardObjectUrls: string[] = [];
   /** A storyboard load is already running for the current document. */

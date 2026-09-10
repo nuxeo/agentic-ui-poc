@@ -60,6 +60,7 @@ const mockSelectionService = {
   isSelected: vi.fn(() => false),
   toggle: vi.fn(),
   clear: vi.fn(),
+  forgetPreviews: vi.fn(),
   selectAll: vi.fn(),
   deleteSelected: vi.fn((): Observable<void> => of(undefined)),
 };
@@ -704,8 +705,15 @@ describe('SearchComponent', () => {
         .mockReturnValueOnce(first.asObservable())
         .mockReturnValueOnce(second.asObservable());
 
-      component['runNxqlQuery']('SELECT * FROM Document WHERE a');
-      component['runNxqlQuery']('SELECT * FROM Document WHERE b');
+      // Mint generations the way `executeAiSearch` does, one per request.
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE a',
+        ++component['aiRequestGeneration'],
+      );
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE b',
+        ++component['aiRequestGeneration'],
+      );
 
       // The later query resolves first, as the faster one.
       second.next({ entries: [{ uid: 'b', title: 'From B' }] });
@@ -725,8 +733,15 @@ describe('SearchComponent', () => {
         .mockReturnValueOnce(first.asObservable())
         .mockReturnValueOnce(second.asObservable());
 
-      component['runNxqlQuery']('SELECT * FROM Document WHERE a');
-      component['runNxqlQuery']('SELECT * FROM Document WHERE b');
+      // Mint generations the way `executeAiSearch` does, one per request.
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE a',
+        ++component['aiRequestGeneration'],
+      );
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE b',
+        ++component['aiRequestGeneration'],
+      );
 
       second.next({ entries: [{ uid: 'b', title: 'From B' }] });
       second.complete();
@@ -735,6 +750,59 @@ describe('SearchComponent', () => {
       first.error(new Error('boom'));
       expect(component.aiError()).toBeNull();
       expect(component.aiResults().map((r) => r.id)).toEqual(['b']);
+    });
+
+    /**
+     * The generation has to span BOTH async phases, not just the second one.
+     *
+     * When only `runNxqlQuery` minted a generation, a superseded `nlToNxql` response still wrote
+     * `aiGeneratedNxql`/`aiExplanation` and then started a fresh query that minted its own
+     * generation — so the stale request won outright, which is the opposite of the intent.
+     */
+    it('ignores an nlToNxql response superseded by a later AI search', () => {
+      const first = new Subject<{ nxql: string; explanation: string }>();
+      const second = new Subject<{ nxql: string; explanation: string }>();
+      mockAiGatewayService.nlToNxql
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+      mockNuxeoApiBase.nxqlSearch.mockReturnValue(of({ entries: [] }));
+
+      component.aiQuery.set('query one');
+      component.executeAiSearch();
+      component.aiQuery.set('query two');
+      component.executeAiSearch();
+
+      second.next({ nxql: 'SELECT * FROM B', explanation: 'from B' });
+      second.complete();
+      expect(component.aiGeneratedNxql()).toBe('SELECT * FROM B');
+
+      // The earlier translation lands afterwards and must not replace B's, nor run its own query.
+      const queriesBefore = mockNuxeoApiBase.nxqlSearch.mock.calls.length;
+      first.next({ nxql: 'SELECT * FROM A', explanation: 'from A' });
+      first.complete();
+      expect(component.aiGeneratedNxql()).toBe('SELECT * FROM B');
+      expect(component.aiExplanation()).toBe('from B');
+      expect(mockNuxeoApiBase.nxqlSearch.mock.calls.length).toBe(queriesBefore);
+    });
+
+    it('ignores an AI response that arrives after AI mode is switched off', () => {
+      const pending = new Subject<{ nxql: string; explanation: string }>();
+      mockAiGatewayService.nlToNxql.mockReturnValue(pending.asObservable());
+
+      component.aiSearchMode.set(true);
+      component.aiQuery.set('query one');
+      component.executeAiSearch();
+
+      // Leaving AI mode must invalidate the in-flight request, or its late response re-enables AI
+      // state and overwrites the standard thumbnail batch restored on the way out.
+      component.toggleAiSearch();
+      expect(component.aiSearchMode()).toBe(false);
+
+      pending.next({ nxql: 'SELECT * FROM Late', explanation: 'late' });
+      pending.complete();
+
+      expect(component.aiGeneratedNxql()).toBe('');
+      expect(component.aiSearchExecuted()).toBe(false);
     });
 
     it('should not execute AI search with empty query', () => {

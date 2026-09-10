@@ -195,6 +195,8 @@ describe('DocumentViewerComponent', () => {
       fixture.componentRef.setInput('mimeType', 'application/pdf');
       fixture.componentRef.setInput('blobUrl', trusted());
       fixture.componentRef.setInput('rawBlobUrl', RAW);
+      // The served type has to agree, or the iframe branch is refused outright.
+      fixture.componentRef.setInput('blobType', 'application/pdf');
       render();
 
       // RESOURCE_URL *does* run a sanitizer, which unwraps the marker — so the attribute is the

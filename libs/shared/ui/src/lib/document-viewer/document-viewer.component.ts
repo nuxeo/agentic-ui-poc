@@ -78,6 +78,16 @@ export interface VideoInfo {
 }
 
 /**
+ * A media type without its parameters, lowercased.
+ *
+ * A media type is case-insensitive and may carry `; charset=utf-8`, so an equality test against
+ * `application/pdf` must not be fooled by `APPLICATION/PDF` or `application/pdf; version=1.7`.
+ */
+function mediaTypeEssence(value: string): string {
+  return value.split(';', 1)[0].trim().toLowerCase();
+}
+
+/**
  * Reusable document viewer component following Nuxeo Web UI's nuxeo-document-preview
  * dispatching logic. Renders content based on MIME type priority:
  *
@@ -131,6 +141,20 @@ export class DocumentViewerComponent {
    * consumer that would otherwise have shipped broken audio.
    */
   readonly rawBlobUrl = input.required<string | null>();
+  /**
+   * `Blob.type` of the blob behind {@link blobUrl} — the `Content-Type` the server actually served.
+   *
+   * Required for the same reason as `rawBlobUrl`: it gates the unsandboxed iframe branches, and a
+   * default would let a consumer omit it and silently get either no PDF preview or, worse, the
+   * pre-existing behaviour of choosing the iframe from metadata alone.
+   *
+   * That was a same-origin execution path. `contentType()` picked `'pdf'` from `mimeType`,
+   * `hasPdfRendition` and even a filename-extension fallback, none of which the browser consults —
+   * it parses a `blob:` document by its `Content-Type`, and a blob URL inherits this origin. A
+   * document recorded as PDF but served as `text/html` therefore ran as script here. The attachment
+   * dialog closed the same mismatch; this input closes it for the embedded viewer.
+   */
+  readonly blobType = input.required<string>();
   readonly mimeType = input<string>('');
   readonly fileName = input<string>('');
   readonly fileSize = input<string>('');
@@ -208,12 +232,22 @@ export class DocumentViewerComponent {
     if (mime === 'text/html') return 'html';
     if (mime === 'text/xml' || mime === 'application/xml') return 'xml';
     if (mime.startsWith('text/') || mime === 'application/json') return 'text';
-    if (mime === 'application/pdf') return 'pdf';
-    if (this.hasPdfRendition() && this.blobUrl()) return 'pdfRendition';
+    // The three branches below that put `blobUrl()` in an iframe are gated on the SERVED type, not
+    // on `mime`/`hasPdfRendition`/the filename. Those are all metadata, and the browser parses a
+    // `blob:` document by its `Content-Type` — see the `blobType` input. Disagreement falls through
+    // to 'none' rather than guessing, which is a lost preview instead of an execution path.
+    const servedIsPdf = mediaTypeEssence(this.blobType()) === 'application/pdf';
+
+    if (mime === 'application/pdf') return servedIsPdf ? 'pdf' : 'none';
+    if (this.hasPdfRendition() && this.blobUrl()) return servedIsPdf ? 'pdfRendition' : 'none';
+    // `previewUrl` is not a blob: it is a same-origin Nuxeo endpoint already constrained by
+    // `navigableUrlOrNull` and an origin allow-list, so the served-type gate does not apply to it.
     if (this.previewUrl()) return 'preview';
     if (this.blobUrl()) {
       if (/\.(png|jpe?g|gif|webp|bmp|svg|tiff?)$/i.test(this.fileName())) return 'image';
-      return 'pdf';
+      // The old unconditional `return 'pdf'` here was the widest part of the hole: any unrecognised
+      // mime with a blob URL landed in the iframe regardless of what was served.
+      return servedIsPdf ? 'pdf' : 'none';
     }
 
     return 'none';
