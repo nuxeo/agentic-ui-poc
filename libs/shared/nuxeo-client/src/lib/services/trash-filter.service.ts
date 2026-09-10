@@ -1,5 +1,4 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { SafeUrl } from '@angular/platform-browser';
 
 export interface TrashFilters {
   fullText: string;
@@ -23,7 +22,7 @@ export class TrashFilterService {
   readonly filters = signal<TrashFilters>({ ...EMPTY_FILTERS }, { equal: () => false });
   readonly layoutMode = signal<TrashLayoutMode>('filters');
   readonly results = signal<TrashResultItem[]>([]);
-  readonly resultThumbnails = signal<Record<string, SafeUrl>>({});
+  readonly resultThumbnails = signal<Record<string, string | null>>({});
   readonly totalResults = signal(0);
   readonly resultsLoading = signal(false);
   readonly savedSearchVersion = signal(0);

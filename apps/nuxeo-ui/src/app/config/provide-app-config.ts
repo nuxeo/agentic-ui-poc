@@ -79,15 +79,17 @@ export function provideAppConfig(): Provider[] {
     },
     {
       provide: ARENDER_CONFIG,
-      useFactory: () => {
-        const configured = inject(AppConfigService).bootstrap().integrations.arender;
-        return (
-          configured ?? {
-            viewerOrigin: 'http://localhost:8180',
-            nuxeoInternalUrl: 'http://nuxeo-auth-proxy/nuxeo',
-          }
-        );
-      },
+      // Straight through, including `null`. `integrations.arender` is already typed
+      // `AppARenderConfig | null` and defaults to `null`, and `ARENDER_CONFIG` is nullable, so
+      // there is nothing to substitute.
+      //
+      // This used to fall back to compiled-in `http://localhost:8180` and
+      // `http://nuxeo-auth-proxy/nuxeo` when unconfigured — which is what a shipped build with no
+      // manifest actually used, pointing the annotation viewer at the user's own machine over
+      // plaintext (Sonar S5332, and a hardcoded config default of the kind
+      // `.cursor/rules/security.mdc` prohibits). `ARenderService` now degrades to
+      // "Annotations are not available" instead.
+      useFactory: () => inject(AppConfigService).bootstrap().integrations.arender,
     },
     {
       provide: KD_CIC_OPERATIONS,

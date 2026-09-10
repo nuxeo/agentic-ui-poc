@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom, lastValueFrom } from 'rxjs';
+import { vi } from 'vitest';
 
 import { NUXEO_API_ORIGIN } from '@nuxeo-satori/platform/nuxeo-client';
 
@@ -47,7 +48,10 @@ describe('KdClientService', () => {
     httpMock = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => httpMock.verify());
+  afterEach(() => {
+    httpMock.verify();
+    vi.unstubAllGlobals();
+  });
 
   function expectAutomation(operation: string) {
     const req = httpMock.expectOne(`/nuxeo/site/automation/${encodeURIComponent(operation)}`);
@@ -639,7 +643,55 @@ describe('KdClientService', () => {
     ).rejects.toThrow(/Feedback can only be submitted on a question produced in this session/);
   });
 
+  /**
+   * Mint a synthetic question id with `globalThis.crypto` stubbed to one specific shape.
+   *
+   * `correlationSuffix()` has three branches and this suite asserted only the first, so it would
+   * have failed in the very environment the other two exist for: `crypto.randomUUID` is
+   * **secure-context only**, so on an on-prem build served from a plain `http://` origin that is not
+   * `localhost` it is `undefined`. Asserting the UUID shape unconditionally made the test pass on
+   * the deployment that does not need the fallback and fail on the one that does, while leaving both
+   * fallbacks unexercised.
+   */
+  async function mintQuestionId(cryptoStub: unknown): Promise<string> {
+    vi.stubGlobal('crypto', cryptoStub);
+    const submission$ = firstValueFrom(
+      service.submitQuestion({ agentId: 'agent-7', question: 'Q?' }),
+    );
+    expectAutomation(DEFAULT_KD_CIC_OPERATIONS.askQuestionAndGetAnswer).flush(envelope(null));
+    return (await submission$).questionId;
+  }
+
+  it('mints a synthetic question id from crypto.randomUUID in a secure context', async () => {
+    const id = await mintQuestionId({ randomUUID: () => '123e4567-e89b-12d3-a456-426614174000' });
+    expect(id).toMatch(/^kd-agent-7-\d+-123e4567-e89b-12d3-a456-426614174000$/);
+  });
+
+  it('falls back to crypto.getRandomValues when randomUUID is unavailable', async () => {
+    const id = await mintQuestionId({
+      getRandomValues: (buffer: Uint8Array) => {
+        buffer.fill(0xab);
+        return buffer;
+      },
+    });
+    // Eight bytes, hex-encoded and zero-padded.
+    expect(id).toMatch(/^kd-agent-7-\d+-abababababababab$/);
+  });
+
+  it('falls back to a monotonic counter, not Math.random, when Web Crypto is absent', async () => {
+    // Deliberately a counter: falling back to `Math.random()` would put the exact API `S2245` flags
+    // back into the file, and the id already embeds `Date.now()`, so within one page load a counter
+    // cannot collide where six base-36 random characters can. Two calls must therefore differ even
+    // if `Date.now()` does not advance between them.
+    const first = await mintQuestionId({});
+    const second = await mintQuestionId({});
+    expect(first).toMatch(/^kd-agent-7-\d+-seq\d+$/);
+    expect(second).toMatch(/^kd-agent-7-\d+-seq\d+$/);
+    expect(second).not.toBe(first);
+  });
+
   it('mints a synthetic question id when the connector omits one', async () => {
+    vi.stubGlobal('crypto', { randomUUID: () => '123e4567-e89b-12d3-a456-426614174000' });
     const submission$ = firstValueFrom(
       service.submitQuestion({ agentId: 'agent-7', question: 'Q?', dynamicFilter: null }),
     );
@@ -649,7 +701,9 @@ describe('KdClientService', () => {
     req.flush(envelope(null));
 
     const submission = await submission$;
-    expect(submission.questionId).toMatch(/^kd-agent-7-\d+-[a-z0-9]+$/);
+    expect(submission.questionId).toMatch(
+      /^kd-agent-7-\d+-123e4567-e89b-12d3-a456-426614174000$/,
+    );
     expect(submission.status).toBe('Complete');
 
     const answer = await firstValueFrom(service.getAnswer(submission.questionId));

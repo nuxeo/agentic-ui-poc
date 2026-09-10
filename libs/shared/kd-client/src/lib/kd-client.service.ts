@@ -42,6 +42,36 @@ type NuxeoDocumentSummary = {
   properties?: Record<string, unknown>;
 };
 
+/** Monotonic within a page load, which is all the final fallback needs to be. */
+let correlationCounter = 0;
+
+/**
+ * Suffix that makes a client-side correlation id unique. Not a token, not a nonce, grants nothing.
+ *
+ * `crypto.randomUUID` is a **secure-context-only** API, so on a build served from a plain `http://`
+ * origin that is not `localhost` — an ordinary on-prem deployment — it is `undefined` and calling it
+ * throws. That would take out every Knowledge Discovery answer whose payload omits a `questionId`,
+ * which is a worse outcome than the Sonar finding (`S2245`) that prompted the change: that rule is
+ * about unpredictability, and a correlation id does not need it.
+ *
+ * The last resort is a **counter, not `Math.random()`**. Falling back to `Math.random` would put the
+ * exact API `S2245` flags back into the file, so the finding could keep firing on the fallback even
+ * though the normal path uses `randomUUID` — remediating a rule by moving the flagged call two lines
+ * down is not remediating it. A counter is also strictly better here: the id already embeds
+ * `Date.now()`, and within one page load a counter cannot collide, whereas six base-36 random
+ * characters can.
+ */
+function correlationSuffix(): string {
+  const webCrypto = globalThis.crypto;
+  if (typeof webCrypto?.randomUUID === 'function') return webCrypto.randomUUID();
+  if (typeof webCrypto?.getRandomValues === 'function') {
+    const bytes = webCrypto.getRandomValues(new Uint8Array(8));
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  correlationCounter += 1;
+  return `seq${correlationCounter}`;
+}
+
 const STRONG_CITATION_SCORE = 0.1;
 const INSUFFICIENT_ANSWER_TEXT = "I don't have enough information to answer this question.";
 
@@ -342,7 +372,7 @@ export class KdClientService {
     const answer = raw ?? {};
     const questionId =
       (answer as Partial<KdAnswerResponse>).questionId ??
-      `kd-${request.agentId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      `kd-${request.agentId}-${Date.now()}-${correlationSuffix()}`;
     const objectReferences = normalizeObjectReferences(
       (answer as Partial<KdAnswerResponse>).objectReferences,
     );

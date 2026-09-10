@@ -351,10 +351,30 @@ CreateBlobHoldingDocumentOptions;
 Manages multi-select state in browse/search. Uses signals.
 
 ```typescript
-toggle(id: string, label?: string, preview?: SelectionPreview): void
+toggle(id: string, label?: string, preview?: SelectionPreview, type?: string): void
+selectAll(
+  ids: string[],
+  labels?: Record<string, string>,
+  previews?: Record<string, SelectionPreview>,
+  types?: Record<string, string>,
+): void
+forgetPreviews(): void
 clear(): void
 deleteSelected(): Observable<NuxeoDocument[]>
 ```
+
+**`preview` is a borrowed object URL, and this service does not own it.** Callers pass a `blob:` URL
+they minted, and the selection topbar binds the retained string into `<img [src]>`. Selection is
+global and survives a new search, so the owner's URL can be revoked while this service still holds
+it — which renders a broken image beside a still-selected item.
+
+`forgetPreviews()` is the current mitigation: every owner calls it immediately before revoking a
+thumbnail batch, which drops the previews to `null` and degrades the popup to its placeholder. It
+does **not** clear the selection. Callers as of this writing: `search`, `trash`, `assets`, `browse`.
+
+That is deliberately the conservative half. The complete fix is for this service to own preview
+lifetime — hold the blobs, or refetch on demand — so a selection keeps its thumbnails across a
+search. That is a design change to a shared service and has not been made.
 
 ---
 
@@ -425,9 +445,19 @@ Admin console operations (users, groups, system info).
 ## ArenderService (`arender.service.ts`)
 
 ```typescript
-getViewerUrl(blobUrl: string): string
-isAvailable(): Promise<boolean>
+getPreviewerUrl(docUid: string, blobXPath = 'file:content'): Observable<string | null>
+getDiffUrl(leftDocUid: string, rightDocUid: string): Observable<string | null>
+isAvailable(): Observable<boolean>
 ```
+
+**`null` is a real return value, not an error.** All three depend on `ARENDER_CONFIG`, which is
+`InjectionToken<ARenderConfig | null>` — a customer need not configure ARender, and the config is
+also rejected outright if `viewerOrigin` or `nuxeoInternalUrl` fails `isNavigableBaseUrl`. Callers
+must handle `null` rather than treating it as a failed request.
+
+This block previously documented `getViewerUrl(blobUrl: string): string` and
+`isAvailable(): Promise<boolean>`, neither of which existed — a signature the code had never had.
+Consumers reading it would have built against a synchronous, non-nullable contract.
 
 ---
 

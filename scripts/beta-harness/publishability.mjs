@@ -72,6 +72,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import ts from 'typescript';
 
 const DIST = resolve('dist/libs/platform');
 
@@ -148,6 +149,203 @@ if (declared === 0) {
   );
 } else {
   notes.push(`${declared} ɵɵngDeclare* declarations across ${fesm.length} bundles, 0 ɵɵdefine*`);
+}
+
+// ------------------------------ 2b. every external import is a declared dependency ----
+
+/**
+ * A bare import left in the bundle is a runtime dependency whether or not the manifest says so.
+ *
+ * ng-packagr does not inline third-party code: `import DOMPurify from 'dompurify'` survives into the
+ * FESM output verbatim. If that specifier is in neither `dependencies` nor `peerDependencies`, npm
+ * has not been told to install it, so the package resolves fine inside this monorepo — where the
+ * root `node_modules` happens to contain it — and fails on `import` for anyone who installs it from
+ * the registry. Every other check here passed while `dompurify` was undeclared, including
+ * `npm publish --dry-run`, because none of them reads the bundles' import graph.
+ *
+ * Self-references between entry points are skipped: `@nuxeo-satori/platform/ui` importing
+ * `@nuxeo-satori/platform` is the package's own `exports` map, not an external dependency.
+ *
+ * Specifiers come from a full AST walk. Two earlier attempts were both fail-open:
+ *
+ *   1. A regex for `… from '…'`, which review pointed out omits the forms that need no `from` — a
+ *      side-effect import (`import 'pkg'`) and a dynamic one (`import('pkg')`).
+ *   2. `ts.preProcessFile`, which looked like the right tool and is not. It reads only a file's
+ *      leading import prologue, so it reported 7 specifiers for the nuxeo-client bundle and missed
+ *      the mid-file `import('./reports')` that is plainly in it. A dynamic import of an undeclared
+ *      package sits in the middle of compiled code, which is exactly where it stops looking.
+ *
+ * So the walk below visits every node and collects static imports and re-exports, dynamic
+ * `import()`, `require()`, and `import x = require()`. Verified against a side-effect import and a
+ * dynamic import injected mid-bundle, both of which the first two approaches passed.
+ */
+
+/**
+ * Every module specifier in `text`, from anywhere in the file, plus every module load whose specifier
+ * is **not** a string literal.
+ *
+ * The second list is the point. `import(expr)` and `require(expr)` with a computed specifier were
+ * silently dropped, so a bundle could load an undeclared external package through a variable and this
+ * gate would still report every import as declared — the same fail-open shape as the regex it replaced,
+ * one level further in. They are now returned and reported: a specifier this cannot read is a specifier
+ * whose declaration cannot be checked, which is not the same as an import that is fine.
+ */
+function moduleSpecifiersOf(text, fileName) {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  const specifiers = [];
+  const unreadable = [];
+
+  const visit = (node) => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteralLike(node.moduleSpecifier)
+    ) {
+      specifiers.push(node.moduleSpecifier.text);
+    }
+
+    if (ts.isCallExpression(node) && node.arguments.length > 0) {
+      const isDynamicImport = node.expression.kind === ts.SyntaxKind.ImportKeyword;
+      const isRequire = ts.isIdentifier(node.expression) && node.expression.text === 'require';
+      if (isDynamicImport || isRequire) {
+        if (ts.isStringLiteralLike(node.arguments[0])) {
+          specifiers.push(node.arguments[0].text);
+        } else {
+          unreadable.push({
+            kind: isDynamicImport ? 'import()' : 'require()',
+            line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1,
+            text: node.arguments[0].getText(source).slice(0, 60),
+          });
+        }
+      }
+    }
+
+    if (
+      ts.isImportEqualsDeclaration(node) &&
+      ts.isExternalModuleReference(node.moduleReference) &&
+      ts.isStringLiteralLike(node.moduleReference.expression)
+    ) {
+      specifiers.push(node.moduleReference.expression.text);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(source);
+  return { specifiers, unreadable };
+}
+const manifestDeps = new Set([
+  ...Object.keys(pkg.dependencies ?? {}),
+  ...Object.keys(pkg.peerDependencies ?? {}),
+]);
+
+/**
+ * Every `.mjs` the `exports` map actually points at, not the hard-coded five.
+ *
+ * The `fesm` list above is a deliberate, explicit expectation for check 2 — those five bundles must
+ * exist. It is the wrong source for *this* check, which asks a question about the whole published
+ * surface: add a sixth entry point and its bundle was silently omitted, so an undeclared runtime
+ * dependency reachable only through it still passed. A gate that shrinks as the package grows is the
+ * fail-open shape this file keeps finding elsewhere.
+ *
+ * The union with `fesm` is kept so a missing expected bundle is still caught by check 2 rather than
+ * quietly dropping out of both.
+ */
+function publishedBundleNames() {
+  const found = new Set(fesm);
+  const walk = (node) => {
+    if (typeof node === 'string') {
+      const m = /^\.\/fesm2022\/(.+\.mjs)$/.exec(node);
+      if (m) found.add(m[1]);
+      return;
+    }
+    if (node && typeof node === 'object') for (const v of Object.values(node)) walk(v);
+  };
+  walk(pkg.exports ?? {});
+  return [...found].sort();
+}
+
+const scanned = publishedBundleNames();
+const extras = scanned.filter((name) => !fesm.includes(name));
+if (extras.length > 0) {
+  notes.push(`import scan covers ${extras.length} bundle(s) beyond the expected five: ${extras.join(', ')}`);
+}
+
+const externalImports = new Map();
+for (const name of scanned) {
+  const file = join(DIST, 'fesm2022', name);
+  if (!existsSync(file)) {
+    // A bundle the `exports` map points at but which is not on disk.
+    //
+    // Continuing silently was fail-open: the fixed five are asserted present by check 2, but a newly
+    // added sixth export could point at a missing FESM file and still pass this "whole published
+    // surface" scan — and `npm publish --dry-run` does not validate export targets either, so nothing
+    // would have caught it. An export that does not resolve is a broken package, and it is also a
+    // bundle whose imports were never read.
+    if (!fesm.includes(name)) {
+      fail(
+        `The exports map points at fesm2022/${name}, which is not present.\n` +
+          '    An export target that does not exist is a broken package, and its imports were also\n' +
+          '    never scanned. Build it, or remove the export.',
+      );
+    }
+    continue;
+  }
+  const text = readFileSync(file, 'utf8');
+  // Deliberately no per-bundle "zero specifiers means the scan broke" check: the package root
+  // legitimately has none, exporting only a frozen list of entry point names. The scanner is
+  // sanity-checked once below instead, against a specifier that must be present.
+  const { specifiers, unreadable } = moduleSpecifiersOf(text, name);
+  for (const load of unreadable) {
+    fail(
+      `fesm2022/${name}:${load.line} loads a module through a non-literal ${load.kind} specifier: ${load.text}\n` +
+        '    The specifier cannot be read statically, so whether its target is declared cannot be\n' +
+        '    checked. Use a literal specifier, or if the target can only ever resolve inside this\n' +
+        '    package, say so here explicitly rather than leaving the scan silent about it.',
+    );
+  }
+  for (const spec of specifiers) {
+    if (spec.startsWith('.') || spec.startsWith('/') || spec.startsWith('node:')) continue;
+    const parts = spec.split('/');
+    const packageName = spec.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+    if (packageName === pkg.name || spec.startsWith(`${pkg.name}/`)) continue;
+    if (!externalImports.has(packageName)) externalImports.set(packageName, new Set());
+    externalImports.get(packageName).add(name);
+  }
+}
+
+/**
+ * The scanner's own control.
+ *
+ * "Did it find anything at all" is too weak to be worth much: `@angular/core` alone satisfies it, so
+ * the count stays plausible even if the scan degrades to catching one syntax form. Anchoring on a
+ * specifier that must be present in a named bundle means a scan that silently stops seeing imports
+ * fails here rather than reporting a shorter list as a clean result.
+ */
+const SCANNER_CONTROL = { bundle: 'nuxeo-satori-platform-ui.mjs', specifier: '@angular/core' };
+if (!externalImports.get(SCANNER_CONTROL.specifier)?.has(SCANNER_CONTROL.bundle)) {
+  fail(
+    `Import scan did not find "${SCANNER_CONTROL.specifier}" in ${SCANNER_CONTROL.bundle}.\n` +
+      '    That import is not optional for this bundle, so this means the scan is no longer\n' +
+      '    reading the module graph — not that the dependency went away.',
+  );
+}
+
+const undeclared = [...externalImports.keys()].filter((name) => !manifestDeps.has(name)).sort();
+if (undeclared.length > 0) {
+  for (const name of undeclared) {
+    fail(
+      `Bundle imports "${name}" but the built package.json declares it nowhere.\n` +
+        `    Imported by: ${[...externalImports.get(name)].sort().join(', ')}\n` +
+        '    Add it to `dependencies` (plus `allowedNonPeerDependencies` in ng-package.json) or to\n' +
+        '    `peerDependencies`, otherwise a consumer install cannot resolve it.',
+    );
+  }
+} else {
+  notes.push(
+    `${externalImports.size} external import(s) across the bundles, all declared: ` +
+      `${[...externalImports.keys()].sort().join(', ')}`,
+  );
 }
 
 // -------------------------------------------- 3. npm publish --dry-run succeeds ----

@@ -38,7 +38,7 @@
                   <source [src]="src.url" [type]="src.mimeType" />
                 }
               } @else {
-                <source [src]="blobUrl()" />
+                <source [src]="rawBlobUrl()" />
               }
               Your browser does not support video playback.
             </video>
@@ -47,7 +47,7 @@
         @case ('audio') {
           <div class="viewer-audio-wrapper">
             <mat-icon class="audio-icon">audiotrack</mat-icon>
-            <audio [src]="blobUrl()" controls class="viewer-audio"></audio>
+            <audio [src]="rawBlobUrl()" controls class="viewer-audio"></audio>
           </div>
         }
         @case ('markdown') {

@@ -1,0 +1,64 @@
+<div class="preview-viewer">
+  <div class="viewer-header">
+    <span class="viewer-filename">{{ data.name }}</span>
+    <button class="viewer-close" (click)="close()" matTooltip="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="viewer-body">
+    @if (isImage) {
+      <img
+        [src]="data.blobUrl"
+        [alt]="data.name"
+        class="viewer-img"
+        [style.transform]="'scale(' + zoom() + ')'"
+      />
+    } @else if (isPdf) {
+      <!-- `title` is the iframe's accessible name; without it a screen reader announces only "frame". -->
+      <iframe [src]="data.blobUrl" [title]="data.name" class="viewer-frame"></iframe>
+    } @else if (isVideo) {
+      <video controls class="viewer-video">
+        <!--
+          data.rawUrl, not data.blobUrl: source[src] is SecurityContext.NONE, so no sanitizer
+          runs, the SafeResourceUrl is never unwrapped, and toString() writes
+          "SafeValue must use [property]=binding: …" into src. Video and audio attachment
+          previews were broken exactly that way.
+        -->
+        <source [src]="data.rawUrl" [type]="sourceType" />
+      </video>
+    } @else if (isAudio) {
+      <audio controls class="viewer-audio">
+        <source [src]="data.rawUrl" [type]="sourceType" />
+      </audio>
+    } @else if (isText) {
+      <iframe [src]="data.blobUrl" [title]="data.name" class="viewer-frame"></iframe>
+    } @else {
+      <div class="viewer-unsupported">
+        <mat-icon class="unsupported-icon">insert_drive_file</mat-icon>
+        <p>Preview not available for this file type</p>
+        <p class="mime-label">{{ data.mimeType }}</p>
+      </div>
+    }
+  </div>
+
+  @if (isImage) {
+    <div class="viewer-toolbar">
+      <button mat-icon-button matTooltip="Zoom in" (click)="zoomIn()">
+        <mat-icon>zoom_in</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Fit to screen" (click)="zoomReset()">
+        <mat-icon>crop_free</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Zoom out" (click)="zoomOut()">
+        <mat-icon>zoom_out</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Rotate left" (click)="rotateLeft()">
+        <mat-icon>rotate_left</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Rotate right" (click)="rotateRight()">
+        <mat-icon>rotate_right</mat-icon>
+      </button>
+    </div>
+  }
+</div>

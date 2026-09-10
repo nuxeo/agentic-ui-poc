@@ -38,8 +38,9 @@
  *   node scripts/beta-harness/api-surface.mjs --update   # rewrite the snapshot
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const DIST = join(ROOT, 'dist', 'libs', 'platform');
@@ -51,11 +52,15 @@ function fail(message) {
   process.exit(1);
 }
 
+// First, not last: this builds `dist`, so the existence checks below are post-build sanity checks
+// rather than instructions to the caller.
+ensureFreshDist();
+
 if (!existsSync(DIST)) {
   fail(
-    `${DIST} does not exist, so there is no built surface to inspect.\n` +
-      'Run `npx nx build platform` first. This gate reads the artifact a customer\n' +
-      'installs, deliberately, rather than the source it was built from.',
+    `${DIST} does not exist even after building, so there is no surface to inspect.\n` +
+      'This gate reads the artifact a customer installs, deliberately, rather than the\n' +
+      'source it was built from.',
   );
 }
 
@@ -63,43 +68,48 @@ const pkgPath = join(DIST, 'package.json');
 if (!existsSync(pkgPath)) fail(`${pkgPath} is missing; the build did not complete.`);
 const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
 
-assertDistIsNotStale();
-
 /**
- * Refuse to report on a `dist` older than the sources it was built from.
+ * Make `dist` fresh rather than guessing whether it is.
  *
  * This gate reads built declarations, so against a stale `dist` it compares yesterday's surface to
- * the snapshot and passes — which is exactly what it did during review of this PR, reporting a
- * clean surface for a service that had gained a public method minutes earlier. `verify-gate` runs
- * `build` first so the full gate was never wrong, but a standalone run was, and a standalone run is
- * how anyone checks a single change.
+ * the snapshot and passes — which is exactly what it did during review of an earlier PR, reporting a
+ * clean surface for a service that had gained a public method minutes earlier.
+ *
+ * ## Why it builds instead of comparing timestamps or hashes
+ *
+ * Two heuristics were tried and both produced a red that meant nothing:
+ *
+ *   1. **mtimes**, against `dist/.../package.json`. Anything that rewrites a file with *identical
+ *      bytes* bumps its mtime — `sanitizer-audit.selftest.mjs` does precisely that, perturbing files
+ *      and restoring the original bytes in a `finally`. Running the selftest turned this gate red
+ *      without a character of source having changed. Worse, `npx nx build platform` could not clear
+ *      it: Nx hashes content, so the build was a cache hit and `dist` mtimes were never touched.
+ *      Only `--skip-nx-cache` worked, and since `build` runs immediately before `api-surface` in
+ *      `ALL_GATES` and is itself a cache hit, a full `beta:gate` run could not self-heal.
+ *   2. **Content hashes**, recording the source hash against the hash of the `dist` it described.
+ *      That fixed the identical-bytes case but wedged a narrower one: a source edit that does not
+ *      alter the emitted `.d.ts` leaves `dist` byte-identical, so the record still "describes" it,
+ *      the source hash differs forever, and *no* rebuild clears it.
+ *
+ * Both failures share a cause: inferring freshness from observable side effects of the build. So
+ * this asks the build system instead. `nx build platform` is idempotent and a cache hit costs about
+ * a second, after which `dist` corresponds to the sources on disk **by construction** — there is
+ * nothing left to infer, and no state to keep. The gate is slower standalone and cannot produce an
+ * uncleanable red, which is the right trade for something that already refuses to read source.
  */
-function assertDistIsNotStale() {
-  const builtAt = statSync(pkgPath).mtimeMs;
-  const roots = [join(ROOT, 'libs', 'shared'), join(ROOT, 'libs', 'platform')];
-  const newer = [];
+function ensureFreshDist() {
+  const built = spawnSync('npx', ['nx', 'build', 'platform'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    shell: process.platform === 'win32',
+    maxBuffer: 10 * 1024 * 1024, // 10MB buffer to handle large build output
+  });
 
-  const walk = (dir) => {
-    if (!existsSync(dir)) return;
-    for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      const path = join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name !== 'node_modules') walk(path);
-      } else if (/\.ts$/.test(entry.name) && !/\.spec\.ts$/.test(entry.name)) {
-        if (statSync(path).mtimeMs > builtAt) newer.push(relative(ROOT, path));
-      }
-    }
-  };
-  roots.forEach(walk);
-
-  if (newer.length) {
+  if (built.status !== 0) {
     fail(
-      `${newer.length} source file(s) are newer than dist/libs/platform, so this gate would\n` +
-        'be reporting on a stale build. Run `npx nx build platform` first.\n\n' +
-        newer
-          .slice(0, 10)
-          .map((f) => `  ${f}`)
-          .join('\n'),
+      'Could not build dist/libs/platform, so there is no trustworthy surface to inspect.\n' +
+        'This gate reads the artifact a customer installs, so a failed build is a failed gate.\n\n' +
+        `${built.stdout ?? ''}${built.stderr ?? ''}`.trim().split('\n').slice(-25).join('\n'),
     );
   }
 }

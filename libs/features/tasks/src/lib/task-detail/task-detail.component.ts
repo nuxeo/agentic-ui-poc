@@ -1,7 +1,6 @@
 import { Component, DestroyRef, inject, signal, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -58,7 +57,6 @@ export class TaskDetailComponent implements OnInit {
   private readonly nuxeoApi = inject(NuxeoApiBase);
   private readonly snackBar = inject(MatSnackBar);
   private readonly http = inject(HttpClient);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly task = signal<NuxeoTask | null>(null);
@@ -316,9 +314,9 @@ export class TaskDetailComponent implements OnInit {
    * and it put an internal API URL in the DOM where it is visible in devtools and leaks in
    * a referrer. `tasks-page.component.ts`, in this same library, already did it correctly.
    */
-  readonly docPreviewUrl = signal<SafeUrl | null>(null);
+  readonly docPreviewUrl = signal<string | null>(null);
 
-  /** The raw string behind {@link docPreviewUrl}: a SafeUrl cannot be read back out. */
+  /** Retained handle for revoking {@link docPreviewUrl} on destroy. */
   private rawPreviewUrl: string | null = null;
 
   private loadPreview(doc: NuxeoDocument): void {
@@ -333,7 +331,7 @@ export class TaskDetailComponent implements OnInit {
       .subscribe({
         next: (blob) => {
           this.rawPreviewUrl = URL.createObjectURL(blob);
-          this.docPreviewUrl.set(this.sanitizer.bypassSecurityTrustUrl(this.rawPreviewUrl));
+          this.docPreviewUrl.set(this.rawPreviewUrl);
         },
         // A document with no rendition is ordinary, not an error worth surfacing. The
         // template's `@if (docPreviewUrl())` already handles the absent case, which is why

@@ -65,7 +65,6 @@ import {
   ExtensionRuleContextService,
   type ExtensionElement,
 } from '@nuxeo-satori/platform/extensions';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { AuthService } from '../../auth/auth.service';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import {
@@ -117,7 +116,6 @@ export class NavDrawerComponent {
   private readonly detailService = inject(DocumentDetailService);
   private readonly docService = inject(DocumentService);
   private readonly authService = inject(AuthService);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly router = inject(Router);
   private readonly extensions = inject(AppExtensionsService);
   private readonly componentRegistry = inject(ExtensionComponentRegistry);
@@ -209,7 +207,7 @@ export class NavDrawerComponent {
 
   readonly favorites = signal<NuxeoDocument[]>([]);
   readonly favoritesLoading = signal(false);
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
 
   // Recently Viewed
   readonly recentlyViewed = signal<NuxeoDocument[]>([]);
@@ -1166,7 +1164,53 @@ export class NavDrawerComponent {
     this.loadThumbnailsForIds(docs.map((d) => d.uid));
   }
 
+  /**
+   * Every document id currently displayed in any drawer panel.
+   *
+   * Computed on demand rather than cached, because the loaders' callbacks need the *current* answer: an
+   * effect-maintained cache is written after change detection, so a response arriving in between would
+   * be judged against a stale set and a legitimate thumbnail dropped.
+   *
+   * Five panels share one `thumbnailMap`, which is why this is a union rather than a per-panel ledger.
+   * A sixth panel that forgets to appear here would reintroduce the leak, so it is listed in one place
+   * with the loaders reading from it.
+   */
+  private liveThumbnailIds(): Set<string> {
+    return new Set<string>([
+      ...this.expiredDocs().map((d) => d.uid),
+      ...this.recentlyViewed().map((d) => d.uid),
+      ...this.collections().map((d) => d.uid),
+      ...this.clipboardDocs().map((d) => d.uid),
+      ...this.favorites().map((d) => d.uid),
+    ]);
+  }
+
+  /**
+   * Revokes and forgets thumbnails for documents no longer shown in any panel.
+   *
+   * `thumbnailMap` only ever grew. This drawer lives in the app shell for the whole session, so every
+   * clipboard entry removed, every favourites or recently-viewed refresh, left its blob alive until the
+   * tab closed — unbounded growth from ordinary use, not a leak that needed anything to go wrong. The
+   * per-id revoke-before-replace already present only covers re-fetching the SAME id.
+   */
+  private reconcileThumbnails(): void {
+    const live = this.liveThumbnailIds();
+    const map = this.thumbnailMap();
+    const stale = Object.keys(map).filter((id) => !live.has(id));
+    if (stale.length === 0) return;
+    for (const id of stale) {
+      const url = map[id];
+      if (url) URL.revokeObjectURL(url);
+    }
+    this.thumbnailMap.update((current) => {
+      const next = { ...current };
+      for (const id of stale) delete next[id];
+      return next;
+    });
+  }
+
   private loadThumbnailsForIds(uids: string[]): void {
+    this.reconcileThumbnails();
     for (const uid of uids) {
       if (this.thumbnailMap()[uid]) continue;
       this.detailService
@@ -1177,12 +1221,18 @@ export class NavDrawerComponent {
         )
         .subscribe((blob) => {
           if (!blob) return;
+          // Dropped if this document left every panel while the request was in flight: minting here
+          // would add a URL nothing renders and nothing revokes until the tab closes.
+          if (!this.liveThumbnailIds().has(uid)) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[uid];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [uid]: url,
+            };
+          });
         });
     }
   }
@@ -1294,22 +1344,18 @@ export class NavDrawerComponent {
   }
 
   /**
-   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
-   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out.
+   * Blob URLs currently owned by the drawer.
    *
-   * One array for both loaders — `loadThumbnailsForIds` (clipboard) and
-   * `loadThumbnails` (favourites) — because they share `thumbnailMap` and so share its
-   * lifetime. The drawer is long-lived, and neither loader revoked anything, so a
-   * session accumulated one un-revoked blob per document ever shown in it.
+   * Both loaders (`loadThumbnailsForIds` for clipboard and `loadThumbnails` for favourites) write
+   * raw object-URL strings into `thumbnailMap`, so teardown can revoke the map's current values
+   * directly on destroy.
    */
-  private readonly thumbnailBlobUrls: string[] = [];
-
   private revokeThumbnails(): void {
-    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
-    this.thumbnailBlobUrls.length = 0;
+    for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
+    this.reconcileThumbnails();
     for (const doc of docs) {
       if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
@@ -1320,12 +1366,17 @@ export class NavDrawerComponent {
         )
         .subscribe((blob) => {
           if (!blob) return;
+          // Same guard as the id-based loader above.
+          if (!this.liveThumbnailIds().has(doc.uid)) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[doc.uid];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [doc.uid]: url,
+            };
+          });
         });
     }
   }

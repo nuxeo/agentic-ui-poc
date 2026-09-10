@@ -291,6 +291,16 @@ export {
   principalPermissionToLocalRow,
 } from './lib/utils/principal-permission-display';
 export {
+  isNavigableBaseUrl,
+  navigableUrlOrNull,
+  originOf,
+  insecureAllowedForHost,
+  mediaTypeEssence,
+  type NavigableUrlPolicy,
+} from './lib/utils/navigable-url';
+export { trustObjectUrl } from './lib/utils/trust-object-url';
+export { renderTrustedHtml, type TrustedHtmlConfig } from './lib/utils/render-trusted-html';
+export {
   mergeDocumentPermissionsContext,
   normalizeDocumentAcls,
   resolveAcePrincipal,

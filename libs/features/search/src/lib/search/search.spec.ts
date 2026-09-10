@@ -8,7 +8,7 @@ import {
 } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { of, throwError, type Observable } from 'rxjs';
+import { Subject, of, throwError, type Observable } from 'rxjs';
 import { vi } from 'vitest';
 
 import { SearchComponent } from './search';
@@ -60,6 +60,7 @@ const mockSelectionService = {
   isSelected: vi.fn(() => false),
   toggle: vi.fn(),
   clear: vi.fn(),
+  forgetPreviews: vi.fn(),
   selectAll: vi.fn(),
   deleteSelected: vi.fn((): Observable<void> => of(undefined)),
 };
@@ -248,6 +249,96 @@ describe('SearchComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('thumbnail lifecycle', () => {
+    it('revokes the previous batch before loading a new one', () => {
+      mockDocumentDetailService.fetchThumbnail.mockReturnValue(of(new Blob(['thumb'])));
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+      // Same reason as the destroy test below: `blobSeq` is not reset between tests, so the URLs are
+      // read back rather than named. This one passed only because it runs first.
+      const first = created[0];
+      expect(component.thumbnailMap()['doc1']).toBe(first);
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc2' })]);
+
+      const second = created[1];
+      expect(revoked).toContain(first);
+      expect(component.thumbnailMap()).toEqual({ doc2: second });
+    });
+
+    it('ignores stale thumbnail responses from an older batch', () => {
+      const thumbs = new Subject<Blob | null>();
+      mockDocumentDetailService.fetchThumbnail.mockReturnValue(thumbs.asObservable());
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([]);
+
+      thumbs.next(new Blob(['late']));
+      thumbs.complete();
+
+      expect(created).toHaveLength(0);
+      expect(component.thumbnailMap()).toEqual({});
+    });
+
+    /**
+     * The regression test for the shared-generation race. `loadThumbnails` used to read
+     * `this.thumbnailGeneration` instead of incrementing it, so two loaders invoked under a single
+     * `beginThumbnailBatch()` — which happens when a standard search and an AI search both resolve —
+     * captured the same value. The first loader's in-flight callbacks then still matched the current
+     * generation after the second loader's `clearThumbnails()`, and repopulated the map from the
+     * abandoned result set.
+     *
+     * Verified by reverting the `++` and watching this go red, per the repo rule that a guard is not
+     * evidence until it has been seen to fail.
+     */
+    it('drops a late response from an earlier loader in the same batch', () => {
+      const firstThumbs = new Subject<Blob | null>();
+      const secondThumbs = new Subject<Blob | null>();
+      mockDocumentDetailService.fetchThumbnail
+        .mockReturnValueOnce(firstThumbs.asObservable())
+        .mockReturnValueOnce(secondThumbs.asObservable());
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+      component['loadThumbnails']([resultItem({ id: 'doc2' })]);
+
+      firstThumbs.next(new Blob(['stale']));
+      firstThumbs.complete();
+      expect(created).toHaveLength(0);
+      expect(component.thumbnailMap()).toEqual({});
+
+      // The positive control: the current loader is still honoured, so the guard is discriminating
+      // rather than rejecting everything — which is how this test would pass for the wrong reason.
+      secondThumbs.next(new Blob(['fresh']));
+      secondThumbs.complete();
+      expect(created).toHaveLength(1);
+      expect(component.thumbnailMap()).toEqual({ doc2: created[0] });
+    });
+
+    it('revokes tracked thumbnails on destroy', () => {
+      mockDocumentDetailService.fetchThumbnail.mockReturnValue(of(new Blob(['thumb'])));
+
+      component['beginThumbnailBatch']();
+      component['loadThumbnails']([resultItem({ id: 'doc1' })]);
+
+      // Read the minted URL back rather than naming `blob:mock/1`. `created` and `revoked` are
+      // cleared in `beforeEach` but `blobSeq` is not, so the sequence number depends on how many
+      // URLs earlier tests minted — hardcoding it made this test pass only while it happened to run
+      // first, and it was already failing on arrival for exactly that reason.
+      expect(created).toHaveLength(1);
+      const url = created[0];
+      expect(component.thumbnailMap()['doc1']).toBe(url);
+
+      fixture.destroy();
+
+      expect(revoked).toContain(url);
+    });
   });
 
   describe('toggleQuickFilter', () => {
@@ -595,6 +686,243 @@ describe('SearchComponent', () => {
       component.aiQuery.set('test query');
       component.executeAiSearch();
       expect(mockAiGatewayService.nlToNxql).toHaveBeenCalledWith('test query');
+    });
+
+    /**
+     * The regression test for a stale NXQL response overwriting a newer one.
+     *
+     * The standard search path in this component is driven through `switchMap`, so it cancels its
+     * predecessor. `runNxqlQuery` subscribes imperatively and did not compare a generation, so a slow
+     * first query landing after a fast second one replaced the second's results — the same defect
+     * Copilot reported in `TrashComponent.search()`.
+     *
+     * Verified by reverting the `++this.nxqlGeneration` guard and watching this go red.
+     */
+    it('ignores an NXQL response superseded by a later query', () => {
+      const first = new Subject<{ entries: { uid: string; title: string }[] }>();
+      const second = new Subject<{ entries: { uid: string; title: string }[] }>();
+      mockNuxeoApiBase.nxqlSearch
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+
+      // Mint generations the way `executeAiSearch` does, one per request.
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE a',
+        ++component['aiRequestGeneration'],
+      );
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE b',
+        ++component['aiRequestGeneration'],
+      );
+
+      // The later query resolves first, as the faster one.
+      second.next({ entries: [{ uid: 'b', title: 'From B' }] });
+      second.complete();
+      expect(component.aiResults().map((r) => r.id)).toEqual(['b']);
+
+      // The earlier one lands afterwards and must be discarded rather than replacing B.
+      first.next({ entries: [{ uid: 'a', title: 'From A' }] });
+      first.complete();
+      expect(component.aiResults().map((r) => r.id)).toEqual(['b']);
+    });
+
+    it('ignores an NXQL failure superseded by a later query', () => {
+      const first = new Subject<{ entries: never[] }>();
+      const second = new Subject<{ entries: { uid: string; title: string }[] }>();
+      mockNuxeoApiBase.nxqlSearch
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+
+      // Mint generations the way `executeAiSearch` does, one per request.
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE a',
+        ++component['aiRequestGeneration'],
+      );
+      component['runNxqlQuery'](
+        'SELECT * FROM Document WHERE b',
+        ++component['aiRequestGeneration'],
+      );
+
+      second.next({ entries: [{ uid: 'b', title: 'From B' }] });
+      second.complete();
+
+      // A stale failure must not put an error banner over the newer query's results.
+      first.error(new Error('boom'));
+      expect(component.aiError()).toBeNull();
+      expect(component.aiResults().map((r) => r.id)).toEqual(['b']);
+    });
+
+    /**
+     * The generation has to span BOTH async phases, not just the second one.
+     *
+     * When only `runNxqlQuery` minted a generation, a superseded `nlToNxql` response still wrote
+     * `aiGeneratedNxql`/`aiExplanation` and then started a fresh query that minted its own
+     * generation — so the stale request won outright, which is the opposite of the intent.
+     */
+    it('ignores an nlToNxql response superseded by a later AI search', () => {
+      const first = new Subject<{ nxql: string; explanation: string }>();
+      const second = new Subject<{ nxql: string; explanation: string }>();
+      mockAiGatewayService.nlToNxql
+        .mockReturnValueOnce(first.asObservable())
+        .mockReturnValueOnce(second.asObservable());
+      mockNuxeoApiBase.nxqlSearch.mockReturnValue(of({ entries: [] }));
+
+      component.aiQuery.set('query one');
+      component.executeAiSearch();
+      component.aiQuery.set('query two');
+      component.executeAiSearch();
+
+      second.next({ nxql: 'SELECT * FROM B', explanation: 'from B' });
+      second.complete();
+      expect(component.aiGeneratedNxql()).toBe('SELECT * FROM B');
+
+      // The earlier translation lands afterwards and must not replace B's, nor run its own query.
+      const queriesBefore = mockNuxeoApiBase.nxqlSearch.mock.calls.length;
+      first.next({ nxql: 'SELECT * FROM A', explanation: 'from A' });
+      first.complete();
+      expect(component.aiGeneratedNxql()).toBe('SELECT * FROM B');
+      expect(component.aiExplanation()).toBe('from B');
+      expect(mockNuxeoApiBase.nxqlSearch.mock.calls.length).toBe(queriesBefore);
+    });
+
+    it('ignores an AI response that arrives after AI mode is switched off', () => {
+      const pending = new Subject<{ nxql: string; explanation: string }>();
+      mockAiGatewayService.nlToNxql.mockReturnValue(pending.asObservable());
+
+      component.aiSearchMode.set(true);
+      component.aiQuery.set('query one');
+      component.executeAiSearch();
+
+      // Leaving AI mode must invalidate the in-flight request, or its late response re-enables AI
+      // state and overwrites the standard thumbnail batch restored on the way out.
+      component.toggleAiSearch();
+      expect(component.aiSearchMode()).toBe(false);
+
+      pending.next({ nxql: 'SELECT * FROM Late', explanation: 'late' });
+      pending.complete();
+
+      expect(component.aiGeneratedNxql()).toBe('');
+      expect(component.aiSearchExecuted()).toBe(false);
+    });
+
+    /**
+     * A generation guard makes superseded callbacks return early, so whatever they would have cleared
+     * on the way out has to be cleared at supersede time instead. Miss that and the page sits behind a
+     * spinner with no request behind it. These two cover both supersede paths.
+     */
+    describe('superseding an AI request releases its loading state', () => {
+      it('clears AI loading when the user leaves AI mode mid-request', () => {
+        const pending = new Subject<{ entries: never[] }>();
+        mockNuxeoApiBase.nxqlSearch.mockReturnValue(pending.asObservable());
+
+        component.aiSearchMode.set(true);
+        component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
+        expect(component.aiNxqlLoading()).toBe(true);
+
+        component.toggleAiSearch();
+
+        // The pending callbacks will now return at the guard, so leaving AI mode has to release this.
+        expect(component.aiNxqlLoading()).toBe(false);
+        expect(component.aiLoading()).toBe(false);
+      });
+
+      it('clears AI loading when a new AI search supersedes a running NXQL request', () => {
+        const pendingNxql = new Subject<{ entries: never[] }>();
+        mockNuxeoApiBase.nxqlSearch.mockReturnValue(pendingNxql.asObservable());
+        component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
+        expect(component.aiNxqlLoading()).toBe(true);
+
+        // A new AI search starts. If its `nlToNxql` phase fails before `runNxqlQuery` runs, nothing
+        // else would ever reset the flag.
+        mockAiGatewayService.nlToNxql.mockReturnValue(throwError(() => new Error('nl failed')));
+        component.aiQuery.set('another query');
+        component.executeAiSearch();
+
+        expect(component.aiNxqlLoading()).toBe(false);
+      });
+
+      /**
+       * The other half, and the reason the two flags are separate.
+       *
+       * `loading` belongs to the standard `results$` pipeline. When `runNxqlQuery` shared it,
+       * `supersedeAiRequest` had to clear it — and that clear could land while a *standard* search was
+       * still in flight. Every view mode is gated on `!busy()`, so the spinner disappeared and the
+       * PREVIOUS results rendered as if they were current.
+       */
+      it('does not release loading owned by an in-flight standard search', () => {
+        // A standard search is running: the `results$` pipeline sets this on every route/filter change.
+        component.loading.set(true);
+
+        // The user exits AI mode, or starts another AI search, while that request is still going.
+        component.aiSearchMode.set(true);
+        component.toggleAiSearch();
+
+        expect(component.loading()).toBe(true);
+        expect(component.busy()).toBe(true);
+      });
+
+      it('reports busy while either request is in flight', () => {
+        component.loading.set(false);
+        component.aiNxqlLoading.set(false);
+        expect(component.busy()).toBe(false);
+
+        component.aiNxqlLoading.set(true);
+        expect(component.busy()).toBe(true);
+
+        component.aiNxqlLoading.set(false);
+        component.loading.set(true);
+        expect(component.busy()).toBe(true);
+      });
+    });
+
+    /**
+     * A standard search must not invalidate thumbnails it is not going to reload.
+     *
+     * `beginThumbnailBatch()` ran on every query-param/drawer-filter change, while the response path
+     * deliberately skips `loadThumbnails` when AI results are displayed. So a filter change during a
+     * completed AI search killed every AI thumbnail request still in flight and loaded nothing to
+     * replace them — the thumbnails just vanished.
+     */
+    describe('thumbnail batch ownership', () => {
+      it('leaves the batch alone while AI results are displayed', () => {
+        component.aiSearchMode.set(true);
+        component.aiSearchExecuted.set(true);
+
+        const before = component['thumbnailGeneration'];
+        expect(component['standardResultsOwnThumbnails']()).toBe(false);
+        // Invalidating here would strand the AI thumbnails, because nothing reloads them.
+        if (component['standardResultsOwnThumbnails']()) component['beginThumbnailBatch']();
+
+        expect(component['thumbnailGeneration']).toBe(before);
+      });
+
+      it('does not claim the batch when starting an AI NXQL request', () => {
+        /**
+         * The standard results stay on screen until the AI request succeeds, and `loadThumbnails`
+         * mints its own generation when it does. Claiming here only mattered if the request FAILED:
+         * every standard thumbnail response still in flight was then discarded by the generation
+         * check, and the error path reloaded none of them — permanently missing thumbnails from
+         * invalidating a batch this method might never refill.
+         */
+        const pending = new Subject<{ entries: never[] }>();
+        mockNuxeoApiBase.nxqlSearch.mockReturnValue(pending.asObservable());
+
+        const before = component['thumbnailGeneration'];
+        component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
+
+        expect(component['thumbnailGeneration']).toBe(before);
+      });
+
+      it('claims the batch when the standard results are what is on screen', () => {
+        // The positive control, in both of the ways standard results can own the display.
+        component.aiSearchMode.set(false);
+        component.aiSearchExecuted.set(true);
+        expect(component['standardResultsOwnThumbnails']()).toBe(true);
+
+        component.aiSearchMode.set(true);
+        component.aiSearchExecuted.set(false);
+        expect(component['standardResultsOwnThumbnails']()).toBe(true);
+      });
     });
 
     it('should not execute AI search with empty query', () => {

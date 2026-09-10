@@ -67,12 +67,18 @@ jobs:
       - name: Run review guardrails
         run: npm run review:guardrails -- --base=$NX_BASE --head=$NX_HEAD
 
-      # Four static checks that `beta:gate` has run locally since Phase 5 and that had
+      # Static checks that `beta:gate` has run locally since Phase 5 and that had
       # never run here. They are seconds each and they close a specific hole: the local
       # gate and CI were two different gates, so "green locally" and "green in CI" made
       # different claims and neither said so. A check that only ever runs on one
       # developer's machine is a check that stops running the day they stop running it.
-      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain)
+      #
+      # The sanitizer pair below reproduced that hole exactly. Both were registered in
+      # `verify-gate.mjs`'s ALL_GATES and in `review:preflight`, and CI invokes neither — it
+      # runs individual scripts. So "registered as a gate" meant local-only, and review had
+      # to point out that the gate guarding a shipped XSS-adjacent defect could not block a
+      # merge. Registering a check in ALL_GATES is not the same as running it.
+      - name: Static beta gates (evidence, reference drift, customer guardrails, supply chain, sanitizers)
         run: |
           set -euo pipefail
           # Fails if an evidence step asserts something it cannot observe. Phase 1 shipped
@@ -90,6 +96,14 @@ jobs:
           # Also fails on a production dependency nothing imports — which is how `cors`
           # and `dotenv` were found, two beyond the two already recorded as debt.
           npm run beta:supply-chain
+          # Every `bypassSecurityTrust*` call is registered with a justification, no Safe* value
+          # reaches a SecurityContext.NONE binding, trusted HTML traces back to a sanitiser, and
+          # the debt budgets have not been raised against the merge base.
+          npm run beta:sanitizers
+          # And the audit's own negative controls, so it cannot regress into an always-green
+          # implementation while the line above keeps passing. This is the load-bearing half:
+          # without it CI verifies the audit runs, not that it can fail.
+          npm run beta:sanitizers-selftest
 
       - name: Lint affected projects
         run: npx nx affected -t lint --base=$NX_BASE --head=$NX_HEAD

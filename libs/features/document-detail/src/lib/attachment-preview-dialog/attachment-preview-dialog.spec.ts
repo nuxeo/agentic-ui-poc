@@ -44,6 +44,7 @@ function rotationOf(component: AttachmentPreviewDialogComponent): number {
 async function createDialog(
   mimeType: string,
   useRealTemplate = false,
+  overrides: Partial<AttachmentPreviewData> = {},
 ): Promise<{
   component: AttachmentPreviewDialogComponent;
   fixture: ComponentFixture<AttachmentPreviewDialogComponent>;
@@ -65,8 +66,13 @@ async function createDialog(
         useFactory: (sanitizer: DomSanitizer): AttachmentPreviewData => ({
           name: 'report.bin',
           mimeType,
+          // Defaults to agreeing with the metadata type, which is the normal case. Tests that care
+          // about the metadata/served mismatch override it explicitly.
+          blobType: mimeType,
           blobUrl: sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
           rawUrl,
+          ownsRawUrl: true,
+          ...overrides,
         }),
         deps: [DomSanitizer],
       },
@@ -121,15 +127,89 @@ describe('AttachmentPreviewDialogComponent', () => {
       expect(component.isVideo).toBe(false);
     });
 
-    it('treats text/*, application/json and application/xml as text', async () => {
-      const plain = await createDialog('text/plain');
-      expect(plain.component.isText).toBe(true);
+    it('treats the inert text types as text', async () => {
+      for (const mime of ['text/plain', 'text/csv', 'application/json']) {
+        const { component } = await createDialog(mime);
+        expect(component.isText, mime).toBe(true);
+      }
+    });
 
-      const json = await createDialog('application/json');
-      expect(json.component.isText).toBe(true);
+    it('ignores a charset parameter and letter case when matching', async () => {
+      const withCharset = await createDialog('text/plain; charset=utf-8');
+      expect(withCharset.component.isText).toBe(true);
 
-      const xml = await createDialog('application/xml');
-      expect(xml.component.isText).toBe(true);
+      const upper = await createDialog('TEXT/PLAIN');
+      expect(upper.component.isText).toBe(true);
+    });
+
+    /**
+     * The load-bearing half. `isText` used to be `startsWith('text/')`, which matched `text/html`
+     * and rendered it in an iframe on a `blob:` URL — and a blob URL inherits the creating page's
+     * origin, so an uploaded HTML attachment ran script against our own origin. Every case here is
+     * a type that must NOT reach the iframe; the inert types above are the positive control proving
+     * the allow-list still admits something.
+     *
+     * The XML cases are the second round of this: XML is parsed as markup, so namespaced SVG script
+     * runs and an `<?xml-stylesheet type="text/xsl">` instruction can pull in XSLT that emits
+     * scripted HTML. Rejecting `image/svg+xml` alone left that path open.
+     */
+    it('refuses to preview executable text types in the iframe', async () => {
+      for (const mime of [
+        'text/html',
+        'text/xsl',
+        'application/xhtml+xml',
+        'image/svg+xml',
+        'text/xml',
+        'application/xml',
+        'application/rss+xml',
+        'text/html; charset=utf-8',
+        'TEXT/HTML',
+        'Text/XML',
+      ]) {
+        const { component } = await createDialog(mime);
+        expect(component.isText, mime).toBe(false);
+      }
+    });
+
+    /**
+     * The metadata/served-type mismatch. The browser parses the iframe document by the served
+     * `Content-Type`, not by what the document record claims, so checking only `mimeType` let an
+     * HTML-served blob through under a `text/plain` or `application/pdf` record.
+     *
+     * The empty-`blobType` cases are the no-`Content-Type` scenario, where the browser would sniff:
+     * `''` is not on the allow-list, so the branch is refused rather than guessed at.
+     */
+    it('refuses the iframe when the served type disagrees with the metadata type', async () => {
+      const cases: Array<[string, string]> = [
+        ['text/plain', 'text/html'],
+        ['application/json', 'text/html'],
+        ['text/csv', 'application/xhtml+xml'],
+        ['text/plain', ''],
+      ];
+      for (const [mimeType, blobType] of cases) {
+        const { component } = await createDialog(mimeType, false, { blobType });
+        expect(component.isText, `${mimeType} served as "${blobType}"`).toBe(false);
+      }
+    });
+
+    it('refuses a PDF whose served type is not PDF', async () => {
+      const served = await createDialog('application/pdf', false, { blobType: 'text/html' });
+      expect(served.component.isPdf).toBe(false);
+
+      const absent = await createDialog('application/pdf', false, { blobType: '' });
+      expect(absent.component.isPdf).toBe(false);
+
+      // Positive control: agreement still previews, so the gate is discriminating rather than
+      // refusing every PDF.
+      const agreed = await createDialog('application/pdf', false, { blobType: 'application/pdf' });
+      expect(agreed.component.isPdf).toBe(true);
+    });
+
+    it('accepts a served type that carries a charset parameter', async () => {
+      const { component } = await createDialog('text/plain', false, {
+        blobType: 'text/plain; charset=utf-8',
+      });
+      expect(component.isText).toBe(true);
     });
 
     it('classifies an unknown binary type as none of the previewable kinds', async () => {
@@ -139,6 +219,63 @@ describe('AttachmentPreviewDialogComponent', () => {
       expect(component.isVideo).toBe(false);
       expect(component.isAudio).toBe(false);
       expect(component.isText).toBe(false);
+    });
+  });
+
+  describe('the source type hint', () => {
+    /**
+     * `type` decides whether the browser even attempts a source — per spec it skips one whose declared
+     * type it does not support. Advertising the document metadata type while the blob is something else
+     * can therefore skip a playable source: the same metadata/served disagreement as `blobType`, in the
+     * attribute rather than the URL.
+     */
+    it('advertises the served type, not the metadata type', async () => {
+      const { fixture } = await createDialog('video/quicktime', true, {
+        blobType: 'video/mp4',
+      });
+      const source = fixture.nativeElement.querySelector(
+        'video source',
+      ) as HTMLSourceElement | null;
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('type')).toBe('video/mp4');
+      expect(source!.getAttribute('type')).not.toBe('video/quicktime');
+    });
+
+    it('falls back to the metadata type when the server sent no Content-Type', async () => {
+      // Not `type=""`: an empty declared type is not a supported type, so the browser would skip the
+      // source outright — worse than a possibly-wrong hint.
+      const { fixture } = await createDialog('audio/mpeg', true, { blobType: '' });
+      const source = fixture.nativeElement.querySelector(
+        'audio source',
+      ) as HTMLSourceElement | null;
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('type')).toBe('audio/mpeg');
+    });
+  });
+
+  describe('accessibility', () => {
+    /**
+     * An iframe with no accessible name is announced as just "frame". Both preview iframes take their
+     * name from the attachment, which is the only thing that distinguishes them to a screen reader.
+     */
+    it('names the pdf preview iframe after the attachment', async () => {
+      const { fixture } = await createDialog('application/pdf', true, {
+        name: 'quarterly-report.pdf',
+        blobType: 'application/pdf',
+      });
+      const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute('title')).toBe('quarterly-report.pdf');
+    });
+
+    it('names the text preview iframe after the attachment', async () => {
+      const { fixture } = await createDialog('text/plain', true, {
+        name: 'notes.txt',
+        blobType: 'text/plain',
+      });
+      const iframe = fixture.nativeElement.querySelector('iframe') as HTMLIFrameElement | null;
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute('title')).toBe('notes.txt');
     });
   });
 
@@ -242,5 +379,54 @@ describe('AttachmentPreviewDialogComponent', () => {
     // resident for the lifetime of the tab. Revoked exactly once — double-revoking is a
     // symptom of two owners, which is how a URL gets revoked while still displayed.
     expect(revoked.filter((u) => u === rawUrl)).toHaveLength(1);
+  });
+
+  it('does not revoke a blob URL it does not own', async () => {
+    // `previewMainBlob` shares the document viewer's object URL, which is still bound behind the
+    // dialog. Revoking it on close would blank the page underneath. That case used to be
+    // expressed by passing `rawUrl: ''`, which also silently starved `<source [src]>`.
+    const { fixture, rawUrl } = await createDialog('video/mp4', false, { ownsRawUrl: false });
+    fixture.destroy();
+    expect(revoked).not.toContain(rawUrl);
+  });
+
+  // ---- rendered attributes ---------------------------------------------------------------------
+  //
+  // These read the DOM rather than a component flag, and that distinction is the whole point.
+  // `source[src]` is `SecurityContext.NONE` in Angular's DOM security schema, so no sanitizer
+  // runs, a `Safe*` value is never unwrapped, and the browser coerces it with `toString()` —
+  // writing the literal string `"SafeValue must use [property]=binding: …"` into `src`. Video and
+  // audio attachment previews were broken exactly that way, and the `isVideo`/`isAudio`
+  // assertions above passed throughout, because a flag being right says nothing about what was
+  // rendered.
+  describe('media sources render a usable URL', () => {
+    it('binds the raw object URL into video source[src], not the SafeValue placeholder', async () => {
+      const { fixture, rawUrl } = await createDialog('video/mp4', true);
+      const source = fixture.nativeElement.querySelector('video source');
+
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('src')).toBe(rawUrl);
+      expect(source!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
+
+    it('binds the raw object URL into audio source[src], not the SafeValue placeholder', async () => {
+      const { fixture, rawUrl } = await createDialog('audio/mpeg', true);
+      const source = fixture.nativeElement.querySelector('audio source');
+
+      expect(source).not.toBeNull();
+      expect(source!.getAttribute('src')).toBe(rawUrl);
+      expect(source!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
+
+    it('keeps the wrapped value on iframe[src], which throws on a raw string', async () => {
+      const { fixture, rawUrl } = await createDialog('application/pdf', true);
+      const iframe = fixture.nativeElement.querySelector('iframe');
+
+      // Angular unwraps the SafeResourceUrl here because RESOURCE_URL *does* run a sanitizer.
+      // If this ever renders the placeholder, the two bindings have been swapped.
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute('src')).toBe(rawUrl);
+      expect(iframe!.getAttribute('src')).not.toContain('SafeValue must use');
+    });
   });
 });

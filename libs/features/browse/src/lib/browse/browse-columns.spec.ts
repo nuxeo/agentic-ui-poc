@@ -64,6 +64,7 @@ describe('BrowseComponent — documentList slot', () => {
       isSelected: vi.fn(() => false),
       isAllSelected: vi.fn(() => false),
       isIndeterminate: vi.fn(() => false),
+      forgetPreviews: vi.fn(),
     },
   };
 

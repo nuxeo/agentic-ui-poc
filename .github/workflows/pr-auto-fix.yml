@@ -192,7 +192,8 @@ jobs:
               | gh api -X PATCH "repos/${REPO}/issues/comments/${EXISTING}" --input -
             echo "updated comment ${EXISTING}"
           elif [ "${OPEN_COUNT}" -gt 0 ]; then
-            gh pr comment "${PR_NUMBER}" --body-file /tmp/body.md
+            jq -Rs '{body: .}' /tmp/body.md \
+              | gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" --input -
             echo "created a new summary comment"
           else
             # Nothing outstanding and no existing comment: stay quiet rather than posting a

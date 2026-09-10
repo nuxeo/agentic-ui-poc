@@ -109,6 +109,36 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/review-guardrails.mjs', '--base', base],
   },
+  // SonarCloud security remediation harness (section 5 of docs/sonarcloud-security-remediation-plan.md).
+  // Enforces that every DomSanitizer.bypassSecurityTrust* call is registered in
+  // .ai/state/sanitizer-allowlist.json with a written justification. Catches unregistered bypasses,
+  // stale allowlist entries, Category A regressions (redundant bypasses), Safe* values in NONE
+  // contexts (source[src], audio[src], video[poster]), and unpaired HTML sanitization.
+  // Sits next to guardrails because both are static code checks with no compilation required.
+  {
+    id: 'sanitizer-audit',
+    label: 'Sanitizer bypass audit',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/sanitizer-audit.mjs'],
+  },
+  // The audit's negative controls, registered as a gate rather than left as an optional script.
+  //
+  // Until this entry existed, `beta:gate` ran `sanitizer-audit.mjs` but nothing ran its selftest, so
+  // the audit could regress into an always-green implementation with every required check still
+  // passing. The controls are the entire basis for trusting the audit; a gate whose evidence is
+  // optional is a gate on trust rather than on proof — the precise failure `CLAUDE.md` records as
+  // having cost this programme three gates.
+  //
+  // Runs immediately after the audit: it perturbs real files and restores them in a `finally`, so it
+  // must not overlap a build, and both are cheap and static.
+  {
+    id: 'sanitizer-selftest',
+    label: 'Sanitizer audit negative controls',
+    cmd: 'node',
+    argv: ['scripts/beta-harness/sanitizer-audit.selftest.mjs'],
+    // Which checks were observed failing on purpose is the evidence, so surface it on a pass too.
+    echoOnPass: true,
+  },
   // Static, so it belongs with the cheap gates — and it guards the one thing the
   // other six structurally cannot. Lint, test, build and typecheck all check the
   // *application*; nothing checked whether the *evidence* was capable of failing.

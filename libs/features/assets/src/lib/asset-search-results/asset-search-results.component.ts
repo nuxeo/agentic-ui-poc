@@ -2,7 +2,6 @@ import { Component, computed, inject, signal, DestroyRef, effect } from '@angula
 import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router } from '@angular/router';
 import { switchMap, map, catchError, of, tap, finalize } from 'rxjs';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -298,7 +297,6 @@ export class AssetSearchResultsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly assetService = inject(AssetService);
   private readonly aggregationService = inject(AssetAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
@@ -307,7 +305,8 @@ export class AssetSearchResultsComponent {
   private readonly searchService = inject(SearchService);
   readonly selectionService = inject(SelectionService);
 
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
+  private thumbnailGeneration = 0;
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
 
   readonly loading = signal(true);
@@ -320,6 +319,7 @@ export class AssetSearchResultsComponent {
     tap(() => {
       this.loading.set(true);
       this.error.set(null);
+      this.beginThumbnailBatch();
     }),
     switchMap((params) =>
       this.assetService.searchAssets(buildApiParams(params)).pipe(
@@ -358,6 +358,8 @@ export class AssetSearchResultsComponent {
   readonly gridSortOrder = signal<'asc' | 'desc'>('asc');
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearThumbnails());
+
     effect(() => {
       const params = this.queryParams();
       const apiSortBy = params.get('sortBy') ?? 'dc:created';
@@ -915,19 +917,43 @@ export class AssetSearchResultsComponent {
   }
 
   private loadThumbnails(assets: AssetResult[]): void {
+    // Mint a new generation rather than reading the current one — two overlapping asset searches
+    // could otherwise both capture the generation set by one `beginThumbnailBatch()`, letting the
+    // first search's late callbacks pass the guard and reappear after the second cleared them.
+    const generation = ++this.thumbnailGeneration;
+    this.clearThumbnails();
     for (const asset of assets) {
-      if (this.thumbnailMap()[asset.id]) continue;
       this.documentDetailService
         .fetchThumbnail(asset.id)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
-          if (!blob) return;
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [asset.id]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[asset.id];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [asset.id]: url,
+            };
+          });
         });
     }
+  }
+
+  private beginThumbnailBatch(): void {
+    this.thumbnailGeneration += 1;
+  }
+
+  private clearThumbnails(): void {
+    // Drop the selection layer's copies FIRST. It retains these exact strings and binds them into
+    // `<img [src]>` in the shell topbar, and selection survives a new search — so revoking without
+    // this leaves selected items pointing at revoked blob URLs. See `SelectionService.forgetPreviews`.
+    this.selectionService.forgetPreviews();
+    for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);
+    this.thumbnailMap.set({});
   }
 }

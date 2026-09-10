@@ -13,16 +13,24 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+// Shared rather than local: this normalisation guards three separate served-type checks, and a
+// divergence between them would be a bypass.
+import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface VideoSource {
-  url: SafeResourceUrl;
+  /**
+   * Raw object URL, not `SafeResourceUrl`. This is bound to `<source [src]>`, which is
+   * `SecurityContext.NONE` — see `DocumentViewerComponent.rawBlobUrl` for why a `Safe*` value
+   * silently breaks there. The transcoded-video source list was broken this way.
+   */
+  url: string;
   mimeType: string;
   label?: string;
 }
 
 export interface StoryboardItem {
   timecode: number;
-  thumbnailUrl: SafeResourceUrl;
+  thumbnailUrl: string | null;
   label: string;
 }
 
@@ -97,6 +105,49 @@ export interface VideoInfo {
 })
 export class DocumentViewerComponent {
   readonly blobUrl = input<SafeResourceUrl | null>(null);
+  /**
+   * The same object URL as `blobUrl`, unwrapped.
+   *
+   * `source[src]`, `audio[src]` and `video[poster]` are `SecurityContext.NONE` in Angular's DOM
+   * security schema, which means no sanitizer runs on them — and a `Safe*` value is only ever
+   * unwrapped *by* a sanitizer. Bound into a NONE context it is therefore assigned to the DOM
+   * property as-is and coerced by `toString()`, writing the literal string
+   * `"SafeValue must use [property]=binding: …"` into `src`. Audio playback and the
+   * single-source video fallback were broken exactly that way until this input existed.
+   *
+   * So: `blobUrl` for `iframe[src]` (which conversely *throws* on a raw string) and `img[src]`,
+   * this one for the three NONE bindings. Enforced by `scripts/beta-harness/sanitizer-audit.mjs`
+   * check 4, which follows the bound expression to a type declaration and — crucially — reports any
+   * NONE-context binding whose type it cannot resolve, rather than assuming it is safe.
+   */
+  /**
+   * Required, not optional with a `null` default — the default is what made this fail silently.
+   *
+   * `audio[src]` and the single-source `video[src]` fallback are `SecurityContext.NONE`, so they need
+   * the raw string; `blobUrl` is a `SafeResourceUrl` and stringifies to
+   * `"SafeValue must use [property]=binding: …"` there. A consumer that omits this input keeps
+   * compiling and renders a null source, which is exactly the silent breakage this PR exists to fix —
+   * so omitting it has to be a compile error, not a runtime shrug.
+   *
+   * This was made required in `3d6638f` and reverted to optional in `511b22e`; restoring it. All
+   * three in-repo consumers already pass it, so the only thing the requirement breaks is an external
+   * consumer that would otherwise have shipped broken audio.
+   */
+  readonly rawBlobUrl = input.required<string | null>();
+  /**
+   * `Blob.type` of the blob behind {@link blobUrl} — the `Content-Type` the server actually served.
+   *
+   * Required for the same reason as `rawBlobUrl`: it gates the unsandboxed iframe branches, and a
+   * default would let a consumer omit it and silently get either no PDF preview or, worse, the
+   * pre-existing behaviour of choosing the iframe from metadata alone.
+   *
+   * That was a same-origin execution path. `contentType()` picked `'pdf'` from `mimeType`,
+   * `hasPdfRendition` and even a filename-extension fallback, none of which the browser consults —
+   * it parses a `blob:` document by its `Content-Type`, and a blob URL inherits this origin. A
+   * document recorded as PDF but served as `text/html` therefore ran as script here. The attachment
+   * dialog closed the same mismatch; this input closes it for the embedded viewer.
+   */
+  readonly blobType = input.required<string>();
   readonly mimeType = input<string>('');
   readonly fileName = input<string>('');
   readonly fileSize = input<string>('');
@@ -106,7 +157,8 @@ export class DocumentViewerComponent {
   readonly noteHtml = input<SafeHtml | null>(null);
   readonly videoSources = input<VideoSource[]>([]);
   readonly storyboard = input<StoryboardItem[]>([]);
-  readonly posterUrl = input<SafeResourceUrl | null>(null);
+  /** Raw string, not `SafeResourceUrl`: `video[poster]` is `SecurityContext.NONE`. See `rawBlobUrl`. */
+  readonly posterUrl = input<string | null>(null);
   readonly hasPdfRendition = input<boolean>(false);
   readonly previewUrl = input<SafeResourceUrl | null>(null);
 
@@ -166,6 +218,18 @@ export class DocumentViewerComponent {
       return 'none';
     }
 
+    // The server-rendered preview has to be reachable BEFORE metadata dispatch.
+    //
+    // `loadPreviewFallback` is what runs when the local blob could not be fetched: it sets only
+    // `previewUrl`, leaving `blobUrl` and `blobType` empty. Every branch below assumes a local blob, so
+    // with the branches ordered by MIME first, a recognised type reached its own branch and never got
+    // here — a PDF returned 'pdf' and rendered an iframe bound to a null `blobUrl`, and after the
+    // served-type gate landed it returned 'none' instead. Both are the fallback being shadowed rather
+    // than used; the gate changed the symptom, not the cause.
+    //
+    // Transcoded video sources still win, because those are usable content rather than a fallback.
+    if (!this.blobUrl() && this.videoSources().length === 0 && this.previewUrl()) return 'preview';
+
     if (/^image\//.test(mime)) return 'image';
     if (/^video\//.test(mime) || /^application\/(g|m)xf$/.test(mime)) return 'video';
     if (/^audio\//.test(mime)) return 'audio';
@@ -173,12 +237,22 @@ export class DocumentViewerComponent {
     if (mime === 'text/html') return 'html';
     if (mime === 'text/xml' || mime === 'application/xml') return 'xml';
     if (mime.startsWith('text/') || mime === 'application/json') return 'text';
-    if (mime === 'application/pdf') return 'pdf';
-    if (this.hasPdfRendition() && this.blobUrl()) return 'pdfRendition';
+    // The three branches below that put `blobUrl()` in an iframe are gated on the SERVED type, not
+    // on `mime`/`hasPdfRendition`/the filename. Those are all metadata, and the browser parses a
+    // `blob:` document by its `Content-Type` — see the `blobType` input. Disagreement falls through
+    // to 'none' rather than guessing, which is a lost preview instead of an execution path.
+    const servedIsPdf = mediaTypeEssence(this.blobType()) === 'application/pdf';
+
+    if (mime === 'application/pdf') return servedIsPdf ? 'pdf' : 'none';
+    if (this.hasPdfRendition() && this.blobUrl()) return servedIsPdf ? 'pdfRendition' : 'none';
+    // `previewUrl` is not a blob: it is a same-origin Nuxeo endpoint already constrained by
+    // `navigableUrlOrNull` and an origin allow-list, so the served-type gate does not apply to it.
     if (this.previewUrl()) return 'preview';
     if (this.blobUrl()) {
       if (/\.(png|jpe?g|gif|webp|bmp|svg|tiff?)$/i.test(this.fileName())) return 'image';
-      return 'pdf';
+      // The old unconditional `return 'pdf'` here was the widest part of the hole: any unrecognised
+      // mime with a blob URL landed in the iframe regardless of what was served.
+      return servedIsPdf ? 'pdf' : 'none';
     }
 
     return 'none';

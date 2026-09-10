@@ -364,6 +364,8 @@
           } @else {
             <lib-document-viewer
               [blobUrl]="blobUrl()"
+              [rawBlobUrl]="rawBlobUrl()"
+              [blobType]="mainBlobType()"
               [mimeType]="mimeType()"
               [fileName]="fileName()"
               [fileSize]="fileSize()"
@@ -401,6 +403,8 @@
         <ng-template #annotationsTabContent>
           <lib-document-viewer
             [blobUrl]="blobUrl()"
+            [rawBlobUrl]="rawBlobUrl()"
+            [blobType]="mainBlobType()"
             [mimeType]="mimeType()"
             [fileName]="fileName()"
             [fileSize]="fileSize()"

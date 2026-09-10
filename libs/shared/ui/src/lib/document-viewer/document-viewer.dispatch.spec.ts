@@ -41,11 +41,13 @@ function safeHtml(value: string): SafeHtml {
 }
 
 function videoSource(overrides: Partial<VideoSource> = {}): VideoSource {
-  return { url: safeUrl('blob:video'), mimeType: 'video/mp4', label: 'MP4 480p', ...overrides };
+  // `url` is a plain string, not a `SafeResourceUrl`: it is bound to `<source [src]>`, which is
+  // `SecurityContext.NONE`, where a `Safe*` value is never unwrapped and stringifies instead.
+  return { url: 'blob:video', mimeType: 'video/mp4', label: 'MP4 480p', ...overrides };
 }
 
 function storyboardItem(overrides: Partial<StoryboardItem> = {}): StoryboardItem {
-  return { timecode: 5, thumbnailUrl: safeUrl('blob:thumb'), label: '0:05', ...overrides };
+  return { timecode: 5, thumbnailUrl: 'blob:thumb', label: '0:05', ...overrides };
 }
 
 function pictureInfo(overrides: Partial<PictureInfo> = {}): PictureInfo {
@@ -82,6 +84,9 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
     mimeType: string;
     fileName: string;
     blobUrl: SafeResourceUrl | null;
+    rawBlobUrl: string | null;
+    blobType: string;
+    posterUrl: string | null;
     previewUrl: SafeResourceUrl | null;
     noteContent: string | null;
     noteHtml: SafeHtml | null;
@@ -100,6 +105,11 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
     mimeType: '',
     fileName: '',
     blobUrl: null,
+    // Defaults to PDF because most dispatch cases here exercise a blob-backed branch, and the served
+    // type now gates those. Cases about the mismatch itself override it.
+    blobType: 'application/pdf',
+    rawBlobUrl: null,
+    posterUrl: null,
     previewUrl: null,
     noteContent: null,
     noteHtml: null,
@@ -198,6 +208,7 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
 
   describe('MIME dispatch, in the documented priority order', () => {
     const blobUrl = safeUrl('blob:doc');
+    const previewUrl = safeUrl('/nuxeo/preview');
 
     it('dispatches image, video and audio by MIME family', () => {
       setInputs({ mimeType: 'image/png', blobUrl });
@@ -283,6 +294,113 @@ describe('DocumentViewerComponent — MIME dispatch and viewer state', () => {
     it('treats an unrecognised blob without an image extension as a pdf', () => {
       setInputs({ mimeType: 'application/octet-stream', fileName: 'archive.bin', blobUrl });
       expect(component.contentType()).toBe('pdf');
+    });
+
+    /**
+     * The served-type gate on the iframe branches.
+     *
+     * `contentType()` chose `'pdf'`/`'pdfRendition'` from `mimeType`, `hasPdfRendition` and a
+     * filename-extension fallback — all metadata. The browser parses a `blob:` document by its
+     * `Content-Type`, and a blob URL inherits this origin, so a document recorded as PDF but served
+     * as `text/html` executed as script in an unsandboxed same-origin iframe. Each case here is a
+     * served type that must NOT reach one; the cases above are the positive controls, since they all
+     * run with `blobType: 'application/pdf'`.
+     */
+    /**
+     * The server-rendered preview is a fallback, so it has to be reachable for a document whose MIME
+     * type is recognised. `loadPreviewFallback` sets only `previewUrl`; `blobUrl` and `blobType` stay
+     * empty. With the branches ordered by MIME first, each recognised type reached its own branch and
+     * shadowed the fallback — rendering an iframe or `<img>` bound to a null URL before the served-type
+     * gate, and 'none' after it.
+     */
+    describe('the server preview fallback is reachable for recognised MIME types', () => {
+      const recognised = [
+        'application/pdf',
+        'image/png',
+        'video/mp4',
+        'audio/mpeg',
+        'text/plain',
+        'text/markdown',
+        'application/octet-stream',
+      ];
+
+      for (const mime of recognised) {
+        it(`falls back to the preview URL for ${mime} when no blob was fetched`, () => {
+          setInputs({ mimeType: mime, blobUrl: null, blobType: '', previewUrl });
+          expect(component.contentType()).toBe('preview');
+        });
+      }
+
+      it('still prefers a local blob over the preview URL when both exist', () => {
+        // The positive control: this must not turn into "always prefer preview".
+        setInputs({ mimeType: 'image/png', blobUrl, blobType: 'image/png', previewUrl });
+        expect(component.contentType()).toBe('image');
+      });
+
+      it('still prefers transcoded video sources over the preview URL', () => {
+        // Those are usable content, not a fallback.
+        setInputs({
+          mimeType: 'video/mp4',
+          blobUrl: null,
+          videoSources: [videoSource()],
+          previewUrl,
+        });
+        expect(component.contentType()).toBe('video');
+      });
+
+      it('reports none when there is no blob, no source and no preview', () => {
+        setInputs({ mimeType: 'application/pdf', blobUrl: null, previewUrl: null });
+        expect(component.contentType()).toBe('none');
+      });
+    });
+
+    describe('the iframe branches require the served type to be PDF', () => {
+      it('refuses a native pdf whose served type is html', () => {
+        setInputs({ mimeType: 'application/pdf', blobUrl, blobType: 'text/html' });
+        expect(component.contentType()).toBe('none');
+      });
+
+      it('refuses a pdf rendition whose served type is html', () => {
+        setInputs({
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          blobUrl,
+          hasPdfRendition: true,
+          blobType: 'text/html',
+        });
+        expect(component.contentType()).toBe('none');
+      });
+
+      it('refuses the unrecognised-blob fallback whose served type is html', () => {
+        // The widest part of the hole: this branch used to return 'pdf' unconditionally.
+        setInputs({
+          mimeType: 'application/octet-stream',
+          fileName: 'archive.bin',
+          blobUrl,
+          blobType: 'text/html',
+        });
+        expect(component.contentType()).toBe('none');
+      });
+
+      it('refuses an absent served type, rather than letting the browser sniff', () => {
+        setInputs({ mimeType: 'application/pdf', blobUrl, blobType: '' });
+        expect(component.contentType()).toBe('none');
+      });
+
+      it('accepts a served type carrying parameters or odd case', () => {
+        setInputs({
+          mimeType: 'application/pdf',
+          blobUrl,
+          blobType: 'APPLICATION/PDF; version=1.7',
+        });
+        expect(component.contentType()).toBe('pdf');
+      });
+
+      it('still renders an image from a blob served as an image, which is not an iframe branch', () => {
+        // Images go to `img[src]`, which cannot execute script even for SVG, so the gate does not
+        // and should not apply there.
+        setInputs({ mimeType: 'image/png', blobUrl, blobType: 'image/png' });
+        expect(component.contentType()).toBe('image');
+      });
     });
 
     it('shows nothing when only transcoded video sources exist and the MIME type is not video', () => {

@@ -7,6 +7,7 @@ import { catchError, map, of, startWith } from 'rxjs';
 import {
   DocumentDetailService,
   SearchService,
+  trustObjectUrl,
   type NuxeoDocument,
   type SearchResultItem,
 } from '@nuxeo-satori/platform/nuxeo-client';
@@ -116,17 +117,34 @@ export class CaseFileComponent {
   // ---- preview -------------------------------------------------------------------------------
   protected readonly blobUrl = signal<SafeResourceUrl | null>(null);
   protected readonly previewLoading = signal(false);
-  /** Held alongside the SafeResourceUrl because only the raw string can be revoked. */
-  private rawObjectUrl: string | null = null;
+  /**
+   * Held alongside the `SafeResourceUrl` because only the raw string can be revoked — and because
+   * the viewer needs it for its `SecurityContext.NONE` bindings (`source[src]`, `audio[src]`,
+   * `video[poster]`). Angular never unwraps a `Safe*` value in those, so it would be assigned as
+   * its `toString()` and break playback; the wrapped form is still required for `iframe[src]`.
+   */
+  protected readonly rawObjectUrl = signal<string | null>(null);
+  /** `Blob.type` of the previewed blob. See `DocumentViewerComponent.blobType`. */
+  protected readonly objectBlobType = signal<string>('');
+
+  /**
+   * Bumped on every selection. `takeUntilDestroyed` cancels on teardown but not on *reselection*, so
+   * without this a slow response for a previously selected case file can land after a faster one and
+   * overwrite `doc` and the preview with stale content. Each continuation compares the generation it
+   * captured against the current one and drops out if it has been superseded.
+   */
+  private selectionGeneration = 0;
 
   constructor() {
     this.destroyRef.onDestroy(() => this.releaseObjectUrl());
   }
 
   private releaseObjectUrl(): void {
-    if (this.rawObjectUrl) {
-      URL.revokeObjectURL(this.rawObjectUrl);
-      this.rawObjectUrl = null;
+    this.objectBlobType.set('');
+    const raw = this.rawObjectUrl();
+    if (raw) {
+      URL.revokeObjectURL(raw);
+      this.rawObjectUrl.set(null);
     }
   }
 
@@ -160,38 +178,58 @@ export class CaseFileComponent {
   protected readonly hasAttachment = computed(() => this.blobOf(this.doc()) !== null);
 
   protected select(item: SearchResultItem): void {
+    const gen = ++this.selectionGeneration;
     this.selectedId.set(item.id);
     // Replacing a preview must release the previous object URL, not only the last one on destroy.
     this.releaseObjectUrl();
     this.blobUrl.set(null);
     this.doc.set(null);
     this.detailLoading.set(true);
+    // Reset here too: a selection with no attachment never calls loadPreview, so a spinner left
+    // over from the previous selection would never be cleared.
+    this.previewLoading.set(false);
 
     this.documents
       .getFullDocument(item.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (doc) => {
+          if (gen !== this.selectionGeneration) return;
           this.doc.set(doc);
           this.detailLoading.set(false);
-          if (mainBlob(doc)) this.loadPreview(doc);
+          if (mainBlob(doc)) this.loadPreview(doc, gen);
         },
-        error: () => this.detailLoading.set(false),
+        error: () => {
+          if (gen !== this.selectionGeneration) return;
+          this.detailLoading.set(false);
+        },
       });
   }
 
-  private loadPreview(doc: NuxeoDocument): void {
+  /** @param gen the `selectionGeneration` captured when this preview was requested */
+  private loadPreview(doc: NuxeoDocument, gen: number): void {
     this.previewLoading.set(true);
     this.documents
       .fetchBlob(doc.uid)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (data) => {
-          this.rawObjectUrl = URL.createObjectURL(data);
-          this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.rawObjectUrl));
+          // A response for a superseded selection must not install itself over the current preview.
+          if (gen !== this.selectionGeneration) return;
+          // Release whatever is held before replacing it, or the outgoing URL leaks for the
+          // lifetime of the page.
+          this.releaseObjectUrl();
+          const rawUrl = URL.createObjectURL(data);
+          this.rawObjectUrl.set(rawUrl);
+          // The served Content-Type, which is what gates the viewer's iframe branches.
+          this.objectBlobType.set(data.type);
+          this.blobUrl.set(trustObjectUrl(this.sanitizer, rawUrl));
           this.previewLoading.set(false);
         },
-        error: () => this.previewLoading.set(false),
+        error: () => {
+          if (gen !== this.selectionGeneration) return;
+          this.previewLoading.set(false);
+        },
       });
   }
 

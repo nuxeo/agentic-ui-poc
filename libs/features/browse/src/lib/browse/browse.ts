@@ -13,7 +13,6 @@ import {
 import { NavigationEnd, Router } from '@angular/router';
 import { DatePipe, NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, of, Subject, timer, EMPTY } from 'rxjs';
 import {
@@ -207,7 +206,8 @@ export class BrowseComponent {
   private readonly directoryService = inject(DirectoryService);
   private readonly tagService = inject(TagService);
   readonly selectionService = inject(SelectionService);
-  private readonly sanitizer = inject(DomSanitizer);
+  /** Batch token for thumbnail loads, so a superseded response cannot write. */
+  private thumbnailGeneration = 0;
   private readonly extensions = inject(AppExtensionsService);
   private readonly ruleContext = inject(ExtensionRuleContextService);
   private readonly actionRegistry = inject(ExtensionActionRegistry);
@@ -222,7 +222,7 @@ export class BrowseComponent {
   readonly error = signal<string | null>(null);
   readonly currentDoc = signal<NuxeoDocument | null>(null);
   readonly totalSize = signal(0);
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
   private currentNuxeoPath = '/';
   /** Skips the initial contentRefreshTick effect run to avoid duplicate folder loads. */
   private lastSeenContentRefreshTick = -1;
@@ -230,7 +230,6 @@ export class BrowseComponent {
   private lastSeenClipboardPasteTick = -1;
   /** Clipboard paste results not yet visible in @children (eventual consistency on Cloud). */
   private readonly pendingPasteEntries = new Map<string, NuxeoDocument>();
-  private readonly thumbnailBlobUrls: string[] = [];
   readonly browsePath = signal('/');
   private readonly browsePath$ = new Subject<string>();
 
@@ -740,10 +739,12 @@ export class BrowseComponent {
 
     this.destroyRef.onDestroy(() => {
       this.clipboardTargetService.clear();
-      for (const url of this.thumbnailBlobUrls) {
-        URL.revokeObjectURL(url);
+      // SelectionService is root-scoped and outlives this component, so its retained previews would
+      // dangle past teardown too.
+      this.selectionService.forgetPreviews();
+      for (const url of Object.values(this.thumbnailMap())) {
+        if (url) URL.revokeObjectURL(url);
       }
-      this.thumbnailBlobUrls.length = 0;
     });
 
     this.tagSearch$
@@ -855,11 +856,22 @@ export class BrowseComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
+    // Only a RESETTING load invalidates the batch. An additive load — an optimistic paste, or the
+    // Trash tab appending a page — must SHARE the current generation, because it is adding to the
+    // batch rather than replacing it.
+    //
+    // Minting unconditionally was an over-correction on my part: an additive call while the folder's
+    // own requests were still in flight bumped the token, so every one of those callbacks returned at
+    // the guard and the folder's thumbnails never appeared at all.
+    const generation = reset ? ++this.thumbnailGeneration : this.thumbnailGeneration;
     if (reset) {
-      for (const url of this.thumbnailBlobUrls) {
-        URL.revokeObjectURL(url);
+      // Drop the selection layer's copies first: it retains these exact strings and the shell
+      // topbar binds them into `<img [src]>`, and selection survives a folder change.
+      // See `SelectionService.forgetPreviews`.
+      this.selectionService.forgetPreviews();
+      for (const url of Object.values(this.thumbnailMap())) {
+        if (url) URL.revokeObjectURL(url);
       }
-      this.thumbnailBlobUrls.length = 0;
       this.thumbnailMap.set({});
     }
     for (const doc of docs) {
@@ -870,13 +882,19 @@ export class BrowseComponent {
           takeUntilDestroyed(this.destroyRef),
         )
         .subscribe((blob) => {
-          if (!blob) return;
+          // Drop a response from a superseded batch. Without this a thumbnail request started for the
+          // previous folder could resolve after the reset above and reinsert a stale blob URL —
+          // and the map is also the revocation ledger, so the leaked URL is then never revoked.
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[doc.uid];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [doc.uid]: url,
+            };
+          });
         });
     }
   }

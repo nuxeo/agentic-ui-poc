@@ -20,7 +20,13 @@ import {
   type KdAnswerResponse,
   type KdIndexedReference,
 } from '@agentic-ui/shared/kd-client';
-import { DocumentDetailService, type NuxeoDocument } from '@nuxeo-satori/platform/nuxeo-client';
+import {
+  DocumentDetailService,
+  renderTrustedHtml,
+  trustObjectUrl,
+  mediaTypeEssence,
+  type NuxeoDocument,
+} from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface KdCitationDialogData {
   answer: KdAnswerResponse;
@@ -247,12 +253,24 @@ export class KdCitationDialogComponent implements OnDestroy {
   }
 
   private setBlobPreview(blob: Blob, mode: PreviewMode, pageNumber?: number): void {
+    // The served-type gate, placed here rather than at the two `'pdf'` call sites so a future third
+    // caller cannot miss it.
+    //
+    // `'pdf'` was chosen from document metadata — the recorded mime type, or the presence of a `pdf`
+    // rendition — and neither is what the browser consults. It parses a `blob:` document by its
+    // `Content-Type`, and a blob URL inherits this origin, so a document recorded as PDF but served as
+    // `text/html` executed as script here. Same defect already closed in the attachment preview dialog
+    // and `DocumentViewerComponent`; this was the third instance, in a component neither review pass
+    // had reached.
+    //
+    // An absent `Content-Type` also fails this, deliberately: that is the case where the browser would
+    // otherwise sniff.
+    const effectiveMode: PreviewMode =
+      mode === 'pdf' && mediaTypeEssence(blob.type) !== 'application/pdf' ? 'unsupported' : mode;
     const rawUrl = URL.createObjectURL(blob);
     this.blobUrls.push(rawUrl);
-    this.previewUrl.set(
-      this.sanitizer.bypassSecurityTrustResourceUrl(this.buildPreviewUrl(rawUrl, pageNumber)),
-    );
-    this.previewMode.set(mode);
+    this.previewUrl.set(trustObjectUrl(this.sanitizer, this.buildPreviewUrl(rawUrl, pageNumber)));
+    this.previewMode.set(effectiveMode);
     this.loadingDocument.set(false);
   }
 
@@ -262,7 +280,7 @@ export class KdCitationDialogComponent implements OnDestroy {
       return;
     }
     this.previewUrl.set(
-      this.sanitizer.bypassSecurityTrustResourceUrl(this.buildPreviewUrl(currentUrl, pageNumber)),
+      trustObjectUrl(this.sanitizer, this.buildPreviewUrl(currentUrl, pageNumber)),
     );
   }
 
@@ -279,21 +297,35 @@ export class KdCitationDialogComponent implements OnDestroy {
     this.previewMode.set('unsupported');
   }
 
+  /**
+   * `<mark>` around the cited excerpt, everything else escaped.
+   *
+   * Routed through `renderTrustedHtml` rather than bypassing directly, so the only markup that can
+   * reach `innerHTML` is what DOMPurify's allow-list permits — `mark` and its `class`. The local
+   * `escapeHtml` still runs first and is still what makes the concatenation safe; DOMPurify is a
+   * second, independent check rather than a replacement for it. That matters because the safety of
+   * this member previously rested entirely on `escapeHtml` covering every interpolated segment,
+   * which nothing enforced.
+   */
   private highlightExcerpt(text: string, excerpt?: string): SafeHtml {
+    const allowMarkOnly = { ALLOWED_TAGS: ['mark'], ALLOWED_ATTR: ['class'] };
+
     if (!excerpt?.trim()) {
-      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));
+      return renderTrustedHtml(this.sanitizer, this.escapeHtml(text), allowMarkOnly);
     }
 
     const matchIndex = text.toLowerCase().indexOf(excerpt.toLowerCase());
     if (matchIndex === -1) {
-      return this.sanitizer.bypassSecurityTrustHtml(this.escapeHtml(text));
+      return renderTrustedHtml(this.sanitizer, this.escapeHtml(text), allowMarkOnly);
     }
 
     const before = this.escapeHtml(text.slice(0, matchIndex));
     const highlighted = this.escapeHtml(text.slice(matchIndex, matchIndex + excerpt.length));
     const after = this.escapeHtml(text.slice(matchIndex + excerpt.length));
-    return this.sanitizer.bypassSecurityTrustHtml(
+    return renderTrustedHtml(
+      this.sanitizer,
       `${before}<mark class="kd-citation-dialog__highlight">${highlighted}</mark>${after}`,
+      allowMarkOnly,
     );
   }
 

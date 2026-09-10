@@ -119,6 +119,7 @@ describe('BrowseComponent — rendered contextMenu slot', () => {
             toggle: vi.fn(),
             selectAll: vi.fn(),
             clear: vi.fn(),
+            forgetPreviews: vi.fn(),
           },
         },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },

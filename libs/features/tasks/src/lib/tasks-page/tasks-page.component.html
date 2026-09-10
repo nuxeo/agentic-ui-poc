@@ -486,7 +486,9 @@
           @if (targetDoc()) {
             <lib-document-viewer
               [blobUrl]="previewUrl()"
-              [mimeType]="mimeType()"
+              [rawBlobUrl]="rawPreviewUrl()"
+              [blobType]="previewBlobType()"
+              [mimeType]="viewerMimeType()"
               [fileName]="fileName()"
               [fileSize]="fileSize()"
               [loading]="docLoading()"

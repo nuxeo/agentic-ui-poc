@@ -4,77 +4,86 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SafeResourceUrl } from '@angular/platform-browser';
+// Shared rather than local: see the note on the helper — one normalisation for three checks.
+import { mediaTypeEssence } from '@nuxeo-satori/platform/nuxeo-client';
 
 export interface AttachmentPreviewData {
   name: string;
   mimeType: string;
+  /**
+   * The `type` of the `Blob` the object URL was minted from — i.e. the `Content-Type` the server
+   * actually served, which is what the browser parses the iframe document by.
+   *
+   * Separate from `mimeType` on purpose. `mimeType` is the document *metadata*, and gating the
+   * iframe on metadata alone was a hole: a document recorded as `text/plain` but served as
+   * `text/html` passed the allow-list and then parsed as markup. See
+   * {@link PREVIEWABLE_TEXT_TYPES}.
+   */
+  blobType: string;
+  /** Wrapped, for `iframe[src]` and `img[src]`. `iframe[src]` throws on a raw string. */
   blobUrl: SafeResourceUrl;
+  /**
+   * The same object URL, unwrapped, for `<source [src]>` — a `SecurityContext.NONE` binding where
+   * no sanitizer runs, so a `SafeResourceUrl` would be assigned as its `toString()` and break
+   * playback. Always populated.
+   */
   rawUrl: string;
+  /**
+   * Whether this dialog revokes `rawUrl` when it closes.
+   *
+   * The two call sites differ, and the difference used to be smuggled through `rawUrl: ''`:
+   * `previewAttachment` mints a URL solely for the dialog, so the dialog must revoke it, while
+   * `previewMainBlob` shares the URL the document viewer is still using, so revoking it would
+   * blank the page behind the dialog. Passing an empty string expressed that *and* silently
+   * removed the value `<source [src]>` needed, so ownership is now stated separately.
+   */
+  ownsRawUrl: boolean;
 }
+
+/**
+ * The text types rendered in the preview iframe — an allow-list, not a `text/*` prefix test.
+ *
+ * The prefix test was a live stored-XSS hole. `text/html` satisfies `startsWith('text/')`, and the
+ * iframe loads a `blob:` URL, which **inherits the creating page's origin**. So previewing an
+ * uploaded `.html` attachment executed its scripts under our origin, with `document.cookie`,
+ * `localStorage` and `window.parent` all reachable. Anyone who could attach a file to a document
+ * could run script against every user who previewed it.
+ *
+ * This is the same lesson `navigable-url.ts` records for schemes, one layer up: enumerating what is
+ * safe is a filter, and testing a prefix is not. Adding a `text/html` special case would leave
+ * `text/xsl`, `application/xhtml+xml` and the next active text type nobody thought of.
+ *
+ * **XML is not on this list, and that is not an oversight.** `text/xml` and `application/xml` are
+ * parsed as markup, so a generic XML document is an execution vector twice over: namespaced content
+ * runs (`<svg:svg><svg:script>`), and an `<?xml-stylesheet type="text/xsl" href="…"?>` instruction
+ * pulls in XSLT that can emit scripted HTML. Rejecting `image/svg+xml` while admitting `text/xml`
+ * closed the front door and left the side one open. Only formats the browser will not parse as
+ * markup remain.
+ *
+ * Consequence: HTML and XML attachments now fall through to "Preview not available". Restoring
+ * either safely means a sandboxed iframe (`sandbox` without `allow-same-origin`, so the document
+ * gets an opaque origin) or decoding to text and escaping it. Neither is done here — closing the
+ * hole and adding a feature are separate changes.
+ *
+ * **The metadata/served-type mismatch, now closed.** An earlier version of this note recorded the
+ * mismatch as an unfixable residual risk: `isText` read the document metadata while the browser
+ * parses by the served `Content-Type`, so `text/plain` metadata on an HTML-served blob still reached
+ * the iframe. Calling that unanswerable was wrong — the caller holds the `Blob`, so its `type` can
+ * simply be passed in. Both the declared type and {@link AttachmentPreviewData.blobType} must now be
+ * on this list, which also fails closed when the server sends no `Content-Type` at all (`blob.type`
+ * is `''`, which is not on the list, so no sniffing opportunity).
+ *
+ * A CSP `frame-src`/`sandbox` policy is still the structural control and is still absent — the same
+ * gap the ARender iframe records. This check reduces what reaches the iframe; it does not replace a
+ * header.
+ */
+const PREVIEWABLE_TEXT_TYPES = new Set(['text/plain', 'text/csv', 'application/json']);
 
 @Component({
   selector: 'lib-attachment-preview-dialog',
   standalone: true,
   imports: [MatDialogModule, MatIconModule, MatButtonModule, MatTooltipModule],
-  template: `
-    <div class="preview-viewer">
-      <div class="viewer-header">
-        <span class="viewer-filename">{{ data.name }}</span>
-        <button class="viewer-close" (click)="close()" matTooltip="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <div class="viewer-body">
-        @if (isImage) {
-          <img
-            [src]="data.blobUrl"
-            [alt]="data.name"
-            class="viewer-img"
-            [style.transform]="'scale(' + zoom() + ')'"
-          />
-        } @else if (isPdf) {
-          <iframe [src]="data.blobUrl" class="viewer-frame"></iframe>
-        } @else if (isVideo) {
-          <video controls class="viewer-video">
-            <source [src]="data.blobUrl" [type]="data.mimeType" />
-          </video>
-        } @else if (isAudio) {
-          <audio controls class="viewer-audio">
-            <source [src]="data.blobUrl" [type]="data.mimeType" />
-          </audio>
-        } @else if (isText) {
-          <iframe [src]="data.blobUrl" class="viewer-frame"></iframe>
-        } @else {
-          <div class="viewer-unsupported">
-            <mat-icon class="unsupported-icon">insert_drive_file</mat-icon>
-            <p>Preview not available for this file type</p>
-            <p class="mime-label">{{ data.mimeType }}</p>
-          </div>
-        }
-      </div>
-
-      @if (isImage) {
-        <div class="viewer-toolbar">
-          <button mat-icon-button matTooltip="Zoom in" (click)="zoomIn()">
-            <mat-icon>zoom_in</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Fit to screen" (click)="zoomReset()">
-            <mat-icon>crop_free</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Zoom out" (click)="zoomOut()">
-            <mat-icon>zoom_out</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Rotate left" (click)="rotateLeft()">
-            <mat-icon>rotate_left</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Rotate right" (click)="rotateRight()">
-            <mat-icon>rotate_right</mat-icon>
-          </button>
-        </div>
-      }
-    </div>
-  `,
+  templateUrl: './attachment-preview-dialog.html',
   styles: [
     `
       :host {
@@ -219,8 +228,18 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
     return this.data.mimeType.startsWith('image/');
   }
 
+  /**
+   * Both the declared and the served type must be PDF, because this is an iframe branch.
+   *
+   * A document recorded as `application/pdf` but served as `text/html` would otherwise render as
+   * scripted HTML in a same-origin blob iframe. An absent `Content-Type` (`blob.type === ''`) also
+   * fails this, which is deliberate: it is the case where the browser would otherwise sniff.
+   */
   get isPdf(): boolean {
-    return this.data.mimeType === 'application/pdf';
+    return (
+      mediaTypeEssence(this.data.mimeType) === 'application/pdf' &&
+      mediaTypeEssence(this.data.blobType) === 'application/pdf'
+    );
   }
 
   get isVideo(): boolean {
@@ -231,11 +250,33 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
     return this.data.mimeType.startsWith('audio/');
   }
 
+  /**
+   * The `type` hint for `<source>`: the served type when we have one, metadata otherwise.
+   *
+   * `type` is a hint the browser uses to decide whether to even attempt a source — per spec it skips a
+   * source whose declared type it does not support. So advertising the *document metadata* type while
+   * the blob is something else can make it skip a perfectly playable source, which is the same
+   * metadata/served disagreement that motivated `blobType`, showing up in the attribute rather than the
+   * URL. Fixing `rawUrl` alone left this half.
+   *
+   * Falls back to `mimeType` when the server sent no `Content-Type`, rather than emitting `type=""` —
+   * an empty declared type is not a supported type, so it would make the browser skip the source
+   * outright, which is worse than a possibly-wrong hint.
+   */
+  get sourceType(): string {
+    return this.data.blobType || this.data.mimeType;
+  }
+
+  /**
+   * See {@link PREVIEWABLE_TEXT_TYPES} — an allow-list, because `text/html` is executable.
+   *
+   * Both the declared and the served type must be on it. Checking only the declared one left the
+   * mismatch open: `text/plain` metadata on an HTML-served blob reached the iframe and parsed.
+   */
   get isText(): boolean {
     return (
-      this.data.mimeType.startsWith('text/') ||
-      this.data.mimeType === 'application/json' ||
-      this.data.mimeType === 'application/xml'
+      PREVIEWABLE_TEXT_TYPES.has(mediaTypeEssence(this.data.mimeType)) &&
+      PREVIEWABLE_TEXT_TYPES.has(mediaTypeEssence(this.data.blobType))
     );
   }
 
@@ -265,6 +306,7 @@ export class AttachmentPreviewDialogComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
-    URL.revokeObjectURL(this.data.rawUrl);
+    // Only revoke what this dialog owns — `previewMainBlob` shares the document viewer's URL.
+    if (this.data.ownsRawUrl) URL.revokeObjectURL(this.data.rawUrl);
   }
 }

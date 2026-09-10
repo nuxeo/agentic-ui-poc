@@ -2,7 +2,6 @@ import { Component, DestroyRef, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { forkJoin, Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -116,7 +115,6 @@ export class CollectionDetailComponent {
   private readonly directoryService = inject(DirectoryService);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly destroyRef = inject(DestroyRef);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly adminAccess = inject(ADMIN_ACCESS_CHECKS);
@@ -134,7 +132,11 @@ export class CollectionDetailComponent {
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly totalSize = signal(0);
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
+  /** Batch token for thumbnail loads, so a superseded response cannot write. */
+  private thumbnailGeneration = 0;
+  /** Request token for the members load — see `loadMembers` for why the two are separate. */
+  private memberGeneration = 0;
 
   readonly isLocked = signal(false);
   readonly lockOwner = signal<string | null>(null);
@@ -320,26 +322,49 @@ export class CollectionDetailComponent {
   }
 
   loadMembers(): void {
+    // Claimed at request start, and checked on BOTH callbacks.
+    //
+    // The thumbnail generation below does not cover this, because it is minted from *inside* the
+    // members response — so it orders thumbnail batches against each other and leaves the members
+    // request itself unguarded. Navigating A -> B starts two member requests; if B resolves first and
+    // A lands afterwards, A overwrote `members` and `totalSize` with the previous collection's data
+    // and its `loadThumbnails` then took the newest thumbnail generation, discarding B's images too.
+    //
+    // The uid is captured as well as the counter: the route can change between request and response,
+    // and the uid is what the user is actually looking at.
+    const generation = ++this.memberGeneration;
+    const requestedUid = this.collectionUid;
     this.loading.set(true);
     this.error.set(null);
 
-    this.collectionService.getCollectionMembers(this.collectionUid, 50).subscribe({
-      next: (res) => {
-        this.members.set(res.entries);
-        this.totalSize.set(res.totalSize);
-        this.loading.set(false);
-        this.loadThumbnails(res.entries);
-      },
-      error: () => {
-        this.error.set('Failed to load collection contents.');
-        this.loading.set(false);
-      },
-    });
+    this.collectionService
+      .getCollectionMembers(requestedUid, 50)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          if (generation !== this.memberGeneration || requestedUid !== this.collectionUid) return;
+          this.members.set(res.entries);
+          this.totalSize.set(res.totalSize);
+          this.loading.set(false);
+          this.loadThumbnails(res.entries);
+        },
+        error: () => {
+          // Guarded too, and it has to clear `loading` only for the request that still owns it — a
+          // stale failure would otherwise show an error over a newer collection's results. The
+          // superseding call already set `loading` true for itself.
+          if (generation !== this.memberGeneration || requestedUid !== this.collectionUid) return;
+          this.error.set('Failed to load collection contents.');
+          this.loading.set(false);
+        },
+      });
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
+    // Same guard as the Search, Trash, Assets and Browse loaders: a request started for the previous
+    // collection could otherwise resolve after the reset below and insert stale data.
+    const generation = ++this.thumbnailGeneration;
     // The reset that made the leak unbounded: `thumbnailMap.set({})` dropped the last
-    // batch's `SafeUrl`s without revoking the blobs behind them, so every navigation to
+    // batch's URLs without revoking the blobs behind them, so every navigation to
     // another collection pinned another batch in memory for the life of the document.
     this.revokeThumbnails();
     this.thumbnailMap.set({});
@@ -352,27 +377,27 @@ export class CollectionDetailComponent {
           takeUntilDestroyed(this.destroyRef),
         )
         .subscribe((blob) => {
-          if (!blob) return;
+          // Drop a response from a superseded batch. Without this a thumbnail request started for the
+          // previous collection could resolve after the reset above and reinsert a stale blob URL —
+          // and the map is also the revocation ledger, so the leaked URL is then never revoked.
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[doc.uid];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [doc.uid]: url,
+            };
+          });
         });
     }
   }
 
-  /**
-   * Tracked at creation because `thumbnailMap` holds `SafeUrl` values from
-   * `bypassSecurityTrustUrl`, whose underlying string cannot be read back out. This is
-   * the only point where the raw url exists.
-   */
-  private readonly thumbnailBlobUrls: string[] = [];
-
   private revokeThumbnails(): void {
-    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
-    this.thumbnailBlobUrls.length = 0;
+    for (const url of Object.values(this.thumbnailMap())) {
+      if (url) URL.revokeObjectURL(url);
+    }
   }
 
   private canLoadThumbnail(doc: NuxeoDocument): boolean {

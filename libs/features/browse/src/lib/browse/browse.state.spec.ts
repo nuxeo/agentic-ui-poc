@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router, provideRouter, withDisabledInitialNavigation } from '@angular/router';
-import { EMPTY, of, throwError } from 'rxjs';
+import { EMPTY, Subject, of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AppConfigService } from '@nuxeo-satori/platform/app-config';
@@ -968,5 +968,52 @@ describe('BrowseComponent — listing state', () => {
     component.deleteCollectionEntry(doc({ uid: 'col-1', type: 'Collection' }));
 
     expect(snackBar).toHaveBeenCalledWith('Failed to load collection', 'OK', { duration: 3000 });
+  });
+
+  /**
+   * An additive thumbnail load must not cancel the resetting batch it is adding to.
+   *
+   * `loadThumbnails(docs, false)` is used by the optimistic paste path and by the Trash tab appending a
+   * page. Minting a new generation there — which is what I did when first adding the guard — bumped the
+   * token while the folder's own requests were still in flight, so every one of those callbacks
+   * returned at the guard and the folder's thumbnails never appeared at all.
+   */
+  describe('thumbnail batch generations', () => {
+    it('lets an additive load share the resetting batch generation', () => {
+      const pending = new Subject<Blob | null>();
+      detail.fetchThumbnail.mockReturnValue(
+        pending.asObservable() as DetailReturn<'fetchThumbnail'>,
+      );
+
+      // The folder's own batch starts and its request is still in flight.
+      component['loadThumbnails']([doc({ uid: 'doc1' })]);
+
+      // An additive load runs while that is pending.
+      detail.fetchThumbnail.mockReturnValue(EMPTY);
+      component['loadThumbnails']([doc({ uid: 'doc2' })], false);
+
+      // The folder's response arrives late and must still be accepted.
+      pending.next(new Blob(['thumb']));
+      pending.complete();
+
+      expect(component.thumbnailMap()['doc1']).toBeTruthy();
+    });
+
+    it('still lets a resetting load supersede an in-flight batch', () => {
+      // The positive control, so the fix above does not become "never invalidate anything".
+      const pending = new Subject<Blob | null>();
+      detail.fetchThumbnail.mockReturnValue(
+        pending.asObservable() as DetailReturn<'fetchThumbnail'>,
+      );
+      component['loadThumbnails']([doc({ uid: 'doc1' })]);
+
+      detail.fetchThumbnail.mockReturnValue(EMPTY);
+      component['loadThumbnails']([doc({ uid: 'doc2' })]);
+
+      pending.next(new Blob(['stale']));
+      pending.complete();
+
+      expect(component.thumbnailMap()['doc1']).toBeUndefined();
+    });
   });
 });

@@ -4,6 +4,7 @@ import {
   OnInit,
   OnDestroy,
   inject,
+  isDevMode,
   signal,
   computed,
   effect,
@@ -69,6 +70,10 @@ import {
   CURRENT_USERNAME,
   avatarColor,
   ARenderService,
+  NUXEO_API_ORIGIN,
+  navigableUrlOrNull,
+  insecureAllowedForHost,
+  originOf,
   TagService,
   ContentLakeIngestService,
   buildContentLakeIngestMarker,
@@ -103,7 +108,9 @@ import {
   mailSendFailureMessage,
   readClipboardDocs,
   writeClipboardDocs,
+  renderTrustedHtml,
   toBrowseRouterUrlForReturnMode,
+  trustObjectUrl,
   type BrowseReturnMode,
   type ClipboardDoc,
 } from '@nuxeo-satori/platform/nuxeo-client';
@@ -128,7 +135,6 @@ import {
   type KeEnrichmentResult,
 } from '@agentic-ui/shared/ke-client';
 import { KdClientService } from '@agentic-ui/shared/kd-client';
-import DOMPurify from 'dompurify';
 import {
   catchError,
   debounceTime,
@@ -288,7 +294,6 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly browseContext = inject(BrowseContextService);
   private readonly directoryService = inject(DirectoryService);
   private readonly http = inject(HttpClient);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly nuxeoApi = inject(NuxeoApiBase);
@@ -296,6 +301,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private readonly workflowService = inject(WorkflowService);
   private readonly currentUsername = inject(CURRENT_USERNAME);
   private readonly arenderService = inject(ARenderService);
+  private readonly sanitizer = inject(DomSanitizer);
+  /** `''` when the dev proxy is in use, in which case preview URLs arrive same-origin. */
+  private readonly nuxeoApiOrigin = inject(NUXEO_API_ORIGIN);
   private readonly tagService = inject(TagService);
   private readonly aiGateway = inject(AiGatewayService);
   private readonly keClient = inject(KeClientService);
@@ -406,7 +414,8 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly focusNoteEditor = signal(false);
   readonly videoSources = signal<VideoSource[]>([]);
   readonly storyboard = signal<StoryboardItem[]>([]);
-  readonly posterUrl = signal<SafeResourceUrl | null>(null);
+  /** Raw string: `video[poster]` is SecurityContext.NONE. See `DocumentViewerComponent.rawBlobUrl`. */
+  readonly posterUrl = signal<string | null>(null);
   readonly hasPdfRendition = signal(false);
   readonly previewUrl = signal<SafeResourceUrl | null>(null);
   readonly pictureInfo = signal<PictureInfo | null>(null);
@@ -419,7 +428,20 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   readonly arenderReloadId = signal(0);
   readonly propertiesPanelOpen = signal(true);
   readonly panelSubTab = signal<'properties' | 'comments' | 'activity'>('properties');
-  private rawBlobUrl: string | null = null;
+  /**
+   * The unwrapped object URL behind `blobUrl`. Public and a signal because the template forwards
+   * it to `lib-document-viewer[rawBlobUrl]` for the three `SecurityContext.NONE` bindings
+   * (`source[src]`, `audio[src]`, `video[poster]`), where a `SafeResourceUrl` stringifies instead
+   * of being unwrapped. `blobUrl` remains the wrapped value for `iframe[src]`.
+   */
+  readonly rawBlobUrl = signal<string | null>(null);
+  /**
+   * `Blob.type` of the main blob, i.e. the served `Content-Type`.
+   *
+   * Read by the template, so not private: it gates both the attachment dialog and the embedded
+   * viewer's iframe branches, which must decide on what was served rather than on metadata.
+   */
+  readonly mainBlobType = signal<string>('');
   private videoObjectUrls: string[] = [];
   private storyboardObjectUrls: string[] = [];
   /** A storyboard load is already running for the current document. */
@@ -1050,11 +1072,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   private resetState(): void {
     this.metadataRefreshAttempt = 0;
     this.blobLoadGeneration += 1;
+    // `resetViewerState()` above now revokes and clears `rawBlobUrl`, so the block that used to
+    // repeat it here is gone. Two places doing the same cleanup is how they drift apart.
     this.resetViewerState();
-    if (this.rawBlobUrl) {
-      URL.revokeObjectURL(this.rawBlobUrl);
-      this.rawBlobUrl = null;
-    }
     this.doc.set(null);
     this.blobUrl.set(null);
     this.blobLoading.set(false);
@@ -1605,8 +1625,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     // another page answer about a document the user is no longer looking at.
     this.extensionRuleContext.document.set(null);
     this.extensionRuleContext.flags.set({});
-    if (this.rawBlobUrl) {
-      URL.revokeObjectURL(this.rawBlobUrl);
+    const raw = this.rawBlobUrl();
+    if (raw) {
+      URL.revokeObjectURL(raw);
     }
     for (const url of this.videoObjectUrls) {
       URL.revokeObjectURL(url);
@@ -1838,8 +1859,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       this.noteContent.set(noteText);
       if (noteMime === 'text/markdown') {
         const rawHtml = this.renderMarkdown(noteText);
-        const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
-        this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
+        this.noteHtml.set(renderTrustedHtml(this.sanitizer, rawHtml, { ADD_ATTR: ['target'] }));
       }
       this.blobLoading.set(false);
       return;
@@ -2211,9 +2231,12 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
         const rawUrl = URL.createObjectURL(blob);
         this.videoObjectUrls.push(rawUrl);
+        // Raw string, no bypass: this feeds `<source [src]>`, which is SecurityContext.NONE, so a
+        // SafeResourceUrl is never unwrapped and stringifies into the attribute instead. The
+        // transcoded-video source list was broken that way until this was unwrapped.
         this.videoSources.set([
           {
-            url: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+            url: rawUrl,
             mimeType: entry.mimeType,
             label: entry.label,
           },
@@ -2261,7 +2284,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const videoObjectUrl = this.rawBlobUrl ?? this.videoObjectUrls[0] ?? null;
+    const videoObjectUrl = this.rawBlobUrl() ?? this.videoObjectUrls[0] ?? null;
     if (videoObjectUrl && this.mimeType().startsWith('video/')) {
       this.storyboardInFlight = true;
       void this.generateClientStoryboard(videoObjectUrl, generation).finally(() =>
@@ -2322,7 +2345,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.storyboardObjectUrls.push(rawUrl);
           items.push({
             timecode: result.entry.timecode,
-            thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+            thumbnailUrl: rawUrl,
             label: result.entry.label,
           });
         }
@@ -2332,7 +2355,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           return;
         }
 
-        const videoObjectUrl = this.rawBlobUrl ?? this.videoObjectUrls[0] ?? null;
+        const videoObjectUrl = this.rawBlobUrl() ?? this.videoObjectUrls[0] ?? null;
         if (videoObjectUrl && this.mimeType().startsWith('video/')) {
           void this.generateClientStoryboard(videoObjectUrl, generation);
         }
@@ -2443,7 +2466,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         this.storyboardObjectUrls.push(rawUrl);
         items.push({
           timecode,
-          thumbnailUrl: this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl),
+          thumbnailUrl: rawUrl,
           label: this.formatStoryboardTimecode(timecode),
         });
       }
@@ -2557,8 +2580,29 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private loadPreviewFallback(doc: NuxeoDocument): void {
     const previewCtx = doc.contextParameters?.['preview'] as { url?: string } | undefined;
-    if (previewCtx?.url) {
-      this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(previewCtx.url));
+    // This URL comes from the Nuxeo REST response, so it is server-supplied rather than built here,
+    // and it is bypassed and loaded into an iframe. Constrain it to the repository we are already
+    // talking to: either same-origin — which is how it arrives behind the dev proxy, where
+    // NUXEO_API_ORIGIN is '' — or the configured Nuxeo origin. Anything else is dropped, and the
+    // viewer falls through to its "Preview not available" placeholder.
+    //
+    // `allowInsecure` covers dev mode OR an application already served over plaintext. Gating it on
+    // `isDevMode()` alone silently removed the preview fallback from any production build served
+    // over `http://` — an ordinary on-prem deployment — because the URL is same-origin and so
+    // necessarily `http:` too. An iframe is only a downgrade relative to its host document; where
+    // the host is already plaintext there is nothing to downgrade, and the origin allow-list below
+    // is what actually constrains where it can point.
+    //
+    // Through `insecureAllowedForHost` rather than the inline `isDevMode() || hostIsInsecure` this
+    // reasoning was first written as. That expression was correct here and duplicated nowhere else,
+    // which is exactly how the two ARender sites ended up with a stricter answer to the same question.
+    const safe = navigableUrlOrNull(previewCtx?.url, {
+      base: window.location.origin,
+      allowedOrigins: [window.location.origin, originOf(this.nuxeoApiOrigin)],
+      allowInsecure: insecureAllowedForHost(isDevMode()),
+    });
+    if (safe) {
+      this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(safe));
     }
     this.blobLoading.set(false);
     this.freshBlobDocument = false;
@@ -2566,6 +2610,15 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
 
   private resetViewerState(): void {
     this.blobUrl.set(null);
+    // `rawBlobUrl` belongs here, beside `blobUrl`, not only in `resetState`.
+    //
+    // `loadBlob` calls this on its own, so the two viewer inputs could disagree: `blobUrl` null
+    // while `rawBlobUrl` still held the *previous* document's object URL. That is not inert. If the
+    // blob fetch then falls through to `loadPreviewFallback`, `previewUrl` is set, so
+    // `contentType()` gets past its "nothing to show" guard and dispatches on MIME — and for
+    // `audio/*` the template binds `<audio [src]="rawBlobUrl()">`, rendering the old document's
+    // audio under the new document's title.
+    this.revokeRawBlobUrl();
     this.noteContent.set(null);
     this.noteHtml.set(null);
     this.noteSaving.set(false);
@@ -2664,10 +2717,25 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     return renderNoteMarkdown(text);
   }
 
+  /** Revoke the current raw object URL and clear the signal. The only place that pairing lives. */
+  private revokeRawBlobUrl(): void {
+    const previousRaw = this.rawBlobUrl();
+    if (previousRaw) URL.revokeObjectURL(previousRaw);
+    this.rawBlobUrl.set(null);
+    this.mainBlobType.set('');
+  }
+
   private setBlobUrl(blob: Blob): void {
-    if (this.rawBlobUrl) URL.revokeObjectURL(this.rawBlobUrl);
-    this.rawBlobUrl = URL.createObjectURL(blob);
-    this.blobUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.rawBlobUrl));
+    this.revokeRawBlobUrl();
+    const rawUrl = URL.createObjectURL(blob);
+    this.rawBlobUrl.set(rawUrl);
+    // Retained for the preview dialog's iframe gate: it must decide on the type the server actually
+    // served, not on the document metadata, which can disagree. See AttachmentPreviewData.blobType.
+    this.mainBlobType.set(blob.type);
+    // Both forms are kept deliberately: the wrapped one for `iframe[src]`, which throws on a raw
+    // string, and the raw one for `source[src]` / `audio[src]` / `video[poster]`, which are
+    // SecurityContext.NONE and would stringify the wrapper into the attribute.
+    this.blobUrl.set(trustObjectUrl(this.sanitizer, rawUrl));
 
     const doc = this.doc();
     if (doc && this.mimeType().startsWith('video/') && this.storyboard().length === 0) {
@@ -3323,8 +3391,7 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
           this.noteContent.set(body);
           if (mime === 'text/markdown') {
             const rawHtml = this.renderMarkdown(body);
-            const cleanHtml = DOMPurify.sanitize(rawHtml, { ADD_ATTR: ['target'] });
-            this.noteHtml.set(this.sanitizer.bypassSecurityTrustHtml(cleanHtml));
+            this.noteHtml.set(renderTrustedHtml(this.sanitizer, rawHtml, { ADD_ATTR: ['target'] }));
           } else {
             this.noteHtml.set(null);
           }
@@ -3420,8 +3487,9 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   previewMainBlob(): void {
-    if (!this.rawBlobUrl) return;
-    const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.rawBlobUrl);
+    const rawUrl = this.rawBlobUrl();
+    if (!rawUrl) return;
+    const safeUrl = trustObjectUrl(this.sanitizer, rawUrl);
     this.dialog.open(AttachmentPreviewDialogComponent, {
       width: '90vw',
       maxWidth: '1200px',
@@ -3430,8 +3498,11 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
       data: {
         name: this.fileName(),
         mimeType: this.mimeType(),
+        blobType: this.mainBlobType(),
         blobUrl: safeUrl,
-        rawUrl: '',
+        rawUrl,
+        // The document viewer behind this dialog is still bound to the same object URL.
+        ownsRawUrl: false,
       },
     });
   }
@@ -3450,12 +3521,30 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
         switchMap((available) =>
           available ? this.arenderService.getPreviewerUrl(doc.uid, xpath) : of(null),
         ),
+        // The `requestedDocUid` guard below only prevents a *stale* document's result being
+        // applied; it does not unsubscribe, so without this the subscription outlives the
+        // component. Required by convention on every `.subscribe()` in this repo.
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
         next: (url) => {
           if (requestedDocUid !== this.docUid) return;
-          if (url) {
-            this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url));
+          // Validate at the point of trust, not only where the URL was built. `ARenderService`
+          // already refuses a `viewerOrigin` that is not an http(s) origin, so this is the second
+          // of two independent checks — the value is about to be bypassed and navigated in an
+          // iframe, which is a privilege boundary, and a boundary defended in exactly one place is
+          // one refactor away from being undefended. Rejecting leaves `arenderUrl` null, which the
+          // template renders as "Annotations are not available" — the same path as ARender not
+          // being deployed.
+          // Host-aware, matching `ARenderService` and the preview fallback. Left on a bare
+          // `isDevMode()` this second check would reject on an http host what the first now allows,
+          // so ARender would still be dead for on-prem plaintext — the defence-in-depth pair has to
+          // agree on the policy, not just both be present.
+          const safe = navigableUrlOrNull(url, {
+            allowInsecure: insecureAllowedForHost(isDevMode()),
+          });
+          if (safe) {
+            this.arenderUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(safe));
             this.arenderReloadId.update((n) => n + 1);
           }
         },
@@ -3862,20 +3951,35 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
   }
 
   previewAttachment(att: { name: string; url: string; mimeType: string }): void {
-    this.http.get(att.url, { responseType: 'blob' }).subscribe({
-      next: (blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        const safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl);
-        this.dialog.open(AttachmentPreviewDialogComponent, {
-          width: '90vw',
-          maxWidth: '1200px',
-          maxHeight: '95vh',
-          panelClass: 'preview-dialog-panel',
-          data: { name: att.name, mimeType: att.mimeType, blobUrl: safeUrl, rawUrl: objectUrl },
-        });
-      },
-      error: () => this.toast('Failed to load preview'),
-    });
+    this.http
+      .get(att.url, { responseType: 'blob' })
+      // Without this, navigating away while the request is in flight still mints an object URL and
+      // opens a dialog after teardown — the URL is only revoked by the dialog that never opened.
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (blob) => {
+          const objectUrl = URL.createObjectURL(blob);
+          const safeUrl = trustObjectUrl(this.sanitizer, objectUrl);
+          this.dialog.open(AttachmentPreviewDialogComponent, {
+            width: '90vw',
+            maxWidth: '1200px',
+            maxHeight: '95vh',
+            panelClass: 'preview-dialog-panel',
+            data: {
+              name: att.name,
+              mimeType: att.mimeType,
+              // The served type, not the metadata one — the iframe gate needs what the browser
+              // will actually parse by.
+              blobType: blob.type,
+              blobUrl: safeUrl,
+              rawUrl: objectUrl,
+              // Minted just above for this dialog, so the dialog revokes it on close.
+              ownsRawUrl: true,
+            },
+          });
+        },
+        error: () => this.toast('Failed to load preview'),
+      });
   }
 
   openDriveDialog(): void {

@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, signal, untracked, DestroyRef } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { DatePipe } from '@angular/common';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -90,7 +89,6 @@ export class TrashComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly trashService = inject(TrashService);
   private readonly searchService = inject(SearchService);
   private readonly detailService = inject(DocumentDetailService);
@@ -132,11 +130,16 @@ export class TrashComponent {
   );
 
   readonly actionInProgress = signal<Set<string>>(new Set());
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
+  private thumbnailGeneration = 0;
+  /** Sequence for search requests, so a superseded response cannot write. See `search()`. */
+  private searchGeneration = 0;
   readonly saving = signal(false);
   readonly deletingSavedSearch = signal(false);
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearThumbnails());
+
     effect(
       () => {
         this.trashFilterService.filters();
@@ -149,9 +152,19 @@ export class TrashComponent {
   }
 
   search(): void {
+    // Every response is checked against this before it is allowed to write anything.
+    //
+    // `beginThumbnailBatch()` alone did not make overlapping searches safe, because the request
+    // never compared it: if A starts, B starts and completes, then A completes, A still overwrote
+    // `documents`, `totalResults` and the shared filter-service results with its stale entries, and
+    // its `loadThumbnails` then cleared B's thumbnails in favour of its own. The sibling components
+    // avoid this structurally by driving search through `switchMap`, which cancels the previous
+    // request; this one subscribes imperatively, so it needs the guard.
+    const generation = ++this.searchGeneration;
     this.loading.set(true);
     this.error.set(null);
     this.trashFilterService.resultsLoading.set(true);
+    this.beginThumbnailBatch();
     const f = this.trashFilterService.filters();
     const sortField = SORT_FIELD_MAP[this.sortBy()] ?? 'dc:created';
     this.trashService
@@ -167,6 +180,7 @@ export class TrashComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res: NuxeoDocumentList) => {
+          if (generation !== this.searchGeneration) return;
           const entries = res.entries ?? [];
           this.documents.set(entries);
           this.totalResults.set(res.resultsCount ?? entries.length);
@@ -179,6 +193,9 @@ export class TrashComponent {
           this.loadThumbnails(entries);
         },
         error: () => {
+          // Guarded too: a stale failure would otherwise show an error over a newer search's
+          // successful results and clear its loading state.
+          if (generation !== this.searchGeneration) return;
           this.error.set('Failed to load trashed documents.');
           this.loading.set(false);
           this.trashFilterService.resultsLoading.set(false);
@@ -414,7 +431,7 @@ export class TrashComponent {
     } else {
       const docs = this.documents();
       const labels: Record<string, string> = {};
-      const previews: Record<string, SafeUrl | null> = {};
+      const previews: Record<string, string | null> = {};
       docs.forEach((doc) => {
         labels[doc.uid] = doc.title;
         previews[doc.uid] = this.thumbnailMap()[doc.uid] ?? null;
@@ -622,18 +639,50 @@ export class TrashComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[]): void {
+    // Mint a new generation rather than reading the current one — two overlapping trash searches
+    // could otherwise both capture the generation set by one `beginThumbnailBatch()`, letting the
+    // first search's late callbacks pass the guard and reappear after the second cleared them.
+    const generation = ++this.thumbnailGeneration;
+    this.clearThumbnails();
     for (const doc of docs) {
-      if (this.thumbnailMap()[doc.uid]) continue;
       this.detailService
         .fetchThumbnail(doc.uid)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
-          if (!blob) return;
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          const safeUrl = this.sanitizer.bypassSecurityTrustUrl(url);
-          this.thumbnailMap.update((m) => ({ ...m, [doc.uid]: safeUrl }));
-          this.trashFilterService.resultThumbnails.update((m) => ({ ...m, [doc.uid]: safeUrl }));
+          this.setThumbnail(doc.uid, url);
         });
     }
+  }
+
+  private beginThumbnailBatch(): void {
+    this.thumbnailGeneration += 1;
+  }
+
+  private clearThumbnails(): void {
+    // Drop the selection layer's copies FIRST. It retains these exact strings and binds them into
+    // `<img [src]>` in the shell topbar, and selection survives a new search — so revoking without
+    // this leaves selected items pointing at revoked blob URLs. See `SelectionService.forgetPreviews`.
+    this.selectionService.forgetPreviews();
+    const urls = new Set(
+      [
+        ...Object.values(this.thumbnailMap()),
+        ...Object.values(this.trashFilterService.resultThumbnails()),
+      ].filter((url): url is string => !!url),
+    );
+    for (const url of urls) URL.revokeObjectURL(url);
+    this.thumbnailMap.set({});
+    this.trashFilterService.resultThumbnails.set({});
+  }
+
+  private setThumbnail(uid: string, url: string): void {
+    const previous = this.thumbnailMap()[uid] ?? this.trashFilterService.resultThumbnails()[uid];
+    if (previous && previous !== url) URL.revokeObjectURL(previous);
+    this.thumbnailMap.update((m) => ({ ...m, [uid]: url }));
+    this.trashFilterService.resultThumbnails.update((m) => ({ ...m, [uid]: url }));
   }
 }

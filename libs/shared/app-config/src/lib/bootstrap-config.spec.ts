@@ -137,6 +137,73 @@ describe('mergeBootstrapConfig', () => {
     });
   });
 
+  // The comment beside `mergeIntegrations` has always said both endpoints are required, but the
+  // merge used to fill a missing half from `base.arender?.… ?? ''` — and `base.arender` is `null`,
+  // so a one-sided manifest produced an object with a blank endpoint: exactly the state the comment
+  // claimed was impossible. That is worse than `null`, because `fetch('')` resolves against the
+  // application's own origin, so an availability probe reports a viewer that is not deployed.
+  it.each([
+    ['only viewerOrigin', { viewerOrigin: 'https://arender.example' }],
+    ['only nuxeoInternalUrl', { nuxeoInternalUrl: 'http://nuxeo/nuxeo' }],
+    ['a blank viewerOrigin', { viewerOrigin: '   ', nuxeoInternalUrl: 'http://nuxeo/nuxeo' }],
+    ['a blank nuxeoInternalUrl', { viewerOrigin: 'https://arender.example', nuxeoInternalUrl: '' }],
+    ['neither endpoint', {}],
+  ])('yields null for a manifest naming %s', (_label, arender) => {
+    const merged = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: { arender },
+    });
+
+    expect(merged.integrations.arender).toBeNull();
+  });
+
+  it('lets an explicit null turn a configured integration off', () => {
+    // `isRecord(null)` is false, so this used to fall through to the base and preserve the old
+    // configuration — a higher-priority manifest could reconfigure ARender but never disable it,
+    // which contradicts `null` meaning "no annotation viewer".
+    const complete = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: {
+        arender: { viewerOrigin: 'https://a.example', nuxeoInternalUrl: 'http://nuxeo/nuxeo' },
+      },
+    });
+
+    const disabled = mergeBootstrapConfig(complete, { integrations: { arender: null } });
+
+    expect(complete.integrations.arender).not.toBeNull();
+    expect(disabled.integrations.arender).toBeNull();
+  });
+
+  it('leaves a configured integration alone when the key is absent', () => {
+    // The counterpart: absent must not mean disabled, or every partial manifest would wipe it.
+    const complete = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: {
+        arender: { viewerOrigin: 'https://a.example', nuxeoInternalUrl: 'http://nuxeo/nuxeo' },
+      },
+    });
+
+    const untouched = mergeBootstrapConfig(complete, { integrations: {} });
+
+    expect(untouched.integrations.arender).toEqual(complete.integrations.arender);
+  });
+
+  it('lets a partial override merge over an already-complete configuration', () => {
+    // It is the *result* that must be complete, not the patch. A deployment overriding only the
+    // viewer origin on top of a complete base is a legitimate manifest, not a half configuration.
+    const complete = mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {
+      integrations: {
+        arender: { viewerOrigin: 'https://a.example', nuxeoInternalUrl: 'http://nuxeo/nuxeo' },
+      },
+    });
+
+    const patched = mergeBootstrapConfig(complete, {
+      integrations: { arender: { viewerOrigin: 'https://b.example' } },
+    });
+
+    expect(patched.integrations.arender).toEqual({
+      viewerOrigin: 'https://b.example',
+      nuxeoInternalUrl: 'http://nuxeo/nuxeo',
+    });
+  });
+
   it('reads session timings and rejects nonsensical ones', () => {
     expect(
       mergeBootstrapConfig(DEFAULT_APP_BOOTSTRAP_CONFIG, {

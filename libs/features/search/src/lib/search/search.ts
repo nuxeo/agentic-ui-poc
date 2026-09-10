@@ -13,7 +13,6 @@ import {
   debounceTime,
   distinctUntilChanged,
 } from 'rxjs';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -170,7 +169,6 @@ export class SearchComponent {
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly searchService = inject(SearchService);
   private readonly searchAggregationService = inject(SearchAggregationService);
   private readonly documentDetailService = inject(DocumentDetailService);
@@ -179,7 +177,18 @@ export class SearchComponent {
   readonly featureFlags = inject(AiFeatureFlagService);
   readonly selectionService = inject(SelectionService);
 
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
+  private thumbnailGeneration = 0;
+  /**
+   * Sequence for the whole AI request lifecycle — `nlToNxql` *and* the `nxqlSearch` it triggers.
+   *
+   * One counter spanning both phases, not one per phase. Guarding only the second phase was not
+   * enough: a stale `nlToNxql` response still wrote `aiGeneratedNxql`/`aiExplanation` and then
+   * started a fresh query that minted its own generation, so the superseded request won. It is also
+   * incremented when AI mode is switched off, so an in-flight response cannot re-enable
+   * `aiSearchExecuted` or overwrite the restored standard-search thumbnails after the UI has left.
+   */
+  private aiRequestGeneration = 0;
 
   // AI Search state
   readonly aiSearchMode = signal(false);
@@ -195,6 +204,18 @@ export class SearchComponent {
   private readonly aiSuggestSubject = new Subject<string>();
 
   readonly loading = signal(true);
+  /**
+   * Loading owned by the AI NXQL request specifically, kept separate from {@link loading}.
+   *
+   * `loading` belongs to the standard `results$` pipeline, which sets it on every route/filter change.
+   * When `runNxqlQuery` also wrote to it, `supersedeAiRequest` had to clear it — and that clear could
+   * land while a *standard* search was still in flight, hiding the spinner and rendering the previous
+   * results, because every view mode below is gated on `!loading()`. Superseding AI work must only
+   * release AI-owned loading, so the two are no longer the same flag.
+   */
+  readonly aiNxqlLoading = signal(false);
+  /** Either request is in flight. What the template gates on, so neither can hide the other's spinner. */
+  readonly busy = computed(() => this.loading() || this.aiNxqlLoading());
   readonly error = signal<string | null>(null);
   readonly quickFilterOptions = QUICK_FILTER_OPTIONS;
   readonly selectedQuickFilters = signal<Set<string>>(new Set());
@@ -219,6 +240,12 @@ export class SearchComponent {
     tap(() => {
       this.loading.set(true);
       this.error.set(null);
+      // Only invalidate the thumbnail batch if the standard results are going to own the displayed
+      // thumbnails. This was unconditional, and the response path below deliberately skips
+      // `loadThumbnails` while AI results are on screen — so a query-param or drawer-filter change
+      // during a completed AI search bumped the generation, killed every AI thumbnail request still in
+      // flight, and then loaded nothing to replace them. The thumbnails simply disappeared.
+      if (this.standardResultsOwnThumbnails()) this.beginThumbnailBatch();
     }),
     switchMap(([params, drawerFilters]) => {
       const quickFilters = params.get('quickFilters') ?? '';
@@ -302,7 +329,9 @@ export class SearchComponent {
         map((response) => response.items),
         tap((items) => {
           this.loading.set(false);
-          this.loadThumbnails(items);
+          if (this.standardResultsOwnThumbnails()) {
+            this.loadThumbnails(items);
+          }
         }),
         catchError(() => {
           this.searchAggregationService.aggregations.set({});
@@ -414,7 +443,7 @@ export class SearchComponent {
     } else {
       const rows = this.displayResults();
       const labels: Record<string, string> = {};
-      const previews: Record<string, SafeUrl | null> = {};
+      const previews: Record<string, string | null> = {};
       rows.forEach((row) => {
         labels[row.id] = row.name;
         previews[row.id] = this.thumbnailMap()[row.id] ?? null;
@@ -941,6 +970,8 @@ export class SearchComponent {
   }
 
   constructor() {
+    this.destroyRef.onDestroy(() => this.clearThumbnails());
+
     this.aiSuggestSubject
       .pipe(
         debounceTime(400),
@@ -959,7 +990,19 @@ export class SearchComponent {
   toggleAiSearch(): void {
     const next = !this.aiSearchMode();
     this.aiSearchMode.set(next);
-    if (!next) this.resetAiSearchState();
+    if (!next) {
+      // Invalidate any in-flight AI request before restoring standard state. Without this a late
+      // `nlToNxql` or `nxqlSearch` response re-enabled `aiSearchExecuted` and overwrote the standard
+      // thumbnail batch loaded just below, while the UI was already back in standard mode.
+      //
+      // Via `supersedeAiRequest` rather than a bare increment, because the invalidation alone left
+      // `loading` set by a pending `runNxqlQuery` — so leaving AI mode restored the standard results
+      // behind a spinner that would never clear.
+      this.supersedeAiRequest();
+      this.resetAiSearchState();
+      this.beginThumbnailBatch();
+      this.loadThumbnails(this.results());
+    }
   }
 
   onAiQueryInput(value: string): void {
@@ -973,10 +1016,47 @@ export class SearchComponent {
     this.executeAiSearch();
   }
 
+  /**
+   * Mints a new AI request generation **and** releases the loading state the superseded work owned.
+   *
+   * The two halves are inseparable, which is why this is a function rather than two lines at each
+   * call site. A generation guard makes the superseded callbacks `return` early — so everything they
+   * would have cleared on the way out never gets cleared, and the page sits behind a spinner that no
+   * longer has a request behind it.
+   *
+   * I have now made exactly this mistake three times in this PR: `taskLoading` in the tasks page, and
+   * both of these call sites. Each time the guard was added and the release was not. Stating it once
+   * here is the only version that stops the fourth.
+   */
+  /**
+   * Whether the standard search results are what the user is looking at.
+   *
+   * One predicate for two sites that must agree: the `tap` that invalidates the thumbnail batch, and
+   * the response handler that loads it. They were written as separate expressions — an unconditional
+   * `beginThumbnailBatch()` and a guarded `loadThumbnails` — so a standard search fired while AI results
+   * were displayed invalidated the AI thumbnails and then loaded no replacement. Invalidating a batch
+   * nobody is going to refill is strictly worse than leaving it alone.
+   */
+  private standardResultsOwnThumbnails(): boolean {
+    return !this.aiSearchMode() || !this.aiSearchExecuted();
+  }
+
+  private supersedeAiRequest(): number {
+    const generation = ++this.aiRequestGeneration;
+    // Only AI-owned flags. `loading` belongs to the standard pipeline; clearing it here hid the
+    // spinner for a standard search that was still running — see `aiNxqlLoading`.
+    this.aiNxqlLoading.set(false);
+    this.aiLoading.set(false);
+    return generation;
+  }
+
   executeAiSearch(): void {
     const query = this.aiQuery().trim();
     if (!query) return;
 
+    // Supersedes any in-flight AI request and releases its loading state: an NXQL request already
+    // running had set `loading`, and its callbacks are about to start returning at the guard.
+    const generation = this.supersedeAiRequest();
     this.aiLoading.set(true);
     this.aiError.set(null);
     this.aiGeneratedNxql.set('');
@@ -987,20 +1067,35 @@ export class SearchComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
+          if (generation !== this.aiRequestGeneration) return;
           this.aiGeneratedNxql.set(res.nxql);
           this.aiExplanation.set(res.explanation);
           this.showNxqlPanel.set(true);
-          this.runNxqlQuery(res.nxql);
+          this.runNxqlQuery(res.nxql, generation);
         },
         error: (err) => {
+          if (generation !== this.aiRequestGeneration) return;
           this.aiError.set(aiErrorMessage(err, 'AI search failed. Try again.'));
           this.aiLoading.set(false);
         },
       });
   }
 
-  private runNxqlQuery(nxql: string): void {
-    this.loading.set(true);
+  /**
+   * `generation` is minted by the caller so one value covers both AI phases — see
+   * {@link aiRequestGeneration}. The standard search path in this file is driven through `switchMap`
+   * and cancels its predecessor; this one subscribes imperatively, so it needs the comparison.
+   */
+  private runNxqlQuery(nxql: string, generation: number): void {
+    // `aiNxqlLoading`, not `loading` — this request does not own the standard pipeline's flag.
+    this.aiNxqlLoading.set(true);
+    // Deliberately does NOT claim the thumbnail batch. The standard results stay on screen until this
+    // request succeeds, and `loadThumbnails` mints its own generation when it does — so claiming here
+    // only mattered if the request FAILED, in which case every standard thumbnail response still in
+    // flight was discarded by the generation check and the error path reloaded none of them. Permanent
+    // missing thumbnails, from invalidating a batch this method might never refill.
+    //
+    // Same rule as the standard tap above: only invalidate a batch you are going to own.
     this.nuxeoApi
       .nxqlSearch(nxql, 40, {
         properties: 'dublincore,file,common',
@@ -1009,6 +1104,7 @@ export class SearchComponent {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (result) => {
+          if (generation !== this.aiRequestGeneration) return;
           const items: SearchResultItem[] = (result.entries ?? []).map((doc) => ({
             id: doc.uid,
             title: doc.title,
@@ -1032,33 +1128,62 @@ export class SearchComponent {
           }));
           this.aiResults.set(items);
           this.aiSearchExecuted.set(true);
-          this.loading.set(false);
+          this.aiNxqlLoading.set(false);
           this.aiLoading.set(false);
           this.loadThumbnails(items);
         },
         error: () => {
+          // Guarded too: a stale failure would otherwise replace a newer query's results with an
+          // error banner and clear its loading state.
+          if (generation !== this.aiRequestGeneration) return;
           this.aiError.set('NXQL query execution failed. The generated query may be invalid.');
-          this.loading.set(false);
+          this.aiNxqlLoading.set(false);
           this.aiLoading.set(false);
         },
       });
   }
 
   private loadThumbnails(items: SearchResultItem[]): void {
+    // Mint a new generation rather than reading the current one. Reading it let two loaders share
+    // a generation — a standard search and an AI search can both resolve under the same
+    // `beginThumbnailBatch()` — so the first load's in-flight callbacks still matched
+    // `this.thumbnailGeneration` after the second call's `clearThumbnails()` and repopulated the
+    // map with thumbnails belonging to the previous result set.
+    const generation = ++this.thumbnailGeneration;
+    this.clearThumbnails();
     for (const item of items) {
-      if (this.thumbnailMap()[item.id]) continue;
       this.documentDetailService
         .fetchThumbnail(item.id)
-        .pipe(catchError(() => of(null)))
+        .pipe(
+          catchError(() => of(null)),
+          takeUntilDestroyed(this.destroyRef),
+        )
         .subscribe((blob) => {
-          if (!blob) return;
+          if (!blob || generation !== this.thumbnailGeneration) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [item.id]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[item.id];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [item.id]: url,
+            };
+          });
         });
     }
+  }
+
+  private beginThumbnailBatch(): void {
+    this.thumbnailGeneration += 1;
+  }
+
+  private clearThumbnails(): void {
+    // Drop the selection layer's copies FIRST. It retains these exact strings and binds them into
+    // `<img [src]>` in the shell topbar, and selection survives a new search — so revoking without
+    // this leaves selected items pointing at revoked blob URLs. See `SelectionService.forgetPreviews`.
+    this.selectionService.forgetPreviews();
+    for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);
+    this.thumbnailMap.set({});
   }
 
   private resetAiSearchState(): void {

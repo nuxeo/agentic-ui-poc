@@ -399,20 +399,20 @@ function resolveExtensionConfig(root: ExtensionConfig, resolveLayer?: ExtensionL
 
 ## @nuxeo-satori/platform/nuxeo-client
 
-293 exported symbol(s).
+302 exported symbol(s).
 
 ```ts
 const ADD_CHILDREN = "AddChildren";
 const ADMIN_ACCESS_CHECKS: InjectionToken<AdminAccessChecks>;
-const ARENDER_CONFIG: InjectionToken<ARenderConfig>;
+const ARENDER_CONFIG: InjectionToken<ARenderConfig | null>;
 interface ARenderConfig {
     viewerOrigin: string;
     nuxeoInternalUrl: string;
     }
 }
 class ARenderService {
-    getPreviewerUrl(docUid: string, blobXPath?: string): Observable<string>;
-    getDiffUrl(leftDocUid: string, rightDocUid: string): Observable<string>;
+    getPreviewerUrl(docUid: string, blobXPath?: string): Observable<string | null>;
+    getDiffUrl(leftDocUid: string, rightDocUid: string): Observable<string | null>;
     isAvailable(): Observable<boolean>;
     static ɵfac: i0.ɵɵFactoryDeclaration<ARenderService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<ARenderService>;
@@ -1039,6 +1039,12 @@ const NUXEO_SAML_LOGIN_ENDPOINTS: InjectionToken<NuxeoSamlLoginEndpoint[]>;
 const NUXEO_SERVER_URL: InjectionToken<string>;
 const NUXEO_SSO_POST_LOGIN_PATH: InjectionToken<string>;
 const NUXEO_SSO_RETURN_QUERY_PARAM: InjectionToken<string | null>;
+interface NavigableUrlPolicy {
+    readonly allowedOrigins?: readonly (string | null | undefined)[];
+    readonly base?: string;
+    readonly allowInsecure?: boolean;
+    }
+}
 type NoteMimeType = (typeof NOTE_FORMAT_OPTIONS)[number]['value'];
 interface NuxeoAce {
     id: string;
@@ -1506,11 +1512,12 @@ class SelectionService {
     readonly selectedItems: () => {
     id: string;
     name: string;
-    preview: SafeUrl | null;
+    preview: string | null;
     type: string | undefined;
     }[];
     toggle(id: string, label?: string, preview?: SelectionPreview, type?: string): void;
     selectAll(ids: string[], labels?: Record<string, string>, previews?: Record<string, SelectionPreview>, types?: Record<string, string>): void;
+    forgetPreviews(): void;
     isSelected(id: string): boolean;
     isAllSelected(ids: string[]): boolean;
     isIndeterminate(ids: string[]): boolean;
@@ -1573,7 +1580,7 @@ class TrashFilterService {
     readonly filters: i0.WritableSignal<TrashFilters>;
     readonly layoutMode: i0.WritableSignal<TrashLayoutMode>;
     readonly results: i0.WritableSignal<TrashResultItem[]>;
-    readonly resultThumbnails: i0.WritableSignal<Record<string, SafeUrl>>;
+    readonly resultThumbnails: i0.WritableSignal<Record<string, string | null>>;
     readonly totalResults: i0.WritableSignal<number>;
     readonly resultsLoading: i0.WritableSignal<boolean>;
     readonly savedSearchVersion: i0.WritableSignal<number>;
@@ -1622,6 +1629,12 @@ class TrashService {
     getSavedSearches(): Observable<SavedSearch[]>;
     static ɵfac: i0.ɵɵFactoryDeclaration<TrashService, never>;
     static ɵprov: i0.ɵɵInjectableDeclaration<TrashService>;
+    }
+}
+interface TrustedHtmlConfig {
+    ALLOWED_TAGS?: string[];
+    ALLOWED_ATTR?: string[];
+    ADD_ATTR?: string[];
     }
 }
 interface UserGroupSuggestion {
@@ -1759,6 +1772,7 @@ function hasDocumentPermission(doc: NuxeoDocument | null | undefined, permission
 function hasDocumentPermissionsEnricher(doc: NuxeoDocument | null | undefined): boolean;
 function hasInsertablePictureBlob(doc: NuxeoDocument): boolean;
 function inferBlobDocTypeFromFile(file: File): string;
+function insecureAllowedForHost(isDevMode: boolean, hostProtocol?: string): boolean;
 function isAdfHxBrowseRouterUrl(routerUrl: string): boolean;
 function isBlobHoldingDocType(docType: string): boolean;
 function isBrowsableNavNode(doc: NuxeoDocument | null): boolean;
@@ -1775,6 +1789,7 @@ function isMailSendError(err: unknown): boolean;
 function isManagedDirectory(metadata: Pick<DirectoryMetadata, 'type'>): boolean;
 function isManagedDirectoryName(name: string): boolean;
 function isMarkdownNoteFormat(mimeType: string): boolean;
+function isNavigableBaseUrl(value: string | null | undefined, allowInsecure?: boolean): boolean;
 function isPermissionDeniedError(err: unknown): boolean;
 function isPowerUserFromGroups(groups: readonly string[]): boolean;
 function isRepositoryRootPath(path: string | null | undefined): boolean;
@@ -1783,8 +1798,10 @@ function isSafeHttpUrl(url: string): boolean;
 function isUserWorkspacePath(nuxeoPath: string): boolean;
 function l10nEntryLabel(entry: L10nDirectoryEntry): string;
 function mailSendFailureMessage(context: 'add' | 'update' | 'send'): string;
+function mediaTypeEssence(value: string | null | undefined): string;
 function mergeCreateDocumentBody(template: NuxeoCreateDocumentTemplate, docType: string, nameFallback: string, overrides: Record<string, unknown>): Record<string, unknown>;
 function mergeDocumentPermissionsContext(existing: NuxeoDocument, updated: NuxeoDocument, options?: MergeDocumentPermissionsContextOptions): NuxeoDocument;
+function navigableUrlOrNull(candidate: string | null | undefined, policy?: NavigableUrlPolicy): string | null;
 function needsContentLakeIngest(doc: NuxeoDocument | null | undefined): boolean;
 function normalizeDocumentAcls(doc: NuxeoDocument): NuxeoDocument;
 function normalizeDocumentPickerList(res: PaginatedListMeta & {
@@ -1796,6 +1813,7 @@ function noteFormatLabel(mimeType: string | null | undefined): string;
 function nuxeoPathSegments(path: string): string[];
 function nuxeoPathsEqual(a: string, b: string): boolean;
 function nuxeoPathsEqualFlexible(a: string, b: string): boolean;
+function originOf(value: string | null | undefined): string | null;
 function parentNuxeoFolderPath(docPath: string): string;
 function parseAdfHxBrowsePathFromRouterUrl(routerUrl: string): string;
 function parseBrowseNuxeoPathFromRouterUrl(routerUrl: string): string;
@@ -1812,6 +1830,7 @@ function readClipboardDocs(): ClipboardDoc[];
 function readContentLakeIngestMarker(doc: NuxeoDocument): string | null;
 function readGroupsFromMe(me: unknown): string[];
 function renderNoteMarkdown(text: string): string;
+function renderTrustedHtml(sanitizer: DomSanitizer, html: string, config?: TrustedHtmlConfig): SafeHtml;
 function resolveAcePrincipal(value: unknown): string;
 function resolveCreatableSubtypes(doc: NuxeoDocument): string[];
 function resolveImportBlobDocType(file: File, allowedTypes: readonly string[]): string;
@@ -1833,6 +1852,7 @@ function toAdfHxBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrl(nuxeoPath: string): string;
 function toBrowseRouterUrlForReturnMode(mode: BrowseReturnMode, nuxeoPath: string): string;
 function topLevelNuxeoFolderPath(nuxeoPath: string): string | null;
+function trustObjectUrl(sanitizer: DomSanitizer, url: string | null | undefined): SafeResourceUrl | null;
 function userWorkspaceBrowseRouterUrl(nuxeoPath: string): string | null;
 function userWorkspaceOwnerFromPath(nuxeoPath: string): string | null;
 function userWorkspaceRootFromPath(nuxeoPath: string): string | null;
@@ -1885,6 +1905,8 @@ interface DocumentCompareDialogData {
 }
 class DocumentViewerComponent {
     readonly blobUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
+    readonly rawBlobUrl: _angular_core.InputSignal<string | null>;
+    readonly blobType: _angular_core.InputSignal<string>;
     readonly mimeType: _angular_core.InputSignal<string>;
     readonly fileName: _angular_core.InputSignal<string>;
     readonly fileSize: _angular_core.InputSignal<string>;
@@ -1893,7 +1915,7 @@ class DocumentViewerComponent {
     readonly noteHtml: _angular_core.InputSignal<SafeHtml | null>;
     readonly videoSources: _angular_core.InputSignal<VideoSource[]>;
     readonly storyboard: _angular_core.InputSignal<StoryboardItem[]>;
-    readonly posterUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
+    readonly posterUrl: _angular_core.InputSignal<string | null>;
     readonly hasPdfRendition: _angular_core.InputSignal<boolean>;
     readonly previewUrl: _angular_core.InputSignal<SafeResourceUrl | null>;
     readonly pictureInfo: _angular_core.InputSignal<PictureInfo | null>;
@@ -1944,7 +1966,7 @@ class DocumentViewerComponent {
     formatDuration(seconds: number): string;
     isFiniteNumber(value: number | null | undefined): value is number;
     static ɵfac: _angular_core.ɵɵFactoryDeclaration<DocumentViewerComponent, never>;
-    static ɵcmp: _angular_core.ɵɵComponentDeclaration<DocumentViewerComponent, "lib-document-viewer", never, { "blobUrl": { "alias": "blobUrl"; "required": false; "isSignal": true; }; "mimeType": { "alias": "mimeType"; "required": false; "isSignal": true; }; "fileName": { "alias": "fileName"; "required": false; "isSignal": true; }; "fileSize": { "alias": "fileSize"; "required": false; "isSignal": true; }; "loading": { "alias": "loading"; "required": false; "isSignal": true; }; "noteContent": { "alias": "noteContent"; "required": false; "isSignal": true; }; "noteHtml": { "alias": "noteHtml"; "required": false; "isSignal": true; }; "videoSources": { "alias": "videoSources"; "required": false; "isSignal": true; }; "storyboard": { "alias": "storyboard"; "required": false; "isSignal": true; }; "posterUrl": { "alias": "posterUrl"; "required": false; "isSignal": true; }; "hasPdfRendition": { "alias": "hasPdfRendition"; "required": false; "isSignal": true; }; "previewUrl": { "alias": "previewUrl"; "required": false; "isSignal": true; }; "pictureInfo": { "alias": "pictureInfo"; "required": false; "isSignal": true; }; "pictureViews": { "alias": "pictureViews"; "required": false; "isSignal": true; }; "exifData": { "alias": "exifData"; "required": false; "isSignal": true; }; "iptcData": { "alias": "iptcData"; "required": false; "isSignal": true; }; "videoInfo": { "alias": "videoInfo"; "required": false; "isSignal": true; }; "arenderUrl": { "alias": "arenderUrl"; "required": false; "isSignal": true; }; "arenderReloadId": { "alias": "arenderReloadId"; "required": false; "isSignal": true; }; "viewerDocUid": { "alias": "viewerDocUid"; "required": false; "isSignal": true; }; "annotationsTab": { "alias": "annotationsTab"; "required": false; "isSignal": true; }; "showMainFileControls": { "alias": "showMainFileControls"; "required": false; "isSignal": true; }; "mainFileActionInProgress": { "alias": "mainFileActionInProgress"; "required": false; "isSignal": true; }; }, { "downloadClicked": "downloadClicked"; "openWithDriveClicked": "openWithDriveClicked"; "previewClicked": "previewClicked"; "replaceMainFileClicked": "replaceMainFileClicked"; "removeMainFileClicked": "removeMainFileClicked"; "storyboardSeek": "storyboardSeek"; "formatDownload": "formatDownload"; }, never, never, true, never>;
+    static ɵcmp: _angular_core.ɵɵComponentDeclaration<DocumentViewerComponent, "lib-document-viewer", never, { "blobUrl": { "alias": "blobUrl"; "required": false; "isSignal": true; }; "rawBlobUrl": { "alias": "rawBlobUrl"; "required": true; "isSignal": true; }; "blobType": { "alias": "blobType"; "required": true; "isSignal": true; }; "mimeType": { "alias": "mimeType"; "required": false; "isSignal": true; }; "fileName": { "alias": "fileName"; "required": false; "isSignal": true; }; "fileSize": { "alias": "fileSize"; "required": false; "isSignal": true; }; "loading": { "alias": "loading"; "required": false; "isSignal": true; }; "noteContent": { "alias": "noteContent"; "required": false; "isSignal": true; }; "noteHtml": { "alias": "noteHtml"; "required": false; "isSignal": true; }; "videoSources": { "alias": "videoSources"; "required": false; "isSignal": true; }; "storyboard": { "alias": "storyboard"; "required": false; "isSignal": true; }; "posterUrl": { "alias": "posterUrl"; "required": false; "isSignal": true; }; "hasPdfRendition": { "alias": "hasPdfRendition"; "required": false; "isSignal": true; }; "previewUrl": { "alias": "previewUrl"; "required": false; "isSignal": true; }; "pictureInfo": { "alias": "pictureInfo"; "required": false; "isSignal": true; }; "pictureViews": { "alias": "pictureViews"; "required": false; "isSignal": true; }; "exifData": { "alias": "exifData"; "required": false; "isSignal": true; }; "iptcData": { "alias": "iptcData"; "required": false; "isSignal": true; }; "videoInfo": { "alias": "videoInfo"; "required": false; "isSignal": true; }; "arenderUrl": { "alias": "arenderUrl"; "required": false; "isSignal": true; }; "arenderReloadId": { "alias": "arenderReloadId"; "required": false; "isSignal": true; }; "viewerDocUid": { "alias": "viewerDocUid"; "required": false; "isSignal": true; }; "annotationsTab": { "alias": "annotationsTab"; "required": false; "isSignal": true; }; "showMainFileControls": { "alias": "showMainFileControls"; "required": false; "isSignal": true; }; "mainFileActionInProgress": { "alias": "mainFileActionInProgress"; "required": false; "isSignal": true; }; }, { "downloadClicked": "downloadClicked"; "openWithDriveClicked": "openWithDriveClicked"; "previewClicked": "previewClicked"; "replaceMainFileClicked": "replaceMainFileClicked"; "removeMainFileClicked": "removeMainFileClicked"; "storyboardSeek": "storyboardSeek"; "formatDownload": "formatDownload"; }, never, never, true, never>;
     }
 }
 class EditCollectionDialogComponent implements OnInit {
@@ -2133,7 +2155,7 @@ interface ShareSavedSearchDialogData {
 }
 interface StoryboardItem {
     timecode: number;
-    thumbnailUrl: SafeResourceUrl;
+    thumbnailUrl: string | null;
     label: string;
     }
 }
@@ -2153,7 +2175,7 @@ interface VideoInfo {
     }
 }
 interface VideoSource {
-    url: SafeResourceUrl;
+    url: string;
     mimeType: string;
     label?: string;
     }

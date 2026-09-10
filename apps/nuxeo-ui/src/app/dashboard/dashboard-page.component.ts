@@ -6,7 +6,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { WidgetContainerComponent, WidgetGridComponent } from '@nuxeo-satori/platform/ui';
@@ -60,11 +59,10 @@ export class DashboardPageComponent {
   private readonly collectionService = inject(CollectionService);
   private readonly detailService = inject(DocumentDetailService);
   private readonly auth = inject(AuthService);
-  private readonly sanitizer = inject(DomSanitizer);
   private readonly aiGateway = inject(AiGatewayService);
   readonly featureFlags = inject(AiFeatureFlagService);
 
-  readonly thumbnailMap = signal<Record<string, SafeUrl>>({});
+  readonly thumbnailMap = signal<Record<string, string | null>>({});
 
   readonly recentlyEdited = signal<NuxeoDocument[]>([]);
   readonly recentlyEditedLoading = signal(true);
@@ -315,26 +313,25 @@ export class DashboardPageComponent {
         .subscribe((blob) => {
           if (!blob) return;
           const url = URL.createObjectURL(blob);
-          this.thumbnailBlobUrls.push(url);
-          this.thumbnailMap.update((m) => ({
-            ...m,
-            [doc.uid]: this.sanitizer.bypassSecurityTrustUrl(url),
-          }));
+          this.thumbnailMap.update((m) => {
+            const previous = m[doc.uid];
+            if (previous && previous !== url) URL.revokeObjectURL(previous);
+            return {
+              ...m,
+              [doc.uid]: url,
+            };
+          });
         });
     }
   }
 
   /**
-   * Every blob url handed to the template, so each can be revoked.
+   * Every blob URL currently owned by this page.
    *
-   * A plain array rather than deriving them from `thumbnailMap`: that map holds
-   * `SafeUrl` values from `bypassSecurityTrustUrl`, whose underlying string is not
-   * readable back out. Tracking at creation is the only point where the raw url exists.
+   * `thumbnailMap` now stores the raw object-URL strings directly, so teardown derives from the map
+   * itself and revokes each current entry on destroy.
    */
-  private readonly thumbnailBlobUrls: string[] = [];
-
   private revokeThumbnails(): void {
-    for (const url of this.thumbnailBlobUrls) URL.revokeObjectURL(url);
-    this.thumbnailBlobUrls.length = 0;
+    for (const url of Object.values(this.thumbnailMap())) if (url) URL.revokeObjectURL(url);
   }
 }

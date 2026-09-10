@@ -190,30 +190,93 @@ The ARender Docker images are built for `linux/amd64`. On Apple Silicon (M1/M2/M
 | Text Handler   | 8899         | Change `ports` for `document-text-handler` |
 | Converter      | 19999        | Change `ports` for `document-converter`    |
 
-If you change the ARender UI port, also update the `ARENDER_CONFIG` provider in the Angular app (see below).
+If you change the ARender UI port, also update `integrations.arender` in the Layer 0 bootstrap
+file, `agentic-ui-config/bootstrap.json` (see below).
 
 ## Angular Configuration
 
-The `ARENDER_CONFIG` injection token in `libs/shared/nuxeo-client/src/lib/arender.config.ts` controls the ARender URLs:
+**There is no default. ARender is off unless you configure it.**
 
-| Property           | Default                         | Description                             |
-| ------------------ | ------------------------------- | --------------------------------------- |
-| `viewerOrigin`     | `http://localhost:9080`         | ARender UI URL as seen by the browser   |
-| `nuxeoInternalUrl` | `http://nuxeo-auth-proxy/nuxeo` | Nuxeo URL as seen by ARender containers |
+`ARENDER_CONFIG` is `InjectionToken<ARenderConfig | null>` and its default factory returns `null`.
+It used to compile in `http://localhost:9080` and `http://nuxeo-auth-proxy/nuxeo`, which meant a
+shipped build with no configuration pointed the annotation viewer at the _user's own_ machine over
+plaintext. Those defaults were removed (Sonar `S5332`), so an unconfigured deployment now shows
+"Annotations are not available" on the document's Annotations tab — that placeholder is the expected
+state, not a bug.
 
-Override in `app.config.ts` if needed:
+Configure it in the **Layer 0 bootstrap file**, not by providing the token in `app.config.ts`. It is
+read before authentication, so a deployment changes it without rebuilding:
 
-```typescript
-import { ARENDER_CONFIG } from '@nuxeo-satori/platform/nuxeo-client';
+| Where            | Path                                                                |
+| ---------------- | ------------------------------------------------------------------- |
+| Production URL   | `/nuxeo/agentic-ui-config/bootstrap.json`                           |
+| On disk          | `<server.home>/nxserver/nuxeo.war/agentic-ui-config/bootstrap.json` |
+| Under `nx serve` | `/agentic-ui-config/bootstrap.json`                                 |
 
+**Not the runtime manifest.** Those are two different stores, and this document previously named the
+wrong one. The runtime manifest is a Nuxeo _document_, fetched after login, whose repository path is
+itself a bootstrap field; its schema is `AppRuntimeManifest` (`navItems`, `actions`, `rules`,
+`presets`, `featureToggles`, `labels`, `extensions`) and it has no `integrations` key at all. An
+operator who put this block there would see no error and no annotation viewer.
+
+The directory is a **sibling** of the application bundle, not a file inside it: the marketplace
+installer copies the packaged `web` directory over the deployed one with `overwrite="true"`, so
+anything under `.../agentic-ui/` is replaced on every upgrade, while `.../agentic-ui-config/` is
+installed by a separate non-overwriting step and survives. See `resolveBootstrapConfigUrl` in
+`app-config.tokens.ts`.
+
+```json
 {
-  provide: ARENDER_CONFIG,
-  useValue: {
-    viewerOrigin: 'http://localhost:9090',        // custom ARender port
-    nuxeoInternalUrl: 'http://nuxeo-auth-proxy/nuxeo',
-  },
+  "integrations": {
+    "arender": {
+      "viewerOrigin": "https://arender.example.com",
+      "nuxeoInternalUrl": "http://nuxeo-auth-proxy/nuxeo"
+    }
+  }
 }
 ```
+
+| Property           | Required | Constraints                                                                                                                               |
+| ------------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `viewerOrigin`     | yes      | ARender UI as the **browser** sees it. Must be no less secure than the page framing it — see below.                                       |
+| `nuxeoInternalUrl` | yes      | Nuxeo as the **ARender containers** see it, through the auth-proxy sidecar. Plain `http:` is fine — it is never navigated by the browser. |
+
+Both are mandatory and validated in two places, so a partial or malformed configuration disables
+ARender rather than half-enabling it:
+
+- `bootstrap-config.ts` yields `null` unless the merged bootstrap config has **both** endpoints
+  non-blank.
+  A blank endpoint is worse than none: `fetch('')` resolves against the application's own origin, so
+  an availability probe would report a viewer that is not deployed.
+- `ARenderService` additionally requires each endpoint to be an absolute `http(s)` base with **no
+  query string, no fragment and no userinfo**. Both values have parameters appended to them, and a
+  base carrying its own `?` or `#` absorbs the appended `url` parameter so the viewer receives no
+  document.
+
+### When is `http:` accepted for `viewerOrigin`?
+
+The rule is **host-relative**, not build-relative. `insecureAllowedForHost()` accepts `http:` when
+either holds:
+
+| Application served over      | `http:` viewerOrigin | Why                                                                                                                                                                                                                              |
+| ---------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `http://…` (typical on-prem) | **accepted**         | An iframe is a downgrade only relative to its host document. Where the page is already plaintext there is nothing to downgrade, and anyone able to tamper with the framed viewer can already tamper with the page delivering it. |
+| `https://…`                  | **rejected**         | This is the real downgrade: a plaintext viewer inside a secure page, carrying annotations.                                                                                                                                       |
+| any, dev build               | accepted             | Local ARender runs on `http://localhost:9080`.                                                                                                                                                                                   |
+
+This corrects an earlier version of this table which said `http:` was permitted "only in a dev
+build". That was never what the preview-fallback path did, and after review it is no longer what
+ARender does either — the previous wording would have led an operator to believe a supported on-prem
+configuration was invalid. If your application is served over `https:`, ARender must be too.
+
+Being allowed to use `http:` does not relax anything else: the no-query/no-fragment/no-userinfo
+requirements above still apply, and there is deliberately **no origin allow-list** on
+`viewerOrigin` — a customer configures where their own ARender lives, which is recorded as an
+accepted residual risk. The structural control for that is a CSP `frame-src` header, which is not
+currently set.
+
+For local development the compose file above publishes the ARender UI on host port 9080, so a dev
+bootstrap file uses `"viewerOrigin": "http://localhost:9080"`.
 
 ## File Reference
 
