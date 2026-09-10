@@ -57,8 +57,20 @@ export interface NavigableUrlPolicy {
   readonly base?: string;
 
   /**
-   * Permit `http:`. A plaintext document in an `iframe` is a downgrade, so this should be
-   * `isDevMode()` at the call site and never a constant `true`.
+   * Permit `http:`.
+   *
+   * Pass **`insecureAllowedForHost(isDevMode())`**, not a bare `isDevMode()` and never a constant
+   * `true`.
+   *
+   * A plaintext document in an `iframe` is a downgrade only *relative to the page framing it*. Where the
+   * application is itself served over `http:` — an ordinary on-prem deployment — there is nothing to
+   * downgrade, and refusing it removes the feature without adding security. That is the policy
+   * `ARenderService` and the preview fallback both implement, and `insecureAllowedForHost` is where it
+   * lives so the three callers cannot answer the same question differently.
+   *
+   * This doc previously said to pass `isDevMode()`. That was the advice that silently disabled ARender
+   * on every on-prem plaintext deployment — the fourth place in this repository carrying the same wrong
+   * claim, after `docs/arender-setup.md`, `ARenderConfig.viewerOrigin` and the PR description.
    */
   readonly allowInsecure?: boolean;
 }

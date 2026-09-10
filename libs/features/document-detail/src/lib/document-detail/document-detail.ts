@@ -2592,11 +2592,14 @@ export class DocumentDetailComponent implements OnInit, OnDestroy {
     // necessarily `http:` too. An iframe is only a downgrade relative to its host document; where
     // the host is already plaintext there is nothing to downgrade, and the origin allow-list below
     // is what actually constrains where it can point.
-    const hostIsInsecure = window.location.protocol === 'http:';
+    //
+    // Through `insecureAllowedForHost` rather than the inline `isDevMode() || hostIsInsecure` this
+    // reasoning was first written as. That expression was correct here and duplicated nowhere else,
+    // which is exactly how the two ARender sites ended up with a stricter answer to the same question.
     const safe = navigableUrlOrNull(previewCtx?.url, {
       base: window.location.origin,
       allowedOrigins: [window.location.origin, originOf(this.nuxeoApiOrigin)],
-      allowInsecure: isDevMode() || hostIsInsecure,
+      allowInsecure: insecureAllowedForHost(isDevMode()),
     });
     if (safe) {
       this.previewUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(safe));

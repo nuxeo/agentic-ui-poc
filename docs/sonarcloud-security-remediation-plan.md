@@ -16,16 +16,16 @@ Read the table, not this line. **Landed: E, the harness, A, B part 1, B part 2 (
 bug fix), C, and D.** Category C carries an accepted residual risk — see its section below before
 reading "Done" as "closed".
 
-| Category                                | Sites                  | Status                                                                                                                                                                                                                                                                                                                                   |
-| --------------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                               |
-| **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                            |
+| Category                                | Sites                  | Status                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E** — `S2245` `Math.random`           | 1                      | **Done.** `crypto.randomUUID()` in `kd-client.service.ts`. Spec updated to the UUID shape.                                                                                                                                                                                                                                       |
+| **E** — `S5332` `http://` default       | 1 reported, **2 real** | **Done, at the second attempt.** See "The `S5332` fix was wrong first time" below. Open question 2 is still open — this removes the bad defaults but does not decide whether ARender is expected to work in a deployed build.                                                                                                    |
 | **Harness**                             | —                      | **Done.** `sanitizer-audit.mjs` (5 checks + a budget ratchet), `sanitizer-allowlist.json`, and `sanitizer-audit.selftest.mjs` are wired into `verify-gate.mjs` and `review:preflight`; current counts are intentionally emitted by `npm run beta:sanitizers` and `npm run beta:sanitizers-selftest` rather than duplicated here. |
-| **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                                       |
-| **B part 1** — `trustObjectUrl`         | 7                      | **Done.** The seven inline object-URL bypasses are centralized in `trustObjectUrl`, with scheme guarding and caller-owned provenance documented.                                                                                                                                                                                       |
-| **A** — redundant bypasses              | 14                     | **Done.** Redundant object-URL bypasses on `img[src]` were deleted; the ratchet budget is now zero.                                                                                                                                                                                                                                    |
-| **C** — validate then bypass            | 2                      | **Done.** Both sites validated, failing closed. This was the highest actual risk in the set. See below.                                                                                                                                                                                                                                  |
-| **D** — centralise trusted HTML         | 6 entries / 8 calls    | **Done.** Sites are routed through `renderTrustedHtml`; the helper sanitizes first and enforces a restricted DOMPurify config surface before bypassing.                                                                                                                                                                                |
+| **B part 2** — `Safe*` in NONE contexts | 6 bindings, 5 live     | **Done, and this was a live defect, not a lint finding.** See below. The sixth, `video[poster]`, is **dormant** — `posterUrl` is only ever set to `null`, so that binding cannot render a value today and its fix is pre-emptive. Counting it without that qualifier overstated the defect by one.                               |
+| **B part 1** — `trustObjectUrl`         | 7                      | **Done.** The seven inline object-URL bypasses are centralized in `trustObjectUrl`, with scheme guarding and caller-owned provenance documented.                                                                                                                                                                                 |
+| **A** — redundant bypasses              | 14                     | **Done.** Redundant object-URL bypasses on `img[src]` were deleted; the ratchet budget is now zero.                                                                                                                                                                                                                              |
+| **C** — validate then bypass            | 2                      | **Done.** Both sites validated, failing closed. This was the highest actual risk in the set. See below.                                                                                                                                                                                                                          |
+| **D** — centralise trusted HTML         | 6 entries / 8 calls    | **Done.** Sites are routed through `renderTrustedHtml`; the helper sanitizes first and enforces a restricted DOMPurify config surface before bypassing.                                                                                                                                                                          |
 
 Bypass count and category budgets are now emitted by `beta:sanitizers` from `.ai/state/sanitizer-allowlist.json` to avoid stale hand-maintained totals in this document.
 
@@ -136,7 +136,9 @@ dropped otherwise, falling through to the viewer's "Preview not available" place
 This is deliberate, and "Category C mitigated" should not be read as more than it is.
 
 ```ts
-navigableUrlOrNull(url, { allowInsecure: isDevMode() }); // note: no allowedOrigins
+navigableUrlOrNull(url, {
+  allowInsecure: insecureAllowedForHost(isDevMode()), // host-relative, not build-relative
+}); // note: no allowedOrigins
 ```
 
 There is no origin allow-list on the ARender site, because a customer configures where _their own_
@@ -272,15 +274,15 @@ Two honest caveats:
   customer-visible and both were accepted deliberately. `docs/api/platform.api.md` records them.
   **Together they are a breaking type change and want a major version:**
 
-  | Export                                                                      | Before                                 | After                                    |
-  | --------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------- |
-  | `DocumentViewerComponent.rawBlobUrl`                                        | —                                      | `InputSignal<string \| null>` (additive) |
-  | `DocumentViewerComponent.posterUrl`                                         | `InputSignal<SafeResourceUrl \| null>` | `InputSignal<string \| null>`            |
-  | `VideoSource.url`                                                           | `SafeResourceUrl`                      | `string`                                 |
-  | `ARENDER_CONFIG`                                                            | `InjectionToken<ARenderConfig>`        | `InjectionToken<ARenderConfig \| null>`  |
-  | `ARenderService.getPreviewerUrl`                                            | `Observable<string>`                   | `Observable<string \| null>`             |
-  | `ARenderService.getDiffUrl`                                                 | `Observable<string>`                   | `Observable<string \| null>`             |
-  | `navigableUrlOrNull`, `originOf`, `NavigableUrlPolicy`                     | —                                      | added (non-breaking)                     |
+  | Export                                                 | Before                                 | After                                    |
+  | ------------------------------------------------------ | -------------------------------------- | ---------------------------------------- |
+  | `DocumentViewerComponent.rawBlobUrl`                   | —                                      | `InputSignal<string \| null>` (additive) |
+  | `DocumentViewerComponent.posterUrl`                    | `InputSignal<SafeResourceUrl \| null>` | `InputSignal<string \| null>`            |
+  | `VideoSource.url`                                      | `SafeResourceUrl`                      | `string`                                 |
+  | `ARENDER_CONFIG`                                       | `InjectionToken<ARenderConfig>`        | `InjectionToken<ARenderConfig \| null>`  |
+  | `ARenderService.getPreviewerUrl`                       | `Observable<string>`                   | `Observable<string \| null>`             |
+  | `ARenderService.getDiffUrl`                            | `Observable<string>`                   | `Observable<string \| null>`             |
+  | `navigableUrlOrNull`, `originOf`, `NavigableUrlPolicy` | —                                      | added (non-breaking)                     |
 
   In every case the old signature described behaviour the code did not have: the `Safe*` types could
   not work in a `NONE` context and their inner string cannot be read back out, the token could
@@ -883,7 +885,7 @@ template scanned that nothing compiles costs at most one finding on a dormant bi
 no import left to rename to switch the check off. Establishing identity is the right tool for
 check 5, where the question is "is this the reviewed sanitiser"; it is the wrong tool here.
 
-**And it reads the template's *value*, not only a literal.** `templatesFor` accepted a literal
+**And it reads the template's _value_, not only a literal.** `templatesFor` accepted a literal
 `template`/`templateUrl` and nothing else, while Angular's compiler statically evaluates more — so
 moving a template to a module constant removed the component from the audit entirely and returned
 check 4 to `PASS` on a `SafeResourceUrl` bound to `video[poster]`. The value now resolves through the
@@ -892,7 +894,7 @@ constant; a value that does not resolve is **reported**, so a template the audit
 never mistaken for a component that has none.
 
 **Discovery was fail-open four times, and that is the pattern worth remembering.** The binding
-syntax, the decorator, the template value, and finally the metadata *key* — `n.name.getText()`
+syntax, the decorator, the template value, and finally the metadata _key_ — `n.name.getText()`
 returns `'templateUrl'` with the quotes, so a quoted key skipped the component outright. Each time,
 discovery recognised the shape this repository happens to use and treated everything else as "no
 template here", which is indistinguishable in the output from "no defect here". Each was closed by
@@ -947,7 +949,7 @@ must be reported; it did not change what makes the check sound.
 
 - **Check 5's provenance walk resolves a variable by symbol, and sees every assignment.** Two
   fail-open paths, both reproduced silent on this repository with attacker-authored markdown reaching
-  `bypassSecurityTrustHtml`. Sources were gathered by identifier *text* across the whole member, so
+  `bypassSecurityTrustHtml`. Sources were gathered by identifier _text_ across the whole member, so
   any same-named declaration counted: a parameter contributes no source at all, so for
   `trustShadowed(clean: string)` an inner `const clean = DOMPurify.sanitize(…)` in a branch that
   never runs was the only source collected, and "every source is sanitised" was satisfied by a value
@@ -958,12 +960,12 @@ must be reported; it did not change what makes the check sound.
   that shape of reasoning is what produced the hole.
 - **The reviewed-sanitiser registry carries its own review.** `sanitisers` is the entire basis on
   which check 5 admits anything — five rounds established that "this function escapes HTML" cannot be
-  proven from syntax, so a human reviews each helper once and records *why*, and that written
+  proven from syntax, so a human reviews each helper once and records _why_, and that written
   rationale is the control. Bypass entries have enforced a trimmed 40-character floor since the gate
   was written; this list only tested `typeof justification === 'string'`, so `""` satisfied it while
   the comment at the call site claimed unexplained entries were dropped. Blanking
   `kd-citation-dialog::escapeHtml`'s justification, and separately reducing it to `"safe"`, left
-  checks 1 *and* 5 green with the helper still admitted. Both registries now apply the same floor,
+  checks 1 _and_ 5 green with the helper still admitted. Both registries now apply the same floor,
   and a rejected entry is **reported at the entry** as well as dropped — dropping alone is
   fail-closed but reports the wrong thing, at the call site rather than at the malformed record.
 - **A budget ratchet.** `budgets` in the allowlist caps bypass **calls** per category — calls, not
@@ -989,7 +991,7 @@ must be reported; it did not change what makes the check sound.
 
   Measured rather than inferred: instrumenting both comparisons and running the audit plus all 58
   selftest assertions produced **zero** executions of either. So neither has been observed red on
-  purpose, and every existing ratchet control fails for a *current-tree* reason (headroom, or count
+  purpose, and every existing ratchet control fails for a _current-tree_ reason (headroom, or count
   over budget) — deleting the merge-base code entirely would leave the suite green. They should
   begin working once this PR lands and a later branch has an allowlist at its merge base, but
   "should" is the word that this gate exists to eliminate.
@@ -1006,7 +1008,7 @@ must be reported; it did not change what makes the check sound.
   the original bytes. The other 7 are **5 green baselines** (so a red cannot be pre-existing noise) and
   **2 silence assertions**: check 4 must stay quiet while walking its longest path to an alias that
   resolves to a plain `string` — which distinguishes "keys on what the type resolves to" from
-  "resolved a type reference" — and check 1 must stay quiet for an object literal used as a *value*
+  "resolved a type reference" — and check 1 must stay quiet for an object literal used as a _value_
   rather than as a destructuring pattern, which is the false-failure direction of the assignment-form
   fix. Those 7 assert
   green and are **not** evidence that a check can fail, so the runner labels every row by kind and
@@ -1014,7 +1016,7 @@ must be reported; it did not change what makes the check sound.
 
   **"For the expected reason" has to be specific enough to distinguish two findings.** Four check 4
   controls expected only `document-viewer.component.html`, which appears in
-  `[4] Safe* value in a NONE context` *and* in `[4] unresolvable type in a NONE context` — so each
+  `[4] Safe* value in a NONE context` _and_ in `[4] unresolvable type in a NONE context` — so each
   passed whether the resolver resolved the type or gave up on it, while claiming the former. One of
   them was in fact passing through the fail-closed path: it added a cross-file alias to
   `navigable-url.ts` but never exported it from the barrel the package alias points at, so the import
