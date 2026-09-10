@@ -6,7 +6,7 @@ import { ActivatedRoute, provideRouter, withDisabledInitialNavigation } from '@a
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { TranslateModule } from '@ngx-translate/core';
-import { of, type Observable } from 'rxjs';
+import { Subject, of, type Observable } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -175,6 +175,68 @@ describe('TasksPageComponent — the MIME type bound to the viewer', () => {
     renderWith('application/pdf', '');
 
     expect(boundMimeType()).toBe('application/pdf');
+  });
+
+  describe('a superseded task request does not override a newer selection', () => {
+    /**
+     * `selectionGeneration` covered only work started by `selectTask`, so a route request was not tied
+     * to it until its response arrived. Route opens task A, the user clicks task B while A is still
+     * loading, A's response lands and calls `selectTask(A)` — switching the user back to a task they
+     * had navigated away from.
+     */
+    it('ignores a route task response that lands after the user picked another task', () => {
+      const routeTask = new Subject<unknown>();
+      const taskService = TestBed.inject(TaskService) as unknown as {
+        getTask: ReturnType<typeof vi.fn>;
+      };
+      taskService.getTask.mockReturnValue(routeTask.asObservable());
+
+      component['loadAndSelectTask']('task-A');
+
+      // The user picks a different task while the route request is in flight.
+      component.selectTask({ id: 'task-B', name: 'Chosen' } as never);
+      expect(component.selectedTask()?.id).toBe('task-B');
+
+      routeTask.next({ id: 'task-A', name: 'From route' });
+      routeTask.complete();
+
+      // The load-bearing assertion: the older request must not win.
+      expect(component.selectedTask()?.id).toBe('task-B');
+    });
+
+    it('still applies a route task response when nothing superseded it', () => {
+      // The positive control, so the guard is discriminating rather than dropping everything.
+      const routeTask = new Subject<unknown>();
+      const taskService = TestBed.inject(TaskService) as unknown as {
+        getTask: ReturnType<typeof vi.fn>;
+      };
+      taskService.getTask.mockReturnValue(routeTask.asObservable());
+
+      component['loadAndSelectTask']('task-A');
+      routeTask.next({ id: 'task-A', name: 'From route' });
+      routeTask.complete();
+
+      expect(component.selectedTask()?.id).toBe('task-A');
+    });
+
+    it('ignores a stale refresh of a task the user has already navigated away from', () => {
+      // The same defect one method down, which review did not flag.
+      const refresh = new Subject<unknown>();
+      const taskService = TestBed.inject(TaskService) as unknown as {
+        getTask: ReturnType<typeof vi.fn>;
+      };
+
+      component.selectTask({ id: 'task-A', name: 'First' } as never);
+      taskService.getTask.mockReturnValue(refresh.asObservable());
+      component['refreshCurrentTask']();
+
+      component.selectTask({ id: 'task-B', name: 'Second' } as never);
+
+      refresh.next({ id: 'task-A', name: 'First, refreshed' });
+      refresh.complete();
+
+      expect(component.selectedTask()?.id).toBe('task-B');
+    });
   });
 
   it('binds one consistent value when the real blob was fetched', () => {

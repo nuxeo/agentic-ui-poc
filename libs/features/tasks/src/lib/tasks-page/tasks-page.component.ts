@@ -308,26 +308,52 @@ export class TasksPageComponent implements OnInit {
   }
 
   private loadAndSelectTask(taskId: string): void {
+    // Claims the selection before the request, so a click during it wins.
+    //
+    // `selectionGeneration` previously only covered work started *by* `selectTask`, and this route
+    // request was not tied to it until its response arrived. So: route opens task A, the user clicks
+    // task B while A is still loading, then A's response lands and calls `selectTask(A)` — silently
+    // switching the user back to a task they had navigated away from.
+    const gen = ++this.selectionGeneration;
     this.taskLoading.set(true);
-    this.taskService.getTask(taskId).subscribe({
-      next: (task) => {
-        this.taskLoading.set(false);
-        this.selectTask(task);
-      },
-      error: () => this.taskLoading.set(false),
-    });
+    this.taskService
+      .getTask(taskId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (task) => {
+          if (gen !== this.selectionGeneration) return;
+          this.taskLoading.set(false);
+          this.selectTask(task);
+        },
+        error: () => {
+          // Guarded too: a stale failure would otherwise clear the loading state of a newer selection.
+          if (gen !== this.selectionGeneration) return;
+          this.taskLoading.set(false);
+        },
+      });
   }
 
   /** Re-fetch the currently selected task to refresh its actors / state. */
   private refreshCurrentTask(): void {
     const current = this.selectedTask();
     if (!current) return;
-    this.taskService.getTask(current.id).subscribe({
-      next: (updated) => this.selectedTask.set(updated),
-      error: () => {
-        /* keep current */
-      },
-    });
+    // Reads the generation without incrementing it: this refreshes the existing selection rather than
+    // making a new one. The guard is still needed — the same defect as `loadAndSelectTask`, one method
+    // down and not flagged in review: a refresh of task A landing after the user selected task B would
+    // overwrite B with A.
+    const gen = this.selectionGeneration;
+    this.taskService
+      .getTask(current.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          if (gen !== this.selectionGeneration) return;
+          this.selectedTask.set(updated);
+        },
+        error: () => {
+          /* keep current */
+        },
+      });
   }
 
   private resetForm(): void {
