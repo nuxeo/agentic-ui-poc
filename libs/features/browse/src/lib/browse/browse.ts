@@ -856,10 +856,14 @@ export class BrowseComponent {
   }
 
   private loadThumbnails(docs: NuxeoDocument[], reset = true): void {
-    // Minted on every invocation, including a non-resetting one: two loaders can otherwise share a
-    // generation and the earlier one's callbacks survive the later one's reset. Same guard as the
-    // Search, Trash and Assets loaders.
-    const generation = ++this.thumbnailGeneration;
+    // Only a RESETTING load invalidates the batch. An additive load — an optimistic paste, or the
+    // Trash tab appending a page — must SHARE the current generation, because it is adding to the
+    // batch rather than replacing it.
+    //
+    // Minting unconditionally was an over-correction on my part: an additive call while the folder's
+    // own requests were still in flight bumped the token, so every one of those callbacks returned at
+    // the guard and the folder's thumbnails never appeared at all.
+    const generation = reset ? ++this.thumbnailGeneration : this.thumbnailGeneration;
     if (reset) {
       // Drop the selection layer's copies first: it retains these exact strings and the shell
       // topbar binds them into `<img [src]>`, and selection survives a folder change.

@@ -977,7 +977,11 @@ export class SearchComponent {
       // Invalidate any in-flight AI request before restoring standard state. Without this a late
       // `nlToNxql` or `nxqlSearch` response re-enabled `aiSearchExecuted` and overwrote the standard
       // thumbnail batch loaded just below, while the UI was already back in standard mode.
-      this.aiRequestGeneration += 1;
+      //
+      // Via `supersedeAiRequest` rather than a bare increment, because the invalidation alone left
+      // `loading` set by a pending `runNxqlQuery` — so leaving AI mode restored the standard results
+      // behind a spinner that would never clear.
+      this.supersedeAiRequest();
       this.resetAiSearchState();
       this.beginThumbnailBatch();
       this.loadThumbnails(this.results());
@@ -995,11 +999,32 @@ export class SearchComponent {
     this.executeAiSearch();
   }
 
+  /**
+   * Mints a new AI request generation **and** releases the loading state the superseded work owned.
+   *
+   * The two halves are inseparable, which is why this is a function rather than two lines at each
+   * call site. A generation guard makes the superseded callbacks `return` early — so everything they
+   * would have cleared on the way out never gets cleared, and the page sits behind a spinner that no
+   * longer has a request behind it.
+   *
+   * I have now made exactly this mistake three times in this PR: `taskLoading` in the tasks page, and
+   * both of these call sites. Each time the guard was added and the release was not. Stating it once
+   * here is the only version that stops the fourth.
+   */
+  private supersedeAiRequest(): number {
+    const generation = ++this.aiRequestGeneration;
+    this.loading.set(false);
+    this.aiLoading.set(false);
+    return generation;
+  }
+
   executeAiSearch(): void {
     const query = this.aiQuery().trim();
     if (!query) return;
 
-    const generation = ++this.aiRequestGeneration;
+    // Supersedes any in-flight AI request and releases its loading state: an NXQL request already
+    // running had set `loading`, and its callbacks are about to start returning at the guard.
+    const generation = this.supersedeAiRequest();
     this.aiLoading.set(true);
     this.aiError.set(null);
     this.aiGeneratedNxql.set('');

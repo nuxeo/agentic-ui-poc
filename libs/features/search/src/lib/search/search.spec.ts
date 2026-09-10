@@ -805,6 +805,43 @@ describe('SearchComponent', () => {
       expect(component.aiSearchExecuted()).toBe(false);
     });
 
+    /**
+     * A generation guard makes superseded callbacks return early, so whatever they would have cleared
+     * on the way out has to be cleared at supersede time instead. Miss that and the page sits behind a
+     * spinner with no request behind it. These two cover both supersede paths.
+     */
+    describe('superseding an AI request releases its loading state', () => {
+      it('clears loading when the user leaves AI mode mid-request', () => {
+        const pending = new Subject<{ entries: never[] }>();
+        mockNuxeoApiBase.nxqlSearch.mockReturnValue(pending.asObservable());
+
+        component.aiSearchMode.set(true);
+        component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
+        expect(component.loading()).toBe(true);
+
+        component.toggleAiSearch();
+
+        // The pending callbacks will now return at the guard, so leaving AI mode has to release this.
+        expect(component.loading()).toBe(false);
+        expect(component.aiLoading()).toBe(false);
+      });
+
+      it('clears loading when a new AI search supersedes a running NXQL request', () => {
+        const pendingNxql = new Subject<{ entries: never[] }>();
+        mockNuxeoApiBase.nxqlSearch.mockReturnValue(pendingNxql.asObservable());
+        component['runNxqlQuery']('SELECT * FROM Document', ++component['aiRequestGeneration']);
+        expect(component.loading()).toBe(true);
+
+        // A new AI search starts. If its `nlToNxql` phase fails before `runNxqlQuery` runs, nothing
+        // else would ever reset `loading`.
+        mockAiGatewayService.nlToNxql.mockReturnValue(throwError(() => new Error('nl failed')));
+        component.aiQuery.set('another query');
+        component.executeAiSearch();
+
+        expect(component.loading()).toBe(false);
+      });
+    });
+
     it('should not execute AI search with empty query', () => {
       component.aiQuery.set('');
       component.executeAiSearch();
