@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
-import { of, type Observable } from 'rxjs';
+import { Subject, of, type Observable } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -32,6 +32,13 @@ describe('AssetsQueueComponent — thumbnail object URL lifecycle', () => {
   let component: AssetsQueueComponent;
 
   const items = signal<AssetQueueItem[]>([]);
+  /**
+   * Hoisted so a test can leave a request PENDING. The default resolves synchronously, which is what
+   * every other test here wants — and is also why the late-response guard had no coverage: a
+   * synchronous `of(...)` callback runs inside the effect, when the id is always still active.
+   */
+  const fetchThumbnail = vi.fn((_uid?: string): Observable<Blob | null> => of(new Blob(['thumb'])));
+
   const created: string[] = [];
   const revoked: string[] = [];
   let seq = 0;
@@ -46,6 +53,7 @@ describe('AssetsQueueComponent — thumbnail object URL lifecycle', () => {
     revoked.length = 0;
     seq = 0;
     items.set([]);
+    fetchThumbnail.mockImplementation(() => of(new Blob(['thumb'])));
 
     (URL as unknown as { createObjectURL: unknown }).createObjectURL = vi.fn(() => {
       const url = `blob:mock/${(seq += 1)}`;
@@ -61,12 +69,7 @@ describe('AssetsQueueComponent — thumbnail object URL lifecycle', () => {
       providers: [
         provideZonelessChangeDetection(),
         { provide: AssetAggregationService, useValue: { items } },
-        {
-          provide: DocumentDetailService,
-          useValue: {
-            fetchThumbnail: vi.fn((): Observable<Blob | null> => of(new Blob(['thumb']))),
-          },
-        },
+        { provide: DocumentDetailService, useValue: { fetchThumbnail } },
       ],
     })
       .overrideComponent(AssetsQueueComponent, { set: { imports: [], template: '<div></div>' } })
@@ -129,6 +132,48 @@ describe('AssetsQueueComponent — thumbnail object URL lifecycle', () => {
     expect(component.thumbnailMap()['doc2']).toBe(survivor);
     expect(revoked).not.toContain(survivor);
     expect(created).toHaveLength(3);
+  });
+
+  it('drops a late response for a result that already left the list', () => {
+    // The guard this exercises could not be reached before: with a synchronous `of(...)` the callback
+    // runs inside the effect, while the id is still active. Only a pending request can arrive after its
+    // item has gone, which is the case that mints an orphaned URL — one nothing renders and nothing
+    // revokes until teardown.
+    const pending = new Subject<Blob | null>();
+    fetchThumbnail.mockImplementation((uid?: string) =>
+      uid === 'slow' ? pending.asObservable() : of(new Blob(['thumb'])),
+    );
+
+    withResults('slow');
+    expect(created).toHaveLength(0);
+
+    // A new search drops 'slow' while its thumbnail is still in flight.
+    withResults('other');
+    expect(created).toHaveLength(1);
+
+    pending.next(new Blob(['late']));
+    pending.complete();
+
+    // No URL minted for the departed id, and nothing added to the map.
+    expect(created).toHaveLength(1);
+    expect(component.thumbnailMap()['slow']).toBeUndefined();
+    expect(Object.keys(component.thumbnailMap())).toEqual(['other']);
+  });
+
+  it('still accepts a response that arrives while its result is present', () => {
+    // The positive control for the same path: a pending request whose id is STILL active must be
+    // honoured, or the guard would just be dropping everything asynchronous.
+    const pending = new Subject<Blob | null>();
+    fetchThumbnail.mockImplementation(() => pending.asObservable());
+
+    withResults('doc1');
+    expect(created).toHaveLength(0);
+
+    pending.next(new Blob(['late but valid']));
+    pending.complete();
+
+    expect(created).toHaveLength(1);
+    expect(component.thumbnailMap()['doc1']).toBe(created[0]);
   });
 
   it('revokes everything still held on destroy', () => {
