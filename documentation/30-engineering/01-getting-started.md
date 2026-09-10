@@ -117,10 +117,10 @@ npm run beta:backend
 
 ### Optional services
 
-| Service | Command                                              | What it gives you                                                                                                               |
-| ------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| ARender | `docker compose -f arender-docker-compose.yml up -d` | The document viewer. Setup: [`docs/arender-setup.md`](../../docs/arender-setup.md), env in [`.env.arender`](../../.env.arender) |
-| Mailpit | `docker compose -f mailpit-docker-compose.yml up -d` | Local SMTP, for permission-notification emails                                                                                  |
+| Service | Command                                                                      | What it gives you                                                                                                                                                      |
+| ------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ARender | `docker compose -f arender-docker-compose.yml --env-file .env.arender up -d` | The document viewer. Setup: [`docs/arender-setup.md`](../../docs/arender-setup.md) — copy [`.env.arender.example`](../../.env.arender.example) to `.env.arender` first |
+| Mailpit | `docker compose -f mailpit-docker-compose.yml up -d`                         | Local SMTP, for permission-notification emails                                                                                                                         |
 
 ---
 

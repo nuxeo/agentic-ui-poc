@@ -59,8 +59,11 @@ vitest.config.*.timestamp*
 test-results/
 playwright-report/
 
-# Environment files
+# Environment files. `.env` alone matched one exact path, which let
+# `.env.arender` be committed with a credential in it.
 .env
+.env.*
+!.env.*.example
 
 # Nuxeo server configuration (secrets, bind-mounted into the container)
 /nuxeo-conf/*.conf

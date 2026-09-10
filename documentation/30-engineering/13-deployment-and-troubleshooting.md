@@ -80,13 +80,13 @@ it.** That is the mechanism behind the product's central promise.
 
 ## 3. Local development stack
 
-| Component          | How                                                                                                                                                                                                                            |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Nuxeo + OpenSearch | Docker, container `nuxeo`, port 8080. See [`docs/opensearch-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/opensearch-setup.md)                                                        |
-| Server-side config | [`nuxeo-conf/`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/nuxeo-conf) — read its README                                                                                                           |
-| The app            | `npx nx serve nuxeo-ui` → `:4200`, proxying `/nuxeo` → `:8080`                                                                                                                                                                 |
-| ARender            | `docker compose -f arender-docker-compose.yml up -d`. nginx auth proxy + UI + document-service-broker. [`docs/arender-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/arender-setup.md) |
-| Mailpit            | `docker compose -f mailpit-docker-compose.yml up -d` — local SMTP for permission notifications                                                                                                                                 |
+| Component          | How                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Nuxeo + OpenSearch | Docker, container `nuxeo`, port 8080. See [`docs/opensearch-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/opensearch-setup.md)                                                                                |
+| Server-side config | [`nuxeo-conf/`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/nuxeo-conf) — read its README                                                                                                                                   |
+| The app            | `npx nx serve nuxeo-ui` → `:4200`, proxying `/nuxeo` → `:8080`                                                                                                                                                                                         |
+| ARender            | `docker compose -f arender-docker-compose.yml --env-file .env.arender up -d`. nginx auth proxy + UI + document-service-broker. [`docs/arender-setup.md`](https://github.com/nuxeo/agentic-ui-poc/blob/feature/adf-hx-browse-poc/docs/arender-setup.md) |
+| Mailpit            | `docker compose -f mailpit-docker-compose.yml up -d` — local SMTP for permission notifications                                                                                                                                                         |
 
 Verify with `npm run beta:backend`.
 
