@@ -341,6 +341,14 @@ Everything in section 4 depends on which `SecurityContext` each binding lands in
 actually does with a `Safe*` value in each one. Both were established against the installed
 `@angular/core@20.3.27` and `@angular/compiler@20.3.27`, not recalled.
 
+**Still valid at 20.3.31, and checked rather than assumed.** The framework has since moved to
+20.3.31 to clear two advisories, one of which is a **sanitization bypass in `@angular/core` and
+`@angular/compiler`** — that is, a fix to the very component these facts describe, so it is exactly
+the kind of change that could have invalidated them. It did not: `angular-security-context.spec.ts`
+pins each of these contexts by observation rather than by assertion about the version, and it passes
+under 20.3.31. The version numbers above are left as the provenance of the original reading, not
+updated, because they record which source was actually opened.
+
 **Fact 1 — the URL allow-pattern accepts `blob:`.**
 `node_modules/@angular/core/fesm2022/debug_node.mjs:5550`:
 
