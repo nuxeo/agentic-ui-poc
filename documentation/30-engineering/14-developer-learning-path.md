@@ -1247,6 +1247,13 @@ to read each morning of Phase 4 onwards:
 Versions as resolved in `package-lock.json` at commit `e334b0f`. Where `package.json` declares a
 range, the range follows in brackets.
 
+**Two baselines, not one.** The Angular row was refreshed separately, at `3f381e2` (#164), where the
+framework moved to 20.3.31 to clear two advisories — so its numbers do not come from `e334b0f` and
+cannot be reproduced there. **No other row has been re-verified since `e334b0f`**, and some may have
+drifted; the honest fix is to re-baseline the whole matrix against one revision, which is more than an
+Angular version bump should carry. Until then, reproduce the Angular row at `3f381e2` and the rest at
+`e334b0f`.
+
 ### Runtime dependencies
 
 | Package                                                                                    | Resolved                                 |
