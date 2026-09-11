@@ -267,7 +267,7 @@ DocumentService`. The chain, read from the published bundle:
   dropped. `PACKAGED_BROWSE_COLUMNS` maps cleanly onto upstream's `[schema]` as
   `DataColumn[]`, so Layer 1 can drive the real DataTable without a second column list.
 - **The published packages are compiled against Angular 19.2.18**, per the
-  `ɵɵngDeclareFactory` metadata, while this repo runs 20.3.27. It compiles and builds;
+  `ɵɵngDeclareFactory` metadata, while this repo runs 20.3.31. It compiles and builds;
   treat any partial-compilation oddity as a candidate cause before blaming our code.
 - **The full provider chain for `HxpDocumentListComponent` is six API ports, not three,
   and it was walked to the end.** `DOCUMENT`, `QUERY` and `VERSION` are

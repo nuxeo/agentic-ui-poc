@@ -172,9 +172,13 @@ Settled by first-hand inspection. Do not re-litigate; if you contradict one, pro
 - **Nothing in this repo uses a real adf-hx component.** No `@alfresco/*` dependency is declared,
   locked or installed; zero `@alfresco` imports in source; all 22 `hxcs-js-client` imports are
   `import type`; all 15 `hxp-*` components are declared locally in `libs/shared/adf-hx-bridge`.
-- **The branch is sound.** `npm ci` succeeds; installed versions match HFA `develop` exactly
-  (Angular 20.3.27, Material 20.2.14, TypeScript 5.8.3, Satori 0.2.0, hxcs-js-client 2.0.111);
-  guardrails, lint and build all pass; 280 of 281 tests pass.
+- **The branch is sound.** `npm ci` succeeds; Material 20.2.14, TypeScript 5.8.3, Satori 0.2.0 and
+  hxcs-js-client 2.0.111 match HFA `develop`; guardrails, lint and build all pass; 280 of 281 tests
+  pass. **Angular deliberately no longer matches**: this repo runs 20.3.31 where HFA `develop` runs
+  20.3.27, because two published advisories put `>=20.0.0 <20.3.28` in the vulnerable range — one of
+  them a sanitization bypass in `@angular/core` and `@angular/compiler`. The divergence is a patch
+  within the same minor and is the deliberate choice, not drift; matching HFA again means HFA moving
+  up, not this repo moving back.
 
 ---
 
