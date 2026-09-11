@@ -598,12 +598,27 @@ the point — assert that a `javascript:` and a cross-origin `viewerOrigin` are 
 
 ### Category D — 8 sanitised-HTML bypasses (centralise; the pairing already has a gate)
 
-Every one of these is currently safe, and `scripts/review-guardrails.mjs:909–969` already enforces
-_why_: a `bypassSecurityTrustHtml` with no `DOMPurify.sanitize()` / `escapeHtml()` in the same class
-member fails the guardrail. That check's own comment explains the stake — `note:note` is authored by
-any user with write access, so an unpaired render path is stored XSS, and
+Every one of these is currently safe, and the pairing is enforced: a `bypassSecurityTrustHtml` with no
+`DOMPurify.sanitize()` / `escapeHtml()` beside it fails the gate. The stake is that `note:note` is
+authored by any user with write access, so an unpaired render path is stored XSS, and
 `.ai/state/supply-chain-allowlist.json` accepts a known Quill XSS advisory _on the grounds that_
 every render path sanitises.
+
+**Updated 2026-09-11, and scoped: only the enforcement claim above was corrected, not the table
+below.** This section named `scripts/review-guardrails.mjs:909–969` as the enforcing check. That is
+stale twice over. The check moved to `sanitizer-audit.mjs` check 5, which walks the AST rather than
+matching a regex; `review-guardrails.mjs:909` is now the comment recording its removal. And the Quill
+acceptance does **not** rest on it alone — check 5 fires on the presence of `bypassSecurityTrustHtml`,
+so it cannot see `readQuillHtml()`, which sanitises and returns a plain string on the path that saves
+the note. That half is covered by a test in `note-editor.spec.ts`.
+
+The table below is the **as-analysed inventory**, kept as the record the Sonar keys were raised
+against; its line numbers have drifted since and are not maintained. The two that get cited elsewhere
+are now `document-detail.ts:1862` (row 1) and `:3394` (row 2), and row 4's `htmlReadonlyView` is now
+`note-editor.ts:118-120`. Row 4 is the one that matters for the Quill advisory: rows 1 and 2 are the
+**markdown** branches, so they never render the `text/html` a Quill note produces. That distinction
+was got wrong in the supply-chain allowlist and corrected on the same date; if you cite a row from
+here, check which content type it handles first.
 
 | #   | Site                                           | Sanitiser in the same member                              | Sonar key              |
 | --- | ---------------------------------------------- | --------------------------------------------------------- | ---------------------- |

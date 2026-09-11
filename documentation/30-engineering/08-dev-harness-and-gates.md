@@ -100,19 +100,19 @@ running the full set on a known-broken tree wastes minutes per iteration.
 [`scripts/review-guardrails.mjs`](../../scripts/review-guardrails.mjs), 11 checks, run by
 the gate and by CI.
 
-| Check                     | Enforces                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------- |
-| `checkThemeTokens`        | Colour literals come from a themed namespace with a fallback, or declare a `--*` token |
-| `checkDocsNumbering`      | No duplicate `## n.` section numbers in `docs/`                                        |
-| `checkVitestProjects`     | A project with an `@nx/vitest:test` target has a Vite config                           |
-| `checkBlobUrlLifecycle`   | Every file creating an object URL revokes one — **repo-wide**                          |
-| `checkNoNuxeoUrlInImgSrc` | No `<img [src]>` bound to a Nuxeo URL                                                  |
-| `checkTypeSafetyEscapes`  | Warns on `as unknown as` / `as never`                                                  |
-| `checkHardcodedSecrets`   | Credential-shaped literals                                                             |
-| `checkAngularDevAssets`   | Dev-only assets do not ship                                                            |
-| `checkAdfHxWorkaroundIds` | A `WORKAROUND(adf-hx): W<n>` marker has a register row **and vice versa**              |
-| `checkNoAdfHxInPublicApi` | No adf-hx type reachable through a library barrel, walking the re-export graph         |
-| `checkSanitizerPairing`   | Every `bypassSecurityTrustHtml` has a sanitiser in the **same class member**           |
+| Check                                  | Enforces                                                                                                   |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `checkThemeTokens`                     | Colour literals come from a themed namespace with a fallback, or declare a `--*` token                     |
+| `checkDocsNumbering`                   | No duplicate `## n.` section numbers in `docs/`                                                            |
+| `checkVitestProjects`                  | A project with an `@nx/vitest:test` target has a Vite config                                               |
+| `checkBlobUrlLifecycle`                | Every file creating an object URL revokes one — **repo-wide**                                              |
+| `checkNoNuxeoUrlInImgSrc`              | No `<img [src]>` bound to a Nuxeo URL                                                                      |
+| `checkTypeSafetyEscapes`               | Warns on `as unknown as` / `as never`                                                                      |
+| `checkHardcodedSecrets`                | Credential-shaped literals                                                                                 |
+| `checkAngularDevAssets`                | Dev-only assets do not ship                                                                                |
+| `checkAdfHxWorkaroundIds`              | A `WORKAROUND(adf-hx): W<n>` marker has a register row **and vice versa**                                  |
+| `checkNoAdfHxInPublicApi`              | No adf-hx type reachable through a library barrel, walking the re-export graph                             |
+| `checkNoAttrPrefixedLiteralAttributes` | No `[attr.aria-*]`, `[attr.role]` or `[attr.title]` on a literal attribute — a silent accessible-name miss |
 
 Two of these were **diff-scoped** until 2026-08-24, meaning every violation predating the
 check was permanently exempt — not a rule, a rule for new code. Four real blob-URL leaks
@@ -122,14 +122,23 @@ lived behind that exemption while the gate reported pass on every run.
 that cost 0.95 MB of initial bundle was two hops away: the barrel exported a providers file
 which imported adf-hx.
 
-`checkSanitizerPairing` exists because the safety of the nine `bypassSecurityTrustHtml` calls is a
-**pairing**, not a property of either half. All nine were already correct — DOMPurify or an
-escape-then-build — but nothing enforced it, and deleting one `sanitize()` call would have left a
-compiling, passing, stored-XSS hole on a path that renders `note:note`, which any user with write
-access can author. It also underwrites the `quill` entry in the supply-chain allowlist, whose stated
-reason is exactly that every render path sanitises. It is scoped to the enclosing class member, so a
-sanitiser in a neighbouring method cannot vouch for a bypass, and it fails if it finds **zero**
-calls — a glob change must not read as a pass.
+The sanitiser pairing check is **no longer here**. It lived in this file as `checkSanitizerPairing`
+and was superseded by `sanitizer-audit.mjs` **check 5**, which walks the TypeScript AST instead of
+matching a regex — so comments are not code, and it catches the forms a regex cannot see at all
+(`sanitizer['bypassSecurityTrustHtml']`, destructuring, aliasing, `.call()`). The reasoning it was
+built on still stands: the safety of those calls is a **pairing**, not a property of either half, and
+deleting one `sanitize()` would otherwise leave a compiling, passing, stored-XSS hole on a path that
+renders `note:note`, which any user with write access can author.
+
+**What that check does and does not cover, because the distinction was got wrong twice.** Check 5
+fires on the presence of `bypassSecurityTrustHtml`. It therefore covers the render paths, and it
+structurally cannot cover a function that sanitises and returns a plain string — `readQuillHtml()` in
+`note-editor.ts` is exactly that, and it is the path that **persists** note HTML to Nuxeo. Until
+2026-09-11 the `quill` acceptance in `.ai/state/supply-chain-allowlist.json` named this check as its
+enforcement, which was wrong in both directions: the check had been renamed, and it never saw the
+exporter. That mitigation is now covered by a test in `note-editor.spec.ts` that drives `onSave()`
+with hostile markup and asserts what `saveNote` emits, confirmed to fail when the sanitise call is
+removed. Do not describe check 5 as underwriting the whole acceptance; it underwrites one half.
 
 ---
 

@@ -96,17 +96,54 @@ if (!prod) {
 const prodCounts = prod?.metadata?.vulnerabilities ?? {};
 const fullCounts = full?.metadata?.vulnerabilities ?? {};
 
-/** @type {{name: string, severity: string, title: string}[]} */
+/**
+ * The GHSA identifiers an audit finding actually cites, read out of its advisory URLs, deduplicated.
+ *
+ * This exists because keying an acceptance by package name alone let a wrong one pass unnoticed. The
+ * `quill` entry cited `GHSA-4943-9vgg-gr5r`, a 2021 advisory affecting `quill <= 1.3.7`, while the
+ * installed version was 2.0.3 — so the advisory that actually applied had never been reviewed, and
+ * this gate reported the acceptance as satisfied every run because the package name matched. Reading
+ * the identifier is what turns "something about quill was once accepted" into "this advisory was".
+ *
+ * Returns the ids AND a count of advisory objects it could not identify. The count is the load-bearing
+ * half: dropping an unrecognisable entry silently would let a finding that cites a recognised GHSA
+ * alongside, say, a bare CVE URL satisfy both the "no ids at all" guard and set equality, while the
+ * second advisory had never been accepted. An advisory this function cannot name is a reason to fail,
+ * not a value to discard.
+ */
+function ghsaIdsOf(v) {
+  const ids = [];
+  let unidentifiable = 0;
+  for (const entry of v.via ?? []) {
+    if (typeof entry === 'string') continue; // a package name, not an advisory
+    const match =
+      typeof entry?.url === 'string'
+        ? /(GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4})/i.exec(entry.url)
+        : null;
+    if (match) ids.push(match[1].toUpperCase());
+    else unidentifiable += 1;
+  }
+  return { ids: [...new Set(ids)].sort(), unidentifiable };
+}
+
+/**
+ * @type {{name: string, severity: string, title: string, url: string|null,
+ *         ghsas: string[], unidentifiableAdvisories: number, range: string|null}[]}
+ */
 const prodFindings = [];
 for (const [name, v] of Object.entries(prod?.vulnerabilities ?? {})) {
   const titles = (v.via ?? [])
     .map((x) => (typeof x === 'string' ? x : x.title))
     .filter(Boolean);
+  const { ids, unidentifiable } = ghsaIdsOf(v);
   prodFindings.push({
     name,
     severity: v.severity,
     title: titles[0] ?? 'no advisory title',
     url: (v.via ?? []).find((x) => typeof x !== 'string')?.url ?? null,
+    ghsas: ids,
+    unidentifiableAdvisories: unidentifiable,
+    range: typeof v.range === 'string' ? v.range : null,
   });
 }
 
@@ -133,6 +170,91 @@ for (const f of nonBlocking) {
   if (!entry.reason || !entry.expires) {
     fail(`allowlist entry for ${f.name} needs both "reason" and "expires" (YYYY-MM-DD).`);
     continue;
+  }
+  // The acceptance must name the advisory it accepts, and that identifier must be one the audit
+  // reports. Without this the entry accepts a package rather than a finding, so a later, different
+  // advisory against the same package inherits an approval nobody gave it.
+  if (!entry.advisory) {
+    fail(
+      `allowlist entry for ${f.name} needs an "advisory" field naming the GHSA it accepts. ` +
+        `The audit reports ${f.ghsas.length ? f.ghsas.join(', ') : 'no identifiable GHSA'}. ` +
+        'Accepting a package name rather than an advisory is how a stale acceptance survives.',
+    );
+    continue;
+  }
+  if (!f.ghsas.length) {
+    // Fail closed. If the identifier cannot be read there is nothing to compare, and treating that
+    // as a pass would restore exactly the hole this check exists to close.
+    fail(
+      `the allowlist accepts ${entry.advisory} for ${f.name}, but no GHSA id could be read from the ` +
+        'audit output, so the acceptance cannot be verified against the reported advisory.',
+    );
+    continue;
+  }
+  // An advisory the reader could not name is not the same as one that is absent. Without this, a
+  // finding citing a recognised GHSA next to an unrecognisable URL would satisfy both the guard above
+  // and the set equality below, while the second advisory had never been reviewed at all.
+  if (f.unidentifiableAdvisories > 0) {
+    fail(
+      `the audit reports ${f.unidentifiableAdvisories} advisory object(s) for ${f.name} with no ` +
+        `readable GHSA id, alongside ${f.ghsas.join(', ')}. The acceptance cannot be shown to cover ` +
+        'them, so it is treated as unverified rather than partial.',
+    );
+    continue;
+  }
+  // Set EQUALITY, not membership. `includes` would pass while a second advisory sat unreviewed
+  // beside the accepted one, which is the same package-level approval this check exists to remove —
+  // just one advisory later. `advisory` therefore takes a list when a package genuinely has more
+  // than one accepted finding, and every reported id must be named.
+  const accepted = [
+    ...new Set((Array.isArray(entry.advisory) ? entry.advisory : [entry.advisory]).map(String)),
+  ]
+    .map((id) => id.toUpperCase())
+    .sort();
+  const unaccepted = f.ghsas.filter((id) => !accepted.includes(id));
+  const unreported = accepted.filter((id) => !f.ghsas.includes(id));
+  if (unaccepted.length || unreported.length) {
+    fail(
+      `the allowlist accepts ${accepted.join(', ')} for ${f.name}, but the audit reports ` +
+        `${f.ghsas.join(', ')}.` +
+        (unaccepted.length ? ` Not accepted: ${unaccepted.join(', ')} — needs its own review.` : '') +
+        (unreported.length ? ` Accepted but not reported: ${unreported.join(', ')}.` : '') +
+        ' Every reported advisory must be named, or a new one inherits an approval nobody gave it.',
+    );
+    continue;
+  }
+  // Recording the affected range makes the acceptance specific to the version actually installed, so
+  // an upgrade into a newly-affected range cannot pass under a review of the old one.
+  //
+  // Keyed on PRESENCE, not truthiness. `entry.affects && …` skipped both checks for an explicitly
+  // supplied `""`, so a malformed entry read as "no range claimed" and passed — the field silently
+  // opting out of its own verification. Presence also means a supplied value must be usable: a
+  // non-string or an empty string is a broken entry, and a broken entry fails.
+  if (Object.hasOwn(entry, 'affects')) {
+    if (typeof entry.affects !== 'string' || entry.affects.trim() === '') {
+      fail(
+        `the allowlist entry for ${f.name} supplies "affects" but its value is not a non-empty ` +
+          `string (got ${JSON.stringify(entry.affects)}). Remove the field or give it the range the ` +
+          'audit reports.',
+      );
+      continue;
+    }
+    // Supplying `affects` and finding no range to compare is a failure, not a pass: the audit shape
+    // changing is exactly when an unverified acceptance is most dangerous.
+    if (f.range === null) {
+      fail(
+        `the allowlist accepts ${f.name} for versions "${entry.affects}", but the audit reported no ` +
+          'range to compare against, so the acceptance cannot be verified against what is installed.',
+      );
+      continue;
+    }
+    if (entry.affects !== f.range) {
+      fail(
+        `the allowlist accepts ${f.name} for versions "${entry.affects}", but the audit reports ` +
+          `"${f.range}". Re-review against the installed version.`,
+      );
+      continue;
+    }
   }
   if (entry.expires < today) {
     fail(
