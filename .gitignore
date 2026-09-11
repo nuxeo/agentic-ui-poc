@@ -114,3 +114,10 @@ playwright-report/
 # SonarCloud analysis artifacts (generated during local scans)
 .scannerwork/
 .sonar/
+
+# Local security planning notes, kept for agent reference rather than shipped. Deliberately
+# untracked: the file is a dated prose snapshot of mutable state — open alert counts, Sonar
+# issue counts, per-file `.subscribe()` tallies — which is the failure mode CLAUDE.md records
+# for summaries that go stale silently and are believed anyway. Ignored rather than merely
+# untracked so a stray `git add -A` cannot put it back.
+/docs/security-next-steps.md
