@@ -1,5 +1,10 @@
 <audio><source [src]="safe()" type="audio/mpeg" /></audio>
-<video [poster]="safe()"><source [src]="safe()" type="video/mp4" /></video>
-<video class="plain-src" [src]="safe()"></video>
+<!-- `track` only satisfies the captions rule; this fixture exists to observe attribute
+     rendering, so there is no media to caption. -->
+<video [poster]="safe()">
+  <source [src]="safe()" type="video/mp4" />
+  <track kind="captions" />
+</video>
+<video class="plain-src" [src]="safe()"><track kind="captions" /></video>
 <img [src]="safe()" alt="" />
 <a [href]="safe()">link</a>
