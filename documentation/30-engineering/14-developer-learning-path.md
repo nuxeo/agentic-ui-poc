@@ -174,8 +174,8 @@ Estimated effort: **10 hours**.
 
 ### 5. Angular 20.3 — **Must** (the largest single module)
 
-Resolved: **20.3.27** across `@angular/core`, `common`, `router`, `forms`, `compiler`,
-`animations`, `platform-browser`, `platform-browser-dynamic` (`~20.3.0`). CLI and build tooling
+Resolved: **20.3.31** across `@angular/core`, `common`, `router`, `forms`, `compiler`,
+`animations`, `platform-browser`, `platform-browser-dynamic` (`~20.3.31`). CLI and build tooling
 also 20.3.x. `zone.js` **0.15.1**.
 
 Angular 20 is a genuinely different framework from Angular 8–14. If your Angular knowledge predates
@@ -775,7 +775,7 @@ and **must not** be repointed at public npm.
 
 Context that explains a lot of the workarounds: there has been no stable adf-hx release in twelve
 months (last true stable `7.19.5`, on an Angular 15 baseline); the published packages are compiled
-against **Angular 19.2.18** while this repo runs 20.3.27; and the dependency contract is
+against **Angular 19.2.18** while this repo runs 20.3.31; and the dependency contract is
 **under-declared** — one declared peer against thirteen imported packages — so the pin set is
 maintained by hand.
 
@@ -1251,7 +1251,7 @@ range, the range follows in brackets.
 
 | Package                                                                                    | Resolved                                 |
 | ------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `@angular/core`, `common`, `router`, `forms`, `compiler`, `animations`, `platform-browser` | 20.3.27 (`~20.3.0`)                      |
+| `@angular/core`, `common`, `router`, `forms`, `compiler`, `animations`, `platform-browser` | 20.3.31 (`~20.3.31`)                     |
 | `@angular/material`                                                                        | 20.2.14 (`~20.2.0`)                      |
 | `@angular/cdk`                                                                             | 20.2.14 (`~20.2.0`)                      |
 | `@angular/material-date-fns-adapter`                                                       | 20.2.14                                  |
