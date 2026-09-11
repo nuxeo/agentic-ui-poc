@@ -117,15 +117,18 @@ wrong thing is worse than one that fails.
 
 What now exists:
 
-| Layer           | Gate                                                                                           |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| Dependencies    | `supply-chain` — production `high`/`critical` fails; acceptances are dated and **expire**      |
-| Our code        | `code-scanning` — reads the CodeQL alerts, and fails if the ref was **never analysed**         |
-| Repo invariants | `checkSanitizerPairing` — every `bypassSecurityTrustHtml` needs a sanitiser in the same member |
+| Layer           | Gate                                                                                      |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| Dependencies    | `supply-chain` — production `high`/`critical` fails; acceptances are dated and **expire** |
+| Our code        | `code-scanning` — reads the CodeQL alerts, and fails if the ref was **never analysed**    |
+| Repo invariants | `sanitizer-audit` check 5 — every `bypassSecurityTrustHtml` needs a sanitiser beside it   |
 
 Current production audit: **1 low** (`quill` XSS via HTML export), accepted until 2026-11-30 because
-every note-rendering path sanitises through DOMPurify — and that acceptance now rests on an enforced
-invariant rather than a snapshot. Dev-inclusive is **9 high, 13 moderate**, all build-time only:
+every note-rendering path sanitises through DOMPurify — and, since 2026-09-11, on two enforcements
+rather than one claim: `sanitizer-audit` check 5 for the render paths, and a test in
+`note-editor.spec.ts` for the path that saves. The second was added because review found the
+acceptance had cited check 5 for both, and check 5 structurally cannot see a function that sanitises
+and returns a string rather than bypassing. Dev-inclusive is **9 high, 13 moderate**, all build-time only:
 reported deliberately, not gated, because gating on a total no customer is exposed to would be
 permanently red and therefore bypassed.
 

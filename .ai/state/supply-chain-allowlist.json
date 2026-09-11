@@ -4,9 +4,18 @@
     "",
     "`advisories` accepts a NON-blocking production advisory. `high` and `critical` cannot be",
     "accepted here at all — the gate fails on them regardless of what this file says. Every entry",
-    "needs a `reason` and an `expires`; an expired entry FAILS, so an acceptance is a decision with",
-    "a review date rather than a permanent one. An entry for an advisory the audit no longer",
-    "reports also fails, because a standing acceptance of a fixed problem reads as coverage.",
+    "needs an `advisory` (the GHSA id), a `reason` and an `expires`; an expired entry FAILS, so an",
+    "acceptance is a decision with a review date rather than a permanent one. An entry for an",
+    "advisory the audit no longer reports also fails, because a standing acceptance of a fixed",
+    "problem reads as coverage.",
+    "",
+    "`advisory` is required and is checked against the GHSA the audit actually reports. It was added",
+    "on 2026-09-11 after the quill entry was found accepting `GHSA-4943-9vgg-gr5r`, a 2021 advisory",
+    "affecting quill <= 1.3.7, while 2.0.3 was installed — so the advisory that really applied had",
+    "never been reviewed, and this gate called the acceptance satisfied on every run because the",
+    "package NAME matched. Keying on the name accepts a package; keying on the id accepts a finding.",
+    "`affects` is optional, and when present must equal the audit's reported range, so an upgrade",
+    "into a newly-affected range cannot pass under a review of the old one.",
     "",
     "`unreferencedDependencies` excuses a production dependency that no source file imports. Four",
     "of these turned out to be genuinely unused — `openai`, `express`, `cors`, `dotenv` — and were",
@@ -16,15 +25,18 @@
   ],
   "advisories": {
     "quill": {
+      "advisory": "GHSA-v3m3-f69x-jf25",
+      "affects": "=2.0.3",
       "severity": "low",
-      "reason": "GHSA-v3m3-f69x-jf25 — XSS via Quill's HTML export, affecting quill = 2.0.3, which is what we run and is the latest published release (verified against the registry: there is nothing to upgrade to). Not reachable as configured: every path that renders note HTML sanitises first. note-editor.ts:502-503 reads getSemanticHTML() and passes it through DOMPurify.sanitize() before returning; document-detail.ts:1862 and :3394 render note HTML through renderTrustedHtml(), which sanitises before bypassing. getSemanticHTML()'s only other caller, note-editor.ts:484, compares the value for equality and discards it. Enforced by sanitizer-audit.mjs check 5, which walks the AST to require a sanitise call paired with every bypassSecurityTrustHtml. Revisit on the next Quill release or when the editor is replaced.",
+      "reason": "GHSA-v3m3-f69x-jf25 — XSS via Quill's HTML export, affecting quill = 2.0.3, which is what we run and is the latest published release (verified against the registry: there is nothing to upgrade to). Not reachable as configured: every path that renders note HTML sanitises first. note-editor.ts:502-503 reads getSemanticHTML() and passes it through DOMPurify.sanitize() before returning; document-detail.ts:1862 and :3394 render note HTML through renderTrustedHtml(), which sanitises before bypassing. getSemanticHTML()'s only other caller, note-editor.ts:484, compares the value for equality and discards it. Each half is enforced by a different thing, and neither covers the other: the document-detail render paths by sanitizer-audit.mjs check 5, which walks the AST to require a sanitise call paired with every bypassSecurityTrustHtml; the exporter by note-editor.spec.ts 'sanitises the exported HTML before emitting it', which drives onSave() with hostile markup and asserts what saveNote emits. Check 5 CANNOT cover the exporter — it fires on the presence of bypassSecurityTrustHtml and readQuillHtml() has none, it returns a plain string — so before that test existed, deleting the sanitise call left every gate green while raw Quill output was persisted. Revisit on the next Quill release or when the editor is replaced.",
       "reviewed": "2026-09-11",
       "expires": "2026-11-30",
       "$corrections": [
         "Re-reviewed 2026-09-11 because the previous entry was wrong in every verifiable particular while its conclusion was right — the most believable kind of stale acceptance, and one this gate cannot catch, since it matches entries by package name and never reads the GHSA or the line numbers.",
         "It cited GHSA-4943-9vgg-gr5r, a 2021 advisory affecting quill <= 1.3.7. We run 2.0.3, so that advisory does not apply to this repository at all, and the advisory that does — GHSA-v3m3-f69x-jf25, published 2026-01-13 — was therefore accepted by accident rather than by decision.",
         "All four source pointers were stale: document-detail.ts:1694 and :3133 are an unrelated collection check and a lock comment; note-editor.ts:89 and :95 are an imageUploading signal and an editor ref.",
-        "It named the guardrail `checkSanitizerPairing`. That was not a false claim when written, but it is now: the check was deliberately removed and superseded by sanitizer-audit.mjs check 5, which is AST-based rather than regex-based. The protection is real and stronger; only the name was wrong."
+        "It named the guardrail `checkSanitizerPairing`. That was not a false claim when written, but it is now: the check was deliberately removed and superseded by sanitizer-audit.mjs check 5, which is AST-based rather than regex-based. The protection is real and stronger; only the name was wrong.",
+        "Second review pass, same day: the correction above then overstated things in its own turn, by naming check 5 as the enforcement for ALL of it. Review caught that check 5 cannot see the exporter at all, since it triggers on bypassSecurityTrustHtml and readQuillHtml() contains none. The mitigation this whole acceptance rests on had no enforcement of any kind. A test was added and confirmed to fail when the sanitise call is removed. Recorded because the failure repeated inside one file in one day: a claim about which gate covers a mitigation is as easy to get wrong as the mitigation itself, and nothing machine-checks it."
       ]
     }
   },

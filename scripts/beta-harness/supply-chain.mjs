@@ -97,6 +97,22 @@ const prodCounts = prod?.metadata?.vulnerabilities ?? {};
 const fullCounts = full?.metadata?.vulnerabilities ?? {};
 
 /** @type {{name: string, severity: string, title: string}[]} */
+/**
+ * The GHSA identifiers an audit finding actually cites, read out of its advisory URLs.
+ *
+ * This exists because keying an acceptance by package name alone let a wrong one pass unnoticed. The
+ * `quill` entry cited `GHSA-4943-9vgg-gr5r`, a 2021 advisory affecting `quill <= 1.3.7`, while the
+ * installed version was 2.0.3 — so the advisory that actually applied had never been reviewed, and
+ * this gate reported the acceptance as satisfied every run because the package name matched. Reading
+ * the identifier is what turns "something about quill was once accepted" into "this advisory was".
+ */
+function ghsaIdsOf(v) {
+  return (v.via ?? [])
+    .filter((x) => typeof x !== 'string' && typeof x?.url === 'string')
+    .map((x) => /(GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4})/i.exec(x.url)?.[1])
+    .filter(Boolean);
+}
+
 const prodFindings = [];
 for (const [name, v] of Object.entries(prod?.vulnerabilities ?? {})) {
   const titles = (v.via ?? [])
@@ -107,6 +123,8 @@ for (const [name, v] of Object.entries(prod?.vulnerabilities ?? {})) {
     severity: v.severity,
     title: titles[0] ?? 'no advisory title',
     url: (v.via ?? []).find((x) => typeof x !== 'string')?.url ?? null,
+    ghsas: ghsaIdsOf(v),
+    range: typeof v.range === 'string' ? v.range : null,
   });
 }
 
@@ -132,6 +150,43 @@ for (const f of nonBlocking) {
   }
   if (!entry.reason || !entry.expires) {
     fail(`allowlist entry for ${f.name} needs both "reason" and "expires" (YYYY-MM-DD).`);
+    continue;
+  }
+  // The acceptance must name the advisory it accepts, and that identifier must be one the audit
+  // reports. Without this the entry accepts a package rather than a finding, so a later, different
+  // advisory against the same package inherits an approval nobody gave it.
+  if (!entry.advisory) {
+    fail(
+      `allowlist entry for ${f.name} needs an "advisory" field naming the GHSA it accepts. ` +
+        `The audit reports ${f.ghsas.length ? f.ghsas.join(', ') : 'no identifiable GHSA'}. ` +
+        'Accepting a package name rather than an advisory is how a stale acceptance survives.',
+    );
+    continue;
+  }
+  if (!f.ghsas.length) {
+    // Fail closed. If the identifier cannot be read there is nothing to compare, and treating that
+    // as a pass would restore exactly the hole this check exists to close.
+    fail(
+      `the allowlist accepts ${entry.advisory} for ${f.name}, but no GHSA id could be read from the ` +
+        'audit output, so the acceptance cannot be verified against the reported advisory.',
+    );
+    continue;
+  }
+  if (!f.ghsas.includes(entry.advisory)) {
+    fail(
+      `the allowlist accepts ${entry.advisory} for ${f.name}, but the audit reports ` +
+        `${f.ghsas.join(', ')}. A different advisory now applies, so it needs its own review rather ` +
+        'than inheriting this approval — that is the defect this check was added for.',
+    );
+    continue;
+  }
+  // Recording the affected range makes the acceptance specific to the version actually installed, so
+  // an upgrade into a newly-affected range cannot pass under a review of the old one.
+  if (entry.affects && f.range && entry.affects !== f.range) {
+    fail(
+      `the allowlist accepts ${f.name} for versions "${entry.affects}", but the audit reports ` +
+        `"${f.range}". Re-review against the installed version.`,
+    );
     continue;
   }
   if (entry.expires < today) {

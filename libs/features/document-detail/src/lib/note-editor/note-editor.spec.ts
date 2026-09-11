@@ -536,6 +536,42 @@ describe('NoteEditorComponent visual HTML editor', () => {
       expect(saveSpy).toHaveBeenCalledWith('<p>edited by hand</p>');
     });
 
+    /**
+     * The mitigation the quill advisory acceptance rests on, tested on the path that persists.
+     *
+     * `GHSA-v3m3-f69x-jf25` is an XSS in Quill's `getSemanticHTML()` export, and quill 2.0.3 is both
+     * what we run and the latest published release — there is nothing to upgrade to. The acceptance in
+     * `.ai/state/supply-chain-allowlist.json` therefore rests entirely on `readQuillHtml()` passing
+     * that export through DOMPurify before it leaves the component.
+     *
+     * That mitigation had no test, and review established that `sanitizer-audit.mjs` check 5 cannot
+     * cover it either: check 5 fires on the presence of `bypassSecurityTrustHtml`, and this path has
+     * none — it returns a plain string that the parent saves to Nuxeo. Deleting the `DOMPurify.sanitize`
+     * call would leave every gate green while raw Quill output was persisted, and stored note HTML is
+     * rendered back to every user with read access.
+     *
+     * The two existing sanitiser tests do not close this: they assert the read-only *render* path,
+     * which is a different direction of travel. This one asserts what gets written.
+     *
+     * Verified by deleting the `DOMPurify.sanitize` line in `readQuillHtml` and watching it fail on
+     * `<script`, per the rule that a guard is not evidence until it has been seen to go red.
+     */
+    it('sanitises the exported HTML before emitting it, which is what reaches the server', () => {
+      const saveSpy = vi.fn();
+      component.saveNote.subscribe(saveSpy);
+      quill.semanticHtml =
+        '<p>Note body</p><script>window.pwned = true</script><img src="x" onerror="alert(1)">';
+
+      component.onSave();
+
+      expect(saveSpy).toHaveBeenCalledTimes(1);
+      const emitted = saveSpy.mock.calls[0][0] as string;
+      expect(emitted).not.toContain('<script');
+      expect(emitted).not.toContain('onerror');
+      // The legitimate content must survive, or a sanitiser that returned '' would pass the above.
+      expect(emitted).toContain('Note body');
+    });
+
     it('emits the raw source text while source mode is active', async () => {
       const saveSpy = vi.fn();
       component.saveNote.subscribe(saveSpy);

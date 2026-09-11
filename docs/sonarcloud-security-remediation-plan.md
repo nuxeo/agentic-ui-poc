@@ -598,12 +598,18 @@ the point — assert that a `javascript:` and a cross-origin `viewerOrigin` are 
 
 ### Category D — 8 sanitised-HTML bypasses (centralise; the pairing already has a gate)
 
-Every one of these is currently safe, and `scripts/review-guardrails.mjs:909–969` already enforces
-_why_: a `bypassSecurityTrustHtml` with no `DOMPurify.sanitize()` / `escapeHtml()` in the same class
-member fails the guardrail. That check's own comment explains the stake — `note:note` is authored by
-any user with write access, so an unpaired render path is stored XSS, and
+Every one of these is currently safe, and the pairing is enforced: a `bypassSecurityTrustHtml` with no
+`DOMPurify.sanitize()` / `escapeHtml()` beside it fails the gate. The stake is that `note:note` is
+authored by any user with write access, so an unpaired render path is stored XSS, and
 `.ai/state/supply-chain-allowlist.json` accepts a known Quill XSS advisory _on the grounds that_
 every render path sanitises.
+
+**Updated 2026-09-11.** This section named `scripts/review-guardrails.mjs:909–969` as the enforcing
+check. That is now stale twice over. The check moved to `sanitizer-audit.mjs` check 5, which walks the
+AST rather than matching a regex; `review-guardrails.mjs:909` is now the comment recording its removal.
+And the Quill acceptance does **not** rest on it alone — check 5 fires on the presence of
+`bypassSecurityTrustHtml`, so it cannot see `readQuillHtml()`, which sanitises and returns a plain
+string on the path that saves the note. That half is covered by a test in `note-editor.spec.ts`.
 
 | #   | Site                                           | Sanitiser in the same member                              | Sonar key              |
 | --- | ---------------------------------------------- | --------------------------------------------------------- | ---------------------- |
