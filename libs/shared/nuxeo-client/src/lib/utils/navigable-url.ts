@@ -97,11 +97,16 @@ export function navigableUrlOrNull(
   // sees the control characters. Rejecting is cheap; no legitimate endpoint contains them.
   // Checked by code point rather than with a regex: a character class spelling these out literally
   // trips `no-control-regex`, and the intent reads more plainly this way.
-  for (let i = 0; i < candidate.length; i += 1) {
-    // `codePointAt`, not `charCodeAt`. Equivalent for this check — every value tested for is in the
-    // BMP and none is a surrogate — and it avoids the code-unit-vs-code-point trap for any future
-    // reader who widens the range.
-    const code = candidate.codePointAt(i);
+  //
+  // Iterated with `for...of`, which walks code points. An indexed loop calling `codePointAt(i)`
+  // does not: `length` and `i += 1` are both in UTF-16 code units, so an astral character is
+  // visited twice — once whole, then again as its trailing surrogate. `https://ok.example/😀x`
+  // yields `2f 1f600 de00 78` that way, versus `2f 1f600 78` here. No value tested for is a
+  // surrogate, so neither form rejects differently today; the earlier version simply did not
+  // avoid the code-unit trap its comment claimed to, which mattered only for a future reader
+  // widening the range. Fixed rather than re-explained.
+  for (const character of candidate) {
+    const code = character.codePointAt(0);
     if (code !== undefined && (code <= 0x20 || code === 0x7f)) return null;
   }
 

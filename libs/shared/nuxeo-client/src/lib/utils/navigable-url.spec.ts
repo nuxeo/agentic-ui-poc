@@ -195,6 +195,17 @@ describe('isNavigableBaseUrl', () => {
     expect(navigableUrlOrNull(value, { allowInsecure: true })).toBeNull();
   });
 
+  it('accepts an astral character, which the control-character scan must not visit in halves', () => {
+    // Stated plainly: this passes both before and after the `for...of` change, because a trailing
+    // surrogate is 0xDC00–0xDFFF and the scan only rejects <= 0x20 and 0x7F. It is therefore not a
+    // regression test for that change — nothing observable changed. It is a guard for the next
+    // person who widens the rejected range, which is the case where visiting `😀` as `1f600` and
+    // then again as a stray `de00` would start rejecting a legitimate URL.
+    const astral = 'https://ok.example/\u{1F600}x';
+    expect([...astral].length).toBeLessThan(astral.length); // it really is a surrogate pair
+    expect(navigableUrlOrNull(astral, { allowInsecure: true })).toBe(astral);
+  });
+
   // This assertion used to be the opposite, on the reasoning that "the harm came from concatenating
   // onto a *populated* query, not from a stray `?`". That was wrong, and review produced the
   // counterexample: `nuxeoInternalUrl` has a path appended to it as **text**, so
