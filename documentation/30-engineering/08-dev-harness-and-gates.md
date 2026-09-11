@@ -100,18 +100,19 @@ running the full set on a known-broken tree wastes minutes per iteration.
 [`scripts/review-guardrails.mjs`](../../scripts/review-guardrails.mjs), 11 checks, run by
 the gate and by CI.
 
-| Check                     | Enforces                                                                               |
-| ------------------------- | -------------------------------------------------------------------------------------- |
-| `checkThemeTokens`        | Colour literals come from a themed namespace with a fallback, or declare a `--*` token |
-| `checkDocsNumbering`      | No duplicate `## n.` section numbers in `docs/`                                        |
-| `checkVitestProjects`     | A project with an `@nx/vitest:test` target has a Vite config                           |
-| `checkBlobUrlLifecycle`   | Every file creating an object URL revokes one — **repo-wide**                          |
-| `checkNoNuxeoUrlInImgSrc` | No `<img [src]>` bound to a Nuxeo URL                                                  |
-| `checkTypeSafetyEscapes`  | Warns on `as unknown as` / `as never`                                                  |
-| `checkHardcodedSecrets`   | Credential-shaped literals                                                             |
-| `checkAngularDevAssets`   | Dev-only assets do not ship                                                            |
-| `checkAdfHxWorkaroundIds` | A `WORKAROUND(adf-hx): W<n>` marker has a register row **and vice versa**              |
-| `checkNoAdfHxInPublicApi` | No adf-hx type reachable through a library barrel, walking the re-export graph         |
+| Check                                  | Enforces                                                                                                   |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `checkThemeTokens`                     | Colour literals come from a themed namespace with a fallback, or declare a `--*` token                     |
+| `checkDocsNumbering`                   | No duplicate `## n.` section numbers in `docs/`                                                            |
+| `checkVitestProjects`                  | A project with an `@nx/vitest:test` target has a Vite config                                               |
+| `checkBlobUrlLifecycle`                | Every file creating an object URL revokes one — **repo-wide**                                              |
+| `checkNoNuxeoUrlInImgSrc`              | No `<img [src]>` bound to a Nuxeo URL                                                                      |
+| `checkTypeSafetyEscapes`               | Warns on `as unknown as` / `as never`                                                                      |
+| `checkHardcodedSecrets`                | Credential-shaped literals                                                                                 |
+| `checkAngularDevAssets`                | Dev-only assets do not ship                                                                                |
+| `checkAdfHxWorkaroundIds`              | A `WORKAROUND(adf-hx): W<n>` marker has a register row **and vice versa**                                  |
+| `checkNoAdfHxInPublicApi`              | No adf-hx type reachable through a library barrel, walking the re-export graph                             |
+| `checkNoAttrPrefixedLiteralAttributes` | No `[attr.aria-*]`, `[attr.role]` or `[attr.title]` on a literal attribute — a silent accessible-name miss |
 
 Two of these were **diff-scoped** until 2026-08-24, meaning every violation predating the
 check was permanently exempt — not a rule, a rule for new code. Four real blob-URL leaks

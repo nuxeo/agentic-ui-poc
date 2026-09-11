@@ -96,9 +96,8 @@ if (!prod) {
 const prodCounts = prod?.metadata?.vulnerabilities ?? {};
 const fullCounts = full?.metadata?.vulnerabilities ?? {};
 
-/** @type {{name: string, severity: string, title: string}[]} */
 /**
- * The GHSA identifiers an audit finding actually cites, read out of its advisory URLs.
+ * The GHSA identifiers an audit finding actually cites, read out of its advisory URLs, deduplicated.
  *
  * This exists because keying an acceptance by package name alone let a wrong one pass unnoticed. The
  * `quill` entry cited `GHSA-4943-9vgg-gr5r`, a 2021 advisory affecting `quill <= 1.3.7`, while the
@@ -107,12 +106,21 @@ const fullCounts = full?.metadata?.vulnerabilities ?? {};
  * the identifier is what turns "something about quill was once accepted" into "this advisory was".
  */
 function ghsaIdsOf(v) {
-  return (v.via ?? [])
-    .filter((x) => typeof x !== 'string' && typeof x?.url === 'string')
-    .map((x) => /(GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4})/i.exec(x.url)?.[1])
-    .filter(Boolean);
+  return [
+    ...new Set(
+      (v.via ?? [])
+        .filter((x) => typeof x !== 'string' && typeof x?.url === 'string')
+        .map((x) => /(GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4})/i.exec(x.url)?.[1])
+        .filter(Boolean)
+        .map((id) => id.toUpperCase()),
+    ),
+  ].sort();
 }
 
+/**
+ * @type {{name: string, severity: string, title: string, url: string|null,
+ *         ghsas: string[], range: string|null}[]}
+ */
 const prodFindings = [];
 for (const [name, v] of Object.entries(prod?.vulnerabilities ?? {})) {
   const titles = (v.via ?? [])
@@ -172,17 +180,39 @@ for (const f of nonBlocking) {
     );
     continue;
   }
-  if (!f.ghsas.includes(entry.advisory)) {
+  // Set EQUALITY, not membership. `includes` would pass while a second advisory sat unreviewed
+  // beside the accepted one, which is the same package-level approval this check exists to remove —
+  // just one advisory later. `advisory` therefore takes a list when a package genuinely has more
+  // than one accepted finding, and every reported id must be named.
+  const accepted = [
+    ...new Set((Array.isArray(entry.advisory) ? entry.advisory : [entry.advisory]).map(String)),
+  ]
+    .map((id) => id.toUpperCase())
+    .sort();
+  const unaccepted = f.ghsas.filter((id) => !accepted.includes(id));
+  const unreported = accepted.filter((id) => !f.ghsas.includes(id));
+  if (unaccepted.length || unreported.length) {
     fail(
-      `the allowlist accepts ${entry.advisory} for ${f.name}, but the audit reports ` +
-        `${f.ghsas.join(', ')}. A different advisory now applies, so it needs its own review rather ` +
-        'than inheriting this approval — that is the defect this check was added for.',
+      `the allowlist accepts ${accepted.join(', ')} for ${f.name}, but the audit reports ` +
+        `${f.ghsas.join(', ')}.` +
+        (unaccepted.length ? ` Not accepted: ${unaccepted.join(', ')} — needs its own review.` : '') +
+        (unreported.length ? ` Accepted but not reported: ${unreported.join(', ')}.` : '') +
+        ' Every reported advisory must be named, or a new one inherits an approval nobody gave it.',
     );
     continue;
   }
   // Recording the affected range makes the acceptance specific to the version actually installed, so
-  // an upgrade into a newly-affected range cannot pass under a review of the old one.
-  if (entry.affects && f.range && entry.affects !== f.range) {
+  // an upgrade into a newly-affected range cannot pass under a review of the old one. Supplying
+  // `affects` and finding no range to compare is a failure, not a pass: the audit shape changing is
+  // exactly when an unverified acceptance is most dangerous.
+  if (entry.affects && f.range === null) {
+    fail(
+      `the allowlist accepts ${f.name} for versions "${entry.affects}", but the audit reported no ` +
+        'range to compare against, so the acceptance cannot be verified against what is installed.',
+    );
+    continue;
+  }
+  if (entry.affects && entry.affects !== f.range) {
     fail(
       `the allowlist accepts ${f.name} for versions "${entry.affects}", but the audit reports ` +
         `"${f.range}". Re-review against the installed version.`,
