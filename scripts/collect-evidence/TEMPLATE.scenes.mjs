@@ -53,6 +53,10 @@ export const scenes = [
     intent: 'The column that should show a human-readable label for each entry',
     criterion: 'AC-1',
     hold: 3000,
+    // Outline this element in the recording so a viewer knows where to look. Red on the
+    // before half, green on after — derived from the phase, not settable here. It never
+    // appears in the screenshots, and the run fails if the outline stops pointing at it.
+    spotlight: { selector: 'td.mat-column-label', label: 'Label column' },
     async run(page, h) {
       const cell = page.locator('td.mat-column-label').first();
       await h.expectVisible('the label column has rows', 'td.mat-column-label');

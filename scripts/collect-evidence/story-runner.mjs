@@ -282,7 +282,12 @@ async function injectSpotlight({ selector, label, tone, dim }) {
   if (suppressSpotlight) return; // a screenshot is in flight; do not draw into it
   await page.evaluate(
     ({ id, selector, label, tone, dim }) => {
-      document.getElementById(id)?.remove();
+      // Carry the latch across a replacement. Re-injecting built a fresh root and so
+      // discarded `data-wasLost`, which meant a `shot()` after a recovery erased the evidence
+      // of the gap and the scene-end check passed over it.
+      const previous = document.getElementById(id);
+      const inheritedLoss = previous?.dataset.wasLost === '1';
+      previous?.remove();
       if (!document.querySelector(selector)) {
         throw new Error(`spotlight: no element matches ${selector}`);
       }
@@ -293,6 +298,7 @@ async function injectSpotlight({ selector, label, tone, dim }) {
       const root = document.createElement('div');
       root.id = id;
       root.setAttribute('aria-hidden', 'true');
+      if (inheritedLoss) root.dataset.wasLost = '1';
       Object.assign(root.style, {
         position: 'fixed',
         inset: '0',
