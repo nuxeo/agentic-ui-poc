@@ -173,24 +173,3 @@ recorded finding was any of those. It is built for one failure mode: the distanc
 change and its author's
 belief about it. Expect it to keep missing things a reviewer with no stake in the code will
 see, and keep sending the PR to one.
-
-<!-- pr-review-stats:start -->
-<!-- generated from docs/pr-review-findings.jsonl by `npm run review:analysis -- sync`. Do not edit by hand. -->
-
-**57 findings** across 5 pull requests (#174, #178, #179, #180, #181),
-every one accepted as valid. The three largest classes are **36 of 57**.
-
-| Class                  | Findings |
-| ---------------------- | -------- |
-| `proxy-check`          | 15       |
-| `unenforced-guarantee` | 12       |
-| `stale-prose`          | 9        |
-| `ordering`             | 5        |
-| `silent-failure`       | 5        |
-| `false-claim`          | 4        |
-| `incomplete-fetch`     | 3        |
-| `scope`                | 2        |
-| `broken-reference`     | 1        |
-| `dead-branch`          | 1        |
-
-<!-- pr-review-stats:end -->

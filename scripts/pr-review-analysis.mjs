@@ -315,17 +315,20 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source }) {
 export function harvestPr(pr) {
   const rows = [];
   const isReviewer = (login) => REVIEWER.test(login ?? '');
+  /** Review ids that already contributed a finding of their own, by any route. */
+  const reviewsWithFindings = new Set();
 
   for (const t of paginate(
     pr,
     `reviewThreads(first:50, after:$endCursor){
        pageInfo{ hasNextPage endCursor }
        nodes{ isResolved path line
-         comments(first:1){ nodes{ author{ login } body url } } } }`,
+         comments(first:1){ nodes{ author{ login } body url pullRequestReview{ id } } } } }`,
     '$pr.reviewThreads.nodes[] | {title: $pr.title} + .',
   )) {
     const c = t.comments.nodes[0];
     if (!c || !isReviewer(c.author?.login)) continue;
+    if (c.pullRequestReview?.id) reviewsWithFindings.add(c.pullRequestReview.id);
     rows.push(
       row({
         pr,
@@ -344,16 +347,22 @@ export function harvestPr(pr) {
     pr,
     `reviews(first:50, after:$endCursor){
        pageInfo{ hasNextPage endCursor }
-       nodes{ author{ login } body url } }`,
+       nodes{ id author{ login } body url } }`,
     '$pr.reviews.nodes[] | select(.body != "") | {title: $pr.title} + .',
   )) {
     if (!isReviewer(r.author?.login)) continue;
     const suppressed = suppressedFindings(r.body);
-    // The verdict restates the findings under it, so it only earns a row of its own when the
-    // body carried none — otherwise one finding would be counted twice in the class totals.
+    // A summary verdict restates the findings under it, so it earns a row only when the review
+    // contributed none by any other route. `suppressed.length` alone was the wrong test: it
+    // asks whether the *body* embedded a block, not whether the *review* already produced
+    // findings, so a review with ordinary inline threads and a plain summary was harvested as
+    // every thread plus an extra summary row. PR #180's first review is exactly that shape.
     const items = suppressed.length
       ? suppressed
-      : [{ file: '(review summary)', line: null, finding: findingLine(r.body) }];
+      : reviewsWithFindings.has(r.id)
+        ? []
+        : [{ file: '(review summary)', line: null, finding: findingLine(r.body) }];
+    if (items.length) reviewsWithFindings.add(r.id);
     for (const item of items) {
       rows.push(
         row({ pr, prTitle: r.title, ...item, url: r.url, resolved: null, source: 'review-body' }),
@@ -491,41 +500,60 @@ if (isCli) {
     }
 
     const cell = (v) => `<td><p>${esc(v)}</p></td>`;
-    const body = rows
-      .map(
-        (r) =>
-          '<tr>' +
-          cell(`#${r.pr}`) +
-          `<td><p><a href="${esc(r.url)}">${esc(r.file)}</a></p></td>` +
-          cell(r.finding) +
-          cell(r.category) +
-          cell(r.whyMissed) +
-          '</tr>',
-      )
-      .join('\n');
+    const anchor = (r) => `<a href="${esc(r.url)}">`;
 
-    const put = await fetch(`${CONFLUENCE}/api/v2/pages/${PAGE_ID}`, {
-      method: 'PUT',
-      headers: { Authorization: auth, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: PAGE_ID,
-        status: 'current',
-        title: page.title,
-        body: {
-          representation: 'storage',
-          value: `${storage.slice(0, close)}${body}\n${storage.slice(close)}`,
-        },
-        version: {
-          number: page.version.number + 1,
-          message: `pr-review-analysis: ${rows.length} finding(s)`,
-        },
-      }),
-    });
-    if (!put.ok) {
-      console.error(`Publish failed (HTTP ${put.status}): ${(await put.text()).slice(0, 300)}`);
-      process.exit(1);
+    // Idempotent on the comment URL, decided **before** the PUT.
+    //
+    // The corpus append below already dedupes, but it runs after the page has been written and
+    // the page body was built from every row, so re-publishing a classified file appended the
+    // same rows to Confluence again while the corpus correctly ignored them. A failure between
+    // the PUT and the append had the same effect on a retry. The URL is the stable identity of
+    // a finding, and it is already in the page as the row's link, so the page itself says what
+    // has been published.
+    const pending = rows.filter((r) => !storage.includes(anchor(r)));
+
+    if (pending.length) {
+      const body = pending
+        .map(
+          (r) =>
+            '<tr>' +
+            cell(`#${r.pr}`) +
+            `<td><p>${anchor(r)}${esc(r.file)}</a></p></td>` +
+            cell(r.finding) +
+            cell(r.category) +
+            cell(r.whyMissed) +
+            '</tr>',
+        )
+        .join('\n');
+
+      const put = await fetch(`${CONFLUENCE}/api/v2/pages/${PAGE_ID}`, {
+        method: 'PUT',
+        headers: { Authorization: auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: PAGE_ID,
+          status: 'current',
+          title: page.title,
+          body: {
+            representation: 'storage',
+            value: `${storage.slice(0, close)}${body}\n${storage.slice(close)}`,
+          },
+          version: {
+            number: page.version.number + 1,
+            message: `pr-review-analysis: ${pending.length} finding(s)`,
+          },
+        }),
+      });
+      if (!put.ok) {
+        console.error(`Publish failed (HTTP ${put.status}): ${(await put.text()).slice(0, 300)}`);
+        process.exit(1);
+      }
     }
-    console.log(`Published ${rows.length} finding(s) to ${CONFLUENCE}/pages/${PAGE_ID}`);
+
+    const already = rows.length - pending.length;
+    console.log(
+      `Published ${pending.length} finding(s) to ${CONFLUENCE}/pages/${PAGE_ID}` +
+        (already ? ` (${already} already there, skipped)` : ''),
+    );
 
     // Append to the committed corpus and re-derive the skill, in that order. Publishing to
     // Confluence alone would leave the repository's copy behind, and the skill quoting a
@@ -549,6 +577,7 @@ if (isCli) {
   } else if (cmd === 'sync') {
     const rows = await corpus();
     const text = await readFile(SKILL, 'utf8');
+    if (!singleMarkerPair(text)) process.exit(1);
     const next = replaceBlock(text, renderStats(rows));
     if (next === text) {
       console.log('skill is already in step with the corpus');
@@ -559,6 +588,7 @@ if (isCli) {
   } else if (cmd === 'check') {
     const rows = await corpus();
     const text = await readFile(SKILL, 'utf8');
+    if (!singleMarkerPair(text)) process.exit(1);
 
     // The skill's three numbered sections are ordered by weight, and that ordering is an
     // assertion about the corpus, not a layout choice: the reader is told to spend their
@@ -628,6 +658,25 @@ function table([header, ...body]) {
   const w = header.map((_, i) => Math.max(...[header, ...body].map((r) => r[i].length)));
   const row = (cells) => `| ${cells.map((c, i) => c.padEnd(w[i])).join(' | ')} |`;
   return [row(header), `| ${w.map((n) => '-'.repeat(n)).join(' | ')} |`, ...body.map(row)];
+}
+
+/**
+ * Exactly one marker pair, because `replaceBlock` updates the first one it finds.
+ *
+ * The skill carried two generated blocks, and `check` passed with both: it only ever compared
+ * the first, so the second was free to sit at 57 findings for ever while the page and the
+ * corpus moved on. A no-drift guarantee that cannot see a second copy of the thing it guards
+ * is not a guarantee, and this is the check that would have caught it.
+ */
+function singleMarkerPair(text) {
+  const starts = text.split(MARK_START).length - 1;
+  const ends = text.split(MARK_END).length - 1;
+  if (starts === 1 && ends === 1) return true;
+  console.error(
+    `\n${SKILL} has ${starts} generated block(s) (${ends} end marker(s)); it must have exactly one.\n` +
+      'replaceBlock only updates the first, so any other copy drifts silently. Remove the extras.\n',
+  );
+  return false;
 }
 
 /** Swap the generated block, or append it if the skill has none yet. */

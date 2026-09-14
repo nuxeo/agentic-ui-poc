@@ -42,7 +42,30 @@ const all = argv.includes('--all');
 const findings = [];
 const report = (file, line, rule, message) => findings.push({ file, line, rule, message });
 
+/**
+ * Fail closed, and say what git said.
+ *
+ * This used to return `''` on any failure, which made every git error indistinguishable from
+ * "nothing changed". A missing or mistyped `--base` made both `merge-base` and the diff fail,
+ * and an otherwise clean tree was reported as a passing zero-file review — the checker's most
+ * reassuring output produced by its inability to see any code at all.
+ */
 function git(args) {
+  try {
+    return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' });
+  } catch (error) {
+    const detail = String(error.stderr ?? '').trim() || error.message;
+    console.error(`\ngit ${args.join(' ')} failed:\n  ${detail}\n`);
+    process.exit(1);
+  }
+}
+
+/**
+ * `git` for the one question whose failure is itself an answer: two refs can legitimately have
+ * no common ancestor, and the documented fallback below is to diff from `base` directly. Every
+ * other call goes through `git` and stops the run.
+ */
+function gitOptional(args) {
   try {
     return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' });
   } catch {
@@ -58,7 +81,7 @@ function git(args) {
  * in a file the branch had never touched, which is how a tool earns the reputation of being
  * noise. Diffing from the merge base asks the question that was meant: what did I change?
  */
-const mergeBase = git(['merge-base', base, 'HEAD']).trim() || base;
+const mergeBase = gitOptional(['merge-base', base, 'HEAD']).trim() || base;
 const files = (
   all
     ? git(['ls-files']).split('\n')
@@ -132,14 +155,45 @@ function silentFailure(file) {
   // Shell and docs only. In JavaScript a `curl …` is inside a string, and the masking above
   // is what stops that being reported — but the command it documents is still worth checking
   // when it appears in a fenced block, which is how the skills ship theirs.
+  //
+  // Backslash continuations are joined first, by replacing the `\` and the newline with two
+  // spaces. Two characters for two, so every offset survives and `lineOf` still reports the
+  // line `curl` is on. Without it `[^\n]*` stopped at the first physical newline, and since a
+  // real write is almost always wrapped — the upload helper in `fix-bug/SKILL.md` puts `-F` on
+  // the next line — the check only ever saw the first line of the command it was judging.
+  // Deleting that helper's `--fail-with-body` left `writes` false and the gate green.
+  const joined = text.replace(/\\\n/g, '  ');
   const curls = /\.(sh|md|mdc)$/.test(file)
-    ? [...text.matchAll(/curl\s+(-[A-Za-z-]+\s+|--[a-z-]+(=\S+)?\s+)*[^\n]*/g)]
+    ? [...joined.matchAll(/curl\s+(-[A-Za-z-]+\s+|--[a-z-]+(=\S+)?\s+)*[^\n]*/g)]
     : [];
   for (const m of curls) {
     const cmd = m[0];
     const writes = /-X\s*(POST|PUT|PATCH|DELETE)|(^|\s)(-F|--form|-d|--data)\b/.test(cmd);
-    const guarded = /--fail\b|--fail-with-body\b|-w\s*['"]?%\{http_code\}|write-out/.test(cmd);
-    if (writes && !guarded) {
+
+    // `--fail`/`--fail-with-body` make curl itself exit non-zero. `-w '%{http_code}'` does
+    // not: it only *prints* the status, so a write that returned 500 was classified as
+    // guarded while the script sailed past it — the same shape of defect the rule exists to
+    // catch, inside the rule. It counts only when something downstream tests the status.
+    const failsHard = /--fail\b|--fail-with-body\b/.test(cmd);
+    const printsStatus = /-w\s*['"]?%\{http_code\}|--write-out/.test(cmd);
+
+    // "Something downstream tests it" has to mean *this* status, not any comparison in the
+    // neighbourhood. A first attempt looked for a test operator in the following few lines and
+    // cleared an unguarded write because the *next* command in the file happened to check its
+    // own status. So: the output must be captured into a variable, and that variable tested.
+    const captured = /(\w+)=(?:\$\(|`)\s*$/.exec(joined.slice(0, m.index));
+    const after = joined
+      .slice(m.index + cmd.length)
+      .split('\n')
+      .slice(0, 6)
+      .join('\n');
+    const statusTested =
+      printsStatus &&
+      captured !== null &&
+      new RegExp(`\\$\\{?${captured[1]}\\b`).test(after) &&
+      /-eq|-ne|-ge|-gt|-lt|-le|==|!=|=~|\bcase\b/.test(after);
+
+    if (writes && !failsHard && !statusTested) {
       report(
         file,
         lineOf(text, m.index),

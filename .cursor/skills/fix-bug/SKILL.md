@@ -641,9 +641,9 @@ if [ -z "$NEW_REVIEW" ] || [ "$NEW_REVIEW" = "$BEFORE" ]; then
   echo "no new review arrived — the round is UNKNOWN, not clean"; exit 1
 fi
 
-# 3. count only the findings that belong to that review
+# 3. count the findings that belong to that review — its threads AND its body
 export NEW_REVIEW
-gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
+THREADS=$(gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
   -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
     repository(owner:$owner,name:$name){pullRequest(number:$number){
       reviewThreads(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
@@ -651,10 +651,18 @@ gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" 
   --jq '.data.repository.pullRequest.reviewThreads.nodes[]
         | select(.isResolved == false)
         | select(.comments.nodes[0].pullRequestReview.id == env.NEW_REVIEW) | .isResolved' \
- | wc -l
+ | wc -l)
+
+# Findings folded into the summary body's "Suppressed comments" block never become threads.
+# `grep` exits 1 on no match, so `wc -l` ends the pipeline and the clean case still exits 0.
+BODY=$(gh api graphql -F id="$NEW_REVIEW" \
+  -f query='query($id:ID!){node(id:$id){... on PullRequestReview { body }}}' \
+  --jq '.data.node.body' | grep -E '^\*\*[^*]+:[0-9]+\*\*' | wc -l)
+
+echo "round findings: $((THREADS + BODY))  ($THREADS thread, $BODY suppressed in the body)"
 ```
 
-Three things in that recipe are load-bearing, and the version it replaces got each of them
+Four things in that recipe are load-bearing, and the version it replaces got each of them
 wrong:
 
 - **`$NEW_REVIEW`, not a `sleep`.** Waiting a fixed two minutes and counting threads reports
@@ -667,10 +675,12 @@ wrong:
   outcome you are hoping for makes the command fail, which under `set -e` or behind `&&`
   aborts the loop at exactly the wrong moment. Verified: `printf 'true\n' | grep -c false`
   prints `0` and exits 1. `wc -l` prints `0` and exits 0.
-
-Read the new review's `body` as well as its threads. Copilot's summary is submitted as
-`COMMENTED` and folds findings into a **"Suppressed comments"** block that never becomes a
-thread — three of the five findings on PR #182 were there, and all three were real.
+- **`$((THREADS + BODY))`, not threads alone.** Copilot's summary is submitted as `COMMENTED`
+  and folds findings into a **"Suppressed comments"** block that never becomes a thread —
+  three of the five findings on PR #182 were there, and all three were real. A thread-only
+  count therefore prints `0` and declares a clean round while the body holds the findings.
+  This used to be a sentence of prose telling you to read the body; a reminder is not a
+  verdict, and the round has to fail on what the body contains whether or not anyone reads it.
 
 **Exit when a round produces zero new comments.** Copilot does not `APPROVE`; a clean round is
 the green signal. Bound it at **six rounds** — past that, stop and report what keeps recurring,
@@ -798,7 +808,9 @@ thresholds met on touched projects; unit test for every new service method inclu
 path; `validate-fix` run and clean; `docs/api-integrations.md` updated if a new Nuxeo endpoint was
 called; `docs/ai-features.md` if AI behaviour changed; `AGENTS/01-services.md` if a service method
 was added; `AGENTS/00-architecture.md` if architecture changed; PR on a `fix/*` branch; every
-review thread replied to and resolved, and the review loop run until a round returned zero
+review thread replied to, and every accepted finding resolved — a thread may stay open only
+where you disagree, and then only with the reasoning and the evidence in the reply and the
+disagreement named in the final summary; the review loop run until a round returned zero
 comments; the round harvested, classified and published to the PR review analysis page; the PR
 added to the ticket's Links panel as a remote
 link; before/after evidence in both forms attached to the ticket, images and recordings only,
