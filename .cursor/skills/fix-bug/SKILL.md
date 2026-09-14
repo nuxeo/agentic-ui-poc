@@ -78,10 +78,24 @@ node scripts/agent-metrics.mjs event "$TICKET" retry|gate-fail|stop-condition|ev
 node scripts/agent-metrics.mjs end   "$TICKET" --outcome pr-open|merged|blocked|abandoned
 ```
 
-Phase ids are a fixed list (`ticket`, `expected`, `workspace`, `reproduce`, `decide`, `fix`,
-`verify-evidence`, `regression-test`, `blast-radius`, `gate`, `validate`, `pr`, `ci`, `review`,
-`jira`, `cleanup`) — an unknown id is rejected, because free-text phase names make runs
-incomparable and a table you cannot compare cannot tell you which phase to shorten.
+Phase ids are a fixed list and an unknown one is rejected: free-text phase names make runs
+incomparable, and a table you cannot compare cannot tell you which phase to shorten. Each id
+sits in one of three buckets, and **only `fix` is published**:
+
+| bucket     | phases                                                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `fix`      | `ticket` `expected` `reproduce` `design` `decide` `scaffold` `fix` `regression-test` `docs` `blast-radius` `gate` `review` |
+| `evidence` | `evidence-before` `baseline` `verify-evidence` `validate`                                                                  |
+| `overhead` | `workspace` `pr` `ci` `jira` `cleanup`                                                                                     |
+
+The shared page answers "how long do fixes take", so it gets the `fix` total alone. The first
+row published wall clock — 4h 13m for a one-line change, 88% of it evidence capture and CI
+polling — which is a number about the pipeline masquerading as a number about the work. All
+three totals stay in the local report, which is where you look when a run felt slow.
+
+**`publish` refuses until the `jira` phase is recorded.** A row is a record of finished work;
+publishing before the ticket is updated puts a time on the page for something nobody can yet
+go and look at.
 
 `end` prints the per-phase table. Phase 10 publishes it to the team page.
 
