@@ -1,87 +1,143 @@
 # Evidence Collection Scripts
 
-Reusable Playwright-based tooling for capturing before/after evidence when fixing bugs.
-Every run saves **screenshots** and a **screen recording** (MP4) to `~/Desktop/<TICKET-ID>/`.
+Playwright-based tooling that turns a bug fix into a **story** — a narrative with assertions,
+side-by-side comparisons and a captioned recording — rather than a folder of screenshots.
+
+Everything lands in `~/Desktop/agentic-ui-evidence/<TICKET-ID>/fix/`, outside the repo.
+Never commit evidence output.
 
 ## Prerequisite: Playwright (local-only)
 
-Playwright is **not** a tracked dependency of this repo — it is deliberately kept out of
-`package.json`/`package-lock.json` so it never affects the CI install. It's only needed on the
-machine that actually collects evidence. Check whether you already have it:
+Playwright is **not** a tracked dependency — it is deliberately kept out of
+`package.json`/`package-lock.json` so it never affects the CI install. Check, then install
+without touching the lock file:
 
 ```bash
 node -e "require.resolve('@playwright/test')" 2>/dev/null && echo available || echo missing
-```
-
-If it's missing, install it locally without touching the lock file, then fetch the browser:
-
-```bash
 npm install --no-save @playwright/test
 npx playwright install chromium
 ```
 
+The `expectNoA11yViolations` helper additionally needs `npm install --no-save @axe-core/playwright`.
+
 ## Quick start
 
 ```bash
-# 1. Make sure the dev server is running in another terminal
+# 1. Dev server running in another terminal (use the ticket workspace's port/proxy if you have one)
 npx nx serve nuxeo-ui
 
-# 2. Run the evidence collector for a specific ticket
-#    Pass the UID of a representative document in your local Nuxeo
-NUXEO_DOC_UID=<uid> npm run evidence:collect -- NXSAT-175 scripts/collect-evidence/NXSAT-175.mjs
+# 2. Copy the template and edit it
+cp scripts/collect-evidence/TEMPLATE.scenes.mjs scripts/collect-evidence/NXSAT-175.mjs
+
+# 3. Capture both halves — same file, run twice, on the unfixed and fixed code
+EVIDENCE_PHASE=before NUXEO_DOC_UID=<uid> npm run evidence:collect -- NXSAT-175 scripts/collect-evidence/NXSAT-175.mjs
+EVIDENCE_PHASE=after  NUXEO_DOC_UID=<uid> npm run evidence:collect -- NXSAT-175 scripts/collect-evidence/NXSAT-175.mjs
+
+# 4. Combine them into the artifacts a reviewer opens
+npm run evidence:story -- NXSAT-175
 ```
 
-Output: `~/Desktop/NXSAT-175/` containing:
+## What you get
 
-- `*.png` screenshots for each fix step
-- `*.webm` screen recording of the full run
+```
+~/Desktop/agentic-ui-evidence/NXSAT-175/fix/
+  STORY.md            the whole story, both halves, images inlined  ← paste into Jira
+  contact-sheet.png   one image for the PR body
+  diptychs/*.png      before | after, labelled, per scene
+  annotated/*.png     callouts drawn from real DOM bounding boxes
+  before/  after/
+    STORY.md          that half's narrative, with per-scene checks
+    manifest.json     scenes, checks, per-scene console/HTTP errors, environment, verdict
+    chapters.vtt      video chapter markers
+    *.png             raw screenshots, never annotated
+    NXSAT-175-*.webm  captioned recording
+```
+
+## Writing a story
+
+A scenes file exports `summary` and `scenes`. See `TEMPLATE.scenes.mjs` for a worked example.
+
+```js
+export const summary = 'One line for the title card';
+
+export const scenes = [
+  {
+    act: 1, // 1 setup · 2 the behaviour · 3 the proof
+    title: 'Open the folder',
+    intent: 'What the user is trying to do — the reviewer was not in the ticket',
+    criterion: 'AC-1', // from fix-bug Phase 1a
+    hold: 2500, // ms held on the finished state, for the video
+    async run(page, h) {
+      await h.login();
+      await h.goTo('/#/browse');
+      await h.expectVisible('folder list renders', 'hxp-document-list');
+      await h.shot('browse-list', { highlight: 'hxp-document-list' });
+    },
+  },
+];
+```
+
+Three rules the runner enforces, so a capture cannot quietly stop proving anything:
+
+- **All three acts must be present.** A missing act is a failed check.
+- **Every scene names a `criterion`.** One without it fails.
+- **Every scene must assert something.** A scene that only took screenshots fails on its own
+  terms — checked per scene, not per run, because the act-structure assertions always
+  contribute three checks and a whole-run count could never reach zero.
+
+And one the report enforces across the two halves:
+
+- **A byte-identical before/after pair fails.** Either the fix changed nothing visible there,
+  or the scene cannot show it. Both need fixing before the comparison means anything.
+
+Do **not** branch on `EVIDENCE_PHASE` inside a scene — the two runs must perform identical
+actions, or the comparison is illustration rather than evidence.
+
+## Helpers
+
+From `scripts/beta-harness/helpers.mjs`, plus `shot()` added by the runner.
+
+| Method                                        | Description                                                |
+| --------------------------------------------- | ---------------------------------------------------------- |
+| `h.shot(name, { highlight, label })`          | Screenshot; records the highlight's box for later callouts |
+| `h.check(name, condition, detail)`            | Named pass/fail assertion. Never throws                    |
+| `h.expectVisible(name, selector, timeout?)`   | Assert a selector becomes visible                          |
+| `h.expectText(name, selector, expected)`      | Assert a selector's text contains a substring              |
+| `h.expectNoConsoleErrors(name?, ignore?)`     | Assert nothing errored in the browser                      |
+| `h.expectNoA11yViolations(name?, opts?)`      | axe scan at WCAG 2.1 AA                                    |
+| `h.requirePrecondition(name, cond, detail)`   | Abort with its own verdict when the environment is wrong   |
+| `h.note(text)`                                | State a limitation without inflating the check count       |
+| `h.login()` · `h.goTo(route)` · `h.goToDoc()` | Navigation and auth                                        |
 
 ## Environment variables
 
-| Variable        | Default                 | Description                                 |
-| --------------- | ----------------------- | ------------------------------------------- |
-| `APP_URL`       | `http://localhost:4200` | Dev server URL                              |
-| `NUXEO_USER`    | `Administrator`         | Login username                              |
-| `NUXEO_PASS`    | `Administrator`         | Login password                              |
-| `NUXEO_DOC_UID` | _(none)_                | Document UID to open for doc-specific steps |
+| Variable                  | Default                         | Description                                               |
+| ------------------------- | ------------------------------- | --------------------------------------------------------- |
+| `APP_URL`                 | `http://localhost:4200`         | Dev server URL                                            |
+| `NUXEO_USER`              | `Administrator`                 | Login username                                            |
+| `NUXEO_PASS`              | `Administrator`                 | Login password                                            |
+| `NUXEO_DOC_UID`           | _(none)_                        | Document UID for doc-specific scenes                      |
+| `EVIDENCE_PHASE`          | _(none)_                        | `before` / `after` subfolder and video name               |
+| `EVIDENCE_HEADLESS`       | `0`                             | `1` runs headless (no window to watch)                    |
+| `EVIDENCE_SLOWMO`         | `120`                           | ms between interactions; per-scene `hold` does the pacing |
+| `AGENTIC_UI_EVIDENCE_DIR` | `~/Desktop/agentic-ui-evidence` | Evidence root                                             |
 
-> Credentials fall back to the Nuxeo default dev password. Never commit real credentials.
+## Legacy steps files
 
-## Writing evidence steps for a new ticket
-
-1. Create `scripts/collect-evidence/<TICKET-ID>.mjs`
-2. Export a default async function:
-
-```js
-/** @param {import('@playwright/test').Page} page */
-export default async function collectEvidence(page, helpers, outDir) {
-  await helpers.login();
-  await helpers.goToDoc(process.env['NUXEO_DOC_UID']);
-
-  helpers.step('Verify fix 1: <description>');
-  await helpers.screenshot('fix1-description');
-}
-```
-
-3. Run:
-
-```bash
-npm run evidence:collect -- <TICKET-ID> scripts/collect-evidence/<TICKET-ID>.mjs
-```
-
-## Helpers API
-
-| Method                               | Description                                     |
-| ------------------------------------ | ----------------------------------------------- |
-| `helpers.login()`                    | Navigate to `APP_URL` and log in                |
-| `helpers.goToDoc(uid)`               | Navigate to `/#/doc/<uid>`                      |
-| `helpers.screenshot(name, locator?)` | Save `<name>.png` to `outDir`                   |
-| `helpers.step(msg)`                  | Log a step label (visible in console and video) |
-| `helpers.baseUrl`                    | The app base URL                                |
+The twenty-odd `NXSAT-*.mjs` files that export a default `async (page, helpers, outDir)`
+still run, and now get a `STORY.md`, a manifest and console capture for free. They have no
+acts or criteria, so the runner logs a note rather than failing them. Convert one to
+`export const scenes` when you next touch it.
 
 ## How the runner works
 
-- Opens a **headed Chromium** window (visible, so the team can watch live)
-- Runs at `slowMo: 400ms` so each interaction is readable in the recording
-- Automatically saves a **WebM video** of the full session via Playwright's built-in recorder
-- Screenshots are saved in addition to the video for use in PR descriptions
+- Headed Chromium by default, so the team can watch the capture live
+- `httpCredentials` **and** an injected session: the session satisfies the route guard so
+  pages render, `httpCredentials` authenticates the XHRs behind them. Without both, `/nuxeo/api`
+  calls intermittently 403 and you photograph empty states that read as component defects
+- A caption banner is injected into the page so the recording is narrated, and hidden for
+  every screenshot — stills stay clean, and annotation happens on a copy
+- Console errors, uncaught exceptions and every HTTP 4xx/5xx are attributed to the scene they
+  occurred in, and rendered in `STORY.md`
+- Scene start offsets are recorded as WebVTT chapters. They are measured from browser-context
+  creation and are accurate to roughly 100ms — recording starts marginally earlier

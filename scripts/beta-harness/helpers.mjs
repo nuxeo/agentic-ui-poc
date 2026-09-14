@@ -2,8 +2,10 @@
  * Page helpers shared by the Beta phase evidence harness.
  *
  * The `screenshot`, `step`, `login`, `goToDoc` and `baseUrl` members are a
- * deliberate superset of the contract in `scripts/collect-evidence/runner.mjs`,
- * so existing ticket steps files can be reused verbatim by the phase runner.
+ * deliberate superset of the contract the per-ticket steps files were written
+ * against, so they can be reused verbatim by the phase runner. The bug-fix
+ * capture (`scripts/collect-evidence/story-runner.mjs`) now uses these helpers
+ * directly rather than keeping a second, weaker dialect of its own.
  *
  * The additions are the verification members — `check`, `expectVisible`,
  * `expectText`, `expectNoConsoleErrors`. A capture that records whatever
