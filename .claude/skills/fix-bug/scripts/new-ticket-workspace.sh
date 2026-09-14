@@ -215,7 +215,16 @@ fi
 PORT_DIR="$WORKTREE_ROOT/.ports"
 LOCK_DIR="$WORKTREE_ROOT/.ports.lock"
 
-port_unlock() { rmdir "$LOCK_DIR" 2>/dev/null || true; }
+# The pid file lives *inside* the lock directory, so `rmdir` alone could never remove it and
+# the release was a silent no-op. One run therefore held the lock for its whole life: in
+# `--nuxeo own`, which allocates twice, the second `reserve_port` waited 30s on a lock held by
+# itself — a pid that is alive, so unreclaimable — and aborted. Shared mode allocates once, so
+# it only leaked the directory. The self-test missed it by allocating once per process, which
+# let the dead-holder reclaim mask the leak; it now allocates twice in one process.
+port_unlock() {
+  rm -f "$LOCK_DIR/pid" 2>/dev/null || true
+  rmdir "$LOCK_DIR" 2>/dev/null || true
+}
 
 port_lock() {
   mkdir -p "$WORKTREE_ROOT"

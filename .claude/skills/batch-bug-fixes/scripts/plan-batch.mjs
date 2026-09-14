@@ -55,15 +55,52 @@ const flag = (name, dflt = null) => {
 const has = (name) => argv.includes(`--${name}`);
 
 const fileArg = flag('file');
-const tickets = [
-  ...argv.filter((a) => /^[A-Z][A-Z0-9]+-\d+$/.test(a)),
-  ...(fileArg
-    ? readFileSync(fileArg, 'utf8')
-        .split('\n')
-        .map((l) => l.trim())
-        .filter((l) => /^[A-Z][A-Z0-9]+-\d+$/.test(l))
-    : []),
-];
+const TICKET_RE = /^[A-Z][A-Z0-9]+-\d+$/;
+
+/** Flags that consume the token after them, so it is never mistaken for a ticket. */
+const VALUE_FLAGS = new Set(['--file', '--concurrency', '--per-ticket-gb']);
+
+/**
+ * Reject a malformed ticket; never skip it.
+ *
+ * This used to `filter` on the pattern, so `plan-batch.mjs NXSAT-1 NXSAT-typo` printed a
+ * successful one-ticket plan. The typo'd ticket was never planned, never assigned to a wave and
+ * never mentioned — for a tool whose whole purpose is "fix these twelve", silently planning
+ * eleven is the worst available behaviour, because the operator's next question is answered
+ * ("the batch ran clean") and the missing ticket surfaces days later.
+ */
+const rejected = [];
+const positional = [];
+for (let i = 0; i < argv.length; i += 1) {
+  const token = argv[i];
+  if (token.startsWith('--')) {
+    if (VALUE_FLAGS.has(token)) i += 1;
+    continue;
+  }
+  if (TICKET_RE.test(token)) positional.push(token);
+  else rejected.push(`argument: ${token}`);
+}
+
+const fromFile = [];
+if (fileArg) {
+  readFileSync(fileArg, 'utf8')
+    .split('\n')
+    .forEach((raw, n) => {
+      const line = raw.trim();
+      if (!line || line.startsWith('#')) return; // blank and commented lines are intentional
+      if (TICKET_RE.test(line)) fromFile.push(line);
+      else rejected.push(`${fileArg}:${n + 1}: ${line}`);
+    });
+}
+
+if (rejected.length) {
+  console.error(`\nNot a ticket id (expected e.g. NXSAT-1234) — nothing was planned:\n`);
+  for (const r of rejected) console.error(`  ${r}`);
+  console.error('');
+  process.exit(2);
+}
+
+const tickets = [...positional, ...fromFile];
 
 if (!tickets.length) {
   console.error(

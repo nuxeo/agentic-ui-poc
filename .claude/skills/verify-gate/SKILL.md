@@ -24,11 +24,11 @@ Seconds, not minutes. Run it after every meaningful edit.
 npm run beta:gate -- --phase <phase-id>
 ```
 
-Twenty gates, cheapest first: `node`, `lockfile`, `supply-chain`, `code-scanning`,
+Twenty-two gates, cheapest first: `node`, `lockfile`, `supply-chain`, `code-scanning`,
 `guardrails`, `sanitizer-audit`, `sanitizer-selftest`, `assertions`, then affected
 `lint`, `test`, `build`, `typecheck`, then `spec-types`, `bundle`, `api-surface`,
-`publishability`, `fork-simulation`, `upgrade-rehearsal`, `reference-drift` and
-`customer-guardrails`. Stops at the first failure and prints only its output tail.
+`publishability`, `fork-simulation`, `upgrade-rehearsal`, `reference-drift`,
+`agent-mirror`, `review-corpus` and `customer-guardrails`. Stops at the first failure and prints only its output tail.
 Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
 
 Only a run with **no** `--gates` filter can be cited for a phase. A filtered run

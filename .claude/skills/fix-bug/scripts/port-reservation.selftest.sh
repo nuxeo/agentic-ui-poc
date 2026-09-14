@@ -116,6 +116,22 @@ else
   bad "could not start a listener to test against"
 fi
 
+# ---------------------------------------------------------------- 5b. two in one process
+# `--nuxeo own` allocates twice in a single run: a Nuxeo port and a dev-server port. Every
+# other check here allocates once per process, and that is exactly why the release bug
+# survived them — the lock leaked, but the next process found a dead holder and reclaimed it.
+# In one process the holder is alive and unreclaimable, so the second call blocked for 30s and
+# aborted. This is the shape of the real caller, so it belongs in the test.
+rm -rf "$TMP/worktrees"
+mkdir -p "$TMP/worktrees/TWICE"
+TWO="$(bash -c "$(harness)"' ; printf "%s,%s" "$(reserve_port 8090)" "$(reserve_port 4210)"' \
+        _ "$TMP/worktrees/TWICE" 2>/dev/null || true)"
+check "two allocations in one process both return" "$TWO" "8090,4210"
+
+# And the lock must not be left behind afterwards.
+[[ ! -d "$TMP/worktrees/.ports.lock" ]] && ok "the lock directory is released, not leaked" \
+                                        || bad "the lock directory was left behind"
+
 # ---------------------------------------------------------------- 6. stale lock is reclaimed
 # A run killed between mkdir and rmdir would otherwise block every later run forever.
 rm -rf "$TMP/worktrees"

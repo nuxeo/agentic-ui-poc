@@ -488,9 +488,10 @@ npm run beta:gate -- --gates guardrails,lint      # seconds — after every mean
 npm run beta:gate                                 # full run before pushing
 ```
 
-An unfiltered run executes **all 20 gates** cheapest-first — `node`, `lockfile`, `supply-chain`,
+An unfiltered run executes **all 22 gates** cheapest-first — `node`, `lockfile`, `supply-chain`,
 `code-scanning`, `guardrails`, sanitizers, `assertions`, then affected `lint`, `test`, `build`,
-`typecheck`, `spec-types`, `bundle`, `api-surface` and the packaging gates. It stops at the first
+`typecheck`, `spec-types`, `bundle`, `api-surface`, the packaging gates and the drift gates
+(`reference-drift`, `agent-mirror`, `review-corpus`). It stops at the first
 failure. Expect it to take a while; that is the cost of the two traps it catches that
 `review:preflight` does not:
 
