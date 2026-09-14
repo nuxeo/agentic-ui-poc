@@ -172,11 +172,14 @@ function paginate(pr, connection, jq) {
  * Remove a markup construct completely — including the openers a single pass leaves behind.
  *
  * One `.replace(/<!--[\s\S]*?-->/g, '')` is not a strip, it is one pass, and a pass only
- * removes balanced pairs. Measured on six inputs, one pass left markup in three of them:
+ * removes balanced pairs of the one spelling it knows. Measured on nine inputs, one pass left
+ * markup in six of them:
  *
  *     "<!--a-->b<!--c"                     -> "b<!--c"
  *     "x-->y"                              -> "x-->y"
+ *     "<!-- x --!>"                        -> "<!-- x --!>"
  *     "<details>a</details></details>tail" -> "</details>tail"
+ *     "<details open>a</details>tail"      -> "<details open>a</details>tail"
  *
  * CodeQL calls the class `js/incomplete-multi-character-sanitization` and flagged both call
  * sites in this file. Nothing was injectable — every cell is escaped by `esc` before it
@@ -197,10 +200,15 @@ function stripAll(text, pattern, marker) {
   return out.replace(marker, '');
 }
 
-const HTML_COMMENT = /<!--[\s\S]*?-->\n?/g;
-const HTML_COMMENT_MARKER = /<!--|-->/g;
-const DETAILS_BLOCK = /<details>[\s\S]*?<\/details>/g;
-const DETAILS_MARKER = /<\/?details>/g;
+// `--!>` closes a comment as well as `-->`: HTML's comment-end-bang state accepts it, so
+// browsers treat `<!-- x --!>` as a complete comment and so must anything claiming to strip
+// one. Missing it left ` x --!>` in the text — CodeQL alert 40, js/bad-tag-filter.
+const HTML_COMMENT = /<!--[\s\S]*?--!?>\n?/g;
+const HTML_COMMENT_MARKER = /<!--|--!?>/g;
+// Tolerant of attributes, spacing and case, so `<details open>` and `</Details >` are the
+// same block boundary as `<details>`. The literal form matched neither.
+const DETAILS_BLOCK = /<details\b[^>]*>[\s\S]*?<\/details\s*>/gi;
+const DETAILS_MARKER = /<\/?details\b[^>]*>/gi;
 
 /**
  * Escape a value for Confluence storage XHTML, in **text or an attribute**.
