@@ -1274,7 +1274,7 @@
 
     <!-- Right: Properties Panel (persists across all tabs) -->
     @if (propertiesPanelOpen()) {
-      <aside class="properties-panel">
+      <aside class="properties-panel" aria-label="Document properties">
         <div class="panel-header">
           <span class="panel-title">{{ fileName() }}</span>
           <button mat-icon-button (click)="closePropertiesPanel()" aria-label="Close panel">

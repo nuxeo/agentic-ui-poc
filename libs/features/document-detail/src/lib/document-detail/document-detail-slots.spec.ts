@@ -210,6 +210,31 @@ describe('DocumentDetailComponent — rendered Layer 1 slots', () => {
     );
   }
 
+  /**
+   * NXENG-915. The properties sidebar is an `<aside>`, so it carries an implicit
+   * `role="complementary"`. A complementary landmark with no accessible name is announced
+   * only as "complementary", so a screen-reader user navigating by landmark cannot tell what
+   * the region is — WCAG 2.1 1.3.1 Info and Relationships, level A.
+   *
+   * It belongs in this file for the same reason the slot assertions do: the defect is an
+   * attribute that never reaches a screen, and only the real template can catch that. The
+   * sibling specs stub the template out.
+   *
+   * The name is asserted to be the static purpose label rather than the document title. A
+   * name bound to `fileName()` would be empty while the document loads, reintroducing the
+   * violation intermittently, and a landmark whose name changes per document cannot be
+   * navigated to reliably.
+   */
+  describe('accessibility', () => {
+    it('names the properties sidebar landmark', async () => {
+      await render({});
+
+      const panel = fixture.nativeElement.querySelector('aside.properties-panel') as HTMLElement;
+      expect(panel).toBeTruthy();
+      expect(panel.getAttribute('aria-label')).toBe('Document properties');
+    });
+  });
+
   describe('toolbar', () => {
     /**
      * The claim: an action that exists **only** in the manifest is a real button
