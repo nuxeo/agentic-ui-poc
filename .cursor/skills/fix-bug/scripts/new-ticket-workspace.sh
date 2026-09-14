@@ -234,8 +234,11 @@ fi
 
 # ---------------------------------------------------------------- nuxeo
 
-NUXEO_USER="${NUXEO_USER:-Administrator}"
-NUXEO_PASS="${NUXEO_PASS:-Administrator}"
+# No credential defaults. Falling back to Administrator meant the data root was created with
+# privileged credentials whenever the variables were unset, which the repo's env-only rule
+# exists to prevent — and it hid a misconfigured environment behind a working command.
+[[ -n "${NUXEO_USER:-}" && -n "${NUXEO_PASS:-}" ]] || die "NUXEO_USER and NUXEO_PASS must be set (no default). For a local dev instance: export NUXEO_USER=Administrator NUXEO_PASS=Administrator"
+
 DATA_ROOT="/default-domain/workspaces/$TICKET"
 
 if [[ "$NUXEO_MODE" == "own" ]]; then

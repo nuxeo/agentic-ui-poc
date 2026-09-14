@@ -180,6 +180,16 @@ if (audit.identical.length) {
   );
 }
 if (!paired.length) problems.push('no scene appears in both captures, so nothing is actually compared');
+// Unpaired scenes were listed in the report but never failed it, so a run could still pass
+// after the scenes file or its actions changed between captures, as long as one slug still
+// matched. That is precisely the same-actions contract the comparison depends on.
+if (audit.onlyBefore.length || audit.onlyAfter.length) {
+  problems.push(
+    `${audit.onlyBefore.length + audit.onlyAfter.length} scene(s) appear in only one capture ` +
+      `(${[...audit.onlyBefore.map((k) => `${k}: before only`), ...audit.onlyAfter.map((k) => `${k}: after only`)].join(', ')}) ` +
+      '— the two runs did not perform the same actions, so the comparison is not like for like',
+  );
+}
 
 await writeFile(
   resolve(fixDir, 'STORY.md'),

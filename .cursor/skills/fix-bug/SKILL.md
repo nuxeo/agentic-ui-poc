@@ -4,8 +4,9 @@ description: >-
   End-to-end agentic playbook for fixing a Jira bug (NXSAT-<id>, NCO-<id>, NXENG-<id>) in the
   agentic-ui-poc Nx/Angular monorepo: runs fully autonomously end-to-end (YOLO mode, no
   confirmation gates), analyse the ticket + all comments, derive acceptance criteria when the
-  ticket has none, take an isolated per-ticket workspace (own worktree, own freshly pulled Nuxeo
-  container, own ports), reproduce and capture evidence (images AND videos) to
+  ticket has none, take an isolated per-ticket workspace (own worktree, own ports and a
+  ticket-scoped Nuxeo data root on the shared instance; a dedicated container only with
+  --nuxeo own), reproduce and capture evidence (images AND videos) to
   ~/Desktop/agentic-ui-evidence/<TICKET-ID>/fix/ first, weigh the candidate fixes and record the
   choice, fix at the root cause, add a regression test, run an active blast-radius check and the
   full beta:gate, create a signed-commit PR, poll CI to green, close every review thread, then

@@ -149,10 +149,15 @@ switch (cmd) {
   case 'end': {
     // Only these four. `merged` used to be passed by default from a workflow that opens a PR
     // and never merges it, so every published row claimed a delivery that had not happened.
-    const outcome = flag('outcome', 'unknown');
-    const VALID = ['pr-open', 'merged', 'blocked', 'abandoned', 'unknown'];
-    if (!VALID.includes(outcome)) {
-      console.error(`Unknown outcome "${outcome}". Valid: ${VALID.join(', ')}`);
+    // Required, with no default. Omitting it used to record `unknown`, which is the
+    // ambiguous row the validation exists to keep out of the log.
+    const outcome = flag('outcome');
+    const VALID = ['pr-open', 'merged', 'blocked', 'abandoned'];
+    if (!outcome || !VALID.includes(outcome)) {
+      console.error(
+        `--outcome is required and must be one of: ${VALID.join(', ')}` +
+          (outcome ? `  (got "${outcome}")` : ''),
+      );
       process.exit(2);
     }
     await append({ type: 'end', outcome });

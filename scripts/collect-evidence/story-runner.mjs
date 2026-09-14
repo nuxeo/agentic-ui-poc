@@ -87,16 +87,27 @@ const browser = await chromium.launch({
   slowMo: Number(process.env['EVIDENCE_SLOWMO'] ?? 120),
 });
 
+// Credentials come from the environment, with no fallback. Defaulting to Administrator
+// meant a capture silently ran with privileged credentials whenever the variables were
+// unset — and produced evidence of what an administrator sees, which is rarely the claim.
+const nuxeoUser = process.env['NUXEO_USER'];
+const nuxeoPass = process.env['NUXEO_PASS'];
+if (!nuxeoUser || !nuxeoPass) {
+  console.error(
+    '\nNUXEO_USER and NUXEO_PASS must be set — there is deliberately no default.\n' +
+      'For a local dev instance:\n\n' +
+      '  export NUXEO_USER=Administrator NUXEO_PASS=Administrator\n',
+  );
+  await browser.close();
+  process.exit(2);
+}
+
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   recordVideo: { dir: outDir, size: { width: 1440, height: 900 } },
   // Both auth mechanisms are required: the injected session satisfies the route guard so
   // pages render, httpCredentials authenticates the XHRs behind them.
-  httpCredentials: {
-    username: process.env['NUXEO_USER'] ?? 'Administrator',
-    password: process.env['NUXEO_PASS'] ?? 'Administrator',
-    origin: baseUrl,
-  },
+  httpCredentials: { username: nuxeoUser, password: nuxeoPass, origin: baseUrl },
 });
 
 // Chapter offsets are measured from here. Recording actually begins inside newContext, a few
@@ -296,13 +307,27 @@ try {
       }
 
       await showBanner(actNo, scene.title, scene.intent);
+      // A scene may call `h.step()`, which opens a *new* record. Everything it asserts
+      // afterwards lands there, not on `current` — so counting only `current`'s checks
+      // reported "scene asserts something" as failed on a scene that had asserted plenty,
+      // and left the later records without the act or criterion. Track the whole span.
+      const firstRecord = recorder.steps.length - 1;
       const checksBefore = current.checks.length;
       await scene.run(page, { ...helpers, shot, step: helpers.step.bind(helpers) });
+
+      const spanned = recorder.steps.slice(firstRecord);
+      for (const rec of spanned) {
+        rec.act = actNo;
+        rec.intent ??= scene.intent;
+        rec.criterion ??= scene.criterion;
+      }
+      const assertedInScene =
+        spanned.reduce((n, rec) => n + rec.checks.length, 0) - checksBefore > 0;
 
       // Per scene, not just per run. The act-structure assertions below always contribute
       // three checks, so a whole-run count can never reach zero and would certify a story
       // whose every scene only took pictures.
-      if (current.checks.length === checksBefore) {
+      if (!assertedInScene) {
         helpers.check(
           'scene asserts something',
           false,
@@ -313,9 +338,10 @@ try {
       // Hold on the finished state so the video is followable rather than a flicker.
       await page.waitForTimeout(scene.hold ?? 2500);
 
-      current.consoleErrors = recorder.consoleErrors.slice(errorsBefore);
-      if (current.consoleErrors.length) {
-        console.log(`  [note] ${current.consoleErrors.length} console/HTTP error(s) during this scene`);
+      const sceneErrors = recorder.consoleErrors.slice(errorsBefore);
+      recorder.steps[recorder.steps.length - 1].consoleErrors = sceneErrors;
+      if (sceneErrors.length) {
+        console.log(`  [note] ${sceneErrors.length} console/HTTP error(s) during this scene`);
       }
     }
 
@@ -416,6 +442,15 @@ if (chapters.length) await writeFile(resolve(outDir, 'chapters.vtt'), renderVtt(
 console.log(`\nverdict  ${verdict.toUpperCase()} — ${totalChecks - failed.length}/${totalChecks} checks across ${recorder.steps.length} scene(s)`);
 console.log(`story    ${resolve(outDir, 'STORY.md')}`);
 
+// Two different questions, and they were conflated. "Did the capture run correctly?" decides
+// the exit code; "did the claims hold?" is the verdict. The BEFORE half of a bug fix is
+// *supposed* to fail its assertions — that is the bug reproducing — so exiting 1 there made
+// the documented sequence look like a broken command, indistinguishable from malformed
+// evidence. Assertion failures are a result; structural defects are a failure.
+const STRUCTURAL = new Set(['scene asserts something', 'scene names an acceptance criterion']);
+const structural = failed.filter((f) => STRUCTURAL.has(f.name) || f.name.startsWith('act '));
+const captureBroken = Boolean(runError) || Boolean(preconditionFailure) || structural.length > 0;
+
 if (verdict === 'legacy-no-assertions') {
   console.log(
     '\n  This is a legacy steps file: it produced screenshots but asserted nothing, so the\n' +
@@ -425,8 +460,16 @@ if (verdict === 'legacy-no-assertions') {
 } else if (verdict !== 'pass') {
   for (const f of failed) console.log(`  [FAIL] scene ${f.step} (${f.label}) — ${f.name}${f.detail ? `: ${f.detail}` : ''}`);
   if (totalChecks === 0) console.log('  No checks were recorded. A capture that asserts nothing is not evidence.');
-  process.exit(1);
+  if (!captureBroken) {
+    console.log(
+      '\n  The capture itself is sound — these are failed claims, not a broken run. For a BEFORE\n' +
+        '  capture that is the expected result: it is the bug reproducing. `evidence:story`\n' +
+        '  decides whether the before/after pair supports the fix.',
+    );
+  }
 }
+
+if (captureBroken) process.exit(1);
 
 // ---------------------------------------------------------------- helpers
 
