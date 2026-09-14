@@ -68,7 +68,10 @@ const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
 
 const ACT_NAMES = {
   1: 'Setup — where we are and what the user is trying to do',
-  2: phase === 'after' ? 'The fix — the behaviour as it now is' : 'The bug — the behaviour as reported',
+  2:
+    phase === 'after'
+      ? 'The fix — the behaviour as it now is'
+      : 'The bug — the behaviour as reported',
   3: 'The proof — the criterion asserted, and what still works',
 };
 
@@ -127,7 +130,9 @@ page.on('console', (msg) => {
   if (text.startsWith('Failed to load resource')) return;
   recorder.consoleErrors.push(text.slice(0, 300));
 });
-page.on('pageerror', (err) => recorder.consoleErrors.push(`uncaught: ${String(err.message).slice(0, 300)}`));
+page.on('pageerror', (err) =>
+  recorder.consoleErrors.push(`uncaught: ${String(err.message).slice(0, 300)}`),
+);
 page.on('response', (res) => {
   if (res.status() < 400) return;
   let path = res.url();
@@ -147,6 +152,15 @@ const BANNER_ID = '__evidence_banner__';
 
 /** @type {{actNo:number,title:string,intent?:string}|null} */
 let currentBanner = null;
+
+/**
+ * Set while a screenshot is being taken.
+ *
+ * Hiding the live overlay was not enough: the `load` handler's `waitFor` could resolve and
+ * inject a *new* spotlight between hiding it and `page.screenshot()`, putting the outline
+ * into a raw still — and the before/after pair audit compares those bytes.
+ */
+let suppressSpotlight = false;
 
 /** @type {{file:string,label:string,box:{x:number,y:number,w:number,h:number}}[]} */
 const highlights = [];
@@ -251,7 +265,11 @@ async function spotlight(selector, opts = {}) {
   // evidence run that silently proves less than it claims. A declared spotlight is part of
   // the evidence, so failing to find it fails the run.
   await page.locator(selector).first().waitFor({ state: 'attached', timeout: 5000 });
-  await page.locator(selector).first().scrollIntoViewIfNeeded().catch(() => {});
+  await page
+    .locator(selector)
+    .first()
+    .scrollIntoViewIfNeeded()
+    .catch(() => {});
   await injectSpotlight(currentSpotlight);
 }
 
@@ -261,114 +279,129 @@ async function clearSpotlight() {
 }
 
 async function injectSpotlight({ selector, label, tone, dim }) {
-  await page
-    .evaluate(
-      ({ id, selector, label, tone, dim }) => {
-        document.getElementById(id)?.remove();
-        if (!document.querySelector(selector)) {
-          throw new Error(`spotlight: no element matches ${selector}`);
-        }
+  if (suppressSpotlight) return; // a screenshot is in flight; do not draw into it
+  await page.evaluate(
+    ({ id, selector, label, tone, dim }) => {
+      document.getElementById(id)?.remove();
+      if (!document.querySelector(selector)) {
+        throw new Error(`spotlight: no element matches ${selector}`);
+      }
 
-        const colours = { problem: '#ff5449', fixed: '#29c05a', neutral: '#4a9eff' };
-        const colour = colours[tone] ?? colours.neutral;
+      const colours = { problem: '#ff5449', fixed: '#29c05a', neutral: '#4a9eff' };
+      const colour = colours[tone] ?? colours.neutral;
 
-        const root = document.createElement('div');
-        root.id = id;
-        root.setAttribute('aria-hidden', 'true');
-        Object.assign(root.style, {
+      const root = document.createElement('div');
+      root.id = id;
+      root.setAttribute('aria-hidden', 'true');
+      Object.assign(root.style, {
+        position: 'fixed',
+        inset: '0',
+        zIndex: '2147483646',
+        pointerEvents: 'none',
+      });
+
+      const box = document.createElement('div');
+      Object.assign(box.style, {
+        position: 'fixed',
+        borderRadius: '4px',
+        outline: `3px solid ${colour}`,
+        outlineOffset: '2px',
+        boxShadow: dim ? '0 0 0 9999px rgba(0,0,0,0.45)' : 'none',
+        transition: 'all 140ms ease-out',
+      });
+
+      const chip = document.createElement('div');
+      if (label) {
+        chip.textContent = label;
+        Object.assign(chip.style, {
           position: 'fixed',
-          inset: '0',
-          zIndex: '2147483646',
-          pointerEvents: 'none',
-        });
-
-        const box = document.createElement('div');
-        Object.assign(box.style, {
-          position: 'fixed',
+          padding: '4px 10px',
           borderRadius: '4px',
-          outline: `3px solid ${colour}`,
-          outlineOffset: '2px',
-          boxShadow: dim ? '0 0 0 9999px rgba(0,0,0,0.45)' : 'none',
-          transition: 'all 140ms ease-out',
+          background: colour,
+          color: tone === 'fixed' ? '#04210f' : '#fff',
+          font: '600 13px/1.3 system-ui, sans-serif',
+          whiteSpace: 'nowrap',
         });
+      }
 
-        const chip = document.createElement('div');
+      // Re-resolved, not captured once. `withHashLocation()` makes `goto('/#/x')` a
+      // same-document navigation, so no `load` fires: the overlay survived while this
+      // function kept measuring the *detached* element from the previous route and pointed
+      // at a stale rectangle. Re-querying every tick also covers a component re-render
+      // replacing the node. When it is gone, mark the overlay lost so the run can see it.
+      // Connected is not the same as visible. A `display:none` node, a zero-sized box or an
+      // element scrolled entirely out of view all resolve fine while the outline shows
+      // nothing — so they count as lost. The scene-end check applies the identical
+      // predicate, via `window.__evidenceSpotlightVisible`.
+      const visible = (el) => {
+        if (!el || !el.isConnected) return false;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0)
+          return false;
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) return false;
+        return r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+      };
+      window.__evidenceSpotlightVisible = (sel) => visible(document.querySelector(sel));
+
+      const place = () => {
+        const live = document.querySelector(selector);
+        if (!visible(live)) {
+          root.dataset.lost = '1';
+          // Latched for the lifetime of this spotlight, and never cleared. `lost` alone is
+          // transient: on a route change or re-render the target can be absent for several
+          // ticks — the outline visibly disappears — and then return before the hold ends,
+          // leaving a gap in the recording that a live query at scene end cannot see.
+          root.dataset.wasLost = '1';
+          box.style.display = 'none';
+          chip.style.display = 'none';
+          return;
+        }
+        delete root.dataset.lost;
+        box.style.display = '';
+        if (label) chip.style.display = '';
+        const r = live.getBoundingClientRect();
+        Object.assign(box.style, {
+          left: `${r.left}px`,
+          top: `${r.top}px`,
+          width: `${r.width}px`,
+          height: `${r.height}px`,
+        });
         if (label) {
-          chip.textContent = label;
+          const above = r.top > 34;
           Object.assign(chip.style, {
-            position: 'fixed',
-            padding: '4px 10px',
-            borderRadius: '4px',
-            background: colour,
-            color: tone === 'fixed' ? '#04210f' : '#fff',
-            font: '600 13px/1.3 system-ui, sans-serif',
-            whiteSpace: 'nowrap',
+            left: `${Math.max(6, r.left)}px`,
+            top: above ? `${r.top - 30}px` : `${r.bottom + 8}px`,
           });
         }
+      };
+      place();
 
-        // Re-resolved, not captured once. `withHashLocation()` makes `goto('/#/x')` a
-        // same-document navigation, so no `load` fires: the overlay survived while this
-        // function kept measuring the *detached* element from the previous route and pointed
-        // at a stale rectangle. Re-querying every tick also covers a component re-render
-        // replacing the node. When it is gone, mark the overlay lost so the run can see it.
-        const place = () => {
-          const live = document.querySelector(selector);
-          if (!live || !live.isConnected) {
-            root.dataset.lost = '1';
-            // Latched for the lifetime of this spotlight, and never cleared. `lost` alone is
-            // transient: on a route change or re-render the target can be absent for several
-            // ticks — the outline visibly disappears — and then return before the hold ends,
-            // leaving a gap in the recording that a live query at scene end cannot see.
-            root.dataset.wasLost = '1';
-            box.style.display = 'none';
-            chip.style.display = 'none';
-            return;
-          }
-          delete root.dataset.lost;
-          box.style.display = '';
-          if (label) chip.style.display = '';
-          const r = live.getBoundingClientRect();
-          Object.assign(box.style, {
-            left: `${r.left}px`,
-            top: `${r.top}px`,
-            width: `${r.width}px`,
-            height: `${r.height}px`,
-          });
-          if (label) {
-            const above = r.top > 34;
-            Object.assign(chip.style, {
-              left: `${Math.max(6, r.left)}px`,
-              top: above ? `${r.top - 30}px` : `${r.bottom + 8}px`,
-            });
-          }
-        };
-        place();
+      root.append(box);
+      if (label) root.append(chip);
+      document.body.appendChild(root);
 
-        root.append(box);
-        if (label) root.append(chip);
-        document.body.appendChild(root);
+      const onMove = () => place();
+      addEventListener('scroll', onMove, true);
+      addEventListener('resize', onMove);
+      const timer = setInterval(place, 250);
 
-        const onMove = () => place();
-        addEventListener('scroll', onMove, true);
-        addEventListener('resize', onMove);
-        const timer = setInterval(place, 250);
-
-        // Watch `root.isConnected`, not "is there an element with this id". Replacing a
-        // spotlight removes the old root and inserts the new one in a single task, so the
-        // outgoing observer looked up the id, found the *incoming* root, concluded nothing
-        // had been removed, and left its timer and listeners running forever. Every
-        // replacement leaked another set.
-        const obs = new MutationObserver(() => {
-          if (root.isConnected) return;
-          clearInterval(timer);
-          removeEventListener('scroll', onMove, true);
-          removeEventListener('resize', onMove);
-          obs.disconnect();
-        });
-        obs.observe(document.body, { childList: true });
-      },
-      { id: SPOTLIGHT_ID, selector, label, tone, dim },
-    );
+      // Watch `root.isConnected`, not "is there an element with this id". Replacing a
+      // spotlight removes the old root and inserts the new one in a single task, so the
+      // outgoing observer looked up the id, found the *incoming* root, concluded nothing
+      // had been removed, and left its timer and listeners running forever. Every
+      // replacement leaked another set.
+      const obs = new MutationObserver(() => {
+        if (root.isConnected) return;
+        clearInterval(timer);
+        removeEventListener('scroll', onMove, true);
+        removeEventListener('resize', onMove);
+        obs.disconnect();
+      });
+      obs.observe(document.body, { childList: true });
+    },
+    { id: SPOTLIGHT_ID, selector, label, tone, dim },
+  );
 }
 
 async function setSpotlightVisible(visible) {
@@ -413,7 +446,10 @@ async function card(title, subtitle, holdMs = 2200) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  return String(s).replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+  );
 }
 
 /**
@@ -421,34 +457,45 @@ function escapeHtml(s) {
  * draw a callout later from a real bounding box rather than a hand-placed rectangle.
  */
 async function shot(name, opts = {}) {
+  suppressSpotlight = true;
   await setBannerVisible(false);
   await setSpotlightVisible(false);
-  const file = await helpers.screenshot(name, opts.highlight ? page.locator(opts.highlight).first() : undefined);
-  const shotName = file.split('/').pop();
+  try {
+    const file = await helpers.screenshot(
+      name,
+      opts.highlight ? page.locator(opts.highlight).first() : undefined,
+    );
+    const shotName = file.split('/').pop();
 
-  if (opts.highlight) {
-    const box = await page
-      .locator(opts.highlight)
-      .first()
-      .boundingBox()
-      .catch(() => null);
-    const vp = page.viewportSize();
-    if (box && vp) {
-      highlights.push({
-        file: shotName,
-        label: opts.label ?? name,
-        box: {
-          x: (box.x / vp.width) * 100,
-          y: (box.y / vp.height) * 100,
-          w: (box.width / vp.width) * 100,
-          h: (box.height / vp.height) * 100,
-        },
-      });
+    if (opts.highlight) {
+      const box = await page
+        .locator(opts.highlight)
+        .first()
+        .boundingBox()
+        .catch(() => null);
+      const vp = page.viewportSize();
+      if (box && vp) {
+        highlights.push({
+          file: shotName,
+          label: opts.label ?? name,
+          box: {
+            x: (box.x / vp.width) * 100,
+            y: (box.y / vp.height) * 100,
+            w: (box.width / vp.width) * 100,
+            h: (box.height / vp.height) * 100,
+          },
+        });
+      }
     }
+    return file;
+  } finally {
+    // In `finally` so an assertion or locator failure mid-capture cannot leave the overlay
+    // suppressed for the rest of the run.
+    suppressSpotlight = false;
+    await setBannerVisible(true);
+    await setSpotlightVisible(true);
+    if (currentSpotlight) await injectSpotlight(currentSpotlight);
   }
-  await setBannerVisible(true);
-  await setSpotlightVisible(true);
-  return file;
 }
 
 // ---------------------------------------------------------------- run
@@ -513,7 +560,8 @@ try {
       // outline is on screen for the hold below — the part of the recording a viewer
       // actually pauses on.
       if (scene.spotlight) {
-        const sp = typeof scene.spotlight === 'string' ? { selector: scene.spotlight } : scene.spotlight;
+        const sp =
+          typeof scene.spotlight === 'string' ? { selector: scene.spotlight } : scene.spotlight;
         await spotlight(sp.selector, sp);
       }
 
@@ -556,9 +604,12 @@ try {
             ({ id, sel }) => {
               const el = document.getElementById(id);
               const target = document.querySelector(sel);
+              const fn = window.__evidenceSpotlightVisible;
               return {
                 present: !!el,
-                resolves: !!target && target.isConnected,
+                // The same predicate `place()` uses, so the two cannot disagree. Falls back
+                // to a connectivity test only if the helper is somehow absent.
+                resolves: fn ? fn(sel) : !!target && target.isConnected,
                 wasLost: el?.dataset.wasLost === '1',
               };
             },
@@ -571,7 +622,7 @@ try {
         const detail = !state.present
           ? `the overlay is gone (${sel})`
           : !state.resolves
-            ? `${sel} no longer resolves — the outline is pointing at nothing`
+            ? `${sel} is not visibly outlined — missing, hidden, zero-sized or off-screen`
             : state.wasLost
               ? `${sel} disappeared during the scene and came back — the recording has a gap`
               : `restoration failed ${gaps} time(s) during this scene — ${spotlightFailures.join('; ')}`;
@@ -590,10 +641,16 @@ try {
     const acts = new Set(declarative.map((s) => s.act ?? 1));
     helpers.step('Story structure');
     for (const n of [1, 2, 3]) {
-      helpers.check(`act ${n} present — ${ACT_NAMES[n]}`, acts.has(n), `no scene declared act: ${n}`);
+      helpers.check(
+        `act ${n} present — ${ACT_NAMES[n]}`,
+        acts.has(n),
+        `no scene declared act: ${n}`,
+      );
     }
   } else if (typeof mod.default === 'function') {
-    console.log('  [note] legacy steps file — no acts or criteria. Convert to `export const scenes`.');
+    console.log(
+      '  [note] legacy steps file — no acts or criteria. Convert to `export const scenes`.',
+    );
     await mod.default(page, { ...helpers, shot, spotlight, clearSpotlight }, outDir);
   } else {
     throw new Error(`${scenesFile} must export \`scenes\` (array) or a default async function`);
@@ -616,7 +673,10 @@ try {
   await browser.close();
   if (video) {
     try {
-      await rename(await video.path(), resolve(outDir, `${ticketId}${phase ? `-${phase}` : ''}.webm`));
+      await rename(
+        await video.path(),
+        resolve(outDir, `${ticketId}${phase ? `-${phase}` : ''}.webm`),
+      );
     } catch (err) {
       console.warn(`  could not rename the recording: ${err.message}`);
     }
@@ -681,7 +741,9 @@ await writeFile(resolve(outDir, 'manifest.json'), `${JSON.stringify(manifest, nu
 await writeFile(resolve(outDir, 'STORY.md'), renderStory(manifest), 'utf8');
 if (chapters.length) await writeFile(resolve(outDir, 'chapters.vtt'), renderVtt(manifest), 'utf8');
 
-console.log(`\nverdict  ${verdict.toUpperCase()} — ${totalChecks - failed.length}/${totalChecks} checks across ${recorder.steps.length} scene(s)`);
+console.log(
+  `\nverdict  ${verdict.toUpperCase()} — ${totalChecks - failed.length}/${totalChecks} checks across ${recorder.steps.length} scene(s)`,
+);
 console.log(`story    ${resolve(outDir, 'STORY.md')}`);
 
 // Two different questions, and they were conflated. "Did the capture run correctly?" decides
@@ -707,8 +769,12 @@ if (verdict === 'legacy-no-assertions') {
       '  with a criterion and an assertion per scene when you next touch this ticket.',
   );
 } else if (verdict !== 'pass') {
-  for (const f of failed) console.log(`  [FAIL] scene ${f.step} (${f.label}) — ${f.name}${f.detail ? `: ${f.detail}` : ''}`);
-  if (totalChecks === 0) console.log('  No checks were recorded. A capture that asserts nothing is not evidence.');
+  for (const f of failed)
+    console.log(
+      `  [FAIL] scene ${f.step} (${f.label}) — ${f.name}${f.detail ? `: ${f.detail}` : ''}`,
+    );
+  if (totalChecks === 0)
+    console.log('  No checks were recorded. A capture that asserts nothing is not evidence.');
   if (!captureBroken) {
     console.log(
       '\n  The capture itself is sound — these are failed claims, not a broken run. For a BEFORE\n' +
@@ -779,7 +845,11 @@ function renderStory(m) {
     `| Branch / commit | \`${m.environment.branch ?? '?'}\` @ \`${m.environment.commit ?? '?'}\` |`,
     `| Nuxeo image | ${m.environment.nuxeoImage ? `\`${m.environment.nuxeoImage}\`` : '_not recorded_'} |`,
     `| Scenes file | \`${m.environment.scenesFile}\` |`,
-    ...(m.video ? [`| Recording | \`${m.video}\`${m.chapters.length ? ' (chapters in `chapters.vtt`)' : ''} |`] : []),
+    ...(m.video
+      ? [
+          `| Recording | \`${m.video}\`${m.chapters.length ? ' (chapters in `chapters.vtt`)' : ''} |`,
+        ]
+      : []),
     '',
   ];
 
@@ -818,8 +888,12 @@ function renderStory(m) {
 
   if (m.totals.failed > 0) {
     lines.push('## Failed checks', '');
-    for (const f of m.steps.flatMap((s) => s.checks.filter((c) => !c.passed).map((c) => ({ s, c })))) {
-      lines.push(`- Scene ${f.s.index} (${f.s.label}) — **${f.c.name}**${f.c.detail ? `: ${f.c.detail}` : ''}`);
+    for (const f of m.steps.flatMap((s) =>
+      s.checks.filter((c) => !c.passed).map((c) => ({ s, c })),
+    )) {
+      lines.push(
+        `- Scene ${f.s.index} (${f.s.label}) — **${f.c.name}**${f.c.detail ? `: ${f.c.detail}` : ''}`,
+      );
     }
     lines.push('');
   }
@@ -836,7 +910,9 @@ function renderStory(m) {
     if (s.intent) lines.push(`_${s.intent}_`, '');
     if (s.criterion) lines.push(`Proves: **${s.criterion}**`, '');
     for (const c of s.checks) {
-      lines.push(`- ${c.passed ? '[pass]' : '[FAIL]'} ${c.name}${c.detail ? ` — ${c.detail}` : ''}`);
+      lines.push(
+        `- ${c.passed ? '[pass]' : '[FAIL]'} ${c.name}${c.detail ? ` — ${c.detail}` : ''}`,
+      );
     }
     for (const n of s.notes ?? []) lines.push(`- _not covered:_ ${n}`);
     for (const e of s.consoleErrors ?? []) lines.push(`- _observed in the browser:_ \`${e}\``);
