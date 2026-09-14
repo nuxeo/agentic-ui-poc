@@ -220,14 +220,21 @@ let currentSpotlight = null;
  * differ for a reason that has nothing to do with the fix.
  *
  * @param {string} selector
- * @param {{label?: string, tone?: 'problem'|'fixed'|'neutral', dim?: boolean}} [opts]
+ * @param {{label?: string, dim?: boolean}} [opts]
  */
 async function spotlight(selector, opts = {}) {
-  // Default the colour from the half being captured: red while demonstrating the defect,
-  // green once it is fixed. This is presentation only — it changes no action the scene takes,
-  // and it cannot reach the screenshots, which are taken with the overlay hidden.
-  const tone = opts.tone ?? (phase === 'after' ? 'fixed' : phase === 'before' ? 'problem' : 'neutral');
+  // The colour is derived from the half being captured and cannot be overridden. An
+  // overridable tone let a scene pin a constant colour and so show green while the defect
+  // was still on screen — contradicting the one thing the colour is supposed to mean,
+  // without the scene ever branching on `EVIDENCE_PHASE`.
+  const tone = phase === 'after' ? 'fixed' : phase === 'before' ? 'problem' : 'neutral';
   currentSpotlight = { selector, label: opts.label, tone, dim: opts.dim !== false };
+
+  // Deliberately not caught. A mistyped or stale selector used to be swallowed here and in
+  // `injectSpotlight`, so the capture passed while the recording pointed at nothing — an
+  // evidence run that silently proves less than it claims. A declared spotlight is part of
+  // the evidence, so failing to find it fails the run.
+  await page.locator(selector).first().waitFor({ state: 'attached', timeout: 5000 });
   await page.locator(selector).first().scrollIntoViewIfNeeded().catch(() => {});
   await injectSpotlight(currentSpotlight);
 }
@@ -243,7 +250,7 @@ async function injectSpotlight({ selector, label, tone, dim }) {
       ({ id, selector, label, tone, dim }) => {
         document.getElementById(id)?.remove();
         const target = document.querySelector(selector);
-        if (!target) return;
+        if (!target) throw new Error(`spotlight: no element matches ${selector}`);
 
         const colours = { problem: '#ff5449', fixed: '#29c05a', neutral: '#4a9eff' };
         const colour = colours[tone] ?? colours.neutral;
@@ -310,17 +317,23 @@ async function injectSpotlight({ selector, label, tone, dim }) {
         addEventListener('scroll', onMove, true);
         addEventListener('resize', onMove);
         const timer = setInterval(place, 250);
-        new MutationObserver(() => {
-          if (!document.getElementById(id)) {
-            clearInterval(timer);
-            removeEventListener('scroll', onMove, true);
-            removeEventListener('resize', onMove);
-          }
-        }).observe(document.body, { childList: true });
+
+        // Watch `root.isConnected`, not "is there an element with this id". Replacing a
+        // spotlight removes the old root and inserts the new one in a single task, so the
+        // outgoing observer looked up the id, found the *incoming* root, concluded nothing
+        // had been removed, and left its timer and listeners running forever. Every
+        // replacement leaked another set.
+        const obs = new MutationObserver(() => {
+          if (root.isConnected) return;
+          clearInterval(timer);
+          removeEventListener('scroll', onMove, true);
+          removeEventListener('resize', onMove);
+          obs.disconnect();
+        });
+        obs.observe(document.body, { childList: true });
       },
       { id: SPOTLIGHT_ID, selector, label, tone, dim },
-    )
-    .catch(() => {});
+    );
 }
 
 async function setSpotlightVisible(visible) {

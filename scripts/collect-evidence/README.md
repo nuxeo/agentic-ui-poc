@@ -102,7 +102,7 @@ From `scripts/beta-harness/helpers.mjs`, plus `shot()` added by the runner.
 | Method                                        | Description                                                     |
 | --------------------------------------------- | --------------------------------------------------------------- |
 | `h.shot(name, { highlight, label })`          | Screenshot; records the highlight's box for later callouts      |
-| `h.spotlight(selector, { label, tone, dim })` | Outline the live element **in the recording**; hidden in stills |
+| `h.spotlight(selector, { label, dim })`       | Outline the live element **in the recording**; hidden in stills |
 | `h.clearSpotlight()`                          | Remove it early; otherwise cleared at the next scene            |
 | `h.check(name, condition, detail)`            | Named pass/fail assertion. Never throws                         |
 | `h.expectVisible(name, selector, timeout?)`   | Assert a selector becomes visible                               |
@@ -146,8 +146,9 @@ written to do, but it proves nothing, so it can never be cited as evidence. Conv
   every screenshot — stills stay clean, and annotation happens on a copy
 - `spotlight()` outlines the element a scene is about, dims the rest and labels it, so the
   video points at the change instead of leaving the viewer to find it. Red on the `before`
-  half, green on `after`, derived from `EVIDENCE_PHASE` — the scene itself does not branch
-  on it. Hidden for screenshots too: the pair audit compares raw bytes
+  half, green on `after`, derived from `EVIDENCE_PHASE` and not overridable — the scene
+  neither branches on the phase nor can contradict it. A selector that matches nothing fails
+  the run. Hidden for screenshots too: the pair audit compares raw bytes
 - Console errors, uncaught exceptions and every HTTP 4xx/5xx are attributed to the scene they
   occurred in, and rendered in `STORY.md`
 - Scene start offsets are recorded as WebVTT chapters. They are measured from browser-context

@@ -342,8 +342,10 @@ scene when the moment matters — the declarative form applies after `run()`, so
 on screen for the hold, which is the part a viewer pauses on.
 
 It draws a bright outline on the live element and dims the rest, and it **colours itself from
-the half being captured**: red while the defect is on screen, green once it is fixed. You do
-not branch on `EVIDENCE_PHASE` to get that, and must not — the actions stay identical.
+the half being captured**: red while the defect is on screen, green once it is fixed. That is
+not overridable — you neither branch on `EVIDENCE_PHASE` nor can contradict it. A selector
+that matches nothing **fails the run**: a recording that points at nothing is worse than one
+that points at nothing on purpose.
 
 **It never reaches a screenshot.** Like the caption banner it is hidden for every `shot()`,
 because the before/after pair audit compares raw bytes and an overlay would make every pair
