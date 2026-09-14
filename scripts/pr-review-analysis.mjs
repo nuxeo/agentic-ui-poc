@@ -1,0 +1,885 @@
+#!/usr/bin/env node
+/**
+ * Harvest what the PR reviewer caught, and why we did not catch it first.
+ *
+ *   node scripts/pr-review-analysis.mjs harvest <pr> [<pr> …]   # -> a JSONL to classify
+ *   node scripts/pr-review-analysis.mjs publish <file.jsonl>    # -> appends to Confluence
+ *
+ * ## What this is for
+ *
+ * Every review comment that lands on a pull request is a defect the authoring agent shipped
+ * and the reviewing agent caught. That gap is the interesting thing: not the individual bug,
+ * but the *class* of bug and the reason it was invisible from the inside. Forty-odd of them
+ * in one week is enough to see the shape, and the shape is what a pre-PR review skill has to
+ * be built from — otherwise it is a list of somebody's habits.
+ *
+ * So the harvest is mechanical and the classification is not. `harvest` pulls every Copilot
+ * finding with its file, line and body and leaves two fields blank; a human or an agent fills
+ * them in, judging one comment at a time; `publish` appends the result.
+ *
+ * "Every" means all three places GitHub puts reviewer feedback — inline review threads, the
+ * review **summary body**, and PR **conversation** comments. It used to mean only the first,
+ * which on PR #182 harvested 2 rows out of 5 findings: the summary body's verdict and the
+ * three findings Copilot had folded into its "Suppressed comments" block were all dropped,
+ * and the class counts this page exists to produce were wrong by 60%.
+ *
+ * ## The two fields that matter
+ *
+ * `category`   the defect class, from the fixed list below — free text makes rows
+ *              incomparable, and an incomparable table cannot tell you what to automate.
+ * `whyMissed`  why the author did not see it. This is the column the skill gets built from.
+ *              "Careless" is never the answer; if it were, the fix would be "be careful",
+ *              which has never worked. Look for the structural reason: a claim nobody
+ *              re-read after the code changed, a guarantee asserted in prose and not in
+ *              code, a check that tested a proxy for the thing it named.
+ */
+
+import { appendFile, readFile, writeFile, mkdir } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+
+import { EVIDENCE_ROOT } from './collect-evidence/evidence-path.mjs';
+
+/**
+ * The defect classes, fixed on purpose.
+ *
+ * Derived from the first batch rather than invented up front: each one is a pattern that
+ * recurred, and each suggests a different kind of pre-PR check. A class nothing falls into is
+ * worth adding; a class everything falls into is worth splitting.
+ */
+export const CATEGORIES = {
+  'stale-prose':
+    'Code changed; a comment, header, table or doc describing the old behaviour survived nearby',
+  'unenforced-guarantee':
+    'The prose promises something the code does not enforce, or allows a caller to contradict',
+  'silent-failure':
+    'An error path is swallowed — a bare `curl -s`, a `.catch(() => {})`, an exit 0 on failure',
+  'proxy-check':
+    'The check tests something adjacent to its name: connected for visible, a phase opened for a phase finished',
+  ordering:
+    'Right steps, wrong order — a guard after the side effect, a cleanup before the thing that needs it',
+  'incomplete-fetch':
+    'Only part of the data is read: unpaginated, first page only, one source of several',
+  'broken-reference': 'A link, path or id that does not resolve',
+  'false-claim': 'The PR body, changelog or docs assert something the diff does not do',
+  'dead-branch': 'Code that cannot execute, or a condition that cannot fire',
+  scope: 'Unrelated change bundled in, or a change the title does not mention',
+  other: 'Does not fit above — if this grows, add a class',
+};
+
+const PAGE_ID = process.env['PR_ANALYSIS_PAGE_ID'] ?? '4301586839';
+const CONFLUENCE = process.env['AGENT_METRICS_CONFLUENCE'] ?? 'https://hyland.atlassian.net/wiki';
+const REPO = process.env['PR_ANALYSIS_REPO'] ?? 'nuxeo/agentic-ui-poc';
+const OUT_DIR = resolve(EVIDENCE_ROOT, 'pr-review-analysis');
+
+/**
+ * The corpus, committed.
+ *
+ * It lives in the repository rather than the evidence folder because the pre-PR review skill
+ * is built from it: its section ordering and every count it quotes are derived from these
+ * rows. Evidence stays outside the repo, but something a skill's content depends on has to
+ * travel with a clone — otherwise the skill states a snapshot nobody can re-derive, which is
+ * the `stale-prose` defect the skill itself is about.
+ */
+const CORPUS = resolve(repoRoot(), 'docs/pr-review-findings.jsonl');
+const SKILL = resolve(repoRoot(), '.cursor/skills/pre-pr-review/SKILL.md');
+const MARK_START = '<!-- pr-review-stats:start -->';
+const MARK_END = '<!-- pr-review-stats:end -->';
+
+function repoRoot() {
+  return resolve(dirname(fileURLToPath(import.meta.url)), '..');
+}
+
+async function corpus() {
+  if (!existsSync(CORPUS)) return [];
+  return (await readFile(CORPUS, 'utf8'))
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+}
+
+/** The distribution, and the block the skill embeds. Derived, never typed by hand. */
+function renderStats(rows) {
+  const counts = new Map();
+  for (const r of rows) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
+  const ordered = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const prs = [...new Set(rows.map((r) => r.pr))].sort((a, b) => a - b);
+  const top3 = ordered.slice(0, 3).reduce((n, [, c]) => n + c, 0);
+
+  // Deliberately not enumerating the pull requests. The corpus only grows, so a list of every
+  // contributing PR becomes a wall of numbers nobody reads, and a range would be a lie: the
+  // five recorded so far are #174 and #178-#181, not a contiguous span. The per-finding PR is
+  // a column in the corpus and on the Confluence page, which is where you would look anyway.
+  return [
+    MARK_START,
+    `<!-- generated from docs/pr-review-findings.jsonl by \`npm run review:analysis -- sync\`. Do not edit by hand. -->`,
+    '',
+    `**${rows.length} findings** across ${prs.length} pull requests, ${verdict(rows)}.`,
+    `The ${ordered.length > 3 ? 'three largest classes are' : 'classes are'} **${top3} of ${rows.length}**.`,
+    '',
+    // Emit Prettier's padded table form. The generator and the formatter must agree on the
+    // byte, or `check` goes red after every `prettier --write` and becomes noise people learn
+    // to re-sync past without reading — a drift alarm that only ever cries wolf catches no drift.
+    ...table([['Class', 'Findings'], ...ordered.map(([c, n]) => [`\`${c}\``, String(n)])]),
+    '',
+    MARK_END,
+  ].join('\n');
+}
+
+const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+function gh(args) {
+  return execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+}
+
+/** The reviewer this page is about. Everything else on a PR is somebody's opinion, not a finding. */
+const REVIEWER = /copilot/i;
+
+/**
+ * A summary body that reports **no** findings.
+ *
+ * Observed forms, not guessed: PR #178's reviews say "Approval recommended" and
+ * "Comments generated: 0". Anything unrecognised is still treated as a finding — an
+ * unfamiliar verdict should be read by a person, not silently dropped — so this list is an
+ * allow-list of known-clean shapes and can only shrink the false-positive side.
+ */
+const CLEAN_VERDICT = /approval recommended|no issues found|comments generated:\s*0\b/i;
+
+/**
+ * One page of a PR connection, paginated. `--paginate` advances `$endCursor`, and `gh` emits
+ * one JSON document per page, so the result is one row per line rather than one array.
+ */
+function paginate(pr, connection, jq) {
+  const [owner, name] = REPO.split('/');
+  return gh([
+    'api',
+    'graphql',
+    '--paginate',
+    '-F',
+    `owner=${owner}`,
+    '-F',
+    `name=${name}`,
+    '-F',
+    `number=${pr}`,
+    '-f',
+    `query=query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+      repository(owner:$owner,name:$name){pullRequest(number:$number){
+        title
+        ${connection}
+      }}}`,
+    '--jq',
+    `.data.repository.pullRequest as $pr | ${jq}`,
+  ])
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => JSON.parse(l));
+}
+
+/**
+ * Remove a markup construct completely — including the openers a single pass leaves behind.
+ *
+ * One `.replace(/<!--[\s\S]*?-->/g, '')` is not a strip, it is one pass, and a pass only
+ * removes balanced pairs of the one spelling it knows. Measured on nine inputs, one pass left
+ * markup in six of them:
+ *
+ *     "<!--a-->b<!--c"                     -> "b<!--c"
+ *     "x-->y"                              -> "x-->y"
+ *     "<!-- x --!>"                        -> "<!-- x --!>"
+ *     "<details>a</details></details>tail" -> "</details>tail"
+ *     "<details open>a</details>tail"      -> "<details open>a</details>tail"
+ *
+ * CodeQL calls the class `js/incomplete-multi-character-sanitization` and flagged both call
+ * sites in this file. Nothing was injectable — every cell is escaped by `esc` before it
+ * reaches the page — but the strip was wrong for its own purpose: these functions exist to
+ * skip markup, and an incomplete strip makes them return a fragment of it as the finding.
+ *
+ * So: replace to a fixed point, **then** drop any unbalanced marker. The second step is the
+ * one that matters here; the loop alone cannot help, because an odd `<!--` or `-->` never
+ * matches a pair however many times you look. Both steps leave markup-free text untouched.
+ */
+function stripAll(text, pattern, marker) {
+  let out = String(text ?? '');
+  let previous;
+  do {
+    previous = out;
+    out = out.replace(pattern, '');
+  } while (out !== previous);
+  return out.replace(marker, '');
+}
+
+// `--!>` closes a comment as well as `-->`: HTML's comment-end-bang state accepts it, so
+// browsers treat `<!-- x --!>` as a complete comment and so must anything claiming to strip
+// one. Missing it left ` x --!>` in the text — CodeQL alert 40, js/bad-tag-filter.
+const HTML_COMMENT = /<!--[\s\S]*?--!?>\n?/g;
+const HTML_COMMENT_MARKER = /<!--|--!?>/g;
+// Tolerant of attributes, spacing and case, so `<details open>` and `</Details >` are the
+// same block boundary as `<details>`. The literal form matched neither.
+const DETAILS_BLOCK = /<details\b[^>]*>[\s\S]*?<\/details\s*>/gi;
+const DETAILS_MARKER = /<\/?details\b[^>]*>/gi;
+
+/**
+ * Escape a value for Confluence storage XHTML, in **text or an attribute**.
+ *
+ * `"` and `'` are here because one of these values is interpolated into `<a href="…">`, and
+ * escaping only `&<>` left the quote that terminates the attribute intact. A finding URL
+ * containing `#" onmouseover="…` closed `href` and opened an event handler on a page other
+ * people read — CodeQL alert 37. Escaping the quotes in the shared helper rather than at the
+ * one call site means the next attribute added to this table is safe without anyone
+ * remembering why.
+ *
+ * Declared **above** `if (isCli)` on purpose. As a `const` below it, the map was in its
+ * temporal dead zone while the `publish` branch ran, so the first `esc` call threw
+ * `ReferenceError: Cannot access 'HTML_ESCAPES' before initialization` — a crash on every
+ * successful publish, reachable only past the credential check and therefore invisible to
+ * every gate.
+ */
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+export function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+/**
+ * The one line that identifies a finding in a table.
+ *
+ * Not simply line one of the body. A review summary body opens with a `###` verdict heading
+ * and folds its detail into `<details>` blocks, so line one is "### Changes recommended",
+ * which distinguishes nothing; a bot summary can open with an HTML comment marker. Headings,
+ * quotes, rules and collapsed blocks are skipped and the first real prose line is used.
+ *
+ * The fallback is the whole body squashed, never the empty string: a row that describes its
+ * finding badly can be read and fixed, and a row silently dropped for having an unusual body
+ * cannot.
+ */
+function findingLine(body) {
+  const stripped = stripAll(
+    stripAll(body, HTML_COMMENT, HTML_COMMENT_MARKER),
+    DETAILS_BLOCK,
+    DETAILS_MARKER,
+  );
+  for (const line of stripped.split('\n')) {
+    const text = line.replace(/\s+/g, ' ').trim();
+    if (!text || text.startsWith('#') || text.startsWith('>') || /^[-*_]{3,}$/.test(text)) continue;
+    return text.slice(0, 220);
+  }
+  return String(body ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 220);
+}
+
+/**
+ * The findings Copilot folds into a review body's "Suppressed comments" block.
+ *
+ * These are real findings — three of the five on PR #182 were here, and all three were valid
+ * defects — but they are prose inside the summary body rather than threads, so nothing that
+ * reads `reviewThreads` can see them. The shape is a bolded `path:line` followed by bullets:
+ *
+ *     **scripts/pr-review-analysis.mjs:162**
+ *     * Indexing a normal object does not reliably reject unknown classes…
+ *
+ * Parsing a bot's markdown is brittle by nature, so this is **additive and self-healing**: if
+ * the shape changes and nothing matches, `harvestPr` records the body as a single row instead,
+ * and the finding is under-described rather than silently absent.
+ */
+function suppressedFindings(body) {
+  const found = [];
+  const text = String(body ?? '');
+  const block = /\*\*([^*\n]+?):(\d+)\*\*\s*\n((?:\s*[*-] .*\n?)+)/g;
+  for (const match of text.matchAll(block)) {
+    found.push({
+      file: match[1].trim(),
+      line: Number(match[2]),
+      finding: findingLine(match[3].replace(/^\s*[*-] /m, '')),
+    });
+  }
+  return found;
+}
+
+function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId = null }) {
+  return {
+    pr: Number(pr),
+    prTitle,
+    file,
+    line,
+    url,
+    reviewId,
+    // Enough to recognise the finding in a table; the URL has the rest.
+    finding,
+    resolved,
+    source,
+    category: '',
+    whyMissed: '',
+  };
+}
+
+/**
+ * The Copilot reviews on a PR, oldest first.
+ *
+ * `gh` failing throws out of `execFileSync`, which is the point: this used to be
+ * `copilot_reviews | tail -1` in a shell snippet, and without `pipefail` `tail` exits 0 when
+ * the producer dies, so the snapshot id came back empty. An empty snapshot makes the *next*
+ * poll treat the existing review as new, and the round reads clean without a review having
+ * run. That is the third place in this loop where a pipeline turned an API failure into a
+ * reassuring zero, which is the argument for the loop's state living here rather than in
+ * shell.
+ */
+export function copilotReviews(pr) {
+  return paginate(
+    pr,
+    `headRefOid
+     reviews(first:50, after:$endCursor){
+       pageInfo{ hasNextPage endCursor }
+       nodes{ id author{ login } commit{ oid } } }`,
+    '$pr.reviews.nodes[] | {head: $pr.headRefOid} + .',
+  )
+    .filter((r) => REVIEWER.test(r.author?.login ?? ''))
+    .map((r) => ({ id: r.id, commit: r.commit?.oid ?? null, head: r.head }));
+}
+
+/**
+ * The newest Copilot review **of the current head**, or `null`.
+ *
+ * A review is tied to a commit, and the id alone does not say which. A review queued against
+ * the previous head can submit after the snapshot was taken, and an id-only comparison accepts
+ * it as this round's — so the round passes on a commit that was never reviewed, which is the
+ * false-clean signal in its subtlest form yet. The commit has to match.
+ */
+export function latestReviewOfHead(pr) {
+  const reviews = copilotReviews(pr);
+  const head = reviews.length ? reviews[reviews.length - 1].head : null;
+  const ofHead = reviews.filter((r) => r.commit && r.commit === head);
+  return ofHead.length ? ofHead[ofHead.length - 1] : null;
+}
+
+/**
+ * The findings attributable to one review — the number that decides whether a round is clean.
+ *
+ * Deliberately `harvestPr` filtered by review, not a second implementation. The clean-round
+ * test and the harvest used to classify a review body differently: the shell test counted
+ * only bold `path:line` entries, while `harvestPr` records a non-empty body with no threads
+ * and no suppressed block as one finding. A body of that shape scored zero in the loop and
+ * was harvested as a defect minutes later, so the loop could exit on something the record
+ * then called a miss. One classifier, two callers, and they cannot drift.
+ *
+ * Resolved threads are excluded here — unlike `harvestPr`, which keeps them on purpose —
+ * because a round asks "what is outstanding now", not "what did this PR ever cost".
+ */
+export function roundFindings(pr, reviewId) {
+  return harvestPr(pr).filter((r) => r.reviewId === reviewId && r.resolved !== true);
+}
+
+/**
+ * Every Copilot finding on a PR, resolved or not — a fixed one still happened.
+ *
+ * All three connections, because GitHub splits reviewer feedback across three and each is
+ * actionable: inline `reviewThreads`, the `reviews` summary body (submitted as `COMMENTED`,
+ * not `CHANGES_REQUESTED`, so it is easy to miss), and PR-level `comments`.
+ */
+export function harvestPr(pr) {
+  const rows = [];
+  const isReviewer = (login) => REVIEWER.test(login ?? '');
+  /** Review ids that already contributed a finding of their own, by any route. */
+  const reviewsWithFindings = new Set();
+
+  for (const t of paginate(
+    pr,
+    `reviewThreads(first:50, after:$endCursor){
+       pageInfo{ hasNextPage endCursor }
+       nodes{ isResolved path line
+         comments(first:1){ nodes{ author{ login } body url pullRequestReview{ id } } } } }`,
+    '$pr.reviewThreads.nodes[] | {title: $pr.title} + .',
+  )) {
+    const c = t.comments.nodes[0];
+    if (!c || !isReviewer(c.author?.login)) continue;
+    if (c.pullRequestReview?.id) reviewsWithFindings.add(c.pullRequestReview.id);
+    rows.push(
+      row({
+        pr,
+        prTitle: t.title,
+        file: t.path,
+        line: t.line,
+        url: c.url,
+        finding: findingLine(c.body),
+        resolved: t.isResolved,
+        source: 'thread',
+        reviewId: c.pullRequestReview?.id ?? null,
+      }),
+    );
+  }
+
+  for (const r of paginate(
+    pr,
+    `reviews(first:50, after:$endCursor){
+       pageInfo{ hasNextPage endCursor }
+       nodes{ id author{ login } body url } }`,
+    '$pr.reviews.nodes[] | select(.body != "") | {title: $pr.title} + .',
+  )) {
+    if (!isReviewer(r.author?.login)) continue;
+    const suppressed = suppressedFindings(r.body);
+    const clean = CLEAN_VERDICT.test(r.body);
+    // A summary verdict restates the findings under it, so it earns a row only when the review
+    // contributed none by any other route *and* is not an approval.
+    //
+    // Two earlier versions of this test were wrong in opposite directions. `suppressed.length`
+    // alone asks whether the *body* embedded a block, not whether the *review* already
+    // produced findings, so a review with ordinary inline threads and a plain summary was
+    // harvested as every thread plus an extra summary row — PR #180's first review is that
+    // shape. Then falling back to "any non-empty body is a finding" turned an approval into a
+    // defect: PR #178's reviews say "Approval recommended" and "Comments generated: 0", so
+    // `round` returned 1 for a genuinely clean review and the corpus gained a row for a
+    // review that found nothing.
+    const items = suppressed.length
+      ? suppressed
+      : reviewsWithFindings.has(r.id) || clean
+        ? []
+        : [{ file: '(review summary)', line: null, finding: findingLine(r.body) }];
+    if (items.length) reviewsWithFindings.add(r.id);
+    for (const item of items) {
+      rows.push(
+        row({
+          pr,
+          prTitle: r.title,
+          ...item,
+          url: r.url,
+          resolved: null,
+          source: 'review-body',
+          reviewId: r.id,
+        }),
+      );
+    }
+  }
+
+  for (const c of paginate(
+    pr,
+    `comments(first:50, after:$endCursor){
+       pageInfo{ hasNextPage endCursor }
+       nodes{ author{ login } body url } }`,
+    '$pr.comments.nodes[] | {title: $pr.title} + .',
+  )) {
+    if (!isReviewer(c.author?.login)) continue;
+    rows.push(
+      row({
+        pr,
+        prTitle: c.title,
+        file: '(conversation)',
+        line: null,
+        url: c.url,
+        finding: findingLine(c.body),
+        resolved: null,
+        source: 'conversation',
+      }),
+    );
+  }
+
+  return rows;
+}
+
+if (isCli) {
+  const [, , cmd, ...rest] = process.argv;
+
+  if (cmd === 'harvest') {
+    // `--review <id>` records one round rather than the whole PR.
+    //
+    // Without it, every iteration of the loop re-harvested every finding the PR had ever
+    // had, with `category` and `whyMissed` blank again — and `publish` validates
+    // classifications before it deduplicates, so round two onwards demanded that everything
+    // already published be classified a second time. The instruction said "harvest the
+    // round"; the command harvested the PR.
+    const reviewFlag = rest.indexOf('--review');
+    const onlyReview = reviewFlag === -1 ? null : rest[reviewFlag + 1];
+    if (reviewFlag !== -1) {
+      if (!onlyReview) {
+        console.error('Usage: pr-review-analysis.mjs harvest <pr> … [--review <reviewId>]');
+        process.exit(2);
+      }
+      rest.splice(reviewFlag, 2);
+    }
+    if (!rest.length) {
+      console.error('Usage: pr-review-analysis.mjs harvest <pr> [<pr> …] [--review <reviewId>]');
+      process.exit(2);
+    }
+    await mkdir(OUT_DIR, { recursive: true });
+    const out = resolve(OUT_DIR, harvestFileName(rest));
+    // One invocation, one file. The name used to be the UTC date, so a second harvest the same
+    // day appended to a file that had already been classified and published, and the next
+    // `publish` re-posted those rows to Confluence. A batch of PRs in one invocation still
+    // shares one file, which is the point of accepting several; two invocations never do.
+    if (existsSync(out)) {
+      console.error(
+        `\n${out} already exists. Refusing to append to a file that may be published.\n`,
+      );
+      process.exit(1);
+    }
+    // Created up front, so the path printed below always exists. When a PR has no Copilot
+    // findings the loop never appends, and the `publish` command this prints was then
+    // rejected for a missing file — a clean first review could not complete the harvest step
+    // the Definition of Done requires. An empty file publishes as zero findings.
+    await writeFile(out, '', { flag: 'wx' });
+    let n = 0;
+    const bySource = {};
+    for (const pr of rest) {
+      const entries = onlyReview
+        ? harvestPr(pr).filter((r) => r.reviewId === onlyReview)
+        : harvestPr(pr);
+      for (const entry of entries) {
+        await appendFile(out, `${JSON.stringify(entry)}\n`, 'utf8');
+        bySource[entry.source] = (bySource[entry.source] ?? 0) + 1;
+        n += 1;
+      }
+    }
+    // Printed per source so a zero where feedback exists is visible rather than assumed away.
+    const breakdown = Object.entries(bySource)
+      .map(([source, count]) => `${count} ${source}`)
+      .join(', ');
+    console.log(
+      `\nHarvested ${n} Copilot finding(s) from PR(s) ${rest.join(', ')}${breakdown ? ` — ${breakdown}` : ''}`,
+    );
+    console.log(`  ${out}\n`);
+    console.log('Now fill in `category` and `whyMissed` on each row, then publish.');
+    console.log(`Categories: ${Object.keys(CATEGORIES).join(', ')}\n`);
+  } else if (cmd === 'publish') {
+    const file = rest[0];
+    if (!file || !existsSync(file)) {
+      console.error('Usage: pr-review-analysis.mjs publish <file.jsonl>');
+      process.exit(2);
+    }
+    const rows = (await readFile(file, 'utf8'))
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+
+    // `.trim()`, not truthiness: `"   "` is truthy, so a row whose classification is spaces
+    // used to pass this check and publish as a visibly blank cell — exactly what the check
+    // below says it refuses to do.
+    const filled = (v) => typeof v === 'string' && v.trim().length > 0;
+    const unclassified = rows.filter((r) => !filled(r.category) || !filled(r.whyMissed));
+    if (unclassified.length) {
+      console.error(
+        `\n${unclassified.length} of ${rows.length} row(s) have no category or whyMissed.\n` +
+          'Publishing them would put blanks in the column the page exists for. Classify first:\n' +
+          unclassified
+            .slice(0, 5)
+            .map((r) => `  #${r.pr} ${r.file}:${r.line}`)
+            .join('\n') +
+          '\n',
+      );
+      process.exit(1);
+    }
+    // `Object.hasOwn`, not indexing: `CATEGORIES['toString']` is an inherited function and
+    // therefore truthy, so `toString`, `constructor` and `valueOf` all passed as valid
+    // classes. Only the vocabulary declared above is accepted.
+    const bad = rows.filter((r) => !Object.hasOwn(CATEGORIES, r.category));
+    if (bad.length) {
+      console.error(
+        `\nUnknown category on ${bad.length} row(s): ${[...new Set(bad.map((b) => b.category))].join(', ')}`,
+      );
+      console.error(`Valid: ${Object.keys(CATEGORIES).join(', ')}\n`);
+      process.exit(1);
+    }
+
+    const email = readIf(`${homedir()}/.jira_email`);
+    const token = readIf(`${homedir()}/.jira_token`);
+    if (!email || !token) {
+      console.error('\n~/.jira_email and ~/.jira_token are required to publish.\n');
+      process.exit(1);
+    }
+    const auth = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
+
+    const get = await fetch(`${CONFLUENCE}/api/v2/pages/${PAGE_ID}?body-format=storage`, {
+      headers: { Authorization: auth, Accept: 'application/json' },
+    });
+    if (!get.ok) {
+      console.error(`Could not read the analysis page (HTTP ${get.status}).`);
+      process.exit(1);
+    }
+    const page = await get.json();
+    const storage = page.body?.storage?.value ?? '';
+
+    const heading = storage.indexOf('<h2>Findings</h2>');
+    const close = heading === -1 ? -1 : storage.indexOf('</tbody>', heading);
+    if (close === -1) {
+      console.error('\nNo <h2>Findings</h2> heading with a table below it. Re-seed the page.\n');
+      process.exit(1);
+    }
+
+    const cell = (v) => `<td><p>${esc(v)}</p></td>`;
+    const anchor = (r) => `<a href="${esc(r.url)}">`;
+
+    /**
+     * What identifies a finding on the page.
+     *
+     * Not the URL. Every suppressed finding parsed out of one review body carries that
+     * review's URL, so keying on it meant the first row published from a review marked all
+     * its siblings as already there — the dedupe silently dropped real findings, which is
+     * worse than the duplication it was added to prevent. The link plus the finding text is
+     * unique per finding and is a literal substring of the row this code writes, so
+     * `storage.includes` on it is exact.
+     */
+    const identity = (r) => `${anchor(r)}${esc(r.file)}</a></p></td>${cell(r.finding)}`;
+
+    // Idempotent on the comment URL, decided **before** the PUT.
+    //
+    // The corpus append below already dedupes, but it runs after the page has been written and
+    // the page body was built from every row, so re-publishing a classified file appended the
+    // same rows to Confluence again while the corpus correctly ignored them. A failure between
+    // the PUT and the append had the same effect on a retry. The URL is the stable identity of
+    // a finding, and it is already in the page as the row's link, so the page itself says what
+    // has been published.
+    const pending = rows.filter((r) => !storage.includes(identity(r)));
+
+    if (pending.length) {
+      const body = pending
+        .map(
+          (r) =>
+            '<tr>' +
+            cell(`#${r.pr}`) +
+            `<td><p>${identity(r)}` +
+            cell(r.category) +
+            cell(r.whyMissed) +
+            '</tr>',
+        )
+        .join('\n');
+
+      const put = await fetch(`${CONFLUENCE}/api/v2/pages/${PAGE_ID}`, {
+        method: 'PUT',
+        headers: { Authorization: auth, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: PAGE_ID,
+          status: 'current',
+          title: page.title,
+          body: {
+            representation: 'storage',
+            value: `${storage.slice(0, close)}${body}\n${storage.slice(close)}`,
+          },
+          version: {
+            number: page.version.number + 1,
+            message: `pr-review-analysis: ${pending.length} finding(s)`,
+          },
+        }),
+      });
+      if (!put.ok) {
+        console.error(`Publish failed (HTTP ${put.status}): ${(await put.text()).slice(0, 300)}`);
+        process.exit(1);
+      }
+    }
+
+    const already = rows.length - pending.length;
+    console.log(
+      `Published ${pending.length} finding(s) to ${CONFLUENCE}/pages/${PAGE_ID}` +
+        (already ? ` (${already} already there, skipped)` : ''),
+    );
+
+    // Append to the committed corpus and re-derive the skill, in that order. Publishing to
+    // Confluence alone would leave the repository's copy behind, and the skill quoting a
+    // distribution that no longer matches what the page shows — the same drift that made these
+    // numbers hand-typed in the first place. Deduplicate on the comment URL so re-publishing a
+    // file does not double-count it.
+    // Same identity as the page, and for the same reason: `r.url` is shared by every
+    // suppressed finding from one review, so a URL-keyed set dropped all but the first.
+    const corpusKey = (r) => `${r.pr}|${r.url}|${r.file}|${r.line}|${r.finding}`;
+    const known = new Set((await corpus()).map(corpusKey));
+    const fresh = rows.filter((r) => !known.has(corpusKey(r)));
+    if (fresh.length) {
+      await appendFile(CORPUS, `${fresh.map((r) => JSON.stringify(r)).join('\n')}\n`, 'utf8');
+      const all = await corpus();
+      await writeFile(SKILL, replaceBlock(await readFile(SKILL, 'utf8'), renderStats(all)), 'utf8');
+
+      // `.cursor/` is the source, but `.claude/` and `.agent/` carry generated byte-identical
+      // copies and the `agent-mirror` gate compares them. Rewriting the skill here and
+      // leaving that to the caller meant publishing any fresh finding left the next gate —
+      // and CI — red, on a file the caller never edited by hand and had no reason to suspect.
+      // The generator is the right place to re-run the generator.
+      execFileSync('node', [resolve(repoRoot(), 'scripts/mirror-agent-config.mjs'), 'sync'], {
+        encoding: 'utf8',
+        stdio: 'inherit',
+      });
+
+      console.log(
+        `Corpus now ${all.length} finding(s); skill re-derived and mirrors synced. Stage all ` +
+          'four together:\n' +
+          '  git add docs/pr-review-findings.jsonl \\\n' +
+          '          .cursor/skills/pre-pr-review/SKILL.md \\\n' +
+          '          .claude/skills/pre-pr-review/SKILL.md \\\n' +
+          '          .agent/skills/pre-pr-review/SKILL.md\n' +
+          'The review-corpus gate fails if the corpus and the skill move apart, and ' +
+          'agent-mirror fails if the mirrors do.',
+      );
+    }
+  } else if (cmd === 'latest-review') {
+    const [pr] = rest;
+    if (!pr) {
+      console.error('Usage: pr-review-analysis.mjs latest-review <pr>');
+      process.exit(2);
+    }
+    let latest;
+    try {
+      latest = latestReviewOfHead(pr);
+    } catch (error) {
+      console.error(`\nCould not read the reviews on #${pr}: ${error.message.split('\n')[0]}\n`);
+      process.exit(3);
+    }
+    // `none` rather than an error, so the loop can bootstrap. A PR that has never been
+    // reviewed — #170 is one — has no review nodes, and exiting non-zero here killed the
+    // caller's `BEFORE=$(…) || exit 1` before the first review was ever requested. `none`
+    // compares unequal to any real id, which is exactly what the poll needs. It also covers
+    // "reviews exist but none of them reviewed this head", which is the same thing for the
+    // loop's purposes: there is no verdict on the commit you pushed. A genuine API failure
+    // still exits 3, so "no review of this head" and "could not ask" stay distinguishable.
+    console.log(latest ? latest.id : 'none');
+  } else if (cmd === 'round') {
+    const [pr, reviewId] = rest;
+    if (!pr || !reviewId) {
+      console.error('Usage: pr-review-analysis.mjs round <pr> <reviewId>');
+      process.exit(2);
+    }
+    // The exit code carries the verdict so the caller needs no parsing: 0 clean, 1 findings,
+    // 2 usage, 3 could-not-tell. 3 exists because an API failure exiting 1 would be
+    // indistinguishable from "found something" — survivable, but it would make "clean" the
+    // only trustworthy code, and this loop has already been bitten three times by an error
+    // wearing a verdict's clothes.
+    let found;
+    try {
+      found = roundFindings(pr, reviewId);
+    } catch (error) {
+      console.error(`\nCould not read #${pr}: ${error.message.split('\n')[0]}`);
+      console.error('The round is UNKNOWN, not clean.\n');
+      process.exit(3);
+    }
+    const bySource = {};
+    for (const r of found) bySource[r.source] = (bySource[r.source] ?? 0) + 1;
+    const breakdown = Object.entries(bySource)
+      .map(([source, count]) => `${count} ${source}`)
+      .join(', ');
+    console.log(`round findings: ${found.length}${breakdown ? ` (${breakdown})` : ''}`);
+    for (const r of found) {
+      console.log(`  [${r.source}] ${r.file}:${r.line} — ${r.finding.slice(0, 120)}`);
+    }
+    process.exit(found.length === 0 ? 0 : 1);
+  } else if (cmd === 'stats') {
+    const rows = await corpus();
+    console.log(`\n${stripAll(renderStats(rows), HTML_COMMENT, HTML_COMMENT_MARKER)}`);
+  } else if (cmd === 'sync') {
+    const rows = await corpus();
+    const text = await readFile(SKILL, 'utf8');
+    if (!singleMarkerPair(text)) process.exit(1);
+    const next = replaceBlock(text, renderStats(rows));
+    if (next === text) {
+      console.log('skill is already in step with the corpus');
+    } else {
+      await writeFile(SKILL, next, 'utf8');
+      console.log(`synced ${SKILL} from ${rows.length} finding(s)`);
+    }
+  } else if (cmd === 'check') {
+    const rows = await corpus();
+    const text = await readFile(SKILL, 'utf8');
+    if (!singleMarkerPair(text)) process.exit(1);
+
+    // The skill's three numbered sections are ordered by weight, and that ordering is an
+    // assertion about the corpus, not a layout choice: the reader is told to spend their
+    // attention top-down. Counts drifting is cosmetic; the order being wrong sends the review
+    // at the wrong thing first. `proxy-check` leads `unenforced-guarantee` by three findings —
+    // close enough that a single run could overturn it — so check the claim, not just the table.
+    const counts = new Map();
+    for (const r of rows) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
+    const top = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .slice(0, 3)
+      .map(([c]) => c);
+    const written = [...text.matchAll(/^## [123]\. .*`([a-z-]+)`/gm)].map((m) => m[1]);
+    if (written.join() !== top.join()) {
+      console.error(
+        `\nThe skill's numbered sections are ordered ${written.join(' → ') || '(none found)'},\n` +
+          `but the corpus ranks them ${top.join(' → ')}. Re-order the sections, or re-check\n` +
+          'the classification — the section order tells the reader what to look at first.\n',
+      );
+      process.exit(1);
+    }
+
+    if (replaceBlock(text, renderStats(rows)) !== text) {
+      console.error(
+        `\nThe pre-PR review skill disagrees with docs/pr-review-findings.jsonl (${rows.length} rows).\n` +
+          'Run `npm run review:analysis -- sync`.\n',
+      );
+      process.exit(1);
+    }
+    console.log(`skill is in step with the corpus (${rows.length} finding(s))`);
+  } else {
+    console.error(
+      'Usage: pr-review-analysis.mjs harvest <pr> … | publish <file> | latest-review <pr> | ' +
+        'round <pr> <reviewId> | stats | sync | check',
+    );
+    process.exit(2);
+  }
+}
+
+/**
+ * A harvest file name that is unique per invocation: a UTC timestamp to the millisecond plus
+ * the PRs it covers, e.g. `2026-09-14T13-45-00-123Z-pr182.jsonl`. Sorts chronologically, and
+ * names its contents so a stale file is recognisable before it is published.
+ */
+export function harvestFileName(prs, now = new Date()) {
+  const stamp = now.toISOString().replace(/[:.]/g, '-');
+  const label = prs.length <= 3 ? `pr${prs.join('+')}` : `pr${prs[0]}+${prs.length - 1}more`;
+  return `${stamp}-${label}.jsonl`;
+}
+
+/**
+ * "every one accepted as valid" is a claim about the corpus, so read it from the corpus.
+ *
+ * A finding can legitimately be argued down — the loop tells you to reply with the reasoning
+ * and leave the thread open — and the first time that happens a hand-written universal would
+ * go quietly false. Record it as `accepted: false` and this sentence changes itself. Rows
+ * predate the field, so absent means accepted.
+ */
+function verdict(rows) {
+  const rejected = rows.filter((r) => r.accepted === false).length;
+  if (!rejected) return 'every one accepted as valid';
+  if (rejected === rows.length) return 'none of them accepted';
+  return `${rows.length - rejected} accepted as valid, ${rejected} argued down`;
+}
+
+/** A Markdown table padded the way Prettier pads one: columns to their widest cell. */
+function table([header, ...body]) {
+  const w = header.map((_, i) => Math.max(...[header, ...body].map((r) => r[i].length)));
+  const row = (cells) => `| ${cells.map((c, i) => c.padEnd(w[i])).join(' | ')} |`;
+  return [row(header), `| ${w.map((n) => '-'.repeat(n)).join(' | ')} |`, ...body.map(row)];
+}
+
+/**
+ * Exactly one marker pair, because `replaceBlock` updates the first one it finds.
+ *
+ * The skill carried two generated blocks, and `check` passed with both: it only ever compared
+ * the first, so the second was free to sit at 57 findings for ever while the page and the
+ * corpus moved on. A no-drift guarantee that cannot see a second copy of the thing it guards
+ * is not a guarantee, and this is the check that would have caught it.
+ */
+function singleMarkerPair(text) {
+  const starts = text.split(MARK_START).length - 1;
+  const ends = text.split(MARK_END).length - 1;
+  if (starts === 1 && ends === 1) return true;
+  console.error(
+    `\n${SKILL} has ${starts} generated block(s) (${ends} end marker(s)); it must have exactly one.\n` +
+      'replaceBlock only updates the first, so any other copy drifts silently. Remove the extras.\n',
+  );
+  return false;
+}
+
+/** Swap the generated block, or append it if the skill has none yet. */
+function replaceBlock(text, block) {
+  const a = text.indexOf(MARK_START);
+  const b = text.indexOf(MARK_END);
+  if (a === -1 || b === -1) return `${text.trimEnd()}\n\n${block}\n`;
+  return `${text.slice(0, a)}${block}${text.slice(b + MARK_END.length)}`;
+}
+
+function readIf(f) {
+  try {
+    return readFileSync(f, 'utf8').trim();
+  } catch {
+    return null;
+  }
+}

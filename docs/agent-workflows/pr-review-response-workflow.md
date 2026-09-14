@@ -1,4 +1,13 @@
-# Workflow: Respond to PR Review Comments
+# Workflow: Respond to PR Review Comments — superseded
+
+**Use the [`pr-review-responder`](../../.cursor/agents/pr-review-responder.md) subagent
+instead.** The steps below are kept as a record of the original flow; they are not the
+workflow to follow, and they carry the same three defects that retired
+[`.cursor/skills/fix-pr-comments.md`](../../.cursor/skills/fix-pr-comments.md): unpaginated
+REST that exposes neither `isResolved` nor `isOutdated` and drops everything past page one, a
+`CHANGES_REQUESTED` filter that never sees Copilot's `COMMENTED` verdict body, and a reply
+step marked "optional" that could not resolve a thread even when taken — resolving needs the
+GraphQL `resolveReviewThread` mutation.
 
 ## Trigger
 

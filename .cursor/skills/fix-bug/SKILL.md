@@ -517,9 +517,10 @@ npm run beta:gate -- --gates guardrails,lint      # seconds — after every mean
 npm run beta:gate                                 # full run before pushing
 ```
 
-An unfiltered run executes **all 20 gates** cheapest-first — `node`, `lockfile`, `supply-chain`,
+An unfiltered run executes **all 22 gates** cheapest-first — `node`, `lockfile`, `supply-chain`,
 `code-scanning`, `guardrails`, sanitizers, `assertions`, then affected `lint`, `test`, `build`,
-`typecheck`, `spec-types`, `bundle`, `api-surface` and the packaging gates. It stops at the first
+`typecheck`, `spec-types`, `bundle`, `api-surface`, the packaging gates and the drift gates
+(`reference-drift`, `agent-mirror`, `review-corpus`). It stops at the first
 failure. Expect it to take a while; that is the cost of the two traps it catches that
 `review:preflight` does not:
 
@@ -578,6 +579,15 @@ This is the "fix and raise PR" trigger.
 
   Never `--no-verify`. Confirm the per-ticket proxy config and conf dir are **not** staged.
 
+- **Self-review before you open it.** The reviewer on this repo has been right 57 times out of
+  57, and 36 of those were three classes a grep cannot see. Run the floor, then work the four
+  comparisons in [`pre-pr-review`](../pre-pr-review/SKILL.md) — each one holds two artifacts
+  that should agree next to each other, which is the only way to see your own blind spot:
+
+  ```bash
+  npm run review:pre-pr      # exits non-zero on a mechanisable defect
+  ```
+
 - Open the PR against `main`, pushing to `origin`, **never a fork**:
 
   ```bash
@@ -616,19 +626,125 @@ exactly which checks are still pending; do **not** claim green. This PR runs mor
 - **Sonar surfaces new issues even when the Quality Gate passes** — fetch them per PR
   (`GET https://sonarcloud.io/api/issues/search?componentKeys=nuxeo_agentic-ui-poc&pullRequest=<pr>&resolved=false`,
   or the SonarQube MCP) alongside Copilot inline comments; fix both.
-- **Close the loop on every review thread — reply _and_ resolve.** A reply alone does not resolve
-  it; that needs the GraphQL mutation. Do this autonomously; only leave a thread open if you
-  disagree, and then reply explaining why. Use the [`pr-review-responder`](../../agents/pr-review-responder.md) subagent for the
-  fixes and `AGENTS/09-pr-feedback.md` for the comment→fix mapping.
 
-  ```bash
-  gh api graphql -f query='{repository(owner:"nuxeo",name:"agentic-ui-poc"){pullRequest(number:<pr>){
-    reviewThreads(first:50){nodes{id isResolved comments(first:1){nodes{author{login} body}}}}}}}' \
-    --jq '.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved==false)
-      |{id,first:.comments.nodes[0].author.login,snippet:(.comments.nodes[0].body[0:80])}'
-  gh api repos/nuxeo/agentic-ui-poc/pulls/<pr>/comments -f body='…' -F in_reply_to=<commentId>
-  gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"<threadId>"}){thread{isResolved}}}'
-  ```
+### 7a — The review loop: run it until a round returns nothing
+
+A single pass is not enough. Measured over five pull requests in one day: **57 reviewer
+comments, every one valid, across up to seven rounds on a single PR** — and three of them were
+regressions of fixes made earlier in the same loop. A reviewer that finds nothing is the only
+evidence that the previous round's fixes did not introduce anything.
+
+Delegate each round to the [`pr-review-responder`](../../agents/pr-review-responder.md)
+subagent — it paginates threads, reviewer summary bodies and conversation comments, judges each
+on merit, verifies, replies citing the commit and resolves — then ask for a fresh review and go
+again:
+
+A clean round is **a new review that found nothing**, so the count has to be tied to a
+specific review. Counting unresolved threads on a timer cannot express that: it reads zero
+while the review is still running, and it never reaches zero once a thread is deliberately
+left open. Snapshot the review id, wait for a **newer** one, then count only its findings.
+
+```bash
+PR=<pr>
+
+# 1. resolve everything outstanding (the subagent), then snapshot and request
+BEFORE=$(node scripts/pr-review-analysis.mjs latest-review "$PR") || exit 1
+gh api -X POST "repos/nuxeo/agentic-ui-poc/pulls/$PR/requested_reviewers" \
+  -f 'reviewers[]=copilot-pull-request-reviewer[bot]'   # or the GitHub MCP request_copilot_review
+
+# 2. poll for a review newer than the snapshot, capped at 10 minutes
+for _ in $(seq 30); do
+  NEW_REVIEW=$(node scripts/pr-review-analysis.mjs latest-review "$PR") || exit 1
+  [ "$NEW_REVIEW" != "$BEFORE" ] && break
+  sleep 20
+done
+if [ "$NEW_REVIEW" = "$BEFORE" ]; then
+  echo "no new review arrived — the round is UNKNOWN, not clean"; exit 1
+fi
+
+# 3. the verdict, in the exit code: 0 clean, 1 findings, 2 usage, 3 could-not-tell
+node scripts/pr-review-analysis.mjs round "$PR" "$NEW_REVIEW"
+```
+
+`3` is a separate code on purpose. An API failure exiting `1` would be indistinguishable from
+"found something" — survivable, but it would leave `0` as the only code you could trust, and
+every false-clean bug in this loop's history came from an error wearing a verdict's clothes.
+
+**Why this is a script and not four `gh` calls.** Every version of this written in shell grew
+the same defect, three times, in three different places: a pipeline whose producer failed
+reported a reassuring zero, because the last process in a pipe owns the exit status and
+`wc -l`, `tail` and `grep -c` all succeed on no input. `grep -c` also **exits 1 when the count
+is zero**, so the outcome you are hoping for aborts the loop under `set -e`. Verified:
+`printf 'true\n' | grep -c false` prints `0` and exits 1. In Node an API failure throws out of
+`execFileSync` and the command exits non-zero, so the failure cannot be read as a clean round
+without anyone having to remember `pipefail`.
+
+Four properties are load-bearing, and every earlier version of this section got at least one
+of them wrong:
+
+- **A new review id, not a `sleep`.** Waiting a fixed two minutes and counting threads reports
+  zero whenever the review takes longer than the wait — a false clean round produced by the
+  reviewer being slow. No new id means the round is unknown; say so and poll again.
+- **Scoped to that review.** A thread left open because you disagree belongs to an earlier
+  review, and a global count keeps counting it forever, so the loop can never exit on a PR
+  that has one. Same for the `github-advanced-security` threads, which are not Copilot's.
+- **Threads and the body.** Copilot's summary is submitted as `COMMENTED` and folds findings
+  into a **"Suppressed comments"** block that never becomes a thread — three of the five
+  findings on PR #182 were there, and all three were real. A thread-only count prints `0` and
+  declares a clean round while the body holds the findings.
+- **One classifier for the round and the harvest.** `round` is `harvestPr` filtered to the
+  review, so the number that decides the exit and the rows that get recorded cannot disagree.
+  They did: the shell test counted only bold `path:line` entries while the harvest also treats
+  a non-empty body with no threads as a finding, so a round could exit clean on something the
+  record called a miss minutes later.
+
+**Exit when a round produces zero new comments.** Copilot does not `APPROVE`; a clean round is
+the green signal. Bound it at **six rounds** — past that, stop and report what keeps recurring,
+because a PR that will not converge is usually a design the reviewer is right to keep objecting
+to. On the seventh round of one spotlight PR the findings were still real, and that was the
+signal the feature was too intricate for its value.
+
+Only leave a thread open if you disagree — then reply with the reasoning, and say so in the
+final summary. An open thread does not block the exit, because the count above is scoped to
+the newest review.
+
+### 7b — Record why the reviewer caught what you did not
+
+Harvest the round and classify it. This is the point of the loop: each comment is a defect that
+got past the author, and the _class_ of miss is what a pre-PR review skill has to be built from.
+
+**Do this before the last round, not after it.** `publish` writes two tracked files —
+`docs/pr-review-findings.jsonl` and the generated block in
+`.cursor/skills/pre-pr-review/SKILL.md` — so running it after the loop has declared a clean
+round leaves you with either uncommitted changes or a new, unreviewed head. Either way the
+clean verdict describes a commit that is no longer the tip, which is the whole thing this
+section is about. So: harvest and classify the round you just fixed, commit the generated
+files **with** that round's fixes, push, and let the next round review that head. The loop
+exits when a round returns zero on the head that is actually on the PR.
+
+```bash
+# --review scopes the harvest to this round. Without it you get every finding the PR has
+# ever had, with the classifications blank again, and `publish` validates before it
+# deduplicates — so round two would demand you re-classify everything already published.
+node scripts/pr-review-analysis.mjs harvest <pr> --review "$NEW_REVIEW"
+# fill in `category` and `whyMissed` on each row — one judgement per comment
+node scripts/pr-review-analysis.mjs publish ~/Desktop/agentic-ui-evidence/pr-review-analysis/<stamp>-pr<pr>.jsonl
+git add docs/pr-review-findings.jsonl .cursor/skills/pre-pr-review/SKILL.md
+# …commit with the round's fixes, push, then run the next round
+```
+
+`harvest` reads all three places GitHub keeps reviewer feedback — inline threads, the review
+summary body including its suppressed findings, and PR conversation comments — and names the
+file after the invocation, not the date, so classifying one batch cannot re-publish another.
+
+Rows land on
+[PR Review analysis by Copilot](https://hyland.atlassian.net/wiki/x/lwFlAAE). `publish` refuses
+a row with either field blank, because a blank in the `whyMissed` column defeats the page, and
+skips rows already on the page, so a re-run cannot duplicate them.
+
+**"Careless" is never the answer.** Name the structural reason: a claim nobody re-read after the
+code changed, a guarantee asserted in prose and not in code, a check that tested a proxy for the
+thing in its own name. Those three classes are 63% of everything found so far.
 
 ## Phase 7.5 — Update the ticket with the fix
 
@@ -722,7 +838,11 @@ thresholds met on touched projects; unit test for every new service method inclu
 path; `validate-fix` run and clean; `docs/api-integrations.md` updated if a new Nuxeo endpoint was
 called; `docs/ai-features.md` if AI behaviour changed; `AGENTS/01-services.md` if a service method
 was added; `AGENTS/00-architecture.md` if architecture changed; PR on a `fix/*` branch; every
-review thread replied to and resolved; the PR added to the ticket's Links panel as a remote
+review thread replied to, and every accepted finding resolved — a thread may stay open only
+where you disagree, and then only with the reasoning and the evidence in the reply and the
+disagreement named in the final summary; the review loop run until a round returned zero
+comments; the round harvested, classified and published to the PR review analysis page; the PR
+added to the ticket's Links panel as a remote
 link; before/after evidence in both forms attached to the ticket, images and recordings only,
 each named for the half it came from; no harness artifact **attached**, and none **committed**
 except a scenes file justified in the PR because no unit test could cover the behaviour;

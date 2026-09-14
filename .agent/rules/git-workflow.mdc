@@ -1,0 +1,53 @@
+---
+description: Git workflow — branching, commits, PRs
+globs: "**/*"
+alwaysApply: false
+---
+
+# Git Workflow
+
+See AGENTS/06-git-workflow.md for full details.
+
+## Branch naming
+```
+feature/<description>     feature/bulk-export
+fix/<description>         fix/thumbnail-memory-leak
+docs/<description>        docs/update-api-registry
+refactor/<description>    refactor/search-aggregation-service
+```
+
+Never commit directly to main.
+
+## Commit format (Conventional Commits)
+```
+feat: add bulk export to browse page
+fix: resolve thumbnail blob URL memory leak
+docs: update api-integrations.md
+test: add unit tests for DocumentDetailService
+refactor: extract tag service from document-detail
+```
+
+## Before committing
+```bash
+npx nx affected -t lint    # must pass
+npx nx affected -t build   # must pass
+npx nx affected -t test    # must pass
+```
+Husky pre-commit hook runs lint automatically.
+
+## PR creation
+```bash
+gh pr create \
+  --title "feat: <description>" \
+  --body "$(cat .github/PULL_REQUEST_TEMPLATE.md)" \
+  --base main
+```
+
+## JIRA linking
+Include ticket in PR title: `feat(NCO-1234): add bulk export`
+
+## Never
+- Never force-push to main
+- Never --no-verify to skip hooks
+- Never commit .env files
+- Never commit node_modules
