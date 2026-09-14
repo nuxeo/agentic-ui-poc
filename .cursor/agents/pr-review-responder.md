@@ -27,6 +27,11 @@ pages, and formatting only `comments.nodes[0]` hides the replies — which is wh
 narrows a claim, or where you already answered. `.github/workflows/pr-auto-fix.yml` uses this
 pattern for the same reason.
 
+`--paginate` advances the **outer** connection only, because `$endCursor` belongs to
+`reviewThreads`. The nested `comments` connection has its own cursor, so ask for its
+`pageInfo` and follow up on any thread that reports `hasNextPage` — do not assume `first:100`
+is everything.
+
 ```bash
 gh api graphql --paginate \
   -F owner=nuxeo -F name=agentic-ui-poc -F number=<N> \
@@ -38,16 +43,27 @@ gh api graphql --paginate \
             pageInfo{ hasNextPage endCursor }
             nodes{
               id isResolved isOutdated path line
-              comments(first:50){ nodes{ databaseId author{ login } body } }
+              comments(first:100){ pageInfo{ hasNextPage endCursor } nodes{ databaseId author{ login } body } }
             }
           }
         }
       }
     }' \
   --jq '.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved==false)
-        | "THREAD \(.id)  \(.path):\(.line)  outdated=\(.isOutdated)",
+        | "THREAD \(.id)  \(.path):\(.line)  outdated=\(.isOutdated)" +
+          (if .comments.pageInfo.hasNextPage then "  [MORE COMMENTS — fetch this thread]" else "" end),
           (.comments.nodes[]|"  [\(.author.login) #\(.databaseId)] \(.body)"),
           "---"'
+```
+
+Any thread flagged `MORE COMMENTS` gets its own pass:
+
+```bash
+gh api graphql --paginate -F id=<threadId> \
+  -f query='query($id:ID!,$endCursor:String){ node(id:$id){ ... on PullRequestReviewThread {
+    comments(first:100, after:$endCursor){ pageInfo{ hasNextPage endCursor }
+      nodes{ databaseId author{ login } body } } } } }' \
+  --jq '.data.node.comments.nodes[]|"  [\(.author.login) #\(.databaseId)] \(.body)"'
 ```
 
 Reply to the **first** comment's `databaseId` (`in_reply_to` threads onto it), but read all of
@@ -80,10 +96,18 @@ unfalsifiable, say so and propose the version that stays strict.
 Run the thing. For a behavioural fix, demonstrate both directions: the new behaviour works
 **and** the old failure still fails. Keep the output — you are going to quote it.
 
+Iterate with a filtered gate, but **finish the round with the unfiltered one**. A filtered run
+reports `verdict: pass-partial` and cannot be cited — it skips the lockfile, sanitizer,
+assertion, bundle and packaging gates, and `.cursor/skills/fix-bug/SKILL.md` is explicit that
+only an unfiltered run speaks for a change.
+
 ```bash
-npm run review:guardrails
-npm run beta:gate -- --gates guardrails,lint,test,build,typecheck,spec-types
+npm run beta:gate -- --gates guardrails,lint,test,build,typecheck,spec-types   # inner loop
+npm run beta:gate                                                             # before replying
 ```
+
+`code-scanning` is the one expected red before a PR exists, and it reads
+`refs/pull/<n>/merge`. On an open PR with CodeQL finished, the unfiltered run should be green.
 
 ### 5. Commit once, signed, describing what was wrong
 

@@ -72,7 +72,10 @@ export const PHASES = {
   docs: { label: 'Docs + extension reference (feature)', bucket: 'fix' },
   'blast-radius': { label: 'Blast-radius check', bucket: 'fix' },
   gate: { label: 'Local gate to green', bucket: 'fix' },
-  validate: { label: 'validate-fix (a11y, browsers)', bucket: 'evidence' },
+  // `validate-fix` is testing, not capture: it runs the accessibility gates, cross-browser
+  // e2e, the consumers' tests and the corner cases, and can send you back to the code. The
+  // page says testing is included and only capture is excluded, so this belongs in `fix`.
+  validate: { label: 'validate-fix (a11y, browsers)', bucket: 'fix' },
   pr: { label: 'Commit + open the PR', bucket: 'overhead' },
   ci: { label: 'CI to green', bucket: 'overhead' },
   review: { label: 'Review comments', bucket: 'fix' },
@@ -305,6 +308,17 @@ async function publish() {
   }
   if (!s.end) {
     problems.push('no `end` mark — run `agent-metrics end <TICKET> --outcome <outcome>` first');
+  } else {
+    // The `end` has to come *after* the last `jira` mark. Checking only that one exists let
+    // `end; phase jira; publish` through, which reaches the credential and page handling with
+    // the Jira phase still open — the exact hole the guard was added to close, one step along.
+    const lastJira = [...s.rows].reverse().find((r) => r.type === 'phase' && r.phase === 'jira');
+    if (lastJira && new Date(s.end.at) <= new Date(lastJira.at)) {
+      problems.push(
+        'the `end` mark predates the last `jira` phase — the ticket update is still open; ' +
+          'finish it, then run `end` again',
+      );
+    }
   }
   if (problems.length) {
     console.error(`\nRefusing to publish an unfinished run:\n${problems.map((p) => `  - ${p}`).join('\n')}\n`);

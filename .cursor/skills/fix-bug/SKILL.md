@@ -82,11 +82,11 @@ Phase ids are a fixed list and an unknown one is rejected: free-text phase names
 incomparable, and a table you cannot compare cannot tell you which phase to shorten. Each id
 sits in one of three buckets, and **only `fix` is published**:
 
-| bucket     | phases                                                                                                                     |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `fix`      | `ticket` `expected` `reproduce` `design` `decide` `scaffold` `fix` `regression-test` `docs` `blast-radius` `gate` `review` |
-| `evidence` | `evidence-before` `baseline` `verify-evidence` `validate`                                                                  |
-| `overhead` | `workspace` `pr` `ci` `jira` `cleanup`                                                                                     |
+| bucket     | phases                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `fix`      | `ticket` `expected` `reproduce` `design` `decide` `scaffold` `fix` `regression-test` `docs` `blast-radius` `gate` `validate` `review` |
+| `evidence` | `evidence-before` `baseline` `verify-evidence`                                                                                        |
+| `overhead` | `workspace` `pr` `ci` `jira` `cleanup`                                                                                                |
 
 The shared page answers "how long do fixes take", so it gets the `fix` total alone. The first
 row published wall clock — 4h 13m for a one-line change, 88% of it evidence capture and CI
