@@ -12,8 +12,9 @@
  * Nobody saw them, for two compounding reasons:
  *
  * 1. Default setup analyses the **pull-request ref**, so the alerts live under
- *    `refs/pull/145/head`. `GET /code-scanning/alerts` with no `ref` reports on the default branch,
- *    where there are none. Asking the obvious question returned a reassuring zero.
+ *    `refs/pull/<n>/merge` (see the ref-selection note below — this file spent a while asking for
+ *    `/head`, which never has one). `GET /code-scanning/alerts` with no `ref` reports on the
+ *    default branch, where there are none. Asking the obvious question returned a reassuring zero.
  * 2. Nothing in the gate pipeline, the phase evidence, or CI ever asked.
  *
  * So the gap was never the tool. It was that a tool ran, found things, and no process consumed the
@@ -117,9 +118,15 @@ const slug = slugRes.ok ? slugRes.data.nameWithOwner : null;
 /**
  * Which ref to ask about.
  *
- * Default setup analyses the **PR head**, not the branch, so asking about the branch — or omitting
- * `ref` and getting the default branch — is how 21 alerts stayed invisible. Prefer the open PR for
- * the current branch and fall back to the branch ref, reporting which was used either way.
+ * Asking about the branch — or omitting `ref` and getting the default branch — is how 21 alerts
+ * stayed invisible. So prefer the open PR for the current branch, and fall back to the branch ref.
+ *
+ * On a pull request the analysis is recorded against the **merge** ref, not the head. This file
+ * previously asked for `refs/pull/<n>/head`, where there is never an analysis, so the gate could
+ * only ever fail on a PR — the very failure mode it exists to prevent, pointed at itself. Measured
+ * against this repository: every PR analysis returned by `GET /code-scanning/analyses` is
+ * `refs/pull/<n>/merge`, and there is not one `/head` among them. `/head` is still tried as a
+ * fallback, because a repository configured with an advanced workflow can analyse it instead.
  */
 let ref = null;
 let refKind = null;
@@ -133,8 +140,16 @@ if (refArg) {
 } else if (slug) {
   const pr = gh(['pr', 'view', '--json', 'number,state']);
   if (pr.ok && pr.data?.number && pr.data.state === 'OPEN') {
-    ref = `refs/pull/${pr.data.number}/head`;
-    refKind = `open PR #${pr.data.number}`;
+    // Try the merge ref first, then the head ref; use whichever actually has an analysis so a
+    // differently configured repository still works. If neither does, keep the merge ref so the
+    // "never analysed" failure below names the ref CodeQL would normally have written to.
+    const candidates = [`refs/pull/${pr.data.number}/merge`, `refs/pull/${pr.data.number}/head`];
+    const analysed = candidates.find((candidate) => {
+      const probe = gh(['api', `repos/${slug}/code-scanning/analyses?ref=${candidate}&per_page=1`]);
+      return probe.ok && Array.isArray(probe.data) && probe.data.length > 0;
+    });
+    ref = analysed ?? candidates[0];
+    refKind = `open PR #${pr.data.number} (${ref.replace(/^refs\/pull\/\d+\//, '')})`;
   } else {
     const branch = spawnSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
       cwd: repoRoot,
