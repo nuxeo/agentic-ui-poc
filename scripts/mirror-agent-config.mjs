@@ -46,6 +46,14 @@ const SOURCE = '.cursor';
 const SUBTREES = ['skills', 'agents', 'rules'];
 const TARGETS = ['.claude', '.agent'];
 
+/**
+ * The notice written into each mirror root.
+ *
+ * Uses Prettier's emphasis marker (`_x_`, not `*x*`) because the pre-commit hook formats
+ * staged Markdown: with the other spelling the hook rewrote this file after it was generated
+ * and the gate went red on its own output. A generator and the formatter have to agree on the
+ * byte, or the gate fires on formatting instead of drift and gets re-synced past unread.
+ */
 const NOTICE = `# Generated — do not edit here
 
 Everything in \`skills/\`, \`agents/\` and \`rules/\` in this directory is a **copy**. The source
@@ -56,7 +64,7 @@ Edit the file under \`.cursor/\`, then run:
     npm run mirror:agents
 
 The \`agent-mirror\` gate in \`npm run beta:gate\` fails when a mirror has drifted, so an edit
-made only here will be caught before it is merged — but it will be caught by being *overwritten*,
+made only here will be caught before it is merged — but it will be caught by being _overwritten_,
 because this directory is not a source. Nothing here is read back.
 
 \`settings.json\` and \`settings.local.json\`, where present, are **not** mirrored: they are
