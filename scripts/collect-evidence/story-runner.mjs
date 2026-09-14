@@ -153,9 +153,25 @@ const highlights = [];
 
 // A scene almost always navigates, and navigation discards the injected banner. Re-inject on
 // every load so the caption survives the whole scene rather than only its first frame.
+/** Restorations that failed after a navigation, raised as a failed check at scene end. */
+const spotlightFailures = [];
+
 page.on('load', () => {
   if (currentBanner) injectBanner(currentBanner).catch(() => {});
-  if (currentSpotlight) injectSpotlight(currentSpotlight).catch(() => {});
+  if (!currentSpotlight) return;
+
+  // A `load` fires before Angular has rendered data-backed content, so re-injecting once and
+  // swallowing the miss meant a scene that navigated after `spotlight()` could carry on with
+  // no highlight at all while the run passed. Wait for the element, and if it never arrives
+  // record it — a spotlight that silently vanished is a recording that points at nothing.
+  const want = currentSpotlight;
+  (async () => {
+    await page.locator(want.selector).first().waitFor({ state: 'attached', timeout: 10_000 });
+    if (currentSpotlight === want) await injectSpotlight(want);
+  })().catch((err) => {
+    if (currentSpotlight !== want) return; // superseded or cleared; not a failure
+    spotlightFailures.push(`${want.selector}: ${err.message.split('\n')[0]}`);
+  });
 });
 
 /**
@@ -490,6 +506,17 @@ try {
       }
       const assertedInScene =
         spanned.reduce((n, rec) => n + rec.checks.length, 0) - checksBefore > 0;
+
+      // A spotlight lost to a navigation is a defect in the recording, so it fails the scene
+      // that declared it rather than disappearing into the log.
+      if (spotlightFailures.length) {
+        helpers.check(
+          'the spotlight survived navigation',
+          false,
+          `could not restore after a page load — ${spotlightFailures.join('; ')}`,
+        );
+        spotlightFailures.length = 0;
+      }
 
       // Per scene, not just per run. The act-structure assertions below always contribute
       // three checks, so a whole-run count can never reach zero and would certify a story
