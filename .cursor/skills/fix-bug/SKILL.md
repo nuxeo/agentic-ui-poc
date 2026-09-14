@@ -22,7 +22,7 @@ confirmation between phases** — reproduce → decide → fix → validate → 
 hard stops are the **Guardrails** at the bottom and the **Stop conditions** in Phase 3.5; YOLO
 relaxes the _confirmation_ gates, not those. Track phases with a TODO list.
 
-Delegate: review-comment mechanics to [`fix-pr-comments`](../fix-pr-comments.md), new tests to
+Delegate: review-comment mechanics to the [`pr-review-responder`](../agents/pr-review-responder.md) subagent, new tests to
 [`generate-tests`](../generate-tests.md), gate iteration to [`verify-gate`](../verify-gate/SKILL.md),
 and accessibility / i18n / cross-browser validation to [`validate-fix`](../validate-fix/SKILL.md).
 
@@ -587,7 +587,7 @@ exactly which checks are still pending; do **not** claim green. This PR runs mor
   or the SonarQube MCP) alongside Copilot inline comments; fix both.
 - **Close the loop on every review thread — reply _and_ resolve.** A reply alone does not resolve
   it; that needs the GraphQL mutation. Do this autonomously; only leave a thread open if you
-  disagree, and then reply explaining why. Use [`fix-pr-comments`](../fix-pr-comments.md) for the
+  disagree, and then reply explaining why. Use the [`pr-review-responder`](../agents/pr-review-responder.md) subagent for the
   fixes and `AGENTS/09-pr-feedback.md` for the comment→fix mapping.
 
   ```bash

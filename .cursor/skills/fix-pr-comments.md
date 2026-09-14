@@ -1,54 +1,22 @@
-# Skill: Fix PR Comments
+# Skill: Fix PR Comments — superseded
 
-Use this skill when asked to "fix PR comments", "address review feedback", or "fix Copilot comments on PR #N".
+**Use the [`pr-review-responder`](../agents/pr-review-responder.md) subagent instead.**
 
-## Steps
+This skill claimed the same triggers — "fix PR comments", "address review feedback", "fix
+Copilot comments on PR #N" — and three of its instructions were wrong in ways that lose
+feedback:
 
-1. **Get the PR number** — ask the developer if not provided
+- It fetched with **unpaginated REST**, which exposes neither `isResolved` nor `isOutdated`.
+  Its output therefore listed comments that had already been dealt with, and silently dropped
+  anything past the first page.
+- It read only `CHANGES_REQUESTED` review summaries. Copilot submits its verdict as
+  `COMMENTED`, so the summary telling you what to look at was never fetched.
+- Replying was listed as step 7, "optionally". A reply is not optional, and it does not
+  resolve a thread either — that needs the GraphQL `resolveReviewThread` mutation, which this
+  skill never mentioned.
 
-2. **Fetch all open comments**
+Two entry points for one workflow means the obsolete one stays selectable. The subagent is the
+authoritative path: it paginates threads, review bodies and conversation comments, pulls Sonar
+issues, verifies each fix against the full gate, then replies citing the commit and resolves.
 
-   ```bash
-   # Inline (line-level) comments
-   gh api repos/nuxeo/agentic-ui-poc/pulls/<N>/comments \
-     | jq '.[] | { path: .path, line: .line, body: .body, id: .id }'
-
-   # Review-level comments
-   gh pr view <N> --json reviews \
-     | jq '.reviews[] | select(.state == "CHANGES_REQUESTED") | .body'
-   ```
-
-3. **Read the comment → fix mapping** in `AGENTS/09-pr-feedback.md`
-
-4. **For each comment**
-   - Read the file at the specified line
-   - Understand the reviewer's intent
-   - Implement the fix — do NOT suppress lint errors
-   - Common fixes:
-     - "Missing unsubscribe" → `takeUntilDestroyed()`
-     - "Object URL not revoked" → cleanup array + ngOnDestroy
-     - "Direct img src" → service fetch + blob URL
-     - "Hardcoded credential" → process.env + validation
-     - "No error handling" → reset loading in error branch
-
-5. **Verify all fixes**
-
-   ```bash
-   npx nx affected -t lint
-   npx nx affected -t build
-   npx nx affected -t test
-   ```
-
-6. **Commit and push**
-
-   ```bash
-   git add .
-   git commit -m "fix: address PR #<N> review comments"
-   git push
-   ```
-
-7. **Optionally reply to each comment**
-   ```bash
-   gh api repos/nuxeo/agentic-ui-poc/pulls/<N>/comments/<id>/replies \
-     -f body="Fixed: <brief description>"
-   ```
+`AGENTS/09-pr-feedback.md` remains the reference for the comment-to-fix mapping.

@@ -65,7 +65,14 @@ gh api repos/nuxeo/agentic-ui-poc/pulls/<PR-number>/comments/<comment-id>/replie
 
 ---
 
-## Skill File for Cursor
+## Automating this
 
-There is a dedicated Cursor skill at `.cursor/skills/fix-pr-comments.md` that
-automates this entire workflow when you type "fix PR comments".
+The [`pr-review-responder`](../.cursor/agents/pr-review-responder.md) subagent runs this
+workflow end to end when you say "fix PR comments" or "address review feedback on PR #N": it
+paginates review threads, reviewer summary bodies and conversation comments, pulls Sonar
+issues, verifies each fix against the full gate, then replies citing the commit and resolves
+the thread.
+
+`.cursor/skills/fix-pr-comments.md` used to do this and is retired — it fetched with
+unpaginated REST, read only `CHANGES_REQUESTED` summaries, and treated replying as optional.
+The mapping table above is still the reference for turning a comment into a fix.
