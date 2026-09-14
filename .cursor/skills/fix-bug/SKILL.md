@@ -693,7 +693,10 @@ files **with** that round's fixes, push, and let the next round review that head
 exits when a round returns zero on the head that is actually on the PR.
 
 ```bash
-node scripts/pr-review-analysis.mjs harvest <pr>     # prints the file it wrote; one per invocation
+# --review scopes the harvest to this round. Without it you get every finding the PR has
+# ever had, with the classifications blank again, and `publish` validates before it
+# deduplicates — so round two would demand you re-classify everything already published.
+node scripts/pr-review-analysis.mjs harvest <pr> --review "$NEW_REVIEW"
 # fill in `category` and `whyMissed` on each row — one judgement per comment
 node scripts/pr-review-analysis.mjs publish ~/Desktop/agentic-ui-evidence/pr-review-analysis/<stamp>-pr<pr>.jsonl
 git add docs/pr-review-findings.jsonl .cursor/skills/pre-pr-review/SKILL.md

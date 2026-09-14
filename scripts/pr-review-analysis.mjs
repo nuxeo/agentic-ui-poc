@@ -330,13 +330,29 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId
 export function copilotReviews(pr) {
   return paginate(
     pr,
-    `reviews(first:50, after:$endCursor){
+    `headRefOid
+     reviews(first:50, after:$endCursor){
        pageInfo{ hasNextPage endCursor }
-       nodes{ id author{ login } } }`,
-    '$pr.reviews.nodes[]',
+       nodes{ id author{ login } commit{ oid } } }`,
+    '$pr.reviews.nodes[] | {head: $pr.headRefOid} + .',
   )
     .filter((r) => REVIEWER.test(r.author?.login ?? ''))
-    .map((r) => r.id);
+    .map((r) => ({ id: r.id, commit: r.commit?.oid ?? null, head: r.head }));
+}
+
+/**
+ * The newest Copilot review **of the current head**, or `null`.
+ *
+ * A review is tied to a commit, and the id alone does not say which. A review queued against
+ * the previous head can submit after the snapshot was taken, and an id-only comparison accepts
+ * it as this round's — so the round passes on a commit that was never reviewed, which is the
+ * false-clean signal in its subtlest form yet. The commit has to match.
+ */
+export function latestReviewOfHead(pr) {
+  const reviews = copilotReviews(pr);
+  const head = reviews.length ? reviews[reviews.length - 1].head : null;
+  const ofHead = reviews.filter((r) => r.commit && r.commit === head);
+  return ofHead.length ? ofHead[ofHead.length - 1] : null;
 }
 
 /**
@@ -466,8 +482,24 @@ if (isCli) {
   const [, , cmd, ...rest] = process.argv;
 
   if (cmd === 'harvest') {
+    // `--review <id>` records one round rather than the whole PR.
+    //
+    // Without it, every iteration of the loop re-harvested every finding the PR had ever
+    // had, with `category` and `whyMissed` blank again — and `publish` validates
+    // classifications before it deduplicates, so round two onwards demanded that everything
+    // already published be classified a second time. The instruction said "harvest the
+    // round"; the command harvested the PR.
+    const reviewFlag = rest.indexOf('--review');
+    const onlyReview = reviewFlag === -1 ? null : rest[reviewFlag + 1];
+    if (reviewFlag !== -1) {
+      if (!onlyReview) {
+        console.error('Usage: pr-review-analysis.mjs harvest <pr> … [--review <reviewId>]');
+        process.exit(2);
+      }
+      rest.splice(reviewFlag, 2);
+    }
     if (!rest.length) {
-      console.error('Usage: pr-review-analysis.mjs harvest <pr> [<pr> …]');
+      console.error('Usage: pr-review-analysis.mjs harvest <pr> [<pr> …] [--review <reviewId>]');
       process.exit(2);
     }
     await mkdir(OUT_DIR, { recursive: true });
@@ -490,7 +522,10 @@ if (isCli) {
     let n = 0;
     const bySource = {};
     for (const pr of rest) {
-      for (const entry of harvestPr(pr)) {
+      const entries = onlyReview
+        ? harvestPr(pr).filter((r) => r.reviewId === onlyReview)
+        : harvestPr(pr);
+      for (const entry of entries) {
         await appendFile(out, `${JSON.stringify(entry)}\n`, 'utf8');
         bySource[entry.source] = (bySource[entry.source] ?? 0) + 1;
         n += 1;
@@ -574,6 +609,18 @@ if (isCli) {
     const cell = (v) => `<td><p>${esc(v)}</p></td>`;
     const anchor = (r) => `<a href="${esc(r.url)}">`;
 
+    /**
+     * What identifies a finding on the page.
+     *
+     * Not the URL. Every suppressed finding parsed out of one review body carries that
+     * review's URL, so keying on it meant the first row published from a review marked all
+     * its siblings as already there — the dedupe silently dropped real findings, which is
+     * worse than the duplication it was added to prevent. The link plus the finding text is
+     * unique per finding and is a literal substring of the row this code writes, so
+     * `storage.includes` on it is exact.
+     */
+    const identity = (r) => `${anchor(r)}${esc(r.file)}</a></p></td>${cell(r.finding)}`;
+
     // Idempotent on the comment URL, decided **before** the PUT.
     //
     // The corpus append below already dedupes, but it runs after the page has been written and
@@ -582,7 +629,7 @@ if (isCli) {
     // the PUT and the append had the same effect on a retry. The URL is the stable identity of
     // a finding, and it is already in the page as the row's link, so the page itself says what
     // has been published.
-    const pending = rows.filter((r) => !storage.includes(anchor(r)));
+    const pending = rows.filter((r) => !storage.includes(identity(r)));
 
     if (pending.length) {
       const body = pending
@@ -590,8 +637,7 @@ if (isCli) {
           (r) =>
             '<tr>' +
             cell(`#${r.pr}`) +
-            `<td><p>${anchor(r)}${esc(r.file)}</a></p></td>` +
-            cell(r.finding) +
+            `<td><p>${identity(r)}` +
             cell(r.category) +
             cell(r.whyMissed) +
             '</tr>',
@@ -632,8 +678,11 @@ if (isCli) {
     // distribution that no longer matches what the page shows — the same drift that made these
     // numbers hand-typed in the first place. Deduplicate on the comment URL so re-publishing a
     // file does not double-count it.
-    const known = new Set((await corpus()).map((r) => r.url));
-    const fresh = rows.filter((r) => !known.has(r.url));
+    // Same identity as the page, and for the same reason: `r.url` is shared by every
+    // suppressed finding from one review, so a URL-keyed set dropped all but the first.
+    const corpusKey = (r) => `${r.pr}|${r.url}|${r.file}|${r.line}|${r.finding}`;
+    const known = new Set((await corpus()).map(corpusKey));
+    const fresh = rows.filter((r) => !known.has(corpusKey(r)));
     if (fresh.length) {
       await appendFile(CORPUS, `${fresh.map((r) => JSON.stringify(r)).join('\n')}\n`, 'utf8');
       const all = await corpus();
@@ -649,9 +698,9 @@ if (isCli) {
       console.error('Usage: pr-review-analysis.mjs latest-review <pr>');
       process.exit(2);
     }
-    let ids;
+    let latest;
     try {
-      ids = copilotReviews(pr);
+      latest = latestReviewOfHead(pr);
     } catch (error) {
       console.error(`\nCould not read the reviews on #${pr}: ${error.message.split('\n')[0]}\n`);
       process.exit(3);
@@ -659,9 +708,11 @@ if (isCli) {
     // `none` rather than an error, so the loop can bootstrap. A PR that has never been
     // reviewed — #170 is one — has no review nodes, and exiting non-zero here killed the
     // caller's `BEFORE=$(…) || exit 1` before the first review was ever requested. `none`
-    // compares unequal to any real id, which is exactly what the poll needs. A genuine API
-    // failure still exits 3, so "no review yet" and "could not ask" stay distinguishable.
-    console.log(ids.length ? ids[ids.length - 1] : 'none');
+    // compares unequal to any real id, which is exactly what the poll needs. It also covers
+    // "reviews exist but none of them reviewed this head", which is the same thing for the
+    // loop's purposes: there is no verdict on the commit you pushed. A genuine API failure
+    // still exits 3, so "no review of this head" and "could not ask" stay distinguishable.
+    console.log(latest ? latest.id : 'none');
   } else if (cmd === 'round') {
     const [pr, reviewId] = rest;
     if (!pr || !reviewId) {
