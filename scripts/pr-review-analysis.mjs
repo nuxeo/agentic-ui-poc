@@ -109,12 +109,16 @@ function renderStats(rows) {
   const prs = [...new Set(rows.map((r) => r.pr))].sort((a, b) => a - b);
   const top3 = ordered.slice(0, 3).reduce((n, [, c]) => n + c, 0);
 
+  // Deliberately not enumerating the pull requests. The corpus only grows, so a list of every
+  // contributing PR becomes a wall of numbers nobody reads, and a range would be a lie: the
+  // five recorded so far are #174 and #178-#181, not a contiguous span. The per-finding PR is
+  // a column in the corpus and on the Confluence page, which is where you would look anyway.
   return [
     MARK_START,
     `<!-- generated from docs/pr-review-findings.jsonl by \`npm run review:analysis -- sync\`. Do not edit by hand. -->`,
     '',
-    `**${rows.length} findings** across ${prs.length} pull requests (${prs.map((p) => `#${p}`).join(', ')}),`,
-    `every one accepted as valid. The three largest classes are **${top3} of ${rows.length}**.`,
+    `**${rows.length} findings** across ${prs.length} pull requests, ${verdict(rows)}.`,
+    `The ${ordered.length > 3 ? 'three largest classes are' : 'classes are'} **${top3} of ${rows.length}**.`,
     '',
     // Emit Prettier's padded table form. The generator and the formatter must agree on the
     // byte, or `check` goes red after every `prettier --write` and becomes noise people learn
@@ -552,6 +556,21 @@ export function harvestFileName(prs, now = new Date()) {
   const stamp = now.toISOString().replace(/[:.]/g, '-');
   const label = prs.length <= 3 ? `pr${prs.join('+')}` : `pr${prs[0]}+${prs.length - 1}more`;
   return `${stamp}-${label}.jsonl`;
+}
+
+/**
+ * "every one accepted as valid" is a claim about the corpus, so read it from the corpus.
+ *
+ * A finding can legitimately be argued down — the loop tells you to reply with the reasoning
+ * and leave the thread open — and the first time that happens a hand-written universal would
+ * go quietly false. Record it as `accepted: false` and this sentence changes itself. Rows
+ * predate the field, so absent means accepted.
+ */
+function verdict(rows) {
+  const rejected = rows.filter((r) => r.accepted === false).length;
+  if (!rejected) return 'every one accepted as valid';
+  if (rejected === rows.length) return 'none of them accepted';
+  return `${rows.length - rejected} accepted as valid, ${rejected} argued down`;
 }
 
 /** A Markdown table padded the way Prettier pads one: columns to their widest cell. */

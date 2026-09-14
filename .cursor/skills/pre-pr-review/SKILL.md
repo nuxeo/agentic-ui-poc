@@ -25,8 +25,8 @@ stale the way the ones they replaced were about to:
 <!-- pr-review-stats:start -->
 <!-- generated from docs/pr-review-findings.jsonl by `npm run review:analysis -- sync`. Do not edit by hand. -->
 
-**57 findings** across 5 pull requests (#174, #178, #179, #180, #181),
-every one accepted as valid. The three largest classes are **36 of 57**.
+**57 findings** across 5 pull requests, every one accepted as valid.
+The three largest classes are **36 of 57**.
 
 | Class                  | Findings |
 | ---------------------- | -------- |
@@ -46,10 +46,16 @@ every one accepted as valid. The three largest classes are **36 of 57**.
 The findings themselves, with the reason each was missed, are on
 [PR Review analysis by Copilot](https://hyland.atlassian.net/wiki/x/lwFlAAE).
 
-The corpus grows on its own: `pr-review-analysis publish` appends new rows, re-derives the
-block above and re-checks the section order, so a run that records findings also updates this
-file. Commit `docs/pr-review-findings.jsonl` and this skill together — the `review-corpus`
-gate fails if one moves without the other.
+**The block above is not a fixed statement — it is a rendering of the corpus as it stands.**
+Every review loop that records findings appends to `docs/pr-review-findings.jsonl`, and
+`pr-review-analysis publish` re-derives the counts, the class table, the accepted/argued-down
+split and the section ordering from the new total. The numbers you are reading will be larger
+next month, and the ranking may differ; that is the point. Commit the corpus and this file
+together — the `review-corpus` gate fails if one moves without the other.
+
+If you argue a finding down rather than fixing it, record it as `"accepted": false` on its
+row. The sentence above counts it, so the corpus stays honest about what the reviewer got
+wrong as well as what it got right.
 
 Almost none were logic errors. In every case the author understood the problem and wrote code
 that solved it. What went wrong was **the gap between what the code does and what its author
