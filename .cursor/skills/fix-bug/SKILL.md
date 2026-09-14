@@ -637,8 +637,12 @@ A PR URL buried in a comment is not a link — the ticket's **Links** panel is w
 QA or a release manager looks for it, and where Jira can show its status. Add it as a remote
 link, not just prose:
 
+`--fail-with-body` for the same reason as the uploads: bare `-s` exits 0 on HTTP 4xx/5xx, so
+a rejected request would leave the Links panel empty while the run carried on believing the
+link existed — and the Definition of Done checks for it.
+
 ```bash
-curl -s -u "$U" -H "Content-Type: application/json" -X POST \
+curl -sS --fail-with-body -u "$U" -H "Content-Type: application/json" -X POST \
   "https://hyland.atlassian.net/rest/api/3/issue/$TICKET/remotelink" \
   -d "{\"globalId\":\"github-pr-<N>\",
        \"application\":{\"type\":\"com.github\",\"name\":\"GitHub\"},
