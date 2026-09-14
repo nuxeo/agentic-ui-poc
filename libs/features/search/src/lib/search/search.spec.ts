@@ -74,8 +74,16 @@ const mockAiFeatureFlagService = {
   aiEnabled: signal(true),
 };
 
+/**
+ * The return type is annotated rather than inferred. `of({ entries: [] })` infers
+ * `Observable<{ entries: never[] }>`, so every test that feeds the mock a real entry failed
+ * to typecheck — and Vitest strips types, so the suite stayed green while `spec-typecheck`
+ * was red and blocked the gate for unrelated pull requests.
+ */
 const mockNuxeoApiBase = {
-  nxqlSearch: vi.fn(() => of({ entries: [] })),
+  nxqlSearch: vi.fn((): Observable<{ entries: { uid: string; title: string }[] }> =>
+    of({ entries: [] }),
+  ),
 };
 
 /**
