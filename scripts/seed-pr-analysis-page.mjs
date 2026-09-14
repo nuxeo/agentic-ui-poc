@@ -26,7 +26,7 @@ const body = [
   p('The column that matters is <strong>Why it was missed</strong>. &ldquo;Careless&rdquo; is never the answer; if it were, the remedy would be &ldquo;be careful&rdquo;, which has never worked. Each row names the structural reason &mdash; a claim nobody re-read after the code changed, a guarantee asserted in prose rather than in code, a check that tested a proxy for the thing it was named after.'),
 
   h2('How rows get here'),
-  '<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">bash</ac:parameter><ac:plain-text-body><![CDATA[node scripts/pr-review-analysis.mjs harvest <pr> [<pr> …]   # pulls every reviewer comment\n# fill in `category` and `whyMissed` on each row, judging one at a time\nnode scripts/pr-review-analysis.mjs publish <file.jsonl>]]></ac:plain-text-body></ac:structured-macro>',
+  '<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">bash</ac:parameter><ac:plain-text-body><![CDATA[node scripts/pr-review-analysis.mjs harvest <pr> [<pr> …]   # every Copilot finding: threads, summary body, conversation\n# fill in `category` and `whyMissed` on each row, judging one at a time\nnode scripts/pr-review-analysis.mjs publish <file.jsonl>]]></ac:plain-text-body></ac:structured-macro>',
   p('Harvesting is mechanical; classification is not, and <code>publish</code> refuses a row with either field blank rather than putting a gap in the column the page exists for. Resolved comments are included &mdash; a fixed defect still shipped.'),
 
   h2('Defect classes'),

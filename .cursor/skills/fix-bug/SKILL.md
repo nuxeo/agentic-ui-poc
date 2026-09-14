@@ -609,19 +609,68 @@ subagent — it paginates threads, reviewer summary bodies and conversation comm
 on merit, verifies, replies citing the commit and resolves — then ask for a fresh review and go
 again:
 
+A clean round is **a new review that found nothing**, so the count has to be tied to a
+specific review. Counting unresolved threads on a timer cannot express that: it reads zero
+while the review is still running, and it never reaches zero once a thread is deliberately
+left open. Snapshot the review id, wait for a **newer** one, then count only its findings.
+
 ```bash
-# 1. resolve everything outstanding (the subagent)
-# 2. request another review
-gh api -X POST repos/nuxeo/agentic-ui-poc/pulls/<pr>/requested_reviewers \
+PR=<pr>
+copilot_reviews() {   # every Copilot review id, oldest first
+  gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
+    -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+      repository(owner:$owner,name:$name){pullRequest(number:$number){
+        reviews(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
+          nodes{ id submittedAt author{login} }}}}}' \
+    --jq '.data.repository.pullRequest.reviews.nodes[]
+          | select(.author.login|test("copilot";"i")) | .id'
+}
+
+# 1. resolve everything outstanding (the subagent), then snapshot and request
+BEFORE=$(copilot_reviews | tail -1)
+gh api -X POST "repos/nuxeo/agentic-ui-poc/pulls/$PR/requested_reviewers" \
   -f 'reviewers[]=copilot-pull-request-reviewer[bot]'   # or the GitHub MCP request_copilot_review
-# 3. wait ~2 minutes, then count what is unresolved
-gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number=<pr> \
+
+# 2. poll for a review newer than the snapshot, capped at 10 minutes
+for _ in $(seq 30); do
+  NEW_REVIEW=$(copilot_reviews | tail -1)
+  [ -n "$NEW_REVIEW" ] && [ "$NEW_REVIEW" != "$BEFORE" ] && break
+  sleep 20
+done
+if [ -z "$NEW_REVIEW" ] || [ "$NEW_REVIEW" = "$BEFORE" ]; then
+  echo "no new review arrived — the round is UNKNOWN, not clean"; exit 1
+fi
+
+# 3. count only the findings that belong to that review
+export NEW_REVIEW
+gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
   -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
     repository(owner:$owner,name:$name){pullRequest(number:$number){
       reviewThreads(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
-        nodes{isResolved}}}}}' \
-  --jq '.data.repository.pullRequest.reviewThreads.nodes[]|.isResolved' | grep -c false
+        nodes{ isResolved comments(first:1){nodes{ pullRequestReview{ id } }} }}}}}' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
+        | select(.isResolved == false)
+        | select(.comments.nodes[0].pullRequestReview.id == env.NEW_REVIEW) | .isResolved' \
+ | wc -l
 ```
+
+Three things in that recipe are load-bearing, and the version it replaces got each of them
+wrong:
+
+- **`$NEW_REVIEW`, not a `sleep`.** Waiting a fixed two minutes and counting threads reports
+  zero whenever the review takes longer than the wait — a false clean round produced by the
+  reviewer being slow. No new review id means the round is unknown; say so and poll again.
+- **Scoped to that review.** A thread left open because you disagree belongs to an earlier
+  review, and a global count keeps counting it forever, so the loop can never exit on a PR
+  that has one. Same for the `github-advanced-security` threads, which are not Copilot's.
+- **`wc -l`, not `grep -c`.** `grep -c false` **exits 1 when the count is zero** — the
+  outcome you are hoping for makes the command fail, which under `set -e` or behind `&&`
+  aborts the loop at exactly the wrong moment. Verified: `printf 'true\n' | grep -c false`
+  prints `0` and exits 1. `wc -l` prints `0` and exits 0.
+
+Read the new review's `body` as well as its threads. Copilot's summary is submitted as
+`COMMENTED` and folds findings into a **"Suppressed comments"** block that never becomes a
+thread — three of the five findings on PR #182 were there, and all three were real.
 
 **Exit when a round produces zero new comments.** Copilot does not `APPROVE`; a clean round is
 the green signal. Bound it at **six rounds** — past that, stop and report what keeps recurring,
@@ -630,7 +679,8 @@ to. On the seventh round of one spotlight PR the findings were still real, and t
 signal the feature was too intricate for its value.
 
 Only leave a thread open if you disagree — then reply with the reasoning, and say so in the
-final summary.
+final summary. An open thread does not block the exit, because the count above is scoped to
+the newest review.
 
 ### 7b — Record why the reviewer caught what you did not
 
@@ -639,10 +689,14 @@ each comment is a defect that got past the author, and the _class_ of miss is wh
 review skill has to be built from.
 
 ```bash
-node scripts/pr-review-analysis.mjs harvest <pr>
+node scripts/pr-review-analysis.mjs harvest <pr>     # prints the file it wrote; one per invocation
 # fill in `category` and `whyMissed` on each row — one judgement per comment
-node scripts/pr-review-analysis.mjs publish ~/Desktop/agentic-ui-evidence/pr-review-analysis/<date>.jsonl
+node scripts/pr-review-analysis.mjs publish ~/Desktop/agentic-ui-evidence/pr-review-analysis/<stamp>-pr<pr>.jsonl
 ```
+
+`harvest` reads all three places GitHub keeps reviewer feedback — inline threads, the review
+summary body including its suppressed findings, and PR conversation comments — and names the
+file after the invocation, not the date, so classifying one batch cannot re-publish another.
 
 Rows land on
 [PR Review analysis by Copilot](https://hyland.atlassian.net/wiki/x/lwFlAAE). `publish` refuses
