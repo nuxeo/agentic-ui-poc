@@ -601,8 +601,17 @@ which half it is from: two files called `02-landmark-name.png` tell a reader not
 ```bash
 cd "$EVID"
 U="$(cat ~/.jira_email):$(cat ~/.jira_token)"
-upload() { curl -s -u "$U" -H "X-Atlassian-Token: no-check" -F "file=@$1;filename=$2" \
-  "https://hyland.atlassian.net/rest/api/3/issue/$TICKET/attachments" >/dev/null && echo "  $2"; }
+# --fail-with-body, not bare -s: curl exits 0 on HTTP 4xx/5xx, so a rejected upload — a
+# missing permission, a size limit — still printed the filename as if it had landed.
+upload() {
+  if curl -sS --fail-with-body -u "$U" -H "X-Atlassian-Token: no-check" \
+       -F "file=@$1;filename=$2" \
+       "https://hyland.atlassian.net/rest/api/3/issue/$TICKET/attachments" >/dev/null; then
+    echo "  ok   $2"
+  else
+    echo "  FAIL $2" >&2; return 1
+  fi
+}
 upload contact-sheet.png            "$TICKET-before-after.png"
 upload before/$TICKET-before.webm   "$TICKET-before.webm"
 upload after/$TICKET-after.webm     "$TICKET-after.webm"
@@ -654,7 +663,8 @@ called; `docs/ai-features.md` if AI behaviour changed; `AGENTS/01-services.md` i
 was added; `AGENTS/00-architecture.md` if architecture changed; PR on a `fix/*` branch; every
 review thread replied to and resolved; the PR added to the ticket's Links panel as a remote
 link; before/after evidence in both forms attached to the ticket, images and recordings only,
-each named for the half it came from; no harness artifact committed or attached;
+each named for the half it came from; no harness artifact **attached**, and none **committed**
+except a scenes file justified in the PR because no unit test could cover the behaviour;
 all checks `SUCCESS`; all commits Verified. Quote the gate verdict line rather than asserting it.
 
 ## Phase 9 — Final fix summary (always output)
@@ -728,9 +738,13 @@ someone may still need. Then:
 ## Recommended extras (do these when applicable, still autonomously)
 
 - **Commit product code only.** A pull request contains the fix, its tests, and the docs the
-  Definition of Done names. It does **not** contain harness artifacts: scenes files,
-  `manifest.json`, `STORY.md`, `chapters.vtt`, screenshots, recordings, gate reports. Those
-  live in the evidence folder outside the repo and go on the ticket.
+  Definition of Done names. It does **not** contain harness artifacts: `manifest.json`,
+  `STORY.md`, `chapters.vtt`, screenshots, recordings or gate reports — those live in the
+  evidence folder outside the repo and go on the ticket.
+
+  The one exception is a **scenes file**, and only when no unit test can cover the behaviour —
+  a visual regression, a cross-component interaction, something only a rendered browser can
+  assert. Say so in the PR when you stage one.
 
   The rule used to be "always commit the scenes file, so the fix is re-verifiable later". That is
   what the regression test is for, and unlike a scenes file the test **runs in CI on every PR**.
