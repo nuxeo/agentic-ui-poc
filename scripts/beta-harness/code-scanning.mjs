@@ -12,8 +12,9 @@
  * Nobody saw them, for two compounding reasons:
  *
  * 1. Default setup analyses the **pull-request ref**, so the alerts live under
- *    `refs/pull/145/head`. `GET /code-scanning/alerts` with no `ref` reports on the default branch,
- *    where there are none. Asking the obvious question returned a reassuring zero.
+ *    `refs/pull/<n>/merge` (see the ref-selection note below — this file spent a while asking for
+ *    `/head`, which never has one). `GET /code-scanning/alerts` with no `ref` reports on the
+ *    default branch, where there are none. Asking the obvious question returned a reassuring zero.
  * 2. Nothing in the gate pipeline, the phase evidence, or CI ever asked.
  *
  * So the gap was never the tool. It was that a tool ran, found things, and no process consumed the
