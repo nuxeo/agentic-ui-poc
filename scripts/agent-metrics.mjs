@@ -42,27 +42,52 @@ import { evidenceDirForTicket } from './collect-evidence/evidence-path.mjs';
  * compare across runs cannot tell you which phase to shorten — which is the only reason to
  * measure this at all. An unknown id is rejected rather than silently recorded.
  */
+/**
+ * Canonical phases, each in one of three buckets.
+ *
+ * Only `fix` is published. The first run measured 4h 13m of wall clock and published it as
+ * "time taken", of which 3h 44m — 88% — was capturing evidence and waiting on CI. That number
+ * says nothing about how long the fix took and everything about how slow the pipeline is, and
+ * read on a page called "Skill Performance" it is actively misleading.
+ *
+ *   fix       understanding the problem and changing the code until it is right
+ *   evidence  capturing and comparing before/after — real work, but not fixing
+ *   overhead  workspace setup, opening the PR, CI polling, ticket admin — mostly waiting
+ *
+ * **Teardown is not measured, and cannot be.** `publish` has to run before the workspace is
+ * removed, because removing it deletes this script, and `end` has to precede `publish`. So the
+ * run is always closed before teardown begins. `cleanup` therefore only ever covers the
+ * summary written before `end`; the earlier version of this comment claimed teardown was in
+ * the overhead subtotal, which was not true of any run.
+ *
+ * All three are printed locally; the shared page gets the fix total.
+ */
 export const PHASES = {
-  ticket: 'Understand the ticket + acceptance criteria',
-  expected: 'Establish expected behaviour / prior art',
-  workspace: 'Take the ticket workspace',
-  reproduce: 'Reproduce + before evidence (bug)',
-  baseline: 'Baseline capture (feature)',
-  design: 'Design + layer placement (feature)',
-  decide: 'Choose the approach',
-  scaffold: 'Scaffold the module (feature)',
-  fix: 'Implement',
-  'verify-evidence': 'After evidence + comparison',
-  'regression-test': 'Tests',
-  docs: 'Docs + extension reference (feature)',
-  'blast-radius': 'Blast-radius check',
-  gate: 'Local gate to green',
-  validate: 'validate-fix (a11y, browsers)',
-  pr: 'Commit + open the PR',
-  ci: 'CI to green',
-  review: 'Review comments',
-  jira: 'Update the ticket',
-  cleanup: 'Clean up + summary',
+  ticket: { label: 'Understand the ticket + acceptance criteria', bucket: 'fix' },
+  expected: { label: 'Establish expected behaviour / prior art', bucket: 'fix' },
+  workspace: { label: 'Take the ticket workspace', bucket: 'overhead' },
+  reproduce: { label: 'Reproduce the defect', bucket: 'fix' },
+  'evidence-before': { label: 'Capture the before evidence', bucket: 'evidence' },
+  baseline: { label: 'Baseline capture (feature)', bucket: 'evidence' },
+  design: { label: 'Design + layer placement (feature)', bucket: 'fix' },
+  decide: { label: 'Choose the approach', bucket: 'fix' },
+  scaffold: { label: 'Scaffold the module (feature)', bucket: 'fix' },
+  fix: { label: 'Implement', bucket: 'fix' },
+  'verify-evidence': { label: 'After evidence + comparison', bucket: 'evidence' },
+  'regression-test': { label: 'Tests', bucket: 'fix' },
+  docs: { label: 'Docs + extension reference (feature)', bucket: 'fix' },
+  'blast-radius': { label: 'Blast-radius check', bucket: 'fix' },
+  gate: { label: 'Local gate to green', bucket: 'fix' },
+  // `validate-fix` is testing, not capture: it runs the accessibility gates, cross-browser
+  // e2e, the consumers' tests and the corner cases, and can send you back to the code. The
+  // page says testing is included and only capture is excluded, so this belongs in `fix`.
+  validate: { label: 'validate-fix (a11y, browsers)', bucket: 'fix' },
+  pr: { label: 'Commit + open the PR', bucket: 'overhead' },
+  ci: { label: 'CI to green', bucket: 'overhead' },
+  review: { label: 'Review comments', bucket: 'fix' },
+  jira: { label: 'Update the ticket', bucket: 'overhead' },
+  // Closes before teardown by necessity — see the note above.
+  cleanup: { label: 'Final summary', bucket: 'overhead' },
 };
 
 const CONFLUENCE_PAGE_ID = process.env['AGENT_METRICS_PAGE_ID'] ?? '4301586845';
@@ -131,7 +156,7 @@ switch (cmd) {
       process.exit(2);
     }
     await append({ type: 'phase', phase: id });
-    console.log(`metrics: → ${id} (${PHASES[id]})`);
+    console.log(`metrics: → ${id} (${PHASES[id].label})`);
     break;
   }
 
@@ -212,12 +237,12 @@ async function summarise() {
     if (open) phases.get(open.phase)?.events.push(e.event);
   }
 
-  const totalMs = phases.size
-    ? [...phases.values()].reduce((n, p) => n + p.ms, 0)
-    : 0;
+  const totalMs = phases.size ? [...phases.values()].reduce((n, p) => n + p.ms, 0) : 0;
+  const buckets = { fix: 0, evidence: 0, overhead: 0 };
+  for (const [id, p] of phases) buckets[PHASES[id]?.bucket ?? 'overhead'] += p.ms;
   const wallMs = start ? new Date((end ?? run[run.length - 1]).at).getTime() - new Date(start.at).getTime() : 0;
 
-  return { start, end, phases, totalMs, wallMs, rows: run };
+  return { start, end, phases, buckets, totalMs, wallMs, rows: run };
 }
 
 function hhmm(ms) {
@@ -233,11 +258,11 @@ async function report() {
   }
 
   const ordered = Object.keys(PHASES).filter((p) => s.phases.has(p));
-  const width = Math.max(...ordered.map((p) => PHASES[p].length), 20);
+  const width = Math.max(...ordered.map((p) => PHASES[p].label.length), 20);
 
   console.log(`\n${ticket} — phase timings (${s.start?.kind ?? '?'}, ${s.start?.model ?? '?'})\n`);
-  console.log(`  ${'phase'.padEnd(width)}  ${'time'.padStart(7)}  ${'%'.padStart(4)}  events`);
-  console.log(`  ${'-'.repeat(width)}  ${'-'.repeat(7)}  ${'-'.repeat(4)}  ------`);
+  console.log(`  ${'phase'.padEnd(width)}  ${'time'.padStart(7)}  ${'%'.padStart(4)}  ${'bucket'.padEnd(8)}  events`);
+  console.log(`  ${'-'.repeat(width)}  ${'-'.repeat(7)}  ${'-'.repeat(4)}  ${'-'.repeat(8)}  ------`);
   for (const p of ordered) {
     const { ms, events } = s.phases.get(p);
     const pct = s.totalMs ? Math.round((ms / s.totalMs) * 100) : 0;
@@ -246,14 +271,17 @@ async function report() {
     )
       .map(([k, v]) => `${k}×${v}`)
       .join(' ');
-    console.log(`  ${PHASES[p].padEnd(width)}  ${hhmm(ms).padStart(7)}  ${String(pct).padStart(3)}%  ${tally}`);
+    console.log(`  ${PHASES[p].label.padEnd(width)}  ${hhmm(ms).padStart(7)}  ${String(pct).padStart(3)}%  ${PHASES[p].bucket.padEnd(8)}  ${tally}`);
   }
   console.log(`  ${'-'.repeat(width)}  ${'-'.repeat(7)}`);
+  console.log(`  ${'FIX  (published)'.padEnd(width)}  ${hhmm(s.buckets.fix).padStart(7)}`);
+  console.log(`  ${'evidence'.padEnd(width)}  ${hhmm(s.buckets.evidence).padStart(7)}`);
+  console.log(`  ${'overhead'.padEnd(width)}  ${hhmm(s.buckets.overhead).padStart(7)}`);
   console.log(`  ${'total (phases)'.padEnd(width)}  ${hhmm(s.totalMs).padStart(7)}`);
   console.log(`  ${'wall clock'.padEnd(width)}  ${hhmm(s.wallMs).padStart(7)}`);
 
   const slowest = [...s.phases.entries()].sort((a, b) => b[1].ms - a[1].ms)[0];
-  if (slowest) console.log(`\n  Slowest phase: ${PHASES[slowest[0]]} (${hhmm(slowest[1].ms)})`);
+  if (slowest) console.log(`\n  Slowest phase: ${PHASES[slowest[0]].label} (${hhmm(slowest[1].ms)})`);
 
   console.log(
     `\n  Cost: not measured here — an agent cannot read its own token usage, and a guess\n` +
@@ -273,7 +301,36 @@ async function publish() {
     console.error(`No metrics for ${ticket}.`);
     process.exit(1);
   }
-  if (!s.end) console.warn('warning: this run has no `end` mark — publishing an in-progress run.');
+  // The row records a finished piece of work, so both of these must hold.
+  //
+  // `phase jira` alone is not enough: a phase mark opens a phase, it does not close it, so
+  // `phase jira` immediately followed by `publish` used to satisfy the guard before any of
+  // the Jira work had happened. Requiring the `end` mark closes it — and the documented
+  // workflow already runs `end` before `publish`.
+  const problems = [];
+  if (!s.phases.has('jira')) {
+    problems.push(
+      'nothing recorded for the `jira` phase — post the fix summary and attach the evidence first',
+    );
+  }
+  if (!s.end) {
+    problems.push('no `end` mark — run `agent-metrics end <TICKET> --outcome <outcome>` first');
+  } else {
+    // The `end` has to come *after* the last `jira` mark. Checking only that one exists let
+    // `end; phase jira; publish` through, which reaches the credential and page handling with
+    // the Jira phase still open — the exact hole the guard was added to close, one step along.
+    const lastJira = [...s.rows].reverse().find((r) => r.type === 'phase' && r.phase === 'jira');
+    if (lastJira && new Date(s.end.at) <= new Date(lastJira.at)) {
+      problems.push(
+        'the `end` mark predates the last `jira` phase — the ticket update is still open; ' +
+          'finish it, then run `end` again',
+      );
+    }
+  }
+  if (problems.length) {
+    console.error(`\nRefusing to publish an unfinished run:\n${problems.map((p) => `  - ${p}`).join('\n')}\n`);
+    process.exit(1);
+  }
 
   const email = readIf(`${homedir()}/.jira_email`);
   const token = readIf(`${homedir()}/.jira_token`);
@@ -303,7 +360,10 @@ async function publish() {
   // Three columns only: who, which ticket, how long. The per-phase breakdown, retries, gate
   // failures and model stay in the local metrics.jsonl — they are for tuning the skill, and
   // publishing thirty columns produced a table nobody could read across.
-  const row = `<tr>${cell(s.start?.account)}${cell(ticket)}${cell(hhmm(s.wallMs))}</tr>`;
+  // The fix total, not wall clock. Publishing wall clock made the first row read 4h 13m for a
+  // one-line change, 88% of which was evidence capture and CI polling — a number that says
+  // nothing about the fix and is read as if it did.
+  const row = `<tr>${cell(s.start?.account)}${cell(ticket)}${cell(hhmm(s.buckets.fix))}</tr>`;
 
   // Anchor on the page's structure, not on a marker comment: Confluence's storage-format
   // sanitiser strips HTML comments, so a `<!-- ... -->` marker silently does not survive the

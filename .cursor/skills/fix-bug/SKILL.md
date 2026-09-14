@@ -22,7 +22,7 @@ confirmation between phases** — reproduce → decide → fix → validate → 
 hard stops are the **Guardrails** at the bottom and the **Stop conditions** in Phase 3.5; YOLO
 relaxes the _confirmation_ gates, not those. Track phases with a TODO list.
 
-Delegate: review-comment mechanics to [`fix-pr-comments`](../fix-pr-comments.md), new tests to
+Delegate: review-comment mechanics to the [`pr-review-responder`](../../agents/pr-review-responder.md) subagent, new tests to
 [`generate-tests`](../generate-tests.md), gate iteration to [`verify-gate`](../verify-gate/SKILL.md),
 and accessibility / i18n / cross-browser validation to [`validate-fix`](../validate-fix/SKILL.md).
 
@@ -78,10 +78,28 @@ node scripts/agent-metrics.mjs event "$TICKET" retry|gate-fail|stop-condition|ev
 node scripts/agent-metrics.mjs end   "$TICKET" --outcome pr-open|merged|blocked|abandoned
 ```
 
-Phase ids are a fixed list (`ticket`, `expected`, `workspace`, `reproduce`, `decide`, `fix`,
-`verify-evidence`, `regression-test`, `blast-radius`, `gate`, `validate`, `pr`, `ci`, `review`,
-`jira`, `cleanup`) — an unknown id is rejected, because free-text phase names make runs
-incomparable and a table you cannot compare cannot tell you which phase to shorten.
+Phase ids are a fixed list and an unknown one is rejected: free-text phase names make runs
+incomparable, and a table you cannot compare cannot tell you which phase to shorten. Each id
+sits in one of three buckets, and **only `fix` is published**:
+
+| bucket     | phases                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `fix`      | `ticket` `expected` `reproduce` `design` `decide` `scaffold` `fix` `regression-test` `docs` `blast-radius` `gate` `validate` `review` |
+| `evidence` | `evidence-before` `baseline` `verify-evidence`                                                                                        |
+| `overhead` | `workspace` `pr` `ci` `jira` `cleanup`                                                                                                |
+
+`cleanup` covers the final summary only. **Teardown is not measured**: `publish` must run
+before the workspace is removed — removing it deletes the script — and `end` must precede
+`publish`, so the run is always closed before teardown begins.
+
+The shared page answers "how long do fixes take", so it gets the `fix` total alone. The first
+row published wall clock — 4h 13m for a one-line change, 88% of it evidence capture and CI
+polling — which is a number about the pipeline masquerading as a number about the work. All
+three totals stay in the local report, which is where you look when a run felt slow.
+
+**`publish` refuses until the `jira` phase is recorded.** A row is a record of finished work;
+publishing before the ticket is updated puts a time on the page for something nobody can yet
+go and look at.
 
 `end` prints the per-phase table. Phase 10 publishes it to the team page.
 
@@ -251,6 +269,10 @@ stop condition, not something to resolve by picking the reading that is easiest 
 **Reproduce the bug before writing any code.** The workspace is already on the branch cut from
 `origin/main`, so the repro reflects released behaviour.
 
+```bash
+node scripts/agent-metrics.mjs phase "$TICKET" reproduce   # confirming the defect is fix work
+```
+
 > **Reproduce autonomously (no confirmation).** Everything runs against `$NX_URL`. By default
 > that is the **shared** `nuxeo` instance — the isolation is `$NX_DATA_ROOT`
 > (`/default-domain/workspaces/<TICKET>`), so create and seed your documents there and do not
@@ -305,7 +327,13 @@ Each scene declares `act`, `title`, `intent`, `criterion` and a `run()`. The **t
 Setup (what the user was trying to do — the reviewer was not in the ticket), the Behaviour, and
 the Proof. Then capture the first half:
 
+**Mark the boundary here.** `reproduce` is in the `fix` bucket and `evidence-before` is not, so
+leaving `reproduce` open through the capture puts the capture straight back into the published
+fix total — which is the one thing the buckets exist to separate:
+
 ```bash
+node scripts/agent-metrics.mjs phase "$TICKET" evidence-before
+
 APP_URL="$APP_URL" EVIDENCE_PHASE=before NUXEO_DOC_UID=<uid> \
   npm run evidence:collect -- "$TICKET" scripts/collect-evidence/$TICKET.mjs
 ```
@@ -559,7 +587,7 @@ exactly which checks are still pending; do **not** claim green. This PR runs mor
   or the SonarQube MCP) alongside Copilot inline comments; fix both.
 - **Close the loop on every review thread — reply _and_ resolve.** A reply alone does not resolve
   it; that needs the GraphQL mutation. Do this autonomously; only leave a thread open if you
-  disagree, and then reply explaining why. Use [`fix-pr-comments`](../fix-pr-comments.md) for the
+  disagree, and then reply explaining why. Use the [`pr-review-responder`](../../agents/pr-review-responder.md) subagent for the
   fixes and `AGENTS/09-pr-feedback.md` for the comment→fix mapping.
 
   ```bash
@@ -679,11 +707,13 @@ someone may still need. Then:
 - Leave the evidence in `$EVID` — it is the one thing that outlives the run. Never commit it.
 - Report the PR's final CI state. If a long check (`codeql`, `sonarcloud`, `a11y`,
   `build-marketplace`) is still running, say so explicitly — do **not** claim green until it is.
-- `publish` (run above, before teardown) appends one row — **user, ticket id, time taken** — to
+- `publish` (run above, before teardown) appends one row — **user, ticket id, time to fix** — to
   [Bug Fix/Feature Development Skill Performance](https://hyland.atlassian.net/wiki/x/nQFlAAE),
-  authenticating as the engineer who ran it. The per-phase breakdown is **not** published; it
-  stays in the local `metrics.jsonl` for tuning the skill. Print that table in the final summary
-  and name the slowest phase — that is the one worth attacking next.
+  authenticating as the engineer who ran it. **Time to fix is the `fix` bucket alone** — evidence
+  capture and all overhead are excluded, so the row answers how long the work took rather than
+  how slow the pipeline is. The per-phase breakdown and the other two subtotals are **not**
+  published; they stay in the local `metrics.jsonl`. Print that table in the final summary and
+  name the slowest phase — that is the one worth attacking next.
 
 ## Recommended extras (do these when applicable, still autonomously)
 
