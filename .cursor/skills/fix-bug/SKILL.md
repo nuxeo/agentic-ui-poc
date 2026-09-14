@@ -92,11 +92,11 @@ incomparable and a table you cannot compare cannot tell you which phase to short
 
 ### Filesystem layout — write only inside these roots
 
-| What                                              | Where                                                  |
-| ------------------------------------------------- | ------------------------------------------------------ |
-| Evidence (screenshots, videos, logs)              | `~/Desktop/agentic-ui-evidence/<TICKET-ID>/fix/`       |
-| Ticket workspace (worktree, node_modules, conf)   | `~/Desktop/Projects/agentic-ui-worktrees/<TICKET-ID>/` |
-| Ticket-specific Playwright steps file (committed) | `scripts/collect-evidence/<TICKET-ID>.mjs`             |
+| What                                                          | Where                                                  |
+| ------------------------------------------------------------- | ------------------------------------------------------ |
+| Evidence (screenshots, videos, logs)                          | `~/Desktop/agentic-ui-evidence/<TICKET-ID>/fix/`       |
+| Ticket workspace (worktree, node_modules, conf)               | `~/Desktop/Projects/agentic-ui-worktrees/<TICKET-ID>/` |
+| Ticket-specific Playwright scenes file (**local by default**) | `scripts/collect-evidence/<TICKET-ID>.mjs`             |
 
 > **Never create a folder directly on `~/Desktop`**, and **never put a worktree inside the repo**
 > — a nested checkout with its own `node_modules` will be picked up by Nx and by `git add -A`.
@@ -512,7 +512,9 @@ This is the "fix and raise PR" trigger.
 - Conventional Commit, lowercase, present tense, Jira id, why-focused body:
 
   ```bash
-  git add <the fix + the test + the evidence steps file>     # only these, no churn
+  git add <the fix + the test + any docs the DoD names>      # only these, no churn
+  # NOT the scenes file, and no other harness artifact — see Recommended extras. Stage it
+  # only if no unit test can cover the behaviour, and say so in the PR.
   git commit -m "fix(NXSAT-123): <concise description>"
   git push -u origin HEAD
   ```
