@@ -616,83 +616,57 @@ left open. Snapshot the review id, wait for a **newer** one, then count only its
 
 ```bash
 PR=<pr>
-copilot_reviews() {   # every Copilot review id, oldest first
-  gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
-    -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
-      repository(owner:$owner,name:$name){pullRequest(number:$number){
-        reviews(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
-          nodes{ id submittedAt author{login} }}}}}' \
-    --jq '.data.repository.pullRequest.reviews.nodes[]
-          | select(.author.login|test("copilot";"i")) | .id'
-}
 
 # 1. resolve everything outstanding (the subagent), then snapshot and request
-BEFORE=$(copilot_reviews | tail -1)
+BEFORE=$(node scripts/pr-review-analysis.mjs latest-review "$PR") || exit 1
 gh api -X POST "repos/nuxeo/agentic-ui-poc/pulls/$PR/requested_reviewers" \
   -f 'reviewers[]=copilot-pull-request-reviewer[bot]'   # or the GitHub MCP request_copilot_review
 
 # 2. poll for a review newer than the snapshot, capped at 10 minutes
 for _ in $(seq 30); do
-  NEW_REVIEW=$(copilot_reviews | tail -1)
-  [ -n "$NEW_REVIEW" ] && [ "$NEW_REVIEW" != "$BEFORE" ] && break
+  NEW_REVIEW=$(node scripts/pr-review-analysis.mjs latest-review "$PR") || exit 1
+  [ "$NEW_REVIEW" != "$BEFORE" ] && break
   sleep 20
 done
-if [ -z "$NEW_REVIEW" ] || [ "$NEW_REVIEW" = "$BEFORE" ]; then
+if [ "$NEW_REVIEW" = "$BEFORE" ]; then
   echo "no new review arrived — the round is UNKNOWN, not clean"; exit 1
 fi
 
-# 3. count the findings that belong to that review — its threads AND its body.
-#    Each `gh` call is captured and its status checked *before* anything counts. Piping
-#    straight into `wc -l` would report 0 when the API call itself failed, which is the
-#    false-clean signal this loop exists to prevent — the `grep -c` trap one step along.
-export NEW_REVIEW
-threads=$(gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
-  -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
-    repository(owner:$owner,name:$name){pullRequest(number:$number){
-      reviewThreads(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
-        nodes{ isResolved comments(first:1){nodes{ pullRequestReview{ id } }} }}}}}' \
-  --jq '.data.repository.pullRequest.reviewThreads.nodes[]
-        | select(.isResolved == false)
-        | select(.comments.nodes[0].pullRequestReview.id == env.NEW_REVIEW) | .isResolved'
-) || { echo "gh api failed — the round is UNKNOWN, not clean"; exit 1; }
-
-# Findings folded into the summary body's "Suppressed comments" block never become threads.
-review_body=$(gh api graphql -F id="$NEW_REVIEW" \
-  -f query='query($id:ID!){node(id:$id){... on PullRequestReview { body }}}' \
-  --jq '.data.node.body'
-) || { echo "gh api failed — the round is UNKNOWN, not clean"; exit 1; }
-
-# Counting only, on data already in hand: empty input is a real zero, not a hidden error.
-count() { [ -z "$1" ] && echo 0 || printf '%s\n' "$1" | wc -l | tr -d ' '; }
-THREADS=$(count "$threads")
-BODY=$(count "$(printf '%s\n' "$review_body" | grep -E '^\*\*[^*]+:[0-9]+\*\*')")
-
-echo "round findings: $((THREADS + BODY))  ($THREADS thread, $BODY suppressed in the body)"
+# 3. the verdict, in the exit code: 0 clean, 1 findings, 2 usage, 3 could-not-tell
+node scripts/pr-review-analysis.mjs round "$PR" "$NEW_REVIEW"
 ```
 
-Four things in that recipe are load-bearing, and the version it replaces got each of them
-wrong:
+`3` is a separate code on purpose. An API failure exiting `1` would be indistinguishable from
+"found something" — survivable, but it would leave `0` as the only code you could trust, and
+every false-clean bug in this loop's history came from an error wearing a verdict's clothes.
 
-- **`$NEW_REVIEW`, not a `sleep`.** Waiting a fixed two minutes and counting threads reports
+**Why this is a script and not four `gh` calls.** Every version of this written in shell grew
+the same defect, three times, in three different places: a pipeline whose producer failed
+reported a reassuring zero, because the last process in a pipe owns the exit status and
+`wc -l`, `tail` and `grep -c` all succeed on no input. `grep -c` also **exits 1 when the count
+is zero**, so the outcome you are hoping for aborts the loop under `set -e`. Verified:
+`printf 'true\n' | grep -c false` prints `0` and exits 1. In Node an API failure throws out of
+`execFileSync` and the command exits non-zero, so the failure cannot be read as a clean round
+without anyone having to remember `pipefail`.
+
+Four properties are load-bearing, and every earlier version of this section got at least one
+of them wrong:
+
+- **A new review id, not a `sleep`.** Waiting a fixed two minutes and counting threads reports
   zero whenever the review takes longer than the wait — a false clean round produced by the
-  reviewer being slow. No new review id means the round is unknown; say so and poll again.
+  reviewer being slow. No new id means the round is unknown; say so and poll again.
 - **Scoped to that review.** A thread left open because you disagree belongs to an earlier
   review, and a global count keeps counting it forever, so the loop can never exit on a PR
   that has one. Same for the `github-advanced-security` threads, which are not Copilot's.
-- **`wc -l`, not `grep -c` — but never on a live pipe.** `grep -c false` **exits 1 when the
-  count is zero**: the outcome you are hoping for makes the command fail, which under
-  `set -e` or behind `&&` aborts the loop at exactly the wrong moment. Verified:
-  `printf 'true\n' | grep -c false` prints `0` and exits 1, `wc -l` prints `0` and exits 0.
-  Swapping one for the other is only half the fix, though, and the first version of this
-  recipe stopped there: `gh api … | wc -l` reports `0` when `gh` itself fails, so an expired
-  token or a transient 502 reads as a clean round. Capture each API call, check its status,
-  and count only what is already in hand.
-- **`$((THREADS + BODY))`, not threads alone.** Copilot's summary is submitted as `COMMENTED`
-  and folds findings into a **"Suppressed comments"** block that never becomes a thread —
-  three of the five findings on PR #182 were there, and all three were real. A thread-only
-  count therefore prints `0` and declares a clean round while the body holds the findings.
-  This used to be a sentence of prose telling you to read the body; a reminder is not a
-  verdict, and the round has to fail on what the body contains whether or not anyone reads it.
+- **Threads and the body.** Copilot's summary is submitted as `COMMENTED` and folds findings
+  into a **"Suppressed comments"** block that never becomes a thread — three of the five
+  findings on PR #182 were there, and all three were real. A thread-only count prints `0` and
+  declares a clean round while the body holds the findings.
+- **One classifier for the round and the harvest.** `round` is `harvestPr` filtered to the
+  review, so the number that decides the exit and the rows that get recorded cannot disagree.
+  They did: the shell test counted only bold `path:line` entries while the harvest also treats
+  a non-empty body with no threads as a finding, so a round could exit clean on something the
+  record called a miss minutes later.
 
 **Exit when a round produces zero new comments.** Copilot does not `APPROVE`; a clean round is
 the green signal. Bound it at **six rounds** — past that, stop and report what keeps recurring,

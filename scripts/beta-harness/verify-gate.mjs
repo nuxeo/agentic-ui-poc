@@ -264,8 +264,10 @@ const ALL_GATES = [
   // The pre-PR review skill quotes a distribution of past reviewer findings, and orders its
   // sections by it. Both were hand-typed from a one-day snapshot and nothing re-derived them,
   // so the skill warning about `stale-prose` was itself going stale — its "six pull requests"
-  // was already wrong when written; the corpus holds five. Now both are generated from
-  // docs/pr-review-findings.jsonl and this gate fails when they drift from it.
+  // was already wrong when written; the corpus holds five. The statistics block is now
+  // generated from docs/pr-review-findings.jsonl; the section ordering is not, because it is
+  // an editorial call, so this gate *verifies* it against the corpus ranking instead. Either
+  // drifting is a failure.
   {
     id: 'review-corpus',
     label: 'PR-review skill matches its corpus',

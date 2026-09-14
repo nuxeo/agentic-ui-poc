@@ -82,7 +82,7 @@ function gitOptional(args) {
  * noise. Diffing from the merge base asks the question that was meant: what did I change?
  */
 const mergeBase = gitOptional(['merge-base', base, 'HEAD']).trim() || base;
-const files = (
+const touched = (
   all
     ? git(['ls-files']).split('\n')
     : [
@@ -93,27 +93,56 @@ const files = (
 )
   .map((f) => f.trim())
   .filter(Boolean)
-  .filter((f) => existsSync(resolve(repoRoot, f)) && statSync(resolve(repoRoot, f)).isFile())
   .filter((f, i, a) => a.indexOf(f) === i);
+
+const files = touched.filter(
+  (f) => existsSync(resolve(repoRoot, f)) && statSync(resolve(repoRoot, f)).isFile(),
+);
+
+/**
+ * Markdown this change **removed or renamed away**.
+ *
+ * The line above drops anything that no longer exists, which is right for a scanner that
+ * reads file contents and wrong for the link check: deleting `docs/x.md` breaks every link to
+ * it, and all of those live in files this diff did not touch, so the run was clean while the
+ * change it was judging had broken the tree. Deletions are the one case where the blast radius
+ * is outside the diff, so when there are any, the link check widens to every tracked
+ * Markdown file. That is affordable — a few hundred files, a regex each — and it is the only
+ * way the rule can see what it claims to cover.
+ */
+const deletedMarkdown = touched.filter(
+  (f) => f.endsWith('.md') && !existsSync(resolve(repoRoot, f)),
+);
+const linkScanFiles = deletedMarkdown.length
+  ? git(['ls-files', '*.md'])
+      .split('\n')
+      .map((f) => f.trim())
+      .filter((f) => f && existsSync(resolve(repoRoot, f)))
+  : files.filter((f) => f.endsWith('.md'));
 
 const read = (f) => readFileSync(resolve(repoRoot, f), 'utf8');
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
 /**
- * Blank out the *contents* of string and template literals, keeping every offset.
+ * Blank out the *contents* of strings, template literals and comments, keeping every offset.
  *
- * Without this the first version of this file flagged its own documentation: the description
- * of the `silent-failure` class contains the text `.catch(() => {})`, and a regex over raw
- * source cannot tell a code pattern from a sentence about one. A checker that fires on its
- * own prose is a checker people switch off.
+ * Only patterns matched against the result are affected; the rules that need to read prose —
+ * the rationale check below — read the raw `text` instead, so nothing is lost.
  *
- * Comments are deliberately left intact — the rule below reads them to decide whether a
- * swallow was a decision or an oversight — but comment *state* is tracked, because an
- * apostrophe in a comment is not a quote. `// don't discard this` used to open a
+ * Both halves of this were learned by getting them wrong:
+ *
+ * **Strings**, because the first version of this file flagged its own documentation: the
+ * description of the `silent-failure` class contains that pattern as an example, and a regex
+ * over raw source cannot tell a code pattern from a sentence about one. A checker that fires
+ * on its own prose is a checker people switch off.
+ *
+ * **Comments**, for two reasons that pull in opposite directions and are both real. An
+ * apostrophe in a comment is not a quote: `// don't discard this` used to open a
  * single-quoted region that stayed open to the end of the file, masking everything after it,
- * so a `.catch(() => {})` below such a comment was invisible to the one rule that looks for
- * it. The checker missed the exact pattern it advertises, and only in files whose comments
- * happen to contain an apostrophe — which is most prose.
+ * so a swallowed rejection below such a comment was invisible to the one rule that looks for
+ * it — and that is most prose. Tracking comment state fixed it, but leaving comment *text*
+ * in the output immediately reintroduced the original false positive one paragraph up from
+ * here. So comments are recognised *and* blanked, and the rationale check reads `text`.
  */
 function maskStrings(text) {
   let out = '';
@@ -123,15 +152,18 @@ function maskStrings(text) {
     const c = text[i];
 
     if (comment) {
-      // Kept verbatim: the rationale check reads these.
-      if (comment === 'line' && c === '\n') comment = null;
-      else if (comment === 'block' && c === '*' && text[i + 1] === '/') {
-        out += '*/';
+      if (comment === 'line' && c === '\n') {
+        comment = null;
+        out += c;
+        continue;
+      }
+      if (comment === 'block' && c === '*' && text[i + 1] === '/') {
+        out += '  ';
         i += 1;
         comment = null;
         continue;
       }
-      out += c;
+      out += c === '\n' ? c : ' ';
       continue;
     }
 
@@ -152,7 +184,8 @@ function maskStrings(text) {
 
     if (c === '/' && (text[i + 1] === '/' || text[i + 1] === '*')) {
       comment = text[i + 1] === '/' ? 'line' : 'block';
-      out += c;
+      out += '  ';
+      i += 1;
       continue;
     }
     if (c === "'" || c === '"' || c === '`') {
@@ -200,24 +233,37 @@ function silentFailure(file) {
     // not: it only *prints* the status, so a write that returned 500 was classified as
     // guarded while the script sailed past it — the same shape of defect the rule exists to
     // catch, inside the rule. It counts only when something downstream tests the status.
-    const failsHard = /--fail\b|--fail-with-body\b/.test(cmd);
-    const printsStatus = /-w\s*['"]?%\{http_code\}|--write-out/.test(cmd);
+    // Complete option tokens. `/--fail\b/` also matches `--fail-early`, because `\b` succeeds
+    // before a hyphen — and `--fail-early` does not make an HTTP error fail, it only aborts a
+    // multi-transfer run sooner, so a write carrying it alone was cleared.
+    const failsHard = /(?:^|\s)(?:--fail|--fail-with-body|-[A-Za-z]*f[A-Za-z]*)(?=\s|$)/.test(cmd);
 
-    // "Something downstream tests it" has to mean *this* status, not any comparison in the
-    // neighbourhood. A first attempt looked for a test operator in the following few lines and
-    // cleared an unguarded write because the *next* command in the file happened to check its
-    // own status. So: the output must be captured into a variable, and that variable tested.
+    // `%{http_code}` specifically, for both option spellings. A bare `--write-out` can emit
+    // anything: `--write-out '%{url_effective}'` compared with `!=` used to read as an
+    // HTTP-error guard, so a 500 passed.
+    const printsStatus = /(?:-w|--write-out)[=\s]+['"]?[^'"\n]*%\{http_code\}/.test(cmd);
+
+    // "Something downstream tests it" has to mean *this* variable, in *this* condition.
+    // Two earlier attempts were too loose. The first looked for any test operator in the
+    // following lines and cleared an unguarded write because the *next* command checked its
+    // own status. The second required the variable and an operator to both appear, but
+    // independently — so `echo "$status"` followed by `[ "$retry" -eq 1 ]` satisfied it. The
+    // reference and the operator now have to sit inside one test expression.
     const captured = /(\w+)=(?:\$\(|`)\s*$/.exec(joined.slice(0, m.index));
     const after = joined
       .slice(m.index + cmd.length)
       .split('\n')
       .slice(0, 6)
       .join('\n');
-    const statusTested =
-      printsStatus &&
-      captured !== null &&
-      new RegExp(`\\$\\{?${captured[1]}\\b`).test(after) &&
-      /-eq|-ne|-ge|-gt|-lt|-le|==|!=|=~|\bcase\b/.test(after);
+    let statusTested = false;
+    if (printsStatus && captured !== null) {
+      const ref = `\\$\\{?${captured[1]}\\}?`;
+      const op = '(?:-eq|-ne|-ge|-gt|-lt|-le|==|!=|=~)';
+      statusTested =
+        new RegExp(`(?:\\[\\[?|\\btest\\b)[^\\n\\]]*(?:${ref}\\s*"?\\s*${op}|${op}\\s*"?\\s*${ref})`).test(
+          after,
+        ) || new RegExp(`\\bcase\\s+"?${ref}`).test(after);
+    }
 
     if (writes && !failsHard && !statusTested) {
       report(
@@ -318,13 +364,20 @@ function falseClaim(file) {
 
 // ---------------------------------------------------------------- run
 
-const CHECKS = [silentFailure, brokenReference, falseClaim];
 const scanned = files.filter(
   (f) => /\.(mjs|js|ts|sh|md|mdc)$/.test(f) && !f.startsWith('node_modules/'),
 );
 
-for (const f of scanned) {
-  for (const check of CHECKS) {
+// `brokenReference` runs over its own file set, because a deletion breaks links in files the
+// diff never touched. See `linkScanFiles`.
+const RUNS = [
+  { check: silentFailure, over: scanned },
+  { check: falseClaim, over: scanned },
+  { check: brokenReference, over: linkScanFiles.filter((f) => !f.startsWith('node_modules/')) },
+];
+
+for (const { check, over } of RUNS) {
+  for (const f of over) {
     try {
       check(f);
     } catch (err) {
@@ -334,7 +387,10 @@ for (const f of scanned) {
 }
 
 console.log(
-  `\npre-PR review — ${scanned.length} changed file(s) ${all ? 'across the whole tree' : `since ${mergeBase.slice(0, 8)}`}\n`,
+  `\npre-PR review — ${scanned.length} changed file(s) ${all ? 'across the whole tree' : `since ${mergeBase.slice(0, 8)}`}` +
+    (deletedMarkdown.length
+      ? `\n  ${deletedMarkdown.length} Markdown file(s) deleted, so links are checked across all ${linkScanFiles.length} tracked Markdown files\n`
+      : '\n'),
 );
 
 if (findings.length) {

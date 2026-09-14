@@ -289,13 +289,14 @@ function suppressedFindings(body) {
   return found;
 }
 
-function row({ pr, prTitle, file, line, url, finding, resolved, source }) {
+function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId = null }) {
   return {
     pr: Number(pr),
     prTitle,
     file,
     line,
     url,
+    reviewId,
     // Enough to recognise the finding in a table; the URL has the rest.
     finding,
     resolved,
@@ -303,6 +304,46 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source }) {
     category: '',
     whyMissed: '',
   };
+}
+
+/**
+ * The Copilot reviews on a PR, oldest first.
+ *
+ * `gh` failing throws out of `execFileSync`, which is the point: this used to be
+ * `copilot_reviews | tail -1` in a shell snippet, and without `pipefail` `tail` exits 0 when
+ * the producer dies, so the snapshot id came back empty. An empty snapshot makes the *next*
+ * poll treat the existing review as new, and the round reads clean without a review having
+ * run. That is the third place in this loop where a pipeline turned an API failure into a
+ * reassuring zero, which is the argument for the loop's state living here rather than in
+ * shell.
+ */
+export function copilotReviews(pr) {
+  return paginate(
+    pr,
+    `reviews(first:50, after:$endCursor){
+       pageInfo{ hasNextPage endCursor }
+       nodes{ id author{ login } } }`,
+    '$pr.reviews.nodes[]',
+  )
+    .filter((r) => REVIEWER.test(r.author?.login ?? ''))
+    .map((r) => r.id);
+}
+
+/**
+ * The findings attributable to one review — the number that decides whether a round is clean.
+ *
+ * Deliberately `harvestPr` filtered by review, not a second implementation. The clean-round
+ * test and the harvest used to classify a review body differently: the shell test counted
+ * only bold `path:line` entries, while `harvestPr` records a non-empty body with no threads
+ * and no suppressed block as one finding. A body of that shape scored zero in the loop and
+ * was harvested as a defect minutes later, so the loop could exit on something the record
+ * then called a miss. One classifier, two callers, and they cannot drift.
+ *
+ * Resolved threads are excluded here — unlike `harvestPr`, which keeps them on purpose —
+ * because a round asks "what is outstanding now", not "what did this PR ever cost".
+ */
+export function roundFindings(pr, reviewId) {
+  return harvestPr(pr).filter((r) => r.reviewId === reviewId && r.resolved !== true);
 }
 
 /**
@@ -339,6 +380,7 @@ export function harvestPr(pr) {
         finding: findingLine(c.body),
         resolved: t.isResolved,
         source: 'thread',
+        reviewId: c.pullRequestReview?.id ?? null,
       }),
     );
   }
@@ -365,7 +407,15 @@ export function harvestPr(pr) {
     if (items.length) reviewsWithFindings.add(r.id);
     for (const item of items) {
       rows.push(
-        row({ pr, prTitle: r.title, ...item, url: r.url, resolved: null, source: 'review-body' }),
+        row({
+          pr,
+          prTitle: r.title,
+          ...item,
+          url: r.url,
+          resolved: null,
+          source: 'review-body',
+          reviewId: r.id,
+        }),
       );
     }
   }
@@ -576,6 +626,53 @@ if (isCli) {
           'docs/pr-review-findings.jsonl and .cursor/skills/pre-pr-review/SKILL.md together.',
       );
     }
+  } else if (cmd === 'latest-review') {
+    const [pr] = rest;
+    if (!pr) {
+      console.error('Usage: pr-review-analysis.mjs latest-review <pr>');
+      process.exit(2);
+    }
+    let ids;
+    try {
+      ids = copilotReviews(pr);
+    } catch (error) {
+      console.error(`\nCould not read the reviews on #${pr}: ${error.message.split('\n')[0]}\n`);
+      process.exit(3);
+    }
+    if (!ids.length) {
+      console.error(`\nNo Copilot review on #${pr} yet.\n`);
+      process.exit(1);
+    }
+    console.log(ids[ids.length - 1]);
+  } else if (cmd === 'round') {
+    const [pr, reviewId] = rest;
+    if (!pr || !reviewId) {
+      console.error('Usage: pr-review-analysis.mjs round <pr> <reviewId>');
+      process.exit(2);
+    }
+    // The exit code carries the verdict so the caller needs no parsing: 0 clean, 1 findings,
+    // 2 usage, 3 could-not-tell. 3 exists because an API failure exiting 1 would be
+    // indistinguishable from "found something" — survivable, but it would make "clean" the
+    // only trustworthy code, and this loop has already been bitten three times by an error
+    // wearing a verdict's clothes.
+    let found;
+    try {
+      found = roundFindings(pr, reviewId);
+    } catch (error) {
+      console.error(`\nCould not read #${pr}: ${error.message.split('\n')[0]}`);
+      console.error('The round is UNKNOWN, not clean.\n');
+      process.exit(3);
+    }
+    const bySource = {};
+    for (const r of found) bySource[r.source] = (bySource[r.source] ?? 0) + 1;
+    const breakdown = Object.entries(bySource)
+      .map(([source, count]) => `${count} ${source}`)
+      .join(', ');
+    console.log(`round findings: ${found.length}${breakdown ? ` (${breakdown})` : ''}`);
+    for (const r of found) {
+      console.log(`  [${r.source}] ${r.file}:${r.line} — ${r.finding.slice(0, 120)}`);
+    }
+    process.exit(found.length === 0 ? 0 : 1);
   } else if (cmd === 'stats') {
     const rows = await corpus();
     console.log(`\n${stripAll(renderStats(rows), HTML_COMMENT, HTML_COMMENT_MARKER)}`);
@@ -626,7 +723,8 @@ if (isCli) {
     console.log(`skill is in step with the corpus (${rows.length} finding(s))`);
   } else {
     console.error(
-      'Usage: pr-review-analysis.mjs harvest <pr> … | publish <file> | stats | sync | check',
+      'Usage: pr-review-analysis.mjs harvest <pr> … | publish <file> | latest-review <pr> | ' +
+        'round <pr> <reviewId> | stats | sync | check',
     );
     process.exit(2);
   }

@@ -48,10 +48,12 @@ The findings themselves, with the reason each was missed, are on
 
 **The block above is not a fixed statement — it is a rendering of the corpus as it stands.**
 Every review loop that records findings appends to `docs/pr-review-findings.jsonl`, and
-`pr-review-analysis publish` re-derives the counts, the class table, the accepted/argued-down
-split and the section ordering from the new total. The numbers you are reading will be larger
-next month, and the ranking may differ; that is the point. Commit the corpus and this file
-together — the `review-corpus` gate fails if one moves without the other.
+`pr-review-analysis publish` re-derives the counts, the class table and the accepted/argued-down
+split from the new total. The numbered sections below are **not** re-derived: their order is an
+editorial decision, so `check` verifies it against the corpus ranking and tells you to re-order
+them by hand when the ranking changes. The numbers you are reading will be larger next month,
+and the ranking may differ; that is the point. Commit the corpus and this file together — the
+`review-corpus` gate fails if one moves without the other.
 
 If you argue a finding down rather than fixing it, record it as `"accepted": false` on its
 row. The sentence above counts it, so the corpus stays honest about what the reviewer got
