@@ -315,6 +315,11 @@ async function injectSpotlight({ selector, label, tone, dim }) {
           const live = document.querySelector(selector);
           if (!live || !live.isConnected) {
             root.dataset.lost = '1';
+            // Latched for the lifetime of this spotlight, and never cleared. `lost` alone is
+            // transient: on a route change or re-render the target can be absent for several
+            // ticks — the outline visibly disappears — and then return before the hold ends,
+            // leaving a gap in the recording that a live query at scene end cannot see.
+            root.dataset.wasLost = '1';
             box.style.display = 'none';
             chip.style.display = 'none';
             return;
@@ -551,19 +556,25 @@ try {
             ({ id, sel }) => {
               const el = document.getElementById(id);
               const target = document.querySelector(sel);
-              return { present: !!el, resolves: !!target && target.isConnected };
+              return {
+                present: !!el,
+                resolves: !!target && target.isConnected,
+                wasLost: el?.dataset.wasLost === '1',
+              };
             },
             { id: SPOTLIGHT_ID, sel },
           )
-          .catch(() => ({ present: false, resolves: false }));
+          .catch(() => ({ present: false, resolves: false, wasLost: true }));
 
         const gaps = spotlightFailures.length;
-        const ok = state.present && state.resolves && gaps === 0;
+        const ok = state.present && state.resolves && !state.wasLost && gaps === 0;
         const detail = !state.present
           ? `the overlay is gone (${sel})`
           : !state.resolves
             ? `${sel} no longer resolves — the outline is pointing at nothing`
-            : `restoration failed ${gaps} time(s) during this scene — ${spotlightFailures.join('; ')}`;
+            : state.wasLost
+              ? `${sel} disappeared during the scene and came back — the recording has a gap`
+              : `restoration failed ${gaps} time(s) during this scene — ${spotlightFailures.join('; ')}`;
         helpers.check('the spotlight still points at its element', ok, detail);
       }
       spotlightFailures.length = 0;
