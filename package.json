@@ -44,7 +44,8 @@
     "a11y:baseline": "node scripts/a11y-scan.mjs --update-baseline",
     "sonar:scan": "sonar-scanner",
     "sonar:scan:local": "npm run test -- --coverage && sonar-scanner",
-    "review:pre-pr": "node scripts/pre-pr-review.mjs"
+    "review:pre-pr": "node scripts/pre-pr-review.mjs",
+    "review:analysis": "node scripts/pr-review-analysis.mjs"
   },
   "lint-staged": {
     "*.ts": [

@@ -8,7 +8,7 @@
  *
  * ## Why these checks and not others
  *
- * Built from 57 reviewer findings across six pull requests, classified by *why* they were
+ * Built from the reviewer findings in docs/pr-review-findings.jsonl, classified by *why* they were
  * missed rather than what they were (see the PR Review analysis page). The distribution said
  * something useful: almost none were logic errors. In every case the author understood the
  * problem and wrote code that solved it, and what went wrong was the gap between what the
@@ -150,9 +150,14 @@ function silentFailure(file) {
   }
 
   // A rejection swallowed whole. An empty handler discards the reason as well as the failure.
-  for (const m of code.matchAll(/\.catch\(\s*\(\s*\)\s*=>\s*(\{\s*\}|null|undefined|void 0)\s*\)/g)) {
+  for (const m of code.matchAll(
+    /\.catch\(\s*\(\s*\)\s*=>\s*(\{\s*\}|null|undefined|void 0)\s*\)/g,
+  )) {
     const line = lineOf(code, m.index);
-    const context = text.split('\n').slice(Math.max(0, line - 4), line).join('\n');
+    const context = text
+      .split('\n')
+      .slice(Math.max(0, line - 4), line)
+      .join('\n');
     // A comment saying why is the difference between a decision and an oversight.
     if (!/\/\/|\/\*/.test(context)) {
       report(
@@ -196,12 +201,22 @@ function falseClaim(file) {
 
   for (const m of text.matchAll(/npm run ([a-z0-9:._-]+)/gi)) {
     if (!pkgScripts.includes(m[1])) {
-      report(file, lineOf(text, m.index), 'false-claim', `\`npm run ${m[1]}\` is not a script in package.json`);
+      report(
+        file,
+        lineOf(text, m.index),
+        'false-claim',
+        `\`npm run ${m[1]}\` is not a script in package.json`,
+      );
     }
   }
   for (const m of text.matchAll(/(?:^|[\s`(])(scripts\/[A-Za-z0-9/._-]+\.(?:mjs|sh|js))/g)) {
     if (!existsSync(resolve(repoRoot, m[1]))) {
-      report(file, lineOf(text, m[1] ? m.index : 0), 'false-claim', `references a file that does not exist: ${m[1]}`);
+      report(
+        file,
+        lineOf(text, m[1] ? m.index : 0),
+        'false-claim',
+        `references a file that does not exist: ${m[1]}`,
+      );
     }
   }
 }
@@ -209,7 +224,9 @@ function falseClaim(file) {
 // ---------------------------------------------------------------- run
 
 const CHECKS = [silentFailure, brokenReference, falseClaim];
-const scanned = files.filter((f) => /\.(mjs|js|ts|sh|md|mdc)$/.test(f) && !f.startsWith('node_modules/'));
+const scanned = files.filter(
+  (f) => /\.(mjs|js|ts|sh|md|mdc)$/.test(f) && !f.startsWith('node_modules/'),
+);
 
 for (const f of scanned) {
   for (const check of CHECKS) {
@@ -226,7 +243,10 @@ console.log(
 );
 
 if (findings.length) {
-  const byRule = findings.reduce((acc, f) => ({ ...acc, [f.rule]: [...(acc[f.rule] ?? []), f] }), {});
+  const byRule = findings.reduce(
+    (acc, f) => ({ ...acc, [f.rule]: [...(acc[f.rule] ?? []), f] }),
+    {},
+  );
   for (const [rule, list] of Object.entries(byRule)) {
     console.log(`  ${rule} — ${list.length}`);
     for (const f of list) console.log(`    ${f.file}:${f.line}\n      ${f.message}`);
@@ -241,7 +261,8 @@ console.log(
 );
 console.log(
   '  This clears the floor; it is not a review. The three largest classes — proxy-check,\n' +
-    '  unenforced-guarantee and stale-prose, 36 of 57 findings — need judgement. Work through\n' +
+    '  unenforced-guarantee and stale-prose — need judgement, and are the majority of\n' +
+    '  everything recorded. Work through\n' +
     '  .cursor/skills/pre-pr-review/SKILL.md before opening the PR.\n',
 );
 

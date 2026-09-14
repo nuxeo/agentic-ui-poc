@@ -261,6 +261,17 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/extension-reference-drift.mjs'],
   },
+  // The pre-PR review skill quotes a distribution of past reviewer findings, and orders its
+  // sections by it. Both were hand-typed from a one-day snapshot and nothing re-derived them,
+  // so the skill warning about `stale-prose` was itself going stale — its "six pull requests"
+  // was already wrong when written; the corpus holds five. Now both are generated from
+  // docs/pr-review-findings.jsonl and this gate fails when they drift from it.
+  {
+    id: 'review-corpus',
+    label: 'PR-review skill matches its corpus',
+    cmd: 'node',
+    argv: ['scripts/pr-review-analysis.mjs', 'check'],
+  },
   // Phase 5 gate: the guardrail we ship to customers, run against the reference
   // extension library in this repo. A tool we hand customers and never run ourselves
   // is a tool we would discover was broken from a customer's CI log.
