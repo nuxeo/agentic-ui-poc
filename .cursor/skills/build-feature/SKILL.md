@@ -30,15 +30,15 @@ node scripts/agent-metrics.mjs start "$TICKET" --kind feature --model <the model
 
 Do not re-derive these — follow `fix-bug` exactly:
 
-| Phase                                    | Notes                                                            |
-| ---------------------------------------- | ---------------------------------------------------------------- |
-| Setup check                              | Same prerequisites, including Playwright in the primary checkout |
-| 1.5 Ticket workspace                     | Same script, same `--nuxeo shared` default                       |
-| 5 Local gate (`beta:gate`) + 5a coverage | Same 20 gates. Features add code, so coverage matters more       |
-| 5b `validate-fix`                        | A new surface is a new accessibility surface                     |
-| 6 Commit + PR                            | `feat(` not `fix(`, branch `feature/<desc>`                      |
-| 7 CI · 7.5 Jira · 10 Cleanup             | Identical                                                        |
-| Time budget, metrics, Guardrails         | Identical, with the budgets below                                |
+| Phase                                      | Notes                                                                               |
+| ------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Setup check                                | Same prerequisites, including Playwright in the primary checkout                    |
+| 1.5 Ticket workspace                       | Same script, same `--nuxeo shared` default                                          |
+| 5 Local gate (`beta:gate`) + 5a coverage   | Same 20 gates. Features add code, so coverage matters more                          |
+| 5b `validate-fix`                          | A new surface is a new accessibility surface                                        |
+| 6 Commit + PR                              | `feat(` not `fix(`, branch `feature/<desc>`                                         |
+| 7 CI + review loop · 7.5 Jira · 10 Cleanup | Identical, including looping the review to a zero round and publishing the analysis |
+| Time budget, metrics, Guardrails           | Identical, with the budgets below                                                   |
 
 ## What is removed
 

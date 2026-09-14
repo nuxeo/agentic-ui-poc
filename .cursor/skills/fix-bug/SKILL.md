@@ -587,19 +587,61 @@ exactly which checks are still pending; do **not** claim green. This PR runs mor
 - **Sonar surfaces new issues even when the Quality Gate passes** — fetch them per PR
   (`GET https://sonarcloud.io/api/issues/search?componentKeys=nuxeo_agentic-ui-poc&pullRequest=<pr>&resolved=false`,
   or the SonarQube MCP) alongside Copilot inline comments; fix both.
-- **Close the loop on every review thread — reply _and_ resolve.** A reply alone does not resolve
-  it; that needs the GraphQL mutation. Do this autonomously; only leave a thread open if you
-  disagree, and then reply explaining why. Use the [`pr-review-responder`](../../agents/pr-review-responder.md) subagent for the
-  fixes and `AGENTS/09-pr-feedback.md` for the comment→fix mapping.
 
-  ```bash
-  gh api graphql -f query='{repository(owner:"nuxeo",name:"agentic-ui-poc"){pullRequest(number:<pr>){
-    reviewThreads(first:50){nodes{id isResolved comments(first:1){nodes{author{login} body}}}}}}}' \
-    --jq '.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved==false)
-      |{id,first:.comments.nodes[0].author.login,snippet:(.comments.nodes[0].body[0:80])}'
-  gh api repos/nuxeo/agentic-ui-poc/pulls/<pr>/comments -f body='…' -F in_reply_to=<commentId>
-  gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"<threadId>"}){thread{isResolved}}}'
-  ```
+### 7a — The review loop: run it until a round returns nothing
+
+A single pass is not enough. Measured over six pull requests in one day: **57 reviewer
+comments, every one valid, across up to seven rounds on a single PR** — and three of them were
+regressions of fixes made earlier in the same loop. A reviewer that finds nothing is the only
+evidence that the previous round's fixes did not introduce anything.
+
+Delegate each round to the [`pr-review-responder`](../../agents/pr-review-responder.md)
+subagent — it paginates threads, reviewer summary bodies and conversation comments, judges each
+on merit, verifies, replies citing the commit and resolves — then ask for a fresh review and go
+again:
+
+```bash
+# 1. resolve everything outstanding (the subagent)
+# 2. request another review
+gh api -X POST repos/nuxeo/agentic-ui-poc/pulls/<pr>/requested_reviewers \
+  -f 'reviewers[]=copilot-pull-request-reviewer[bot]'   # or the GitHub MCP request_copilot_review
+# 3. wait ~2 minutes, then count what is unresolved
+gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number=<pr> \
+  -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+    repository(owner:$owner,name:$name){pullRequest(number:$number){
+      reviewThreads(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
+        nodes{isResolved}}}}}' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]|.isResolved' | grep -c false
+```
+
+**Exit when a round produces zero new comments.** Copilot does not `APPROVE`; a clean round is
+the green signal. Bound it at **six rounds** — past that, stop and report what keeps recurring,
+because a PR that will not converge is usually a design the reviewer is right to keep objecting
+to. On the seventh round of one spotlight PR the findings were still real, and that was the
+signal the feature was too intricate for its value.
+
+Only leave a thread open if you disagree — then reply with the reasoning, and say so in the
+final summary.
+
+### 7b — Record why the reviewer caught what you did not
+
+Once the loop returns zero, harvest the round and classify it. This is the point of the loop:
+each comment is a defect that got past the author, and the _class_ of miss is what a pre-PR
+review skill has to be built from.
+
+```bash
+node scripts/pr-review-analysis.mjs harvest <pr>
+# fill in `category` and `whyMissed` on each row — one judgement per comment
+node scripts/pr-review-analysis.mjs publish ~/Desktop/agentic-ui-evidence/pr-review-analysis/<date>.jsonl
+```
+
+Rows land on
+[PR Review analysis by Copilot](https://hyland.atlassian.net/wiki/x/lwFlAAE). `publish` refuses
+a row with either field blank, because a blank in the `whyMissed` column defeats the page.
+
+**"Careless" is never the answer.** Name the structural reason: a claim nobody re-read after the
+code changed, a guarantee asserted in prose and not in code, a check that tested a proxy for the
+thing in its own name. Those three classes are 63% of everything found so far.
 
 ## Phase 7.5 — Update the ticket with the fix
 
@@ -693,7 +735,9 @@ thresholds met on touched projects; unit test for every new service method inclu
 path; `validate-fix` run and clean; `docs/api-integrations.md` updated if a new Nuxeo endpoint was
 called; `docs/ai-features.md` if AI behaviour changed; `AGENTS/01-services.md` if a service method
 was added; `AGENTS/00-architecture.md` if architecture changed; PR on a `fix/*` branch; every
-review thread replied to and resolved; the PR added to the ticket's Links panel as a remote
+review thread replied to and resolved, and the review loop run until a round returned zero
+comments; the round harvested, classified and published to the PR review analysis page; the PR
+added to the ticket's Links panel as a remote
 link; before/after evidence in both forms attached to the ticket, images and recordings only,
 each named for the half it came from; no harness artifact **attached**, and none **committed**
 except a scenes file justified in the PR because no unit test could cover the behaviour;
