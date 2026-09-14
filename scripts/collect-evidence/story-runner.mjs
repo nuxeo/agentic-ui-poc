@@ -155,6 +155,7 @@ const highlights = [];
 // every load so the caption survives the whole scene rather than only its first frame.
 page.on('load', () => {
   if (currentBanner) injectBanner(currentBanner).catch(() => {});
+  if (currentSpotlight) injectSpotlight(currentSpotlight).catch(() => {});
 });
 
 /**
@@ -201,6 +202,139 @@ async function injectBanner({ actNo, title, intent }) {
     .catch(() => {});
 }
 
+const SPOTLIGHT_ID = '__evidence_spotlight__';
+
+/** @type {{selector:string,label?:string,tone:string}|null} */
+let currentSpotlight = null;
+
+/**
+ * Outline the element the scene is about, in the live page, so the **recording** points at it.
+ *
+ * The annotated stills produced afterwards can only be looked at one at a time; a viewer
+ * watching the video had no way to tell which part of the screen the fix touched. This draws
+ * a bright outline around the target and dims the rest, so the eye goes to the right place
+ * while the narration explains it.
+ *
+ * Like the caption banner it is hidden for every screenshot. Raw stills must stay unmodified:
+ * the before/after pair audit compares their bytes, and an overlay would make every pair
+ * differ for a reason that has nothing to do with the fix.
+ *
+ * @param {string} selector
+ * @param {{label?: string, tone?: 'problem'|'fixed'|'neutral', dim?: boolean}} [opts]
+ */
+async function spotlight(selector, opts = {}) {
+  // Default the colour from the half being captured: red while demonstrating the defect,
+  // green once it is fixed. This is presentation only — it changes no action the scene takes,
+  // and it cannot reach the screenshots, which are taken with the overlay hidden.
+  const tone = opts.tone ?? (phase === 'after' ? 'fixed' : phase === 'before' ? 'problem' : 'neutral');
+  currentSpotlight = { selector, label: opts.label, tone, dim: opts.dim !== false };
+  await page.locator(selector).first().scrollIntoViewIfNeeded().catch(() => {});
+  await injectSpotlight(currentSpotlight);
+}
+
+async function clearSpotlight() {
+  currentSpotlight = null;
+  await page.evaluate((id) => document.getElementById(id)?.remove(), SPOTLIGHT_ID).catch(() => {});
+}
+
+async function injectSpotlight({ selector, label, tone, dim }) {
+  await page
+    .evaluate(
+      ({ id, selector, label, tone, dim }) => {
+        document.getElementById(id)?.remove();
+        const target = document.querySelector(selector);
+        if (!target) return;
+
+        const colours = { problem: '#ff5449', fixed: '#29c05a', neutral: '#4a9eff' };
+        const colour = colours[tone] ?? colours.neutral;
+
+        const root = document.createElement('div');
+        root.id = id;
+        root.setAttribute('aria-hidden', 'true');
+        Object.assign(root.style, {
+          position: 'fixed',
+          inset: '0',
+          zIndex: '2147483646',
+          pointerEvents: 'none',
+        });
+
+        const box = document.createElement('div');
+        Object.assign(box.style, {
+          position: 'fixed',
+          borderRadius: '4px',
+          outline: `3px solid ${colour}`,
+          outlineOffset: '2px',
+          boxShadow: dim ? '0 0 0 9999px rgba(0,0,0,0.45)' : 'none',
+          transition: 'all 140ms ease-out',
+        });
+
+        const chip = document.createElement('div');
+        if (label) {
+          chip.textContent = label;
+          Object.assign(chip.style, {
+            position: 'fixed',
+            padding: '4px 10px',
+            borderRadius: '4px',
+            background: colour,
+            color: tone === 'fixed' ? '#04210f' : '#fff',
+            font: '600 13px/1.3 system-ui, sans-serif',
+            whiteSpace: 'nowrap',
+          });
+        }
+
+        // Recomputed rather than set once: the page scrolls, panels animate open, and a box
+        // pinned to a stale rectangle points at empty space for the rest of the scene.
+        const place = () => {
+          const r = target.getBoundingClientRect();
+          Object.assign(box.style, {
+            left: `${r.left}px`,
+            top: `${r.top}px`,
+            width: `${r.width}px`,
+            height: `${r.height}px`,
+          });
+          if (label) {
+            const above = r.top > 34;
+            Object.assign(chip.style, {
+              left: `${Math.max(6, r.left)}px`,
+              top: above ? `${r.top - 30}px` : `${r.bottom + 8}px`,
+            });
+          }
+        };
+        place();
+
+        root.append(box);
+        if (label) root.append(chip);
+        document.body.appendChild(root);
+
+        const onMove = () => place();
+        addEventListener('scroll', onMove, true);
+        addEventListener('resize', onMove);
+        const timer = setInterval(place, 250);
+        new MutationObserver(() => {
+          if (!document.getElementById(id)) {
+            clearInterval(timer);
+            removeEventListener('scroll', onMove, true);
+            removeEventListener('resize', onMove);
+          }
+        }).observe(document.body, { childList: true });
+      },
+      { id: SPOTLIGHT_ID, selector, label, tone, dim },
+    )
+    .catch(() => {});
+}
+
+async function setSpotlightVisible(visible) {
+  await page
+    .evaluate(
+      ({ id, visible }) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible ? 'block' : 'none';
+      },
+      { id: SPOTLIGHT_ID, visible },
+    )
+    .catch(() => {});
+}
+
 async function setBannerVisible(visible) {
   await page
     .evaluate(
@@ -240,6 +374,7 @@ function escapeHtml(s) {
  */
 async function shot(name, opts = {}) {
   await setBannerVisible(false);
+  await setSpotlightVisible(false);
   const file = await helpers.screenshot(name, opts.highlight ? page.locator(opts.highlight).first() : undefined);
   const shotName = file.split('/').pop();
 
@@ -264,6 +399,7 @@ async function shot(name, opts = {}) {
     }
   }
   await setBannerVisible(true);
+  await setSpotlightVisible(true);
   return file;
 }
 
@@ -310,13 +446,28 @@ try {
       }
 
       await showBanner(actNo, scene.title, scene.intent);
+      await clearSpotlight();
       // A scene may call `h.step()`, which opens a *new* record. Everything it asserts
       // afterwards lands there, not on `current` — so counting only `current`'s checks
       // reported "scene asserts something" as failed on a scene that had asserted plenty,
       // and left the later records without the act or criterion. Track the whole span.
       const firstRecord = recorder.steps.length - 1;
       const checksBefore = current.checks.length;
-      await scene.run(page, { ...helpers, shot, step: helpers.step.bind(helpers) });
+      await scene.run(page, {
+        ...helpers,
+        shot,
+        spotlight,
+        clearSpotlight,
+        step: helpers.step.bind(helpers),
+      });
+
+      // A scene may instead just declare what it is about. Applied after `run`, so the
+      // outline is on screen for the hold below — the part of the recording a viewer
+      // actually pauses on.
+      if (scene.spotlight) {
+        const sp = typeof scene.spotlight === 'string' ? { selector: scene.spotlight } : scene.spotlight;
+        await spotlight(sp.selector, sp);
+      }
 
       const spanned = recorder.steps.slice(firstRecord);
       for (const rec of spanned) {
@@ -356,11 +507,12 @@ try {
     }
   } else if (typeof mod.default === 'function') {
     console.log('  [note] legacy steps file — no acts or criteria. Convert to `export const scenes`.');
-    await mod.default(page, { ...helpers, shot }, outDir);
+    await mod.default(page, { ...helpers, shot, spotlight, clearSpotlight }, outDir);
   } else {
     throw new Error(`${scenesFile} must export \`scenes\` (array) or a default async function`);
   }
 
+  await clearSpotlight();
   await card('End of capture', `${ticketId}${phase ? ` — ${phase}` : ''}`, 1600);
 } catch (err) {
   if (err instanceof PreconditionError) {

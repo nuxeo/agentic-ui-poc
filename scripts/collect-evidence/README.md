@@ -99,17 +99,19 @@ actions, or the comparison is illustration rather than evidence.
 
 From `scripts/beta-harness/helpers.mjs`, plus `shot()` added by the runner.
 
-| Method                                        | Description                                                |
-| --------------------------------------------- | ---------------------------------------------------------- |
-| `h.shot(name, { highlight, label })`          | Screenshot; records the highlight's box for later callouts |
-| `h.check(name, condition, detail)`            | Named pass/fail assertion. Never throws                    |
-| `h.expectVisible(name, selector, timeout?)`   | Assert a selector becomes visible                          |
-| `h.expectText(name, selector, expected)`      | Assert a selector's text contains a substring              |
-| `h.expectNoConsoleErrors(name?, ignore?)`     | Assert nothing errored in the browser                      |
-| `h.expectNoA11yViolations(name?, opts?)`      | axe scan at WCAG 2.1 AA                                    |
-| `h.requirePrecondition(name, cond, detail)`   | Abort with its own verdict when the environment is wrong   |
-| `h.note(text)`                                | State a limitation without inflating the check count       |
-| `h.login()` · `h.goTo(route)` · `h.goToDoc()` | Navigation and auth                                        |
+| Method                                        | Description                                                     |
+| --------------------------------------------- | --------------------------------------------------------------- |
+| `h.shot(name, { highlight, label })`          | Screenshot; records the highlight's box for later callouts      |
+| `h.spotlight(selector, { label, tone, dim })` | Outline the live element **in the recording**; hidden in stills |
+| `h.clearSpotlight()`                          | Remove it early; otherwise cleared at the next scene            |
+| `h.check(name, condition, detail)`            | Named pass/fail assertion. Never throws                         |
+| `h.expectVisible(name, selector, timeout?)`   | Assert a selector becomes visible                               |
+| `h.expectText(name, selector, expected)`      | Assert a selector's text contains a substring                   |
+| `h.expectNoConsoleErrors(name?, ignore?)`     | Assert nothing errored in the browser                           |
+| `h.expectNoA11yViolations(name?, opts?)`      | axe scan at WCAG 2.1 AA                                         |
+| `h.requirePrecondition(name, cond, detail)`   | Abort with its own verdict when the environment is wrong        |
+| `h.note(text)`                                | State a limitation without inflating the check count            |
+| `h.login()` · `h.goTo(route)` · `h.goToDoc()` | Navigation and auth                                             |
 
 ## Environment variables
 
@@ -142,6 +144,10 @@ written to do, but it proves nothing, so it can never be cited as evidence. Conv
   calls intermittently 403 and you photograph empty states that read as component defects
 - A caption banner is injected into the page so the recording is narrated, and hidden for
   every screenshot — stills stay clean, and annotation happens on a copy
+- `spotlight()` outlines the element a scene is about, dims the rest and labels it, so the
+  video points at the change instead of leaving the viewer to find it. Red on the `before`
+  half, green on `after`, derived from `EVIDENCE_PHASE` — the scene itself does not branch
+  on it. Hidden for screenshots too: the pair audit compares raw bytes
 - Console errors, uncaught exceptions and every HTTP 4xx/5xx are attributed to the scene they
   occurred in, and rendered in `STORY.md`
 - Scene start offsets are recorded as WebVTT chapters. They are measured from browser-context

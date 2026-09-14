@@ -323,6 +323,33 @@ is a defect in the evidence, and you fix it before reading the result**:
 | Every scene must **assert** something                               | Screenshots show the app rendered _something_, not the right thing                 |
 | A byte-identical before/after pair fails **unless a check flipped** | Identical images prove nothing alone; an invisible fix is proved by its assertions |
 
+**Point at the thing you changed.** A recording of an app is not a demonstration of a fix —
+the viewer has no idea which part of the screen to watch. Spotlight the element the scene is
+about, and the eye goes to the right place while the caption explains it:
+
+```js
+{
+  act: 2,
+  title: 'Read the landmark name a screen reader would announce',
+  criterion: 'AC-1',
+  spotlight: { selector: 'aside.properties-panel', label: 'Properties sidebar' },
+  async run(page, h) { /* … */ },
+}
+```
+
+or `await h.spotlight('aside.properties-panel', { label: 'Properties sidebar' })` inside the
+scene when the moment matters — the declarative form applies after `run()`, so the outline is
+on screen for the hold, which is the part a viewer pauses on.
+
+It draws a bright outline on the live element and dims the rest, and it **colours itself from
+the half being captured**: red while the defect is on screen, green once it is fixed. You do
+not branch on `EVIDENCE_PHASE` to get that, and must not — the actions stay identical.
+
+**It never reaches a screenshot.** Like the caption banner it is hidden for every `shot()`,
+because the before/after pair audit compares raw bytes and an overlay would make every pair
+differ for a reason unrelated to the fix. Stills stay clean; `evidence:story` still draws its
+own callouts on annotated _copies_ afterwards.
+
 Gotchas:
 
 - **Auth needs both mechanisms.** `h.login()` injects the session the route guard reads; the
