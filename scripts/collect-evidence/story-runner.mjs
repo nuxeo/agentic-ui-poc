@@ -265,8 +265,9 @@ async function injectSpotlight({ selector, label, tone, dim }) {
     .evaluate(
       ({ id, selector, label, tone, dim }) => {
         document.getElementById(id)?.remove();
-        const target = document.querySelector(selector);
-        if (!target) throw new Error(`spotlight: no element matches ${selector}`);
+        if (!document.querySelector(selector)) {
+          throw new Error(`spotlight: no element matches ${selector}`);
+        }
 
         const colours = { problem: '#ff5449', fixed: '#29c05a', neutral: '#4a9eff' };
         const colour = colours[tone] ?? colours.neutral;
@@ -305,10 +306,23 @@ async function injectSpotlight({ selector, label, tone, dim }) {
           });
         }
 
-        // Recomputed rather than set once: the page scrolls, panels animate open, and a box
-        // pinned to a stale rectangle points at empty space for the rest of the scene.
+        // Re-resolved, not captured once. `withHashLocation()` makes `goto('/#/x')` a
+        // same-document navigation, so no `load` fires: the overlay survived while this
+        // function kept measuring the *detached* element from the previous route and pointed
+        // at a stale rectangle. Re-querying every tick also covers a component re-render
+        // replacing the node. When it is gone, mark the overlay lost so the run can see it.
         const place = () => {
-          const r = target.getBoundingClientRect();
+          const live = document.querySelector(selector);
+          if (!live || !live.isConnected) {
+            root.dataset.lost = '1';
+            box.style.display = 'none';
+            chip.style.display = 'none';
+            return;
+          }
+          delete root.dataset.lost;
+          box.style.display = '';
+          if (label) chip.style.display = '';
+          const r = live.getBoundingClientRect();
           Object.assign(box.style, {
             left: `${r.left}px`,
             top: `${r.top}px`,
@@ -507,16 +521,25 @@ try {
       const assertedInScene =
         spanned.reduce((n, rec) => n + rec.checks.length, 0) - checksBefore > 0;
 
-      // A spotlight lost to a navigation is a defect in the recording, so it fails the scene
-      // that declared it rather than disappearing into the log.
-      if (spotlightFailures.length) {
-        helpers.check(
-          'the spotlight survived navigation',
-          false,
-          `could not restore after a page load — ${spotlightFailures.join('; ')}`,
-        );
-        spotlightFailures.length = 0;
+      // Ask the page, rather than relying on the `load` event alone — hash routing never
+      // fires it. A spotlight that is missing or pointing at a detached node is a defect in
+      // the recording, and `STRUCTURAL` below makes it exit non-zero: a recording that points
+      // at nothing must not be accepted as a sound capture.
+      if (currentSpotlight) {
+        const state = await page
+          .evaluate((id) => {
+            const el = document.getElementById(id);
+            return { present: !!el, lost: el?.dataset.lost === '1' };
+          }, SPOTLIGHT_ID)
+          .catch(() => ({ present: false, lost: true }));
+        const detail = spotlightFailures.length
+          ? spotlightFailures.join('; ')
+          : !state.present
+            ? `the overlay is gone (${currentSpotlight.selector})`
+            : `${currentSpotlight.selector} no longer resolves — the outline is pointing at nothing`;
+        helpers.check('the spotlight still points at its element', state.present && !state.lost, detail);
       }
+      spotlightFailures.length = 0;
 
       // Per scene, not just per run. The act-structure assertions below always contribute
       // three checks, so a whole-run count can never reach zero and would certify a story
@@ -642,7 +665,14 @@ console.log(`story    ${resolve(outDir, 'STORY.md')}`);
 // *supposed* to fail its assertions — that is the bug reproducing — so exiting 1 there made
 // the documented sequence look like a broken command, indistinguishable from malformed
 // evidence. Assertion failures are a result; structural defects are a failure.
-const STRUCTURAL = new Set(['scene asserts something', 'scene names an acceptance criterion']);
+const STRUCTURAL = new Set([
+  'scene asserts something',
+  'scene names an acceptance criterion',
+  // A missing or stale spotlight is a broken capture, not a failed claim. Left as an ordinary
+  // check it exited 0 and printed "the capture itself is sound" over a recording that pointed
+  // at nothing — precisely the acceptance this file exists to prevent.
+  'the spotlight still points at its element',
+]);
 const structural = failed.filter((f) => STRUCTURAL.has(f.name) || f.name.startsWith('act '));
 const captureBroken = Boolean(runError) || Boolean(preconditionFailure) || structural.length > 0;
 
