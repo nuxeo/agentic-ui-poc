@@ -155,12 +155,33 @@ const lineOf = (text, index) => text.slice(0, index).split('\n').length;
  * - Reading raw text for the rationale check then meant a `//` **inside a string** counted as
  *   a comment, so `fetch('https://example').catch(() => {})` was excused by its own URL.
  *   → give the rationale check `prose`, where that `//` is blanked and real comments are not.
+ * - Every quote outside a comment was a string opener, but a regex literal can contain one:
+ *   `const pattern = /isn't/;` opened a region that swallowed the next `.catch(() => {})`.
+ *   This file is itself full of `/…['"]…/`, so the rule was blind to its own neighbourhood.
+ *   → lex regex literals too.
+ *
+ * Whether `/` starts a regex or divides is not decidable from one character, so the usual
+ * heuristic is used: it is a regex when the previous significant character is one that cannot
+ * end an expression (`(,=:[!&|?{};` or a line start), or the previous word is `return`,
+ * `typeof`, `case` or `in`. Division always follows a value, so the two do not overlap in
+ * practice. Escapes and character classes are tracked, because `/[/]/` and `/\//` both
+ * contain a `/` that does not close the literal.
  */
 function maskSource(text) {
   let code = '';
   let prose = '';
   let quote = null;
   let comment = null; // 'line' | 'block'
+  let regex = null; // { inClass: boolean }
+
+  /** Could a `/` here begin a regex literal rather than divide? */
+  const regexCanStart = () => {
+    const before = code.replace(/\s+$/, '');
+    if (!before) return true;
+    const last = before[before.length - 1];
+    if ('(,=:[!&|?{};+-*%~^<>'.includes(last)) return true;
+    return /\b(return|typeof|case|in|of|do|else|yield|await|void|delete)$/.test(before);
+  };
 
   const both = (c) => {
     code += c;
@@ -188,6 +209,26 @@ function maskSource(text) {
       continue;
     }
 
+    if (regex) {
+      if (c === '\\') {
+        code += '  ';
+        prose += '  ';
+        i += 1;
+        continue;
+      }
+      if (c === '[') regex.inClass = true;
+      else if (c === ']') regex.inClass = false;
+      else if (c === '/' && !regex.inClass) {
+        regex = null;
+        both(c);
+        continue;
+      }
+      const blank = c === '\n' ? c : ' ';
+      code += blank;
+      prose += blank;
+      continue;
+    }
+
     if (quote) {
       if (c === '\\') {
         code += '  ';
@@ -211,6 +252,11 @@ function maskSource(text) {
       code += '  ';
       prose += c + text[i + 1];
       i += 1;
+      continue;
+    }
+    if (c === '/' && regexCanStart()) {
+      regex = { inClass: false };
+      both(c);
       continue;
     }
     if (c === "'" || c === '"' || c === '`') {
@@ -274,7 +320,12 @@ function silentFailure(file) {
     // own status. The second required the variable and an operator to both appear, but
     // independently — so `echo "$status"` followed by `[ "$retry" -eq 1 ]` satisfied it. The
     // reference and the operator now have to sit inside one test expression.
-    const captured = /(\w+)=(?:\$\(|`)\s*$/.exec(joined.slice(0, m.index));
+    // The optional quote is load-bearing. `var=$(curl …)` was recognised but `var="$(curl …)"`
+    // was not, and the quoted form is the one everything in this repo actually writes — so the
+    // rule flagged two calls that capture `%{http_code}` and branch on it, which is the very
+    // remedy its own message recommends. A checker that reports the recommended fix as a defect
+    // is a checker whose output gets skimmed and then ignored.
+    const captured = /(\w+)=["']?(?:\$\(|`)\s*$/.exec(joined.slice(0, m.index));
     const after = joined
       .slice(m.index + cmd.length)
       .split('\n')
@@ -285,9 +336,9 @@ function silentFailure(file) {
       const ref = `\\$\\{?${captured[1]}\\}?`;
       const op = '(?:-eq|-ne|-ge|-gt|-lt|-le|==|!=|=~)';
       statusTested =
-        new RegExp(`(?:\\[\\[?|\\btest\\b)[^\\n\\]]*(?:${ref}\\s*"?\\s*${op}|${op}\\s*"?\\s*${ref})`).test(
-          after,
-        ) || new RegExp(`\\bcase\\s+"?${ref}`).test(after);
+        new RegExp(
+          `(?:\\[\\[?|\\btest\\b)[^\\n\\]]*(?:${ref}\\s*"?\\s*${op}|${op}\\s*"?\\s*${ref})`,
+        ).test(after) || new RegExp(`\\bcase\\s+"?${ref}`).test(after);
     }
 
     if (writes && !failsHard && !statusTested) {

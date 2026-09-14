@@ -129,6 +129,21 @@ if [[ $REMOVE -eq 1 ]]; then
     note "no worktree $WT"
   fi
 
+  # Release the port reservations this worktree held, or the range fills up with numbers
+  # owned by worktrees that no longer exist. `port_taken` reclaims those lazily too, but only
+  # when something else goes looking; releasing here keeps `--remove` honest about tearing
+  # down "container, worktree, ports" as its own help text promises.
+  if [[ -d "$WORKTREE_ROOT/.ports" ]]; then
+    for f in "$WORKTREE_ROOT/.ports"/*; do
+      [[ -f "$f" ]] || continue
+      if [[ "$(cat "$f" 2>/dev/null || true)" == "$WT" ]]; then
+        rm -f "$f"
+        note "released port ${f##*/}"
+      fi
+    done
+    rmdir "$WORKTREE_ROOT/.ports" 2>/dev/null || true
+  fi
+
   rmdir "$WORKTREE_ROOT" 2>/dev/null || true
   echo "Done. Evidence kept at $EVID"
   exit 0
@@ -179,15 +194,74 @@ else
 fi
 
 # ---------------------------------------------------------------- free ports
+#
+# A port is reserved, not merely probed.
+#
+# The old version skipped a port only while something was *listening* on it. That is true of a
+# workspace being used and false of one that has merely been created, so creating a batch of
+# workspaces before starting any dev server handed every single one port 4210 — deterministic,
+# not a race. Ten tickets, one port, persisted into ten env.sh files.
+#
+# The visible symptom would be the second `nx serve` failing to bind. The expensive one is
+# quieter: with one server up on 4210, every other ticket's evidence commands point at it and
+# capture a different ticket's app under their own ticket id. Evidence attributed to the wrong
+# fix is worse than no evidence, because it is believed.
+#
+# So allocation writes a reservation naming the owning worktree, and takes a lock across
+# check-then-claim: two concurrent runs scanning before either writes would otherwise pick the
+# same number. Reservations are reclaimed when their worktree is gone, and released on
+# --remove, so the range does not silently fill up over weeks of tickets.
 
-free_port() {
+PORT_DIR="$WORKTREE_ROOT/.ports"
+LOCK_DIR="$WORKTREE_ROOT/.ports.lock"
+
+port_unlock() { rmdir "$LOCK_DIR" 2>/dev/null || true; }
+
+port_lock() {
+  mkdir -p "$WORKTREE_ROOT"
+  local waited=0 holder
+  until mkdir "$LOCK_DIR" 2>/dev/null; do
+    # A run killed between the mkdir and the rmdir would otherwise block every later run
+    # forever, so a lock whose holder is no longer alive is reclaimed rather than waited on.
+    holder="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+    if [[ -n "$holder" ]] && ! kill -0 "$holder" 2>/dev/null; then
+      note "reclaiming the port lock left behind by dead process $holder"
+      rm -rf "$LOCK_DIR"
+      continue
+    fi
+    sleep 0.2
+    waited=$((waited + 1))
+    [[ $waited -gt 150 ]] && die "timed out after 30s waiting for $LOCK_DIR. If no other workspace run is active, remove that directory."
+  done
+  printf '%s' "$$" > "$LOCK_DIR/pid"
+  trap port_unlock EXIT
+}
+
+# Taken if something is listening, or another live worktree holds the reservation.
+port_taken() {
+  local p="$1" f="$PORT_DIR/$p" owner
+  lsof -iTCP:"$p" -sTCP:LISTEN -t >/dev/null 2>&1 && return 0
+  [[ -f "$f" ]] || return 1
+  owner="$(cat "$f" 2>/dev/null || true)"
+  [[ "$owner" == "$WT" ]] && return 1          # our own, from an earlier run
+  [[ -n "$owner" && -d "$owner" ]] && return 0 # someone else's, still there
+  rm -f "$f"                                   # its worktree is gone; reclaim the number
+  return 1
+}
+
+reserve_port() {
   local p="$1"
-  while lsof -iTCP:"$p" -sTCP:LISTEN -t >/dev/null 2>&1; do p=$((p + 1)); done
-  echo "$p"
+  port_lock
+  mkdir -p "$PORT_DIR"
+  while port_taken "$p"; do p=$((p + 1)); done
+  printf '%s' "$WT" > "$PORT_DIR/$p"
+  port_unlock
+  trap - EXIT
+  printf '%s' "$p"
 }
 
 if [[ "$NUXEO_MODE" == "own" ]]; then
-  NX_PORT="$(free_port 8090)"
+  NX_PORT="$(reserve_port 8090)"
 else
   NX_PORT="$(docker port "$SHARED_CONTAINER" 8080/tcp 2>/dev/null | head -1 | sed 's/.*://')"
   [[ -n "$NX_PORT" ]] || die "cannot read the published port of '$SHARED_CONTAINER'"
@@ -204,7 +278,7 @@ APP_PORT=""
 if [[ -f "$WT/env.sh" ]]; then
   APP_PORT="$(sed -n 's/^export NX_APP_PORT="\([0-9]*\)".*/\1/p' "$WT/env.sh" | head -1 || true)"
 fi
-[[ -n "$APP_PORT" ]] || APP_PORT="$(free_port 4210)"
+[[ -n "$APP_PORT" ]] || APP_PORT="$(reserve_port 4210)"
 
 # ---------------------------------------------------------------- worktree
 
