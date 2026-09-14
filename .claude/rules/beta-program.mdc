@@ -1,0 +1,56 @@
+---
+description: Nuxeo Satori Beta program — four-layer extensibility contract, phase gates and iteration protocol
+globs: libs/shared/adf-hx-bridge/**/*,libs/shared/extensions/**/*,libs/features/browse/src/lib/browse-adf-hx-poc/**/*,scripts/beta-harness/**/*,apps/nuxeo-ui/src/app/app.config.ts,apps/nuxeo-ui/src/app/platform-nav-items.ts,nuxeo-agentic-ui-package/**/*
+alwaysApply: false
+---
+
+# Beta Program Rules
+
+Full context: [`AGENTS/11-beta-program.md`](../../AGENTS/11-beta-program.md).
+Orchestration: the `beta-phase` skill.
+
+## The governing principle
+
+**The extension contract is the product; AI agents are the accelerator.**
+Customers customise through a documented, versioned API — they do not edit our
+source, and neither do their agents.
+
+## Which layer does this belong to?
+
+Ask before writing code. Behaviour a manifest can express must not be
+hardcoded; behaviour needing code must not be faked in configuration.
+
+- **Layer 0** — theme tokens, nav items, action visibility, presets, labels. JSON and CSS, no build.
+- **Layer 1** — manifest references components, rules, actions and routes by registered ID. JSON, no build.
+- **Layer 2** — new components, actions, rules and guards, in the customer's own library against our public API.
+- **Layer 3** — knowledge base, generators, guardrails that make Layer 2 cheap.
+
+## Non-negotiables
+
+- **adf-hx types must never appear in our public API signatures.** Wrap them in `libs/shared/adf-hx-bridge`. adf-hx has had no stable release in twelve months; its instability must not reach customers.
+- **Pin exact adf-hx versions.** Never a range, never a dist-tag — `latest` is itself a prerelease.
+- **Its dependency contract is under-declared** (one peer declared against thirteen imported). Add new adf-hx peers to our own pin manifest, never assume npm will warn.
+- **No customer-facing configuration inside the packaged web directory** — `install.xml` copies it with `overwrite="true"` and will destroy it on upgrade.
+- **No new hardcoded action lists, nav entries or theme values.** Route them through Layer 0 or 1.
+- **Every new service method needs a unit test including its error path.**
+- Reuse the twelve upstream API tokens rather than re-declaring them locally.
+
+## Iteration protocol — do not skip
+
+1. Smallest change that could work.
+2. Fast loop: `npm run beta:gate -- --gates guardrails,lint`.
+3. Fix the **first** reported failure only. No speculative batching.
+4. Repeat until green, then the full `npm run beta:gate`.
+5. Capture evidence: `npm run beta:evidence -- <phase-id>`.
+6. Both gates green, or return to step 3. **Three attempts maximum**, then stop and report.
+
+**Never declare a step complete from reasoning alone.** The gate output and the
+evidence manifest are the only acceptable proof. Stop and ask a human if a fix
+would weaken a test, widen the public API, change packaging, or contradict a
+verified fact in `AGENTS/11-beta-program.md` section 3.
+
+## Evidence must assert something
+
+Every evidence step records at least one check. A screenshot with no assertion
+behind it proves only that a page rendered something. Assert the claim the phase
+makes, drive the failure paths too, and finish with `expectNoConsoleErrors()`.

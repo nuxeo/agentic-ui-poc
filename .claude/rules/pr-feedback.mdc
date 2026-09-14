@@ -1,0 +1,38 @@
+---
+description: How to handle PR review comments from Copilot and reviewers
+globs: "**/*"
+alwaysApply: false
+---
+
+# PR Feedback Handling
+
+See AGENTS/09-pr-feedback.md for full detail and the comment→fix mapping table.
+
+When asked to "fix PR comments", "address review feedback", or "fix Copilot comments on PR #N":
+
+## Step 1 — Fetch comments
+```bash
+gh api repos/nuxeo/agentic-ui-poc/pulls/<N>/comments \
+  | jq '.[] | { path: .path, line: .line, body: .body, id: .id }'
+```
+
+## Step 2 — Fix each comment
+- Read the file at the specified line
+- Understand the intent — do NOT just suppress lint errors
+- Implement the correct fix per AGENTS/03-angular-conventions.md and AGENTS/07-security.md
+
+## Step 3 — Verify and commit
+```bash
+npx nx affected -t lint && npx nx affected -t build && npx nx affected -t test
+git commit -m "fix: address PR #<N> review comments"
+git push
+```
+
+## Common fixes
+- "Missing unsubscribe" → add `takeUntilDestroyed()`
+- "Object URL not revoked" → add cleanup array + ngOnDestroy
+- "Direct img src to Nuxeo URL" → fetch via service + blob URL
+- "Potential XSS" → replace innerHTML with Angular template binding
+- "Hardcoded credential" → move to process.env + startup validation
+- "Race condition" → add stale-uid check before setting signal
+- "No error handling" → add error branch that resets loading signal

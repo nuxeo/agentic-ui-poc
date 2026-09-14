@@ -45,7 +45,8 @@
     "sonar:scan": "sonar-scanner",
     "sonar:scan:local": "npm run test -- --coverage && sonar-scanner",
     "review:pre-pr": "node scripts/pre-pr-review.mjs",
-    "review:analysis": "node scripts/pr-review-analysis.mjs"
+    "review:analysis": "node scripts/pr-review-analysis.mjs",
+    "mirror:agents": "node scripts/mirror-agent-config.mjs sync"
   },
   "lint-staged": {
     "*.ts": [

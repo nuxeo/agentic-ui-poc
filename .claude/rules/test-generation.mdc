@@ -1,0 +1,56 @@
+---
+description: Test generation standards — all new code requires tests
+globs: "**/*.spec.ts"
+alwaysApply: false
+---
+
+# Test Generation Standards
+
+See AGENTS/05-test-standards.md for full templates.
+
+## When to generate tests
+- After writing ANY new service method → write a corresponding spec
+- After writing ANY component with business logic → write a spec
+- After fixing a bug → write a regression test that would have caught it
+
+## Coverage requirements
+- Happy path (successful response)
+- Error path (network error, 4xx, 5xx)
+- Loading state set correctly
+- Error state set correctly AND loading is reset
+
+## Service test minimum
+
+```typescript
+describe('MyService', () => {
+  let service: MyService;
+  let httpMock: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [HttpClientTestingModule] });
+    service = TestBed.inject(MyService);
+    httpMock = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => httpMock.verify());
+
+  it('should call correct endpoint', () => {
+    service.myMethod('id').subscribe();
+    const req = httpMock.expectOne(r => r.url.includes('/expected/path'));
+    expect(req.request.method).toBe('GET');
+    req.flush({ uid: 'id' });
+  });
+
+  it('should handle error', () => {
+    service.myMethod('bad').subscribe({ error: err => expect(err.status).toBe(404) });
+    httpMock.expectOne(r => r.url.includes('/expected/path'))
+      .flush('', { status: 404, statusText: 'Not Found' });
+  });
+});
+```
+
+## Run after generating
+```bash
+npx nx test <project-name>
+```
+If tests fail, fix the implementation or the test before committing.

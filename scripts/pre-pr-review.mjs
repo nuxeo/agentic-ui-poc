@@ -107,8 +107,23 @@ const touched = (
   .filter(Boolean)
   .filter((f, i, a) => a.indexOf(f) === i);
 
+/**
+ * Generated mirrors of `.cursor/`, which must not be reviewed.
+ *
+ * `.claude/` and `.agent/` are byte-identical copies produced by `mirror-agent-config.mjs`.
+ * Scanning them reported every finding three times and attributed it to a file that is not the
+ * source, so the fix a reader was sent to make would have been overwritten by the next sync.
+ * Syncing the mirrors also drags 74 untouched files into the diff, which turned a focused
+ * review into a wall — and a tool whose output is mostly noise is a tool whose output is
+ * skimmed. Findings in a mirrored skill are reported against `.cursor/`, where they belong.
+ */
+const GENERATED = /^\.(claude|agent)\//;
+
 const files = touched.filter(
-  (f) => existsSync(resolve(repoRoot, f)) && statSync(resolve(repoRoot, f)).isFile(),
+  (f) =>
+    !GENERATED.test(f) &&
+    existsSync(resolve(repoRoot, f)) &&
+    statSync(resolve(repoRoot, f)).isFile(),
 );
 
 /**

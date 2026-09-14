@@ -261,6 +261,17 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/beta-harness/extension-reference-drift.mjs'],
   },
+  // `.cursor/` is the source for the agent configuration and `.claude/` and `.agent/` are
+  // generated copies, so three copies of every skill exist with nothing comparing them. That
+  // is the shape of drift this repository keeps paying for, and it is worse here than usual:
+  // a skill fixed in one tool's copy and stale in another is wrong only for whoever happens to
+  // be using the other tool.
+  {
+    id: 'agent-mirror',
+    label: 'Agent config mirrors match .cursor',
+    cmd: 'node',
+    argv: ['scripts/mirror-agent-config.mjs', 'check'],
+  },
   // The pre-PR review skill quotes a distribution of past reviewer findings, and orders its
   // sections by it. Both were hand-typed from a one-day snapshot and nothing re-derived them,
   // so the skill warning about `stale-prose` was itself going stale — its "six pull requests"
