@@ -5,8 +5,8 @@
  * the beta Nuxeo behaviour that triggers NXSAT-196.
  *
  * Run:
- *   NUXEO_DOC_UID=<note-uid> node scripts/collect-evidence/runner.mjs NXSAT-196-before scripts/collect-evidence/NXSAT-196.mjs
- *   NUXEO_DOC_UID=<note-uid> node scripts/collect-evidence/runner.mjs NXSAT-196-after  scripts/collect-evidence/NXSAT-196.mjs
+ *   NUXEO_DOC_UID=<note-uid> npm run evidence:collect -- NXSAT-196-before scripts/collect-evidence/NXSAT-196.mjs
+ *   NUXEO_DOC_UID=<note-uid> npm run evidence:collect -- NXSAT-196-after  scripts/collect-evidence/NXSAT-196.mjs
  */
 
 /** @param {import('@playwright/test').Page} page @param {string} docUid */

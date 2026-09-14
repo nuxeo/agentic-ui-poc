@@ -3,10 +3,10 @@
  * Profile permissions parity with Classic Web UI + auth refresh stability.
  *
  * Run with:
- *   node scripts/collect-evidence/runner.mjs NXSAT-200 scripts/collect-evidence/NXSAT-200.mjs
+ *   npm run evidence:collect -- NXSAT-200 scripts/collect-evidence/NXSAT-200.mjs
  *
  * Optional env:
- *   NUXEO_USER=<username> NUXEO_PASS=<password> node scripts/collect-evidence/runner.mjs …
+ *   NUXEO_USER=<username> NUXEO_PASS=<password> npm run evidence:collect -- …
  */
 
 /** @param {import('@playwright/test').Page} page */

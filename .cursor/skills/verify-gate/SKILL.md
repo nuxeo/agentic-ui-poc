@@ -24,13 +24,18 @@ Seconds, not minutes. Run it after every meaningful edit.
 npm run beta:gate -- --phase <phase-id>
 ```
 
-Eight gates, cheapest first: `node`, `lockfile`, `guardrails`, `assertions`, then
-affected `lint`, `test`, `build`, `typecheck`. Stops at the first failure and prints only
-its output tail. Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
+Twenty gates, cheapest first: `node`, `lockfile`, `supply-chain`, `code-scanning`,
+`guardrails`, `sanitizer-audit`, `sanitizer-selftest`, `assertions`, then affected
+`lint`, `test`, `build`, `typecheck`, then `spec-types`, `bundle`, `api-surface`,
+`publishability`, `fork-simulation`, `upgrade-rehearsal`, `reference-drift` and
+`customer-guardrails`. Stops at the first failure and prints only its output tail.
+Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
 
 Only a run with **no** `--gates` filter can be cited for a phase. A filtered run
-reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 8`, because two
-reports in the evidence corpus read `"verdict": "pass"` having run one gate.
+reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 20`, because two
+reports in the evidence corpus read `"verdict": "pass"` having run one gate. The run
+also prints `NOT REQUESTED` for every gate it skipped — read that line before quoting
+a count.
 
 For non-Beta work the equivalent is `npm run review:preflight` followed by
 `npx nx affected -t build`.

@@ -3,10 +3,10 @@
  * "Incorrect State Mapping & Missing Metadata/Controls for File and Note"
  *
  * Run with:
- *   node scripts/collect-evidence/runner.mjs NXSAT-175 scripts/collect-evidence/NXSAT-175.mjs
+ *   npm run evidence:collect -- NXSAT-175 scripts/collect-evidence/NXSAT-175.mjs
  *
  * Set NUXEO_DOC_UID to a File document UID in your local Nuxeo, e.g.:
- *   NUXEO_DOC_UID=<uid> node scripts/collect-evidence/runner.mjs NXSAT-175 …
+ *   NUXEO_DOC_UID=<uid> npm run evidence:collect -- NXSAT-175 …
  *
  * If NUXEO_DOC_UID is not set, the script navigates to the Browse page so you
  * can at least capture the duplicate clipboard and general UI state.
