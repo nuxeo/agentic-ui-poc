@@ -271,15 +271,23 @@ else
   docker inspect "$SHARED_CONTAINER" --format '{{.Config.Image}}' > "$EVID/nuxeo-image.txt" 2>/dev/null || true
   note "sharing container $SHARED_CONTAINER on http://localhost:$NX_PORT/nuxeo"
 
-  code="$(curl -s -o /dev/null -w '%{http_code}' -u "$NUXEO_USER:$NUXEO_PASS" \
-    -H 'Content-Type: application/json' -X POST \
-    "http://localhost:$NX_PORT/nuxeo/api/v1/path/default-domain/workspaces" \
-    -d "{\"entity-type\":\"document\",\"name\":\"$TICKET\",\"type\":\"Workspace\",\"properties\":{\"dc:title\":\"$TICKET — agent workspace\"}}" || true)"
-  case "$code" in
-    201) note "created data root $DATA_ROOT" ;;
-    409) note "data root $DATA_ROOT already exists — reusing" ;;
-    *)   note "could not create $DATA_ROOT (HTTP $code) — seed data manually if the repro needs it" ;;
-  esac
+  # Check before creating. Nuxeo does **not** reject a duplicate name: it auto-renames the
+  # new document (`NXSAT-123.1789367579996`) and returns 201, so a `409` branch never fires
+  # and every re-run of this script would leave another workspace behind. Measured, not
+  # assumed — three of them accumulated before this check existed.
+  api="http://localhost:$NX_PORT/nuxeo/api/v1/path/default-domain/workspaces"
+  exists="$(curl -s -o /dev/null -w '%{http_code}' -u "$NUXEO_USER:$NUXEO_PASS" "$api/$TICKET" || true)"
+  if [[ "$exists" == "200" ]]; then
+    note "data root $DATA_ROOT already exists — reusing"
+  else
+    code="$(curl -s -o /dev/null -w '%{http_code}' -u "$NUXEO_USER:$NUXEO_PASS" \
+      -H 'Content-Type: application/json' -X POST "$api" \
+      -d "{\"entity-type\":\"document\",\"name\":\"$TICKET\",\"type\":\"Workspace\",\"properties\":{\"dc:title\":\"$TICKET — agent workspace\"}}" || true)"
+    case "$code" in
+      201) note "created data root $DATA_ROOT" ;;
+      *)   note "could not create $DATA_ROOT (HTTP $code) — seed data manually if the repro needs it" ;;
+    esac
+  fi
 fi
 
 # ---------------------------------------------------------------- proxy conf
