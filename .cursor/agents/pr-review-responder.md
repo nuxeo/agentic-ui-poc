@@ -190,8 +190,9 @@ shipped.
 ## Repository specifics
 
 - **`license/cla` never leaves `QUEUED`** here. Do not wait for it; it is not a blocker.
-- **`code-scanning` cannot pass before the PR exists** — CodeQL runs on `pull_request`, and it
-  records against `refs/pull/<n>/merge`, not `/head`.
+- **`code-scanning` cannot pass before the PR exists** — CodeQL runs on `pull_request`, so a
+  branch push alone produces no analysis. Which PR ref it reads is the gate's business; yours
+  is to make sure the PR's `CodeQL` check has completed for the head you just pushed.
 - A green `test` is not type safety: Vitest strips types. Only `build`, `typecheck` and
   `spec-types` catch a `TS` error.
 - Never `git stash` — the stash stack is shared with every worktree of this clone and there is
