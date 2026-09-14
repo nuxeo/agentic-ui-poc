@@ -82,13 +82,25 @@ function gitOptional(args) {
  * noise. Diffing from the merge base asks the question that was meant: what did I change?
  */
 const mergeBase = gitOptional(['merge-base', base, 'HEAD']).trim() || base;
+/**
+ * Untracked-but-not-ignored files, in both modes.
+ *
+ * Neither mode could see them: the diff modes read git diffs, which say nothing about a file
+ * git has never heard of, and `--all` used bare `ls-files`, which lists the index. So a
+ * newly authored script or document — the most likely place for a new defect, and the normal
+ * state of a file until the moment it is staged — was reported as a clean tree. Same reason
+ * and same call as `scripts/review-guardrails.mjs`, which learned this earlier.
+ */
+const untracked = () => git(['ls-files', '--others', '--exclude-standard']).split('\n');
+
 const touched = (
   all
-    ? git(['ls-files']).split('\n')
+    ? [...git(['ls-files']).split('\n'), ...untracked()]
     : [
         ...git(['diff', '--name-only', `${mergeBase}..HEAD`, '--']).split('\n'),
         ...git(['diff', '--name-only', '--cached']).split('\n'),
         ...git(['diff', '--name-only']).split('\n'),
+        ...untracked(),
       ]
 )
   .map((f) => f.trim())
@@ -114,88 +126,101 @@ const deletedMarkdown = touched.filter(
   (f) => f.endsWith('.md') && !existsSync(resolve(repoRoot, f)),
 );
 const linkScanFiles = deletedMarkdown.length
-  ? git(['ls-files', '*.md'])
-      .split('\n')
+  ? [...git(['ls-files', '*.md']).split('\n'), ...untracked().filter((f) => f.endsWith('.md'))]
       .map((f) => f.trim())
       .filter((f) => f && existsSync(resolve(repoRoot, f)))
+      .filter((f, i, a) => a.indexOf(f) === i)
   : files.filter((f) => f.endsWith('.md'));
 
 const read = (f) => readFileSync(resolve(repoRoot, f), 'utf8');
 const lineOf = (text, index) => text.slice(0, index).split('\n').length;
 
 /**
- * Blank out the *contents* of strings, template literals and comments, keeping every offset.
+ * One pass over the source producing two views, both the same length as the input so every
+ * offset and line number is shared:
  *
- * Only patterns matched against the result are affected; the rules that need to read prose —
- * the rationale check below — read the raw `text` instead, so nothing is lost.
+ *   `code`   strings, template literals **and** comments blanked — what patterns run against
+ *   `prose`  strings blanked, comments kept — what the rationale check reads
  *
- * Both halves of this were learned by getting them wrong:
+ * Two views rather than one because the two questions are opposites, and every version that
+ * tried to answer both from a single string was wrong in one direction or the other:
  *
- * **Strings**, because the first version of this file flagged its own documentation: the
- * description of the `silent-failure` class contains that pattern as an example, and a regex
- * over raw source cannot tell a code pattern from a sentence about one. A checker that fires
- * on its own prose is a checker people switch off.
- *
- * **Comments**, for two reasons that pull in opposite directions and are both real. An
- * apostrophe in a comment is not a quote: `// don't discard this` used to open a
- * single-quoted region that stayed open to the end of the file, masking everything after it,
- * so a swallowed rejection below such a comment was invisible to the one rule that looks for
- * it — and that is most prose. Tracking comment state fixed it, but leaving comment *text*
- * in the output immediately reintroduced the original false positive one paragraph up from
- * here. So comments are recognised *and* blanked, and the rationale check reads `text`.
+ * - Raw source flagged this file's own documentation, which names the swallow pattern as an
+ *   example. A checker that fires on its own prose is one people switch off. → blank strings.
+ * - An apostrophe in a comment is not a quote. `// don't discard this` opened a quoted region
+ *   that ran to the end of the file and hid every subsequent defect — in most prose. → track
+ *   comment state.
+ * - Keeping comment text in the matched view reintroduced the first problem. → blank comments
+ *   in `code`.
+ * - Reading raw text for the rationale check then meant a `//` **inside a string** counted as
+ *   a comment, so `fetch('https://example').catch(() => {})` was excused by its own URL.
+ *   → give the rationale check `prose`, where that `//` is blanked and real comments are not.
  */
-function maskStrings(text) {
-  let out = '';
+function maskSource(text) {
+  let code = '';
+  let prose = '';
   let quote = null;
   let comment = null; // 'line' | 'block'
+
+  const both = (c) => {
+    code += c;
+    prose += c;
+  };
+
   for (let i = 0; i < text.length; i += 1) {
     const c = text[i];
 
     if (comment) {
       if (comment === 'line' && c === '\n') {
         comment = null;
-        out += c;
+        both(c);
         continue;
       }
       if (comment === 'block' && c === '*' && text[i + 1] === '/') {
-        out += '  ';
+        code += '  ';
+        prose += '*/';
         i += 1;
         comment = null;
         continue;
       }
-      out += c === '\n' ? c : ' ';
+      code += c === '\n' ? c : ' ';
+      prose += c;
       continue;
     }
 
     if (quote) {
       if (c === '\\') {
-        out += '  ';
+        code += '  ';
+        prose += '  ';
         i += 1;
         continue;
       }
       if (c === quote) {
         quote = null;
-        out += c;
+        both(c);
         continue;
       }
-      out += c === '\n' ? c : ' ';
+      const blank = c === '\n' ? c : ' ';
+      code += blank;
+      prose += blank;
       continue;
     }
 
     if (c === '/' && (text[i + 1] === '/' || text[i + 1] === '*')) {
       comment = text[i + 1] === '/' ? 'line' : 'block';
-      out += '  ';
+      code += '  ';
+      prose += c + text[i + 1];
       i += 1;
       continue;
     }
     if (c === "'" || c === '"' || c === '`') {
       quote = c;
-      out += c;
+      both(c);
       continue;
     }
-    out += c;
+    both(c);
   }
-  return out;
+  return { code, prose };
 }
 
 // ---------------------------------------------------------------- silent-failure
@@ -209,7 +234,7 @@ function maskStrings(text) {
  */
 function silentFailure(file) {
   const text = read(file);
-  const code = maskStrings(text);
+  const { code, prose } = maskSource(text);
 
   // Shell and docs only. In JavaScript a `curl …` is inside a string, and the masking above
   // is what stops that being reported — but the command it documents is still worth checking
@@ -280,7 +305,9 @@ function silentFailure(file) {
     /\.catch\(\s*\(\s*\)\s*=>\s*(\{\s*\}|null|undefined|void 0)\s*\)/g,
   )) {
     const line = lineOf(code, m.index);
-    const context = text
+    // `prose`, not the raw text: a `//` inside a string is not a comment, and reading raw
+    // source let `fetch('https://example').catch(() => {})` excuse itself with its own URL.
+    const context = prose
       .split('\n')
       .slice(Math.max(0, line - 4), line)
       .join('\n');

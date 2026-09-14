@@ -680,14 +680,24 @@ the newest review.
 
 ### 7b — Record why the reviewer caught what you did not
 
-Once the loop returns zero, harvest the round and classify it. This is the point of the loop:
-each comment is a defect that got past the author, and the _class_ of miss is what a pre-PR
-review skill has to be built from.
+Harvest the round and classify it. This is the point of the loop: each comment is a defect that
+got past the author, and the _class_ of miss is what a pre-PR review skill has to be built from.
+
+**Do this before the last round, not after it.** `publish` writes two tracked files —
+`docs/pr-review-findings.jsonl` and the generated block in
+`.cursor/skills/pre-pr-review/SKILL.md` — so running it after the loop has declared a clean
+round leaves you with either uncommitted changes or a new, unreviewed head. Either way the
+clean verdict describes a commit that is no longer the tip, which is the whole thing this
+section is about. So: harvest and classify the round you just fixed, commit the generated
+files **with** that round's fixes, push, and let the next round review that head. The loop
+exits when a round returns zero on the head that is actually on the PR.
 
 ```bash
 node scripts/pr-review-analysis.mjs harvest <pr>     # prints the file it wrote; one per invocation
 # fill in `category` and `whyMissed` on each row — one judgement per comment
 node scripts/pr-review-analysis.mjs publish ~/Desktop/agentic-ui-evidence/pr-review-analysis/<stamp>-pr<pr>.jsonl
+git add docs/pr-review-findings.jsonl .cursor/skills/pre-pr-review/SKILL.md
+# …commit with the round's fixes, push, then run the next round
 ```
 
 `harvest` reads all three places GitHub keeps reviewer feedback — inline threads, the review
@@ -696,7 +706,8 @@ file after the invocation, not the date, so classifying one batch cannot re-publ
 
 Rows land on
 [PR Review analysis by Copilot](https://hyland.atlassian.net/wiki/x/lwFlAAE). `publish` refuses
-a row with either field blank, because a blank in the `whyMissed` column defeats the page.
+a row with either field blank, because a blank in the `whyMissed` column defeats the page, and
+skips rows already on the page, so a re-run cannot duplicate them.
 
 **"Careless" is never the answer.** Name the structural reason: a claim nobody re-read after the
 code changed, a guarantee asserted in prose and not in code, a check that tested a proxy for the

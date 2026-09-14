@@ -139,6 +139,16 @@ function gh(args) {
 const REVIEWER = /copilot/i;
 
 /**
+ * A summary body that reports **no** findings.
+ *
+ * Observed forms, not guessed: PR #178's reviews say "Approval recommended" and
+ * "Comments generated: 0". Anything unrecognised is still treated as a finding — an
+ * unfamiliar verdict should be read by a person, not silently dropped — so this list is an
+ * allow-list of known-clean shapes and can only shrink the false-positive side.
+ */
+const CLEAN_VERDICT = /approval recommended|no issues found|comments generated:\s*0\b/i;
+
+/**
  * One page of a PR connection, paginated. `--paginate` advances `$endCursor`, and `gh` emits
  * one JSON document per page, so the result is one row per line rather than one array.
  */
@@ -394,14 +404,21 @@ export function harvestPr(pr) {
   )) {
     if (!isReviewer(r.author?.login)) continue;
     const suppressed = suppressedFindings(r.body);
+    const clean = CLEAN_VERDICT.test(r.body);
     // A summary verdict restates the findings under it, so it earns a row only when the review
-    // contributed none by any other route. `suppressed.length` alone was the wrong test: it
-    // asks whether the *body* embedded a block, not whether the *review* already produced
-    // findings, so a review with ordinary inline threads and a plain summary was harvested as
-    // every thread plus an extra summary row. PR #180's first review is exactly that shape.
+    // contributed none by any other route *and* is not an approval.
+    //
+    // Two earlier versions of this test were wrong in opposite directions. `suppressed.length`
+    // alone asks whether the *body* embedded a block, not whether the *review* already
+    // produced findings, so a review with ordinary inline threads and a plain summary was
+    // harvested as every thread plus an extra summary row — PR #180's first review is that
+    // shape. Then falling back to "any non-empty body is a finding" turned an approval into a
+    // defect: PR #178's reviews say "Approval recommended" and "Comments generated: 0", so
+    // `round` returned 1 for a genuinely clean review and the corpus gained a row for a
+    // review that found nothing.
     const items = suppressed.length
       ? suppressed
-      : reviewsWithFindings.has(r.id)
+      : reviewsWithFindings.has(r.id) || clean
         ? []
         : [{ file: '(review summary)', line: null, finding: findingLine(r.body) }];
     if (items.length) reviewsWithFindings.add(r.id);
@@ -639,11 +656,12 @@ if (isCli) {
       console.error(`\nCould not read the reviews on #${pr}: ${error.message.split('\n')[0]}\n`);
       process.exit(3);
     }
-    if (!ids.length) {
-      console.error(`\nNo Copilot review on #${pr} yet.\n`);
-      process.exit(1);
-    }
-    console.log(ids[ids.length - 1]);
+    // `none` rather than an error, so the loop can bootstrap. A PR that has never been
+    // reviewed — #170 is one — has no review nodes, and exiting non-zero here killed the
+    // caller's `BEFORE=$(…) || exit 1` before the first review was ever requested. `none`
+    // compares unequal to any real id, which is exactly what the poll needs. A genuine API
+    // failure still exits 3, so "no review yet" and "could not ask" stay distinguishable.
+    console.log(ids.length ? ids[ids.length - 1] : 'none');
   } else if (cmd === 'round') {
     const [pr, reviewId] = rest;
     if (!pr || !reviewId) {
