@@ -316,12 +316,12 @@ runs must perform identical actions, or the comparison is illustration rather th
 Four rules the tooling enforces, so a capture cannot quietly stop proving anything — **a red here
 is a defect in the evidence, and you fix it before reading the result**:
 
-| Rule                                          | Why                                                                      |
-| --------------------------------------------- | ------------------------------------------------------------------------ |
-| All three acts must be present                | A screenshot without context proves nothing to someone new to the ticket |
-| Every scene names a `criterion` from Phase 1a | "It looked right" is the claim this artifact replaces                    |
-| Every scene must **assert** something         | Screenshots show the app rendered _something_, not the right thing       |
-| A byte-identical before/after pair **fails**  | Either the fix changed nothing visible, or the scene cannot show it      |
+| Rule                                                                | Why                                                                                |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| All three acts must be present                                      | A screenshot without context proves nothing to someone new to the ticket           |
+| Every scene names a `criterion` from Phase 1a                       | "It looked right" is the claim this artifact replaces                              |
+| Every scene must **assert** something                               | Screenshots show the app rendered _something_, not the right thing                 |
+| A byte-identical before/after pair fails **unless a check flipped** | Identical images prove nothing alone; an invisible fix is proved by its assertions |
 
 Gotchas:
 
@@ -411,7 +411,8 @@ non-zero** when the comparison does not support the claim, and says which of the
 - the BEFORE capture passed everything, so the bug did not reproduce or the scenes assert the
   fixed behaviour;
 - the AFTER capture is not `pass`;
-- a before/after pair is byte-identical;
+- a before/after pair is byte-identical **and no assertion changed between the halves**
+  (when a check did flip, the change is simply not visual and the pair is a stated limitation);
 - no scene appears in both halves, so nothing is actually compared.
 
 Then:

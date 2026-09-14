@@ -86,13 +86,36 @@ const onlyAfter = [...afterShots.keys()].filter((k) => !beforeShots.has(k));
  * Within a single run the phase harness already flags duplicate images; nothing compared the
  * two runs, which is exactly where a bug fix's central claim lives.
  */
-const audit = { pairs: paired.length, identical: [], onlyBefore, onlyAfter };
+const audit = { pairs: paired.length, identical: [], invisible: [], onlyBefore, onlyAfter };
+
+/**
+ * Did any assertion anywhere change outcome between the halves?
+ *
+ * Some real fixes are invisible by construction — an `aria-label`, a `role`, a header, a
+ * corrected request. Their screenshots are byte-identical *and the fix is sound*; the proof
+ * is in the DOM checks, exactly as the duplicate warning already says.
+ *
+ * Judged across the whole run rather than per scene. A well-built story has scenes that are
+ * *supposed* to be identical: Act 1 establishes the starting state and Act 3 shows the
+ * neighbouring behaviour still works, and both should look the same before and after.
+ * Requiring a flip in every scene failed exactly those, which would have taught authors to
+ * stop writing them. What actually has to be true is that *something* distinguishes the two
+ * halves; if nothing does, the comparison proves nothing.
+ */
+const checksOf = (m) =>
+  new Map(m.steps.flatMap((s) => (s.checks ?? []).map((c) => [`${s.index}:${c.name}`, c.passed])));
+const beforeChecks = checksOf(before);
+const anyFlip = [...checksOf(after)].some(
+  ([k, passed]) => beforeChecks.has(k) && beforeChecks.get(k) !== passed,
+);
+
 for (const key of paired) {
   const [b, a] = await Promise.all([
     digest(resolve(beforeDir, beforeShots.get(key).file)),
     digest(resolve(afterDir, afterShots.get(key).file)),
   ]);
-  if (b && b === a) audit.identical.push(key);
+  if (!b || b !== a) continue;
+  (anyFlip ? audit.invisible : audit.identical).push(key);
 }
 
 // -------------------------------------------------------------- compose
@@ -113,6 +136,7 @@ for (const key of paired) {
     beforeSrc: await dataUrl(resolve(beforeDir, b.file)),
     afterSrc: await dataUrl(resolve(afterDir, a.file)),
     identical: audit.identical.includes(key),
+    invisible: audit.invisible.includes(key),
   });
   const out = resolve(fixDir, 'diptychs', `${key}.png`);
   await shoot(html, out);
@@ -176,7 +200,8 @@ if (before.verdict !== 'fail') {
 if (after.verdict !== 'pass') problems.push(`the AFTER capture verdict is ${after.verdict}`);
 if (audit.identical.length) {
   problems.push(
-    `${audit.identical.length} before/after pair(s) are byte-identical: ${audit.identical.join(', ')}`,
+    `${audit.identical.length} before/after pair(s) are byte-identical with no assertion ` +
+      `distinguishing them: ${audit.identical.join(', ')}`,
   );
 }
 if (!paired.length) problems.push('no scene appears in both captures, so nothing is actually compared');
@@ -203,7 +228,12 @@ if (problems.length) {
   for (const p of problems) console.log(`  - ${p}`);
   process.exit(1);
 }
-console.log(`verdict  PASS — ${paired.length} scene(s) compared, all distinct`);
+console.log(
+  `verdict  PASS — ${paired.length} scene(s) compared` +
+    (audit.invisible.length
+      ? `, ${audit.invisible.length} with no visual difference (proved by a changed assertion)`
+      : ', all visually distinct'),
+);
 
 // -------------------------------------------------------------- utilities
 
@@ -269,7 +299,7 @@ function page_(title, body, width = 1560) {
     .sheet { width: ${width}px; }</style></head><body><div class="sheet">${body}</div></body></html>`;
 }
 
-function diptychHtml({ title, criterion, beforeSrc, afterSrc, identical }) {
+function diptychHtml({ title, criterion, beforeSrc, afterSrc, identical, invisible }) {
   return page_(
     title,
     `<h1>${esc(title)}</h1>
@@ -278,7 +308,8 @@ function diptychHtml({ title, criterion, beforeSrc, afterSrc, identical }) {
        <div class="panel"><div class="cap before">BEFORE — the reported behaviour</div><img src="${beforeSrc}" alt="before"></div>
        <div class="panel"><div class="cap after">AFTER — with the fix</div><img src="${afterSrc}" alt="after"></div>
      </div>
-     ${identical ? '<div class="warn"><strong>These two images are byte-identical.</strong> This pair demonstrates nothing — either the fix changed nothing visible here, or this scene cannot show it. The assertion has to come from the DOM checks, not the picture.</div>' : ''}`,
+     ${identical ? '<div class="warn"><strong>These two images are byte-identical.</strong> This pair demonstrates nothing — either the fix changed nothing visible here, or this scene cannot show it, and no assertion in this scene distinguishes the two halves either.</div>' : ''}
+     ${invisible ? '<div class="warn"><strong>These two images are byte-identical, and that is expected here.</strong> The change is not visual. A DOM assertion in this scene did change between the halves, and that is what carries the proof — read the checks, not the picture.</div>' : ''}`,
   );
 }
 
@@ -317,7 +348,10 @@ function renderCombined({ ticketId, before, after, diptychs, annotated, contactS
     '',
     problems.length
       ? `**Verdict: NEEDS WORK** — ${problems.length} problem(s) with the comparison itself.`
-      : `**Verdict: PASS** — ${audit.pairs} scene(s) compared, every pair visually distinct.`,
+      : `**Verdict: PASS** — ${audit.pairs} scene(s) compared` +
+        (audit.invisible.length
+          ? `, ${audit.invisible.length} of them with no visual difference; a changed assertion carries the proof.`
+          : ', every pair visually distinct.'),
     '',
   ];
 
@@ -354,6 +388,19 @@ function renderCombined({ ticketId, before, after, diptychs, annotated, contactS
   if (annotated.length) {
     L.push('## Callouts', '');
     for (const a of annotated) L.push(`![${a.title} (${a.phase})](./${a.file})`, '');
+  }
+
+  if (audit.invisible.length) {
+    L.push(
+      '## Changes with no visual difference',
+      '',
+      'These scenes produced byte-identical images, which is expected: the change is not',
+      'visual. In each, an assertion changed outcome between the halves, and that is the',
+      'proof — the picture is context, not evidence.',
+      '',
+      ...audit.invisible.map((k) => `- \`${k}\``),
+      '',
+    );
   }
 
   if (audit.onlyBefore.length || audit.onlyAfter.length) {

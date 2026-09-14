@@ -87,8 +87,10 @@ Three rules the runner enforces, so a capture cannot quietly stop proving anythi
 
 And one the report enforces across the two halves:
 
-- **A byte-identical before/after pair fails.** Either the fix changed nothing visible there,
-  or the scene cannot show it. Both need fixing before the comparison means anything.
+- **A byte-identical before/after pair fails — unless an assertion changed.** Identical images
+  prove nothing on their own. When some check flipped between the halves the change is simply
+  not visual (an `aria-label`, a `role`, a corrected request) and the pair is recorded as a
+  stated limitation; when nothing at all distinguishes the halves, the comparison fails.
 
 Do **not** branch on `EVIDENCE_PHASE` inside a scene — the two runs must perform identical
 actions, or the comparison is illustration rather than evidence.
