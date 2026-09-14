@@ -169,6 +169,62 @@ function paginate(pr, connection, jq) {
 }
 
 /**
+ * Remove a markup construct completely — including the openers a single pass leaves behind.
+ *
+ * One `.replace(/<!--[\s\S]*?-->/g, '')` is not a strip, it is one pass, and a pass only
+ * removes balanced pairs. Measured on six inputs, one pass left markup in three of them:
+ *
+ *     "<!--a-->b<!--c"                     -> "b<!--c"
+ *     "x-->y"                              -> "x-->y"
+ *     "<details>a</details></details>tail" -> "</details>tail"
+ *
+ * CodeQL calls the class `js/incomplete-multi-character-sanitization` and flagged both call
+ * sites in this file. Nothing was injectable — every cell is escaped by `esc` before it
+ * reaches the page — but the strip was wrong for its own purpose: these functions exist to
+ * skip markup, and an incomplete strip makes them return a fragment of it as the finding.
+ *
+ * So: replace to a fixed point, **then** drop any unbalanced marker. The second step is the
+ * one that matters here; the loop alone cannot help, because an odd `<!--` or `-->` never
+ * matches a pair however many times you look. Both steps leave markup-free text untouched.
+ */
+function stripAll(text, pattern, marker) {
+  let out = String(text ?? '');
+  let previous;
+  do {
+    previous = out;
+    out = out.replace(pattern, '');
+  } while (out !== previous);
+  return out.replace(marker, '');
+}
+
+const HTML_COMMENT = /<!--[\s\S]*?-->\n?/g;
+const HTML_COMMENT_MARKER = /<!--|-->/g;
+const DETAILS_BLOCK = /<details>[\s\S]*?<\/details>/g;
+const DETAILS_MARKER = /<\/?details>/g;
+
+/**
+ * Escape a value for Confluence storage XHTML, in **text or an attribute**.
+ *
+ * `"` and `'` are here because one of these values is interpolated into `<a href="…">`, and
+ * escaping only `&<>` left the quote that terminates the attribute intact. A finding URL
+ * containing `#" onmouseover="…` closed `href` and opened an event handler on a page other
+ * people read — CodeQL alert 37. Escaping the quotes in the shared helper rather than at the
+ * one call site means the next attribute added to this table is safe without anyone
+ * remembering why.
+ *
+ * Declared **above** `if (isCli)` on purpose. As a `const` below it, the map was in its
+ * temporal dead zone while the `publish` branch ran, so the first `esc` call threw
+ * `ReferenceError: Cannot access 'HTML_ESCAPES' before initialization` — a crash on every
+ * successful publish, reachable only past the credential check and therefore invisible to
+ * every gate.
+ */
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+export function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
+}
+
+/**
  * The one line that identifies a finding in a table.
  *
  * Not simply line one of the body. A review summary body opens with a `###` verdict heading
@@ -181,9 +237,11 @@ function paginate(pr, connection, jq) {
  * cannot.
  */
 function findingLine(body) {
-  const stripped = String(body ?? '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<details>[\s\S]*?<\/details>/g, '');
+  const stripped = stripAll(
+    stripAll(body, HTML_COMMENT, HTML_COMMENT_MARKER),
+    DETAILS_BLOCK,
+    DETAILS_MARKER,
+  );
   for (const line of stripped.split('\n')) {
     const text = line.replace(/\s+/g, ' ').trim();
     if (!text || text.startsWith('#') || text.startsWith('>') || /^[-*_]{3,}$/.test(text)) continue;
@@ -479,7 +537,7 @@ if (isCli) {
     }
   } else if (cmd === 'stats') {
     const rows = await corpus();
-    console.log(`\n${renderStats(rows).replace(/<!--.*?-->\n?/gs, '')}`);
+    console.log(`\n${stripAll(renderStats(rows), HTML_COMMENT, HTML_COMMENT_MARKER)}`);
   } else if (cmd === 'sync') {
     const rows = await corpus();
     const text = await readFile(SKILL, 'utf8');
@@ -529,22 +587,6 @@ if (isCli) {
     );
     process.exit(2);
   }
-}
-
-/**
- * Escape a value for Confluence storage XHTML, in **text or an attribute**.
- *
- * `"` and `'` are here because one of these values is interpolated into
- * `<a href="…">`, and escaping only `&<>` left the quote that terminates the attribute
- * intact. A finding URL containing `#" onmouseover="…` closed `href` and opened an event
- * handler on a page other people read — CodeQL alert 37 on PR #182. Escaping the quotes in
- * the shared helper rather than at the one call site means the next attribute added to this
- * table is safe without anyone remembering why.
- */
-const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-
-export function esc(v) {
-  return String(v ?? '').replace(/[&<>"']/g, (c) => HTML_ESCAPES[c]);
 }
 
 /**
