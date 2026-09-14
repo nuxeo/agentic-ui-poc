@@ -69,10 +69,30 @@ gh api graphql --paginate -F id=<threadId> \
 Reply to the **first** comment's `databaseId` (`in_reply_to` threads onto it), but read all of
 them: a thread whose last comment is yours may already be answered.
 
-Also collect what the thread view does not show:
+Threads are not all of it. A reviewer's **summary body** — Copilot's "Changes recommended"
+verdict, for instance — is a `reviews` node, not a thread, and it is submitted as `COMMENTED`
+rather than `CHANGES_REQUESTED`. Conversation comments live in a third connection again. Both
+are actionable and both used to be dropped; `.github/workflows/pr-auto-fix.yml` paginates all
+three for the same reason.
 
 ```bash
-gh pr view <N> --repo nuxeo/agentic-ui-poc --json reviews --jq '.reviews[]|select(.state=="CHANGES_REQUESTED")|.body'
+# every non-empty review body, whatever its state
+gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number=<N> \
+  -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+    repository(owner:$owner,name:$name){pullRequest(number:$number){
+      reviews(first:50, after:$endCursor){ pageInfo{ hasNextPage endCursor }
+        nodes{ author{ login } state body } }}}}' \
+  --jq '.data.repository.pullRequest.reviews.nodes[]|select(.body!="")|"[\(.author.login) \(.state)] \(.body)"'
+
+# conversation comments
+gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number=<N> \
+  -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+    repository(owner:$owner,name:$name){pullRequest(number:$number){
+      comments(first:50, after:$endCursor){ pageInfo{ hasNextPage endCursor }
+        nodes{ author{ login } body } }}}}' \
+  --jq '.data.repository.pullRequest.comments.nodes[]|"[\(.author.login)] \(.body)"'
+
+# Sonar raises issues even when its quality gate passes
 curl -s "https://sonarcloud.io/api/issues/search?componentKeys=nuxeo_agentic-ui-poc&pullRequest=<N>&resolved=false"
 ```
 
@@ -103,11 +123,20 @@ only an unfiltered run speaks for a change.
 
 ```bash
 npm run beta:gate -- --gates guardrails,lint,test,build,typecheck,spec-types   # inner loop
-npm run beta:gate                                                             # before replying
 ```
 
-`code-scanning` is the one expected red before a PR exists, and it reads
-`refs/pull/<n>/merge`. On an open PR with CodeQL finished, the unfiltered run should be green.
+**The unfiltered gate runs after the push, not before it.** `code-scanning` queries the remote
+PR ref, so running it on uncommitted work passes on the _previous_ commit's analysis — a green
+verdict for code CodeQL has never seen. Commit, push, wait for CodeQL to finish on the new
+head, and only then:
+
+```bash
+npm run beta:gate     # cite this one
+```
+
+CodeQL also lags behind the push, so a run immediately afterwards can still be reading the old
+analysis or none at all. Check the PR's `CodeQL` check has completed for the new head first.
+Which ref it reads is the gate's business, not yours — it resolves the PR ref itself.
 
 ### 5. Commit once, signed, describing what was wrong
 

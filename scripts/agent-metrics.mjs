@@ -52,7 +52,13 @@ import { evidenceDirForTicket } from './collect-evidence/evidence-path.mjs';
  *
  *   fix       understanding the problem and changing the code until it is right
  *   evidence  capturing and comparing before/after — real work, but not fixing
- *   overhead  workspace setup, CI polling, ticket admin, teardown — mostly waiting
+ *   overhead  workspace setup, opening the PR, CI polling, ticket admin — mostly waiting
+ *
+ * **Teardown is not measured, and cannot be.** `publish` has to run before the workspace is
+ * removed, because removing it deletes this script, and `end` has to precede `publish`. So the
+ * run is always closed before teardown begins. `cleanup` therefore only ever covers the
+ * summary written before `end`; the earlier version of this comment claimed teardown was in
+ * the overhead subtotal, which was not true of any run.
  *
  * All three are printed locally; the shared page gets the fix total.
  */
@@ -80,7 +86,8 @@ export const PHASES = {
   ci: { label: 'CI to green', bucket: 'overhead' },
   review: { label: 'Review comments', bucket: 'fix' },
   jira: { label: 'Update the ticket', bucket: 'overhead' },
-  cleanup: { label: 'Clean up + summary', bucket: 'overhead' },
+  // Closes before teardown by necessity — see the note above.
+  cleanup: { label: 'Final summary', bucket: 'overhead' },
 };
 
 const CONFLUENCE_PAGE_ID = process.env['AGENT_METRICS_PAGE_ID'] ?? '4301586845';

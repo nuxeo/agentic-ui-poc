@@ -88,6 +88,10 @@ sits in one of three buckets, and **only `fix` is published**:
 | `evidence` | `evidence-before` `baseline` `verify-evidence`                                                                                        |
 | `overhead` | `workspace` `pr` `ci` `jira` `cleanup`                                                                                                |
 
+`cleanup` covers the final summary only. **Teardown is not measured**: `publish` must run
+before the workspace is removed — removing it deletes the script — and `end` must precede
+`publish`, so the run is always closed before teardown begins.
+
 The shared page answers "how long do fixes take", so it gets the `fix` total alone. The first
 row published wall clock — 4h 13m for a one-line change, 88% of it evidence capture and CI
 polling — which is a number about the pipeline masquerading as a number about the work. All
