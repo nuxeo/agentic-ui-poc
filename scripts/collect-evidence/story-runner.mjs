@@ -521,26 +521,6 @@ try {
       const assertedInScene =
         spanned.reduce((n, rec) => n + rec.checks.length, 0) - checksBefore > 0;
 
-      // Ask the page, rather than relying on the `load` event alone — hash routing never
-      // fires it. A spotlight that is missing or pointing at a detached node is a defect in
-      // the recording, and `STRUCTURAL` below makes it exit non-zero: a recording that points
-      // at nothing must not be accepted as a sound capture.
-      if (currentSpotlight) {
-        const state = await page
-          .evaluate((id) => {
-            const el = document.getElementById(id);
-            return { present: !!el, lost: el?.dataset.lost === '1' };
-          }, SPOTLIGHT_ID)
-          .catch(() => ({ present: false, lost: true }));
-        const detail = spotlightFailures.length
-          ? spotlightFailures.join('; ')
-          : !state.present
-            ? `the overlay is gone (${currentSpotlight.selector})`
-            : `${currentSpotlight.selector} no longer resolves — the outline is pointing at nothing`;
-        helpers.check('the spotlight still points at its element', state.present && !state.lost, detail);
-      }
-      spotlightFailures.length = 0;
-
       // Per scene, not just per run. The act-structure assertions below always contribute
       // three checks, so a whole-run count can never reach zero and would certify a story
       // whose every scene only took pictures.
@@ -554,6 +534,39 @@ try {
 
       // Hold on the finished state so the video is followable rather than a flicker.
       await page.waitForTimeout(scene.hold ?? 2500);
+
+      // Checked *after* the hold, because the hold is the part a viewer pauses on: validating
+      // before it meant an element that vanished during those seconds was never noticed, and
+      // the next scene cleared the overlay without looking.
+      //
+      // Resolved live rather than read from `data-lost`, which a 250ms interval maintains — a
+      // target removed just before the scene returned had not been flagged yet.
+      //
+      // A restoration that timed out counts even if a later one succeeded: the recording still
+      // has the gap, so the count is part of the condition and not merely the message.
+      if (currentSpotlight) {
+        const sel = currentSpotlight.selector;
+        const state = await page
+          .evaluate(
+            ({ id, sel }) => {
+              const el = document.getElementById(id);
+              const target = document.querySelector(sel);
+              return { present: !!el, resolves: !!target && target.isConnected };
+            },
+            { id: SPOTLIGHT_ID, sel },
+          )
+          .catch(() => ({ present: false, resolves: false }));
+
+        const gaps = spotlightFailures.length;
+        const ok = state.present && state.resolves && gaps === 0;
+        const detail = !state.present
+          ? `the overlay is gone (${sel})`
+          : !state.resolves
+            ? `${sel} no longer resolves — the outline is pointing at nothing`
+            : `restoration failed ${gaps} time(s) during this scene — ${spotlightFailures.join('; ')}`;
+        helpers.check('the spotlight still points at its element', ok, detail);
+      }
+      spotlightFailures.length = 0;
 
       const sceneErrors = recorder.consoleErrors.slice(errorsBefore);
       recorder.steps[recorder.steps.length - 1].consoleErrors = sceneErrors;
