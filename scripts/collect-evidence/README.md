@@ -124,6 +124,17 @@ From `scripts/beta-harness/helpers.mjs`, plus `shot()` added by the runner.
 | `EVIDENCE_SLOWMO`         | `120`                           | ms between interactions; per-scene `hold` does the pacing |
 | `AGENTIC_UI_EVIDENCE_DIR` | `~/Desktop/agentic-ui-evidence` | Evidence root                                             |
 
+## Committing a scenes file
+
+Don't, by default. Nothing in CI runs these — no workflow references `collect-evidence` — so a
+committed scenes file is code that never executes and rots as selectors drift. The durable
+guarantee is the regression test, which does run on every PR; the artifacts that matter are
+attached to the ticket.
+
+Commit one only when no unit test can cover the behaviour: a visual regression, a
+cross-component interaction, something only a rendered browser can assert. Say so in the PR
+when you do.
+
 ## Legacy steps files
 
 The twenty-odd `NXSAT-*.mjs` files that export a default `async (page, helpers, outDir)`
