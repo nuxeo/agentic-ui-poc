@@ -35,7 +35,7 @@ const body = [
     '</tbody></table>',
 
   h2('What the first 57 say'),
-  p('Findings from six pull requests over one day, all of them accepted as valid; none was a false positive. Three classes account for <strong>63%</strong>:'),
+  p('Findings from five pull requests over one day, all of them accepted as valid; none was a false positive. Three classes account for <strong>63%</strong>:'),
   `<table><tbody>
      <tr>${th('Class')}${th('Count')}${th('What a pre-PR check would have to do')}</tr>
      <tr><td><p><code>proxy-check</code></p></td><td><p>15</p></td><td><p>The single biggest class. The code tests something <em>adjacent</em> to what its name claims: <code>isConnected</code> for &ldquo;visible&rdquo;, a phase opened for a phase finished, <code>!== pass</code> for <code>=== fail</code>, an id present for &ldquo;my element&rdquo;, a <code>load</code> event for &ldquo;navigated&rdquo;. Always the easier property to query. A check has to read: <em>does this assertion test the noun in its own name?</em></p></td></tr>
@@ -57,7 +57,18 @@ const body = [
 </tbody></table>`,
 ].join('\n');
 
-const cur = await (await fetch(`${BASE}/api/v2/pages/${PAGE}`, { headers: { Authorization: auth, Accept: 'application/json' } })).json();
+// Checked before parsing. An expired token or a missing page returns an error document, so
+// reading `cur.version.number` off it threw a TypeError, or sent a PUT built from nothing and
+// reported that second failure instead of the real one — the GET's status is the only thing
+// that says what actually went wrong.
+const get = await fetch(`${BASE}/api/v2/pages/${PAGE}`, {
+  headers: { Authorization: auth, Accept: 'application/json' },
+});
+if (!get.ok) {
+  console.error(`Could not read page ${PAGE} (HTTP ${get.status}): ${(await get.text()).slice(0, 400)}`);
+  process.exit(1);
+}
+const cur = await get.json();
 const res = await fetch(`${BASE}/api/v2/pages/${PAGE}`, {
   method: 'PUT',
   headers: { Authorization: auth, 'Content-Type': 'application/json' },

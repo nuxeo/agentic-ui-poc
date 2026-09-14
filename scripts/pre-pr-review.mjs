@@ -29,7 +29,7 @@
  */
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
-import { resolve, dirname, join, relative } from 'node:path';
+import { resolve, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const repoRoot = resolve(import.meta.dirname, '..');
@@ -108,13 +108,33 @@ const lineOf = (text, index) => text.slice(0, index).split('\n').length;
  * own prose is a checker people switch off.
  *
  * Comments are deliberately left intact — the rule below reads them to decide whether a
- * swallow was a decision or an oversight.
+ * swallow was a decision or an oversight — but comment *state* is tracked, because an
+ * apostrophe in a comment is not a quote. `// don't discard this` used to open a
+ * single-quoted region that stayed open to the end of the file, masking everything after it,
+ * so a `.catch(() => {})` below such a comment was invisible to the one rule that looks for
+ * it. The checker missed the exact pattern it advertises, and only in files whose comments
+ * happen to contain an apostrophe — which is most prose.
  */
 function maskStrings(text) {
   let out = '';
   let quote = null;
+  let comment = null; // 'line' | 'block'
   for (let i = 0; i < text.length; i += 1) {
     const c = text[i];
+
+    if (comment) {
+      // Kept verbatim: the rationale check reads these.
+      if (comment === 'line' && c === '\n') comment = null;
+      else if (comment === 'block' && c === '*' && text[i + 1] === '/') {
+        out += '*/';
+        i += 1;
+        comment = null;
+        continue;
+      }
+      out += c;
+      continue;
+    }
+
     if (quote) {
       if (c === '\\') {
         out += '  ';
@@ -127,6 +147,12 @@ function maskStrings(text) {
         continue;
       }
       out += c === '\n' ? c : ' ';
+      continue;
+    }
+
+    if (c === '/' && (text[i + 1] === '/' || text[i + 1] === '*')) {
+      comment = text[i + 1] === '/' ? 'line' : 'block';
+      out += c;
       continue;
     }
     if (c === "'" || c === '"' || c === '`') {
@@ -226,14 +252,29 @@ function silentFailure(file) {
 
 // ---------------------------------------------------------------- broken-reference
 
-/** A relative link that does not resolve. One finding, and it shipped in four places at once. */
+/**
+ * A relative link that does not resolve. One finding, and it shipped in four places at once.
+ *
+ * Every relative target, not only the ones written `./` or `../`. The first version required
+ * that prefix, which is the least common way to write a same-directory link: a plain
+ * `[text](07-risks.md)` — the form the `AGENTS/` and `docs/` trees actually use — was never
+ * checked at all, so the rule could not catch a broken link in the majority of the links it
+ * claimed to cover.
+ *
+ * Excluded, because they are not paths this repo can resolve: anything with a URL scheme,
+ * protocol-relative `//host`, root-relative `/path` (resolved by the docs site, not the
+ * filesystem), and pure `#anchor` fragments.
+ */
 function brokenReference(file) {
   if (!file.endsWith('.md')) return;
   const text = read(file);
-  for (const m of text.matchAll(/\]\((\.\.?\/[^)\s#]+)/g)) {
-    const target = resolve(repoRoot, dirname(file), m[1]);
+  for (const m of text.matchAll(/\]\(([^)\s]+)\)/g)) {
+    const raw = m[1];
+    if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) continue; // http:, mailto:, tel:
+    if (raw.startsWith('//') || raw.startsWith('/') || raw.startsWith('#')) continue;
+    const target = resolve(repoRoot, dirname(file), raw.split('#')[0]);
     if (!existsSync(target)) {
-      report(file, lineOf(text, m.index), 'broken-reference', `link does not resolve: ${m[1]}`);
+      report(file, lineOf(text, m.index), 'broken-reference', `link does not resolve: ${raw}`);
     }
   }
 }

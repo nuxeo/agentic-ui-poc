@@ -415,6 +415,11 @@ if (isCli) {
       );
       process.exit(1);
     }
+    // Created up front, so the path printed below always exists. When a PR has no Copilot
+    // findings the loop never appends, and the `publish` command this prints was then
+    // rejected for a missing file — a clean first review could not complete the harvest step
+    // the Definition of Done requires. An empty file publishes as zero findings.
+    await writeFile(out, '', { flag: 'wx' });
     let n = 0;
     const bySource = {};
     for (const pr of rest) {

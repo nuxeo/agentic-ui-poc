@@ -599,7 +599,7 @@ exactly which checks are still pending; do **not** claim green. This PR runs mor
 
 ### 7a — The review loop: run it until a round returns nothing
 
-A single pass is not enough. Measured over six pull requests in one day: **57 reviewer
+A single pass is not enough. Measured over five pull requests in one day: **57 reviewer
 comments, every one valid, across up to seven rounds on a single PR** — and three of them were
 regressions of fixes made earlier in the same loop. A reviewer that finds nothing is the only
 evidence that the previous round's fixes did not introduce anything.
@@ -641,23 +641,31 @@ if [ -z "$NEW_REVIEW" ] || [ "$NEW_REVIEW" = "$BEFORE" ]; then
   echo "no new review arrived — the round is UNKNOWN, not clean"; exit 1
 fi
 
-# 3. count the findings that belong to that review — its threads AND its body
+# 3. count the findings that belong to that review — its threads AND its body.
+#    Each `gh` call is captured and its status checked *before* anything counts. Piping
+#    straight into `wc -l` would report 0 when the API call itself failed, which is the
+#    false-clean signal this loop exists to prevent — the `grep -c` trap one step along.
 export NEW_REVIEW
-THREADS=$(gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
+threads=$(gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number="$PR" \
   -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
     repository(owner:$owner,name:$name){pullRequest(number:$number){
       reviewThreads(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
         nodes{ isResolved comments(first:1){nodes{ pullRequestReview{ id } }} }}}}}' \
   --jq '.data.repository.pullRequest.reviewThreads.nodes[]
         | select(.isResolved == false)
-        | select(.comments.nodes[0].pullRequestReview.id == env.NEW_REVIEW) | .isResolved' \
- | wc -l)
+        | select(.comments.nodes[0].pullRequestReview.id == env.NEW_REVIEW) | .isResolved'
+) || { echo "gh api failed — the round is UNKNOWN, not clean"; exit 1; }
 
 # Findings folded into the summary body's "Suppressed comments" block never become threads.
-# `grep` exits 1 on no match, so `wc -l` ends the pipeline and the clean case still exits 0.
-BODY=$(gh api graphql -F id="$NEW_REVIEW" \
+review_body=$(gh api graphql -F id="$NEW_REVIEW" \
   -f query='query($id:ID!){node(id:$id){... on PullRequestReview { body }}}' \
-  --jq '.data.node.body' | grep -E '^\*\*[^*]+:[0-9]+\*\*' | wc -l)
+  --jq '.data.node.body'
+) || { echo "gh api failed — the round is UNKNOWN, not clean"; exit 1; }
+
+# Counting only, on data already in hand: empty input is a real zero, not a hidden error.
+count() { [ -z "$1" ] && echo 0 || printf '%s\n' "$1" | wc -l | tr -d ' '; }
+THREADS=$(count "$threads")
+BODY=$(count "$(printf '%s\n' "$review_body" | grep -E '^\*\*[^*]+:[0-9]+\*\*')")
 
 echo "round findings: $((THREADS + BODY))  ($THREADS thread, $BODY suppressed in the body)"
 ```
@@ -671,10 +679,14 @@ wrong:
 - **Scoped to that review.** A thread left open because you disagree belongs to an earlier
   review, and a global count keeps counting it forever, so the loop can never exit on a PR
   that has one. Same for the `github-advanced-security` threads, which are not Copilot's.
-- **`wc -l`, not `grep -c`.** `grep -c false` **exits 1 when the count is zero** — the
-  outcome you are hoping for makes the command fail, which under `set -e` or behind `&&`
-  aborts the loop at exactly the wrong moment. Verified: `printf 'true\n' | grep -c false`
-  prints `0` and exits 1. `wc -l` prints `0` and exits 0.
+- **`wc -l`, not `grep -c` — but never on a live pipe.** `grep -c false` **exits 1 when the
+  count is zero**: the outcome you are hoping for makes the command fail, which under
+  `set -e` or behind `&&` aborts the loop at exactly the wrong moment. Verified:
+  `printf 'true\n' | grep -c false` prints `0` and exits 1, `wc -l` prints `0` and exits 0.
+  Swapping one for the other is only half the fix, though, and the first version of this
+  recipe stopped there: `gh api … | wc -l` reports `0` when `gh` itself fails, so an expired
+  token or a transient 502 reads as a clean round. Capture each API call, check its status,
+  and count only what is already in hand.
 - **`$((THREADS + BODY))`, not threads alone.** Copilot's summary is submitted as `COMMENTED`
   and folds findings into a **"Suppressed comments"** block that never becomes a thread —
   three of the five findings on PR #182 were there, and all three were real. A thread-only
