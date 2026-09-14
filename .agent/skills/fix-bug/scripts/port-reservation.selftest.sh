@@ -47,8 +47,11 @@ EOF
 
 alloc() { # alloc <worktree-path> <start> -> port
   local wt="$1" start="$2"
-  mkdir -p "$wt"
-  bash -c "$(harness)"' ; reserve_port "$2"' _ "$wt" "$start"
+  # Reserve *then* create, inside one process — the order the real caller uses: it calls
+  # reserve_port for both ports and only afterwards runs `git worktree add`. Creating $wt
+  # first, as this helper used to, is precisely what hid the in-flight race checked below.
+  bash -c "$(harness)"' ; p="$(reserve_port "$2")" ; mkdir -p "$1" ; printf "%s" "$p"' \
+    _ "$wt" "$start"
 }
 
 echo "Port reservation self-test"
@@ -75,6 +78,32 @@ wait
 # into one line and `sort -u` would report a single unique value however well the lock worked.
 UNIQUE="$(for i in $(seq 1 8); do cat "$TMP/conc-$i"; echo; done | sort -u | wc -l | tr -d ' ')"
 check "eight concurrent allocations do not collide" "$UNIQUE" "8"
+
+# ---------------------------------------------------------------- 2b. reservation in flight
+# The real caller reserves both ports **before** `git worktree add`, so between those two
+# points its worktree directory does not exist. Treating "no worktree" as "stale" therefore
+# let a second run reclaim a reservation seconds old and hand out the same number — the exact
+# collision the lock was added to end, reintroduced one line below it. Every other check here
+# reserves and creates in one uninterrupted go, which is why none of them could see it.
+#
+# Deterministic rather than a timing race: A reserves and then waits with its worktree still
+# absent, which is where the real script sits, while B allocates against it.
+rm -rf "$TMP/worktrees"
+bash -c "$(harness)"'
+  reserve_port 4210 > "$2"
+  for _ in $(seq 100); do [[ -f "$3" ]] && break; sleep 0.1; done
+' _ "$TMP/worktrees/INFLIGHT-A" "$TMP/inflight-a" "$TMP/inflight-go" &
+INFLIGHT=$!
+for _ in $(seq 50); do [[ -s "$TMP/inflight-a" ]] && break; sleep 0.1; done
+A_PORT="$(cat "$TMP/inflight-a" 2>/dev/null || true)"
+B_PORT="$(bash -c "$(harness)"' ; reserve_port 4210' _ "$TMP/worktrees/INFLIGHT-B")"
+touch "$TMP/inflight-go"
+wait "$INFLIGHT" 2>/dev/null || true
+# Asserted, not assumed: if A returned nothing the second check would pass vacuously.
+check "an in-flight reservation still holds the base port" "$A_PORT" "4210"
+[[ -n "$B_PORT" && "$B_PORT" != "$A_PORT" ]] \
+  && ok "a reservation whose worktree does not exist yet is not reclaimed" \
+  || bad "a reservation whose worktree does not exist yet is not reclaimed (both got '$B_PORT')"
 
 # ---------------------------------------------------------------- 3. idempotent for one ticket
 # Re-running for the same workspace must return the same number, not creep to the next one:
@@ -123,7 +152,6 @@ fi
 # In one process the holder is alive and unreclaimable, so the second call blocked for 30s and
 # aborted. This is the shape of the real caller, so it belongs in the test.
 rm -rf "$TMP/worktrees"
-mkdir -p "$TMP/worktrees/TWICE"
 TWO="$(bash -c "$(harness)"' ; printf "%s,%s" "$(reserve_port 8090)" "$(reserve_port 4210)"' \
         _ "$TMP/worktrees/TWICE" 2>/dev/null || true)"
 check "two allocations in one process both return" "$TWO" "8090,4210"

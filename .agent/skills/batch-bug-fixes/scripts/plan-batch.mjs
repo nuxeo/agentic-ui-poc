@@ -214,9 +214,23 @@ const byRam = Math.floor(Math.max(totalGb - RESERVED_GB, 0) / perTicketGb);
 // and oversubscribing turns a gate run into a timeout that looks like a flaky test.
 const byCpu = Math.floor(cpus().length / 2);
 
+// Validated the way --per-ticket-gb is, and against a worse failure than that one.
+// `--concurrency abc` made Number(requested) NaN, so every wave boundary was NaN, `waves`
+// came out as `[[]]`, and the command exited 0 reporting a healthy plan that had assigned no
+// ticket to any worker. A planner whose entire job is "fix these twelve" must never succeed
+// having planned none. `--concurrency` with no value took the same path by falling back to
+// auto silently, so an absent value is rejected here too rather than guessed at.
 const requested = flag('concurrency');
+const concurrencyGiven = argv.includes('--concurrency');
+if (concurrencyGiven && !/^[1-9]\d*$/.test(String(requested ?? '').trim())) {
+  console.error(
+    `--concurrency must be a positive integer, got '${requested ?? ''}' — nothing was planned`,
+  );
+  process.exit(2);
+}
+
 const auto = Math.max(1, Math.min(byRam, byCpu, HARD_CAP, tickets.length));
-const concurrency = requested ? Math.max(1, Number(requested)) : auto;
+const concurrency = concurrencyGiven ? Number(requested) : auto;
 
 if (requested && Number(requested) > auto) {
   warnings.push(
@@ -236,14 +250,30 @@ if (freeGb < (concurrency * perTicketGb) / 4) {
   );
 }
 
-// Enough ports for one wave, counting both live listeners and reservations held by other
-// worktrees — the same two things the workspace script's allocator counts.
+// Enough ports for one wave, counting both live listeners and reservations held by a live
+// owner — the same things the workspace script's allocator counts, and it has to stay the
+// same or this planner clears a wave the allocator will then refuse to find ports for.
+//
+// A reservation file is "<worktree path>\n<owning pid>", and the owner is live while the pid
+// is alive OR the worktree exists. The pid line covers a workspace still being created: the
+// allocator reserves before `git worktree add`, so a fresh reservation has no directory yet.
+const ownerAlive = (pid) => {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0); // signal 0 tests for existence; it sends nothing
+    return true;
+  } catch (e) {
+    return e.code === 'EPERM'; // alive, just not ours to signal
+  }
+};
+
 const reserved = new Set();
 const portDir = resolve(WORKTREE_ROOT, '.ports');
 if (existsSync(portDir)) {
   for (const entry of readdirSync(portDir)) {
-    const owner = readFileSync(resolve(portDir, entry), 'utf8').trim();
-    if (owner && existsSync(owner)) reserved.add(Number(entry));
+    const [owner = '', pid = ''] = readFileSync(resolve(portDir, entry), 'utf8').split('\n');
+    if (!owner.trim()) continue;
+    if (existsSync(owner.trim()) || ownerAlive(Number(pid.trim()))) reserved.add(Number(entry));
   }
 }
 

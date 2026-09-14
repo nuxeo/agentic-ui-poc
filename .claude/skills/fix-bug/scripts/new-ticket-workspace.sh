@@ -136,7 +136,10 @@ if [[ $REMOVE -eq 1 ]]; then
   if [[ -d "$WORKTREE_ROOT/.ports" ]]; then
     for f in "$WORKTREE_ROOT/.ports"/*; do
       [[ -f "$f" ]] || continue
-      if [[ "$(cat "$f" 2>/dev/null || true)" == "$WT" ]]; then
+      # First line only: a reservation is "<worktree path>\n<owning pid>". A bare `cat` here
+      # would compare the pid line too and match nothing, so every teardown would silently
+      # release no ports at all while still reporting success.
+      if [[ "$(sed -n '1p' "$f" 2>/dev/null || true)" == "$WT" ]]; then
         rm -f "$f"
         note "released port ${f##*/}"
       fi
@@ -209,8 +212,18 @@ fi
 #
 # So allocation writes a reservation naming the owning worktree, and takes a lock across
 # check-then-claim: two concurrent runs scanning before either writes would otherwise pick the
-# same number. Reservations are reclaimed when their worktree is gone, and released on
-# --remove, so the range does not silently fill up over weeks of tickets.
+# same number. Reservations are reclaimed when their owner is gone, and released on --remove,
+# so the range does not silently fill up over weeks of tickets.
+#
+# "Owner is gone" is two conditions, not one. Liveness was originally "the owning worktree
+# directory exists", which is a *proxy* for the owner being alive and it is false for the whole
+# window this script cares about most: both ports are reserved above `git worktree add`, so a
+# reservation written seconds ago names a directory that does not exist yet. A second run
+# reading it saw an owner with no worktree, called it stale and took the same port — the
+# collision the lock exists to prevent, reintroduced underneath it. So a reservation records
+# the owning **pid** as well as the path, and is live while the pid is alive OR the worktree
+# exists: the pid covers creation in flight, the path covers every run after the process has
+# exited. Stale means both are gone.
 
 PORT_DIR="$WORKTREE_ROOT/.ports"
 LOCK_DIR="$WORKTREE_ROOT/.ports.lock"
@@ -246,15 +259,23 @@ port_lock() {
   trap port_unlock EXIT
 }
 
-# Taken if something is listening, or another live worktree holds the reservation.
+# Taken if something is listening, or another live owner holds the reservation.
+#
+# A reservation file is two lines: the owning worktree path, then the pid that reserved it.
+# Read line by line, never with a bare `cat` — `--remove` below and plan-batch.mjs read the
+# same files and all three must agree on the format.
 port_taken() {
-  local p="$1" f="$PORT_DIR/$p" owner
+  local p="$1" f="$PORT_DIR/$p" owner owner_pid
   lsof -iTCP:"$p" -sTCP:LISTEN -t >/dev/null 2>&1 && return 0
   [[ -f "$f" ]] || return 1
-  owner="$(cat "$f" 2>/dev/null || true)"
+  owner="$(sed -n '1p' "$f" 2>/dev/null || true)"
+  owner_pid="$(sed -n '2p' "$f" 2>/dev/null || true)"
   [[ "$owner" == "$WT" ]] && return 1          # our own, from an earlier run
-  [[ -n "$owner" && -d "$owner" ]] && return 0 # someone else's, still there
-  rm -f "$f"                                   # its worktree is gone; reclaim the number
+  [[ -n "$owner" && -d "$owner" ]] && return 0 # someone else's worktree, still there
+  # No worktree yet, but the run that reserved it is still going: it is between reserve_port
+  # and `git worktree add`. Reclaiming here hands two workspaces the same port.
+  [[ -n "$owner_pid" ]] && kill -0 "$owner_pid" 2>/dev/null && return 0
+  rm -f "$f"                                   # owner dead and no worktree; reclaim the number
   return 1
 }
 
@@ -263,7 +284,9 @@ reserve_port() {
   port_lock
   mkdir -p "$PORT_DIR"
   while port_taken "$p"; do p=$((p + 1)); done
-  printf '%s' "$WT" > "$PORT_DIR/$p"
+  # `$$` is the script's pid, not the command substitution's: bash does not change it in a
+  # subshell, which is what makes `NX_PORT="$(reserve_port 8090)"` record the right owner.
+  printf '%s\n%s\n' "$WT" "$$" > "$PORT_DIR/$p"
   port_unlock
   trap - EXIT
   printf '%s' "$p"

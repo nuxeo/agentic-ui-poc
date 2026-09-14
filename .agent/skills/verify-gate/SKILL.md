@@ -32,7 +32,7 @@ Twenty-two gates, cheapest first: `node`, `lockfile`, `supply-chain`, `code-scan
 Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
 
 Only a run with **no** `--gates` filter can be cited for a phase. A filtered run
-reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 20`, because two
+reports `verdict: pass-partial` and prints `PASS (PARTIAL) — n of 22`, because two
 reports in the evidence corpus read `"verdict": "pass"` having run one gate. The run
 also prints `NOT REQUESTED` for every gate it skipped — read that line before quoting
 a count.

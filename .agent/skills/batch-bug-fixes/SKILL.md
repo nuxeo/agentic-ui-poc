@@ -46,7 +46,7 @@ skill exists mostly to handle them.
 | Shared Nuxeo container + OpenSearch      | Shared, per-ticket data root is the isolate | Keep the default; do not run N containers   |
 | `git` object store, index, worktree list | Contended during **creation**               | Create workspaces **serially**              |
 | `git stash` stack                        | Shared across every worktree                | `fix-bug` already bans it; never relax that |
-| `docs/pr-review-findings.jsonl`          | Single file, appended by `publish`          | Publish **after** the batch, serially       |
+| `docs/pr-review-findings.jsonl`          | Single file, appended by `publish`          | Publish after the batch, on its own branch  |
 | GitHub review requests                   | Rate-limited, and Copilot queues            | Stagger; never request N reviews at once    |
 
 ### The port collision, because it is the one that bit
@@ -61,11 +61,15 @@ up on 4210, every other ticket's evidence commands point at it and capture **a d
 ticket's app under their own ticket id**. Evidence attributed to the wrong fix is worse than no
 evidence, because it is believed.
 
-Ports are now reserved under `$WORKTREE_ROOT/.ports`, claimed under a lock, reclaimed when a
-worktree disappears and released by `--remove`. Guarded by a self-test:
+Ports are now reserved under `$WORKTREE_ROOT/.ports`, claimed under a lock, reclaimed when the
+owning run is gone — **dead pid and no worktree**, not either alone — and released by
+`--remove`. Both halves matter to a batch: ports are reserved before `git worktree add`, so
+during creation a reservation names a directory that does not exist yet, and liveness judged
+on the directory alone let the next creation reclaim it and hand out the same number. Guarded
+by a self-test:
 
 ```bash
-bash .cursor/skills/fix-bug/scripts/port-reservation.selftest.sh   # 7 checks
+bash .cursor/skills/fix-bug/scripts/port-reservation.selftest.sh   # 11 checks
 ```
 
 Run it if you touch the allocator. Its first assertion is what makes it worth having: fed the
@@ -190,16 +194,37 @@ not finish, whatever it reported. Read it first.
 
 The review analysis corpus is one file, and N agents appending to it concurrently is the one
 write this design cannot isolate. Subagents are told not to publish. Do it here, once, after the
-batch:
+batch — and **on a branch of its own**, in the primary checkout, never in a ticket's worktree:
 
 ```bash
+git -C "$REPO" fetch origin main
+git -C "$REPO" checkout -b docs/review-corpus-<batch-id> origin/main
+
 node scripts/pr-review-analysis.mjs harvest <pr> …            # per PR that drew comments
 node scripts/pr-review-analysis.mjs publish <file.jsonl>      # once, serially
+
+git add docs/pr-review-findings.jsonl \
+        .cursor/skills/pre-pr-review/SKILL.md \
+        .claude/skills/pre-pr-review/SKILL.md \
+        .agent/skills/pre-pr-review/SKILL.md
+git commit -S -m "docs: publish review findings from batch <batch-id>"
+gh pr create --base main --title "docs: publish review findings from batch <batch-id>"
 ```
 
-`publish` re-derives the pre-PR skill's counts, so commit `docs/pr-review-findings.jsonl` and
-`.cursor/skills/pre-pr-review/SKILL.md` together — the `review-corpus` gate fails if one moves
-without the other.
+### Why its own branch, and not a ticket's
+
+`publish` writes to tracked files — the corpus, the pre-PR skill whose counts it re-derives,
+and that skill's two generated mirrors. Those changes have to land somewhere, and by the time
+this phase runs every ticket PR has already reached a clean review round on a head that does
+not contain them. Pushing them onto one of those PRs invalidates the verdict it just earned
+and asks its reviewer to re-approve a change belonging to eleven other tickets. Committing
+them straight to `main` is not an option at all.
+
+One branch per batch, carrying nothing but the publication, reviewed on its own merits.
+
+Stage all four paths together: the `review-corpus` gate fails if the corpus and the skill move
+apart, and `agent-mirror` fails if the mirrors do. `publish` runs the mirror sync itself and
+prints this list, so follow its output rather than remembering it.
 
 ## Phase B6 — Report the batch
 
@@ -221,7 +246,8 @@ is mostly overlap.
 - **Never create workspaces concurrently.** Serial creation, parallel work.
 - **Never raise `--concurrency` past the plan to hit a deadline.** Swapping loses in-flight fixes.
 - **Never `--nuxeo own` across a large batch.** A container is ~2 GB; twelve is the machine.
-- **Never let a subagent publish to the shared corpus.** Serial tail, in the wrapper.
+- **Never let a subagent publish to the shared corpus.** Serial tail, in the wrapper, on the
+  batch's own corpus branch — never appended to a ticket PR that has already gone clean.
 - **Stop the whole batch** only for a shared-resource failure. Everything else is per-ticket.
 - **Report a ticket's real outcome.** `pr-open` is not `merged`, and a blocked ticket in a batch
   of twelve is easy to lose in a summary that leads with eleven successes.
