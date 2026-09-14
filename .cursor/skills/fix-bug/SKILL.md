@@ -549,6 +549,15 @@ This is the "fix and raise PR" trigger.
 
   Never `--no-verify`. Confirm the per-ticket proxy config and conf dir are **not** staged.
 
+- **Self-review before you open it.** The reviewer on this repo has been right 57 times out of
+  57, and 36 of those were three classes a grep cannot see. Run the floor, then work the four
+  comparisons in [`pre-pr-review`](../pre-pr-review/SKILL.md) — each one holds two artifacts
+  that should agree next to each other, which is the only way to see your own blind spot:
+
+  ```bash
+  npm run review:pre-pr      # exits non-zero on a mechanisable defect
+  ```
+
 - Open the PR against `main`, pushing to `origin`, **never a fork**:
 
   ```bash

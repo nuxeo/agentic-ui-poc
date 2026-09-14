@@ -13,9 +13,15 @@
  * in one week is enough to see the shape, and the shape is what a pre-PR review skill has to
  * be built from — otherwise it is a list of somebody's habits.
  *
- * So the harvest is mechanical and the classification is not. `harvest` pulls every reviewer
- * comment with its file, line and body and leaves two fields blank; a human or an agent fills
+ * So the harvest is mechanical and the classification is not. `harvest` pulls every Copilot
+ * finding with its file, line and body and leaves two fields blank; a human or an agent fills
  * them in, judging one comment at a time; `publish` appends the result.
+ *
+ * "Every" means all three places GitHub puts reviewer feedback — inline review threads, the
+ * review **summary body**, and PR **conversation** comments. It used to mean only the first,
+ * which on PR #182 harvested 2 rows out of 5 findings: the summary body's verdict and the
+ * three findings Copilot had folded into its "Suppressed comments" block were all dropped,
+ * and the class counts this page exists to produce were wrong by 60%.
  *
  * ## The two fields that matter
  *
