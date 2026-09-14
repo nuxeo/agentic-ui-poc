@@ -687,8 +687,18 @@ someone may still need. Then:
 
 ## Recommended extras (do these when applicable, still autonomously)
 
-- **Commit the evidence steps file.** `scripts/collect-evidence/<TICKET>.mjs` is tracked on purpose
-  — it makes the fix re-verifiable by anyone later.
+- **Commit the scenes file only when no unit test can cover the behaviour** — a visual
+  regression, a cross-component interaction, something only a rendered browser can assert.
+  Otherwise leave it local.
+
+  The rule used to be "always commit it, so the fix is re-verifiable later". That is what the
+  regression test is for, and unlike a scenes file the test **runs in CI on every PR**. Nothing
+  runs the scenes files: no workflow references `collect-evidence`, so a committed one is code
+  that never executes and rots silently as selectors drift. Twenty-four had accumulated that way.
+  On NXENG-915 the scenes file was 142 lines of a 168-line pull request whose actual fix was one
+  line, which puts a reviewer's attention in the wrong place. The artifacts that matter —
+  screenshots, recordings, `STORY.md` — are attached to the ticket, where QA looks.
+
 - **Update the docs the DoD names** in the same PR rather than a follow-up.
 - **Attach the videos.** MCP can't attach — use the Phase 7.5 `curl`.
 - **Add the bug to `AGENTS/08-bug-patterns.md`** if the root cause is a pattern likely to recur.
