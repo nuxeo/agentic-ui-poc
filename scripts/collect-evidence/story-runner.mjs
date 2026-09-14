@@ -68,7 +68,10 @@ const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
 
 const ACT_NAMES = {
   1: 'Setup — where we are and what the user is trying to do',
-  2: phase === 'after' ? 'The fix — the behaviour as it now is' : 'The bug — the behaviour as reported',
+  2:
+    phase === 'after'
+      ? 'The fix — the behaviour as it now is'
+      : 'The bug — the behaviour as reported',
   3: 'The proof — the criterion asserted, and what still works',
 };
 
@@ -127,7 +130,9 @@ page.on('console', (msg) => {
   if (text.startsWith('Failed to load resource')) return;
   recorder.consoleErrors.push(text.slice(0, 300));
 });
-page.on('pageerror', (err) => recorder.consoleErrors.push(`uncaught: ${String(err.message).slice(0, 300)}`));
+page.on('pageerror', (err) =>
+  recorder.consoleErrors.push(`uncaught: ${String(err.message).slice(0, 300)}`),
+);
 page.on('response', (res) => {
   if (res.status() < 400) return;
   let path = res.url();
@@ -148,13 +153,39 @@ const BANNER_ID = '__evidence_banner__';
 /** @type {{actNo:number,title:string,intent?:string}|null} */
 let currentBanner = null;
 
+/**
+ * Set while a screenshot is being taken.
+ *
+ * Hiding the live overlay was not enough: the `load` handler's `waitFor` could resolve and
+ * inject a *new* spotlight between hiding it and `page.screenshot()`, putting the outline
+ * into a raw still — and the before/after pair audit compares those bytes.
+ */
+let suppressSpotlight = false;
+
 /** @type {{file:string,label:string,box:{x:number,y:number,w:number,h:number}}[]} */
 const highlights = [];
 
 // A scene almost always navigates, and navigation discards the injected banner. Re-inject on
 // every load so the caption survives the whole scene rather than only its first frame.
+/** Restorations that failed after a navigation, raised as a failed check at scene end. */
+const spotlightFailures = [];
+
 page.on('load', () => {
   if (currentBanner) injectBanner(currentBanner).catch(() => {});
+  if (!currentSpotlight) return;
+
+  // A `load` fires before Angular has rendered data-backed content, so re-injecting once and
+  // swallowing the miss meant a scene that navigated after `spotlight()` could carry on with
+  // no highlight at all while the run passed. Wait for the element, and if it never arrives
+  // record it — a spotlight that silently vanished is a recording that points at nothing.
+  const want = currentSpotlight;
+  (async () => {
+    await page.locator(want.selector).first().waitFor({ state: 'attached', timeout: 10_000 });
+    if (currentSpotlight === want) await injectSpotlight(want);
+  })().catch((err) => {
+    if (currentSpotlight !== want) return; // superseded or cleared; not a failure
+    spotlightFailures.push(`${want.selector}: ${err.message.split('\n')[0]}`);
+  });
 });
 
 /**
@@ -201,6 +232,196 @@ async function injectBanner({ actNo, title, intent }) {
     .catch(() => {});
 }
 
+const SPOTLIGHT_ID = '__evidence_spotlight__';
+
+/** @type {{selector:string,label?:string,tone:string}|null} */
+let currentSpotlight = null;
+
+/**
+ * Outline the element the scene is about, in the live page, so the **recording** points at it.
+ *
+ * The annotated stills produced afterwards can only be looked at one at a time; a viewer
+ * watching the video had no way to tell which part of the screen the fix touched. This draws
+ * a bright outline around the target and dims the rest, so the eye goes to the right place
+ * while the narration explains it.
+ *
+ * Like the caption banner it is hidden for every screenshot. Raw stills must stay unmodified:
+ * the before/after pair audit compares their bytes, and an overlay would make every pair
+ * differ for a reason that has nothing to do with the fix.
+ *
+ * @param {string} selector
+ * @param {{label?: string, dim?: boolean}} [opts]
+ */
+async function spotlight(selector, opts = {}) {
+  // The colour is derived from the half being captured and cannot be overridden. An
+  // overridable tone let a scene pin a constant colour and so show green while the defect
+  // was still on screen — contradicting the one thing the colour is supposed to mean,
+  // without the scene ever branching on `EVIDENCE_PHASE`.
+  const tone = phase === 'after' ? 'fixed' : phase === 'before' ? 'problem' : 'neutral';
+  currentSpotlight = { selector, label: opts.label, tone, dim: opts.dim !== false };
+
+  // Deliberately not caught. A mistyped or stale selector used to be swallowed here and in
+  // `injectSpotlight`, so the capture passed while the recording pointed at nothing — an
+  // evidence run that silently proves less than it claims. A declared spotlight is part of
+  // the evidence, so failing to find it fails the run.
+  await page.locator(selector).first().waitFor({ state: 'attached', timeout: 5000 });
+  await page
+    .locator(selector)
+    .first()
+    .scrollIntoViewIfNeeded()
+    .catch(() => {});
+  await injectSpotlight(currentSpotlight);
+}
+
+async function clearSpotlight() {
+  currentSpotlight = null;
+  await page.evaluate((id) => document.getElementById(id)?.remove(), SPOTLIGHT_ID).catch(() => {});
+}
+
+async function injectSpotlight({ selector, label, tone, dim }) {
+  if (suppressSpotlight) return; // a screenshot is in flight; do not draw into it
+  await page.evaluate(
+    ({ id, selector, label, tone, dim }) => {
+      // Carry the latch across a replacement. Re-injecting built a fresh root and so
+      // discarded `data-wasLost`, which meant a `shot()` after a recovery erased the evidence
+      // of the gap and the scene-end check passed over it.
+      const previous = document.getElementById(id);
+      const inheritedLoss = previous?.dataset.wasLost === '1';
+      previous?.remove();
+      if (!document.querySelector(selector)) {
+        throw new Error(`spotlight: no element matches ${selector}`);
+      }
+
+      const colours = { problem: '#ff5449', fixed: '#29c05a', neutral: '#4a9eff' };
+      const colour = colours[tone] ?? colours.neutral;
+
+      const root = document.createElement('div');
+      root.id = id;
+      root.setAttribute('aria-hidden', 'true');
+      if (inheritedLoss) root.dataset.wasLost = '1';
+      Object.assign(root.style, {
+        position: 'fixed',
+        inset: '0',
+        zIndex: '2147483646',
+        pointerEvents: 'none',
+      });
+
+      const box = document.createElement('div');
+      Object.assign(box.style, {
+        position: 'fixed',
+        borderRadius: '4px',
+        outline: `3px solid ${colour}`,
+        outlineOffset: '2px',
+        boxShadow: dim ? '0 0 0 9999px rgba(0,0,0,0.45)' : 'none',
+        transition: 'all 140ms ease-out',
+      });
+
+      const chip = document.createElement('div');
+      if (label) {
+        chip.textContent = label;
+        Object.assign(chip.style, {
+          position: 'fixed',
+          padding: '4px 10px',
+          borderRadius: '4px',
+          background: colour,
+          color: tone === 'fixed' ? '#04210f' : '#fff',
+          font: '600 13px/1.3 system-ui, sans-serif',
+          whiteSpace: 'nowrap',
+        });
+      }
+
+      // Re-resolved, not captured once. `withHashLocation()` makes `goto('/#/x')` a
+      // same-document navigation, so no `load` fires: the overlay survived while this
+      // function kept measuring the *detached* element from the previous route and pointed
+      // at a stale rectangle. Re-querying every tick also covers a component re-render
+      // replacing the node. When it is gone, mark the overlay lost so the run can see it.
+      // Connected is not the same as visible. A `display:none` node, a zero-sized box or an
+      // element scrolled entirely out of view all resolve fine while the outline shows
+      // nothing — so they count as lost. The scene-end check applies the identical
+      // predicate, via `window.__evidenceSpotlightVisible`.
+      const visible = (el) => {
+        if (!el || !el.isConnected) return false;
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0)
+          return false;
+        const r = el.getBoundingClientRect();
+        if (r.width < 1 || r.height < 1) return false;
+        return r.bottom > 0 && r.right > 0 && r.top < innerHeight && r.left < innerWidth;
+      };
+      window.__evidenceSpotlightVisible = (sel) => visible(document.querySelector(sel));
+
+      const place = () => {
+        const live = document.querySelector(selector);
+        if (!visible(live)) {
+          root.dataset.lost = '1';
+          // Latched for the lifetime of this spotlight, and never cleared. `lost` alone is
+          // transient: on a route change or re-render the target can be absent for several
+          // ticks — the outline visibly disappears — and then return before the hold ends,
+          // leaving a gap in the recording that a live query at scene end cannot see.
+          root.dataset.wasLost = '1';
+          box.style.display = 'none';
+          chip.style.display = 'none';
+          return;
+        }
+        delete root.dataset.lost;
+        box.style.display = '';
+        if (label) chip.style.display = '';
+        const r = live.getBoundingClientRect();
+        Object.assign(box.style, {
+          left: `${r.left}px`,
+          top: `${r.top}px`,
+          width: `${r.width}px`,
+          height: `${r.height}px`,
+        });
+        if (label) {
+          const above = r.top > 34;
+          Object.assign(chip.style, {
+            left: `${Math.max(6, r.left)}px`,
+            top: above ? `${r.top - 30}px` : `${r.bottom + 8}px`,
+          });
+        }
+      };
+      place();
+
+      root.append(box);
+      if (label) root.append(chip);
+      document.body.appendChild(root);
+
+      const onMove = () => place();
+      addEventListener('scroll', onMove, true);
+      addEventListener('resize', onMove);
+      const timer = setInterval(place, 250);
+
+      // Watch `root.isConnected`, not "is there an element with this id". Replacing a
+      // spotlight removes the old root and inserts the new one in a single task, so the
+      // outgoing observer looked up the id, found the *incoming* root, concluded nothing
+      // had been removed, and left its timer and listeners running forever. Every
+      // replacement leaked another set.
+      const obs = new MutationObserver(() => {
+        if (root.isConnected) return;
+        clearInterval(timer);
+        removeEventListener('scroll', onMove, true);
+        removeEventListener('resize', onMove);
+        obs.disconnect();
+      });
+      obs.observe(document.body, { childList: true });
+    },
+    { id: SPOTLIGHT_ID, selector, label, tone, dim },
+  );
+}
+
+async function setSpotlightVisible(visible) {
+  await page
+    .evaluate(
+      ({ id, visible }) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible ? 'block' : 'none';
+      },
+      { id: SPOTLIGHT_ID, visible },
+    )
+    .catch(() => {});
+}
+
 async function setBannerVisible(visible) {
   await page
     .evaluate(
@@ -231,7 +452,10 @@ async function card(title, subtitle, holdMs = 2200) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  return String(s).replace(
+    /[&<>"]/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+  );
 }
 
 /**
@@ -239,32 +463,45 @@ function escapeHtml(s) {
  * draw a callout later from a real bounding box rather than a hand-placed rectangle.
  */
 async function shot(name, opts = {}) {
+  suppressSpotlight = true;
   await setBannerVisible(false);
-  const file = await helpers.screenshot(name, opts.highlight ? page.locator(opts.highlight).first() : undefined);
-  const shotName = file.split('/').pop();
+  await setSpotlightVisible(false);
+  try {
+    const file = await helpers.screenshot(
+      name,
+      opts.highlight ? page.locator(opts.highlight).first() : undefined,
+    );
+    const shotName = file.split('/').pop();
 
-  if (opts.highlight) {
-    const box = await page
-      .locator(opts.highlight)
-      .first()
-      .boundingBox()
-      .catch(() => null);
-    const vp = page.viewportSize();
-    if (box && vp) {
-      highlights.push({
-        file: shotName,
-        label: opts.label ?? name,
-        box: {
-          x: (box.x / vp.width) * 100,
-          y: (box.y / vp.height) * 100,
-          w: (box.width / vp.width) * 100,
-          h: (box.height / vp.height) * 100,
-        },
-      });
+    if (opts.highlight) {
+      const box = await page
+        .locator(opts.highlight)
+        .first()
+        .boundingBox()
+        .catch(() => null);
+      const vp = page.viewportSize();
+      if (box && vp) {
+        highlights.push({
+          file: shotName,
+          label: opts.label ?? name,
+          box: {
+            x: (box.x / vp.width) * 100,
+            y: (box.y / vp.height) * 100,
+            w: (box.width / vp.width) * 100,
+            h: (box.height / vp.height) * 100,
+          },
+        });
+      }
     }
+    return file;
+  } finally {
+    // In `finally` so an assertion or locator failure mid-capture cannot leave the overlay
+    // suppressed for the rest of the run.
+    suppressSpotlight = false;
+    await setBannerVisible(true);
+    await setSpotlightVisible(true);
+    if (currentSpotlight) await injectSpotlight(currentSpotlight);
   }
-  await setBannerVisible(true);
-  return file;
 }
 
 // ---------------------------------------------------------------- run
@@ -310,13 +547,29 @@ try {
       }
 
       await showBanner(actNo, scene.title, scene.intent);
+      await clearSpotlight();
       // A scene may call `h.step()`, which opens a *new* record. Everything it asserts
       // afterwards lands there, not on `current` — so counting only `current`'s checks
       // reported "scene asserts something" as failed on a scene that had asserted plenty,
       // and left the later records without the act or criterion. Track the whole span.
       const firstRecord = recorder.steps.length - 1;
       const checksBefore = current.checks.length;
-      await scene.run(page, { ...helpers, shot, step: helpers.step.bind(helpers) });
+      await scene.run(page, {
+        ...helpers,
+        shot,
+        spotlight,
+        clearSpotlight,
+        step: helpers.step.bind(helpers),
+      });
+
+      // A scene may instead just declare what it is about. Applied after `run`, so the
+      // outline is on screen for the hold below — the part of the recording a viewer
+      // actually pauses on.
+      if (scene.spotlight) {
+        const sp =
+          typeof scene.spotlight === 'string' ? { selector: scene.spotlight } : scene.spotlight;
+        await spotlight(sp.selector, sp);
+      }
 
       const spanned = recorder.steps.slice(firstRecord);
       for (const rec of spanned) {
@@ -341,6 +594,48 @@ try {
       // Hold on the finished state so the video is followable rather than a flicker.
       await page.waitForTimeout(scene.hold ?? 2500);
 
+      // Checked *after* the hold, because the hold is the part a viewer pauses on: validating
+      // before it meant an element that vanished during those seconds was never noticed, and
+      // the next scene cleared the overlay without looking.
+      //
+      // Resolved live rather than read from `data-lost`, which a 250ms interval maintains — a
+      // target removed just before the scene returned had not been flagged yet.
+      //
+      // A restoration that timed out counts even if a later one succeeded: the recording still
+      // has the gap, so the count is part of the condition and not merely the message.
+      if (currentSpotlight) {
+        const sel = currentSpotlight.selector;
+        const state = await page
+          .evaluate(
+            ({ id, sel }) => {
+              const el = document.getElementById(id);
+              const target = document.querySelector(sel);
+              const fn = window.__evidenceSpotlightVisible;
+              return {
+                present: !!el,
+                // The same predicate `place()` uses, so the two cannot disagree. Falls back
+                // to a connectivity test only if the helper is somehow absent.
+                resolves: fn ? fn(sel) : !!target && target.isConnected,
+                wasLost: el?.dataset.wasLost === '1',
+              };
+            },
+            { id: SPOTLIGHT_ID, sel },
+          )
+          .catch(() => ({ present: false, resolves: false, wasLost: true }));
+
+        const gaps = spotlightFailures.length;
+        const ok = state.present && state.resolves && !state.wasLost && gaps === 0;
+        const detail = !state.present
+          ? `the overlay is gone (${sel})`
+          : !state.resolves
+            ? `${sel} is not visibly outlined — missing, hidden, zero-sized or off-screen`
+            : state.wasLost
+              ? `${sel} disappeared during the scene and came back — the recording has a gap`
+              : `restoration failed ${gaps} time(s) during this scene — ${spotlightFailures.join('; ')}`;
+        helpers.check('the spotlight still points at its element', ok, detail);
+      }
+      spotlightFailures.length = 0;
+
       const sceneErrors = recorder.consoleErrors.slice(errorsBefore);
       recorder.steps[recorder.steps.length - 1].consoleErrors = sceneErrors;
       if (sceneErrors.length) {
@@ -352,15 +647,22 @@ try {
     const acts = new Set(declarative.map((s) => s.act ?? 1));
     helpers.step('Story structure');
     for (const n of [1, 2, 3]) {
-      helpers.check(`act ${n} present — ${ACT_NAMES[n]}`, acts.has(n), `no scene declared act: ${n}`);
+      helpers.check(
+        `act ${n} present — ${ACT_NAMES[n]}`,
+        acts.has(n),
+        `no scene declared act: ${n}`,
+      );
     }
   } else if (typeof mod.default === 'function') {
-    console.log('  [note] legacy steps file — no acts or criteria. Convert to `export const scenes`.');
-    await mod.default(page, { ...helpers, shot }, outDir);
+    console.log(
+      '  [note] legacy steps file — no acts or criteria. Convert to `export const scenes`.',
+    );
+    await mod.default(page, { ...helpers, shot, spotlight, clearSpotlight }, outDir);
   } else {
     throw new Error(`${scenesFile} must export \`scenes\` (array) or a default async function`);
   }
 
+  await clearSpotlight();
   await card('End of capture', `${ticketId}${phase ? ` — ${phase}` : ''}`, 1600);
 } catch (err) {
   if (err instanceof PreconditionError) {
@@ -377,7 +679,10 @@ try {
   await browser.close();
   if (video) {
     try {
-      await rename(await video.path(), resolve(outDir, `${ticketId}${phase ? `-${phase}` : ''}.webm`));
+      await rename(
+        await video.path(),
+        resolve(outDir, `${ticketId}${phase ? `-${phase}` : ''}.webm`),
+      );
     } catch (err) {
       console.warn(`  could not rename the recording: ${err.message}`);
     }
@@ -442,7 +747,9 @@ await writeFile(resolve(outDir, 'manifest.json'), `${JSON.stringify(manifest, nu
 await writeFile(resolve(outDir, 'STORY.md'), renderStory(manifest), 'utf8');
 if (chapters.length) await writeFile(resolve(outDir, 'chapters.vtt'), renderVtt(manifest), 'utf8');
 
-console.log(`\nverdict  ${verdict.toUpperCase()} — ${totalChecks - failed.length}/${totalChecks} checks across ${recorder.steps.length} scene(s)`);
+console.log(
+  `\nverdict  ${verdict.toUpperCase()} — ${totalChecks - failed.length}/${totalChecks} checks across ${recorder.steps.length} scene(s)`,
+);
 console.log(`story    ${resolve(outDir, 'STORY.md')}`);
 
 // Two different questions, and they were conflated. "Did the capture run correctly?" decides
@@ -450,7 +757,14 @@ console.log(`story    ${resolve(outDir, 'STORY.md')}`);
 // *supposed* to fail its assertions — that is the bug reproducing — so exiting 1 there made
 // the documented sequence look like a broken command, indistinguishable from malformed
 // evidence. Assertion failures are a result; structural defects are a failure.
-const STRUCTURAL = new Set(['scene asserts something', 'scene names an acceptance criterion']);
+const STRUCTURAL = new Set([
+  'scene asserts something',
+  'scene names an acceptance criterion',
+  // A missing or stale spotlight is a broken capture, not a failed claim. Left as an ordinary
+  // check it exited 0 and printed "the capture itself is sound" over a recording that pointed
+  // at nothing — precisely the acceptance this file exists to prevent.
+  'the spotlight still points at its element',
+]);
 const structural = failed.filter((f) => STRUCTURAL.has(f.name) || f.name.startsWith('act '));
 const captureBroken = Boolean(runError) || Boolean(preconditionFailure) || structural.length > 0;
 
@@ -461,8 +775,12 @@ if (verdict === 'legacy-no-assertions') {
       '  with a criterion and an assertion per scene when you next touch this ticket.',
   );
 } else if (verdict !== 'pass') {
-  for (const f of failed) console.log(`  [FAIL] scene ${f.step} (${f.label}) — ${f.name}${f.detail ? `: ${f.detail}` : ''}`);
-  if (totalChecks === 0) console.log('  No checks were recorded. A capture that asserts nothing is not evidence.');
+  for (const f of failed)
+    console.log(
+      `  [FAIL] scene ${f.step} (${f.label}) — ${f.name}${f.detail ? `: ${f.detail}` : ''}`,
+    );
+  if (totalChecks === 0)
+    console.log('  No checks were recorded. A capture that asserts nothing is not evidence.');
   if (!captureBroken) {
     console.log(
       '\n  The capture itself is sound — these are failed claims, not a broken run. For a BEFORE\n' +
@@ -533,7 +851,11 @@ function renderStory(m) {
     `| Branch / commit | \`${m.environment.branch ?? '?'}\` @ \`${m.environment.commit ?? '?'}\` |`,
     `| Nuxeo image | ${m.environment.nuxeoImage ? `\`${m.environment.nuxeoImage}\`` : '_not recorded_'} |`,
     `| Scenes file | \`${m.environment.scenesFile}\` |`,
-    ...(m.video ? [`| Recording | \`${m.video}\`${m.chapters.length ? ' (chapters in `chapters.vtt`)' : ''} |`] : []),
+    ...(m.video
+      ? [
+          `| Recording | \`${m.video}\`${m.chapters.length ? ' (chapters in `chapters.vtt`)' : ''} |`,
+        ]
+      : []),
     '',
   ];
 
@@ -572,8 +894,12 @@ function renderStory(m) {
 
   if (m.totals.failed > 0) {
     lines.push('## Failed checks', '');
-    for (const f of m.steps.flatMap((s) => s.checks.filter((c) => !c.passed).map((c) => ({ s, c })))) {
-      lines.push(`- Scene ${f.s.index} (${f.s.label}) — **${f.c.name}**${f.c.detail ? `: ${f.c.detail}` : ''}`);
+    for (const f of m.steps.flatMap((s) =>
+      s.checks.filter((c) => !c.passed).map((c) => ({ s, c })),
+    )) {
+      lines.push(
+        `- Scene ${f.s.index} (${f.s.label}) — **${f.c.name}**${f.c.detail ? `: ${f.c.detail}` : ''}`,
+      );
     }
     lines.push('');
   }
@@ -590,7 +916,9 @@ function renderStory(m) {
     if (s.intent) lines.push(`_${s.intent}_`, '');
     if (s.criterion) lines.push(`Proves: **${s.criterion}**`, '');
     for (const c of s.checks) {
-      lines.push(`- ${c.passed ? '[pass]' : '[FAIL]'} ${c.name}${c.detail ? ` — ${c.detail}` : ''}`);
+      lines.push(
+        `- ${c.passed ? '[pass]' : '[FAIL]'} ${c.name}${c.detail ? ` — ${c.detail}` : ''}`,
+      );
     }
     for (const n of s.notes ?? []) lines.push(`- _not covered:_ ${n}`);
     for (const e of s.consoleErrors ?? []) lines.push(`- _observed in the browser:_ \`${e}\``);
