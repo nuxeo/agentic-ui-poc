@@ -74,7 +74,7 @@ compared against this one:
 node scripts/agent-metrics.mjs start "$TICKET" --kind bug --model <the model you are>
 node scripts/agent-metrics.mjs phase "$TICKET" <phase-id>    # at each phase below
 node scripts/agent-metrics.mjs event "$TICKET" retry|gate-fail|stop-condition|evidence-rerun
-node scripts/agent-metrics.mjs end   "$TICKET" --outcome merged|abandoned|blocked
+node scripts/agent-metrics.mjs end   "$TICKET" --outcome pr-open|merged|blocked|abandoned
 ```
 
 Phase ids are a fixed list (`ticket`, `expected`, `workspace`, `reproduce`, `decide`, `fix`,
@@ -250,8 +250,11 @@ stop condition, not something to resolve by picking the reading that is easiest 
 **Reproduce the bug before writing any code.** The workspace is already on the branch cut from
 `origin/main`, so the repro reflects released behaviour.
 
-> **Reproduce autonomously (no confirmation).** Everything runs against **your** container
-> (`$NX_URL`), never the shared `nuxeo` instance.
+> **Reproduce autonomously (no confirmation).** Everything runs against `$NX_URL`. By default
+> that is the **shared** `nuxeo` instance — the isolation is `$NX_DATA_ROOT`
+> (`/default-domain/workspaces/<TICKET>`), so create and seed your documents there and do not
+> treat repository-wide operations as isolated. Only under `--nuxeo own` (Phase 1.5) is
+> `$NX_URL` a container of your own.
 >
 > **Always capture BOTH images and videos**, before _and_ after. Never ask which format.
 
@@ -646,14 +649,27 @@ Reference the evidence in both forms: `$EVID/before/` (`*.png` + `<TICKET>-befor
 
 ## Phase 10 — Clean up & report
 
+**Close and publish the metrics first, then tear down.** The teardown removes the worktree you
+are standing in _and_ the copy of `scripts/agent-metrics.mjs` inside it, so running `end` or
+`publish` afterwards fails on a deleted directory:
+
 ```bash
+node scripts/agent-metrics.mjs end     "$TICKET" --outcome pr-open
+node scripts/agent-metrics.mjs publish "$TICKET"
+cd "$REPO_ROOT"     # leave the worktree before deleting it
 bash .cursor/skills/fix-bug/scripts/new-ticket-workspace.sh "$TICKET" --remove
 ```
 
-This removes the worktree — and the container too, if the ticket had its own — and **keeps the
-evidence**. It refuses to delete uncommitted work unless you add `--force`. The shared `nuxeo`
-container and the ticket's Nuxeo data root are left in place: the data root is cheap, and
-deleting it would destroy a repro someone may still need. Then:
+**Record the outcome you actually observed.** This workflow opens and validates a PR; it does
+not merge one. Use `pr-open` when you finish with the PR open, `merged` only if you watched it
+merge, `blocked` if a stop condition ended the run, and `abandoned` if the work was dropped.
+Publishing `merged` by default would make every row claim a delivery that had not happened.
+
+The teardown removes the worktree — and the container and its indices too, if the ticket had its
+own — and **keeps the evidence**. It refuses to delete uncommitted work unless you add `--force`,
+and checks that before destroying anything. The shared `nuxeo` container and the ticket's Nuxeo
+data root are left in place: the data root is cheap, and deleting it would destroy a repro
+someone may still need. Then:
 
 - Stop the dev server you started. Kill only PIDs you started — never `pkill -f node`.
 - Never remove or disturb the shared `nuxeo` / `nuxeo-opensearch` containers, the `nuxeo-net`
@@ -661,14 +677,7 @@ deleting it would destroy a repro someone may still need. Then:
 - Leave the evidence in `$EVID` — it is the one thing that outlives the run. Never commit it.
 - Report the PR's final CI state. If a long check (`codeql`, `sonarcloud`, `a11y`,
   `build-marketplace`) is still running, say so explicitly — do **not** claim green until it is.
-- **Close and publish the metrics**, so the next run has something to be compared against:
-
-  ```bash
-  node scripts/agent-metrics.mjs end     "$TICKET" --outcome merged
-  node scripts/agent-metrics.mjs publish "$TICKET"
-  ```
-
-  `publish` appends one row — **user, ticket id, time taken** — to
+- `publish` (run above, before teardown) appends one row — **user, ticket id, time taken** — to
   [Bug Fix/Feature Development Skill Performance](https://hyland.atlassian.net/wiki/x/nQFlAAE),
   authenticating as the engineer who ran it. The per-phase breakdown is **not** published; it
   stays in the local `metrics.jsonl` for tuning the skill. Print that table in the final summary

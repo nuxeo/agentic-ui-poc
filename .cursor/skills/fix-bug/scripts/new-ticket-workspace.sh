@@ -5,11 +5,18 @@
 #   new-ticket-workspace.sh <TICKET-ID> [--branch <name>]
 #   new-ticket-workspace.sh <TICKET-ID> --remove [--force]
 #
-# A workspace is: its own git worktree, its own node_modules, its own freshly
-# pulled Nuxeo container on its own host port, its own dev-server port, and its
-# own proxy config wiring the two together. Nothing is shared with the primary
-# checkout or with the long-lived `nuxeo` container, so two agents can work two
-# tickets at once without fighting over HEAD, the stash stack, or a port.
+# A workspace is: its own git worktree, its own dev-server port, its own proxy
+# config, and its own Nuxeo data root at /default-domain/workspaces/<TICKET>. Two
+# agents can therefore work two tickets at once without fighting over HEAD, the
+# stash stack, or a port.
+#
+# What is *shared* by default, and deliberately:
+#   - node_modules is hardlinked from the primary checkout when the lockfile
+#     matches. Those are the same inodes, so never `npm install` in a workspace.
+#   - Nuxeo is the long-lived `nuxeo` container; the per-ticket data root is the
+#     isolation. An extra container costs ~2 GB of RAM. Pass `--nuxeo own` for a
+#     dedicated, freshly pulled one when the ticket needs a different package set
+#     or server config, a clean instance, a specific version, or destructive ops.
 #
 # Options:
 #   --branch <name>   create/checkout this branch in the worktree (default: fix/<ticket-slug>)
@@ -91,6 +98,14 @@ BRANCH="${BRANCH:-fix/$SLUG}"
 if [[ $REMOVE -eq 1 ]]; then
   echo "Tearing down workspace for $TICKET"
 
+  # Refuse *before* destroying anything. This used to remove the container and its indices
+  # first and only then check the worktree, so `--remove` on dirty work killed the live server
+  # and the repro state and then aborted — the opposite of the promise that work survives
+  # without `--force`.
+  if [[ -d "$WT" ]] && [[ $FORCE -eq 0 ]] && [[ -n "$(git -C "$WT" status --porcelain 2>/dev/null)" ]]; then
+    die "$WT has uncommitted changes. Commit them, or re-run with --force to discard. Nothing was removed."
+  fi
+
   if docker ps -aq -f "name=^${CONTAINER}$" | grep -q .; then
     docker rm -f "$CONTAINER" >/dev/null
     note "removed container $CONTAINER"
@@ -107,9 +122,6 @@ if [[ $REMOVE -eq 1 ]]; then
   fi
 
   if [[ -d "$WT" ]]; then
-    if [[ $FORCE -eq 0 ]] && [[ -n "$(git -C "$WT" status --porcelain 2>/dev/null)" ]]; then
-      die "$WT has uncommitted changes. Commit them, or re-run with --force to discard."
-    fi
     git -C "$REPO_ROOT" worktree remove --force "$WT"
     git -C "$REPO_ROOT" worktree prune
     note "removed worktree $WT"
@@ -163,7 +175,12 @@ else
   NX_PORT="$(docker port "$SHARED_CONTAINER" 8080/tcp 2>/dev/null | head -1 | sed 's/.*://')"
   [[ -n "$NX_PORT" ]] || die "cannot read the published port of '$SHARED_CONTAINER'"
 fi
-APP_PORT="$(free_port 4210)"
+# Reuse the port this workspace was created with. Allocating a free one on every run meant
+# that re-running while the dev server was listening moved the port to the next free one and
+# rewrote env.sh, so the evidence commands then targeted a port with nothing behind it — the
+# advertised idempotent reuse quietly broke exactly when the workspace was in use.
+APP_PORT="$( [[ -f "$WT/env.sh" ]] && sed -n 's/^export NX_APP_PORT="\([0-9]*\)".*/\1/p' "$WT/env.sh" | head -1 )"
+[[ -n "${APP_PORT:-}" ]] || APP_PORT="$(free_port 4210)"
 
 # ---------------------------------------------------------------- worktree
 
@@ -246,8 +263,15 @@ nuxeo.audit.backend.default.opensearch2.settings.numberOfReplicas=0
 nuxeo.audit.backend.default.opensearch2.settings.numberOfShards=1
 EOF
 
-  if docker ps -aq -f "name=^${CONTAINER}$" | grep -q .; then
-    note "container $CONTAINER already exists — reusing"
+  # Running, stopped and absent are three different states. Matching them all with `docker ps
+  # -aq` reported a stopped container as a ready workspace, because the readiness check only
+  # ran on the newly-created path.
+  if docker ps -q -f "name=^${CONTAINER}$" | grep -q .; then
+    note "container $CONTAINER already running — reusing"
+    NX_PORT="$(docker port "$CONTAINER" 8080/tcp | head -1 | sed 's/.*://')"
+  elif docker ps -aq -f "name=^${CONTAINER}$" | grep -q .; then
+    note "container $CONTAINER exists but is stopped — starting it"
+    docker start "$CONTAINER" >/dev/null
     NX_PORT="$(docker port "$CONTAINER" 8080/tcp | head -1 | sed 's/.*://')"
   else
     # Pulling dominates the cost: a measured `--nuxeo own` workspace took 6m26s, of which
@@ -263,8 +287,15 @@ EOF
     echo "$DIGEST" > "$EVID/nuxeo-image.txt"
     note "image digest recorded in $EVID/nuxeo-image.txt"
 
+    # Creating the network when it is missing does not help: the generated conf points at
+    # `http://nuxeo-opensearch:9200`, and an empty network has no such host, so Nuxeo would
+    # boot and never become ready. Fail with setup guidance instead of starting something
+    # that cannot work.
     docker network inspect "$SHARED_NETWORK" >/dev/null 2>&1 \
-      || docker network create "$SHARED_NETWORK" >/dev/null
+      || die "docker network '$SHARED_NETWORK' does not exist. The dedicated container needs it to reach OpenSearch. Start the shared dev stack first, or create the network and attach an OpenSearch container named 'nuxeo-opensearch'."
+    docker network inspect "$SHARED_NETWORK" --format '{{range .Containers}}{{.Name}} {{end}}' \
+      | grep -q 'nuxeo-opensearch' \
+      || die "no 'nuxeo-opensearch' container is attached to network '$SHARED_NETWORK'. The generated conf points at http://nuxeo-opensearch:9200, so Nuxeo would never become ready. Start it before using --nuxeo own."
 
     docker run -d --name "$CONTAINER" \
       --network "$SHARED_NETWORK" \
@@ -275,15 +306,20 @@ EOF
       -v "$WT/.nuxeo-conf:/etc/nuxeo/conf.d:ro" \
       "$IMAGE" >/dev/null
     note "started $CONTAINER on http://localhost:$NX_PORT/nuxeo"
-
-    printf '  waiting for Nuxeo to start'
-    for _ in $(seq 1 120); do
-      if [[ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$NX_PORT/nuxeo/runningstatus" || true)" == "200" ]]; then
-        echo " — up"; break
-      fi
-      printf '.'; sleep 5
-    done
   fi
+
+  # One readiness check for every path — created, started, or already running — and it must
+  # be able to fail. The old loop ran only after `docker run` and had no check after its
+  # timeout, so a Nuxeo that never came up was still announced as a ready workspace.
+  printf '  waiting for Nuxeo on :%s' "$NX_PORT"
+  ready=0
+  for _ in $(seq 1 120); do
+    if [[ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$NX_PORT/nuxeo/runningstatus" || true)" == "200" ]]; then
+      ready=1; echo " — up"; break
+    fi
+    printf '.'; sleep 5
+  done
+  [[ $ready -eq 1 ]] || die "Nuxeo on :$NX_PORT did not become ready within 10 minutes. Check 'docker logs $CONTAINER'."
 else
   # Sharing the instance costs nothing and starts instantly, but two tickets writing into the
   # same tree trip over each other's documents. A per-ticket workspace keeps the data apart
@@ -291,24 +327,28 @@ else
   # would destroy a repro another agent may still need.
   docker inspect "$SHARED_CONTAINER" --format '{{.Config.Image}}' > "$EVID/nuxeo-image.txt" 2>/dev/null || true
   note "sharing container $SHARED_CONTAINER on http://localhost:$NX_PORT/nuxeo"
+fi
 
-  # Check before creating. Nuxeo does **not** reject a duplicate name: it auto-renames the
-  # new document (`NXSAT-123.1789367579996`) and returns 201, so a `409` branch never fires
-  # and every re-run of this script would leave another workspace behind. Measured, not
-  # assumed — three of them accumulated before this check existed.
-  api="http://localhost:$NX_PORT/nuxeo/api/v1/path/default-domain/workspaces"
-  exists="$(curl -s -o /dev/null -w '%{http_code}' -u "$NUXEO_USER:$NUXEO_PASS" "$api/$TICKET" || true)"
-  if [[ "$exists" == "200" ]]; then
-    note "data root $DATA_ROOT already exists — reusing"
-  else
-    code="$(curl -s -o /dev/null -w '%{http_code}' -u "$NUXEO_USER:$NUXEO_PASS" \
-      -H 'Content-Type: application/json' -X POST "$api" \
-      -d "{\"entity-type\":\"document\",\"name\":\"$TICKET\",\"type\":\"Workspace\",\"properties\":{\"dc:title\":\"$TICKET — agent workspace\"}}" || true)"
-    case "$code" in
-      201) note "created data root $DATA_ROOT" ;;
-      *)   note "could not create $DATA_ROOT (HTTP $code) — seed data manually if the repro needs it" ;;
-    esac
-  fi
+# The data root belongs to both modes. It used to live inside the shared branch only, while
+# `env.sh` advertised `NX_DATA_ROOT` in both — so under `--nuxeo own` every seeding or
+# navigation step pointed at a document that was never created.
+#
+# Check before creating: Nuxeo does **not** reject a duplicate name. It auto-renames the new
+# document (`NXSAT-123.1789367579996`) and returns 201, so a `409` branch never fires and
+# every re-run would leave another workspace behind. Measured — three accumulated before this
+# check existed.
+api="http://localhost:$NX_PORT/nuxeo/api/v1/path/default-domain/workspaces"
+exists="$(curl -s -o /dev/null -w '%{http_code}' -u "$NUXEO_USER:$NUXEO_PASS" "$api/$TICKET" || true)"
+if [[ "$exists" == "200" ]]; then
+  note "data root $DATA_ROOT already exists — reusing"
+else
+  code="$(curl -s -o /dev/null -w '%{http_code}' -u "$NUXEO_USER:$NUXEO_PASS" \
+    -H 'Content-Type: application/json' -X POST "$api" \
+    -d "{\"entity-type\":\"document\",\"name\":\"$TICKET\",\"type\":\"Workspace\",\"properties\":{\"dc:title\":\"$TICKET — agent workspace\"}}" || true)"
+  case "$code" in
+    201) note "created data root $DATA_ROOT" ;;
+    *)   note "could not create $DATA_ROOT (HTTP $code) — seed data manually if the repro needs it" ;;
+  esac
 fi
 
 # ---------------------------------------------------------------- proxy conf

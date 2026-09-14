@@ -6,7 +6,7 @@
  *   node scripts/agent-metrics.mjs start   <TICKET> [--kind bug|feature] [--model <name>]
  *   node scripts/agent-metrics.mjs phase   <TICKET> <phase-id>     # closes the previous phase
  *   node scripts/agent-metrics.mjs event   <TICKET> <type> [detail]
- *   node scripts/agent-metrics.mjs end     <TICKET> [--outcome merged|abandoned|blocked]
+ *   node scripts/agent-metrics.mjs end     <TICKET> [--outcome pr-open|merged|blocked|abandoned]
  *   node scripts/agent-metrics.mjs report  <TICKET>
  *   node scripts/agent-metrics.mjs publish <TICKET>                # appends a row to Confluence
  *
@@ -147,7 +147,15 @@ switch (cmd) {
   }
 
   case 'end': {
-    await append({ type: 'end', outcome: flag('outcome', 'unknown') });
+    // Only these four. `merged` used to be passed by default from a workflow that opens a PR
+    // and never merges it, so every published row claimed a delivery that had not happened.
+    const outcome = flag('outcome', 'unknown');
+    const VALID = ['pr-open', 'merged', 'blocked', 'abandoned', 'unknown'];
+    if (!VALID.includes(outcome)) {
+      console.error(`Unknown outcome "${outcome}". Valid: ${VALID.join(', ')}`);
+      process.exit(2);
+    }
+    await append({ type: 'end', outcome });
     await report();
     break;
   }
@@ -171,9 +179,16 @@ async function summarise() {
   const rows = await read();
   if (!rows.length) return null;
 
-  const start = rows.find((r) => r.type === 'start');
-  const end = rows.find((r) => r.type === 'end');
-  const marks = rows.filter((r) => r.type === 'phase' || r.type === 'end');
+  // Scope to the *latest* run. The log is append-only per ticket, so taking the first
+  // `start` merged every subsequent run into the original one: a second run would report the
+  // first run's model and window while summing both runs' phases, and `publish` would append
+  // that corrupted total to the shared page.
+  const lastStart = rows.map((r) => r.type).lastIndexOf('start');
+  const run = lastStart === -1 ? rows : rows.slice(lastStart);
+
+  const start = run.find((r) => r.type === 'start');
+  const end = run.find((r) => r.type === 'end');
+  const marks = run.filter((r) => r.type === 'phase' || r.type === 'end');
 
   /** @type {Map<string,{ms:number,events:string[]}>} */
   const phases = new Map();
@@ -187,7 +202,7 @@ async function summarise() {
   }
 
   // Attribute each event to the phase that was open when it happened.
-  for (const e of rows.filter((r) => r.type === 'event')) {
+  for (const e of run.filter((r) => r.type === 'event')) {
     const open = [...marks].reverse().find((m) => m.type === 'phase' && new Date(m.at) <= new Date(e.at));
     if (open) phases.get(open.phase)?.events.push(e.event);
   }
@@ -195,9 +210,9 @@ async function summarise() {
   const totalMs = phases.size
     ? [...phases.values()].reduce((n, p) => n + p.ms, 0)
     : 0;
-  const wallMs = start ? new Date((end ?? rows[rows.length - 1]).at).getTime() - new Date(start.at).getTime() : 0;
+  const wallMs = start ? new Date((end ?? run[run.length - 1]).at).getTime() - new Date(start.at).getTime() : 0;
 
-  return { start, end, phases, totalMs, wallMs, rows };
+  return { start, end, phases, totalMs, wallMs, rows: run };
 }
 
 function hhmm(ms) {

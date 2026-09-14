@@ -125,9 +125,12 @@ From `scripts/beta-harness/helpers.mjs`, plus `shot()` added by the runner.
 ## Legacy steps files
 
 The twenty-odd `NXSAT-*.mjs` files that export a default `async (page, helpers, outDir)`
-still run, and now get a `STORY.md`, a manifest and console capture for free. They have no
-acts or criteria, so the runner logs a note rather than failing them. Convert one to
-`export const scenes` when you next touch it.
+still run, and get a `STORY.md`, a manifest and console capture for free.
+
+None of them calls an assertion, so they end on the verdict **`legacy-no-assertions`** and
+exit `0`. That verdict is deliberately neither `pass` nor `fail`: the capture did what it was
+written to do, but it proves nothing, so it can never be cited as evidence. Convert one to
+`export const scenes` when you next touch it, and it starts counting.
 
 ## How the runner works
 

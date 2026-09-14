@@ -366,12 +366,19 @@ const failed = recorder.steps.flatMap((s) =>
 
 // A capture that asserts nothing cannot pass. This is the rule the old runner had no way to
 // express, and the reason a green capture used to mean only that the browser opened.
+//
+// Legacy steps files pre-date that contract: none of them calls an assertion, so treating
+// zero checks as `fail` would have made every one of them exit 1 while the documentation
+// claimed they still worked. They get their own verdict instead — not `pass`, so it can
+// never be cited as evidence, but not a failure of the capture either.
 const verdict = preconditionFailure
   ? 'precondition-not-met'
   : runError
     ? 'error'
     : totalChecks === 0
-      ? 'fail'
+      ? declarative
+        ? 'fail'
+        : 'legacy-no-assertions'
       : failed.length === 0
         ? 'pass'
         : 'fail';
@@ -379,6 +386,7 @@ const verdict = preconditionFailure
 const manifest = {
   ticket: ticketId,
   phase: phase || null,
+  mode: declarative ? 'scenes' : 'legacy',
   verdict,
   finishedAt: new Date().toISOString(),
   environment: {
@@ -407,7 +415,14 @@ if (chapters.length) await writeFile(resolve(outDir, 'chapters.vtt'), renderVtt(
 
 console.log(`\nverdict  ${verdict.toUpperCase()} — ${totalChecks - failed.length}/${totalChecks} checks across ${recorder.steps.length} scene(s)`);
 console.log(`story    ${resolve(outDir, 'STORY.md')}`);
-if (verdict !== 'pass') {
+
+if (verdict === 'legacy-no-assertions') {
+  console.log(
+    '\n  This is a legacy steps file: it produced screenshots but asserted nothing, so the\n' +
+      '  capture cannot be cited as evidence of anything. Convert it to `export const scenes`\n' +
+      '  with a criterion and an assertion per scene when you next touch this ticket.',
+  );
+} else if (verdict !== 'pass') {
   for (const f of failed) console.log(`  [FAIL] scene ${f.step} (${f.label}) — ${f.name}${f.detail ? `: ${f.detail}` : ''}`);
   if (totalChecks === 0) console.log('  No checks were recorded. A capture that asserts nothing is not evidence.');
   process.exit(1);
@@ -490,7 +505,16 @@ function renderStory(m) {
   if (m.error) {
     lines.push('> **The capture aborted before completing every scene.**', '>', `> ${m.error}`, '');
   }
-  if (m.totals.checks === 0) {
+  if (m.verdict === 'legacy-no-assertions') {
+    lines.push(
+      '> **Legacy capture — screenshots only, nothing asserted.**',
+      '>',
+      '> This steps file pre-dates the assertion contract. The images below show that pages',
+      '> rendered; they do not show that they rendered the right thing, so this cannot be',
+      '> cited as evidence. Convert it to `export const scenes`.',
+      '',
+    );
+  } else if (m.totals.checks === 0) {
     lines.push(
       '> **No checks were recorded, so this capture proves nothing.**',
       '>',

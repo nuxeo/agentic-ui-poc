@@ -63,4 +63,10 @@ const res = await fetch(`${BASE}/api/v2/pages/${PAGE}`, {
     version: { number: cur.version.number + 1, message: 'seed metrics table' },
   }),
 });
-console.log(res.ok ? `seeded v${cur.version.number + 1}` : `FAILED ${res.status}: ${(await res.text()).slice(0, 400)}`);
+// Exit non-zero on failure. Printing FAILED and returning 0 let callers and automation
+// treat an unsuccessful *destructive* repair as success.
+if (!res.ok) {
+  console.error(`FAILED ${res.status}: ${(await res.text()).slice(0, 400)}`);
+  process.exit(1);
+}
+console.log(`seeded v${cur.version.number + 1}`);

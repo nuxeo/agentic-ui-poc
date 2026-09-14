@@ -133,9 +133,9 @@ npx nx e2e nuxeo-ui-e2e -- --project=webkit          # one
 ## Phase 4 — Strings, theming and conventions
 
 - **User-facing strings.** Any string the fix added that a user reads should go through the
-  translate layer, not be hardcoded in a template. With only 3 keys in `en.json` the existing bar
-  is low — so record what the fix did either way, and flag new hardcoded strings as debt rather
-  than silently matching the surrounding code.
+  translate layer, not be hardcoded in a template. With 16 translated entries against a UI of
+  this size the existing bar is low — so record what the fix did either way, and flag new
+  hardcoded strings as debt rather than silently matching the surrounding code.
 - **Theming.** New colours must be `--mat-sys-*` / `--kd-*` tokens. `npm run review:guardrails`
   enforces this; confirm it is green and eyeball the surface in the app.
 - **Empty, loading and error states.** Every one the fix touches: does the loading signal reset on

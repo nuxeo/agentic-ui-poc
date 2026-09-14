@@ -163,10 +163,14 @@ await browser.close();
 // -------------------------------------------------------------- narrative + verdict
 
 const problems = [];
-if (before.verdict === 'pass') {
+// The before half must have *failed*, not merely "not passed". Accepting `error` or
+// `precondition-not-met` let an aborted or invalid reproduction yield an overall PASS as
+// long as it had left one paired screenshot behind.
+if (before.verdict !== 'fail') {
   problems.push(
-    'the BEFORE capture passed every check — it is supposed to demonstrate the bug, so either ' +
-      'the scenes assert the fixed behaviour or the bug did not reproduce',
+    before.verdict === 'pass'
+      ? 'the BEFORE capture passed every check — it is supposed to demonstrate the bug, so either the scenes assert the fixed behaviour or the bug did not reproduce'
+      : `the BEFORE capture verdict is ${before.verdict}, not fail — the reproduction did not run to completion, so there is no demonstrated bug to compare against`,
   );
 }
 if (after.verdict !== 'pass') problems.push(`the AFTER capture verdict is ${after.verdict}`);
