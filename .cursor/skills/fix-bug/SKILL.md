@@ -591,18 +591,54 @@ through the Jira REST endpoint. Credentials live outside the repo and must never
 `~/.jira_email` and `~/.jira_token` (`chmod 600`; rotate at
 https://id.atlassian.com/manage-profile/security/api-tokens if leaked).
 
+**Attach evidence, not harness output.** Images and recordings only — the things a human
+looks at. `STORY.md`, `manifest.json`, `chapters.vtt` and gate reports are the harness talking
+to itself; they clutter the ticket and QA does not read them. Give each file a name that says
+which half it is from: two files called `02-landmark-name.png` tell a reader nothing.
+
 ```bash
 cd "$EVID"
 U="$(cat ~/.jira_email):$(cat ~/.jira_token)"
-for f in before/*.png before/$TICKET-before.webm after/*.png after/$TICKET-after.webm; do
-  curl -s -u "$U" -H "X-Atlassian-Token: no-check" -F "file=@$f" \
-    "https://hyland.atlassian.net/rest/api/3/issue/$TICKET/attachments" \
-    | python3 -c "import sys,json;d=json.load(sys.stdin);print('OK', d[0]['filename']) if isinstance(d,list) and d else print('FAIL', d)"
+upload() { curl -s -u "$U" -H "X-Atlassian-Token: no-check" -F "file=@$1;filename=$2" \
+  "https://hyland.atlassian.net/rest/api/3/issue/$TICKET/attachments" >/dev/null && echo "  $2"; }
+upload contact-sheet.png            "$TICKET-before-after.png"
+upload before/$TICKET-before.webm   "$TICKET-before.webm"
+upload after/$TICKET-after.webm     "$TICKET-after.webm"
+# plus the diptych and any callout that carries the point, each renamed the same way
+for half in before after; do
+  for f in "$half"/*.png; do upload "$f" "$TICKET-$half-$(basename "${f%.png}" | sed 's/^[0-9]*-//').png"; done
 done
+```
+
+Then confirm what actually landed, rather than assuming the uploads worked:
+
+```bash
+curl -s -u "$U" "https://hyland.atlassian.net/rest/api/3/issue/$TICKET?fields=attachment" \
+  | python3 -c "import sys,json;[print(' ',a['filename']) for a in json.load(sys.stdin)['fields']['attachment']]"
 ```
 
 If `~/.jira_token` is absent, have the user create it (`printf '%s' '<token>' > ~/.jira_token &&
 chmod 600 ~/.jira_token`) rather than pasting it into chat. Drag-and-drop is the manual fallback.
+
+### Link the PR on the ticket
+
+A PR URL buried in a comment is not a link — the ticket's **Links** panel is where a reviewer,
+QA or a release manager looks for it, and where Jira can show its status. Add it as a remote
+link, not just prose:
+
+```bash
+curl -s -u "$U" -H "Content-Type: application/json" -X POST \
+  "https://hyland.atlassian.net/rest/api/3/issue/$TICKET/remotelink" \
+  -d "{\"globalId\":\"github-pr-<N>\",
+       \"application\":{\"type\":\"com.github\",\"name\":\"GitHub\"},
+       \"relationship\":\"fixed by\",
+       \"object\":{\"url\":\"https://github.com/nuxeo/agentic-ui-poc/pull/<N>\",
+                  \"title\":\"PR #<N> — <commit subject>\"}}"
+```
+
+`globalId` makes it idempotent: re-running updates the existing link instead of adding a
+duplicate. The Atlassian MCP can read remote links (`getJiraIssueRemoteIssueLinks`) but cannot
+create them, so this goes through REST like the attachments.
 
 ## Phase 8 — Definition of Done self-check
 
@@ -614,7 +650,9 @@ thresholds met on touched projects; unit test for every new service method inclu
 path; `validate-fix` run and clean; `docs/api-integrations.md` updated if a new Nuxeo endpoint was
 called; `docs/ai-features.md` if AI behaviour changed; `AGENTS/01-services.md` if a service method
 was added; `AGENTS/00-architecture.md` if architecture changed; PR on a `fix/*` branch; every
-review thread replied to and resolved; before/after evidence in both forms attached to the ticket;
+review thread replied to and resolved; the PR added to the ticket's Links panel as a remote
+link; before/after evidence in both forms attached to the ticket, images and recordings only,
+each named for the half it came from; no harness artifact committed or attached;
 all checks `SUCCESS`; all commits Verified. Quote the gate verdict line rather than asserting it.
 
 ## Phase 9 — Final fix summary (always output)
@@ -687,17 +725,17 @@ someone may still need. Then:
 
 ## Recommended extras (do these when applicable, still autonomously)
 
-- **Commit the scenes file only when no unit test can cover the behaviour** — a visual
-  regression, a cross-component interaction, something only a rendered browser can assert.
-  Otherwise leave it local.
+- **Commit product code only.** A pull request contains the fix, its tests, and the docs the
+  Definition of Done names. It does **not** contain harness artifacts: scenes files,
+  `manifest.json`, `STORY.md`, `chapters.vtt`, screenshots, recordings, gate reports. Those
+  live in the evidence folder outside the repo and go on the ticket.
 
-  The rule used to be "always commit it, so the fix is re-verifiable later". That is what the
-  regression test is for, and unlike a scenes file the test **runs in CI on every PR**. Nothing
-  runs the scenes files: no workflow references `collect-evidence`, so a committed one is code
-  that never executes and rots silently as selectors drift. Twenty-four had accumulated that way.
-  On NXENG-915 the scenes file was 142 lines of a 168-line pull request whose actual fix was one
-  line, which puts a reviewer's attention in the wrong place. The artifacts that matter —
-  screenshots, recordings, `STORY.md` — are attached to the ticket, where QA looks.
+  The rule used to be "always commit the scenes file, so the fix is re-verifiable later". That is
+  what the regression test is for, and unlike a scenes file the test **runs in CI on every PR**.
+  Nothing runs the scenes files: no workflow references `collect-evidence`, so a committed one is
+  code that never executes and rots silently as selectors drift. Twenty-four had accumulated that
+  way. On NXENG-915 the scenes file was 142 lines of a 168-line pull request whose actual fix was
+  one line, which puts a reviewer's attention in the wrong place.
 
 - **Update the docs the DoD names** in the same PR rather than a follow-up.
 - **Attach the videos.** MCP can't attach — use the Phase 7.5 `curl`.
