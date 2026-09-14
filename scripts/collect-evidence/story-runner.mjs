@@ -93,10 +93,13 @@ const browser = await chromium.launch({
 const nuxeoUser = process.env['NUXEO_USER'];
 const nuxeoPass = process.env['NUXEO_PASS'];
 if (!nuxeoUser || !nuxeoPass) {
+  // Placeholders, not a worked example. Spelling the local dev value out as an assignment
+  // reads as a hardcoded credential to both a reviewer and the secret scanner, and this
+  // repository gates merges on the latter.
   console.error(
-    '\nNUXEO_USER and NUXEO_PASS must be set — there is deliberately no default.\n' +
-      'For a local dev instance:\n\n' +
-      '  export NUXEO_USER=Administrator NUXEO_PASS=Administrator\n',
+    '\nNUXEO_USER and NUXEO_PASS must be set — there is deliberately no default.\n\n' +
+      '  export NUXEO_USER=<user> NUXEO_PASS=<password>\n\n' +
+      'A local Nuxeo dev container uses its documented default administrator account.\n',
   );
   await browser.close();
   process.exit(2);

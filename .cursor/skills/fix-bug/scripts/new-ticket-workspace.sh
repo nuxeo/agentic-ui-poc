@@ -136,6 +136,11 @@ fi
 
 # ---------------------------------------------------------------- preflight
 
+# No credential defaults. Falling back to Administrator meant the data root was created with
+# privileged credentials whenever the variables were unset, which the repo's env-only rule
+# exists to prevent — and it hid a misconfigured environment behind a working command.
+[[ -n "${NUXEO_USER:-}" && -n "${NUXEO_PASS:-}" ]] || die "NUXEO_USER and NUXEO_PASS must be set (no default): export NUXEO_USER=<user> NUXEO_PASS=<password>. A local Nuxeo dev container uses its documented default administrator account."
+
 command -v docker >/dev/null || die "docker not found on PATH"
 docker info >/dev/null 2>&1 || die "Docker is not running — start Docker Desktop and retry"
 
@@ -149,9 +154,21 @@ if [[ "$NUXEO_MODE" == "own" ]]; then
     IMAGE="$(docker inspect "$SHARED_CONTAINER" --format '{{.Config.Image}}' 2>/dev/null || true)"
     [[ -n "$IMAGE" ]] || die "cannot read the image from container '$SHARED_CONTAINER'; pass --image <ref>"
   fi
+  # Tracing off around the licence. `bash -x` on this script otherwise prints the whole
+  # NUXEO_CLID — every read of it, and every `[[ -n "$CLID" ]]` — straight to the terminal,
+  # and from there into logs, transcripts and screenshares. Restored afterwards only if it
+  # was on to begin with.
+  case "$-" in *x*) _TRACE=1 ;; *) _TRACE=0 ;; esac
+  { set +x; } 2>/dev/null
+
   CLID="$(shared_env | sed -n 's/^NUXEO_CLID=//p' | head -1)"
+  if [[ -z "$CLID" ]]; then
+    [[ $_TRACE -eq 1 ]] && set -x
+    die "no NUXEO_CLID on '$SHARED_CONTAINER' — package download fails with 'Registration required'"
+  fi
+  [[ $_TRACE -eq 1 ]] && set -x
+
   PACKAGES="$(shared_env | sed -n 's/^NUXEO_PACKAGES=//p' | head -1)"
-  [[ -n "$CLID" ]] || die "no NUXEO_CLID on '$SHARED_CONTAINER' — package download fails with 'Registration required'"
   # No fallback package list. This app talks to the REST API, so the base platform is enough;
   # inventing a default here would install packages the ticket did not ask for and make the
   # throwaway instance differ from the shared one in a way the evidence would not record.
@@ -179,8 +196,15 @@ fi
 # that re-running while the dev server was listening moved the port to the next free one and
 # rewrote env.sh, so the evidence commands then targeted a port with nothing behind it — the
 # advertised idempotent reuse quietly broke exactly when the workspace was in use.
-APP_PORT="$( [[ -f "$WT/env.sh" ]] && sed -n 's/^export NX_APP_PORT="\([0-9]*\)".*/\1/p' "$WT/env.sh" | head -1 )"
-[[ -n "${APP_PORT:-}" ]] || APP_PORT="$(free_port 4210)"
+#
+# Written as an `if`, not `APP_PORT="$( [[ -f … ]] && … )"`. Under `set -e` that form takes
+# the subshell's exit status, so a missing env.sh aborted the whole script with no message
+# at all — a silent exit 1 before the worktree was even created.
+APP_PORT=""
+if [[ -f "$WT/env.sh" ]]; then
+  APP_PORT="$(sed -n 's/^export NX_APP_PORT="\([0-9]*\)".*/\1/p' "$WT/env.sh" | head -1 || true)"
+fi
+[[ -n "$APP_PORT" ]] || APP_PORT="$(free_port 4210)"
 
 # ---------------------------------------------------------------- worktree
 
@@ -234,10 +258,6 @@ fi
 
 # ---------------------------------------------------------------- nuxeo
 
-# No credential defaults. Falling back to Administrator meant the data root was created with
-# privileged credentials whenever the variables were unset, which the repo's env-only rule
-# exists to prevent — and it hid a misconfigured environment behind a working command.
-[[ -n "${NUXEO_USER:-}" && -n "${NUXEO_PASS:-}" ]] || die "NUXEO_USER and NUXEO_PASS must be set (no default). For a local dev instance: export NUXEO_USER=Administrator NUXEO_PASS=Administrator"
 
 DATA_ROOT="/default-domain/workspaces/$TICKET"
 
