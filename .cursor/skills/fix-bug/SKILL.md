@@ -265,6 +265,10 @@ stop condition, not something to resolve by picking the reading that is easiest 
 **Reproduce the bug before writing any code.** The workspace is already on the branch cut from
 `origin/main`, so the repro reflects released behaviour.
 
+```bash
+node scripts/agent-metrics.mjs phase "$TICKET" reproduce   # confirming the defect is fix work
+```
+
 > **Reproduce autonomously (no confirmation).** Everything runs against `$NX_URL`. By default
 > that is the **shared** `nuxeo` instance — the isolation is `$NX_DATA_ROOT`
 > (`/default-domain/workspaces/<TICKET>`), so create and seed your documents there and do not
@@ -319,7 +323,13 @@ Each scene declares `act`, `title`, `intent`, `criterion` and a `run()`. The **t
 Setup (what the user was trying to do — the reviewer was not in the ticket), the Behaviour, and
 the Proof. Then capture the first half:
 
+**Mark the boundary here.** `reproduce` is in the `fix` bucket and `evidence-before` is not, so
+leaving `reproduce` open through the capture puts the capture straight back into the published
+fix total — which is the one thing the buckets exist to separate:
+
 ```bash
+node scripts/agent-metrics.mjs phase "$TICKET" evidence-before
+
 APP_URL="$APP_URL" EVIDENCE_PHASE=before NUXEO_DOC_UID=<uid> \
   npm run evidence:collect -- "$TICKET" scripts/collect-evidence/$TICKET.mjs
 ```
@@ -693,11 +703,13 @@ someone may still need. Then:
 - Leave the evidence in `$EVID` — it is the one thing that outlives the run. Never commit it.
 - Report the PR's final CI state. If a long check (`codeql`, `sonarcloud`, `a11y`,
   `build-marketplace`) is still running, say so explicitly — do **not** claim green until it is.
-- `publish` (run above, before teardown) appends one row — **user, ticket id, time taken** — to
+- `publish` (run above, before teardown) appends one row — **user, ticket id, time to fix** — to
   [Bug Fix/Feature Development Skill Performance](https://hyland.atlassian.net/wiki/x/nQFlAAE),
-  authenticating as the engineer who ran it. The per-phase breakdown is **not** published; it
-  stays in the local `metrics.jsonl` for tuning the skill. Print that table in the final summary
-  and name the slowest phase — that is the one worth attacking next.
+  authenticating as the engineer who ran it. **Time to fix is the `fix` bucket alone** — evidence
+  capture and all overhead are excluded, so the row answers how long the work took rather than
+  how slow the pipeline is. The per-phase breakdown and the other two subtotals are **not**
+  published; they stay in the local `metrics.jsonl`. Print that table in the final summary and
+  name the slowest phase — that is the one worth attacking next.
 
 ## Recommended extras (do these when applicable, still autonomously)
 

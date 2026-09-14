@@ -251,8 +251,8 @@ async function report() {
   const width = Math.max(...ordered.map((p) => PHASES[p].label.length), 20);
 
   console.log(`\n${ticket} — phase timings (${s.start?.kind ?? '?'}, ${s.start?.model ?? '?'})\n`);
-  console.log(`  ${'phase'.padEnd(width)}  ${'time'.padStart(7)}  ${'%'.padStart(4)}  events`);
-  console.log(`  ${'-'.repeat(width)}  ${'-'.repeat(7)}  ${'-'.repeat(4)}  ------`);
+  console.log(`  ${'phase'.padEnd(width)}  ${'time'.padStart(7)}  ${'%'.padStart(4)}  ${'bucket'.padEnd(8)}  events`);
+  console.log(`  ${'-'.repeat(width)}  ${'-'.repeat(7)}  ${'-'.repeat(4)}  ${'-'.repeat(8)}  ------`);
   for (const p of ordered) {
     const { ms, events } = s.phases.get(p);
     const pct = s.totalMs ? Math.round((ms / s.totalMs) * 100) : 0;
@@ -291,14 +291,23 @@ async function publish() {
     console.error(`No metrics for ${ticket}.`);
     process.exit(1);
   }
-  if (!s.end) console.warn('warning: this run has no `end` mark — publishing an in-progress run.');
-  // The row is meant to record a finished piece of work. Publishing before the ticket is
-  // updated puts a time on the page for something nobody can yet go and look at.
+  // The row records a finished piece of work, so both of these must hold.
+  //
+  // `phase jira` alone is not enough: a phase mark opens a phase, it does not close it, so
+  // `phase jira` immediately followed by `publish` used to satisfy the guard before any of
+  // the Jira work had happened. Requiring the `end` mark closes it — and the documented
+  // workflow already runs `end` before `publish`.
+  const problems = [];
   if (!s.phases.has('jira')) {
-    console.error(
-      '\nNothing has been recorded for the `jira` phase, so the ticket has not been updated.\n' +
-        'Post the fix summary and attach the evidence first, then publish.\n',
+    problems.push(
+      'nothing recorded for the `jira` phase — post the fix summary and attach the evidence first',
     );
+  }
+  if (!s.end) {
+    problems.push('no `end` mark — run `agent-metrics end <TICKET> --outcome <outcome>` first');
+  }
+  if (problems.length) {
+    console.error(`\nRefusing to publish an unfinished run:\n${problems.map((p) => `  - ${p}`).join('\n')}\n`);
     process.exit(1);
   }
 

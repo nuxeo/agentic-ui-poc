@@ -22,13 +22,36 @@ it costs you evidence: you must show why, not assert it.
 
 ### 1. Fetch everything unresolved
 
+Paginate, and print **every** comment in each thread. A fixed `first:` silently drops later
+pages, and formatting only `comments.nodes[0]` hides the replies — which is where a reviewer
+narrows a claim, or where you already answered. `.github/workflows/pr-auto-fix.yml` uses this
+pattern for the same reason.
+
 ```bash
-gh api graphql -f query='{repository(owner:"nuxeo",name:"agentic-ui-poc"){pullRequest(number:<N>){
-  reviewThreads(first:60){nodes{id isResolved isOutdated path line
-    comments(first:3){nodes{databaseId author{login} body}}}}}}}' \
- --jq '.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved==false)|
-   "THREAD \(.id)  \(.path):\(.line)  id=\(.comments.nodes[0].databaseId)\n\(.comments.nodes[0].body)\n---"'
+gh api graphql --paginate \
+  -F owner=nuxeo -F name=agentic-ui-poc -F number=<N> \
+  -f query='
+    query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+      repository(owner:$owner,name:$name){
+        pullRequest(number:$number){
+          reviewThreads(first:50, after:$endCursor){
+            pageInfo{ hasNextPage endCursor }
+            nodes{
+              id isResolved isOutdated path line
+              comments(first:50){ nodes{ databaseId author{ login } body } }
+            }
+          }
+        }
+      }
+    }' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]|select(.isResolved==false)
+        | "THREAD \(.id)  \(.path):\(.line)  outdated=\(.isOutdated)",
+          (.comments.nodes[]|"  [\(.author.login) #\(.databaseId)] \(.body)"),
+          "---"'
 ```
+
+Reply to the **first** comment's `databaseId` (`in_reply_to` threads onto it), but read all of
+them: a thread whose last comment is yours may already be answered.
 
 Also collect what the thread view does not show:
 
@@ -98,9 +121,13 @@ and say in your final report that it is open and why.
 ### 7. Confirm and report
 
 ```bash
-gh api graphql -f query='{repository(owner:"nuxeo",name:"agentic-ui-poc"){pullRequest(number:<N>){
-  reviewThreads(first:60){nodes{isResolved}}}}}' \
- --jq '[.data.repository.pullRequest.reviewThreads.nodes[]]|"threads: \(length)  unresolved: \([.[]|select(.isResolved==false)]|length)"'
+gh api graphql --paginate -F owner=nuxeo -F name=agentic-ui-poc -F number=<N> \
+  -f query='query($owner:String!,$name:String!,$number:Int!,$endCursor:String){
+    repository(owner:$owner,name:$name){pullRequest(number:$number){
+      reviewThreads(first:50, after:$endCursor){pageInfo{hasNextPage endCursor}
+        nodes{isResolved}}}}}' \
+  --jq '.data.repository.pullRequest.reviewThreads.nodes[]|.isResolved' \
+ | sort | uniq -c
 ```
 
 Report: how many comments, how many were real defects, what each one caught, what you fixed,
