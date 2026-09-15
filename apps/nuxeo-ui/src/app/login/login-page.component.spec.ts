@@ -50,6 +50,30 @@ describe('LoginPageComponent', () => {
     expect(el.textContent).toContain('Log in');
   });
 
+  /**
+   * NXENG-743 / NXENG-746. The brand link renders the Satori logo lockup, whose two marks are
+   * vendor components each drawing an unlabelled `<svg>`. An `<svg>` with no accessible name is
+   * announced as an unnamed image — WCAG 2.1 1.1.1 Non-text Content, level A — and nothing in
+   * this repo can put an attribute on that `<svg>`, because the markup belongs to
+   * `@hylandsoftware/satori-ui/logo`.
+   *
+   * The assertion is the guarantee rather than the attribute's placement: no graphic inside the
+   * brand link reaches assistive technology, and the link still carries the name. A test for
+   * `aria-hidden` on one specific element would pass while a newly added third mark went
+   * unhidden.
+   */
+  it('hides the decorative brand logo from assistive technology', () => {
+    const link = (fixture.nativeElement as HTMLElement).querySelector('a.login-brand');
+    expect(link).toBeTruthy();
+    expect(link!.getAttribute('aria-label')).toBe('Hyland');
+
+    const graphics = Array.from(link!.querySelectorAll('svg'));
+    expect(graphics.length).toBe(2);
+    for (const svg of graphics) {
+      expect(svg.closest('[aria-hidden="true"]')).toBeTruthy();
+    }
+  });
+
   it('submits username and password together', async () => {
     const router = TestBed.inject(Router);
     spyOn(router, 'navigateByUrl').and.returnValue(Promise.resolve(true));
