@@ -80,28 +80,36 @@ node scripts/agent-metrics.mjs end   "$TICKET" --outcome pr-open|merged|blocked|
 
 Phase ids are a fixed list and an unknown one is rejected: free-text phase names make runs
 incomparable, and a table you cannot compare cannot tell you which phase to shorten. Each id
-sits in one of three buckets, and **only `fix` is published**:
+sits in one of four buckets, and **only `fix` is published**:
 
-| bucket     | phases                                                                                                                                |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `fix`      | `ticket` `expected` `reproduce` `design` `decide` `scaffold` `fix` `regression-test` `docs` `blast-radius` `gate` `validate` `review` |
-| `evidence` | `evidence-before` `baseline` `verify-evidence`                                                                                        |
-| `overhead` | `workspace` `pr` `ci` `jira` `cleanup`                                                                                                |
+| bucket     | phases                                                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `fix`      | `ticket` `expected` `reproduce` `design` `decide` `scaffold` `fix` `regression-test` `docs` `blast-radius` `gate` `validate` |
+| `evidence` | `evidence-before` `baseline` `verify-evidence`                                                                               |
+| `review`   | `review`                                                                                                                     |
+| `overhead` | `workspace` `pr` `ci` `jira` `cleanup`                                                                                       |
 
-`cleanup` covers the final summary only. **Teardown is not measured**: `publish` must run
-before the workspace is removed — removing it deletes the script — and `end` must precede
-`publish`, so the run is always closed before teardown begins.
+`review` is its own bucket, not part of `fix`. Review-loop work **is** fixing, but it lands
+after the PR is open and the published row is now written there — so leaving it in `fix` meant
+the page either waited for a loop that can run six rounds, or silently dropped the work done in
+it. Calling it `overhead` would be the other lie. It is measured, printed locally, and excluded
+from the published total, which makes `fix` **final at PR raise**.
+
+`cleanup` covers the final summary only. **Teardown is not measured**: it happens after the
+last mark, and `publish` has already run at Phase 6 — well before the workspace is removed,
+which matters because removing it deletes the copy of the script inside it.
 
 The shared page answers "how long do fixes take", so it gets the `fix` total alone. The first
 row published wall clock — 4h 13m for a one-line change, 88% of it evidence capture and CI
 polling — which is a number about the pipeline masquerading as a number about the work. All
 three totals stay in the local report, which is where you look when a run felt slow.
 
-**`publish` refuses until the `jira` phase is recorded.** A row is a record of finished work;
-publishing before the ticket is updated puts a time on the page for something nobody can yet
-go and look at.
+**`publish` refuses until the `pr` phase is recorded**, and runs at Phase 6 rather than at
+teardown. The published number is final once the PR is open — `review` is a bucket of its own —
+and the PR is the artifact the row refers to, so a reader can always go and look at what the
+row is about.
 
-`end` prints the per-phase table. Phase 10 publishes it to the team page.
+`end` prints the per-phase table. **Phase 6 publishes the row**, as soon as the PR exists.
 
 > **Do not report a token count or a cost.** You cannot observe your own token usage, and a
 > plausible figure printed next to measured ones gets believed. The metrics log records the
@@ -605,6 +613,21 @@ This is the "fix and raise PR" trigger.
   means the key is registered for authentication but not as a **Signing Key** — fix on GitHub, no
   re-push needed.
 
+- **Publish the time metric now the PR exists.** The `fix` total is complete at this point, so
+  this is the earliest moment the number is both final and pointing at something a reader can
+  open. Waiting until teardown held the row behind a review loop that can run six rounds:
+
+  ```bash
+  node scripts/agent-metrics.mjs phase   "$TICKET" pr
+  node scripts/agent-metrics.mjs publish "$TICKET"
+  ```
+
+  It appends one row — **user, ticket id, time to fix, slowest phase** — to
+  [Bug Fix/Feature Development Skill Performance](https://hyland.atlassian.net/wiki/x/nQFlAAE),
+  authenticating as the engineer who ran it. It is idempotent on the ticket id, so a retry after
+  a network failure cannot double-count the run. Everything after this point — CI, the review
+  loop, the ticket update — is measured locally and **not** published.
+
 ## Phase 7 — Poll CI to green; fix or rerun
 
 Poll **every 60 seconds, for at most 45 minutes**, reporting a compact table whenever a check
@@ -882,13 +905,13 @@ Reference the evidence in both forms: `$EVID/before/` (`*.png` + `<TICKET>-befor
 
 ## Phase 10 — Clean up & report
 
-**Close and publish the metrics first, then tear down.** The teardown removes the worktree you
-are standing in _and_ the copy of `scripts/agent-metrics.mjs` inside it, so running `end` or
-`publish` afterwards fails on a deleted directory:
+**Close the metrics first, then tear down.** The row was already published in Phase 6; what is
+left is the `end` mark and the local per-phase table. The teardown removes the worktree you are
+standing in _and_ the copy of `scripts/agent-metrics.mjs` inside it, so running `end` afterwards
+fails on a deleted directory:
 
 ```bash
-node scripts/agent-metrics.mjs end     "$TICKET" --outcome pr-open
-node scripts/agent-metrics.mjs publish "$TICKET"
+node scripts/agent-metrics.mjs end "$TICKET" --outcome pr-open   # prints the per-phase table
 cd "$REPO_ROOT"     # leave the worktree before deleting it
 bash .cursor/skills/fix-bug/scripts/new-ticket-workspace.sh "$TICKET" --remove
 ```
@@ -910,13 +933,16 @@ someone may still need. Then:
 - Leave the evidence in `$EVID` — it is the one thing that outlives the run. Never commit it.
 - Report the PR's final CI state. If a long check (`codeql`, `sonarcloud`, `a11y`,
   `build-marketplace`) is still running, say so explicitly — do **not** claim green until it is.
-- `publish` (run above, before teardown) appends one row — **user, ticket id, time to fix** — to
+- `publish` (run back in **Phase 6**, when the PR was opened) appended one row — **user, ticket
+  id, time to fix, slowest phase** — to
   [Bug Fix/Feature Development Skill Performance](https://hyland.atlassian.net/wiki/x/nQFlAAE),
   authenticating as the engineer who ran it. **Time to fix is the `fix` bucket alone** — evidence
-  capture and all overhead are excluded, so the row answers how long the work took rather than
-  how slow the pipeline is. The per-phase breakdown and the other two subtotals are **not**
-  published; they stay in the local `metrics.jsonl`. Print that table in the final summary and
-  name the slowest phase — that is the one worth attacking next.
+  capture, the review loop and all overhead are excluded, so the row answers how long the work
+  took rather than how slow the pipeline is. The per-phase breakdown and the other three
+  subtotals are **not** published; they stay in the local `metrics.jsonl`. Print that table in
+  the final summary and name both slowest phases — `report` prints the slowest overall (usually
+  `ci`, which is what to attack to make runs finish sooner) and the slowest within `fix`, which
+  is the one on the page.
 
 ## Recommended extras (do these when applicable, still autonomously)
 
