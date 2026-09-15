@@ -9,6 +9,51 @@ import type { NuxeoSamlLoginEndpoint } from '@nuxeo-satori/platform/nuxeo-client
 import { AuthService } from '../auth/auth.service';
 import { LoginPageComponent } from './login-page.component';
 
+/**
+ * Every element under `root`, following open shadow roots — an element focusable inside one
+ * still takes focus away from a keyboard user.
+ */
+function allDescendants(root: Element): Element[] {
+  const found: Element[] = [];
+  const visit = (node: Element | ShadowRoot) => {
+    for (const child of Array.from(node.children)) {
+      found.push(child);
+      visit(child);
+      if (child.shadowRoot) {
+        visit(child.shadowRoot);
+      }
+    }
+  };
+  visit(root);
+  return found;
+}
+
+/**
+ * Whether an element can actually take focus — asked of the browser, by focusing it.
+ *
+ * Not a selector list. The first version of this guard enumerated
+ * `a[href],button,input,…` and the reviewer was right that such a list is permanently
+ * incomplete: it missed `area[href]`, `iframe`, `object`, `audio[controls]`,
+ * `video[controls]` and `summary`, and it would miss whatever the next HTML revision makes
+ * focusable. `@angular/cdk/a11y`'s `InteractivityChecker` has the same gap, being a
+ * maintained list rather than a complete one.
+ *
+ * These specs run in real Chrome, so focus semantics are available directly, and the
+ * question `aria-hidden` actually raises — can a keyboard user land on something inside a
+ * subtree screen readers cannot see — is exactly what `focus()` answers.
+ *
+ * Focus moving anywhere off `<body>` counts: an element inside a shadow root reports its
+ * host as `document.activeElement`, so comparing against the element itself would read a
+ * real focus move as a miss.
+ */
+function canTakeFocus(element: Element): boolean {
+  (document.activeElement as HTMLElement | null)?.blur();
+  (element as HTMLElement).focus?.();
+  const took = document.activeElement !== null && document.activeElement !== document.body;
+  (document.activeElement as HTMLElement | null)?.blur();
+  return took;
+}
+
 describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
   let component: LoginPageComponent;
@@ -81,10 +126,46 @@ describe('LoginPageComponent', () => {
       expect(svg.closest('[aria-hidden="true"]')).toBeTruthy();
     }
 
-    const focusable = 'a[href],button,input,select,textarea,[tabindex],[contenteditable]';
-    for (const hidden of Array.from(link!.querySelectorAll('[aria-hidden="true"]'))) {
-      expect(hidden.matches(focusable)).toBe(false);
-      expect(Array.from(hidden.querySelectorAll(focusable))).toHaveSize(0);
+    const hiddenSubtrees = Array.from(link!.querySelectorAll('[aria-hidden="true"]'));
+    expect(hiddenSubtrees).toHaveSize(1);
+    for (const hidden of hiddenSubtrees) {
+      expect(canTakeFocus(hidden)).toBe(false);
+      for (const element of allDescendants(hidden)) {
+        expect(canTakeFocus(element)).toBe(false);
+      }
+    }
+  });
+
+  /**
+   * The negative control for the guard above, committed rather than run once by hand: an
+   * assertion nobody has watched fail is not coverage, and the risk it guards against —
+   * a vendor release adding focusable content inside the logo lockup — cannot be staged from
+   * our own template, because `<sat-logo>` projects only the two mark components.
+   *
+   * So the focusable elements are injected into the rendered hidden subtree here. Each is one
+   * the earlier hand-written selector missed.
+   */
+  it('detects focusable content that a vendor release could add inside the hidden lockup', () => {
+    const link = (fixture.nativeElement as HTMLElement).querySelector('a.login-brand');
+    const hidden = link!.querySelector('[aria-hidden="true"]');
+    expect(hidden).toBeTruthy();
+
+    for (const html of [
+      '<div tabindex="0">focusable div</div>',
+      '<iframe title="probe"></iframe>',
+      '<video controls></video>',
+      '<audio controls></audio>',
+      '<details><summary>probe</summary>body</details>',
+      '<a href="#probe">probe</a>',
+      '<button type="button">probe</button>',
+    ]) {
+      hidden!.insertAdjacentHTML('beforeend', html);
+      const injected = hidden!.lastElementChild!;
+      const reached = [injected, ...allDescendants(injected)].some(canTakeFocus);
+      expect(reached)
+        .withContext(`the guard must see ${html} as focusable`)
+        .toBe(true);
+      injected.remove();
     }
   });
 

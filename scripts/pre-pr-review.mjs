@@ -18,14 +18,19 @@
  * So the checks worth automating are the ones that **compare two artifacts** rather than
  * inspect one. Three classes are mechanisable that way and are implemented here:
  *
- *   silent-failure    (5 findings) an error path that reports success
- *   broken-reference  (1)          a link or path that does not resolve
- *   false-claim       (4, partly)  docs naming a command or file that does not exist
+ *   silent-failure    an error path that reports success
+ *   broken-reference  a link or path that does not resolve
+ *   false-claim       (partly) docs naming a command or file that does not exist
  *
- * The other classes — `proxy-check` (15), `unenforced-guarantee` (12), `stale-prose` (9) —
- * need judgement and live in `.cursor/skills/pre-pr-review/SKILL.md`. They are the majority,
- * which is worth stating plainly: **a green run here is not a review.** It clears the floor
- * so a reader spends their attention on the three classes a grep cannot see.
+ * The other classes — `proxy-check`, `unenforced-guarantee`, `stale-prose` — need judgement
+ * and live in `.cursor/skills/pre-pr-review/SKILL.md`. They are the majority, which is worth
+ * stating plainly: **a green run here is not a review.** It clears the floor so a reader
+ * spends their attention on the three classes a grep cannot see.
+ *
+ * The per-class counts used to be written out here, and went stale the moment a review round
+ * was published — a copy of mutable state in a comment nothing compares against. The live
+ * numbers are in the generated block in that SKILL.md, which the `review-corpus` gate holds
+ * to the corpus, and `npm run review:analysis -- check` verifies. Read them there.
  */
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
