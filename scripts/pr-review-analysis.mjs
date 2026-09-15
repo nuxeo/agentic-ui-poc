@@ -299,6 +299,58 @@ function suppressedFindings(body) {
   return found;
 }
 
+/**
+ * Resolve a review id for a command that filters by it, or exit 3 rather than let an id
+ * matching nothing masquerade as an empty result.
+ *
+ * Both `round` and `harvest --review` narrow their output to one review, so for both of them
+ * an unmatched id produces exactly what "nothing to report" produces. The skill hands the
+ * same id to both, which means one mistyped or wrong-id-space argument silences the loop's
+ * verdict and its record together.
+ *
+ * @param {string|string[]} prs the pull request(s) the id must belong to
+ * @param {string} reviewId GraphQL node id or REST databaseId
+ * @param {string} subject how to name the thing left unknown, e.g. 'The round'
+ */
+function requireReviewOnPr(prs, reviewId, subject) {
+  const list = Array.isArray(prs) ? prs : [prs];
+  let review = null;
+  try {
+    for (const pr of list) {
+      review = reviewOnPr(pr, reviewId);
+      if (review) break;
+    }
+  } catch (error) {
+    console.error(
+      `\nCould not read the reviews on #${list.join(', #')}: ${error.message.split('\n')[0]}`,
+    );
+    console.error(`${subject} is UNKNOWN, not clean.\n`);
+    process.exit(3);
+  }
+  if (!review) {
+    console.error(`\nNo review with id ${reviewId} on #${list.join(' or #')}.`);
+    console.error(
+      `${subject} is UNKNOWN, not clean: an id that matches no review filters every finding\n` +
+        'away, and the empty result is indistinguishable from a review that found nothing.',
+    );
+    console.error(
+      '\nPass the id `latest-review` prints — a GraphQL node id, `PRR_…`. The numeric REST\n' +
+        '`databaseId` is accepted too; anything else is a wrong id, a stale one, or an id\n' +
+        'belonging to a different pull request.\n',
+    );
+    process.exit(3);
+  }
+  if (!REVIEWER.test(review.author ?? '')) {
+    console.error(`\nReview ${reviewId} is by ${review.author ?? 'an unknown user'}.`);
+    console.error(
+      `${subject} is UNKNOWN, not clean: this command reports the automated reviewer's\n` +
+        'findings, so a human review would report zero of them and look clean.\n',
+    );
+    process.exit(3);
+  }
+  return review;
+}
+
 function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId = null }) {
   return {
     pr: Number(pr),
@@ -317,7 +369,16 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId
 }
 
 /**
- * The Copilot reviews on a PR, oldest first.
+ * **Every** review on a PR, oldest first — human ones included, because the caller has to be
+ * able to reject a human's review id explicitly rather than silently report zero findings for
+ * it. `copilotReviews` is the filtered view.
+ *
+ * `fullDatabaseId` alongside `databaseId`: the schema types `databaseId` as a 32-bit `Int`,
+ * which cannot hold a modern review id — 5204368759 is well past 2^31. In practice the API
+ * returns it in full and unerrored today (verified against #184), so the numeric lookup worked
+ * either way, but a field whose declared type contradicts its own values is not something to
+ * depend on. `fullDatabaseId` is a `BigInt`, serialised as a string, and is preferred when
+ * present; the comparison is string-based, so nothing has to survive a float.
  *
  * `gh` failing throws out of `execFileSync`, which is the point: this used to be
  * `copilot_reviews | tail -1` in a shell snippet, and without `pipefail` `tail` exits 0 when
@@ -327,17 +388,43 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId
  * reassuring zero, which is the argument for the loop's state living here rather than in
  * shell.
  */
-export function copilotReviews(pr) {
+export function reviewsOnPr(pr) {
   return paginate(
     pr,
     `headRefOid
      reviews(first:50, after:$endCursor){
        pageInfo{ hasNextPage endCursor }
-       nodes{ id author{ login } commit{ oid } } }`,
+       nodes{ id databaseId fullDatabaseId author{ login } commit{ oid } } }`,
     '$pr.reviews.nodes[] | {head: $pr.headRefOid} + .',
-  )
-    .filter((r) => REVIEWER.test(r.author?.login ?? ''))
-    .map((r) => ({ id: r.id, commit: r.commit?.oid ?? null, head: r.head }));
+  ).map((r) => ({
+    id: r.id,
+    databaseId: r.fullDatabaseId ?? r.databaseId ?? null,
+    author: r.author?.login ?? null,
+    commit: r.commit?.oid ?? null,
+    head: r.head,
+  }));
+}
+
+/** The Copilot reviews on a PR, oldest first. */
+export function copilotReviews(pr) {
+  return reviewsOnPr(pr).filter((r) => REVIEWER.test(r.author ?? ''));
+}
+
+/**
+ * One review on `pr`, by either of the two ids GitHub gives it, or `null`.
+ *
+ * Both id spaces are accepted because both are in front of you: `latest-review` prints the
+ * GraphQL node id, while the REST API and `gh api …/reviews` hand back the numeric
+ * `databaseId`. They are not interchangeable, and `round` used to compare its argument against
+ * node ids only — so a REST id matched nothing, filtered every finding away, and printed a
+ * clean round. Verified on #184: the round-2 review reported one finding by node id and zero
+ * by its own numeric id, from the same review.
+ */
+export function reviewOnPr(pr, reviewId) {
+  const wanted = String(reviewId);
+  return (
+    reviewsOnPr(pr).find((r) => r.id === wanted || String(r.databaseId) === wanted) ?? null
+  );
 }
 
 /**
@@ -502,6 +589,15 @@ if (isCli) {
       console.error('Usage: pr-review-analysis.mjs harvest <pr> [<pr> …] [--review <reviewId>]');
       process.exit(2);
     }
+    // Resolved here, before the output file exists. `--review` narrows the harvest to one
+    // review, so an id matching nothing records an empty round exactly as a clean one does —
+    // and the skill passes the same id to `round`, so one wrong argument silences the verdict
+    // and the record together. The check has to come before the `writeFile` below, because a
+    // guard that fired afterwards would leave an empty file that the existence check then
+    // refuses to overwrite, turning a bad argument into a blocked retry.
+    const harvestReview = onlyReview
+      ? requireReviewOnPr(rest, onlyReview, 'The harvest')
+      : null;
     await mkdir(OUT_DIR, { recursive: true });
     const out = resolve(OUT_DIR, harvestFileName(rest));
     // One invocation, one file. The name used to be the UTC date, so a second harvest the same
@@ -522,8 +618,8 @@ if (isCli) {
     let n = 0;
     const bySource = {};
     for (const pr of rest) {
-      const entries = onlyReview
-        ? harvestPr(pr).filter((r) => r.reviewId === onlyReview)
+      const entries = harvestReview
+        ? harvestPr(pr).filter((r) => r.reviewId === harvestReview.id)
         : harvestPr(pr);
       for (const entry of entries) {
         await appendFile(out, `${JSON.stringify(entry)}\n`, 'utf8');
@@ -741,9 +837,14 @@ if (isCli) {
     // indistinguishable from "found something" — survivable, but it would make "clean" the
     // only trustworthy code, and this loop has already been bitten three times by an error
     // wearing a verdict's clothes.
+    //
+    // An id that matches no review on this PR is the fourth. It is not an API failure, so
+    // nothing threw: the filter simply matched nothing and zero findings read as a clean
+    // round. Resolve it first, so "no findings" can only ever mean a real review found none.
+    const review = requireReviewOnPr(pr, reviewId, 'The round');
     let found;
     try {
-      found = roundFindings(pr, reviewId);
+      found = roundFindings(pr, review.id);
     } catch (error) {
       console.error(`\nCould not read #${pr}: ${error.message.split('\n')[0]}`);
       console.error('The round is UNKNOWN, not clean.\n');
