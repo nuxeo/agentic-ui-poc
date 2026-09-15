@@ -670,6 +670,14 @@ node scripts/pr-review-analysis.mjs round "$PR" "$NEW_REVIEW"
 "found something" — survivable, but it would leave `0` as the only code you could trust, and
 every false-clean bug in this loop's history came from an error wearing a verdict's clothes.
 
+**An id that matches no review on the PR is also `3`, not `0`.** `round` and `harvest --review`
+both narrow their output to one review, so an unmatched id filters every finding away and the
+empty result is identical to the one a clean round produces — no error, no exception, just a
+reassuring zero. Both commands now resolve the id first and accept either id space GitHub gives
+a review: the `PRR_…` node id `latest-review` prints, or the numeric REST `databaseId` from
+`gh api …/reviews`. Passing the REST id used to print a clean round on a review that had
+findings.
+
 **Why this is a script and not four `gh` calls.** Every version of this written in shell grew
 the same defect, three times, in three different places: a pipeline whose producer failed
 reported a reassuring zero, because the last process in a pipe owns the exit status and
