@@ -46,7 +46,7 @@ const body = [
     <tr><td><p><strong>User</strong></p></td><td><p>The Atlassian account of whoever ran it, taken from <code>~/.jira_email</code>.</p></td></tr>
     <tr><td><p><strong>Ticket ID</strong></p></td><td><p>Joins the row to the Jira issue, the PR and the evidence folder.</p></td></tr>
     <tr><td><p><strong>Time to fix</strong></p></td><td><p>Time spent understanding the problem and changing the code until it was right: reading the ticket, establishing the expected behaviour, reproducing, choosing the approach, implementing, testing, the blast-radius check and getting the local gate green. It is complete the moment the PR is open, which is why the row is written there.<br/><br/><strong>Excludes evidence capture and comparison, all waiting</strong> &mdash; CI polling, workspace setup, ticket admin, teardown &mdash; <strong>and the review loop</strong>. The first row published wall clock and read 4h 13m for a one-line change, of which 88% was capture and polling; that number says nothing about the fix and was read as if it did. Review-loop work is real fixing, but it can run six rounds after the PR is open, so it is measured in its own bucket locally rather than holding this row back for hours.</p></td></tr>
-    <tr><td><p><strong>Slowest phase</strong></p></td><td><p>Which single phase of the above consumed the most time, and how long. The actionable half of the number: <em>40m</em> tells you nothing to change, <em>gate 22m</em> tells you where to look. Scoped to the same phases as <strong>Time to fix</strong>, so the two columns describe the same window &mdash; a slowest-overall column would almost always read <code>ci</code>, which this row deliberately excludes.</p></td></tr>
+    <tr><td><p><strong>Longest phase before PR</strong></p></td><td><p>Which single phase took the longest before the pull request was opened, and how long. The actionable half of the number: <em>40m</em> tells you nothing to change, <em>gate 40m</em> tells you where to look. Every phase before the PR counts, including workspace setup and the before-capture &mdash; if one of those is the biggest slice, that is worth seeing.</p></td></tr>
   </tbody></table>`,
 
   h2('What is not here, and where it lives'),
@@ -59,7 +59,7 @@ const body = [
 
   h2('Runs'),
   `<table><tbody>
-<tr>${th('User')}${th('Ticket ID')}${th('Time to fix')}${th('Slowest phase')}</tr>
+<tr>${th('User')}${th('Ticket ID')}${th('Time to fix')}${th('Longest phase before PR')}</tr>
 </tbody></table>`,
 ].join('\n');
 

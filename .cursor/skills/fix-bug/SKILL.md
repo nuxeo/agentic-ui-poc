@@ -622,7 +622,7 @@ This is the "fix and raise PR" trigger.
   node scripts/agent-metrics.mjs publish "$TICKET"
   ```
 
-  It appends one row — **user, ticket id, time to fix, slowest phase** — to
+  It appends one row — **user, ticket id, time to fix, longest phase before PR** — to
   [Bug Fix/Feature Development Skill Performance](https://hyland.atlassian.net/wiki/x/nQFlAAE),
   authenticating as the engineer who ran it. It is idempotent on the ticket id, so a retry after
   a network failure cannot double-count the run. Everything after this point — CI, the review
@@ -896,7 +896,7 @@ Use exactly these sections, in this order:
    affected**, listed only once actually checked.
 8. **Verification numbers** — gate verdict, test pass count, coverage on touched projects,
    `validate-fix` result, CI state.
-9. **Time** — the per-phase table from `agent-metrics report`, the slowest phase, and total wall
+9. **Time** — the per-phase table from `agent-metrics report`, the longest phase before the PR, and total wall
    clock against the budget above. State cost as **not measured**, with the recorded join window;
    never estimate it.
 
@@ -934,15 +934,14 @@ someone may still need. Then:
 - Report the PR's final CI state. If a long check (`codeql`, `sonarcloud`, `a11y`,
   `build-marketplace`) is still running, say so explicitly — do **not** claim green until it is.
 - `publish` (run back in **Phase 6**, when the PR was opened) appended one row — **user, ticket
-  id, time to fix, slowest phase** — to
+  id, time to fix, longest phase before PR** — to
   [Bug Fix/Feature Development Skill Performance](https://hyland.atlassian.net/wiki/x/nQFlAAE),
   authenticating as the engineer who ran it. **Time to fix is the `fix` bucket alone** — evidence
   capture, the review loop and all overhead are excluded, so the row answers how long the work
   took rather than how slow the pipeline is. The per-phase breakdown and the other three
   subtotals are **not** published; they stay in the local `metrics.jsonl`. Print that table in
-  the final summary and name both slowest phases — `report` prints the slowest overall (usually
-  `ci`, which is what to attack to make runs finish sooner) and the slowest within `fix`, which
-  is the one on the page.
+  the final summary — `report` also names the longest phase before the PR, which is the column
+  on the page and the one worth attacking next.
 
 ## Recommended extras (do these when applicable, still autonomously)
 

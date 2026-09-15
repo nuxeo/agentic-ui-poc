@@ -253,13 +253,22 @@ if (isCli) {
 
     /** @type {Map<string,{ms:number,events:string[]}>} */
     const phases = new Map();
+    // Segments before the `pr` mark, summed separately. A phase can open more than once, so
+    // this accumulates rather than taking the first occurrence.
+    /** @type {Map<string,number>} */
+    const beforePr = new Map();
+    const prIndex = marks.findIndex((m) => m.type === 'phase' && m.phase === 'pr');
+
     for (let i = 0; i < marks.length; i += 1) {
       if (marks[i].type !== 'phase') continue;
       const from = new Date(marks[i].at).getTime();
       const to = new Date((marks[i + 1] ?? { at: new Date().toISOString() }).at).getTime();
+      const ms = Math.max(0, to - from);
       const cur = phases.get(marks[i].phase) ?? { ms: 0, events: [] };
-      cur.ms += Math.max(0, to - from);
+      cur.ms += ms;
       phases.set(marks[i].phase, cur);
+      if (prIndex === -1 || i < prIndex)
+        beforePr.set(marks[i].phase, (beforePr.get(marks[i].phase) ?? 0) + ms);
     }
 
     // Attribute each event to the phase that was open when it happened.
@@ -274,21 +283,22 @@ if (isCli) {
     const buckets = { fix: 0, evidence: 0, overhead: 0, review: 0 };
     for (const [id, p] of phases) buckets[PHASES[id]?.bucket ?? 'overhead'] += p.ms;
 
-    // The slowest phase *within the published total*, so the column and the time beside it
-    // describe the same thing. A "slowest overall" would almost always name `ci` — true, and
-    // useful, but it would sit next to a number that deliberately excludes CI and read as a
-    // contradiction. `fix` ends at PR raise now, so this is inherently the pre-PR bottleneck.
-    let slowestFix = null;
-    for (const [id, p] of phases) {
-      if (PHASES[id]?.bucket !== 'fix') continue;
-      if (!slowestFix || p.ms > slowestFix.ms)
-        slowestFix = { id, ms: p.ms, label: PHASES[id].label };
+    // The longest phase before the pull request was opened.
+    //
+    // No bucket filtering — "before the PR" is the whole rule. That replaced a fix-bucket
+    // version which needed a paragraph to explain why it could disagree with the report's own
+    // slowest line. If workspace setup or the before-capture is the biggest slice, that is
+    // worth seeing rather than hiding because it is not strictly fixing.
+    let longestBeforePr = null;
+    for (const [id, ms] of beforePr) {
+      if (!longestBeforePr || ms > longestBeforePr.ms)
+        longestBeforePr = { id, ms, label: PHASES[id]?.label ?? id };
     }
     const wallMs = start
       ? new Date((end ?? run[run.length - 1]).at).getTime() - new Date(start.at).getTime()
       : 0;
 
-    return { start, end, phases, buckets, totalMs, wallMs, slowestFix, rows: run };
+    return { start, end, phases, buckets, totalMs, wallMs, longestBeforePr, rows: run };
   }
 
   function hhmm(ms) {
@@ -337,18 +347,13 @@ if (isCli) {
     console.log(`  ${'total (phases)'.padEnd(width)}  ${hhmm(s.totalMs).padStart(7)}`);
     console.log(`  ${'wall clock'.padEnd(width)}  ${hhmm(s.wallMs).padStart(7)}`);
 
-    // Two slowest lines, because they answer different questions and used to be one line that
-    // answered neither reliably. The overall winner is usually `ci` — the real bottleneck, and
-    // what you attack to make a run finish sooner. The published column is scoped to `fix`, so
-    // printing only the overall one meant the local report and the shared page could name
-    // different phases and read as a contradiction.
-    const slowest = [...s.phases.entries()].sort((a, b) => b[1].ms - a[1].ms)[0];
-    if (slowest)
-      console.log(`\n  Slowest overall:   ${PHASES[slowest[0]].label} (${hhmm(slowest[1].ms)})`);
-    if (s.slowestFix)
+    // One line, and it is the one on the page. The per-phase table above already lists every
+    // phase with its duration and share, so a second "slowest overall" line restated what the
+    // reader can already see and could name a different phase than the page.
+    if (s.longestBeforePr)
       console.log(
-        `  Slowest in fix:    ${s.slowestFix.label} (${hhmm(s.slowestFix.ms)})` +
-          '   <- the Slowest phase column on the page',
+        `\n  Longest phase before the PR: ${s.longestBeforePr.label} ` +
+          `(${hhmm(s.longestBeforePr.ms)})   <- the column on the page`,
       );
 
     console.log(
@@ -406,25 +411,49 @@ if (isCli) {
     let table = storage.slice(heading, close);
     const tail = storage.slice(close);
 
+    const LABEL = 'Longest phase before PR';
     const headerCells = (table.match(/<th[\s>]/g) ?? []).length;
+
     if (headerCells === 4) {
-      console.log('The runs table already has 4 columns — nothing to do.');
-      return;
-    }
-    if (headerCells !== 3) {
+      // Already four columns. Rename the last one if it carries an older label — the column
+      // shipped once as "Slowest phase" — rather than reporting nothing to do and leaving the
+      // header describing a value the publisher no longer writes.
+      if (table.includes(`<strong>${LABEL}</strong>`)) {
+        console.log(`The runs table already has 4 columns headed "${LABEL}" — nothing to do.`);
+        return;
+      }
+      const renamed = table.replace(
+        /<th([^>]*)><p><strong>[^<]*<\/strong><\/p><\/th>(\s*<\/tr>)/,
+        `<th$1><p><strong>${LABEL}</strong></p></th>$2`,
+      );
+      if (renamed === table) {
+        console.error('\nFour columns, but the last header is not a plain label. Not guessing.\n');
+        process.exit(1);
+      }
+      table = renamed;
+    } else if (headerCells === 3) {
+      table = table.replace(
+        /(<th[^>]*>(?:(?!<\/tr>)[\s\S])*<\/th>)([\s\S]*?<\/tr>)/,
+        `$1<th><p><strong>${LABEL}</strong></p></th>$2`,
+      );
+    } else {
       console.error(`\nExpected 3 or 4 header columns, found ${headerCells}. Not guessing.\n`);
       process.exit(1);
     }
 
-    table = table.replace(
-      /(<th[^>]*>(?:(?!<\/tr>)[\s\S])*<\/th>)([\s\S]*?<\/tr>)/,
-      '$1<th><p><strong>Slowest phase</strong></p></th>$2',
-    );
-
+    // Count the cells, do not pattern-match a fixed number of them.
+    //
+    // `(?:<td>…</td>){3}` looked like "a three-cell row" and was not: the lazy inner match
+    // backtracks, so on a four-cell row the third repetition swallowed cells three and four as
+    // one and the row was padded to five. It had already run against the live page and widened
+    // three real rows before this was caught.
     let padded = 0;
-    table = table.replace(/<tr>((?:<td>(?:(?!<\/tr>)[\s\S])*?<\/td>){3})<\/tr>/g, (_m, cells) => {
+    table = table.replace(/<tr>[\s\S]*?<\/tr>/g, (rowHtml) => {
+      if (rowHtml.includes('<th')) return rowHtml; // the header row
+      const cells = (rowHtml.match(/<td[\s>]/g) ?? []).length;
+      if (cells !== 3) return rowHtml;
       padded += 1;
-      return `<tr>${cells}<td><p>&mdash;</p></td></tr>`;
+      return rowHtml.replace('</tr>', '<td><p>&mdash;</p></td></tr>');
     });
 
     const put = await fetch(`${CONFLUENCE_BASE}/api/v2/pages/${CONFLUENCE_PAGE_ID}`, {
@@ -437,7 +466,7 @@ if (isCli) {
         body: { representation: 'storage', value: `${head}${table}${tail}` },
         version: {
           number: page.version.number + 1,
-          message: 'agent-metrics: add the Slowest phase column',
+          message: 'agent-metrics: add the Longest phase before PR column',
         },
       }),
     });
@@ -445,7 +474,7 @@ if (isCli) {
       console.error(`Migration failed (HTTP ${put.status}): ${(await put.text()).slice(0, 300)}`);
       process.exit(1);
     }
-    console.log(`Added the Slowest phase column; padded ${padded} existing row(s).`);
+    console.log(`Runs table header set to "${LABEL}"; padded ${padded} row(s).`);
   }
 
   async function publish() {
@@ -513,8 +542,10 @@ if (isCli) {
     // The fix total, not wall clock. Publishing wall clock made the first row read 4h 13m for a
     // one-line change, 88% of which was evidence capture and CI polling — a number that says
     // nothing about the fix and is read as if it did.
-    const slowest = s.slowestFix ? `${s.slowestFix.id} (${hhmm(s.slowestFix.ms)})` : '—';
-    const row = `<tr>${cell(s.start?.account)}${cell(ticket)}${cell(hhmm(s.buckets.fix))}${cell(slowest)}</tr>`;
+    const longest = s.longestBeforePr
+      ? `${s.longestBeforePr.id} (${hhmm(s.longestBeforePr.ms)})`
+      : '—';
+    const row = `<tr>${cell(s.start?.account)}${cell(ticket)}${cell(hhmm(s.buckets.fix))}${cell(longest)}</tr>`;
 
     // Anchor on the page's structure, not on a marker comment: Confluence's storage-format
     // sanitiser strips HTML comments, so a `<!-- ... -->` marker silently does not survive the
@@ -539,7 +570,7 @@ if (isCli) {
     if (headerCells !== 4) {
       console.error(
         `\nThe runs table has ${headerCells} header column(s); this row has 4 ` +
-          '(user, ticket, time to fix, slowest phase).\n' +
+          '(user, ticket, time to fix, longest phase before PR).\n' +
           'Run `node scripts/agent-metrics.mjs migrate-page` to widen the header in place, then\n' +
           'retry — refusing to append a row the header does not describe.\n' +
           '\nDo NOT re-seed: `seed-metrics-page.mjs` rewrites the body with an empty table and\n' +
