@@ -61,16 +61,30 @@ describe('LoginPageComponent', () => {
    * brand link reaches assistive technology, and the link still carries the name. A test for
    * `aria-hidden` on one specific element would pass while a newly added third mark went
    * unhidden.
+   *
+   * It also enforces both preconditions that make `aria-hidden` the right tool here, rather
+   * than leaving them as prose in the PR. `aria-hidden` over focusable content is itself a
+   * violation, and a vendor release that adds a focusable element inside the lockup would
+   * otherwise introduce `aria_hidden_focus_misuse` with every check still green — the repo's
+   * runtime axe harness records the login page as unreachable, so nothing else covers it.
    */
   it('hides the decorative brand logo from assistive technology', () => {
     const link = (fixture.nativeElement as HTMLElement).querySelector('a.login-brand');
     expect(link).toBeTruthy();
     expect(link!.getAttribute('aria-label')).toBe('Hyland');
+    // The link itself must stay exposed: it is the only thing that conveys "Hyland".
+    expect(link!.closest('[aria-hidden="true"]')).toBeNull();
 
     const graphics = Array.from(link!.querySelectorAll('svg'));
-    expect(graphics.length).toBe(2);
+    expect(graphics).toHaveSize(2);
     for (const svg of graphics) {
       expect(svg.closest('[aria-hidden="true"]')).toBeTruthy();
+    }
+
+    const focusable = 'a[href],button,input,select,textarea,[tabindex],[contenteditable]';
+    for (const hidden of Array.from(link!.querySelectorAll('[aria-hidden="true"]'))) {
+      expect(hidden.matches(focusable)).toBe(false);
+      expect(Array.from(hidden.querySelectorAll(focusable))).toHaveSize(0);
     }
   });
 
