@@ -16,12 +16,15 @@ import { LoginPageComponent } from './login-page.component';
 function allDescendants(root: Element): Element[] {
   const found: Element[] = [];
   const visit = (node: Element | ShadowRoot) => {
+    // Checked on entry, not per child, so a shadow root attached to `root` itself is
+    // traversed too — the caller's own element is exactly where a component under test
+    // attaches one.
+    if (node instanceof Element && node.shadowRoot) {
+      visit(node.shadowRoot);
+    }
     for (const child of Array.from(node.children)) {
       found.push(child);
       visit(child);
-      if (child.shadowRoot) {
-        visit(child.shadowRoot);
-      }
     }
   };
   visit(root);
@@ -167,6 +170,17 @@ describe('LoginPageComponent', () => {
         .toBe(true);
       injected.remove();
     }
+
+    // The same, one level deeper: focusable content inside a shadow root attached to the
+    // element the walk starts from. An earlier version of `allDescendants` checked only its
+    // children's shadow roots, so this case walked straight past.
+    const host = document.createElement('div');
+    hidden!.append(host);
+    host.attachShadow({ mode: 'open' }).innerHTML = '<button type="button">probe</button>';
+    expect([host, ...allDescendants(host)].some(canTakeFocus))
+      .withContext('the guard must see focusable content inside a shadow root on the host')
+      .toBe(true);
+    host.remove();
   });
 
   it('submits username and password together', async () => {

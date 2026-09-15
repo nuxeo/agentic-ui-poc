@@ -25,8 +25,8 @@ stale the way the ones they replaced were about to:
 <!-- pr-review-stats:start -->
 <!-- generated from docs/pr-review-findings.jsonl by `npm run review:analysis -- sync`. Do not edit by hand. -->
 
-**61 findings** across 6 pull requests, every one accepted as valid.
-The three largest classes are **39 of 61**.
+**62 findings** across 6 pull requests, every one accepted as valid.
+The three largest classes are **39 of 62**.
 
 | Class                  | Findings |
 | ---------------------- | -------- |
@@ -36,7 +36,7 @@ The three largest classes are **39 of 61**.
 | `false-claim`          | 5        |
 | `ordering`             | 5        |
 | `silent-failure`       | 5        |
-| `incomplete-fetch`     | 3        |
+| `incomplete-fetch`     | 4        |
 | `scope`                | 2        |
 | `broken-reference`     | 1        |
 | `dead-branch`          | 1        |
