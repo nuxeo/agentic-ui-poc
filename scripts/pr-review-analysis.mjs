@@ -369,7 +369,16 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId
 }
 
 /**
- * The Copilot reviews on a PR, oldest first.
+ * **Every** review on a PR, oldest first — human ones included, because the caller has to be
+ * able to reject a human's review id explicitly rather than silently report zero findings for
+ * it. `copilotReviews` is the filtered view.
+ *
+ * `fullDatabaseId` alongside `databaseId`: the schema types `databaseId` as a 32-bit `Int`,
+ * which cannot hold a modern review id — 5204368759 is well past 2^31. In practice the API
+ * returns it in full and unerrored today (verified against #184), so the numeric lookup worked
+ * either way, but a field whose declared type contradicts its own values is not something to
+ * depend on. `fullDatabaseId` is a `BigInt`, serialised as a string, and is preferred when
+ * present; the comparison is string-based, so nothing has to survive a float.
  *
  * `gh` failing throws out of `execFileSync`, which is the point: this used to be
  * `copilot_reviews | tail -1` in a shell snippet, and without `pipefail` `tail` exits 0 when
@@ -385,17 +394,18 @@ export function reviewsOnPr(pr) {
     `headRefOid
      reviews(first:50, after:$endCursor){
        pageInfo{ hasNextPage endCursor }
-       nodes{ id databaseId author{ login } commit{ oid } } }`,
+       nodes{ id databaseId fullDatabaseId author{ login } commit{ oid } } }`,
     '$pr.reviews.nodes[] | {head: $pr.headRefOid} + .',
   ).map((r) => ({
     id: r.id,
-    databaseId: r.databaseId ?? null,
+    databaseId: r.fullDatabaseId ?? r.databaseId ?? null,
     author: r.author?.login ?? null,
     commit: r.commit?.oid ?? null,
     head: r.head,
   }));
 }
 
+/** The Copilot reviews on a PR, oldest first. */
 export function copilotReviews(pr) {
   return reviewsOnPr(pr).filter((r) => REVIEWER.test(r.author ?? ''));
 }
