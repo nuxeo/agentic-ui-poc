@@ -46,7 +46,7 @@ skill exists mostly to handle them.
 | Shared Nuxeo container + OpenSearch      | Shared, per-ticket data root is the isolate | Keep the default; do not run N containers   |
 | `git` object store, index, worktree list | Contended during **creation**               | Create workspaces **serially**              |
 | `git stash` stack                        | Shared across every worktree                | `fix-bug` already bans it; never relax that |
-| `docs/pr-review-findings.jsonl`          | Single file, appended by `publish`          | Publish after the batch, on its own branch  |
+| PR review findings record                | Confluence page; `publish` dedupes per row  | Nothing to do — it writes no tracked file   |
 | GitHub review requests                   | Rate-limited, and Copilot queues            | Stagger; never request N reviews at once    |
 
 ### The port collision, because it is the one that bit

@@ -30,6 +30,17 @@
  * folder (see `SEEDED_FOLDERS` in `app-translate-loader.ts`). They are duplicated here because
  * this map is the fallback for a **failed fetch**, and a failed fetch must not silently restore
  * the empty name.
+ *
+ * ## Every key bound to an accessible name must be here
+ *
+ * `settings.themes.search` was missing, and it is the `[attr.aria-label]` of the themes
+ * toolbar's search button. A failed fetch therefore named that control `settings.themes.search`
+ * — the same class of defect as the empty `sat.platform-nav.*` names above, differing only in
+ * whether the wrong name is blank or is a raw key. Neither is detectable by axe: one has no
+ * name, which axe catches, and one has a name that is simply not words, which it cannot.
+ *
+ * `checkTranslationCatalogues` in `scripts/review-guardrails.mjs` now fails when the shipped
+ * catalogue carries a key this map omits, so the pair cannot drift again.
  */
 export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'sat.platform-nav.expand': 'Expand navigation',
@@ -40,6 +51,7 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'browse.details.hide': 'Hide details',
   'browse.details.toggle': 'Toggle details panel',
   'settings.themes.title': 'Themes',
+  'settings.themes.search': 'Search themes',
   'settings.themes.current': 'Current',
   'settings.themes.apply': 'Apply',
 };

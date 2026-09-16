@@ -24,7 +24,7 @@
   "settings": {
     "themes": {
       "title": "Themes",
-      "search": "Search (placeholder)",
+      "search": "Search themes",
       "current": "Current",
       "apply": "Apply"
     }

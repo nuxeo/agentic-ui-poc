@@ -269,6 +269,51 @@ function checkDocsNumbering() {
   }
 }
 
+/**
+ * Review bookkeeping must not travel in a pull request.
+ *
+ * `pr-review-analysis.mjs publish` used to write four tracked files as well as posting to the
+ * Confluence analysis page: `docs/pr-review-findings.jsonl`, and the regenerated
+ * `pre-pr-review/SKILL.md` in `.cursor/` plus its `.claude/` and `.agent/` mirrors. It runs
+ * inside the review loop, and the retired `review-corpus` gate then required all four to be
+ * committed with the fix — so a two-line accessibility fix shipped with four files of review
+ * bookkeeping, on every PR that took a review round.
+ *
+ * The page is the record now and `publish` writes nothing tracked. This check is what keeps it
+ * that way, because the failure mode is not someone arguing for the corpus again: it is a
+ * generator, a stale instruction in a skill, or a restored file quietly putting it back.
+ *
+ * Both halves are load-bearing and neither implies the other. The path check catches the
+ * corpus file returning under its own name; the marker check catches the generated statistics
+ * block returning to any file, including under a different name, which is the form the path
+ * check cannot see.
+ */
+function checkNoReviewCorpusChurn() {
+  const CORPUS = 'docs/pr-review-findings.jsonl';
+  if (changedFiles.includes(CORPUS)) {
+    fail(
+      `${CORPUS} is back in the diff. The PR review findings live on the Confluence analysis ` +
+        'page, not in the repository — `npm run review:analysis -- stats` reads them. A ' +
+        'committed copy is churn on every unrelated PR, and it fell behind the page every time.',
+    );
+  }
+  // Split so this file can describe the marker without matching itself. Checking the added
+  // lines rather than the file contents is deliberate: it is the reintroduction that fails,
+  // and an unrelated PR is never blamed for a marker it did not add.
+  const MARKER = `pr-review-stats${':'}start`;
+  for (const [file, lines] of addedLinesByFile) {
+    const hit = lines.find((line) => line.text.includes(MARKER));
+    if (hit) {
+      fail(
+        `${file}:${hit.line} adds a generated \`${MARKER}\` block. The pre-PR review skill ` +
+          'quotes no counts on purpose: an embedded table is a second copy of a number that ' +
+          'only grows, and keeping it in step is what put the skill and its two mirrors into ' +
+          'every PR diff. Point at the page instead.',
+      );
+    }
+  }
+}
+
 function checkVitestProjects() {
   const projectFiles = walk('.', (file) => file.endsWith('project.json'));
   for (const projectFile of projectFiles) {
@@ -931,6 +976,7 @@ function checkNoAdfHxInPublicApi() {
 
 checkThemeTokens();
 checkDocsNumbering();
+checkNoReviewCorpusChurn();
 checkVitestProjects();
 checkBlobUrlLifecycle();
 checkNoNuxeoUrlInImgSrc();
