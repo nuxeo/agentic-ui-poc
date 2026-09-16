@@ -95,6 +95,12 @@ And one the report enforces across the two halves:
 Do **not** branch on `EVIDENCE_PHASE` inside a scene — the two runs must perform identical
 actions, or the comparison is illustration rather than evidence.
 
+### Scenes file exports (besides `summary` and `scenes`)
+
+| Export | When to use |
+| ------ | ----------- |
+| `skipHttpCredentials = true` | Public routes such as `/#/login`. Without it, Playwright `httpCredentials` hydrates `/me` and the browser is signed in before the login UI renders. Authenticated scenes still call `h.login()`. |
+
 ## Helpers
 
 From `scripts/beta-harness/helpers.mjs`, plus `shot()` added by the runner.
@@ -152,7 +158,9 @@ written to do, but it proves nothing, so it can never be cited as evidence. Conv
 - Headed Chromium by default, so the team can watch the capture live
 - `httpCredentials` **and** an injected session: the session satisfies the route guard so
   pages render, `httpCredentials` authenticates the XHRs behind them. Without both, `/nuxeo/api`
-  calls intermittently 403 and you photograph empty states that read as component defects
+  calls intermittently 403 and you photograph empty states that read as component defects.
+  Set `export const skipHttpCredentials = true` on the scenes file for public routes (login) so
+  `/me` hydration does not sign the browser in before the form is shown
 - A caption banner is injected into the page so the recording is narrated, and hidden for
   every screenshot — stills stay clean, and annotation happens on a copy
 - `spotlight()` outlines the element a scene is about, dims the rest and labels it, so the

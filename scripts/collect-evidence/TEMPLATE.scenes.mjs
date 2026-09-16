@@ -26,6 +26,12 @@
  * Do not branch on `EVIDENCE_PHASE` inside a scene. The before and after runs must perform
  * identical actions so the only difference in the output is the fix — that is what makes the
  * side-by-side comparison evidence rather than illustration.
+ *
+ * ## Public routes (e.g. login)
+ *
+ * Optional export: `export const skipHttpCredentials = true;`
+ * Skips Playwright `httpCredentials` so Nuxeo `/me` hydration does not auto-sign-in before
+ * the login form renders. Scenes that need an authenticated session still call `h.login()`.
  */
 
 /** One line for the title card and the top of STORY.md. */
