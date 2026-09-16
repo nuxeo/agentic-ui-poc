@@ -1,4 +1,5 @@
 <div class="login-page">
+  <a class="login-skip-link" mat-raised-button href="#login-main">Skip to sign in</a>
   <div class="login-panel">
     <div class="login-panel-inner">
       <a routerLink="/login" class="login-brand" aria-label="Hyland">
@@ -8,7 +9,13 @@
         </sat-logo>
       </a>
 
-      <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
+      <form
+        id="login-main"
+        tabindex="-1"
+        class="login-form"
+        [formGroup]="form"
+        (ngSubmit)="submit()"
+      >
         <mat-form-field appearance="outline" class="login-field-full">
           <mat-label>Username</mat-label>
           <input

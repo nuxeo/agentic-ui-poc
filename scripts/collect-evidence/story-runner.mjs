@@ -66,6 +66,9 @@ await mkdir(outDir, { recursive: true });
 
 const baseUrl = process.env['APP_URL'] ?? 'http://localhost:4200';
 
+const scenesUrl = pathToFileURL(resolve(process.cwd(), scenesFile)).href;
+const scenesMod = await import(scenesUrl);
+
 const ACT_NAMES = {
   1: 'Setup — where we are and what the user is trying to do',
   2:
@@ -111,9 +114,15 @@ if (!nuxeoUser || !nuxeoPass) {
 const context = await browser.newContext({
   viewport: { width: 1440, height: 900 },
   recordVideo: { dir: outDir, size: { width: 1440, height: 900 } },
-  // Both auth mechanisms are required: the injected session satisfies the route guard so
-  // pages render, httpCredentials authenticates the XHRs behind them.
-  httpCredentials: { username: nuxeoUser, password: nuxeoPass, origin: baseUrl },
+  // Both auth mechanisms are required on authenticated surfaces: the injected session satisfies
+  // the route guard so pages render, httpCredentials authenticates the XHRs behind them. Login
+  // and other public routes set `skipHttpCredentials: true` on the scenes file so /me hydration
+  // does not sign the browser in before the login form renders.
+  ...(scenesMod.skipHttpCredentials === true
+    ? {}
+    : {
+        httpCredentials: { username: nuxeoUser, password: nuxeoPass, origin: baseUrl },
+      }),
 });
 
 // Chapter offsets are measured from here. Recording actually begins inside newContext, a few
@@ -506,8 +515,7 @@ async function shot(name, opts = {}) {
 
 // ---------------------------------------------------------------- run
 
-const scenesUrl = pathToFileURL(resolve(process.cwd(), scenesFile)).href;
-const mod = await import(scenesUrl);
+const mod = scenesMod;
 const declarative = Array.isArray(mod.scenes) ? mod.scenes : null;
 
 /** @type {{index:number,act:number,title:string,criterion?:string,offsetMs:number}[]} */

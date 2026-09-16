@@ -39,6 +39,18 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('provides a skip link to the sign-in landmark (WCAG 2.4.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const skip = el.querySelector('a.login-skip-link');
+    expect(skip).toBeTruthy();
+    expect(skip?.getAttribute('href')).toBe('#login-main');
+    expect(skip?.textContent?.trim()).toContain('Skip to sign in');
+
+    const landmark = el.querySelector('#login-main');
+    expect(landmark).toBeTruthy();
+    expect(landmark?.getAttribute('tabindex')).toBe('-1');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
