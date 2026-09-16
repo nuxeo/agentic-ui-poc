@@ -125,7 +125,25 @@
         }
       </div>
 
-      <sat-word-mark-logo satAppHeaderLogo />
+      <!--
+        The word mark is a vendor component whose template is a bare <svg> with no <title>, so
+        assistive technology met an unnamed image (WCAG 1.1.1, NXENG-762). Nothing here can put
+        an attribute on that <svg>, and an `aria-label` on the mark's own host does not reach it
+        — measured, the rule still fires. So the name goes on a wrapper and the graphic is
+        hidden: one named image, no unnamed one inside it. Chrome keeps the <svg> in the
+        accessibility tree even under `role="img"`, which is why the mark is hidden rather than
+        relying on presentational children.
+
+        The wrapper is the logo slot the header styles for this arrangement
+        (`.sat-app-header-logo sat-word-mark-logo`), so the mark keeps its 106x40 box.
+
+        The name is what the graphic depicts, not `branding.applicationTitle`: Layer 0 renames
+        the product but cannot replace this asset, so a rebranded deployment would otherwise
+        announce a name that is not the picture on screen.
+      -->
+      <span satAppHeaderLogo role="img" aria-label="Hyland">
+        <sat-word-mark-logo aria-hidden="true" />
+      </span>
 
       <div satAppHeaderActions>
         @if (featureFlags.aiEnabled()) {
