@@ -39,6 +39,17 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('shows username required error after empty submit (NXENG-748)', () => {
+    component.form.setValue({ username: '', password: '' });
+    component.submit();
+    fixture.detectChanges();
+
+    const errors = Array.from(fixture.nativeElement.querySelectorAll('mat-error')).map(
+      (el) => (el as HTMLElement).textContent?.trim() ?? '',
+    );
+    expect(errors).toContain('Username is required');
+  });
+
   it('keeps the username outline wrapper from clipping focused input (NXENG-748)', () => {
     const usernameInput = fixture.nativeElement.querySelector(
       'input[formcontrolname="username"]',
