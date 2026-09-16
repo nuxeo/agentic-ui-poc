@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { appConfig } from '../app.config';
 import { AuthService } from '../auth/auth.service';
@@ -55,10 +55,15 @@ function canTakeFocus(element: Element): boolean {
  * would overclaim: `display:none`, `visibility:hidden` and the `hidden` attribute also remove
  * an element from the accessibility tree and this does not look for them. The narrower
  * reading is the safe direction here — it can only make an assertion stricter.
+ *
+ * The walk steps out of a shadow root onto its host, because `parentElement` is `null` at the
+ * boundary and `aria-hidden` on the host does hide the shadow content beneath it.
  */
 function ariaHiddenAncestorOf(el: Element): Element | null {
-  for (let n: Element | null = el; n; n = n.parentElement) {
+  for (let n: Element | null = el; n; ) {
     if (n.getAttribute('aria-hidden') === 'true') return n;
+    const root = n.getRootNode();
+    n = n.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
   }
   return null;
 }
@@ -79,8 +84,21 @@ function hasAccessibleName(svg: Element): boolean {
   return ids.some((id) => Boolean(root.getElementById?.(id)?.textContent?.trim()));
 }
 
+/**
+ * Every `<svg>` under `root` that assistive technology would reach without a name.
+ *
+ * Shared by the assertion and its control, so the control cannot pass by exercising a
+ * re-implementation of the census instead of the census itself.
+ */
+function exposedUnnamedGraphics(root: Element): SVGSVGElement[] {
+  return [root, ...allDescendants(root)]
+    .filter((el): el is SVGSVGElement => el instanceof SVGSVGElement)
+    .filter((svg) => !ariaHiddenAncestorOf(svg) && !hasAccessibleName(svg));
+}
+
 describe('AppShellComponent — header graphics and assistive technology', () => {
   let header: HTMLElement;
+  let http: HttpTestingController;
 
   const authMock = {
     isAuthenticated: signal(true),
@@ -108,6 +126,8 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
       .overrideProvider(AuthService, { useValue: authMock })
       .compileComponents();
 
+    http = TestBed.inject(HttpTestingController);
+
     const fixture = TestBed.createComponent(AppShellComponent);
     fixture.detectChanges();
 
@@ -116,6 +136,15 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
       .withContext('the shell must render the app header for this spec to assert anything')
       .toBeTruthy();
     header = found as HTMLElement;
+  });
+
+  // The same cleanup `provide-app-extensions.spec.ts` uses. The shell's constructor calls
+  // `refreshFavoritesCount()`, which searches Nuxeo, so there is always at least one pending
+  // request; flushing then verifying leaves nothing behind for the next spec and turns any
+  // *future* unexpected request into a failure rather than a silent leak.
+  afterEach(() => {
+    http.match(() => true).forEach((request) => request.flush({}));
+    http.verify();
   });
 
   /**
@@ -137,11 +166,14 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * violation was present.
    */
   it('exposes no unnamed graphic in the header', () => {
-    const svgs = Array.from(header.querySelectorAll('svg'));
-    expect(svgs.length).withContext('the header must render at least one graphic').toBeGreaterThan(0);
+    const graphics = [header, ...allDescendants(header)].filter(
+      (el): el is SVGSVGElement => el instanceof SVGSVGElement,
+    );
+    expect(graphics.length)
+      .withContext('the header must render at least one graphic')
+      .toBeGreaterThan(0);
 
-    const exposedUnnamed = svgs.filter((svg) => !ariaHiddenAncestorOf(svg) && !hasAccessibleName(svg));
-    expect(exposedUnnamed.map((svg) => svg.parentElement?.tagName.toLowerCase()))
+    expect(exposedUnnamedGraphics(header).map((svg) => svg.parentElement?.tagName.toLowerCase()))
       .withContext('every <svg> in the header must be hidden from assistive technology or named')
       .toEqual([]);
   });
@@ -190,6 +222,26 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
   // Controls for the two guards above. A guard that has never been observed to fire is an
   // assumption. Both controls use cases a hand-written focusable-selector list misses, so a
   // green control cannot be confirming the part that already worked.
+
+  it('control: the graphic census crosses an open shadow boundary, in both directions', () => {
+    const host = document.createElement('div');
+    header.append(host);
+    host.attachShadow({ mode: 'open' }).innerHTML = '<svg viewBox="0 0 1 1"><path d="M0 0" /></svg>';
+
+    // Seen: `querySelectorAll('svg')` on the header would return nothing for this graphic.
+    expect(exposedUnnamedGraphics(header).length)
+      .withContext('an unnamed <svg> inside an open shadow root must be counted')
+      .toBe(1);
+
+    // And hiding the host hides it: the aria-hidden walk has to step out of the shadow root
+    // onto its host, where `parentElement` is null.
+    host.setAttribute('aria-hidden', 'true');
+    expect(exposedUnnamedGraphics(header).length)
+      .withContext('aria-hidden on the shadow host must cover the graphic inside it')
+      .toBe(0);
+
+    host.remove();
+  });
 
   it('control: the focusability guard fires on an element no selector list enumerates', () => {
     const details = document.createElement('details');
