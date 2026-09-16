@@ -70,18 +70,15 @@ function flatten(value: string, backdrop: readonly number[]): number[] {
   return rgb.map((channel, i) => Math.round(alpha * channel + (1 - alpha) * backdrop[i]));
 }
 
+/**
+ * The host template is external because `AGENTS/08-bug-patterns.md` section 10 requires it of
+ * every component and does not exempt test hosts — the same reason
+ * `render-trusted-html.spec.ts` keeps its one-line host template in a sibling file.
+ */
 @Component({
   standalone: true,
   imports: [SatPlatformNavModule],
-  // Two items, one of them active: the failing adjacency is between the ring and the
-  // active-item highlight, whether that highlight belongs to the focused item itself or to the
-  // item touching it (nav items have no gap between them).
-  template: `
-    <sat-platform-nav>
-      <sat-platform-nav-list-item data-nav-id="idle">Browse (adf-hx POC)</sat-platform-nav-list-item>
-      <sat-platform-nav-list-item data-nav-id="active" [active]="true">Browse</sat-platform-nav-list-item>
-    </sat-platform-nav>
-  `,
+  templateUrl: './platform-nav-focus-ring.host.html',
 })
 class NavHostComponent {}
 
