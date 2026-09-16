@@ -39,6 +39,19 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('keeps the username outline wrapper from clipping focused input (NXENG-748)', () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+    usernameInput.focus();
+    fixture.detectChanges();
+
+    const wrapper = usernameInput.closest('.mat-mdc-text-field-wrapper') as HTMLElement;
+    expect(wrapper).toBeTruthy();
+    expect(getComputedStyle(wrapper).overflow).toBe('visible');
+    expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
