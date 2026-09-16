@@ -397,6 +397,71 @@ guarantee. See `libs/features/document-detail/src/lib/document-detail/ke-action-
 
 ---
 
+## 17. `outline: none` with no replacement, and a focus ring on a non-focusable wrapper
+
+`outline: none` on a control with no focus style anywhere is WCAG 2.1 failure technique F78 and
+an SC 2.4.7 violation. It is easy to miss because nothing looks broken until you stop using the
+mouse: the header global search input — the **first Tab stop on every page in this app** —
+changed **zero of the 19312 pixels** in its box when it received keyboard focus. There is no
+global `:focus-visible` fallback in `apps/nuxeo-ui/src/styles.scss` to catch this, so every
+control is on its own.
+
+```scss
+// BAD ❌ — the browser's ring removed and nothing put back. F78.
+.header-search-input {
+  border: none;
+  outline: none;
+}
+
+// ALSO BAD ❌ — a real 6.44:1 ring, but on the wrapper <div>. It looks fixed and is not:
+// the wrapper is not focusable, so every tool that inspects the focused element still
+// reports no indicator, and the ring cannot follow the control's own box.
+.header-search-input-wrap:focus-within {
+  outline: 2px solid var(--mat-sys-primary);
+}
+
+// GOOD ✅ — the ring belongs to the element that takes focus. Give it the border and the
+// radius so it has a box worth outlining.
+.header-search-input {
+  box-sizing: border-box;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 20px;
+  outline: none;
+}
+
+.header-search-input:focus {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+}
+```
+
+Three traps, each of which cost a measurement to find:
+
+- **`light-dark()` tokens on a surface that does not flip with them.** `--mat-sys-primary` is
+  `light-dark(#5654ac, #c3c0ff)` and `<html>` carries `color-scheme: light dark`, but this field
+  pins `background: #fff`. Under `prefers-color-scheme: dark` the ring resolved to the pale value
+  and measured **1.71:1** on white — below the 3:1 of SC 1.4.11, in dark mode only, where a
+  light-mode screenshot will never show it. Declare `color-scheme: light` on any subtree whose
+  background is hard-pinned light, and the tokens inside it resolve correctly.
+- **IBM Equal Access's `style_focus_visible` reads `:focus` only.** It collects `:focus-visible`
+  and `:focus-within` into an array and then only ever reads index 0. A `:focus-visible`-only
+  ring is invisible to it, and its lookup does not resolve **selector lists** either — writing
+  `&:focus, &:focus-visible` reports the control as unindicated again. `:focus` costs nothing on
+  a control that accepts keyboard input: it matches `:focus-visible` whenever focused anyway.
+- **`outline-color` computes to `currentColor` even when `outline-style: none`.** A test that
+  reads `outline-color` and checks the contrast ratio passes on completely unfixed code, because
+  it measures the text colour. Assert `outline-style !== 'none'` and a non-zero width *before*
+  measuring the colour.
+
+Regression test pattern: `nuxeo-ui` runs its specs in real Chrome (`ng test nuxeo-ui` is the
+Karma builder, and its `styles` option loads the app's global stylesheet), so assert the
+*rendered* cascade — pull the real component stylesheet in with `styleUrls`, call `focus()`, and
+read the ring back out of `getComputedStyle`. Grepping the SCSS cannot tell a rule that applies
+from one that is overridden. See
+`apps/nuxeo-ui/src/app/shell/header-search-focus-ring.spec.ts` (NXENG-775).
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.

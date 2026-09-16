@@ -99,18 +99,34 @@ sat-platform-nav-container.has-selection-topbar {
   z-index: 20;
 }
 
+// The pill border and the magnifier used to live on this wrapper, with the input sitting
+// inside its padding. That left the only focusable element in the control with no box of
+// its own to draw a focus ring around, and `outline: none` below removed the browser's.
+// The border now belongs to the input; this element just positions the magnifier over it.
 .header-search-input-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 40px;
-  border: 1px solid #d0d5dd;
+  position: relative;
+  height: 42px;
   border-radius: 20px;
   background: #fff;
-  padding: 0 12px;
+  // This field is a white surface in every theme, so declare it one. Without this the
+  // `light-dark()` tokens below follow the OS preference while the background does not:
+  // under `prefers-color-scheme: dark` the focus ring resolved to the pale primary and
+  // measured 1.71:1 on white, against the 3:1 that SC 1.4.11 requires.
+  color-scheme: light;
 }
 
 .header-search-icon {
+  position: absolute;
+  // 13px is the wrapper's old 12px padding plus the 1px border that moved onto the input.
+  // The input's 40px left padding below is that, plus this 20px icon and the 8px gap that
+  // used to separate them — measured at 39.94px before the change.
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  pointer-events: none;
   color: #667085;
   font-size: 20px;
   width: 20px;
@@ -119,11 +135,26 @@ sat-platform-nav-container.has-selection-topbar {
 
 .header-search-input {
   width: 100%;
-  border: none;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 13px 0 40px;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 20px;
   outline: none;
   background: transparent;
   font-size: 14px;
   color: #101828;
+}
+
+// Keep this as its own selector. IBM Equal Access's `style_focus_visible` reads the
+// element's `:focus` styles only — it collects `:focus-visible` and `:focus-within` and
+// then never looks at them — and its lookup does not resolve selector lists, so writing
+// `&:focus, &:focus-visible` here reports the input as having no focus indicator again.
+// `:focus` loses nothing: an element that accepts keyboard input matches `:focus-visible`
+// whenever it is focused, mouse included.
+.header-search-input:focus {
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
 }
 
 .header-search-dropdown {
