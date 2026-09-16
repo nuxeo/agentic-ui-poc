@@ -25,14 +25,14 @@ stale the way the ones they replaced were about to:
 <!-- pr-review-stats:start -->
 <!-- generated from docs/pr-review-findings.jsonl by `npm run review:analysis -- sync`. Do not edit by hand. -->
 
-**60 findings** across 7 pull requests, every one accepted as valid.
-The three largest classes are **39 of 60**.
+**62 findings** across 7 pull requests, every one accepted as valid.
+The three largest classes are **41 of 62**.
 
 | Class                  | Findings |
 | ---------------------- | -------- |
 | `proxy-check`          | 15       |
-| `unenforced-guarantee` | 14       |
-| `stale-prose`          | 10       |
+| `unenforced-guarantee` | 15       |
+| `stale-prose`          | 11       |
 | `ordering`             | 5        |
 | `silent-failure`       | 5        |
 | `false-claim`          | 4        |

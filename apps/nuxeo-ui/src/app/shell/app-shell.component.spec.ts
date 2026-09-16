@@ -53,6 +53,22 @@ describe('AppShellComponent', () => {
     const graphics = Array.from(header!.querySelectorAll('svg'));
     expect(graphics.length).toBeGreaterThan(0);
 
+    // AC-3 is a claim about how many images the header announces, so the count is asserted
+    // rather than inferred from each graphic having *some* qualifying ancestor. Two duplicated
+    // wrappers, each holding a hidden mark, would satisfy every per-graphic assertion below
+    // while announcing "Hyland" twice — and a named wrapper holding no graphic at all would
+    // not be visited by that loop in the first place.
+    //
+    // The hidden ones are filtered out rather than counted: the header's `mat-icon`s are also
+    // `role="img"`, and Material marks them `aria-hidden`, so they are not announced. Counting
+    // what is *exposed* is both the claim and the stronger check — a `mat-icon` that lost its
+    // `aria-hidden` would fail this too, as an unnamed image reaching assistive technology.
+    const exposedImages = Array.from(header!.querySelectorAll('[role="img"]')).filter(
+      (el) => el.closest('[aria-hidden="true"]') === null,
+    );
+    expect(exposedImages.length).toBe(1);
+    expect(exposedImages[0].getAttribute('aria-label')).toBe('Hyland');
+
     for (const svg of graphics) {
       const hidden = svg.closest('[aria-hidden="true"]');
       expect(hidden).toBeTruthy();
