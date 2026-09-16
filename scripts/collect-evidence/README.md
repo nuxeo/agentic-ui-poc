@@ -99,7 +99,7 @@ actions, or the comparison is illustration rather than evidence.
 
 | Export | When to use |
 | ------ | ----------- |
-| `skipHttpCredentials = true` | Public routes such as `/#/login`. Without it, Playwright `httpCredentials` hydrates `/me` and the browser is signed in before the login UI renders. Authenticated scenes still call `h.login()`. |
+| `skipHttpCredentials = true` | Public routes such as `/#/login`. Without it, Playwright `httpCredentials` hydrates `/me` and the browser is signed in before the login UI renders. Use a separate scenes file (default httpCredentials) for authenticated flows. |
 
 ## Helpers
 

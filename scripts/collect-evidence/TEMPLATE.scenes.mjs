@@ -31,7 +31,8 @@
  *
  * Optional export: `export const skipHttpCredentials = true;`
  * Skips Playwright `httpCredentials` so Nuxeo `/me` hydration does not auto-sign-in before
- * the login form renders. Scenes that need an authenticated session still call `h.login()`.
+ * the login form renders. Use only for login (or other public) captures — post-login scenes
+ * need a separate scenes file without this flag so XHR auth works.
  */
 
 /** One line for the title card and the top of STORY.md. */

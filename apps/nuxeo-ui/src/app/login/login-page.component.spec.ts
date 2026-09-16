@@ -53,13 +53,19 @@ describe('LoginPageComponent', () => {
 
   it('focuses the sign-in landmark when the skip link is activated', () => {
     const el = fixture.nativeElement as HTMLElement;
-    const skip = el.querySelector('a.login-skip-link') as HTMLAnchorElement;
     const landmark = el.querySelector('#login-main') as HTMLElement;
+    const event = jasmine.createSpyObj<MouseEvent>('event', ['preventDefault']);
 
-    skip.click();
+    component.skipToSignIn(event);
     fixture.detectChanges();
 
+    expect(event.preventDefault).toHaveBeenCalled();
     expect(document.activeElement).toBe(landmark);
+  });
+
+  it('names the sign-in form landmark for assistive tech', () => {
+    const landmark = fixture.nativeElement.querySelector('#login-main') as HTMLElement;
+    expect(landmark.getAttribute('aria-label')).toBe('Sign in');
   });
 
   it('shows username and password on one form (Web UI parity)', () => {
