@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { appConfig } from '../app.config';
 import { AuthService } from '../auth/auth.service';
@@ -62,13 +63,20 @@ function ariaHiddenAncestorOf(el: Element): Element | null {
   return null;
 }
 
-/** Whether an `<svg>` carries an accessible name of its own. */
+/**
+ * Whether an `<svg>` carries an accessible name of its own.
+ *
+ * `aria-labelledby` is **resolved** rather than counted: ids that match no element, or match
+ * an empty one, leave the graphic unnamed. Treating the attribute's presence as proof of a
+ * name would let `aria-labelledby="missing-id"` exclude an unnamed `<svg>` from the check.
+ */
 function hasAccessibleName(svg: Element): boolean {
-  return Boolean(
-    svg.getAttribute('aria-label')?.trim() ||
-      svg.getAttribute('aria-labelledby')?.trim() ||
-      svg.querySelector(':scope > title')?.textContent?.trim(),
-  );
+  if (svg.getAttribute('aria-label')?.trim()) return true;
+  if (svg.querySelector(':scope > title')?.textContent?.trim()) return true;
+
+  const ids = svg.getAttribute('aria-labelledby')?.trim().split(/\s+/).filter(Boolean) ?? [];
+  const root = svg.getRootNode() as Document | ShadowRoot;
+  return ids.some((id) => Boolean(root.getElementById?.(id)?.textContent?.trim()));
 }
 
 describe('AppShellComponent — header graphics and assistive technology', () => {
@@ -77,7 +85,6 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
   const authMock = {
     isAuthenticated: signal(true),
     username: signal('test.user'),
-    basicCredentials: () => 'dGVzdA==',
     // Both are read while the extension registry resolves the navigation:
     // `hasAdministrationAccess` by the `app.rules.hasAdministrationAccess` rule, and
     // `isAdministrator` by the effect that keeps the rule context in sync.
@@ -91,7 +98,12 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppShellComponent],
-      providers: appConfig.providers,
+      // `provideHttpClientTesting` last, so it replaces the real backend `appConfig` installs.
+      // The shell's constructor calls `refreshFavoritesCount()`, which issues a Nuxeo search
+      // through the real `CollectionService`; against the live backend that is a network
+      // request from a unit test — order-dependent, offline-dependent, and noisy in the Karma
+      // log. Requests are never flushed here because no assertion depends on one.
+      providers: [...appConfig.providers, provideHttpClientTesting()],
     })
       .overrideProvider(AuthService, { useValue: authMock })
       .compileComponents();
@@ -140,7 +152,10 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * name comes from the level-1 heading carrying the page title, not from the word mark.
    */
   it('keeps the header level-1 heading exposed to assistive technology', () => {
-    const heading = header.querySelector('[aria-level="1"]');
+    // Both attributes: `aria-level` alone sets no role, so an element carrying only it is not
+    // exposed as a heading at all and selecting on it would keep this green while the
+    // header's heading had gone.
+    const heading = header.querySelector('[role="heading"][aria-level="1"]');
     expect(heading).withContext('the header must expose a level-1 heading').toBeTruthy();
     expect(heading?.textContent?.trim()).toBeTruthy();
     expect(ariaHiddenAncestorOf(heading as Element))
