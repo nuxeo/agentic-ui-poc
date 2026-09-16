@@ -74,9 +74,20 @@ describe('AppShellComponent — header brand accessibility', () => {
     return took;
   }
 
-  function focusableIn(root: Element): string[] {
+  /**
+   * Whether the element is reachable by pressing Tab — focusable *and* in the tab order.
+   *
+   * Deliberately narrower than `isFocusable`, because the two tests below ask different
+   * questions. `focus()` succeeds on `tabindex="-1"`, which is programmatically focusable but
+   * is not a tab stop; a test named for tab order must not fail on one.
+   */
+  function isTabStop(el: Element): boolean {
+    return isFocusable(el) && (el as HTMLElement).tabIndex >= 0;
+  }
+
+  function matchesIn(root: Element, predicate: (el: Element) => boolean): string[] {
     return subtree(root)
-      .filter(isFocusable)
+      .filter(predicate)
       .map((el) => el.tagName.toLowerCase());
   }
 
@@ -145,11 +156,13 @@ describe('AppShellComponent — header brand accessibility', () => {
     // The defect itself: every `<svg>` in the header must be either named or hidden. The
     // word mark's own `<svg>` cannot be named from this repo, so it has to be hidden — and
     // this catches a second vendor mark added later exactly as it catches this one.
+    // The `<title>` must actually say something: an empty or whitespace-only one is not an
+    // accessible name, and testing only for the element's presence would let it count.
     const exposedUnnamed = [...root.querySelectorAll('sat-app-header svg')].filter(
       (svg) =>
         !isHiddenFromAssistiveTech(svg) &&
         !accessibleName(svg) &&
-        svg.querySelector('title') === null,
+        !(svg.querySelector('title')?.textContent ?? '').trim(),
     );
 
     expect(exposedUnnamed.map((svg) => svg.outerHTML.slice(0, 80)))
@@ -187,9 +200,13 @@ describe('AppShellComponent — header brand accessibility', () => {
     //
     // The hidden element **itself** is included, not only its descendants — `aria-hidden` on
     // a focusable element is the same violation, and a descendant-only check misses it.
+    //
+    // `isFocusable`, not `isTabStop`: the ARIA rule is about focusable content, and a
+    // `tabindex="-1"` control inside a hidden subtree can still be reached by a script or a
+    // roving-focus widget and would then be focused while absent from the accessibility tree.
     const focusableAndHidden = [
       ...root.querySelectorAll('sat-app-header [aria-hidden="true"]'),
-    ].flatMap(focusableIn);
+    ].flatMap((hidden) => matchesIn(hidden, isFocusable));
 
     expect(focusableAndHidden).toEqual([]);
   });
@@ -200,6 +217,6 @@ describe('AppShellComponent — header brand accessibility', () => {
 
     // Including the brand element itself: giving the wrapper a `tabindex` would make the
     // decoration a tab stop just as surely as putting a control inside it.
-    expect(focusableIn(brand)).toEqual([]);
+    expect(matchesIn(brand, isTabStop)).toEqual([]);
   });
 });
