@@ -96,6 +96,31 @@ function exposedUnnamedGraphics(root: Element): SVGSVGElement[] {
     .filter((svg) => !ariaHiddenAncestorOf(svg) && !hasAccessibleName(svg));
 }
 
+/**
+ * Every `aria-hidden="true"` subtree under `root`, found through the shadow-aware walk.
+ *
+ * Not `querySelectorAll('[aria-hidden="true"]')`: that stops at each shadow boundary, so a
+ * hidden subtree inside an open shadow root — and everything focusable in it — would never be
+ * examined, and the guard below would stay green with the violation present.
+ */
+function ariaHiddenSubtreesIn(root: Element): Element[] {
+  return [root, ...allDescendants(root)].filter((el) => el.getAttribute('aria-hidden') === 'true');
+}
+
+/**
+ * Everything inside an `aria-hidden` subtree of `root` that can take focus — the
+ * `aria_hidden_focus_misuse` violation, expressed as a census.
+ *
+ * Shared by the assertion and all of its controls, so a control cannot pass by exercising a
+ * re-implementation of the walk, or by testing `canTakeFocus` on a detached probe while the
+ * census itself has stopped traversing.
+ */
+function focusableInsideHiddenSubtrees(root: Element): Element[] {
+  return ariaHiddenSubtreesIn(root)
+    .flatMap((hidden) => [hidden, ...allDescendants(hidden)])
+    .filter(canTakeFocus);
+}
+
 describe('AppShellComponent — header graphics and assistive technology', () => {
   let header: HTMLElement;
   let http: HttpTestingController;
@@ -213,27 +238,26 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * lockup would reintroduce it, so this is asserted rather than checked once by hand.
    */
   it('puts nothing focusable inside an aria-hidden subtree in the header', () => {
-    const hiddenRoots = Array.from(header.querySelectorAll('[aria-hidden="true"]'));
-    // A sanity check on the query, not on the fix: Angular Material's icon hosts are
+    // A sanity check on the census, not on the fix: Angular Material's icon hosts are
     // aria-hidden too, so this stays true with or without the word mark hidden. Claiming it
     // proves the fix would be a check named for something it cannot detect.
-    expect(hiddenRoots.length)
+    expect(ariaHiddenSubtreesIn(header).length)
       .withContext('there must be at least one aria-hidden subtree for this guard to examine')
       .toBeGreaterThan(0);
 
-    const focusable = hiddenRoots
-      .flatMap((root) => [root, ...allDescendants(root)])
-      .filter(canTakeFocus)
-      .map((el) => el.tagName.toLowerCase());
-    expect(focusable)
+    expect(focusableInsideHiddenSubtrees(header).map((el) => el.tagName.toLowerCase()))
       .withContext('a keyboard user must not be able to land inside a subtree screen readers cannot see')
       .toEqual([]);
   });
 
   // ---------------------------------------------------------------------------------------
-  // Controls for the two guards above. A guard that has never been observed to fire is an
-  // assumption. Both controls use cases a hand-written focusable-selector list misses, so a
-  // green control cannot be confirming the part that already worked.
+  // Controls. A guard that has never been observed to fire is an assumption.
+  //
+  // Every control drives the **same** census function its assertion uses, and plants its
+  // probe in the **rendered** header rather than in a detached fragment. Both matter: a
+  // control that re-implements the walk, or that tests the leaf predicate in isolation, stays
+  // green when the census itself stops traversing — which is precisely what it exists to
+  // detect. Each probe is also a case the obvious implementation misses.
 
   it('control: the graphic census crosses an open shadow boundary, in both directions', () => {
     const host = document.createElement('div');
@@ -255,23 +279,43 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
     host.remove();
   });
 
-  it('control: the focusability guard fires on an element no selector list enumerates', () => {
+  it('control: the focusability census finds a <summary> planted in the hidden word mark', () => {
+    // The word mark specifically, not the first `[aria-hidden="true"]` in the header: that is
+    // the mobile-nav trigger's `mat-icon`, which the vendor stylesheet sets to `display:none`
+    // above 675px. `focus()` does nothing to an unrendered element, so a probe planted there
+    // would report "not focusable" for a reason that has nothing to do with the census.
+    const hidden = header.querySelector('sat-word-mark-logo[aria-hidden="true"]');
+    expect(hidden)
+      .withContext('the control plants into the subtree this fix hides')
+      .toBeTruthy();
+
     const details = document.createElement('details');
     details.innerHTML = '<summary>probe</summary><p>body</p>';
-    document.body.append(details);
-    expect(canTakeFocus(details.querySelector('summary') as Element))
-      .withContext('<summary> is focusable in Chrome and is absent from the usual selector lists')
-      .toBe(true);
+    hidden?.append(details);
+
+    // Through the census, inside the rendered header: this goes red if the walk stops
+    // descending, if the hidden-root collection misses the subtree, or if focusability were
+    // ever downgraded to a selector list — `<summary>` appears in none of the usual ones.
+    expect(focusableInsideHiddenSubtrees(header).map((el) => el.tagName.toLowerCase()))
+      .withContext('a focusable <summary> inside an aria-hidden subtree must be caught')
+      .toContain('summary');
+
     details.remove();
   });
 
-  it('control: the subtree walk sees focusable content inside a shadow root on the root itself', () => {
+  it('control: the focusability census reaches an aria-hidden subtree inside a shadow root', () => {
     const host = document.createElement('div');
-    document.body.append(host);
-    host.attachShadow({ mode: 'open' }).innerHTML = '<iframe title="probe"></iframe>';
-    expect([host, ...allDescendants(host)].some(canTakeFocus))
-      .withContext('the walk must enter a shadow root attached to the element it was handed')
-      .toBe(true);
+    header.append(host);
+    host.attachShadow({ mode: 'open' }).innerHTML =
+      '<div aria-hidden="true"><iframe title="probe"></iframe></div>';
+
+    // Two properties at once, both of which a light-DOM `querySelectorAll` would miss: the
+    // hidden subtree itself lives behind a shadow boundary, and the focusable element inside
+    // it is an <iframe> — focusable, and absent from hand-written selector lists.
+    expect(focusableInsideHiddenSubtrees(header).map((el) => el.tagName.toLowerCase()))
+      .withContext('an aria-hidden subtree nested in a shadow root must still be examined')
+      .toContain('iframe');
+
     host.remove();
   });
 });
