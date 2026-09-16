@@ -146,6 +146,8 @@ function findingsOnPage(storage) {
       .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'")
       .trim();
   const heading = storage.indexOf('<h2>Findings</h2>');
   const close = heading === -1 ? -1 : storage.indexOf('</tbody>', heading);
