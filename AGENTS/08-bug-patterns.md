@@ -452,7 +452,8 @@ Three traps, each of which cost a measurement to find:
   made it **2.65:1 on a dark header**, worse than doing nothing. Sample the rendered pixel just
   outside the ring, or walk up to the nearest non-transparent ancestor background, and compare
   against that. Then let the ring track the same theme as the surface behind it: 5.80–10.11:1
-  across all five themes and both OS schemes.
+  across the four packaged themes (`DEFAULT_APP_THEMES` in
+  `libs/shared/app-config/src/lib/bootstrap-config.ts`) and both OS colour schemes.
 - **IBM Equal Access's `style_focus_visible` reads `:focus` only.** It collects `:focus-visible`
   and `:focus-within` into an array and then only ever reads index 0. A `:focus-visible`-only
   ring is invisible to it, and its lookup does not resolve **selector lists** either — writing

@@ -28,14 +28,14 @@
  *     whatever is behind the header — not the field's pinned white. An earlier version of
  *     this fix pinned the wrapper to `color-scheme: light` to keep the ring dark on that
  *     white; measuring the surface the ring actually touches showed that made it 2.65:1 on a
- *     dark header. Letting it track the theme gives 5.80–10.11:1 across every theme this app
- *     ships and both OS schemes.
+ *     dark header. Letting it track the theme gives 5.80–10.11:1 across the four packaged
+ *     themes and both OS schemes.
  *
- * What these tests do NOT cover: the numeric contrast in each of this app's five themes. The
+ * What these tests do NOT cover: the numeric contrast in each packaged theme. The
  * fixture below is a synthetic DOM with no header behind it, so it can only measure against
- * the surface it does have. The ten theme × colour-scheme combinations were measured against
- * the running app and recorded in the evidence folder; what is pinned here is the invariant
- * that makes them hold — the ring comes from the theme and is not pinned against it.
+ * the surface it does have. The theme × colour-scheme combinations were measured against the
+ * running app and recorded in the evidence folder; what is pinned here is the invariant that
+ * makes them hold — the ring resolves through the theme token and does not pin its scheme.
  */
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -196,27 +196,38 @@ describe('header global search — keyboard focus indicator', () => {
     }
   });
 
-  it('takes its colour from the theme rather than a pinned value', () => {
+  it('resolves its colour through --mat-sys-primary, so a theme override moves it', () => {
     input.focus();
-    const ring = getComputedStyle(input).outlineColor;
-    const primary = getComputedStyle(document.documentElement).getPropertyValue('--mat-sys-primary');
+    const html = document.documentElement;
+    // Drive the token to a value no theme uses and require the ring to follow it. Asserting
+    // that the token exists and that the ring differs from the text colour was not the same
+    // claim: a hard-coded `outline: 2px solid rebeccapurple` would satisfy both while being
+    // exactly the pinned value this test is named for, and a customer theme override would
+    // leave it behind.
+    const SENTINEL = 'rgb(1, 2, 3)';
+    const inlineBefore = html.style.getPropertyValue('--mat-sys-primary');
+    html.style.setProperty('--mat-sys-primary', SENTINEL);
+    const followed = getComputedStyle(input).outlineColor;
+    if (inlineBefore) {
+      html.style.setProperty('--mat-sys-primary', inlineBefore);
+    } else {
+      html.style.removeProperty('--mat-sys-primary');
+    }
 
-    // `--mat-sys-primary` on <html> is a `light-dark()` expression; on the element it has
-    // resolved to one side of it. Comparing the strings would fail for the wrong reason, so
-    // assert the token exists and that the ring is not the text colour it falls back to when
-    // an unset custom property makes the whole `outline` declaration invalid.
-    expect(primary.trim().length).toBeGreaterThan(0);
-    expect(ring).not.toBe(getComputedStyle(input).color);
+    expect(followed).toBe(SENTINEL);
+    // And the token must be back, so this test cannot leave the rest of the suite themed by
+    // a sentinel.
+    expect(getComputedStyle(input).outlineColor).not.toBe(SENTINEL);
   });
 
   it('tracks the active theme, so it cannot be dark on a dark header', () => {
     // Regression 3. Pinning the ring's scheme is what made it 2.65:1 on a dark header. The
-    // guarantee is that the ring moves when the theme does — asserted by switching the theme
-    // the app actually ships and watching the resolved colour change.
+    // guarantee is that the ring moves when the theme does — asserted by switching to one of
+    // the four packaged themes and watching the resolved colour change.
     input.focus();
+    const html = document.documentElement;
     const inDefaultTheme = getComputedStyle(input).outlineColor;
 
-    const html = document.documentElement;
     const previous = html.getAttribute('data-app-theme');
     html.setAttribute('data-app-theme', 'dark');
     const inDarkTheme = getComputedStyle(input).outlineColor;
@@ -227,9 +238,11 @@ describe('header global search — keyboard focus indicator', () => {
     }
 
     expect(inDarkTheme).not.toBe(inDefaultTheme);
-    // And it must not force a scheme of its own: ring and surrounding header have to resolve
-    // their `light-dark()` tokens in the same scheme or they can collide.
-    expect(getComputedStyle(wrap).colorScheme).toBe(getComputedStyle(html).colorScheme);
+    // The scheme has to be read off the INPUT, which is where the `light-dark()` token
+    // resolves. Reading it off the wrapper let `color-scheme: light` on the input itself
+    // recreate the whole defect while this assertion stayed green — and because
+    // `color-scheme` inherits, checking the input also catches a pin on any ancestor.
+    expect(getComputedStyle(input).colorScheme).toBe(getComputedStyle(html).colorScheme);
   });
 
   it('keeps the search box geometry the wrapper used to own', () => {
