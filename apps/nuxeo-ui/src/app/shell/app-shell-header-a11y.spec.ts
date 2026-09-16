@@ -133,6 +133,13 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
     // `isAdministrator` by the effect that keeps the rule context in sync.
     hasAdministrationAccess: signal(true),
     isAdministrator: signal(true),
+    // `nuxeoAuthInterceptor` calls both on every `/nuxeo/…` request, and the shell's
+    // constructor issues one, so without these the interceptor throws inside the HTTP
+    // pipeline: the request never reaches `HttpTestingController` and the `afterEach` flush
+    // below has nothing to flush. `null` on both, so no credential literal appears here —
+    // the interceptor reads them as "no basic auth, no share token".
+    basicCredentials: () => null,
+    shareAuthToken: () => null,
     // `undefined` rather than an empty body: `no-empty-function` is right to flag a silent
     // no-op, and this stub genuinely returns nothing.
     logout: () => undefined,
@@ -173,7 +180,17 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
   // header markup to the app's bootstrap, translation and manifest calls, and go red whenever
   // those change for reasons this spec has no opinion about.
   afterEach(() => {
-    http.match(() => true).forEach((request) => request.flush({}));
+    // An empty document list rather than `{}`: the shell's startup request is the favourites
+    // NXQL search, and `CollectionService.getFavorites()` reads `res.entries[0]`, so `{}`
+    // throws a `TypeError` inside the response handler during teardown.
+    const emptyDocumentList = {
+      entries: [],
+      totalSize: 0,
+      currentPageSize: 0,
+      currentPageIndex: 0,
+      numberOfPages: 0,
+    };
+    http.match(() => true).forEach((request) => request.flush(emptyDocumentList));
     http.verify();
   });
 
