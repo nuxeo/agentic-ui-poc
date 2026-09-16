@@ -33,14 +33,19 @@
  *
  * ## Every key bound to an accessible name must be here
  *
+ * That is the rule, and it is narrower than "every key in the catalogue" on purpose — this map
+ * is deliberately partial, and visible text degrading to a raw key is ugly where an accessible
+ * name degrading to one is a WCAG failure.
+ *
  * `settings.themes.search` was missing, and it is the `[attr.aria-label]` of the themes
  * toolbar's search button. A failed fetch therefore named that control `settings.themes.search`
  * — the same class of defect as the empty `sat.platform-nav.*` names above, differing only in
  * whether the wrong name is blank or is a raw key. Neither is detectable by axe: one has no
  * name, which axe catches, and one has a name that is simply not words, which it cannot.
  *
- * `checkTranslationCatalogues` in `scripts/review-guardrails.mjs` now fails when the shipped
- * catalogue carries a key this map omits, so the pair cannot drift again.
+ * `checkAccessibleNameFallbacks` in `scripts/review-guardrails.mjs` enforces exactly that rule:
+ * it reads the keys our templates bind to `aria-label` and `title` through the translate pipe,
+ * and fails when one of them is missing from this map or blank in it.
  */
 export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'sat.platform-nav.expand': 'Expand navigation',

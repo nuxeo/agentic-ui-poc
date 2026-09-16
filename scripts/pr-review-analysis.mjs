@@ -461,9 +461,7 @@ export function copilotReviews(pr) {
  */
 export function reviewOnPr(pr, reviewId) {
   const wanted = String(reviewId);
-  return (
-    reviewsOnPr(pr).find((r) => r.id === wanted || String(r.databaseId) === wanted) ?? null
-  );
+  return reviewsOnPr(pr).find((r) => r.id === wanted || String(r.databaseId) === wanted) ?? null;
 }
 
 /**
@@ -634,9 +632,7 @@ if (isCli) {
     // and the record together. The check has to come before the `writeFile` below, because a
     // guard that fired afterwards would leave an empty file that the existence check then
     // refuses to overwrite, turning a bad argument into a blocked retry.
-    const harvestReview = onlyReview
-      ? requireReviewOnPr(rest, onlyReview, 'The harvest')
-      : null;
+    const harvestReview = onlyReview ? requireReviewOnPr(rest, onlyReview, 'The harvest') : null;
     await mkdir(OUT_DIR, { recursive: true });
     const out = resolve(OUT_DIR, harvestFileName(rest));
     // One invocation, one file. The name used to be the UTC date, so a second harvest the same

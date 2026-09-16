@@ -190,41 +190,31 @@ bash .cursor/skills/fix-bug/scripts/new-ticket-workspace.sh "$T" --remove
 to tidy up a batch** — uncommitted work in a finished ticket's worktree means that ticket did
 not finish, whatever it reported. Read it first.
 
-## Phase B5 — Serial tail: the shared corpus
+## Phase B5 — Serial tail: publishing the review findings
 
-The review analysis corpus is one file, and N agents appending to it concurrently is the one
-write this design cannot isolate. Subagents are told not to publish. Do it here, once, after the
-batch — and **on a branch of its own**, in the primary checkout, never in a ticket's worktree:
+Still serial, but no longer for the reason it used to be. Subagents do not publish; do it here,
+once, after the batch:
 
 ```bash
-git -C "$REPO" fetch origin main
-git -C "$REPO" checkout -b docs/review-corpus-<batch-id> origin/main
-
 node scripts/pr-review-analysis.mjs harvest <pr> …            # per PR that drew comments
 node scripts/pr-review-analysis.mjs publish <file.jsonl>      # once, serially
-
-git add docs/pr-review-findings.jsonl \
-        .cursor/skills/pre-pr-review/SKILL.md \
-        .claude/skills/pre-pr-review/SKILL.md \
-        .agent/skills/pre-pr-review/SKILL.md
-git commit -S -m "docs: publish review findings from batch <batch-id>"
-gh pr create --base main --title "docs: publish review findings from batch <batch-id>"
 ```
 
-### Why its own branch, and not a ticket's
+### Why serial, and why there is no branch any more
 
-`publish` writes to tracked files — the corpus, the pre-PR skill whose counts it re-derives,
-and that skill's two generated mirrors. Those changes have to land somewhere, and by the time
-this phase runs every ticket PR has already reached a clean review round on a head that does
-not contain them. Pushing them onto one of those PRs invalidates the verdict it just earned
-and asks its reviewer to re-approve a change belonging to eleven other tickets. Committing
-them straight to `main` is not an option at all.
+`publish` writes **no tracked file** — the findings go to the Confluence analysis page and
+nowhere else. So there is nothing to stage, nothing to commit, and no batch-corpus branch: this
+phase can run from any checkout, including a ticket worktree, and it cannot dirty one.
 
-One branch per batch, carrying nothing but the publication, reviewed on its own merits.
+It is serial because the page is updated with an optimistic version number: each PUT sends
+`version + 1` read at the start of the call, so two concurrent publishes race and one is
+rejected. One at a time, and re-running a file is safe — rows already on the page are skipped
+on their finding identity.
 
-Stage all four paths together: the `review-corpus` gate fails if the corpus and the skill move
-apart, and `agent-mirror` fails if the mirrors do. `publish` runs the mirror sync itself and
-prints this list, so follow its output rather than remembering it.
+This phase used to open a `docs/review-corpus-<batch-id>` branch and a pull request of its own,
+because `publish` wrote the corpus plus the pre-PR skill and its two mirrors, and those changes
+could not be pushed onto a ticket PR that had already earned a clean review round. That whole
+problem is gone with the files.
 
 ## Phase B6 — Report the batch
 
