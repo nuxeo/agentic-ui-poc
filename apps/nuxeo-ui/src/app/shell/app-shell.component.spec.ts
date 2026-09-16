@@ -54,10 +54,21 @@ describe('AppShellComponent', () => {
     expect(graphics.length).toBeGreaterThan(0);
 
     for (const svg of graphics) {
-      expect(svg.closest('[aria-hidden="true"]')).toBeTruthy();
+      const hidden = svg.closest('[aria-hidden="true"]');
+      expect(hidden).toBeTruthy();
+
       const named = svg.closest('[role="img"][aria-label]');
       expect(named).toBeTruthy();
       expect(named!.getAttribute('aria-label')).toBe('Hyland');
+
+      // The hidden element has to sit *inside* the named one, and the named one must itself
+      // stay exposed. Both assertions above are satisfied by moving `aria-hidden` up onto the
+      // wrapper — `closest` starts at the element and walks up, so it finds the same node
+      // twice — and that arrangement removes the brand image from the accessibility tree
+      // altogether. Nothing is announced rather than something unnamed: a different WCAG
+      // 1.1.1 failure, and the one the measured `aria-hidden`-alone candidate was rejected for.
+      expect(named!.contains(hidden!)).toBe(true);
+      expect(named!.closest('[aria-hidden="true"]')).toBeNull();
     }
   });
 });
