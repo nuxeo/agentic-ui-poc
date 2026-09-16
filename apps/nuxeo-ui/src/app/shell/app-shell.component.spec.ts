@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { appConfig } from '../app.config';
 import { AuthService } from '../auth/auth.service';
@@ -25,7 +26,10 @@ describe('AppShellComponent — header brand accessibility', () => {
     isAdministrator: signal(true),
     isPowerUser: signal(false),
     hasAdministrationAccess: signal(true),
-    basicCredentials: () => 'dGVzdA==',
+    // `null`, not a base64 literal: the header renders without credentials, and a
+    // credential-shaped string has no business in a TypeScript source even in a double.
+    basicCredentials: () => null,
+    shareAuthToken: () => null,
     logout: () => undefined,
   } as unknown as AuthService;
 
@@ -85,6 +89,57 @@ describe('AppShellComponent — header brand accessibility', () => {
     return isFocusable(el) && (el as HTMLElement).tabIndex >= 0;
   }
 
+  /** The width the vendor stylesheet stops drawing the header logo at. */
+  const LOGO_BREAKPOINT_PX = 619;
+
+  /**
+   * The selectors that set `display: none` inside a media query which is in force at
+   * `LOGO_BREAKPOINT_PX`, read out of the live CSSOM.
+   *
+   * Karma cannot resize the browser, so the breakpoint cannot be reached by making the
+   * window narrow. Reading the rule that governs it is the next best thing and is a real
+   * assertion rather than a restatement of the markup: if the vendor drops the rule, changes
+   * its width, or the wrapper stops matching it, this goes red — which is precisely the
+   * regression of "the name outlives the graphic" that a presence check could not see.
+   */
+  function selectorsHiddenAtBreakpoint(): string[] {
+    const selectors: string[] = [];
+    const widthOf = (condition: string) =>
+      Number(/max-width:\s*(\d+(?:\.\d+)?)px/.exec(condition)?.[1] ?? NaN);
+
+    const scan = (rules: CSSRuleList) => {
+      for (const rule of rules) {
+        if (rule instanceof CSSMediaRule) {
+          // `>=` because a `max-width: 619px` query is in force at exactly 619px.
+          if (widthOf(rule.conditionText) >= LOGO_BREAKPOINT_PX) {
+            for (const inner of rule.cssRules) {
+              if (
+                inner instanceof CSSStyleRule &&
+                inner.style.getPropertyValue('display').trim() === 'none'
+              ) {
+                selectors.push(inner.selectorText);
+              }
+            }
+          }
+          scan(rule.cssRules);
+        }
+      }
+    };
+
+    for (const sheet of document.styleSheets) {
+      // A stylesheet the document cannot read is one this assertion cannot speak for; it is
+      // skipped rather than counted as "no rule", which would have made the check vacuous.
+      let rules: CSSRuleList | null = null;
+      try {
+        rules = sheet.cssRules;
+      } catch {
+        continue;
+      }
+      if (rules) scan(rules);
+    }
+    return selectors;
+  }
+
   function matchesIn(root: Element, predicate: (el: Element) => boolean): string[] {
     return subtree(root)
       .filter(predicate)
@@ -118,10 +173,22 @@ describe('AppShellComponent — header brand accessibility', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [AppShellComponent],
-      providers: appConfig.providers,
+      // Rendering the real shell runs its constructor effects — `refreshFavoritesCount()`
+      // among them — so without a testing backend each assertion would issue a live Nuxeo
+      // request and the header's behaviour would be entangled with the network. The testing
+      // backend replaces the real one, so the requests are captured and never sent. They are
+      // deliberately not flushed: none of them feeds the header markup under test.
+      providers: [...appConfig.providers, provideHttpClientTesting()],
     })
       .overrideProvider(AuthService, { useValue: authMock })
       .compileComponents();
+  });
+
+  afterEach(() => {
+    // Drain rather than `verify()`: the shell legitimately fires several requests this suite
+    // has no opinion about, and failing on them would make the header tests report a defect
+    // that is not theirs.
+    TestBed.inject(HttpTestingController).match(() => true);
   });
 
   function render(): HTMLElement {
@@ -170,25 +237,36 @@ describe('AppShellComponent — header brand accessibility', () => {
       .toEqual([]);
   });
 
-  it('puts the name on the element the vendor breakpoint hides', () => {
+  it(`hides the accessible name along with the graphic at ${LOGO_BREAKPOINT_PX}px`, () => {
     const root = render();
     const named = namingAncestor(root);
 
-    // The vendor stylesheet keys `display: block`, and `display: none` below 620px, off the
-    // `satAppHeaderLogo` attribute. A name on any other element would keep announcing a
-    // brand that is not drawn on a narrow viewport. This is what makes CSS and ARIA agree.
     expect(named)
       .withContext('nothing gives the header word mark an accessible name')
       .not.toBeNull();
     if (!named) return;
 
-    expect(named.hasAttribute('satAppHeaderLogo'))
+    // The graphic is inside the named element, so hiding one hides the other. Without this
+    // the name could sit on an element the breakpoint rule does not cover.
+    expect(named.contains(wordMark(root))).toBe(true);
+
+    const hidden = selectorsHiddenAtBreakpoint();
+    // Guard against the vacuous pass: if no such rule is in the CSSOM at all, the assertion
+    // below would be comparing against an empty set and could never fail.
+    expect(hidden.length)
       .withContext(
-        'the element carrying the accessible name is not the one the vendor stylesheet ' +
-          'hides below 620px, so the name would outlive the graphic',
+        `no display:none rule found in any media query in force at ${LOGO_BREAKPOINT_PX}px — ` +
+          'the vendor breakpoint this test relies on is gone, so the claim is unverifiable',
+      )
+      .toBeGreaterThan(0);
+
+    expect(hidden.some((selector) => named.matches(selector)))
+      .withContext(
+        `the element carrying the accessible name is not hidden at ${LOGO_BREAKPOINT_PX}px, ` +
+          `so "Hyland" would still be announced where nothing is drawn. Rules checked: ` +
+          hidden.join(' | '),
       )
       .toBe(true);
-    expect(named.contains(wordMark(root))).toBe(true);
   });
 
   it('hides nothing focusable from assistive technology', () => {
