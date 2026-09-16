@@ -9,6 +9,12 @@ extraction and wire adf-hx translation assets" · Epic
 blocked on manual project creation via the INTERN board. The GA extraction is
 [NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284).
 
+> **Looking for where we stand rather than what we decided?** Read
+> [`docs/i18n-status.md`](i18n-status.md). It carries the measured coverage numbers, what existed
+> before, what shipped, and the ordered next steps. This file is the plan and the reasoning behind
+> each decision; that one is the position. They are separate because a plan that carries its own
+> progress report goes stale silently and gets believed anyway.
+
 ### What shipped, 16 September 2026
 
 | Slice | Delivered                                                                                                                                                                                                                                                                                                                       |
