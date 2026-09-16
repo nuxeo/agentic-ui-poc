@@ -66,7 +66,7 @@ describe('AppShellComponent', () => {
     const exposedImages = Array.from(header!.querySelectorAll('[role="img"]')).filter(
       (el) => el.closest('[aria-hidden="true"]') === null,
     );
-    expect(exposedImages.length).toBe(1);
+    expect(exposedImages).toHaveSize(1);
     expect(exposedImages[0].getAttribute('aria-label')).toBe('Hyland');
 
     for (const svg of graphics) {
