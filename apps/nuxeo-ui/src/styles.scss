@@ -107,14 +107,20 @@ html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-
  * Setting the token rather than overriding the rule is deliberate: it is what Satori's own
  * `.sat-neutral-theme` does, and it competes with nothing — the vendor rule *reads* this
  * property, so there is no specificity war with a component style injected after this sheet.
- * It also stays overridable: any customer rule matching `sat-platform-nav` at equal
- * specificity and later source order wins, which an `!important` here would have prevented.
+ *
+ * It is declared on `html`, not on `sat-platform-nav`, so that Layer 0 keeps control of it.
+ * `AppThemeService.applyTheme` writes a theme's `tokens` as **inline** custom properties on
+ * `<html>` — that is how a customer rebrands from JSON — and an inline value only outranks
+ * this rule while both are on the same element. Declared on the nav instead, it would apply
+ * directly to the element the vendor rule reads it from and beat the inherited root value, so
+ * a customer who set this vendor token in their theme would silently stop controlling the
+ * ring. Asserted in `platform-nav-focus-ring.spec.ts`.
  *
  * The token also feeds the nav list's scrollbar thumb — the only other thing Satori reads it
  * for — which the rule below suppresses: measured as no rendered scrollbar in Chromium,
  * Firefox and WebKit.
  */
-sat-platform-nav {
+html {
   --sat-platform-nav-outline: var(--sat-platform-nav-on-background, var(--mat-sys-on-primary));
 }
 

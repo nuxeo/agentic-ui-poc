@@ -117,6 +117,7 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
 
   afterEach(() => {
     fixture.nativeElement.remove();
+    document.documentElement.style.removeProperty('--sat-platform-nav-outline');
     if (originalTheme === null) {
       document.documentElement.removeAttribute('data-app-theme');
     } else {
@@ -243,6 +244,28 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
           'not exercising the defect it was written for',
       )
       .toBeGreaterThanOrEqual(WCAG_1411_MIN_RATIO);
+  });
+
+  /**
+   * The contract this default has to keep: it is a **default**, and Layer 0 outranks it.
+   *
+   * `AppThemeService.applyTheme` writes a theme's `tokens` as inline custom properties on
+   * `<html>` (`app-theme.service.ts:87-100`), which is how a customer rebrands from JSON. That
+   * only works while the default is declared on the same element — a declaration on
+   * `sat-platform-nav` applies directly to the element the vendor rule reads the property
+   * from, and beats the inherited root value. This test is red against that placement, which
+   * is how the placement was chosen.
+   */
+  it('lets a Layer 0 theme token override the ring colour', () => {
+    // Exactly what applyTheme does with `themes[].tokens`, for this one property.
+    document.documentElement.style.setProperty('--sat-platform-nav-outline', 'rgb(255, 0, 0)');
+
+    const el = link('idle');
+    el.focus({ focusVisible: true } as FocusOptions);
+
+    expect(getComputedStyle(el).outlineColor)
+      .withContext('a customer theme token must still control the focus ring')
+      .toBe('rgb(255, 0, 0)');
   });
 
   /**
