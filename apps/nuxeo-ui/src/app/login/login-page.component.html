@@ -1,5 +1,10 @@
 <div class="login-page">
-  <a class="login-skip-link" mat-raised-button href="#login-main">Skip to sign in</a>
+  <a
+    class="login-skip-link"
+    mat-raised-button
+    href="#login-main"
+    (click)="skipToSignIn($event)"
+  >Skip to sign in</a>
   <div class="login-panel">
     <div class="login-panel-inner">
       <a routerLink="/login" class="login-brand" aria-label="Hyland">

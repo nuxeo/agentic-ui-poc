@@ -51,6 +51,17 @@ describe('LoginPageComponent', () => {
     expect(landmark?.getAttribute('tabindex')).toBe('-1');
   });
 
+  it('focuses the sign-in landmark when the skip link is activated', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const skip = el.querySelector('a.login-skip-link') as HTMLAnchorElement;
+    const landmark = el.querySelector('#login-main') as HTMLElement;
+
+    skip.click();
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(landmark);
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();

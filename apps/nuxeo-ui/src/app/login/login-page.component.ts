@@ -75,6 +75,16 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
     this.scheduleAutofillSync();
   }
 
+  /**
+   * `withHashLocation()` treats `#login-main` as the router URL; focus the landmark without
+   * changing the hash (WCAG 2.4.1 skip navigation).
+   */
+  skipToSignIn(event: MouseEvent): void {
+    event.preventDefault();
+    const landmark = this.host.nativeElement.querySelector('#login-main') as HTMLElement | null;
+    landmark?.focus();
+  }
+
   ngOnDestroy(): void {
     for (const timeoutId of this.autofillSyncTimeouts) {
       clearTimeout(timeoutId);
