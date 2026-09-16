@@ -148,7 +148,9 @@ function findingsOnPage(storage) {
   const table = storage.slice(heading, close);
   const rows = [];
   for (const tr of table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
-    const cells = [...tr[1].matchAll(/<td><p>([\s\S]*?)<\/p><\/td>/g)].map((m) => m[1]);
+    const cells = [...tr[1].matchAll(/<td>([\s\S]*?)<\/td>/g)].map((m) =>
+      m[1].replace(/^<p>([\s\S]*?)<\/p>$/, '$1'),
+    );
     // PR, file, finding, class, why-missed — the five `publish` writes. A row of any other
     // width is not a finding row, so it is skipped rather than counted into a wrong column.
     if (cells.length !== 5) continue;
