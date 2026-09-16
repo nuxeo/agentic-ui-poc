@@ -110,11 +110,6 @@ sat-platform-nav-container.has-selection-topbar {
   height: 42px;
   border-radius: 20px;
   background: #fff;
-  // This field is a white surface in every theme, so declare it one. Without this the
-  // `light-dark()` tokens below follow the OS preference while the background does not:
-  // under `prefers-color-scheme: dark` the focus ring resolved to the pale primary and
-  // measured 1.71:1 on white, against the 3:1 that SC 1.4.11 requires.
-  color-scheme: light;
 }
 
 .header-search-icon {
@@ -146,6 +141,13 @@ sat-platform-nav-container.has-selection-topbar {
   color: #101828;
 }
 
+// `outline-offset` puts the ring entirely outside the field, with the gap showing what is
+// behind it — so the colour it has to contrast with is the header's, not the field's white.
+// That is why the ring tracks `--mat-sys-primary` and is deliberately NOT pinned to the
+// light scheme: the header follows the colour scheme, so the ring must too. Measured
+// against the header: 5.83:1 in the default and light themes, 10.11:1 in the dark theme,
+// 5.87:1 in kawaii. Forcing it light dropped it to 2.65:1 on a dark header.
+//
 // Keep this as its own selector. IBM Equal Access's `style_focus_visible` reads the
 // element's `:focus` styles only — it collects `:focus-visible` and `:focus-within` and
 // then never looks at them — and its lookup does not resolve selector lists, so writing

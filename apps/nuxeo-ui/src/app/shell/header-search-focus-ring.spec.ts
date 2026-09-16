@@ -23,11 +23,19 @@
  *     `style_focus_visible` reads only `:focus` (it collects `:focus-visible` and
  *     `:focus-within` and then never reads them) and its lookup does not resolve selector
  *     lists, so `&:focus, &:focus-visible` puts the finding straight back.
- *  3. The field must stay in the light colour scheme. Its background is pinned white, while
- *     `--mat-sys-primary` is `light-dark(#5654ac, #c3c0ff)`; under
- *     `prefers-color-scheme: dark` the ring resolved to the pale value and measured 1.71:1
- *     on white. Karma's Chrome runs light, so a colour assertion alone would pass for the
- *     wrong reason — the test asserts the declaration that makes the dark case safe.
+ *  3. The ring must resolve in the same colour scheme as the surface behind it. Because
+ *     `outline-offset` paints the ring outside the field, the colour it contrasts against is
+ *     whatever is behind the header — not the field's pinned white. An earlier version of
+ *     this fix pinned the wrapper to `color-scheme: light` to keep the ring dark on that
+ *     white; measuring the surface the ring actually touches showed that made it 2.65:1 on a
+ *     dark header. Letting it track the theme gives 5.80–10.11:1 across every theme this app
+ *     ships and both OS schemes.
+ *
+ * What these tests do NOT cover: the numeric contrast in each of this app's five themes. The
+ * fixture below is a synthetic DOM with no header behind it, so it can only measure against
+ * the surface it does have. The ten theme × colour-scheme combinations were measured against
+ * the running app and recorded in the evidence folder; what is pinned here is the invariant
+ * that makes them hold — the ring comes from the theme and is not pinned against it.
  */
 import { Component, provideZonelessChangeDetection } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -97,6 +105,22 @@ describe('header global search — keyboard focus indicator', () => {
     wrap = fixture.nativeElement.querySelector('.header-search-input-wrap') as HTMLElement;
   });
 
+  /**
+   * The nearest ancestor background that is not transparent — which is what a ring painted
+   * outside the field is actually drawn on top of. In the running app that is the header; in
+   * this fixture it is whatever the global theme puts on `<body>`/`<html>`. Either way it is
+   * a themed surface, and it is the right *kind* of comparison.
+   */
+  function surfaceBehindTheRing(): string {
+    let node: HTMLElement | null = wrap.parentElement;
+    while (node) {
+      const bg = getComputedStyle(node).backgroundColor;
+      if (bg && !/rgba\(0, 0, 0, 0\)|transparent/.test(bg)) return bg;
+      node = node.parentElement;
+    }
+    return 'rgb(255, 255, 255)';
+  }
+
   afterEach(() => {
     input?.blur();
     fixture.nativeElement.remove();
@@ -124,7 +148,7 @@ describe('header global search — keyboard focus indicator', () => {
     expect(getComputedStyle(input).outlineStyle).toBe('solid');
   });
 
-  it('meets the 3:1 non-text contrast of WCAG 2.1 SC 1.4.11 against the field', () => {
+  it('meets the 3:1 non-text contrast of SC 1.4.11 against the surface the ring touches', () => {
     input.focus();
     const style = getComputedStyle(input);
 
@@ -136,10 +160,12 @@ describe('header global search — keyboard focus indicator', () => {
     expect(style.outlineStyle).not.toBe('none');
     expect(parseFloat(style.outlineWidth)).toBeGreaterThan(0);
 
-    const ring = rgb(style.outlineColor);
-    const field = rgb(getComputedStyle(wrap).backgroundColor);
-    expect(contrastRatio(ring, field)).toBeGreaterThanOrEqual(3);
-    expect(field).toEqual([255, 255, 255]);
+    // A positive `outline-offset` paints the ring outside the field's border box, with the
+    // gap showing what is behind it — so the field's own background is NOT what the ring
+    // contrasts against, and comparing the two was measuring a surface it never touches.
+    expect(parseFloat(style.outlineOffset)).toBeGreaterThan(0);
+
+    expect(contrastRatio(rgb(style.outlineColor), rgb(surfaceBehindTheRing()))).toBeGreaterThanOrEqual(3);
   });
 
   it('declares the focus rule under a selector with no comma in it', () => {
@@ -170,11 +196,40 @@ describe('header global search — keyboard focus indicator', () => {
     }
   });
 
-  it('pins the field to the light colour scheme so the token cannot flip under it', () => {
-    // `--mat-sys-primary` is `light-dark(...)`. With `color-scheme: light` on the field it
-    // cannot resolve to the dark value, which is what keeps the measured ratio above at
-    // 6.44:1 under `prefers-color-scheme: dark` too. Without it the ring measured 1.71:1.
-    expect(getComputedStyle(wrap).colorScheme).toBe('light');
+  it('takes its colour from the theme rather than a pinned value', () => {
+    input.focus();
+    const ring = getComputedStyle(input).outlineColor;
+    const primary = getComputedStyle(document.documentElement).getPropertyValue('--mat-sys-primary');
+
+    // `--mat-sys-primary` on <html> is a `light-dark()` expression; on the element it has
+    // resolved to one side of it. Comparing the strings would fail for the wrong reason, so
+    // assert the token exists and that the ring is not the text colour it falls back to when
+    // an unset custom property makes the whole `outline` declaration invalid.
+    expect(primary.trim().length).toBeGreaterThan(0);
+    expect(ring).not.toBe(getComputedStyle(input).color);
+  });
+
+  it('tracks the active theme, so it cannot be dark on a dark header', () => {
+    // Regression 3. Pinning the ring's scheme is what made it 2.65:1 on a dark header. The
+    // guarantee is that the ring moves when the theme does — asserted by switching the theme
+    // the app actually ships and watching the resolved colour change.
+    input.focus();
+    const inDefaultTheme = getComputedStyle(input).outlineColor;
+
+    const html = document.documentElement;
+    const previous = html.getAttribute('data-app-theme');
+    html.setAttribute('data-app-theme', 'dark');
+    const inDarkTheme = getComputedStyle(input).outlineColor;
+    if (previous === null) {
+      html.removeAttribute('data-app-theme');
+    } else {
+      html.setAttribute('data-app-theme', previous);
+    }
+
+    expect(inDarkTheme).not.toBe(inDefaultTheme);
+    // And it must not force a scheme of its own: ring and surrounding header have to resolve
+    // their `light-dark()` tokens in the same scheme or they can collide.
+    expect(getComputedStyle(wrap).colorScheme).toBe(getComputedStyle(html).colorScheme);
   });
 
   it('keeps the search box geometry the wrapper used to own', () => {

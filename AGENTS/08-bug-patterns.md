@@ -397,7 +397,7 @@ guarantee. See `libs/features/document-detail/src/lib/document-detail/ke-action-
 
 ---
 
-## 17. `outline: none` with no replacement, and a focus ring on a non-focusable wrapper
+## 16. `outline: none` with no replacement, and a focus ring on a non-focusable wrapper
 
 `outline: none` on a control with no focus style anywhere is WCAG 2.1 failure technique F78 and
 an SC 2.4.7 violation. It is easy to miss because nothing looks broken until you stop using the
@@ -413,15 +413,20 @@ control is on its own.
   outline: none;
 }
 
-// ALSO BAD ❌ — a real 6.44:1 ring, but on the wrapper <div>. It looks fixed and is not:
-// the wrapper is not focusable, so every tool that inspects the focused element still
-// reports no indicator, and the ring cannot follow the control's own box.
+// VALID BUT AVOID ⚠️ — a real, clearly visible ring, just on the wrapper <div>. This does
+// satisfy SC 2.4.7: WCAG does not require the outline to be declared on the focused node.
+// Two practical costs, neither of them a WCAG failure. Every tool that inspects the focused
+// element still reports no indicator, so the finding never closes and the next author has
+// no way to tell a real gap from a scanner blind spot. And the ring is stuck with the
+// wrapper's box, so it cannot follow the control it belongs to. Prefer the focused element;
+// reach for the ancestor when the focusable element genuinely has no box of its own.
 .header-search-input-wrap:focus-within {
   outline: 2px solid var(--mat-sys-primary);
 }
 
 // GOOD ✅ — the ring belongs to the element that takes focus. Give it the border and the
-// radius so it has a box worth outlining.
+// radius so it has a box worth outlining, and let its colour track the same theme as the
+// surface behind it — see the offset trap below.
 .header-search-input {
   box-sizing: border-box;
   border: 1px solid var(--mat-sys-outline-variant);
@@ -437,12 +442,17 @@ control is on its own.
 
 Three traps, each of which cost a measurement to find:
 
-- **`light-dark()` tokens on a surface that does not flip with them.** `--mat-sys-primary` is
-  `light-dark(#5654ac, #c3c0ff)` and `<html>` carries `color-scheme: light dark`, but this field
-  pins `background: #fff`. Under `prefers-color-scheme: dark` the ring resolved to the pale value
-  and measured **1.71:1** on white — below the 3:1 of SC 1.4.11, in dark mode only, where a
-  light-mode screenshot will never show it. Declare `color-scheme: light` on any subtree whose
-  background is hard-pinned light, and the tokens inside it resolve correctly.
+- **A positive `outline-offset` means the element's own background is not what the ring
+  contrasts with.** The ring is painted outside the border box and the offset gap shows what is
+  *behind* the element, so both of the ring's adjacent colours are the ancestor surface. This
+  cost two wrong conclusions in a row: first a contrast assertion that compared the ring to the
+  field's pinned white, which the ring never touches; then a "fix" for the number that assertion
+  produced — `color-scheme: light` on the field, to stop `light-dark(#5654ac, #c3c0ff)` flipping
+  to the pale value on white. Measured against the surface the ring actually touches, that pin
+  made it **2.65:1 on a dark header**, worse than doing nothing. Sample the rendered pixel just
+  outside the ring, or walk up to the nearest non-transparent ancestor background, and compare
+  against that. Then let the ring track the same theme as the surface behind it: 5.80–10.11:1
+  across all five themes and both OS schemes.
 - **IBM Equal Access's `style_focus_visible` reads `:focus` only.** It collects `:focus-visible`
   and `:focus-within` into an array and then only ever reads index 0. A `:focus-visible`-only
   ring is invisible to it, and its lookup does not resolve **selector lists** either — writing
