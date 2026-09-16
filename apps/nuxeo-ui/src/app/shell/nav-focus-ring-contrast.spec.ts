@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
@@ -29,27 +29,49 @@ import { TranslateModule } from '@ngx-translate/core';
  *
  * ## What it does not cover
  *
- * The 12% white overlay on the current item is applied by a Satori class, so this spec sets
- * that class the way Satori does rather than by routing. If Satori changed *which* class marks
- * the current item, this spec would keep measuring the old one — the evidence capture in
- * `scripts/collect-evidence/NXENG-758.mjs` drives the real router and covers that gap.
+ * Nothing about the *route*. The current-item state is driven through the same `[active]`
+ * input `app-shell.component.html` binds, so this spec covers Satori's end of that contract
+ * but not `isActive()`'s — whether the shell decides the right item is current is
+ * `drawer-route-match.spec.ts`'s subject, not this one.
+ *
+ * It is also Chromium-only, because that is what Karma launches here.
  */
 
-/** Satori's marker class for the item matching the current route. */
+/**
+ * Satori's marker class for the item matching the current route.
+ *
+ * Asserted rather than assumed: the spec drives the public `[active]` input and then checks
+ * this class appeared, so a Satori release that renames it fails the run instead of silently
+ * leaving every current-item measurement on a plain item.
+ */
 const ACTIVE_CLASS = 'sat-platform-nav-item-active';
+
+/**
+ * The focusable anchor **inside the list item** — scoped deliberately.
+ *
+ * `sat-platform-nav` renders a second element carrying the same `.sat-platform-nav-item` class
+ * for its own title-container toggle, and it comes first in the DOM. A bare
+ * `querySelector('.sat-platform-nav-item')` therefore measured the toggle: the panel-contrast
+ * numbers came out right by coincidence, because the toggle sits on the same fill, while the
+ * current-item assertions were measuring an element that is never a current item and could not
+ * have failed. Keep this scoped to the item under test.
+ */
+const LINK = 'sat-platform-nav-list-item[data-nav-id="app.navbar.browseAdfHx"] .sat-platform-nav-item';
 
 @Component({
   standalone: true,
   imports: [SatPlatformNavModule],
   template: `
     <sat-platform-nav>
-      <sat-platform-nav-list-item data-nav-id="app.navbar.browseAdfHx">
+      <sat-platform-nav-list-item [active]="active()" data-nav-id="app.navbar.browseAdfHx">
         Browse (adf-hx POC)
       </sat-platform-nav-list-item>
     </sat-platform-nav>
   `,
 })
-class NavHostComponent {}
+class NavHostComponent {
+  readonly active = signal(false);
+}
 
 /** WCAG relative luminance of an opaque sRGB colour. */
 function luminance([r, g, b]: readonly number[]): number {
@@ -123,12 +145,22 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
     document.documentElement.setAttribute('data-app-theme', theme);
 
     const fixture = TestBed.createComponent(NavHostComponent);
+    // Driven through the same input `app-shell.component.html` binds, rather than by adding
+    // Satori's class by hand — otherwise a rename of that class would leave this spec
+    // measuring a plain item while still reporting on the current one.
+    fixture.componentInstance.active.set(asCurrentRoute);
     fixture.detectChanges();
 
-    const anchor = fixture.nativeElement.querySelector('.sat-platform-nav-item') as HTMLElement | null;
-    if (!anchor) throw new Error('Satori did not render .sat-platform-nav-item');
+    const anchor = fixture.nativeElement.querySelector(LINK) as HTMLElement | null;
+    if (!anchor) throw new Error(`Satori did not render ${LINK}`);
     link = anchor;
-    if (asCurrentRoute) anchor.classList.add(ACTIVE_CLASS);
+    if (asCurrentRoute && !anchor.classList.contains(ACTIVE_CLASS)) {
+      throw new Error(
+        `[active]="true" did not put .${ACTIVE_CLASS} on the item — Satori's current-item ` +
+          `contract changed, so the current-item measurements below are not measuring it. ` +
+          `Classes seen: ${anchor.className}`,
+      );
+    }
 
     anchor.focus();
     const styles = getComputedStyle(anchor);
@@ -154,8 +186,10 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
 
     expect(measured.outlineStyle).not.toBe('none');
     expect(measured.outlineWidth).toBeGreaterThanOrEqual(2);
-    // The condition IBM's `style_focus_visible` asks a human to review: focusing has to change
-    // the element's appearance. An unfocused item reports no outline at all.
+    // Focusing has to change the element's appearance: an unfocused item reports no outline
+    // at all. That is the *precondition* IBM's `style_focus_visible` puts in front of a human
+    // reviewer, not a substitute for the re-scan itself — no assertion here can produce an
+    // IBM verdict, and the ticket's AC-2 is tracked as outstanding on NXENG-758.
     link.blur();
     expect(getComputedStyle(link).outlineStyle).toBe('none');
   });
