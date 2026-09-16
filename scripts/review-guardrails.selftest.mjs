@@ -114,10 +114,27 @@ function withFixture(files, mutate, run) {
     if (mutate) mutate(write);
 
     return run((guardrail) => {
+      // The fixture must not inherit the OUTER repository's refs.
+      //
+      // `review-guardrails.mjs` resolves its base and head as
+      // `--base || NX_BASE || origin/main` and `--head || NX_HEAD || HEAD`. CI sets both, so
+      // without this the child ran `git diff <fixture-base>...<real-repo-sha>` inside a
+      // throwaway repository that has never heard of that SHA, and died with
+      // `fatal: Invalid symmetric difference expression`.
+      //
+      // Locally neither variable is set, `head` fell back to `HEAD`, the dirty-tree branch of
+      // `parseDiff()` was taken and everything passed. So this file was green here and red in
+      // CI for an entire push — the exact trap `AGENTS/11-beta-program.md` §3 records as "only
+      // a CI run is authoritative". Both are now passed explicitly *and* stripped from the
+      // environment, because either alone would leave the other as a latent path.
+      const env = { ...process.env };
+      delete env.NX_BASE;
+      delete env.NX_HEAD;
+
       const result = spawnSync(
         process.execPath,
-        [GUARDRAILS, '--only', guardrail, '--base', base],
-        { cwd: dir, encoding: 'utf8' },
+        [GUARDRAILS, '--only', guardrail, '--base', base, '--head', 'HEAD'],
+        { cwd: dir, encoding: 'utf8', env },
       );
       return { code: result.status, out: `${result.stdout}${result.stderr}` };
     });
