@@ -5,7 +5,36 @@ extraction and wire adf-hx translation assets" · Epic
 [NXENG-615](https://hyland.atlassian.net/browse/NXENG-615) · duplicate/related
 [NXSAT-280](https://hyland.atlassian.net/browse/NXSAT-280) (identical summary — close one).
 
-**Status:** plan only. No implementation has started.
+**Status:** slices S1–S5 delivered on `feature/nxsat-227a-i18n`. S6 (the Crowdin pipeline) is
+blocked on manual project creation via the INTERN board. The GA extraction is
+[NXSAT-284](https://hyland.atlassian.net/browse/NXSAT-284).
+
+### What shipped, 16 September 2026
+
+| Slice | Delivered                                                                                                                                                                                                                                                                                                                       |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| S1    | The `DOCUMENT_TREE.TOGGLE_ARIA-LABEL` alias (W13) and the missing `settings.themes.search` fallback. Its catalogue value was literally `"Search (placeholder)"`, shipping as a real accessible name.                                                                                                                            |
+| S2    | `checkTranslationCatalogues` and `checkAccessibleNameFallbacks`.                                                                                                                                                                                                                                                                |
+| S3    | `checkNoHardcodedUiText`, plus `review-guardrails.selftest.mjs` — **33 controls, 19 negative and 14 positive** — registered as gate `guardrails-selftest`, an npm script, in `review:preflight` and in CI. It is the first negative-control suite any guardrail in this repository has had; eleven shipped before it with none. |
+| S3a   | `checkTranslationContext`, and `checkAngularDevAssets` extended to compare `ignore`.                                                                                                                                                                                                                                            |
+| S4    | 48 occurrences extracted across `apps/nuxeo-ui`, with `en.context.json`.                                                                                                                                                                                                                                                        |
+| S5    | `fr` and `de` catalogues at full key parity, and `steps/nxsat-227-i18n.mjs` — **25/25 checks**.                                                                                                                                                                                                                                 |
+
+**Two defects in this work were found by writing its own controls, not by review:** an unguarded
+`JSON.parse` that crashed the guardrail script and discarded every other guardrail's
+diagnostics, and a parity branch that reported "no en.json" for a file that was present but
+unparseable. A third — a fragile `.first()` selector that read an adf-hx input instead of the
+header search box — was found because the instrumentation separated "the swap never reached the
+browser" from "the locale did not apply".
+
+**Read the French and German screenshots as proof of the mechanism, not of a localised
+application.** The header search is French; the nav labels, column headers and adf-hx toolbar are
+still English, because those strings live in `libs/` and are NXSAT-284. The capture says so in
+its own notes.
+
+The `fr` and `de` catalogues are developer-supplied bootstrap translations, **not
+translation-crew output**. Crowdin is the source of truth for every non-English locale once the
+project exists; these prove the mechanism, not the wording.
 
 This plan covers the five phases requested: requirement, design, build, test, and
 maintenance. It is written against the repository as it stands on `main` at `829feae`, and
@@ -15,16 +44,17 @@ against the Hyland localization standard rather than a locally invented one.
 
 ## Sources of truth this plan is built on
 
-| Source                                                                                                                                 | What it settles                                                                                                                                             |
-| -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Guidelines for Localization Management with Crowdin Translations Tool](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891566724) | The enterprise standard. Status **Accepted**, approved 12 Sep 2024, RFC 2119 language. This is normative, not advisory.                                     |
-| [Localization with Crowdin Translations Tool: Technical Usage Guide](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891600892)    | `crowdin.yml` shape, CLI bootstrap, the two GitHub Actions, signed-commit setup, token scopes.                                                              |
-| [Translations for Web UI and Elements](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/2232484224)                               | How Nuxeo Web UI does it today — the reference implementation the ticket alludes to.                                                                        |
-| [Crowdin Integration (i18n)](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/3148546309)                                         | The Nuxeo platform (Java) side. **Contains a live Crowdin API token in plaintext — see the security note below.**                                           |
-| [The State of Localization in Satori / CIC](https://hyland.atlassian.net/wiki/spaces/HDF/pages/4194568689)                             | The RTL maturity spectrum and the honest position: Satori is a foundation, not a switch. Tracked as [DS-2277](https://hyland.atlassian.net/browse/DS-2277). |
-| [Satori Components Consumers](https://hyland.atlassian.net/wiki/spaces/HDF/pages/3803285020)                                           | `ngx-translate` 16/17 is the de-facto provider across the CIC portfolio. We are already aligned.                                                            |
-| `docs/adf-hx-beta-plan.md` (plan of record)                                                                                            | The 21 Aug 2026 decision that descopes translations from Beta.                                                                                              |
-| `AGENTS/11-beta-program.md` §3                                                                                                         | Verified facts, including four about `AppTranslateLoader` that this ticket must not re-litigate.                                                            |
+| Source                                                                                                                                 | What it settles                                                                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Guidelines for Localization Management with Crowdin Translations Tool](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891566724) | The enterprise standard. Status **Accepted**, approved 12 Sep 2024, RFC 2119 language. This is normative, not advisory.                                                                                                                                                                                                 |
+| **INFO-144 — Internationalization Strategy for software** (RFC, RFC 2119)                                                              | The string-level requirements: translator context REQUIRED on every string, acronyms expanded, no strings built by concatenation, a typo fix must not discard translations, and strings not shared across different concepts. Its _Weblate_ mandate is scoped to BitBucket and does not reach this repository — see D0. |
+| [Localization with Crowdin Translations Tool: Technical Usage Guide](https://hyland.atlassian.net/wiki/spaces/HXP/pages/1891600892)    | `crowdin.yml` shape, CLI bootstrap, the two GitHub Actions, signed-commit setup, token scopes.                                                                                                                                                                                                                          |
+| [Translations for Web UI and Elements](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/2232484224)                               | How Nuxeo Web UI does it today — the reference implementation the ticket alludes to.                                                                                                                                                                                                                                    |
+| [Crowdin Integration (i18n)](https://hyland.atlassian.net/wiki/spaces/NuxEng/pages/3148546309)                                         | The Nuxeo platform (Java) side. **Contains a live Crowdin API token in plaintext — see the security note below.**                                                                                                                                                                                                       |
+| [The State of Localization in Satori / CIC](https://hyland.atlassian.net/wiki/spaces/HDF/pages/4194568689)                             | The RTL maturity spectrum and the honest position: Satori is a foundation, not a switch. Tracked as [DS-2277](https://hyland.atlassian.net/browse/DS-2277).                                                                                                                                                             |
+| [Satori Components Consumers](https://hyland.atlassian.net/wiki/spaces/HDF/pages/3803285020)                                           | `ngx-translate` 16/17 is the de-facto provider across the CIC portfolio. We are already aligned.                                                                                                                                                                                                                        |
+| `docs/adf-hx-beta-plan.md` (plan of record)                                                                                            | The 21 Aug 2026 decision that descopes translations from Beta.                                                                                                                                                                                                                                                          |
+| `AGENTS/11-beta-program.md` §3                                                                                                         | Verified facts, including four about `AppTranslateLoader` that this ticket must not re-litigate.                                                                                                                                                                                                                        |
 
 There is **no** Hyland-wide standard for the _internationalization_ half — locale detection,
 date formats, RTL, pluralisation. The Crowdin RFC says so explicitly in its Scope section:
@@ -143,6 +173,69 @@ Q3 blocks any RTL commitment.
 ---
 
 ## Phase 2 — Design
+
+### D0 — Crowdin governs, not Weblate, and the reason needs recording
+
+Two Hyland RFCs name different translation tools, so this will be re-litigated unless the
+resolution is written down.
+
+INFO-144 says _"All new development in BitBucket MUST use Weblate"_. That mandate is scoped to
+BitBucket; this repository is `github.com/nuxeo/agentic-ui-poc`. The Hyland Experience side has
+its own Accepted RFC naming Crowdin, the whole Nuxeo estate is already on Crowdin, and Weblate is
+being retired over there — Hyland Mobile ran a "Weblate-to-Crowdin Migration" and Clinician
+Window's Weblate page is titled "Deprecated". INFO-144 reads as the OnBase/LRM/TFS lineage
+throughout.
+
+**So: Crowdin for the tool, INFO-144 for the string-level rules.** The two do not otherwise
+conflict, with one exception below.
+
+### D0a — One documented deviation from INFO-144, not compliance
+
+INFO-144 requires **both** that a typo fix _"MUST NOT remove previous translations"_ and that
+_"Any change made to the source string MUST identify the associated translation as requiring a
+review"_.
+
+The HXP standard's chosen `update_option: update_without_changes` satisfies the first and **not**
+the second — its own pros/cons table gives the con as "translations team cannot easily detect if
+translations need to be checked again". The alternative, `update_as_unapproved`, satisfies the
+second and breaks the first, because translations revert to English while awaiting re-approval.
+
+The HXP standard mitigates with a manual Crowdin "Modified Source Strings" filter plus a
+developer convention: **never change the meaning of an existing key — change the key.** That is
+defensible, and it is a deviation rather than compliance. Recorded here so a future audit finds
+the reasoning instead of the gap.
+
+### D0b — Translator context lives in a sibling file, and is gated
+
+INFO-144: _"All available context is REQUIRED for all strings"_, and _"All acronyms or
+abbreviations MUST be expanded and explained in the comment"_. Its worked examples are the
+argument — "Display Manager Failure" cannot be translated without knowing whether "Display" is a
+noun or a verb, and Japanese needs different words for "from" depending on whether a date range
+or an email sender is meant.
+
+Context goes in a sibling `i18n/en.context.json`, keyed identically to the catalogue. Chosen over
+embedding it in the catalogue or entering it in the Crowdin UI because it then sits in version
+control next to the string and survives a change of translation tool — the same argument the
+Crowdin RFC makes for keeping the source of truth in the repository rather than the vendor.
+
+`checkTranslationContext` enforces key parity in both directions: a new string cannot arrive
+without context, and context for a deleted string cannot linger and later describe a reused key.
+Whether a given sentence of context is _sufficient_ is a judgement no script can make, and the
+guardrail's docstring says so rather than implying more.
+
+The file is excluded from the build assets in every configuration, so it does not ship. That
+exclusion is itself gated: `checkAngularDevAssets` now compares the `ignore` list, which it did
+not before — an entry excluding a file in the base array and not in `development` read as
+identical while the two configurations served different files.
+
+### D0c — Concatenated strings are forbidden, and upstream does it
+
+INFO-144: _"Strings MUST NOT be built from concatenated substrings or values."_ Upstream's
+document tree does exactly that — `('DOCUMENT_TREE.TOGGLE_ARIA-LABEL ' | translate) + node.name`
+— so even with the key resolved, no translator can reorder for a language that needs the noun
+first. Our alias fixes the key; it cannot fix the word order. Both halves are finding 1.3 in
+`docs/adf-hx-upstream-findings.md`, with the ask being an interpolation parameter rather than a
+`+`.
 
 ### D1 — Keep `ngx-translate` and `AppTranslateLoader`; do not replace either
 

@@ -42,6 +42,49 @@ import { resolve } from 'node:path';
 
 const BOOTSTRAP_ROUTE = '**/agentic-ui-config/bootstrap.json';
 
+/**
+ * A locale no catalogue ships, used by the last step to prove the tolerant path.
+ *
+ * Named once because it appears in three places — the bootstrap swap, the console-error
+ * suppression and the step label — and a suppression that drifted from the locale it excuses
+ * would silently hide a real missing catalogue.
+ */
+const UNSHIPPED_LOCALE = 'xx';
+
+/**
+ * Console errors this environment produces regardless of the change under test.
+ *
+ * The manifest 403 is the tolerant path working as designed: this local Nuxeo has no
+ * `/default-domain/config/agentic-ui` document, the application falls back to its packaged
+ * defaults, and the browser logs an entry for the denied request whether or not the application
+ * handled it. `phase-1-config.mjs` asserts the present and absent manifest cases separately and
+ * suppresses the same set for the same reason.
+ *
+ * The AI operations 500 because the `AI.*` marketplace package is not installed here — recorded
+ * in `CLAUDE.md` as expected, not a client defect.
+ */
+const ENVIRONMENTAL_ERRORS = [
+  /automation\/AI\./,
+  '/nuxeo/logout',
+  '/nuxeo/api/v1/path/default-domain/config/agentic-ui',
+  // `GET /api/v1/group/Administrator` 404s because `Administrator` is a user, not a group. It
+  // appears only once the adf-hx nav drawer is opened, comes from upstream's user resolution,
+  // and has nothing to do with translation. Suppressed rather than left to fail a capture it is
+  // not about — but it is a real 404 on every drawer open and worth a ticket of its own.
+  '/nuxeo/api/v1/group/',
+  // The five catalogue 404s that step 7 **induces on purpose** by asking for a locale no
+  // catalogue ships. They are the tolerant path working: `AppTranslateLoader` answers each
+  // failed folder fetch with `{}` and the app renders English. The browser still logs a console
+  // entry for a 404 whether or not the application handled it.
+  //
+  // Narrowed to this one locale rather than `/i18n/` — a missing `fr.json` must still fail, and
+  // a blanket pattern would have hidden exactly the defect this capture exists to catch.
+  `/i18n/${UNSHIPPED_LOCALE}.json`,
+];
+
+/** The global search box in the header, by class — see `app-shell.component.html`. */
+const HEADER_SEARCH_INPUT = 'input.header-search-input';
+
 /** The file the marketplace package installs. Served verbatim for the English pass. */
 const PACKAGED_BOOTSTRAP = readFileSync(
   resolve(process.cwd(), 'nuxeo-agentic-ui-package/src/main/config/bootstrap.json'),
@@ -123,15 +166,25 @@ function bootstrapWithLanguage(language) {
  */
 export default async function run(page, h) {
   let bootstrapBody = PACKAGED_BOOTSTRAP;
+  /**
+   * Every `defaultLanguage` the interception actually served, in order.
+   *
+   * Instrumentation that earns its place: "the placeholder is French" failing tells you the
+   * locale did not apply but not whether the swap reached the browser at all. This separates a
+   * broken interception from a broken language switch, and it makes the reload falsifiable —
+   * if `page.reload()` were removed, this list would stop growing.
+   */
+  const servedLanguages = [];
 
-  await page.route(BOOTSTRAP_ROUTE, (route) =>
-    route.fulfill({
+  await page.route(BOOTSTRAP_ROUTE, (route) => {
+    servedLanguages.push(JSON.parse(bootstrapBody).defaultLanguage);
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
       headers: { 'cache-control': 'no-store' },
       body: bootstrapBody,
-    }),
-  );
+    });
+  });
 
   // ---------------------------------------------------------------------------
   h.step('The packaged English application renders no raw translation keys');
@@ -148,13 +201,26 @@ export default async function run(page, h) {
 
   // ---------------------------------------------------------------------------
   h.step('The document tree toggle has a real accessible name, not the raw key');
-  // The tree is the shell's nav drawer, so it is already mounted. Its toggles only exist once a
-  // folder with children has loaded, which is why this asserts the count first: zero toggles
-  // would make the name assertion vacuously true.
+  // The tree lives in the app shell's nav drawer and only mounts when the route is entered
+  // through the platform nav item, because the shell owns the drawer state — a direct `goTo`
+  // renders the page with no drawer and therefore no tree. `AGENTS/11-beta-program.md` §3
+  // records this, and a first run of this file asserted against zero toggle buttons because it
+  // navigated straight to the URL.
   await h.goTo('/#/browse');
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1200);
+  const navEntry = page
+    .locator('a,button')
+    .filter({ hasText: /adf-hx/i })
+    .first();
+  h.check('the platform nav offers the adf-hx entry', (await navEntry.count()) > 0);
+  await navEntry.click().catch(() => {});
+  await page.waitForTimeout(3000);
+  await h.expectVisible('the nav drawer mounted', 'hxp-browse-nav-drawer');
+  await h.expectVisible('the upstream document tree rendered', 'hxp-document-tree');
 
-  const toggles = page.locator('hxp-document-tree button[mat-icon-button][aria-label]');
+  // Zero toggles would make every name assertion below vacuously true, so the count is asserted
+  // before the names are read.
+  const toggles = page.locator('hxp-document-tree button[aria-label]');
   const toggleCount = await toggles.count();
   h.check(
     'the document tree rendered at least one folder toggle to inspect',
@@ -186,15 +252,37 @@ export default async function run(page, h) {
   await h.screenshot('en-document-tree-toggle-accessible-name');
 
   // ---------------------------------------------------------------------------
-  h.step('No control anywhere in the shell has an empty accessible name');
-  // The regression test for finding 4.6: a blank `aria-label` is a control with no accessible
-  // name, axe `button-name` critical, and it is invisible without a screen reader.
-  const blanks = await page.evaluate(() =>
-    [...document.querySelectorAll('[aria-label]')]
-      .filter((element) => (element.getAttribute('aria-label') ?? '').trim() === '')
-      .map((element) => element.tagName.toLowerCase()),
+  h.step('No interactive control in the shell has an empty accessible name');
+  // The regression test for finding 4.6: a blank `aria-label` on a control is a control with no
+  // accessible name — axe `button-name`, critical — and it is invisible without a screen reader.
+  //
+  // Scoped to interactive elements, and that scope is the honest one rather than a convenient
+  // one. A broad sweep also catches upstream's `<adf-datatable-row aria-label="">`, which is a
+  // row and not a control, so it cannot fail `button-name` and is not what 4.6 was about. Those
+  // rows belong to the ARIA problems already reported as upstream finding 1.2; failing this
+  // capture on them would attribute upstream's debt to this change and make the check unusable
+  // on any page rendering a document list.
+  const INTERACTIVE = 'button, a, input, select, textarea, [role="button"], [role="link"]';
+  const blanks = await page.evaluate((selector) => {
+    const offenders = [];
+    for (const element of document.querySelectorAll(selector)) {
+      if (!element.hasAttribute('aria-label')) continue;
+      if ((element.getAttribute('aria-label') ?? '').trim() !== '') continue;
+      offenders.push(`${element.tagName.toLowerCase()}.${element.className || '(no class)'}`);
+    }
+    return offenders;
+  }, INTERACTIVE);
+  h.check(
+    'no interactive control carries an empty aria-label',
+    blanks.length === 0,
+    blanks.join(', '),
   );
-  h.check('no element carries an empty aria-label', blanks.length === 0, blanks.join(', '));
+  h.note(
+    'Upstream emits `<adf-datatable-row aria-label="">` on document-list rows. Those are not ' +
+      'controls, so they cannot fail axe `button-name`; they are part of the DataTable ARIA ' +
+      'problems already reported as finding 1.2 in docs/adf-hx-upstream-findings.md, and this ' +
+      'step deliberately does not fail on them.',
+  );
 
   // ---------------------------------------------------------------------------
   h.step('Every shell route is free of raw translation keys');
@@ -214,13 +302,21 @@ export default async function run(page, h) {
   // ---------------------------------------------------------------------------
   h.step('Layer 0 defaultLanguage: fr renders French chrome after a reload');
   bootstrapBody = bootstrapWithLanguage('fr');
+  // Back to a plain route first: the earlier steps left the adf-hx nav drawer open, and a
+  // drawer full of upstream inputs is not what the header assertions are about.
+  await h.goTo('/#/browse');
+  const servedBeforeFrench = servedLanguages.length;
   await reloadApp(page);
   await h.expectVisible('app shell rendered in French pass', 'app-shell');
 
-  const frenchPlaceholder = await page
-    .locator('input[placeholder]')
-    .first()
-    .getAttribute('placeholder');
+  h.check(
+    'the reload really re-fetched the configuration, and it said fr',
+    servedLanguages.length > servedBeforeFrench &&
+      servedLanguages[servedLanguages.length - 1] === 'fr',
+    `served so far: ${JSON.stringify(servedLanguages)}`,
+  );
+
+  const frenchPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
   h.check(
     'the global search placeholder is French',
     frenchPlaceholder === 'Rechercher des documents, des utilisateurs ou des groupes',
@@ -251,10 +347,7 @@ export default async function run(page, h) {
   await reloadApp(page);
   await h.expectVisible('app shell rendered in German pass', 'app-shell');
 
-  const germanPlaceholder = await page
-    .locator('input[placeholder]')
-    .first()
-    .getAttribute('placeholder');
+  const germanPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
   h.check(
     'the global search placeholder is German',
     germanPlaceholder === 'Dokumente, Benutzer oder Gruppen suchen',
@@ -271,7 +364,7 @@ export default async function run(page, h) {
   h.step('An unknown locale degrades to English rather than to raw keys');
   // The tolerance claim: a customer who sets a language we ship no catalogue for must get a
   // working application, not a page of keys.
-  bootstrapBody = bootstrapWithLanguage('xx');
+  bootstrapBody = bootstrapWithLanguage(UNSHIPPED_LOCALE);
   await reloadApp(page);
   await h.expectVisible('app shell rendered for an unknown locale', 'app-shell');
 
@@ -281,10 +374,7 @@ export default async function run(page, h) {
     fallbackKeys.length === 0,
     fallbackKeys.join('\n      '),
   );
-  const fallbackPlaceholder = await page
-    .locator('input[placeholder]')
-    .first()
-    .getAttribute('placeholder');
+  const fallbackPlaceholder = await page.locator(HEADER_SEARCH_INPUT).getAttribute('placeholder');
   h.check(
     'an unshipped locale falls back to the English string',
     fallbackPlaceholder === 'Search documents, users or groups',
@@ -292,6 +382,13 @@ export default async function run(page, h) {
   );
   await h.screenshot('xx-shell-falls-back-to-english');
 
+  h.note(
+    'Read the French and German screenshots as proof of the MECHANISM, not of a localised ' +
+      'application. Extraction is scoped to apps/nuxeo-ui shell chrome, so the header search ' +
+      'is French while the nav item labels, the document-list column headers and the adf-hx ' +
+      'browse toolbar are still English — those strings live in libs/ and are NXSAT-284. ' +
+      'Anyone looking at the screenshot will notice; this says so first.',
+  );
   h.note(
     'RTL is not exercised: it is out of scope for NXSAT-227 (open decision Q3) and tracked ' +
       'against DS-2277. Nothing here asserts a mirrored layout.',
@@ -311,5 +408,10 @@ export default async function run(page, h) {
   h.step('Health');
   bootstrapBody = PACKAGED_BOOTSTRAP;
   await reloadApp(page);
-  h.expectNoConsoleErrors();
+  h.check(
+    'the configuration was re-fetched on every language switch',
+    servedLanguages.length >= 5,
+    `served: ${JSON.stringify(servedLanguages)}`,
+  );
+  h.expectNoConsoleErrors('no unexpected browser console errors', ENVIRONMENTAL_ERRORS);
 }
