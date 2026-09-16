@@ -154,10 +154,15 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
     const anchor = fixture.nativeElement.querySelector(LINK) as HTMLElement | null;
     if (!anchor) throw new Error(`Satori did not render ${LINK}`);
     link = anchor;
-    if (asCurrentRoute && !anchor.classList.contains(ACTIVE_CLASS)) {
+    // Both directions, not just the one this call wants. A missing class on `[active]="true"`
+    // measures a plain item and calls it the current one; a *lingering* class on
+    // `[active]="false"` measures the current item and calls it plain — and that half would
+    // make the four panel cases into the same unfailable check the scoped selector just fixed.
+    if (anchor.classList.contains(ACTIVE_CLASS) !== asCurrentRoute) {
       throw new Error(
-        `[active]="true" did not put .${ACTIVE_CLASS} on the item — Satori's current-item ` +
-          `contract changed, so the current-item measurements below are not measuring it. ` +
+        `[active]="${asCurrentRoute}" did not leave .${ACTIVE_CLASS} ` +
+          `${asCurrentRoute ? 'present' : 'absent'} on the item — Satori's current-item ` +
+          `contract changed, so the measurements below are not measuring the state they name. ` +
           `Classes seen: ${anchor.className}`,
       );
     }
@@ -205,12 +210,20 @@ describe('sidebar nav focus ring contrast (NXENG-758)', () => {
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
     });
 
-    it(`clears ${MINIMUM_RATIO}:1 on the current item in the ${theme} theme`, () => {
+    it(`clears ${MINIMUM_RATIO}:1 on both sides of the ring on the current item in the ${theme} theme`, () => {
       // The state the defect was in: Satori lightens the current item with a 12% white
       // overlay, and measured 2.87:1 on the default theme before the token was overridden.
       const measured = measure(theme, true);
+
+      // A 2px ring inset by 2px has two neighbours, and WCAG 1.4.11 is about the indicator
+      // being distinguishable from what is next to it — so both are asserted. Checking only
+      // the interior would let an override pass against the lighter overlay while vanishing
+      // against the panel at the item's outer edge.
       expect(measured.ratioVsInterior)
         .withContext(`ring ${measured.ringColor} on the ${theme} current-item fill`)
+        .toBeGreaterThanOrEqual(MINIMUM_RATIO);
+      expect(measured.ratioVsPanel)
+        .withContext(`ring ${measured.ringColor} on the ${theme} nav panel, current item`)
         .toBeGreaterThanOrEqual(MINIMUM_RATIO);
     });
   }
