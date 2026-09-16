@@ -28,7 +28,7 @@ Twenty-two gates, cheapest first: `node`, `lockfile`, `supply-chain`, `code-scan
 `guardrails`, `sanitizer-audit`, `sanitizer-selftest`, `assertions`, then affected
 `lint`, `test`, `build`, `typecheck`, then `spec-types`, `bundle`, `api-surface`,
 `publishability`, `fork-simulation`, `upgrade-rehearsal`, `reference-drift`,
-`agent-mirror`, `review-corpus` and `customer-guardrails`. Stops at the first failure and prints only its output tail.
+`agent-mirror` and `customer-guardrails`. Stops at the first failure and prints only its output tail.
 Reports land in `$AGENTIC_UI_EVIDENCE_DIR/beta/gates/`.
 
 Only a run with **no** `--gates` filter can be cited for a phase. A filtered run
