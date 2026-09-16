@@ -88,6 +88,36 @@ html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-
   margin: 0;
 }
 
+/*
+ * Keyboard focus ring on the sidebar nav links (NXENG-761, WCAG 2.1 SC 1.4.11).
+ *
+ * Satori draws it from `--sat-platform-nav-outline`, which this application never set, so it
+ * fell back to `--mat-sys-outline-variant` — the theme's low-emphasis *divider* token. Because
+ * the ring is drawn inset (`outline-offset: -2px`) and nav items touch with no gap, the colour
+ * next to it is usually the active item's highlight rather than the panel: measured 2.87:1
+ * against it, below the 3:1 a focus indicator requires.
+ *
+ * `--mat-sys-on-primary` is the token Satori already uses for the nav's own label, icons and
+ * active-item bar, reached here through the same `--sat-platform-nav-on-background` indirection
+ * so a customer who restyles the nav foreground keeps a ring that matches it. An `on-primary`
+ * token is defined to contrast with `primary`, which is the panel background, so the 3:1 holds
+ * by construction of the palette rather than by a colour chosen here — 4.87:1 at worst across
+ * the four shipped themes.
+ *
+ * Setting the token rather than overriding the rule is deliberate: it is what Satori's own
+ * `.sat-neutral-theme` does, and it competes with nothing — the vendor rule *reads* this
+ * property, so there is no specificity war with a component style injected after this sheet.
+ * It also stays overridable: any customer rule matching `sat-platform-nav` at equal
+ * specificity and later source order wins, which an `!important` here would have prevented.
+ *
+ * The token also feeds the nav list's scrollbar thumb — the only other thing Satori reads it
+ * for — which the rule below suppresses: measured as no rendered scrollbar in Chromium,
+ * Firefox and WebKit.
+ */
+sat-platform-nav {
+  --sat-platform-nav-outline: var(--sat-platform-nav-on-background, var(--mat-sys-on-primary));
+}
+
 /* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
 sat-platform-nav .sat-platform-nav-list {
   overflow-y: auto;
