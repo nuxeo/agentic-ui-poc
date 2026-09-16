@@ -210,13 +210,8 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
   }
 
   /**
-   * The indicator must stay keyboard-only. Satori's rule is `:focus-visible`, and this fix
-   * only supplies the colour it reads — but a later "fix" that reached for `:focus` would ring
-   * every mouse click, which is the regression this pins down.
-   */
-  /**
-   * The negative control, committed rather than run once by hand: it proves the assertion
-   * above can fail, and that it fails for the right reason.
+   * The negative control, committed rather than run once by hand: it proves the assertions in
+   * the loop above can fail, and that they fail for the right reason.
    *
    * A translucent ring colour is the case where the choice of backdrop decides the verdict.
    * `rgba(0, 0, 0, 0.6)` over the active item's highlight renders at 2.82:1 — a real failure —
@@ -250,6 +245,11 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
       .toBeGreaterThanOrEqual(WCAG_1411_MIN_RATIO);
   });
 
+  /**
+   * The indicator must stay keyboard-only. Satori's rule is `:focus-visible`, and this fix
+   * only supplies the colour it reads — but a later "fix" that reached for `:focus` would ring
+   * every mouse click, which is the regression this pins down.
+   */
   it('does not draw the ring when the link is focused without a keyboard', () => {
     const el = link('idle');
     el.focus({ focusVisible: false } as FocusOptions);
