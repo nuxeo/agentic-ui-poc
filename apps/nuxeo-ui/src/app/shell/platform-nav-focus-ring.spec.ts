@@ -3,6 +3,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslateModule } from '@ngx-translate/core';
 import { SatPlatformNavModule } from '@hylandsoftware/satori-ui/platform-nav';
 
+import { COMPILED_THEME_BASES } from '../theme/app-theme';
+
 /**
  * NXENG-761 — the keyboard focus ring on the platform sidebar nav links must be visible.
  *
@@ -83,11 +85,14 @@ function flatten(value: string, backdrop: readonly number[]): number[] {
 class NavHostComponent {}
 
 /**
- * Every theme `apps/nuxeo-ui/src/styles.scss` declares. `null` is the no-attribute case, which
- * is not hypothetical: the attribute is applied by the app at runtime, so the first paint of
- * every session is themed by `html:not([data-app-theme])`.
+ * Every compiled theme, taken from the application's own authoritative list rather than
+ * restated here — a second copy would leave this "every theme" test green while a newly
+ * compiled palette went unexercised.
+ *
+ * `null` is the no-attribute case, which is not hypothetical: the attribute is applied at
+ * runtime, so the first paint of every session is themed by `html:not([data-app-theme])`.
  */
-const SHIPPED_THEMES: readonly (string | null)[] = [null, 'nuxeo', 'dark', 'light', 'kawaii'];
+const SHIPPED_THEMES: readonly (string | null)[] = [null, ...COMPILED_THEME_BASES];
 
 const WCAG_1411_MIN_RATIO = 3;
 
@@ -136,20 +141,28 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
     const panelRgb = parseColor(getComputedStyle(panel).backgroundColor).rgb;
     const style = getComputedStyle(el);
 
+    // What the *focused* item paints, and what the item next to it paints — both over the
+    // panel, and both colours the ring can end up against.
+    const own = flatten(style.backgroundColor, panelRgb);
+    const neighbour = flatten(
+      getComputedStyle(link(navId === 'idle' ? 'active' : 'idle')).backgroundColor,
+      panelRgb,
+    );
+
     return {
       matchesFocusVisible: el.matches(':focus-visible'),
       outlineStyle: style.outlineStyle,
       outlineWidth: parseFloat(style.outlineWidth),
-      // Flattened over the panel, so a translucent ring colour cannot read as opaque.
-      ring: flatten(style.outlineColor, panelRgb),
+      // Composited over the focused item's own background, not over the panel: the ring is
+      // drawn *inside* the item box, so that background is what a translucent ring colour
+      // actually mixes with. Compositing over the panel instead inflates the ratio against
+      // the highlight — 60% black reads as 3.13:1 that way while the rendered ring is
+      // 2.82:1, a false pass. Proved by the negative control at the bottom of this file.
+      ring: flatten(style.outlineColor, own),
       panel: panelRgb,
-      // What the *focused* item paints, and what the item next to it paints — the two colours
-      // the ring can end up against.
-      own: flatten(style.backgroundColor, panelRgb),
-      neighbour: flatten(
-        getComputedStyle(link(navId === 'idle' ? 'active' : 'idle')).backgroundColor,
-        panelRgb,
-      ),
+      own,
+      neighbour,
+      rawOutlineColor: style.outlineColor,
     };
   }
 
@@ -201,6 +214,42 @@ describe('platform sidebar nav — keyboard focus ring (NXENG-761)', () => {
    * only supplies the colour it reads — but a later "fix" that reached for `:focus` would ring
    * every mouse click, which is the regression this pins down.
    */
+  /**
+   * The negative control, committed rather than run once by hand: it proves the assertion
+   * above can fail, and that it fails for the right reason.
+   *
+   * A translucent ring colour is the case where the choice of backdrop decides the verdict.
+   * `rgba(0, 0, 0, 0.6)` over the active item's highlight renders at 2.82:1 — a real failure —
+   * while compositing it over the *panel* instead computes 3.13:1 and passes. So this asserts
+   * both halves: the measured ring must be below 3:1, and it must be strictly worse than the
+   * panel-backdrop figure, which is what makes the earlier version of this helper a false
+   * pass rather than a rounding difference.
+   *
+   * Scoped to the default theme, because those two numbers are palette-specific.
+   */
+  it('measures a translucent ring over the item it is drawn on, not over the panel', () => {
+    document.documentElement.setAttribute('data-app-theme', 'nuxeo');
+    const nav = fixture.nativeElement.querySelector('sat-platform-nav') as HTMLElement;
+    nav.style.setProperty('--sat-platform-nav-outline', 'rgba(0, 0, 0, 0.6)');
+
+    const measured = focusRingOf('active');
+    expect(parseColor(measured.rawOutlineColor).alpha).toBeCloseTo(0.6, 2);
+
+    const asMeasured = contrastRatio(measured.ring, measured.own);
+    const overPanelInstead = contrastRatio(
+      flatten(measured.rawOutlineColor, measured.panel),
+      measured.own,
+    );
+
+    expect(asMeasured).toBeLessThan(WCAG_1411_MIN_RATIO);
+    expect(overPanelInstead)
+      .withContext(
+        'the wrong backdrop must be what lets this through, otherwise this control is ' +
+          'not exercising the defect it was written for',
+      )
+      .toBeGreaterThanOrEqual(WCAG_1411_MIN_RATIO);
+  });
+
   it('does not draw the ring when the link is focused without a keyboard', () => {
     const el = link('idle');
     el.focus({ focusVisible: false } as FocusOptions);
