@@ -37,6 +37,49 @@ describe('AppShellComponent — header brand accessibility', () => {
     return el.closest('[aria-hidden="true"]') !== null;
   }
 
+  /** `root` and every element beneath it, descending through open shadow roots. */
+  function subtree(root: Element): Element[] {
+    const found: Element[] = [root];
+    const visit = (node: Element | ShadowRoot) => {
+      for (const child of node.querySelectorAll('*')) {
+        found.push(child);
+        if (child.shadowRoot) visit(child.shadowRoot);
+      }
+    };
+    if (root.shadowRoot) visit(root.shadowRoot);
+    visit(root);
+    return found;
+  }
+
+  /** The focused element, resolved through open shadow roots rather than stopping at a host. */
+  function deepActiveElement(): Element | null {
+    let active = document.activeElement;
+    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+    return active;
+  }
+
+  /**
+   * Whether the browser actually gives this element focus — asked, not inferred.
+   *
+   * This replaces a selector list, which was the wrong instrument: it has to enumerate every
+   * focusable form there is — `iframe`, `summary`, `area`, media with `controls`,
+   * `contenteditable`, a positive `tabindex` on any tag at all — and it passes silently on
+   * whatever the author did not think of, which is precisely when the test is needed.
+   */
+  function isFocusable(el: Element): boolean {
+    if (typeof (el as Partial<HTMLElement>).focus !== 'function') return false;
+    (el as HTMLElement).focus();
+    const took = deepActiveElement() === el;
+    (el as HTMLElement).blur?.();
+    return took;
+  }
+
+  function focusableIn(root: Element): string[] {
+    return subtree(root)
+      .filter(isFocusable)
+      .map((el) => el.tagName.toLowerCase());
+  }
+
   /** The vendor component that draws the word mark. Present with or without the fix. */
   function wordMark(root: HTMLElement): HTMLElement {
     const el = root.querySelector<HTMLElement>('sat-app-header sat-word-mark-logo');
@@ -141,31 +184,22 @@ describe('AppShellComponent — header brand accessibility', () => {
     // `aria-hidden` over a focusable element is itself a violation
     // (`aria_hidden_focus_misuse`): the control keeps its tab stop but leaves the
     // accessibility tree. Asserted because a vendor release could add one inside the lockup.
+    //
+    // The hidden element **itself** is included, not only its descendants — `aria-hidden` on
+    // a focusable element is the same violation, and a descendant-only check misses it.
     const focusableAndHidden = [
-      ...root.querySelectorAll(
-        'sat-app-header [aria-hidden="true"] a,' +
-          'sat-app-header [aria-hidden="true"] button,' +
-          'sat-app-header [aria-hidden="true"] input,' +
-          'sat-app-header [aria-hidden="true"] select,' +
-          'sat-app-header [aria-hidden="true"] textarea,' +
-          'sat-app-header [aria-hidden="true"] [tabindex]:not([tabindex="-1"])',
-      ),
-    ];
+      ...root.querySelectorAll('sat-app-header [aria-hidden="true"]'),
+    ].flatMap(focusableIn);
 
-    expect(focusableAndHidden.map((el) => el.tagName.toLowerCase())).toEqual([]);
+    expect(focusableAndHidden).toEqual([]);
   });
 
   it('does not turn the brand into a tab stop', () => {
     const root = render();
     const brand = namingAncestor(root) ?? wordMark(root);
 
-    expect(brand.hasAttribute('tabindex')).toBe(false);
-    expect(
-      [
-        ...brand.querySelectorAll(
-          'a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])',
-        ),
-      ].map((el) => el.tagName.toLowerCase()),
-    ).toEqual([]);
+    // Including the brand element itself: giving the wrapper a `tabindex` would make the
+    // decoration a tab stop just as surely as putting a control inside it.
+    expect(focusableIn(brand)).toEqual([]);
   });
 });
