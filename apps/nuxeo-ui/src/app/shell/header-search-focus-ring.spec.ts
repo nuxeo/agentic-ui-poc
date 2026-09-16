@@ -182,18 +182,24 @@ describe('header global search — keyboard focus indicator', () => {
       }
     }
 
-    const readableByIbm = focusSelectors.filter(
-      (selector) => !selector.includes(',') && !selector.includes(':focus-visible'),
+    // Match the selector exactly, not by substring. `.header-search-input-wrap:focus-within`
+    // contains both `.header-search-input` and `:focus`, has no comma and no
+    // `:focus-visible` — so a substring predicate counted a ring on the wrapper as the
+    // input's own standalone rule, and the spec could pass with the defect it exists to
+    // prevent. Emulated encapsulation appends an attribute selector, which is stripped
+    // before comparing; it is Angular's, not the author's.
+    const canonical = focusSelectors.map((selector) =>
+      selector.replace(/\[_ngcontent-[^\]]+\]/g, '').trim(),
     );
     expect(focusSelectors.length).toBeGreaterThan(0);
-    expect(readableByIbm.length).toBeGreaterThan(0);
+    expect(canonical).toContain('.header-search-input:focus');
   });
 
-  it('lets a click on the magnifier reach the input underneath it', () => {
+  it('routes a pointer at the magnifier to the input underneath it', () => {
     // The icon is drawn over the field at `z-index: 1`, so `pointer-events: none` is what
-    // keeps it from swallowing clicks — a behaviour the PR claims and nothing else here
-    // asserted. `elementFromPoint` is the browser's own hit test and honours
-    // `pointer-events`, so removing that declaration makes this fail.
+    // keeps it from swallowing pointer input — a behaviour the PR claims and nothing else
+    // here asserted. `elementFromPoint` is the browser's own hit test and honours
+    // `pointer-events`, so deleting that declaration makes this fail.
     const icon = fixture.nativeElement.querySelector('.header-search-icon') as HTMLElement;
     const box = icon.getBoundingClientRect();
     const hit = document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2);
@@ -201,11 +207,11 @@ describe('header global search — keyboard focus indicator', () => {
     expect(hit).toBe(input);
     expect(hit).not.toBe(icon);
 
-    // And the hit test is worth nothing if the click does not land: dispatch a real one at
-    // those coordinates and require focus to end up in the field.
-    (hit as HTMLElement).click();
-    (hit as HTMLElement).focus();
-    expect(document.activeElement).toBe(input);
+    // Deliberately not asserted here: that the click *focuses* the input. Focus-on-click is
+    // a browser default action and a synthetic MouseEvent does not trigger it, so the only
+    // way to make an assertion about it pass in Karma is to call `focus()` first — which
+    // makes it pass whether or not the click did anything. The real pointer interaction is
+    // exercised with Playwright in the evidence run instead.
   });
 
   it('resolves its colour through --mat-sys-primary, so a theme override moves it', () => {

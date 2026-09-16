@@ -145,8 +145,8 @@ sat-platform-nav-container.has-selection-topbar {
 // behind it — so the colour it has to contrast with is the header's, not the field's white.
 // That is why the ring tracks `--mat-sys-primary` and is deliberately NOT pinned to the
 // light scheme: the header follows the colour scheme, so the ring must too. Measured
-// against the header: 5.83:1 in the default and light themes, 10.11:1 in the dark theme,
-// 5.87:1 in kawaii. Forcing it light dropped it to 2.65:1 on a dark header.
+// against the header across the four packaged themes and both OS schemes: lowest 5.80:1
+// (light theme), highest 10.11:1 (dark theme). Forcing it light dropped it to 2.65:1.
 //
 // Keep this as its own selector. IBM Equal Access's `style_focus_visible` reads the
 // element's `:focus` styles only — it collects `:focus-visible` and `:focus-within` and
