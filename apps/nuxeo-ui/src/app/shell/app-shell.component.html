@@ -59,7 +59,7 @@
           <input
             type="text"
             class="header-search-input"
-            placeholder="Search documents, users or groups"
+            [placeholder]="'shell.search.placeholder' | translate"
             [value]="globalSearchTerm()"
             (focus)="onGlobalSearchFocus()"
             (input)="onGlobalSearchInput($any($event.target).value)"
@@ -69,11 +69,11 @@
         @if (globalSearchOpen()) {
           <div class="header-search-dropdown">
             @if (globalSearchLoading()) {
-              <div class="header-search-state">Searching…</div>
+              <div class="header-search-state">{{ 'shell.search.searching' | translate }}</div>
             } @else if (globalSearchError()) {
               <div class="header-search-state">{{ globalSearchError() }}</div>
             } @else if (globalSearchResults().length === 0) {
-              <div class="header-search-state">No results found</div>
+              <div class="header-search-state">{{ 'shell.search.no-results' | translate }}</div>
             } @else {
               @for (result of globalSearchResults(); track result.kind + ':' + result.id) {
                 <button
@@ -132,7 +132,7 @@
           <button
             type="button"
             mat-icon-button
-            aria-label="AI Assistant"
+            [attr.aria-label]="'shell.ai.open' | translate"
             (click)="toggleAiChat()"
             class="ai-chat-toggle"
             [class.active]="aiChatOpen()"
@@ -143,7 +143,7 @@
         <button
           type="button"
           mat-icon-button
-          aria-label="Settings menu"
+          [attr.aria-label]="'shell.settings.menu' | translate"
           [matMenuTriggerFor]="headerSettingsMenu"
         >
           <mat-icon>settings</mat-icon>
@@ -200,16 +200,20 @@
         <div class="ai-chat-panel">
           <div class="ai-chat-header">
             <mat-icon class="ai-chat-header-icon">auto_awesome</mat-icon>
-            <span class="ai-chat-header-title">AI Assistant</span>
+            <span class="ai-chat-header-title">{{ 'shell.ai.title' | translate }}</span>
             <button
               mat-icon-button
               class="ai-chat-clear"
               (click)="clearAiChat()"
-              aria-label="Clear chat"
+              [attr.aria-label]="'shell.ai.clear' | translate"
             >
               <mat-icon>delete_sweep</mat-icon>
             </button>
-            <button mat-icon-button (click)="aiChatOpen.set(false)" aria-label="Close chat">
+            <button
+              mat-icon-button
+              (click)="aiChatOpen.set(false)"
+              [attr.aria-label]="'shell.ai.close' | translate"
+            >
               <mat-icon>close</mat-icon>
             </button>
           </div>
@@ -218,7 +222,7 @@
             @if (!aiChat.hasMessages()) {
               <div class="ai-chat-welcome">
                 <mat-icon class="ai-chat-welcome-icon">auto_awesome</mat-icon>
-                <h3>Nuxeo AI Assistant</h3>
+                <h3>{{ 'shell.ai.heading' | translate }}</h3>
                 <p>
                   Ask me about your documents, search the repository, or get insights about
                   workflows and tasks.
@@ -314,7 +318,7 @@
             <input
               class="ai-chat-input"
               type="text"
-              placeholder="Ask anything about your documents..."
+              [placeholder]="'shell.ai.input-placeholder' | translate"
               [ngModel]="aiChatInput()"
               (ngModelChange)="aiChatInput.set($event)"
               (keydown.enter)="sendAiMessage()"
@@ -323,7 +327,7 @@
             <button
               mat-icon-button
               class="ai-chat-send"
-              aria-label="Send message"
+              [attr.aria-label]="'shell.ai.send' | translate"
               (click)="sendAiMessage()"
               [disabled]="!aiChatInput().trim() || aiChat.loading()"
             >

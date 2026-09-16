@@ -721,8 +721,19 @@ function checkAngularDevAssets() {
     for (const [targetName, target] of Object.entries(targets ?? {})) {
       const base = /** @type {any} */ (target).options?.assets;
       if (!Array.isArray(base)) continue;
+      // `ignore` is part of the identity, not decoration. Compared on glob/input/output alone,
+      // an entry that excludes a file in the base array and not in `development` reads as
+      // identical while the two configurations serve different files — which is the same class
+      // of divergence this whole check exists for, one field further in.
       const key = (entry) =>
-        typeof entry === 'string' ? entry : `${entry.glob}|${entry.input}|${entry.output ?? ''}`;
+        typeof entry === 'string'
+          ? entry
+          : [
+              entry.glob,
+              entry.input,
+              entry.output ?? '',
+              [...(entry.ignore ?? [])].sort().join(','),
+            ].join('|');
 
       for (const [configName, config] of Object.entries(
         /** @type {any} */ (target).configurations ?? {},
@@ -1119,6 +1130,110 @@ function checkTranslationCatalogues() {
 }
 
 /**
+ * Translator context exists for every string, and for no string that no longer exists.
+ *
+ * INFO-144 (*Internationalization Strategy for software*) is unambiguous about this: "All strings
+ * MUST provide this context as developers cannot know when this information is needed", and "All
+ * acronyms or abbreviations MUST be expanded and explained in the comment". Its worked examples
+ * are the argument — "Display Manager Failure" cannot be translated without knowing whether
+ * "Display" is a noun or a verb, and Japanese needs different words for "from" depending on
+ * whether a date range or an email sender is meant.
+ *
+ * Context lives in a sibling `en.context.json` rather than inside the catalogue, so that it stays
+ * in version control next to the string and survives a change of translation tool — the Crowdin
+ * RFC makes the same point about keeping the source of truth in the repository rather than in the
+ * vendor.
+ *
+ * Only key parity is enforced. Whether a given sentence of context is *sufficient* is a judgement
+ * a script cannot make; what a script can do is guarantee that a new string cannot be added
+ * without someone writing something, and that context for a deleted string does not linger and
+ * mislead. Keys beginning with `$` are file-level metadata, not strings.
+ */
+function checkTranslationContext() {
+  const isReference = (path) => /(^|\/)i18n\/en\.json$/.test(path);
+  const references = [...walk('apps', isReference), ...walk('libs', isReference)];
+
+  if (references.length === 0) {
+    fail(
+      'No `i18n/en.json` was found under apps/ or libs/, so the translator-context gate ' +
+        'asserted nothing.',
+    );
+    return;
+  }
+
+  let compared = 0;
+  for (const reference of references) {
+    const contextFile = reference.replace(/en\.json$/, 'en.context.json');
+    if (!fileExists(contextFile)) {
+      fail(
+        `${reference} has no sibling en.context.json.\n` +
+          '    INFO-144 requires every string to carry translator context: acronyms expanded, ' +
+          'product names flagged as do-not-translate, placeholders explained, and enough to ' +
+          'disambiguate a word that is a noun in one reading and a verb in another.',
+      );
+      continue;
+    }
+
+    let catalogue;
+    let context;
+    try {
+      catalogue = JSON.parse(read(reference));
+      context = JSON.parse(read(contextFile));
+    } catch {
+      // `checkTranslationCatalogues` reports an unparseable catalogue by name; an unparseable
+      // context file is reported here rather than silently skipped.
+      if (!fileExists(contextFile)) continue;
+      try {
+        JSON.parse(read(contextFile));
+      } catch (error) {
+        fail(`${contextFile} is not valid JSON: ${error.message}`);
+      }
+      continue;
+    }
+
+    const keys = new Set();
+    (function collect(value, prefix) {
+      for (const [key, entry] of Object.entries(value)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (typeof entry === 'string') keys.add(path);
+        else if (entry && typeof entry === 'object') collect(entry, path);
+      }
+    })(catalogue, '');
+
+    const documented = new Set(Object.keys(context).filter((key) => !key.startsWith('$')));
+    compared += 1;
+
+    const undocumented = [...keys].filter((key) => !documented.has(key));
+    const orphaned = [...documented].filter((key) => !keys.has(key));
+
+    if (undocumented.length) {
+      fail(
+        `${contextFile} is missing context for ${undocumented.length} string(s) in ${reference}: ` +
+          `${undocumented.slice(0, 8).join(', ')}${undocumented.length > 8 ? ', …' : ''}\n` +
+          '    A translator handed only the English text cannot ask a question; INFO-144 makes ' +
+          'the context mandatory for that reason. Say what part of speech it is, what the ' +
+          'surrounding UI is, expand any acronym, and name anything that must stay in English.',
+      );
+    }
+    if (orphaned.length) {
+      fail(
+        `${contextFile} documents ${orphaned.length} key(s) that ${reference} no longer has: ` +
+          `${orphaned.slice(0, 8).join(', ')}${orphaned.length > 8 ? ', …' : ''}\n` +
+          '    Stale context outlives the string it described and then describes the wrong one ' +
+          'after a key is reused. Delete it with the key.',
+      );
+    }
+  }
+
+  if (compared === 0) {
+    fail(
+      `${references.length} reference catalogue(s) were found but none was compared against a ` +
+        'context file, so this gate asserted nothing.',
+    );
+  }
+}
+
+/**
  * Every key our templates bind to an accessible name must survive a failed catalogue fetch.
  *
  * `AppTranslateLoader` falls back to `EN_FALLBACK_TRANSLATIONS` when it cannot fetch the app
@@ -1201,26 +1316,43 @@ function checkAccessibleNameFallbacks() {
   // this stays a check with no judgement calls in it.
   const BINDING = /\[(?:attr\.)?(aria-label|title)\]="\s*'([^']+)'\s*\|\s*translate\s*"/g;
 
+  // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
+  // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
+  // the reputation that gets it switched off. One missing key, one message, with a count.
+  /** @type {Map<string, { attribute: string, sites: string[] }>} */
+  const offences = new Map();
   let bindings = 0;
+
   for (const template of templates) {
     if (!fileExists(template)) continue;
     for (const [, attribute, key] of read(template).matchAll(BINDING)) {
       bindings += 1;
       if (!owned.has(key)) continue;
+      if (fallback.has(key) && fallback.get(key).trim() !== '') continue;
 
-      if (!fallback.has(key)) {
-        fail(
-          `${template} binds ${attribute} to \`${key}\`, which ${catalogueFile} owns but ` +
-            `${fallbackFile} omits. A failed catalogue fetch names that control with the raw ` +
-            'key. Add it to EN_FALLBACK_TRANSLATIONS.',
-        );
-      } else if (fallback.get(key).trim() === '') {
-        fail(
-          `${template} binds ${attribute} to \`${key}\`, and ${fallbackFile} maps it to an empty ` +
-            'string. A failed fetch then leaves the control with no accessible name at all — axe ' +
-            '`button-name`, critical. This is exactly how finding 4.6 shipped.',
-        );
-      }
+      if (!offences.has(key)) offences.set(key, { attribute, sites: [] });
+      offences.get(key).sites.push(template);
+    }
+  }
+
+  for (const [key, { attribute, sites }] of offences) {
+    const where =
+      sites.length === 1
+        ? sites[0]
+        : `${[...new Set(sites)].join(', ')} (${sites.length} bindings)`;
+
+    if (!fallback.has(key)) {
+      fail(
+        `${where} binds ${attribute} to \`${key}\`, which ${catalogueFile} owns but ` +
+          `${fallbackFile} omits. A failed catalogue fetch names that control with the raw key. ` +
+          'Add it to EN_FALLBACK_TRANSLATIONS.',
+      );
+    } else {
+      fail(
+        `${where} binds ${attribute} to \`${key}\`, and ${fallbackFile} maps it to an empty ` +
+          'string. A failed fetch then leaves the control with no accessible name at all — axe ' +
+          '`button-name`, critical. This is exactly how finding 4.6 shipped.',
+      );
     }
   }
 
@@ -1351,6 +1483,7 @@ const GUARDRAILS = [
   checkNoAdfHxInPublicApi,
   checkNoHardcodedUiText,
   checkTranslationCatalogues,
+  checkTranslationContext,
   checkAccessibleNameFallbacks,
 ];
 

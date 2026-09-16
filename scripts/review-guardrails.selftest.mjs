@@ -235,6 +235,117 @@ expectRed(
   /asserted nothing/,
 );
 
+/* ---------------- checkTranslationContext ---------------- */
+
+/** Context for every string in `EN_JSON`, keyed identically, plus one `$` metadata key. */
+const EN_CONTEXT = `{
+  "$note": "Translator context for en.json.",
+  "app.title": "PRODUCT NAME — do not translate.",
+  "app.nav.toggle": "Accessible name for the nav rail button. 'Toggle' is a verb.",
+  "settings.themes.search": "Accessible name for the themes search button. A verb phrase."
+}
+`;
+
+const WITH_CONTEXT = { ...APP, 'apps/nuxeo-ui/public/i18n/en.context.json': EN_CONTEXT };
+
+expectGreen('context for every string', 'checkTranslationContext', WITH_CONTEXT);
+
+expectRed(
+  'no context file at all',
+  'checkTranslationContext',
+  APP,
+  null,
+  /has no sibling en\.context\.json/,
+);
+
+expectRed(
+  'a new string with no context',
+  'checkTranslationContext',
+  WITH_CONTEXT,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/public/i18n/en.json',
+      EN_JSON.replace(
+        '"title": "Hyland Nuxeo",',
+        '"title": "Hyland Nuxeo",\n    "undocumented": "New string",',
+      ),
+    ),
+  /missing context for 1 string\(s\).*app\.undocumented/s,
+);
+
+expectRed(
+  'context left behind for a deleted string',
+  'checkTranslationContext',
+  WITH_CONTEXT,
+  (write) =>
+    write(
+      'apps/nuxeo-ui/public/i18n/en.context.json',
+      EN_CONTEXT.replace('"$note"', '"app.removed": "Stale.",\n  "$note"'),
+    ),
+  /documents 1 key\(s\).*app\.removed/s,
+);
+
+expectRed(
+  'an unparseable context file',
+  'checkTranslationContext',
+  WITH_CONTEXT,
+  (write) => write('apps/nuxeo-ui/public/i18n/en.context.json', '{ "app.title": }\n'),
+  /en\.context\.json is not valid JSON/,
+);
+
+/* ---------------- checkAngularDevAssets ---------------- */
+
+/**
+ * A control for the `ignore` field specifically. The parity key compared glob, input and output
+ * only, so an entry excluding a file in the base array and not in `development` was identical as
+ * far as this gate could see, while the two configurations served different files — the same
+ * divergence the gate exists for, one field further in. Found while excluding the translator
+ * context file from the build.
+ */
+const ANGULAR_JSON = (developmentIgnore) =>
+  `${JSON.stringify(
+    {
+      projects: {
+        'nuxeo-ui': {
+          architect: {
+            build: {
+              options: {
+                assets: [
+                  { glob: '**/*', input: 'apps/nuxeo-ui/public', ignore: ['i18n/*.context.json'] },
+                ],
+              },
+              configurations: {
+                development: {
+                  assets: [
+                    {
+                      glob: '**/*',
+                      input: 'apps/nuxeo-ui/public',
+                      ...(developmentIgnore ? { ignore: developmentIgnore } : {}),
+                    },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    null,
+    2,
+  )}\n`;
+
+expectGreen('matching ignore lists', 'checkAngularDevAssets', {
+  'angular.json': ANGULAR_JSON(['i18n/*.context.json']),
+});
+
+expectRed(
+  'a configuration that drops the base ignore list',
+  'checkAngularDevAssets',
+  { 'angular.json': ANGULAR_JSON(null) },
+  null,
+  /overrides assets but omits/,
+);
+
 /* ---------------- checkAccessibleNameFallbacks ---------------- */
 
 expectGreen('every accessible name in the fallback', 'checkAccessibleNameFallbacks', APP);

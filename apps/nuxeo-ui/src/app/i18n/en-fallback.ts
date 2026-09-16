@@ -59,4 +59,16 @@ export const EN_FALLBACK_TRANSLATIONS: Record<string, string> = {
   'settings.themes.search': 'Search themes',
   'settings.themes.current': 'Current',
   'settings.themes.apply': 'Apply',
+  // Shell chrome accessible names. Not the visible text from the same templates: this map is for
+  // the names that would become raw keys on a control, and `checkAccessibleNameFallbacks` is the
+  // list of what that means in practice.
+  'shell.ai.open': 'AI Assistant',
+  'shell.ai.clear': 'Clear chat',
+  'shell.ai.close': 'Close chat',
+  'shell.ai.send': 'Send message',
+  'shell.settings.menu': 'Settings menu',
+  'nav.refresh': 'Refresh',
+  'nav.loading': 'Loading',
+  'nav.favorites.remove': 'Remove from favorites',
+  'nav.clipboard.remove': 'Remove from clipboard',
 };
