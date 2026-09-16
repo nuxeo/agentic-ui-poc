@@ -121,10 +121,14 @@ sat-app-header h2.sat-app-header-title {
   white-space: nowrap;
 }
 
+/* The flex item is now the wrapper that carries the word mark's accessible name, not the
+   word mark itself (NXENG-759) — so the no-squeeze guarantee has to name it. Deliberately
+   `.app-header-brand` and not `.sat-app-header-logo`: the global search box carries
+   `satAppHeaderLogo` too, and that class would quietly pull it in as well. */
 sat-app-header .sat-app-header-trailing-container,
 sat-app-header .sat-app-header-actions,
-sat-app-header sat-word-mark-logo.sat-app-header-logo,
-sat-app-header .sat-app-header-logo sat-word-mark-logo {
+sat-app-header .app-header-brand,
+sat-app-header .app-header-brand sat-word-mark-logo {
   flex-shrink: 0;
 }
 
