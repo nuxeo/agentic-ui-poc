@@ -236,8 +236,9 @@ is mostly overlap.
 - **Never create workspaces concurrently.** Serial creation, parallel work.
 - **Never raise `--concurrency` past the plan to hit a deadline.** Swapping loses in-flight fixes.
 - **Never `--nuxeo own` across a large batch.** A container is ~2 GB; twelve is the machine.
-- **Never let a subagent publish to the shared corpus.** Serial tail, in the wrapper, on the
-  batch's own corpus branch — never appended to a ticket PR that has already gone clean.
+- **Never let a subagent publish the findings record.** Serial tail, in the wrapper: concurrent
+  PUTs race on the page's optimistic `version + 1`. There is no corpus branch to publish on —
+  `publish` writes no tracked file, so nothing can land on a ticket PR either way.
 - **Stop the whole batch** only for a shared-resource failure. Everything else is per-ticket.
 - **Report a ticket's real outcome.** `pr-open` is not `merged`, and a blocked ticket in a batch
   of twelve is easy to lose in a summary that leads with eleven successes.
