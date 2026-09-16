@@ -138,10 +138,15 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
     header = found as HTMLElement;
   });
 
-  // The same cleanup `provide-app-extensions.spec.ts` uses. The shell's constructor calls
-  // `refreshFavoritesCount()`, which searches Nuxeo, so there is always at least one pending
-  // request; flushing then verifying leaves nothing behind for the next spec and turns any
-  // *future* unexpected request into a failure rather than a silent leak.
+  // The same cleanup `provide-app-extensions.spec.ts` uses: the shell's startup queues
+  // requests — the favourites search from `refreshFavoritesCount()` among them — so flushing
+  // everything and then verifying leaves an empty queue for the next spec.
+  //
+  // It does **not** detect an unexpected request, and does not claim to: matching everything
+  // before `verify()` means `verify()` can only catch a request that arrives *after* the
+  // flush loop. Enumerating the startup requests here instead would couple a spec about
+  // header markup to the app's bootstrap, translation and manifest calls, and go red whenever
+  // those change for reasons this spec has no opinion about.
   afterEach(() => {
     http.match(() => true).forEach((request) => request.flush({}));
     http.verify();
@@ -166,11 +171,18 @@ describe('AppShellComponent — header graphics and assistive technology', () =>
    * violation was present.
    */
   it('exposes no unnamed graphic in the header', () => {
-    const graphics = [header, ...allDescendants(header)].filter(
-      (el): el is SVGSVGElement => el instanceof SVGSVGElement,
-    );
-    expect(graphics.length)
-      .withContext('the header must render at least one graphic')
+    // Anchored on the subject, not on a graphic count. The header also renders several
+    // `mat-icon` SVGs, so "at least one <svg> exists" would keep this green if
+    // `<sat-word-mark-logo>` stopped rendering at all — the census would then have nothing to
+    // find and the test would pass by vacuity.
+    const wordMark = header.querySelector('sat-word-mark-logo');
+    expect(wordMark).withContext('the header must still render the word mark').toBeTruthy();
+    expect(
+      [wordMark as Element, ...allDescendants(wordMark as Element)].filter(
+        (el) => el instanceof SVGSVGElement,
+      ).length,
+    )
+      .withContext('the word mark must still draw a graphic for this census to be about anything')
       .toBeGreaterThan(0);
 
     expect(exposedUnnamedGraphics(header).map((svg) => svg.parentElement?.tagName.toLowerCase()))
