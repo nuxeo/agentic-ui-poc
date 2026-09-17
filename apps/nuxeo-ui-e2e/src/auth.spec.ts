@@ -63,6 +63,35 @@ test.describe('authentication and authorisation', () => {
     await expect(page.locator('button, input[type="submit"]').first()).toBeVisible();
   });
 
+  test('Log in shows a visible focus indicator when reached via Tab (NXENG-750)', async ({
+    page,
+  }) => {
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const submit = page.locator('button.login-submit');
+    await expect(submit).toBeVisible();
+
+    // Brand link → username → password → submit (empty credentials, disabledInteractive).
+    for (let i = 0; i < 4; i += 1) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(submit).toBeFocused();
+
+    const focusRing = await submit.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return {
+        outlineWidth: style.outlineWidth,
+        outlineStyle: style.outlineStyle,
+        boxShadow: style.boxShadow,
+      };
+    });
+    const hasOutline =
+      focusRing.outlineStyle !== 'none' && focusRing.outlineWidth !== '0px';
+    const hasFocusShadow = focusRing.boxShadow !== 'none' && focusRing.boxShadow.length > 0;
+    expect(hasOutline || hasFocusShadow).toBe(true);
+  });
+
   test('an anonymous visitor is not granted administration access', async ({ page }) => {
     /**
      * The privilege boundary. `adminGuard` admits only `hasAdministrationAccess()` and sends

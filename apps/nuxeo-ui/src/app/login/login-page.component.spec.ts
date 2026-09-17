@@ -84,6 +84,7 @@ describe('LoginPageComponent', () => {
     ) as HTMLButtonElement;
     expect(submit.getAttribute('aria-disabled')).toBe('true');
     expect(submit.disabled).toBe(false);
+    expect(submit.tabIndex).toBeGreaterThanOrEqual(0);
   });
 
   it('enables Log in when username and password are present', () => {
