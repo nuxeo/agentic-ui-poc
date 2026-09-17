@@ -39,6 +39,16 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('keeps the Hyland brand link inside the main landmark (WCAG 1.3.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const brand = el.querySelector('a.login-brand');
+    const main = el.querySelector('main.login-panel');
+    expect(brand).toBeTruthy();
+    expect(main).toBeTruthy();
+    expect(main?.contains(brand)).toBe(true);
+    expect(main?.id).toBe('login-main');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
