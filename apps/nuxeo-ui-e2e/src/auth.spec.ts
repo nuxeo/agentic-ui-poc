@@ -80,16 +80,24 @@ test.describe('authentication and authorisation', () => {
 
     const focusRing = await submit.evaluate((el) => {
       const style = getComputedStyle(el);
+      const outlineWidthPx = Number.parseFloat(style.outlineWidth) || 0;
+      const shadow = style.boxShadow;
+      const hasVisibleShadow =
+        shadow !== 'none' &&
+        shadow
+          .split(',')
+          .some((layer) => !/^0px\s+0px\s+0px\s+0px/.test(layer.trim()));
       return {
-        outlineWidth: style.outlineWidth,
+        outlineWidthPx,
         outlineStyle: style.outlineStyle,
-        boxShadow: style.boxShadow,
+        hasVisibleShadow,
       };
     });
-    const hasOutline =
-      focusRing.outlineStyle !== 'none' && focusRing.outlineWidth !== '0px';
-    const hasFocusShadow = focusRing.boxShadow !== 'none' && focusRing.boxShadow.length > 0;
-    expect(hasOutline || hasFocusShadow).toBe(true);
+    expect(focusRing.outlineStyle).not.toBe('none');
+    expect(
+      focusRing.outlineWidthPx >= 2 || focusRing.hasVisibleShadow,
+      'focus-visible should render a 2px+ outline or non-zero focus shadow',
+    ).toBe(true);
   });
 
   test('an anonymous visitor is not granted administration access', async ({ page }) => {
