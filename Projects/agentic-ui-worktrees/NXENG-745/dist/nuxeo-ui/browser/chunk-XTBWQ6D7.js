@@ -1,0 +1,1 @@
+import{Dd as t,sd as n,ta as e}from"./chunk-I4NHB2PI.js";function r(){return t()}var i=class o{themingEnabled=n(()=>r());static \u0275fac=function(a){return new(a||o)};static \u0275prov=e({token:o,factory:o.\u0275fac,providedIn:"root"})};export{i as a};

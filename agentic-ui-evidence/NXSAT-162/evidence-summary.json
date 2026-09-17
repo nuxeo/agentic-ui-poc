@@ -1,0 +1,45 @@
+{
+  "ticket": "NXSAT-162",
+  "capturedAt": "2026-07-14T06:26:48Z",
+  "environment": "satori-ui.beta.nuxeocloud.com",
+  "documentUid": "e28a9505-b85e-4a0f-a762-fb5060106b45",
+  "documentTitle": "File_luberon-397 (6)",
+  "apis": {
+    "documentAclAndPermissions": {
+      "method": "GET",
+      "url": "/nuxeo/api/v1/id/{docUid}",
+      "headers": {
+        "enrichers-document": "acls,permissions,userVisiblePermissions",
+        "fetch-acls": "username,creator,extended"
+      },
+      "groupAcesPath": "response.contextParameters.acls[].aces[] where username is a group principal",
+      "effectivePermissionsPath": "response.contextParameters.permissions"
+    },
+    "currentUserGroups": {
+      "method": "GET",
+      "url": "/nuxeo/api/v1/me",
+      "groupMembershipPath": "response.properties.groups"
+    }
+  },
+  "findings": {
+    "groupAceOnDocument": {
+      "principal": "readonly-group",
+      "permission": "Everything",
+      "granted": true,
+      "sourceFile": "03-doc-as-satori-admin.json"
+    },
+    "userReadonly01Groups": ["members", "readonly-group"],
+    "userReadonly01EffectivePermissions": {
+      "hasRead": true,
+      "hasWriteSecurity": true,
+      "hasEverything": true,
+      "sourceFile": "01-doc-as-user-readonly01.json"
+    },
+    "personalAceForUserReadonly01": {
+      "principal": "user-readonly01",
+      "permission": "Read",
+      "granted": true
+    },
+    "conclusion": "Buttons visible because readonly-group:Everything ACE applies to user-readonly01 via group membership; not a PR #96 regression."
+  }
+}

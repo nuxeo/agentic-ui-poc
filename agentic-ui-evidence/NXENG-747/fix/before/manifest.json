@@ -1,0 +1,45 @@
+{
+  "ticket": "NXENG-747",
+  "phase": "before",
+  "mode": "scenes",
+  "verdict": "error",
+  "finishedAt": "2026-09-17T10:17:13.368Z",
+  "environment": {
+    "appUrl": "http://localhost:4216",
+    "node": "v20.20.2",
+    "scenesFile": "scripts/collect-evidence/NXENG-747.scenes.mjs",
+    "commit": "c4d3b51",
+    "branch": "fix/nxeng-747",
+    "nuxeoImage": "nuxeo-recover:clean"
+  },
+  "totals": {
+    "scenes": 1,
+    "checks": 0,
+    "failed": 0
+  },
+  "error": "locator.waitFor: Timeout 90000ms exceeded.\nCall log:\n  - waiting for getByLabel(/username/i) to be visible\n",
+  "video": "NXENG-747-before.webm",
+  "chapters": [
+    {
+      "index": 1,
+      "act": 1,
+      "title": "Open the login screen",
+      "criterion": "AC-1",
+      "offsetMs": 2268
+    }
+  ],
+  "highlights": [],
+  "steps": [
+    {
+      "index": 1,
+      "label": "[Act 1] Open the login screen",
+      "screenshots": [],
+      "checks": [],
+      "notes": [],
+      "act": 1,
+      "intent": "Reach the sign-in form unauthenticated",
+      "criterion": "AC-1"
+    }
+  ],
+  "consoleErrors": []
+}

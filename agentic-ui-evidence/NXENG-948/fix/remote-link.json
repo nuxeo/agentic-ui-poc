@@ -1,0 +1,9 @@
+{
+  "globalId": "github-pr-199",
+  "application": { "type": "com.github", "name": "GitHub" },
+  "relationship": "fixed by",
+  "object": {
+    "url": "https://github.com/nuxeo/agentic-ui-poc/pull/199",
+    "title": "PR #199 — fix(NXENG-948): wrap login surface in main landmark"
+  }
+}

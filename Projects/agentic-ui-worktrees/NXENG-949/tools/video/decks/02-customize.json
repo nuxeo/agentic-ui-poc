@@ -1,0 +1,156 @@
+{
+  "title": "How customers customise Nuxeo Satori",
+  "slides": [
+    {
+      "kind": "title",
+      "eyebrow": "Nuxeo Satori Beta · 2 of 3",
+      "rule": true,
+      "title": "How a customer customises it",
+      "lede": "Four layers, ordered by what they cost you. The rule is: never fork to change something a layer already addresses."
+    },
+    {
+      "eyebrow": "The contract",
+      "title": "Four layers, cheapest first",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            {
+              "series": "adfhx",
+              "title": "Layer 0 — configuration. A JSON file, no rebuild.",
+              "text": "`bootstrap.json`, deployed **beside** the bundle rather than inside it. Branding, themes, the Nuxeo endpoint, session timeouts, SSO. Edit it, reload the browser, done."
+            },
+            {
+              "series": "ours",
+              "title": "Layer 1 — the manifest. Declarative, no rebuild, no deploy.",
+              "text": "A Nuxeo **document**, so it inherits the repository's versioning, audit trail and ACLs. Hide, reorder, relabel or rule-gate anything addressable by ID; add your own entries."
+            },
+            {
+              "series": "3",
+              "title": "Layer 2 — your own code. An npm library you own.",
+              "text": "`provideSatoriExtensions()` contributes slots, rules, actions and components by ID. One line in your app config. **No edits to our libraries.**"
+            },
+            {
+              "series": "4",
+              "title": "Layer 3 — the agent harness. For building the above.",
+              "text": "Generators, a documented ID contract, and a guardrail script — so an AI agent or a new developer can extend the product without reading our source."
+            }
+          ]
+        }
+      ],
+      "footnote": "Layers 0 and 1 need no build and no developer. Layer 2 needs a developer but no fork. Only a change none of the four addresses is a reason to talk to us."
+    },
+    {
+      "eyebrow": "Layer 0 — configuration",
+      "title": "It survives your next upgrade, by construction",
+      "lede": "The marketplace installer copies the bundle directory with `overwrite=\"true\"`. Anything a customer edits **inside** the bundle is destroyed on upgrade — so the config file lives one level up, and the loader looks for it there.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// nxserver/web/nuxeo.war/agentic-ui-config/bootstrap.json</span>\n<span class=\"c\">// — beside the bundle, NOT inside it</span>\n{\n  <b>\"branding\"</b>: {\n    <b>\"applicationTitle\"</b>: \"Acme Content\",\n    <b>\"documentTitle\"</b>: \"Acme Content\"\n  },\n  <b>\"defaultThemeId\"</b>: \"acme\",\n  <b>\"themes\"</b>: [{\n    \"id\": \"acme\", \"label\": \"Acme\", \"base\": \"nuxeo\",\n    <b>\"tokens\"</b>: { \"--shell-nav-bg\": \"#0f2b46\", \"--shell-nav-active\": \"#1f6feb\" }\n  }],\n  <b>\"nuxeoApiOrigin\"</b>: \"\",\n  <b>\"manifestDocumentPath\"</b>: \"/default-domain/config/agentic-ui\"\n}"
+        }
+      ],
+      "footnote": "Every key is optional. An absent file, or a key you leave out, falls back to the value compiled in — so an untouched deployment behaves exactly like no file at all. `AppConfigService.diagnostics()` reports which half loaded and which fell back, and why."
+    },
+    {
+      "eyebrow": "Layer 1 — the manifest",
+      "title": "Change the interface without changing the build",
+      "lede": "Everything addressable has an ID of the form `<owner>.<surface>.<name>`. The manifest names IDs; it never names a class.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// A Nuxeo document at /default-domain/config/agentic-ui</span>\n{\n  \"extensions\": {\n    <b>\"overrides\"</b>: {\n      \"app.navbar.trash\":     { <b>\"visible\"</b>: false },        <span class=\"c\">// hide it</span>\n      \"app.navbar.browse\":    { <b>\"label\"</b>: \"Documents\" },     <span class=\"c\">// rename it</span>\n      \"app.navbar.dashboard\": { <b>\"order\"</b>: 5 }               <span class=\"c\">// move it</span>\n    },\n    <b>\"slots\"</b>: {\n      \"navbar\": [{\n        \"id\": \"acme.navbar.contracts\", \"label\": \"Contracts\",\n        \"path\": \"/browse/contracts\", \"icon\": \"folder\", \"order\": 35,\n        <b>\"rule\"</b>: \"acme.rules.isLegalTeam\"      <span class=\"c\">// gate it on your own rule</span>\n      }]\n    }\n  }\n}"
+        }
+      ],
+      "footnote": "An **unregistered rule ID evaluates to `true`** on purpose, so a typo or a manifest written against a newer release cannot silently strip working actions out of the UI. The exception is rules that gate administrative surfaces — those are declared fail-closed."
+    },
+    {
+      "eyebrow": "Layer 1 — the limits",
+      "title": "Read the three states precisely. They are different promises.",
+      "blocks": [
+        {
+          "type": "split",
+          "panels": [
+            {
+              "series": "adfhx",
+              "title": "Populated — it works today",
+              "sub": "Packaged descriptors exist and the surface renders from them",
+              "items": [
+                "`navbar` — 15 packaged entries, reorderable and hideable",
+                "`sidebar` — drawer panels, addressable by component ID",
+                "`bulk-actions` — 6 packaged actions"
+              ]
+            },
+            {
+              "series": "ours",
+              "title": "Declared — the ID is reserved, nothing resolves it yet",
+              "sub": "Contribute here and it has no effect in this release",
+              "items": [
+                "`routes` — a host must still map the path itself",
+                "`toolbar`, `contextMenu`, `tabs`, `documentList`",
+                "Documented as such in `docs/extension-reference.md`, rather than left to be discovered"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": "This distinction is in the reference doc because getting it wrong is expensive: contributing to a declared-but-unresolved slot produces no error and no effect."
+    },
+    {
+      "eyebrow": "Layer 2 — your own code",
+      "title": "One function. Four registries. No fork.",
+      "lede": "Generate the library, write your contributions, add one line to your app config. Our libraries are untouched.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">$ npx nx g @nuxeo-satori/generators:extension-library acme-extensions --owner=acme</span>\n\n<span class=\"c\">// src/lib/extensions.ts — everything you contribute, in one object</span>\n<b>provideSatoriExtensions</b>(() =&gt; {\n  const rules = inject(AcmeRulesService);      <span class=\"c\">// yes, you can inject</span>\n  return {\n    <b>slots</b>:       { navbar: NAV_ITEMS },\n    <b>rules</b>:       { 'acme.rules.canUseAcme': (ctx) =&gt; rules.canUse(ctx) },\n    <b>failClosedRules</b>: ['acme.rules.canUseAcme'],\n    <b>components</b>:  { 'acme.panel.reports': () =&gt; import('./panel').then(m =&gt; m.Panel) },\n    <b>actions</b>:     { 'acme.actions.export': { execute: (ctx) =&gt; rules.export(ctx) } },\n  };\n});"
+        }
+      ],
+      "footnote": "The generator also emits **six specs that assert the IDs are really registered** — because a library that registers descriptors nothing renders is the failure this whole contract exists to prevent."
+    },
+    {
+      "eyebrow": "Security",
+      "title": "Hiding a control is not a security control",
+      "blocks": [
+        {
+          "type": "banner",
+          "tone": "warn",
+          "text": "Layer 1 decides what the interface **offers**. Nuxeo decides what the server **allows**, server-side, on every operation. Hiding `app.toolbar.delete` does not stop a user with `Remove` from deleting via the REST API, and showing it grants nothing. Use Nuxeo ACLs for authorisation; use the manifest for what the interface presents."
+        }
+      ],
+      "footnote": "`failClosedRules` closes a startup-timing gap in the *interface* — the window before registration completes, where an unknown rule would otherwise fail open. It is not authorisation either."
+    },
+    {
+      "eyebrow": "Upgrading",
+      "title": "An upgrade is a version bump",
+      "lede": "That claim is only true if none of your customisation lives inside our code — which is what the four layers are for.",
+      "blocks": [
+        {
+          "type": "stats",
+          "items": [
+            {
+              "value": "0",
+              "label": "edits to our libraries",
+              "sub": "Verified from git for the reference extension: one line in the app config, one alias line",
+              "series": "3"
+            },
+            {
+              "value": "1",
+              "label": "package to upgrade",
+              "sub": "`@nuxeo-satori/platform` — one version, one changelog, five entry points",
+              "series": "adfhx"
+            },
+            {
+              "value": "2026",
+              "unit": "lines",
+              "label": "of API surface, pinned",
+              "sub": "A gate fails if any published signature changes without a decision",
+              "series": "ours"
+            }
+          ]
+        }
+      ],
+      "footnote": "Your Layer 0 file survives because it lives outside the bundle. Your Layer 1 manifest survives because it is a Nuxeo document. Your Layer 2 library survives because it only ever referenced IDs."
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "nuxeo-satori-template",
+  "projectType": "application",
+  "sourceRoot": "apps/nuxeo-satori-template/src",
+  "prefix": "app",
+  "tags": ["scope:template", "type:app"],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/nuxeo-satori-template"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng build nuxeo-satori-template"
+      },
+      "configurations": {
+        "production": { "command": "ng build nuxeo-satori-template --configuration=production" },
+        "development": { "command": "ng build nuxeo-satori-template --configuration=development" }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng serve nuxeo-satori-template"
+      },
+      "configurations": {
+        "production": { "command": "ng serve nuxeo-satori-template --configuration=production" },
+        "development": { "command": "ng serve nuxeo-satori-template --configuration=development" }
+      },
+      "defaultConfiguration": "development"
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{workspaceRoot}/dist/out-tsc/apps/nuxeo-satori-template"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ngc -p apps/nuxeo-satori-template/tsconfig.app.json --outDir dist/out-tsc/apps/nuxeo-satori-template"
+      }
+    }
+  }
+}

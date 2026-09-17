@@ -1,0 +1,22 @@
+<section class="acme-panel">
+  <h2>AcmeExtensions</h2>
+
+  <p>
+    Contributed by <code>@agentic-ui/acme-extensions</code> and addressable as
+    <code>acme.panel.acmeExtensions</code>.
+  </p>
+
+  @if (handlerRegistered) {
+    <button type="button" [disabled]="!enabled()" (click)="run()">{{ actionLabel }}</button>
+    @if (!enabled()) {
+      <p class="acme-panel__hint">
+        Offered but not currently applicable — <code>acme.rules.canUseAcme</code>
+        evaluates to false.
+      </p>
+    }
+  } @else {
+    <p class="acme-panel__hint">
+      No handler registered under <code>acme.actions.acmeExtensionsExport</code>.
+    </p>
+  }
+</section>

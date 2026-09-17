@@ -1,0 +1,133 @@
+{
+  "ticket": "NXENG-945",
+  "phase": "before",
+  "mode": "scenes",
+  "verdict": "fail",
+  "finishedAt": "2026-09-17T07:58:24.411Z",
+  "environment": {
+    "appUrl": "http://localhost:4210",
+    "node": "v20.20.2",
+    "scenesFile": "C:/Users/akoppaka/Desktop/Projects/agentic-ui-worktrees/NXENG-945/scripts/collect-evidence/NXENG-945.scenes.mjs",
+    "commit": "829feae",
+    "branch": "main",
+    "nuxeoImage": "nuxeo-recover:clean"
+  },
+  "totals": {
+    "scenes": 4,
+    "checks": 9,
+    "failed": 1
+  },
+  "video": "NXENG-945-before.webm",
+  "chapters": [
+    {
+      "index": 1,
+      "act": 1,
+      "title": "Open the login screen without an existing session",
+      "criterion": "AC-1",
+      "offsetMs": 3910
+    },
+    {
+      "index": 2,
+      "act": 2,
+      "title": "Check the page exposes a level-one heading",
+      "criterion": "AC-1",
+      "offsetMs": 7864
+    },
+    {
+      "index": 3,
+      "act": 3,
+      "title": "Credentials form still works after the heading change",
+      "criterion": "AC-2",
+      "offsetMs": 12965
+    }
+  ],
+  "highlights": [],
+  "steps": [
+    {
+      "index": 1,
+      "label": "[Act 1] Open the login screen without an existing session",
+      "screenshots": [
+        "01-login-panel.png"
+      ],
+      "checks": [
+        {
+          "name": "login form is shown",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 1,
+      "intent": "A user who must sign in before accessing the repository",
+      "criterion": "AC-1",
+      "consoleErrors": []
+    },
+    {
+      "index": 2,
+      "label": "[Act 2] Check the page exposes a level-one heading",
+      "screenshots": [
+        "02-page-heading.png"
+      ],
+      "checks": [
+        {
+          "name": "document has at least one h1",
+          "passed": false,
+          "detail": "found 0 h1 element(s)"
+        }
+      ],
+      "notes": [],
+      "act": 2,
+      "intent": "Screen readers and WCAG scanners need a single h1 that names the page",
+      "criterion": "AC-1",
+      "consoleErrors": []
+    },
+    {
+      "index": 3,
+      "label": "[Act 3] Credentials form still works after the heading change",
+      "screenshots": [
+        "03-login-form-intact.png"
+      ],
+      "checks": [
+        {
+          "name": "username field",
+          "passed": true
+        },
+        {
+          "name": "password field",
+          "passed": true
+        },
+        {
+          "name": "log in button",
+          "passed": true
+        }
+      ],
+      "notes": [
+        "successful authentication was not exercised — out of scope for this markup fix"
+      ],
+      "act": 3,
+      "intent": "Confirming username, password and submit are unchanged for keyboard and sighted users",
+      "criterion": "AC-2",
+      "consoleErrors": []
+    },
+    {
+      "index": 4,
+      "label": "Story structure",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "act 1 present — Setup — where we are and what the user is trying to do",
+          "passed": true
+        },
+        {
+          "name": "act 2 present — The bug — the behaviour as reported",
+          "passed": true
+        },
+        {
+          "name": "act 3 present — The proof — the criterion asserted, and what still works",
+          "passed": true
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "consoleErrors": []
+}

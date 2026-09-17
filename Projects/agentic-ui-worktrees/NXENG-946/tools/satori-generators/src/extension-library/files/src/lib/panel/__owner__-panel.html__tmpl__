@@ -1,0 +1,22 @@
+<section class="<%= owner %>-panel">
+  <h2><%= className %></h2>
+
+  <p>
+    Contributed by <code><%= importPath %></code> and addressable as
+    <code><%= owner %>.panel.<%= propertyName %></code>.
+  </p>
+
+  @if (handlerRegistered) {
+    <button type="button" [disabled]="!enabled()" (click)="run()">{{ actionLabel }}</button>
+    @if (!enabled()) {
+      <p class="<%= owner %>-panel__hint">
+        Offered but not currently applicable — <code><%= owner %>.rules.canUse<%= baseName %></code>
+        evaluates to false.
+      </p>
+    }
+  } @else {
+    <p class="<%= owner %>-panel__hint">
+      No handler registered under <code><%= owner %>.actions.<%= propertyName %>Export</code>.
+    </p>
+  }
+</section>

@@ -1,0 +1,1 @@
+[Document detail] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)

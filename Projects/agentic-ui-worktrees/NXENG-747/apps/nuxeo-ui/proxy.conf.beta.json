@@ -1,0 +1,12 @@
+{
+  "/nuxeo": {
+    "target": "https://satori-ui.beta.nuxeocloud.com",
+    "secure": true,
+    "changeOrigin": true,
+    "autoRewrite": true,
+    "headers": {
+      "X-NXproperties": "*",
+      "Origin": "https://satori-ui.beta.nuxeocloud.com"
+    }
+  }
+}

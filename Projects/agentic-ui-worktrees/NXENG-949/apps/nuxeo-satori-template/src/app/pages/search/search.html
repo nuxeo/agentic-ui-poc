@@ -1,0 +1,63 @@
+<h1 class="search__title">Search</h1>
+<p class="search__lede">
+  Full-text search across the repository via the <code>default_search</code> page provider. The
+  index is Nuxeo's own — nothing is filtered in the browser.
+</p>
+
+<label class="search__field">
+  <span class="search__label">Find documents</span>
+  <input
+    class="search__input"
+    type="search"
+    name="q"
+    placeholder="e.g. hurricane"
+    autocomplete="off"
+    [value]="term()"
+    (input)="onTerm($event)"
+  />
+</label>
+
+@if (searching()) {
+  <p class="search__status" role="status">Searching…</p>
+}
+
+@if (errorMessage(); as message) {
+  <p class="search__error" role="alert">{{ message }}</p>
+}
+
+@if (results(); as results) {
+  <p class="search__status">
+    {{ results.rows.length }} result(s) for <strong>{{ results.term }}</strong>
+  </p>
+
+  @if (results.rows.length) {
+    <table class="search__table">
+      <thead>
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Type</th>
+          <th scope="col">Location</th>
+          <th scope="col">Modified</th>
+          <th scope="col" class="search__cell--right">Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of results.rows; track row.uid) {
+          <tr>
+            <td>
+              <a class="search__link" [routerLink]="['/documents', row.uid]">{{ row.title }}</a>
+            </td>
+            <td>
+              <span class="search__badge">{{ row.type }}</span>
+            </td>
+            <td>
+              <code class="search__path">{{ row.path }}</code>
+            </td>
+            <td>{{ row.modified }}</td>
+            <td class="search__cell--right">{{ row.size }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}

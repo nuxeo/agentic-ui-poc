@@ -1,0 +1,16 @@
+WEBVTT
+
+NOTE Offsets are measured from browser-context creation and are accurate to roughly
+NOTE 100ms — recording starts inside newContext, marginally before the first timestamp.
+
+1
+00:00:03.910 --> 00:00:07.864
+Act 1 — Open the login screen without an existing session
+
+2
+00:00:07.864 --> 00:00:12.965
+Act 2 — Check the page exposes a level-one heading
+
+3
+00:00:12.965 --> 00:00:20.965
+Act 3 — Credentials form still works after the heading change

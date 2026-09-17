@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "step": "Login",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "1. Create HTML note — auto-open, Quill editor, format label",
+      "status": "PASS",
+      "detail": "NXSAT-174 HTML 2026-07-17T05-52-47-222Z"
+    },
+    {
+      "step": "2. Edit HTML in Quill, save, Edit toolbar still visible",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "2b. Code mode shows readable HTML (not Quill nbsp blob) — NXSAT-174",
+      "status": "FAIL",
+      "detail": "Source mode still contains &nbsp;: <p>Hello&nbsp;from&nbsp;Quill&nbsp;—&nbsp;NXSAT-174&nbsp;HTML&nbsp;test.</p>"
+    }
+  ],
+  "videoPath": "C:\\Users\\akoppaka\\Desktop\\NXSAT-174\\videos\\nxsat-174-note-scenarios-2026-07-17T05-52-47-222Z.webm",
+  "parentPath": "/default-domain/workspaces/Sample Workspace",
+  "baseUrl": "https://satori-ui.beta.nuxeocloud.com/nuxeo/agentic-ui",
+  "recordedAt": "2026-07-17T05-52-47-222Z"
+}

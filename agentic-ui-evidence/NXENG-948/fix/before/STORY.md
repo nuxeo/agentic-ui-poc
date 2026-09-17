@@ -1,0 +1,64 @@
+# NXENG-948 — before
+
+**Verdict:** FAIL — 7/8 checks across 4 scene(s)
+
+| | |
+| --- | --- |
+| App | http://localhost:4213 |
+| Branch / commit | `main` @ `829feae` |
+| Nuxeo image | `nuxeo-recover:clean` |
+| Scenes file | `C:/Users/akoppaka/Desktop/Projects/agentic-ui-worktrees/NXENG-948/scripts/collect-evidence/NXENG-948.mjs` |
+| Recording | `NXENG-948-before.webm` (chapters in `chapters.vtt`) |
+
+## Failed checks
+
+- Scene 2 ([Act 2] Scan for content outside landmarks) — **page exposes at least one landmark**: landmark count=0
+
+## Act 1 — Setup — where we are and what the user is trying to do
+
+### 1. Open the login screen  _(pass)_
+
+_A user signing in to Nuxeo Satori before entering credentials_
+
+Proves: **AC-1**
+
+- [pass] login form renders
+- _observed in the browser:_ `HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui`
+- _observed in the browser:_ `HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui`
+- _observed in the browser:_ `HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui`
+
+![[Act 1] Open the login screen — 01-login-page.png](./01-login-page.png)
+
+## Act 2 — The bug — the behaviour as reported
+
+### 2. Scan for content outside landmarks  _(1 failed)_
+
+_The username field region flagged by a11y-scout (mat-form-field infix)_
+
+Proves: **AC-1**
+
+- [pass] login: axe region rule on login panel
+- [FAIL] page exposes at least one landmark — landmark count=0
+- [pass] the spotlight still points at its element
+
+![[Act 2] Scan for content outside landmarks — 02-login-landmarks.png](./02-login-landmarks.png)
+
+## Act 3 — The proof — the criterion asserted, and what still works
+
+### 3. Login still submits credentials  _(pass)_
+
+_Confirming landmark markup did not break the primary action_
+
+Proves: **AC-2**
+
+- [pass] Log in button
+- _not covered:_ full auth flow not exercised — out of scope for landmark fix
+
+![[Act 3] Login still submits credentials — 03-login-submit.png](./03-login-submit.png)
+
+### 4. Story structure  _(pass)_
+
+- [pass] act 1 present — Setup — where we are and what the user is trying to do
+- [pass] act 2 present — The bug — the behaviour as reported
+- [pass] act 3 present — The proof — the criterion asserted, and what still works
+

@@ -1,0 +1,26 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
+.admin-shell__main {
+  min-height: calc(100vh - 120px);
+  min-width: 0;
+  background: var(--mat-sys-surface, #fff);
+  padding: 0.25rem 0.5rem;
+  --admin-space-1: 0.5rem;
+  --admin-space-2: 0.75rem;
+  --admin-space-3: 1rem;
+  --admin-space-4: 1.25rem;
+  --admin-space-5: 1.5rem;
+  --admin-radius-1: 8px;
+  --admin-control-height: 40px;
+  --admin-row-padding-y: 0.68rem;
+}
+
+@media (max-width: 1024px) {
+  .admin-shell__main {
+    padding: 0;
+  }
+}

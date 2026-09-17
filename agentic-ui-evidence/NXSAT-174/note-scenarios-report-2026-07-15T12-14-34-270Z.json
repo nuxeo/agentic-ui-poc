@@ -1,0 +1,48 @@
+{
+  "results": [
+    {
+      "step": "Login",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "1. Create HTML note — auto-open, Quill editor, format label",
+      "status": "PASS",
+      "detail": "NXSAT-174 HTML 2026-07-15T12-14-34-270Z"
+    },
+    {
+      "step": "2. Edit HTML in Quill, save, Edit toolbar still visible",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "3. HTML source mode toggle — edit source, return to visual, save",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "Create Text note — format label + edit + save",
+      "status": "PASS",
+      "detail": "NXSAT-174 Text 2026-07-15T12-14-34-270Z"
+    },
+    {
+      "step": "Create Markdown note — format label + edit + save",
+      "status": "PASS",
+      "detail": "NXSAT-174 Markdown 2026-07-15T12-14-34-270Z"
+    },
+    {
+      "step": "Create XML note — format label + edit + save",
+      "status": "PASS",
+      "detail": "NXSAT-174 XML 2026-07-15T12-14-34-270Z"
+    },
+    {
+      "step": "7. Edit document metadata dialog",
+      "status": "PASS",
+      "detail": ""
+    }
+  ],
+  "videoPath": "C:\\Users\\akoppaka\\Desktop\\NXSAT-174\\videos\\nxsat-174-note-scenarios-2026-07-15T12-14-34-270Z.webm",
+  "parentPath": "/default-domain/workspaces/Akshitha.5652560705857",
+  "baseUrl": "http://localhost:4200",
+  "recordedAt": "2026-07-15T12-14-34-270Z"
+}

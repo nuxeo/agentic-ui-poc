@@ -1,0 +1,71 @@
+.cloud-page {
+  padding: var(--admin-space-4, 1.25rem) var(--admin-space-5, 1.5rem) 2rem;
+  max-width: 960px;
+}
+
+.cloud-page__header {
+  margin-bottom: 0.75rem;
+}
+
+.cloud-page__title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.tab-inner {
+  padding: 1rem 0 1.5rem;
+}
+
+.subhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.table-wrap {
+  border-radius: var(--admin-radius-1, 8px);
+  overflow: auto;
+}
+
+.cloud-table {
+  width: 100%;
+}
+
+.cloud-center {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.empty {
+  padding: 1rem 1.25rem;
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.55));
+}
+
+@media (max-width: 900px) {
+  .cloud-page {
+    padding: 1rem;
+  }
+}
+
+.muted {
+  color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.65));
+  line-height: 1.5;
+  max-width: 60ch;
+}
+
+.cloud-page .mat-mdc-unelevated-button,
+.cloud-page .mat-mdc-outlined-button,
+.cloud-page .mat-mdc-button {
+  min-height: var(--admin-control-height, 40px);
+}
+
+.cloud-table th.mat-mdc-header-cell,
+.cloud-table td.mat-mdc-cell {
+  padding-top: var(--admin-row-padding-y, 0.68rem);
+  padding-bottom: var(--admin-row-padding-y, 0.68rem);
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "SatoriExtensionRule",
+  "title": "Add a rule to a Satori extension library",
+  "description": "Registers a named predicate a manifest can reference by ID to gate a surface. Not authorisation — Nuxeo still enforces the real permission server-side.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Rule name, kebab-case. Becomes <owner>.rules.<camelCase>.",
+      "$default": { "$source": "argv", "index": 0 },
+      "x-prompt": "Rule name (kebab-case, e.g. is-legal-team)?",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "library": {
+      "type": "string",
+      "description": "The extension library to add it to.",
+      "x-prompt": "Which extension library (e.g. acme-extensions)?"
+    },
+    "failClosed": {
+      "type": "boolean",
+      "description": "Deny when unregistered rather than permit. Defaults true, inverting the platform default, because a rule you are adding now is one you want closed while it is missing.",
+      "default": true
+    }
+  },
+  "required": ["name", "library"]
+}

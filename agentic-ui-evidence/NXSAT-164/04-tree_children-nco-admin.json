@@ -1,0 +1,1033 @@
+﻿{
+    "capturedAt":  "2026-07-14T06:30:07.0617955Z",
+    "request":  {
+                    "method":  "GET",
+                    "url":  "https://satori-ui.beta.nuxeocloud.com/nuxeo/api/v1/search/pp/tree_children/execute?queryParams=00000000-0000-0000-0000-000000000000\u0026pageSize=50\u0026currentPageIndex=0",
+                    "user":  "nco-admin"
+                },
+    "status":  "success",
+    "response":  {
+                     "entity-type":  "documents",
+                     "isPaginable":  true,
+                     "resultsCount":  13,
+                     "pageSize":  50,
+                     "maxPageSize":  1000,
+                     "resultsCountLimit":  50,
+                     "currentPageSize":  13,
+                     "currentPageIndex":  0,
+                     "currentPageOffset":  0,
+                     "numberOfPages":  1,
+                     "isPreviousPageAvailable":  false,
+                     "isNextPageAvailable":  false,
+                     "isLastPageAvailable":  false,
+                     "isSortable":  true,
+                     "hasError":  false,
+                     "errorMessage":  null,
+                     "totalSize":  13,
+                     "pageIndex":  0,
+                     "pageCount":  1,
+                     "entries":  [
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "ad68db88-022f-4820-8984-6bc3b98d8931",
+                                         "path":  "/default-domain",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "35-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain",
+                                         "lastModified":  "2025-12-29T16:05:08.157Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "system",
+                                                            "dc:modified":  "2025-12-29T16:05:08.157Z",
+                                                            "dc:lastContributor":  "system",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2025-12-29T16:05:08.157Z",
+                                                            "dc:title":  "Domain",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "system"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "f4124ff6-4d07-44f4-a709-ce11abba637b",
+                                         "path":  "/domain-1",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "14-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-1",
+                                         "lastModified":  "2026-06-23T17:32:57.886Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "satori-admin",
+                                                            "dc:modified":  "2026-06-23T17:32:57.886Z",
+                                                            "dc:lastContributor":  "satori-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-23T17:32:57.886Z",
+                                                            "dc:title":  "Domain-1",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "satori-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "51960c69-7ec5-4247-a7a0-70429cf34e84",
+                                         "path":  "/domain-2",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "17-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-2",
+                                         "lastModified":  "2026-06-26T06:08:40.877Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "nco-admin",
+                                                            "dc:modified":  "2026-06-26T06:08:40.877Z",
+                                                            "dc:lastContributor":  "nco-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-26T06:08:40.877Z",
+                                                            "dc:title":  "Domain-2",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "nco-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "33e21de4-3c5d-4fca-8f9a-d2e87516ba1d",
+                                         "path":  "/Domain-3",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "5-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-3",
+                                         "lastModified":  "2026-06-26T09:34:27.127Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "satori-admin",
+                                                            "dc:modified":  "2026-06-26T09:34:27.127Z",
+                                                            "dc:lastContributor":  "satori-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-26T09:34:27.127Z",
+                                                            "dc:title":  "Domain-3",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "satori-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "f23f45af-5e61-4da1-80d5-77e049725659",
+                                         "path":  "/domain-5",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "171-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-5",
+                                         "lastModified":  "2026-06-28T19:21:02.315Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "nco-admin",
+                                                            "dc:modified":  "2026-06-28T19:21:02.315Z",
+                                                            "dc:lastContributor":  "nco-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-28T19:21:02.315Z",
+                                                            "dc:title":  "Domain-5",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "nco-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "7d4704bc-a6b3-4524-aeaa-3bf07051028f",
+                                         "path":  "/domain-6",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "157-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-6",
+                                         "lastModified":  "2026-06-28T19:23:34.759Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "nco-admin",
+                                                            "dc:modified":  "2026-06-28T19:23:34.759Z",
+                                                            "dc:lastContributor":  "nco-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-28T19:23:34.759Z",
+                                                            "dc:title":  "Domain-6",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "nco-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "bc1964e2-fef5-4dbf-b06a-bd3ffd7163ff",
+                                         "path":  "/domain-7",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "11-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-7",
+                                         "lastModified":  "2026-07-12T08:27:08.573Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "nco-admin",
+                                                            "dc:modified":  "2026-07-12T08:27:08.573Z",
+                                                            "dc:lastContributor":  "nco-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-07-12T08:27:08.573Z",
+                                                            "dc:title":  "Domain-7",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "nco-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "b69ecec0-5a01-4a40-a86f-308a60d339c3",
+                                         "path":  "/domain-8",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "25-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-8",
+                                         "lastModified":  "2026-07-12T08:48:47.950Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "nco-admin",
+                                                            "dc:modified":  "2026-07-12T08:48:47.950Z",
+                                                            "dc:lastContributor":  "nco-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-07-12T08:48:47.950Z",
+                                                            "dc:title":  "Domain-8",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "nco-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "80290a78-995e-4eba-a8f8-4e596604f7db",
+                                         "path":  "/domain-poweruser02",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "9-0",
+                                         "isTrashed":  false,
+                                         "title":  "Domain-PowerUser02",
+                                         "lastModified":  "2026-06-27T09:31:00.146Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "nco-admin",
+                                                            "dc:modified":  "2026-06-27T09:31:00.146Z",
+                                                            "dc:lastContributor":  "nco-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-27T09:31:00.146Z",
+                                                            "dc:title":  "Domain-PowerUser02",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "nco-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "f74f1df2-cbd4-4a89-ac79-e147787fe458",
+                                         "path":  "/Sample Domain",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "20-0",
+                                         "isTrashed":  false,
+                                         "title":  "Sample Domain",
+                                         "lastModified":  "2025-12-23T05:57:51.719Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "nco-admin",
+                                                            "dc:modified":  "2025-12-23T05:57:51.719Z",
+                                                            "dc:lastContributor":  "nco-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2025-12-23T05:57:51.719Z",
+                                                            "dc:title":  "Sample Domain",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "nco-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "d60e9251-5ce2-4090-aa94-42030b2e4f82",
+                                         "path":  "/Sayan Domain",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "3-0",
+                                         "isTrashed":  false,
+                                         "title":  "Sayan Domain",
+                                         "lastModified":  "2026-06-26T12:10:29.967Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  "Sayan\u0027s Doamin",
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  "Cameroon",
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "demoUserSatori",
+                                                            "dc:modified":  "2026-06-26T12:10:29.967Z",
+                                                            "dc:lastContributor":  "demoUserSatori",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-26T12:10:29.967Z",
+                                                            "dc:title":  "Sayan Domain",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  "worksheet",
+                                                            "dc:subjects":  [
+                                                                                "cinema"
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "demoUserSatori"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "3da0845d-69b7-4d28-a27f-45fb5a1e38d8",
+                                         "path":  "/Test-Domain-170626115139",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "15-0",
+                                         "isTrashed":  false,
+                                         "title":  "Test-Domain-170626115139",
+                                         "lastModified":  "2026-06-17T06:21:40.176Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "qa-admin",
+                                                            "dc:modified":  "2026-06-17T06:21:40.176Z",
+                                                            "dc:lastContributor":  "qa-admin",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-17T06:21:40.176Z",
+                                                            "dc:title":  "Test-Domain-170626115139",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "qa-admin"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     },
+                                     {
+                                         "entity-type":  "document",
+                                         "repository":  "default",
+                                         "uid":  "2041b9aa-28a9-4d6f-977c-fc779f084feb",
+                                         "path":  "/demo domain - 1",
+                                         "type":  "Domain",
+                                         "state":  "project",
+                                         "parentRef":  "00000000-0000-0000-0000-000000000000",
+                                         "isCheckedOut":  true,
+                                         "isRecord":  false,
+                                         "retainUntil":  null,
+                                         "hasLegalHold":  false,
+                                         "isUnderRetentionOrLegalHold":  false,
+                                         "isVersion":  false,
+                                         "isProxy":  false,
+                                         "changeToken":  "3-0",
+                                         "isTrashed":  false,
+                                         "title":  "demo domain - 1",
+                                         "lastModified":  "2026-06-26T12:47:38.080Z",
+                                         "properties":  {
+                                                            "common:icon-expanded":  null,
+                                                            "common:icon":  "/icons/domain.gif",
+                                                            "domain:display_type":  false,
+                                                            "domain:content_roots":  [
+
+                                                                                     ],
+                                                            "dc:description":  null,
+                                                            "dc:language":  null,
+                                                            "dc:coverage":  null,
+                                                            "dc:valid":  null,
+                                                            "dc:creator":  "demoUserSatori",
+                                                            "dc:modified":  "2026-06-26T12:47:38.080Z",
+                                                            "dc:lastContributor":  "demoUserSatori",
+                                                            "dc:rights":  null,
+                                                            "dc:expired":  null,
+                                                            "dc:format":  null,
+                                                            "dc:created":  "2026-06-26T12:47:38.080Z",
+                                                            "dc:title":  "demo domain - 1",
+                                                            "dc:issued":  null,
+                                                            "dc:nature":  null,
+                                                            "dc:subjects":  [
+                                                                                "culture"
+                                                                            ],
+                                                            "dc:contributors":  [
+                                                                                    "demoUserSatori"
+                                                                                ],
+                                                            "dc:source":  null,
+                                                            "dc:publisher":  null,
+                                                            "nxtag:tags":  [
+
+                                                                           ]
+                                                        },
+                                         "facets":  [
+                                                        "Folderish",
+                                                        "NXTag",
+                                                        "SuperSpace",
+                                                        "NotCollectionMember"
+                                                    ],
+                                         "schemas":  [
+                                                         {
+                                                             "name":  "common",
+                                                             "prefix":  "common"
+                                                         },
+                                                         {
+                                                             "name":  "domain",
+                                                             "prefix":  "domain"
+                                                         },
+                                                         {
+                                                             "name":  "dublincore",
+                                                             "prefix":  "dc"
+                                                         },
+                                                         {
+                                                             "name":  "facetedTag",
+                                                             "prefix":  "nxtag"
+                                                         }
+                                                     ]
+                                     }
+                                 ]
+                 }
+}

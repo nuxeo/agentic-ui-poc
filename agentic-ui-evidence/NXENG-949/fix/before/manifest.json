@@ -1,0 +1,170 @@
+{
+  "ticket": "NXENG-949",
+  "phase": "before",
+  "mode": "scenes",
+  "verdict": "fail",
+  "finishedAt": "2026-09-17T07:54:00.456Z",
+  "environment": {
+    "appUrl": "http://localhost:4214",
+    "node": "v20.20.2",
+    "scenesFile": "C:/Users/akoppaka/Desktop/Projects/agentic-ui-worktrees/NXENG-949/scripts/collect-evidence/NXENG-949.mjs",
+    "commit": "829feae",
+    "branch": "main",
+    "nuxeoImage": "nuxeo-recover:clean"
+  },
+  "totals": {
+    "scenes": 4,
+    "checks": 10,
+    "failed": 3
+  },
+  "video": "NXENG-949-before.webm",
+  "chapters": [
+    {
+      "index": 1,
+      "act": 1,
+      "title": "Open the login screen",
+      "criterion": "AC-1",
+      "offsetMs": 4152
+    },
+    {
+      "index": 2,
+      "act": 2,
+      "title": "Password label sits inside a landmark",
+      "criterion": "AC-1",
+      "offsetMs": 9275
+    },
+    {
+      "index": 3,
+      "act": 3,
+      "title": "Login landmarks cover the panel content",
+      "criterion": "AC-2",
+      "offsetMs": 12241
+    }
+  ],
+  "highlights": [
+    {
+      "file": "01-login-page.png",
+      "label": "Login form",
+      "box": {
+        "x": 11.11111111111111,
+        "y": 44.677083333333336,
+        "w": 27.77777777777778,
+        "h": 20
+      }
+    },
+    {
+      "file": "02-password-label-landmark.png",
+      "label": "Password label",
+      "box": {
+        "x": 12.222222222222221,
+        "y": 44.14930555555556,
+        "w": 4.261067708333333,
+        "h": 1.8333333333333333
+      }
+    }
+  ],
+  "steps": [
+    {
+      "index": 1,
+      "label": "[Act 1] Open the login screen",
+      "screenshots": [
+        "01-login-page.png"
+      ],
+      "checks": [
+        {
+          "name": "login form renders",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 1,
+      "intent": "A user signing in before entering credentials",
+      "criterion": "AC-1",
+      "consoleErrors": [
+        "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 404 /nuxeo/api/v1/automation/AI.Insights",
+        "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui"
+      ]
+    },
+    {
+      "index": 2,
+      "label": "[Act 2] Password label sits inside a landmark",
+      "screenshots": [
+        "02-password-label-landmark.png"
+      ],
+      "checks": [
+        {
+          "name": "password label is visible",
+          "passed": true
+        },
+        {
+          "name": "password mat-label is inside the main landmark",
+          "passed": false,
+          "detail": "no enclosing <main> landmark"
+        },
+        {
+          "name": "copyright line is in a footer landmark",
+          "passed": false,
+          "detail": "found 0 footer landmarks"
+        },
+        {
+          "name": "the spotlight still points at its element",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 2,
+      "intent": "Screen reader users navigating by landmark must reach the password field label",
+      "criterion": "AC-1",
+      "consoleErrors": []
+    },
+    {
+      "index": 3,
+      "label": "[Act 3] Login landmarks cover the panel content",
+      "screenshots": [
+        "03-login-a11y-clean.png"
+      ],
+      "checks": [
+        {
+          "name": "login panel content is contained in landmarks",
+          "passed": false,
+          "detail": "1 node(s) outside landmarks"
+        },
+        {
+          "name": "no browser console errors",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 3,
+      "intent": "Confirm no login labels or footer text sit outside document landmarks",
+      "criterion": "AC-2",
+      "consoleErrors": []
+    },
+    {
+      "index": 4,
+      "label": "Story structure",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "act 1 present — Setup — where we are and what the user is trying to do",
+          "passed": true
+        },
+        {
+          "name": "act 2 present — The bug — the behaviour as reported",
+          "passed": true
+        },
+        {
+          "name": "act 3 present — The proof — the criterion asserted, and what still works",
+          "passed": true
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "consoleErrors": [
+    "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 404 /nuxeo/api/v1/automation/AI.Insights",
+    "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui"
+  ]
+}

@@ -1,0 +1,171 @@
+<div class="drawer-header-actions">
+  <div class="drawer-search-row-primary">
+    <div class="saved-filters-dropdown" (blur)="closeFilterSearchDropdown()">
+      <button
+        class="saved-filters-trigger"
+        type="button"
+        [attr.aria-expanded]="filterSearchOpen()"
+        [attr.aria-label]="filterSearchInput() || 'Saved Searches'"
+        (click)="onFilterSearchFocus()"
+        (focus)="onFilterSearchFocus()"
+      >
+        <span class="saved-filters-label">{{ filterSearchInput() || 'Search Filters' }}</span>
+        <mat-icon class="saved-filters-arrow">arrow_drop_down</mat-icon>
+      </button>
+
+      @if (filterSearchOpen()) {
+        <div class="saved-filters-panel">
+          @if (savedSearchesLoading()) {
+            <div class="saved-filters-empty">Loading saved searches...</div>
+          } @else if (availableSavedSearches().length === 0) {
+            <div class="saved-filters-empty">No saved searches</div>
+          } @else {
+            <div class="saved-filters-search">
+              <input
+                class="saved-filters-search-input"
+                type="text"
+                placeholder="Search..."
+                [value]="savedSearchFilter()"
+                (input)="savedSearchFilter.set($any($event.target).value)"
+              />
+            </div>
+            @if (filteredSavedSearches().length === 0) {
+              <div class="saved-filters-empty">No matching saved searches</div>
+            } @else {
+              @for (option of filteredSavedSearches(); track option.key) {
+                <button
+                  class="saved-filters-option"
+                  type="button"
+                  (mousedown)="selectFilterOption(option)"
+                >
+                  <mat-icon class="saved-filter-icon">bookmark</mat-icon>
+                  {{ option.label }}
+                </button>
+              }
+            }
+          }
+        </div>
+      }
+    </div>
+
+    <button
+      mat-icon-button
+      [matTooltip]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
+      [attr.aria-label]="viewMode() === 'filter' ? 'Switch to Queue view' : 'Switch to Filter view'"
+      (click)="viewMode() === 'filter' ? switchToQueueView() : switchToFilterView()"
+      type="button"
+      class="queue-toggle-btn"
+      [class.active]="viewMode() === 'queue'"
+    >
+      <mat-icon>{{ viewMode() === 'filter' ? 'view_list' : 'filter_list' }}</mat-icon>
+    </button>
+  </div>
+</div>
+
+<mat-divider />
+
+@if (viewMode() === 'filter') {
+  <div class="filters-section">
+    <p class="filters-heading">Filters</p>
+
+    <div class="filter-group">
+      <p class="filter-title">Full Text</p>
+      <div class="filter-input-wrap">
+        <input
+          class="filter-input"
+          type="text"
+          placeholder="Search for something..."
+          [value]="secondarySearchInput()"
+          (input)="onSecondarySearchInput($any($event.target).value)"
+          (keydown.enter)="onSecondarySearchEnter()"
+        />
+        @if (secondarySearchInput().trim()) {
+          <button class="clear-btn" type="button" (click)="onSecondarySearchClear()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+
+    @for (group of filterGroups(); track group.id) {
+      <div class="filter-group">
+        <button class="filter-btn" type="button" (click)="toggleFilter(group.id)">
+          <span class="filter-btn-label">{{ group.label }}</span>
+          <mat-icon class="filter-btn-icon">
+            {{ isExpanded(group.id) ? 'expand_less' : 'expand_more' }}
+          </mat-icon>
+        </button>
+
+        @if (isExpanded(group.id)) {
+          <div class="filter-options">
+            @if (dynamicGroups.has(group.id) && group.options.length === 0) {
+              <span class="filter-no-results">No available results</span>
+            } @else {
+              @for (option of group.options; track option.value) {
+                <mat-checkbox
+                  [checked]="option.selected"
+                  (change)="toggleOption(group.id, option.value)"
+                  class="filter-checkbox"
+                >
+                  {{ option.label }}{{ getCountText(group.id, option.aggKey) }}
+                </mat-checkbox>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <mat-divider />
+
+  <div class="drawer-footer">
+    <div class="footer-toggle-row">
+      <span class="footer-toggle-label">Auto search</span>
+      <mat-slide-toggle
+        [checked]="autoSearch()"
+        (change)="autoSearch.set($event.checked)"
+        color="primary"
+      />
+    </div>
+
+    <div class="footer-actions">
+      <button
+        mat-stroked-button
+        class="footer-btn reset-btn"
+        type="button"
+        (click)="resetFilters()"
+      >
+        Reset
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        class="footer-btn save-as-btn"
+        type="button"
+        [disabled]="!hasActiveFilters()"
+        (click)="openSaveAsDialog()"
+      >
+        Save As
+      </button>
+      @if (!autoSearch()) {
+        <button
+          mat-flat-button
+          color="primary"
+          class="footer-btn search-btn"
+          type="button"
+          (click)="applySearch()"
+        >
+          Search
+        </button>
+      }
+    </div>
+  </div>
+}
+
+@if (viewMode() === 'queue') {
+  <lib-assets-queue
+    [selectedItemId]="selectedDocumentId()"
+    (itemSelected)="onQueueItemSelected($event)"
+  ></lib-assets-queue>
+}

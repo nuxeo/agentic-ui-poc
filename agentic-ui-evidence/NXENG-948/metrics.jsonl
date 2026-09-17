@@ -1,0 +1,11 @@
+{"at":"2026-09-17T07:35:17.280Z","type":"start","ticket":"NXENG-948","kind":"bug","model":"composer-2.5-fast","account":"akshitha.koppaka@hyland.com","branch":"fix/nxeng-948","node":"v20.20.2"}
+{"at":"2026-09-17T07:35:17.549Z","type":"phase","phase":"ticket"}
+{"at":"2026-09-17T07:38:41.303Z","type":"phase","phase":"reproduce"}
+{"at":"2026-09-17T07:38:41.589Z","type":"phase","phase":"evidence-before"}
+{"at":"2026-09-17T07:44:01.601Z","type":"phase","phase":"decide"}
+{"at":"2026-09-17T07:44:01.887Z","type":"phase","phase":"fix"}
+{"at":"2026-09-17T07:44:02.190Z","type":"phase","phase":"regression-test"}
+{"at":"2026-09-17T07:44:02.483Z","type":"phase","phase":"blast-radius"}
+{"at":"2026-09-17T07:44:02.776Z","type":"phase","phase":"gate"}
+{"at":"2026-09-17T07:48:10.763Z","type":"phase","phase":"pr"}
+{"at":"2026-09-17T07:50:14.900Z","type":"end","outcome":"pr-open"}

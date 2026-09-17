@@ -1,0 +1,126 @@
+@if (document(); as doc) {
+  <div class="hxp-browse-header">
+    <div class="hxp-browse-header__left">
+      <hxp-icon
+        class="hxp-browse-header__icon"
+        [name]="docIcon(doc)"
+        size="lg"
+        [decorative]="true"
+      />
+      <div class="hxp-browse-header__info">
+        <div class="hxp-browse-header__title" role="heading" aria-level="1">
+          {{ docTitle(doc) }}
+        </div>
+        <span class="hxp-browse-header__type">{{ docTypeLabel(doc) }}</span>
+      </div>
+    </div>
+
+    <div class="hxp-browse-header__actions">
+      @if (canCreate()) {
+        <button
+          type="button"
+          class="hxp-header-btn hxp-header-btn--primary"
+          title="Create folder, upload files, or import CSV"
+          (click)="createImport.emit()"
+        >
+          <hxp-icon name="add" size="sm" [decorative]="true" />
+          Create / Import
+        </button>
+      }
+      <button
+        type="button"
+        class="hxp-header-btn hxp-header-btn--icon"
+        title="Upload with Nuxeo Drive"
+        aria-label="Upload with Nuxeo Drive"
+        (click)="drive.emit()"
+      >
+        <hxp-icon name="cloud-upload" size="md" [decorative]="true" />
+      </button>
+      @if (canWrite()) {
+        <button
+          type="button"
+          class="hxp-header-btn hxp-header-btn--icon"
+          title="Edit"
+          aria-label="Edit"
+          (click)="edit.emit()"
+        >
+          <hxp-icon name="edit" size="md" [decorative]="true" />
+        </button>
+      }
+      @if (canRemove()) {
+        <button
+          type="button"
+          class="hxp-header-btn hxp-header-btn--icon"
+          title="Delete"
+          aria-label="Delete"
+          (click)="deleteDoc.emit()"
+        >
+          <hxp-icon name="delete" size="md" [decorative]="true" />
+        </button>
+      }
+      <button
+        type="button"
+        class="hxp-header-btn hxp-header-btn--icon"
+        title="Download All"
+        aria-label="Download All"
+        (click)="downloadAll.emit()"
+      >
+        <hxp-icon name="download" size="md" [decorative]="true" />
+      </button>
+      <div class="hxp-header-more">
+        <button
+          type="button"
+          class="hxp-header-btn hxp-header-btn--icon"
+          title="More actions"
+          aria-label="More actions"
+          aria-haspopup="true"
+          [attr.aria-expanded]="moreMenuOpen()"
+          (click)="toggleMoreMenu($event)"
+        >
+          <hxp-icon name="more-vert" size="md" [decorative]="true" />
+        </button>
+        @if (moreMenuOpen()) {
+          <button
+            type="button"
+            class="hxp-header-more__backdrop"
+            aria-label="Close menu"
+            (click)="closeMoreMenu()"
+          ></button>
+          <div class="hxp-header-more__menu" role="menu">
+            <button
+              type="button"
+              class="hxp-header-more__item"
+              role="menuitem"
+              (click)="share.emit(); closeMoreMenu()"
+            >
+              <hxp-icon name="share" size="sm" [decorative]="true" />
+              Share
+            </button>
+            <button
+              type="button"
+              class="hxp-header-more__item"
+              role="menuitem"
+              (click)="notifyToggle.emit(); closeMoreMenu()"
+            >
+              <hxp-icon
+                [name]="isSubscribed() ? 'notifications-off' : 'notifications'"
+                size="sm"
+                [decorative]="true"
+              />
+              {{ isSubscribed() ? 'Unsubscribe' : 'Notify Me' }}
+            </button>
+            <button
+              type="button"
+              class="hxp-header-more__item"
+              role="menuitem"
+              (click)="exportDoc.emit(); closeMoreMenu()"
+            >
+              <hxp-icon name="export" size="sm" [decorative]="true" />
+              Export
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,16 @@
+WEBVTT
+
+NOTE Offsets are measured from browser-context creation and are accurate to roughly
+NOTE 100ms — recording starts inside newContext, marginally before the first timestamp.
+
+1
+00:00:05.824 --> 00:00:11.985
+Act 1 — Open the login page unauthenticated
+
+2
+00:00:11.985 --> 00:00:14.900
+Act 2 — Hyland brand link landmark containment
+
+3
+00:00:14.900 --> 00:00:22.900
+Act 3 — Login form still works

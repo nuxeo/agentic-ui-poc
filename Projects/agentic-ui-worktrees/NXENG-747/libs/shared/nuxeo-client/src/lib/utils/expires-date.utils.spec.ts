@@ -1,0 +1,40 @@
+import {
+  isExpiresFieldValid,
+  shouldShowExpiresFieldError,
+  createExpiresErrorStateMatcher,
+} from './expires-date.utils';
+
+describe('expires-date.utils', () => {
+  it('allows empty expiry and valid datepicker values', () => {
+    expect(isExpiresFieldValid('', null)).toBe(true);
+    expect(isExpiresFieldValid('', new Date('2026-07-21'))).toBe(true);
+  });
+
+  it('rejects invalid expiry input while typing', () => {
+    expect(isExpiresFieldValid('99/99/9999', null)).toBe(false);
+    expect(isExpiresFieldValid('skdfjlksd', null)).toBe(false);
+  });
+
+  it('allows in-progress mm/dd/yyyy input', () => {
+    expect(isExpiresFieldValid('01/15/', null)).toBe(true);
+  });
+
+  it('validates complete mm/dd/yyyy dates deterministically', () => {
+    expect(isExpiresFieldValid('02/29/2024', null)).toBe(true);
+    expect(isExpiresFieldValid('02/29/2023', null)).toBe(false);
+  });
+
+  it('shouldShowExpiresFieldError is true only for non-empty invalid input', () => {
+    expect(shouldShowExpiresFieldError('', null)).toBe(false);
+    expect(shouldShowExpiresFieldError('skdfjlksd', null)).toBe(true);
+    expect(shouldShowExpiresFieldError('02/29/2024', null)).toBe(false);
+  });
+
+  it('createExpiresErrorStateMatcher reflects live invalid state', () => {
+    let invalid = false;
+    const matcher = createExpiresErrorStateMatcher(() => invalid);
+    expect(matcher.isErrorState()).toBe(false);
+    invalid = true;
+    expect(matcher.isErrorState()).toBe(true);
+  });
+});

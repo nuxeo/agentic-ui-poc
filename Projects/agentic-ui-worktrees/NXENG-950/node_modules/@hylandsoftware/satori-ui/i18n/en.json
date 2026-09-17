@@ -1,0 +1,19 @@
+{
+  "sat": {
+    "platform-nav": {
+      "expand": "Expand navigation",
+      "collapse": "Collapse navigation",
+      "environment-switcher": {
+        "trigger-label": "Environment",
+        "trigger-tooltip-prefix": "Environment: "
+      }
+    },
+    "breadcrumbs": {
+      "breadcrumbs": "Breadcrumbs",
+      "show-more": "Show more breadcrumbs"
+    },
+    "rich-tooltip": {
+      "press-escape-to-close": "Press Escape key to close"
+    }
+  }
+}

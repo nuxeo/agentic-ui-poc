@@ -1,0 +1,158 @@
+
+=== resume 2026-09-15T18:58:24.7229507+05:30 ===
+18:58:24 START NXENG-761
+OK NXENG-761
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+18:58:43 START NXENG-762
+OK NXENG-762
+summary: [Browse] [Violation] SVG element has no accessible name (1.1.1 Non-text Content) (WCAG A)
+
+18:59:03 START NXENG-767
+OK NXENG-767
+summary: [Browse] [Violation] SVG element has no accessible name (1.1.1 Non-text Content) (WCAG A)
+
+18:59:22 START NXENG-777
+OK NXENG-777
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+18:59:44 START NXENG-778
+OK NXENG-778
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:00:03 START NXENG-780
+OK NXENG-780
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:00:24 START NXENG-783
+OK NXENG-783
+summary: [Browse] [Needs review] Skip-to-content link visibility on keyboard focus (2.4.7 Focus Visible) (WCAG AA)
+
+19:00:47 START NXENG-785
+OK NXENG-785
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:01:07 START NXENG-787
+OK NXENG-787
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:01:27 START NXENG-788
+OK NXENG-788
+summary: [Browse] [Needs review] Page title may need heading semantics (1.3.1 Info and Relationships) (WCAG A)
+
+19:01:46 START NXENG-791
+OK NXENG-791
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:02:06 START NXENG-794
+OK NXENG-794
+summary: [Document detail] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)
+
+19:02:24 START NXENG-795
+OK NXENG-795
+summary: [Document detail] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)
+
+19:02:41 START NXENG-796
+OK NXENG-796
+summary: [Document detail] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)
+
+19:02:58 START NXENG-797
+OK NXENG-797
+summary: [Document detail] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)
+
+19:03:19 START NXENG-798
+node : node:internal/modules/run_main:123
+At C:\Users\akoppaka\AppData\Local\Temp\ps-script-158863ad-8903-4d17-869f-a687d73e00f8.ps1:87 char:644
++ ... $k"; $out = node scripts/collect-evidence/nxeng-673-dashboard-ticket. ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (node:internal/modules/run_main:123:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    triggerUncaughtException(
+    ^
+
+locator.waitFor: Timeout 60000ms exceeded.
+Call log:
+  - waiting for locator('lib-browse') to be visible
+
+    at captureFromScan 
+(C:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\scripts\collect-evidence\nxeng-673-capture-from-scan.mjs:182:38)
+    at async file:///C:/Users/akoppaka/Documents/GitHub/agentic-ui-poc/scripts/collect-evidence/nxeng-673-dashboard-tic
+ket.mjs:144:15 {
+  log: [ "  - waiting for locator('lib-browse') to be visible" ],
+  name: 'TimeoutError'
+}
+
+Node.js v20.20.2
+
+19:04:32 START NXENG-868
+OK NXENG-868
+summary: [Dashboard] [Needs review] Focused element may be obscured (2.4.11 Focus Not Obscured (Minimum)) (WCAG AA)
+
+19:04:49 START NXENG-872
+OK NXENG-872
+summary: [Document detail] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)
+
+19:05:07 START NXENG-873
+OK NXENG-873
+summary: [Document detail] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)
+
+19:05:24 START NXENG-884
+
+=== resume2 2026-09-15T19:09:17.9679896+05:30 ===
+19:09:17 START NXENG-798
+OK NXENG-798
+summary: [Browse] [Needs review] Placeholder is the only visible label (2.5.3 Label in Name) (WCAG A; A)
+
+19:09:38 START NXENG-889
+OK NXENG-889
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:09:54 START NXENG-893
+OK NXENG-893
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:10:13 START NXENG-894
+OK NXENG-894
+summary: [Browse] [Violation] Accessible name does not match visible label text (2.5.3 Label in Name) (WCAG A)
+
+19:10:32 START NXENG-898
+OK NXENG-898
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:10:48 START NXENG-909
+OK NXENG-909
+summary: [Browse] [Needs review] Keyboard focus indicator may not be visible (2.4.7 Focus Visible) (WCAG AA)
+
+19:11:04 START NXENG-912
+OK NXENG-912
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:11:22 START NXENG-919
+OK NXENG-919
+summary: [Dashboard] [Violation] Accessible name does not match visible label text (2.5.3 Label in Name) (WCAG A)
+
+19:11:39 START NXENG-927
+OK NXENG-927
+summary: [Browse] [Needs review] Missing associated visible label (2.5.3 Label in Name) (WCAG A; A)
+
+19:11:58 START NXENG-931
+OK NXENG-931
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:12:14 START NXENG-932
+OK NXENG-932
+summary: [Browse] [Needs review] Browse (adf-hx POC) sidebar link keyboard focus may not be visible (WCAG AA)
+
+19:12:31 START NXENG-939
+OK NXENG-939
+summary: [Dashboard] [Needs review] Color contrast could not be verified (1.4.3 Contrast (Minimum)) (WCAG AA)
+
+19:12:47 START NXENG-940
+OK NXENG-940
+summary: [Dashboard] [Needs review] Color contrast could not be verified (1.4.3 Contrast (Minimum)) (WCAG AA)
+
+19:13:03 START NXENG-941
+OK NXENG-941
+summary: [Dashboard] [Violation] Heading levels should only increase by one (1.3.1 Info and Relationships) (WCAG A)
+

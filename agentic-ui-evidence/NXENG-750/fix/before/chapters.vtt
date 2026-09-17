@@ -1,0 +1,20 @@
+WEBVTT
+
+NOTE Offsets are measured from browser-context creation and are accurate to roughly
+NOTE 100ms — recording starts inside newContext, marginally before the first timestamp.
+
+1
+00:00:02.300 --> 00:00:07.523
+Act 1 — Open the login page
+
+2
+00:00:07.523 --> 00:00:10.521
+Act 2 — Keyboard focus on Log in (disabled, empty form)
+
+3
+00:00:10.521 --> 00:00:14.052
+Act 2 — Keyboard focus on Log in (enabled credentials)
+
+4
+00:00:14.052 --> 00:00:22.052
+Act 3 — Login form fields still accept keyboard focus

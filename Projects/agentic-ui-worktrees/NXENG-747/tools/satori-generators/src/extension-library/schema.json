@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "SatoriExtensionLibrary",
+  "title": "Satori customer extension library",
+  "description": "Scaffolds a Layer 2 extension library: a provider that contributes slots, rules, actions and components to the platform by ID, with a spec that proves the registration actually happened.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Library name, kebab-case. Becomes the directory and the Nx project name.",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "Library name (kebab-case, e.g. acme-extensions)?",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "owner": {
+      "type": "string",
+      "description": "Owner prefix for every registered ID, as in <owner>.<surface>.<name>. Renaming it later is a breaking change for any manifest referencing these IDs.",
+      "x-prompt": "Owner prefix for extension IDs (e.g. acme)?",
+      "pattern": "^[a-z][a-z0-9]*$"
+    },
+    "directory": {
+      "type": "string",
+      "description": "Parent directory for the library.",
+      "default": "libs/extensions"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Comma-separated Nx tags.",
+      "default": "scope:customer,type:extension"
+    },
+    "force": {
+      "type": "boolean",
+      "description": "Overwrite the generated files if the library already exists. For the loop of editing a template and regenerating.",
+      "default": false
+    }
+  },
+  "required": ["name", "owner"]
+}

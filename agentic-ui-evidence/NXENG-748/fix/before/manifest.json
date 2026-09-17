@@ -1,0 +1,185 @@
+{
+  "ticket": "NXENG-748",
+  "phase": "before",
+  "mode": "scenes",
+  "verdict": "fail",
+  "finishedAt": "2026-09-17T06:02:13.153Z",
+  "environment": {
+    "appUrl": "http://localhost:4200",
+    "node": "v20.20.2",
+    "scenesFile": "C:\\Users\\akoppaka\\Desktop\\Projects\\agentic-ui-worktrees\\NXENG-748\\scripts\\collect-evidence\\NXENG-748.mjs",
+    "commit": "829feae",
+    "branch": "main",
+    "nuxeoImage": null
+  },
+  "totals": {
+    "scenes": 4,
+    "checks": 11,
+    "failed": 2
+  },
+  "video": "NXENG-748-before.webm",
+  "chapters": [
+    {
+      "index": 1,
+      "act": 1,
+      "title": "Open the login screen",
+      "criterion": "AC-3",
+      "offsetMs": 3809
+    },
+    {
+      "index": 2,
+      "act": 2,
+      "title": "Tab to Username and confirm focus is not clipped",
+      "criterion": "AC-1",
+      "offsetMs": 8782
+    },
+    {
+      "index": 3,
+      "act": 3,
+      "title": "Validation still works on empty submit",
+      "criterion": "AC-3",
+      "offsetMs": 12360
+    }
+  ],
+  "highlights": [
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-748\\fix\\before\\01-login-context.png",
+      "label": "Username field",
+      "box": {
+        "x": 12.222222222222221,
+        "y": 46.677083333333336,
+        "w": 25.555555555555554,
+        "h": 2.666666666666667
+      }
+    },
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-748\\fix\\before\\02-username-focused.png",
+      "label": "Focused username",
+      "box": {
+        "x": 12.222222222222221,
+        "y": 46.677083333333336,
+        "w": 25.555555555555554,
+        "h": 2.666666666666667
+      }
+    },
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-748\\fix\\before\\03-validation-errors.png",
+      "label": "Validation message",
+      "box": {
+        "x": 12.222222222222221,
+        "y": 48.78819444444444,
+        "w": 25.555555555555554,
+        "h": 2.3333333333333335
+      }
+    }
+  ],
+  "steps": [
+    {
+      "index": 1,
+      "label": "[Act 1] Open the login screen",
+      "screenshots": [
+        "01-login-context.png"
+      ],
+      "checks": [
+        {
+          "name": "username field is on screen",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 1,
+      "intent": "User arrives at sign-in before tabbing into the form",
+      "criterion": "AC-3",
+      "consoleErrors": [
+        "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 404 /nuxeo/api/v1/automation/AI.Insights",
+        "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui"
+      ]
+    },
+    {
+      "index": 2,
+      "label": "[Act 2] Tab to Username and confirm focus is not clipped",
+      "screenshots": [
+        "02-username-focused.png"
+      ],
+      "checks": [
+        {
+          "name": "keyboard focus lands on username input",
+          "passed": true
+        },
+        {
+          "name": "focus center hits the username input",
+          "passed": true
+        },
+        {
+          "name": "username outline wrapper overflow is visible",
+          "passed": true
+        },
+        {
+          "name": "username field uses login-field-username styling",
+          "passed": false,
+          "detail": "{\"centerOnInput\":true,\"wrapperOverflow\":\"visible\",\"scrollMarginTop\":\"0px\",\"hasUsernameFieldClass\":false}"
+        },
+        {
+          "name": "username input has scroll-margin for focus visibility",
+          "passed": false,
+          "detail": "0px"
+        },
+        {
+          "name": "the spotlight still points at its element",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 2,
+      "intent": "Keyboard user focuses the username control",
+      "criterion": "AC-1",
+      "consoleErrors": []
+    },
+    {
+      "index": 3,
+      "label": "[Act 3] Validation still works on empty submit",
+      "screenshots": [
+        "03-validation-errors.png"
+      ],
+      "checks": [
+        {
+          "name": "username required error is shown",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 3,
+      "intent": "Accessibility fix must not hide required-field errors",
+      "criterion": "AC-3",
+      "consoleErrors": []
+    },
+    {
+      "index": 4,
+      "label": "Story structure",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "act 1 present — Setup — where we are and what the user is trying to do",
+          "passed": true
+        },
+        {
+          "name": "act 2 present — The bug — the behaviour as reported",
+          "passed": true
+        },
+        {
+          "name": "act 3 present — The proof — the criterion asserted, and what still works",
+          "passed": true
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "consoleErrors": [
+    "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 404 /nuxeo/api/v1/automation/AI.Insights",
+    "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui"
+  ]
+}

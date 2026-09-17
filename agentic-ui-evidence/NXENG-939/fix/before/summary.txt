@@ -1,0 +1,1 @@
+[Dashboard] [Needs review] Color contrast could not be verified (1.4.3 Contrast (Minimum)) (WCAG AA)

@@ -1,0 +1,9 @@
+{
+  "globalId": "github-pr-197",
+  "application": { "type": "com.github", "name": "GitHub" },
+  "relationship": "fixed by",
+  "object": {
+    "url": "https://github.com/nuxeo/agentic-ui-poc/pull/197",
+    "title": "PR #197 — fix(NXENG-748): keep login username focus visible for WCAG 2.4.11"
+  }
+}

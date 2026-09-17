@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "step": "Login",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "1. Create HTML note — auto-open, Quill editor, format label",
+      "status": "PASS",
+      "detail": "NXSAT-174 HTML 2026-07-07T11-43-09-594Z"
+    },
+    {
+      "step": "2. Edit HTML in Quill, save, Edit toolbar still visible",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "3. HTML source mode toggle — edit source, return to visual, save",
+      "status": "FAIL",
+      "detail": "Visual editor lost source content: \"Hello from Quill — NXSAT-174 HTML test.\""
+    }
+  ],
+  "videoPath": "C:\\Users\\akoppaka\\Desktop\\NXSAT-174\\videos\\nxsat-174-note-scenarios-2026-07-07T11-43-09-594Z.webm",
+  "parentPath": "/default-domain/workspaces/Akshitha",
+  "baseUrl": "http://localhost:4200",
+  "recordedAt": "2026-07-07T11-43-09-594Z"
+}

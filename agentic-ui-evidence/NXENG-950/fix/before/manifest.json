@@ -1,0 +1,172 @@
+{
+  "ticket": "NXENG-950",
+  "phase": "before",
+  "mode": "scenes",
+  "verdict": "fail",
+  "finishedAt": "2026-09-17T07:42:59.125Z",
+  "environment": {
+    "appUrl": "http://localhost:4215",
+    "node": "v20.20.2",
+    "scenesFile": "scripts/collect-evidence/NXENG-950.mjs",
+    "commit": "dc2c622",
+    "branch": "fix/nxeng-950",
+    "nuxeoImage": "nuxeo-recover:clean"
+  },
+  "totals": {
+    "scenes": 4,
+    "checks": 10,
+    "failed": 3
+  },
+  "video": "NXENG-950-before.webm",
+  "chapters": [
+    {
+      "index": 1,
+      "act": 1,
+      "title": "Open the login page with a clean session",
+      "criterion": "AC-1",
+      "offsetMs": 3984
+    },
+    {
+      "index": 2,
+      "act": 2,
+      "title": "Login controls sit inside landmarks",
+      "criterion": "AC-1",
+      "offsetMs": 7496
+    },
+    {
+      "index": 3,
+      "act": 3,
+      "title": "axe region rule on the login surface",
+      "criterion": "AC-2",
+      "offsetMs": 10398
+    }
+  ],
+  "highlights": [
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-950\\fix\\before\\01-login-initial.png",
+      "label": "Login panel",
+      "box": {
+        "x": 0,
+        "y": 0,
+        "w": 50,
+        "h": 100
+      }
+    },
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-950\\fix\\before\\02-login-landmarks.png",
+      "label": "Main + footer landmarks",
+      "box": {
+        "x": 11.11111111111111,
+        "y": 32.80902777777778,
+        "w": 27.77777777777778,
+        "h": 31.868055555555557
+      }
+    }
+  ],
+  "steps": [
+    {
+      "index": 1,
+      "label": "[Act 1] Open the login page with a clean session",
+      "screenshots": [
+        "01-login-initial.png"
+      ],
+      "checks": [
+        {
+          "name": "login panel renders",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 1,
+      "intent": "A user signing in at /#/login before accessing the repository",
+      "criterion": "AC-1",
+      "consoleErrors": [
+        "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 401 /nuxeo/api/v1/me",
+        "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 401 /nuxeo/api/v1/me"
+      ]
+    },
+    {
+      "index": 2,
+      "label": "[Act 2] Login controls sit inside landmarks",
+      "screenshots": [
+        "02-login-landmarks.png"
+      ],
+      "checks": [
+        {
+          "name": "mat-form-field infix is contained by a landmark",
+          "passed": false,
+          "detail": "infix is outside landmarks"
+        },
+        {
+          "name": "copyright footer uses contentinfo landmark",
+          "passed": false,
+          "detail": "footer is not a landmark"
+        },
+        {
+          "name": "the spotlight still points at its element",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 2,
+      "intent": "The username/password fields flagged by a11y-scout must not sit outside landmarks",
+      "criterion": "AC-1",
+      "consoleErrors": []
+    },
+    {
+      "index": 3,
+      "label": "[Act 3] axe region rule on the login surface",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "axe region rule has no violations",
+          "passed": false,
+          "detail": "a"
+        },
+        {
+          "name": "username field still present",
+          "passed": true
+        },
+        {
+          "name": "password field still present",
+          "passed": true
+        }
+      ],
+      "notes": [
+        "SSO buttons and post-login routes were not exercised — login-only fix"
+      ],
+      "act": 3,
+      "intent": "Confirm the reported axe `region` violation is gone without breaking the form",
+      "criterion": "AC-2",
+      "consoleErrors": []
+    },
+    {
+      "index": 4,
+      "label": "Story structure",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "act 1 present — Setup — where we are and what the user is trying to do",
+          "passed": true
+        },
+        {
+          "name": "act 2 present — The bug — the behaviour as reported",
+          "passed": true
+        },
+        {
+          "name": "act 3 present — The proof — the criterion asserted, and what still works",
+          "passed": true
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "consoleErrors": [
+    "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 401 /nuxeo/api/v1/me",
+    "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 401 /nuxeo/api/v1/me"
+  ]
+}

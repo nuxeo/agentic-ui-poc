@@ -1,0 +1,3179 @@
+@charset "UTF-8";
+
+/* node_modules/@hylandsoftware/satori-fonts/index.css */
+@font-face {
+  font-family: "Noto Sans";
+  font-weight: 100 1000;
+  src: url("./media/NotoSans.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Sans";
+  font-weight: 100 1000;
+  font-style: italic;
+  src: url("./media/NotoSans-Italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 100 1000;
+  src: url("./media/Figtree.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Figtree";
+  font-weight: 100 1000;
+  font-style: italic;
+  src: url("./media/Figtree-Italic.woff2") format("woff2");
+}
+
+/* apps/nuxeo-ui/src/styles.scss */
+html[data-app-theme=nuxeo],
+html:not([data-app-theme]) {
+  color-scheme: light dark;
+  --mat-sys-background: light-dark(#f9f9fc, #101112);
+  --mat-sys-error: light-dark(#b02b36, #ffb3b2);
+  --mat-sys-error-container: light-dark(#ffdad8, #8e0f21);
+  --mat-sys-inverse-on-surface: light-dark(#f1f0f4, #2f3033);
+  --mat-sys-inverse-primary: light-dark(#c3c0ff, #5654ac);
+  --mat-sys-inverse-surface: light-dark(#2f3033, #e2e2e5);
+  --mat-sys-on-background: light-dark(#1a1c1e, #e2e2e5);
+  --mat-sys-on-error: light-dark(#ffffff, #680012);
+  --mat-sys-on-error-container: light-dark(#8e0f21, #ffdad8);
+  --mat-sys-on-primary: light-dark(#ffffff, #26227b);
+  --mat-sys-on-primary-container: light-dark(#3e3b92, #e2dfff);
+  --mat-sys-on-primary-fixed: light-dark(#0f0268, #0f0268);
+  --mat-sys-on-primary-fixed-variant: light-dark(#3e3b92, #3e3b92);
+  --mat-sys-on-secondary: light-dark(#ffffff, #2e2d4e);
+  --mat-sys-on-secondary-container: light-dark(#444366, #e2dfff);
+  --mat-sys-on-secondary-fixed: light-dark(#181838, #181838);
+  --mat-sys-on-secondary-fixed-variant: light-dark(#444366, #444366);
+  --mat-sys-on-surface: light-dark(#1a1c1e, #e2e2e5);
+  --mat-sys-on-surface-variant: light-dark(#474551, #e4e0f0);
+  --mat-sys-on-tertiary: light-dark(#ffffff, #003735);
+  --mat-sys-on-tertiary-container: light-dark(#00504b, #b3efdb);
+  --mat-sys-on-tertiary-fixed: light-dark(#002020, #002020);
+  --mat-sys-on-tertiary-fixed-variant: light-dark(#00504b, #00504b);
+  --mat-sys-outline: light-dark(#777683, #918f9d);
+  --mat-sys-outline-variant: light-dark(#c8c5d3, #474551);
+  --mat-sys-primary: light-dark(#5654ac, #c3c0ff);
+  --mat-sys-primary-container: light-dark(#e2dfff, #3e3b92);
+  --mat-sys-primary-fixed: light-dark(#e2dfff, #e2dfff);
+  --mat-sys-primary-fixed-dim: light-dark(#c3c0ff, #c3c0ff);
+  --mat-sys-scrim: light-dark(#000000, #000000);
+  --mat-sys-secondary: light-dark(#5c5b7f, #c5c2ec);
+  --mat-sys-secondary-container: light-dark(#e2dfff, #444366);
+  --mat-sys-secondary-fixed: light-dark(#e2dfff, #e2dfff);
+  --mat-sys-secondary-fixed-dim: light-dark(#c5c2ec, #c5c2ec);
+  --mat-sys-shadow: light-dark(#000000, #000000);
+  --mat-sys-surface: light-dark(#f9f9fc, #101112);
+  --mat-sys-surface-bright: light-dark(#f9f9fc, #38393c);
+  --mat-sys-surface-container: light-dark(#eeedf1, #1e2022);
+  --mat-sys-surface-container-high: light-dark(#e8e8eb, #292a2d);
+  --mat-sys-surface-container-highest: light-dark(#e2e2e5, #333437);
+  --mat-sys-surface-container-low: light-dark(#f4f3f7, #1a1c1e);
+  --mat-sys-surface-container-lowest: light-dark(#ffffff, #0a0b0c);
+  --mat-sys-surface-dim: light-dark(#dadadd, #101112);
+  --mat-sys-surface-tint: light-dark(#5654ac, #c3c0ff);
+  --mat-sys-surface-variant: light-dark(#e4e0f0, #474551);
+  --mat-sys-tertiary: light-dark(#006b61, #6fd9bf);
+  --mat-sys-tertiary-container: light-dark(#b3efdb, #00504b);
+  --mat-sys-tertiary-fixed: light-dark(#b3efdb, #b3efdb);
+  --mat-sys-tertiary-fixed-dim: light-dark(#6fd9bf, #6fd9bf);
+  --mat-sys-neutral-variant20: #302f3a;
+  --mat-sys-neutral10: #1a1c1e;
+  --mat-sys-level0:
+    0px 0px 0px 0px rgba(0, 0, 0, 0.2),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.14),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level1:
+    0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+    0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level2:
+    0px 3px 3px -2px rgba(0, 0, 0, 0.2),
+    0px 3px 4px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 8px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level3:
+    0px 3px 5px -1px rgba(0, 0, 0, 0.2),
+    0px 6px 10px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 18px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level4:
+    0px 5px 5px -3px rgba(0, 0, 0, 0.2),
+    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+  --mat-sys-level5:
+    0px 7px 8px -4px rgba(0, 0, 0, 0.2),
+    0px 12px 17px 2px rgba(0, 0, 0, 0.14),
+    0px 5px 22px 4px rgba(0, 0, 0, 0.12);
+  --mat-sys-body-large: 400 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-body-large-font: Noto Sans, sans-serif;
+  --mat-sys-body-large-line-height: 1.5rem;
+  --mat-sys-body-large-size: 1rem;
+  --mat-sys-body-large-tracking: 0.031rem;
+  --mat-sys-body-large-weight: 400;
+  --mat-sys-body-medium: 400 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-body-medium-font: Noto Sans, sans-serif;
+  --mat-sys-body-medium-line-height: 1.25rem;
+  --mat-sys-body-medium-size: 0.875rem;
+  --mat-sys-body-medium-tracking: 0.016rem;
+  --mat-sys-body-medium-weight: 400;
+  --mat-sys-body-small: 400 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-body-small-font: Noto Sans, sans-serif;
+  --mat-sys-body-small-line-height: 1rem;
+  --mat-sys-body-small-size: 0.75rem;
+  --mat-sys-body-small-tracking: 0.025rem;
+  --mat-sys-body-small-weight: 400;
+  --mat-sys-display-large:
+    400 3.562rem / 4rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-line-height: 4rem;
+  --mat-sys-display-large-size: 3.562rem;
+  --mat-sys-display-large-tracking: -0.016rem;
+  --mat-sys-display-large-weight: 400;
+  --mat-sys-display-medium:
+    400 2.812rem / 3.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-line-height: 3.25rem;
+  --mat-sys-display-medium-size: 2.812rem;
+  --mat-sys-display-medium-tracking: 0;
+  --mat-sys-display-medium-weight: 400;
+  --mat-sys-display-small:
+    400 2.25rem / 2.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-line-height: 2.75rem;
+  --mat-sys-display-small-size: 2.25rem;
+  --mat-sys-display-small-tracking: 0;
+  --mat-sys-display-small-weight: 400;
+  --mat-sys-headline-large:
+    400 2rem / 2.5rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-line-height: 2.5rem;
+  --mat-sys-headline-large-size: 2rem;
+  --mat-sys-headline-large-tracking: 0;
+  --mat-sys-headline-large-weight: 400;
+  --mat-sys-headline-medium:
+    400 1.75rem / 2.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-line-height: 2.25rem;
+  --mat-sys-headline-medium-size: 1.75rem;
+  --mat-sys-headline-medium-tracking: 0;
+  --mat-sys-headline-medium-weight: 400;
+  --mat-sys-headline-small:
+    400 1.5rem / 2rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-line-height: 2rem;
+  --mat-sys-headline-small-size: 1.5rem;
+  --mat-sys-headline-small-tracking: 0;
+  --mat-sys-headline-small-weight: 400;
+  --mat-sys-label-large: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-label-large-font: Noto Sans, sans-serif;
+  --mat-sys-label-large-line-height: 1.25rem;
+  --mat-sys-label-large-size: 0.875rem;
+  --mat-sys-label-large-tracking: 0.006rem;
+  --mat-sys-label-large-weight: 500;
+  --mat-sys-label-large-weight-prominent: 600;
+  --mat-sys-label-medium: 500 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-medium-font: Noto Sans, sans-serif;
+  --mat-sys-label-medium-line-height: 1rem;
+  --mat-sys-label-medium-size: 0.75rem;
+  --mat-sys-label-medium-tracking: 0.031rem;
+  --mat-sys-label-medium-weight: 500;
+  --mat-sys-label-medium-weight-prominent: 600;
+  --mat-sys-label-small: 500 0.688rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-small-font: Noto Sans, sans-serif;
+  --mat-sys-label-small-line-height: 1rem;
+  --mat-sys-label-small-size: 0.688rem;
+  --mat-sys-label-small-tracking: 0.031rem;
+  --mat-sys-label-small-weight: 500;
+  --mat-sys-title-large:
+    400 1.375rem / 1.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-line-height: 1.75rem;
+  --mat-sys-title-large-size: 1.375rem;
+  --mat-sys-title-large-tracking: 0;
+  --mat-sys-title-large-weight: 400;
+  --mat-sys-title-medium: 500 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-title-medium-font: Noto Sans, sans-serif;
+  --mat-sys-title-medium-line-height: 1.5rem;
+  --mat-sys-title-medium-size: 1rem;
+  --mat-sys-title-medium-tracking: 0.009rem;
+  --mat-sys-title-medium-weight: 500;
+  --mat-sys-title-small: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-title-small-font: Noto Sans, sans-serif;
+  --mat-sys-title-small-line-height: 1.25rem;
+  --mat-sys-title-small-size: 0.875rem;
+  --mat-sys-title-small-tracking: 0.006rem;
+  --mat-sys-title-small-weight: 500;
+  --mat-sys-corner-extra-large: 28px;
+  --mat-sys-corner-extra-large-top: 28px 28px 0 0;
+  --mat-sys-corner-extra-small: 4px;
+  --mat-sys-corner-extra-small-top: 4px 4px 0 0;
+  --mat-sys-corner-full: 9999px;
+  --mat-sys-corner-large: 16px;
+  --mat-sys-corner-large-end: 0 16px 16px 0;
+  --mat-sys-corner-large-start: 16px 0 0 16px;
+  --mat-sys-corner-large-top: 16px 16px 0 0;
+  --mat-sys-corner-medium: 12px;
+  --mat-sys-corner-none: 0;
+  --mat-sys-corner-small: 8px;
+  --mat-sys-dragged-state-layer-opacity: 0.16;
+  --mat-sys-focus-state-layer-opacity: 0.12;
+  --mat-sys-hover-state-layer-opacity: 0.08;
+  --mat-sys-pressed-state-layer-opacity: 0.12;
+  --sat-sys-cat-purple-container: light-dark( #f4f0fb, #2a2a40 );
+  --sat-sys-cat-purple-icon: light-dark( #6966db, #7976ec );
+  --sat-sys-on-cat-purple-container: light-dark( #5c59b6, #a4a2f5 );
+  --sat-sys-cat-blue-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-cat-blue-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-on-cat-blue-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-cat-pink-container: light-dark( #f6eef6, #331d2b );
+  --sat-sys-cat-pink-icon: light-dark( #bf55a0, #b34494 );
+  --sat-sys-on-cat-pink-container: light-dark( #89517a, #de81c4 );
+  --sat-sys-cat-teal-container: light-dark( #e1f7f7, #123132 );
+  --sat-sys-cat-teal-icon: light-dark( #3a9799, #3a9a7d );
+  --sat-sys-on-cat-teal-container: light-dark( #3d7879, #44b295 );
+  --sat-sys-cat-yellow-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-cat-yellow-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-on-cat-yellow-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-cat-green-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-cat-green-icon: light-dark( #4d9c4c, #579152 );
+  --sat-sys-on-cat-green-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-cat-red-container: light-dark( #faeae9, #401315 );
+  --sat-sys-cat-red-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-on-cat-red-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-cat-orange-container: light-dark( #fde9d5, #3f221c );
+  --sat-sys-cat-orange-icon: light-dark( #c06f3a, #c57946 );
+  --sat-sys-on-cat-orange-container: light-dark( #a4552d, #da8e5e );
+  --sat-sys-cat-gray-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-cat-gray-icon: light-dark( #828282, #828282 );
+  --sat-sys-on-cat-gray-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-info-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-info-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-on-info-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-important-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-important-container: light-dark( #faeae9, #401315 );
+  --sat-sys-on-important-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-important-loud-container: light-dark( #ca474f, #93222b );
+  --sat-sys-on-important-loud-container: light-dark( #ffffff, #ffffff );
+  --sat-sys-success-icon: light-dark( #4d9c4c, #4b9344 );
+  --sat-sys-success-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-on-success-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-warning-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-warning-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-on-warning-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-neutral-icon: light-dark( #828282, #828282 );
+  --sat-sys-neutral-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-on-neutral-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-on-status-icon: light-dark( #ffffff, #ffffff );
+  --sat-sys-primary-loud: light-dark( #322f86, #e2dfff );
+  --sat-sys-inverse-surface-loud: light-dark( #101112, #f1f0f4 );
+  --sat-sys-on-primary-opacity-08: light-dark( rgba(255, 255, 255, 0.08), rgba(38, 34, 123, 0.08) );
+  --sat-sys-on-primary-opacity-12: light-dark( rgba(255, 255, 255, 0.12), rgba(38, 34, 123, 0.12) );
+  --sat-sys-hyland-dark-blue: light-dark( #191f5e, #ffffff );
+  --sat-sys-hyland-teal: light-dark( #03eac1, #03eac1 );
+  --sat-sys-hyland-purple: light-dark( #6e33ff, #6e33ff );
+  --sat-sys-hyland-blue: light-dark( #52a1ff, #52a1ff );
+  --sat-sys-hyland-yellow: light-dark( #f9c947, #f9c947 );
+  --sat-app-header-title-color: var(--mat-sys-on-surface-variant);
+  --sat-app-header-title-font: var(--mat-sys-headline-small-font);
+  --sat-app-header-title-size: var(--mat-sys-headline-small-size);
+  --sat-app-header-title-line-height: var(--mat-sys-headline-small-line-height);
+  --sat-app-header-title-letter-spacing: var(--mat-sys-headline-small-tracking);
+  --sat-app-header-title-weight: var(--mat-sys-headline-small-weight);
+  --sat-app-header-title-height: 4rem;
+  --sat-avatar-border: var(--mat-sys-surface-container-lowest);
+  --sat-avatar-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-avatar-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-avatar-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-avatar-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-avatar-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-avatar-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-avatar-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-avatar-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-avatar-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-avatar-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-avatar-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-avatar-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-avatar-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-avatar-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-avatar-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-avatar-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-avatar-indicator-active: var(--sat-sys-success-icon);
+  --sat-avatar-indicator-away: var(--sat-sys-warning-icon);
+  --sat-avatar-indicator-offline: var(--sat-sys-important-icon);
+  --sat-avatar-indicator-readonly: var(--sat-sys-neutral-icon);
+  --sat-avatar-on-indicator: var(--sat-sys-on-status-icon, #fff);
+  --sat-avatar-headline-large: var(--mat-sys-headline-large);
+  --sat-avatar-headline-small: var(--mat-sys-headline-small);
+  --sat-avatar-title-large: var(--mat-sys-title-large);
+  --sat-avatar-label-large: var(--mat-sys-label-large);
+  --sat-avatar-label-small: var(--mat-sys-label-small);
+  --sat-avatar-corner-full: 100%;
+  --sat-breadcrumbs-gap: 4px;
+  --sat-logo-hyland-dark-blue-color: var(--sat-sys-hyland-dark-blue, #191f5e);
+  --sat-logo-hyland-teal-color: var(--sat-sys-hyland-teal, #13eac1);
+  --sat-logo-hyland-purple-color: var(--sat-sys-hyland-purple, #6e33ff);
+  --sat-logo-hyland-blue-color: var(--sat-sys-hyland-blue, #52a1ff);
+  --sat-logo-hyland-yellow-color: var(--sat-sys-hyland-yellow, #f1cb61);
+  --sat-environment-switcher-hover-layer-color: color-mix( in srgb, var(--mat-sys-on-surface) calc(var(--mat-sys-hover-state-layer-opacity) * 100%), transparent );
+  --sat-platform-nav-title-font: var(--mat-sys-title-small-font);
+  --sat-platform-nav-title-medium-size: var(--mat-sys-title-medium-size);
+  --sat-platform-nav-title-line-height: var(--mat-sys-title-medium-line-height);
+  --sat-platform-nav-title-letter-spacing: var(--mat-sys-title-medium-tracking);
+  --sat-platform-nav-label-large-font: var(--mat-sys-label-large-font);
+  --sat-platform-nav-label-large-size: var(--mat-sys-label-large-size);
+  --sat-platform-nav-label-large-line-height: var(--mat-sys-label-large-line-height);
+  --sat-platform-nav-label-large-tracking: var(--mat-sys-label-large-tracking);
+  --sat-platform-nav-label-medium-font: var(--mat-sys-label-medium-font);
+  --sat-platform-nav-label-medium-size: var(--mat-sys-label-medium-size);
+  --sat-platform-nav-label-medium-line-height: var(--mat-sys-label-medium-line-height);
+  --sat-platform-nav-label-medium-tracking: var(--mat-sys-label-medium-tracking);
+  --sat-platform-nav-body-small-size: var(--mat-sys-body-small-size);
+  --sat-platform-nav-body-large-line-height: var(--mat-sys-body-large-line-height);
+  --sat-platform-nav-body-large-tracking: var(--mat-sys-body-large-tracking);
+  --sat-platform-nav-corner-extra-small: 4px;
+  --sat-platform-nav-corner-medium: 12px;
+  --sat-platform-nav-corner-large: 16px;
+  --sat-platform-nav-corner-full: 1000px;
+  --sat-platform-nav-collapsed-width: 56px;
+  --sat-platform-nav-expanded-width: 300px;
+  --sat-platform-nav-height-extra-small: 16px;
+  --sat-platform-nav-height-small: 24px;
+  --sat-platform-nav-height-medium: 28px;
+  --sat-platform-nav-height-high: 48px;
+  --sat-platform-nav-height-max: 100%;
+  --sat-platform-nav-width-extra-small: 16px;
+  --sat-platform-nav-width-small: 24px;
+  --sat-platform-nav-width-medium: 28px;
+  --sat-platform-nav-width-high: 48px;
+  --sat-platform-nav-width-max: 100%;
+  --sat-platform-nav-gap-small: 7px;
+  --sat-platform-nav-gap-medium: 12px;
+  --sat-platform-nav-gap-large: 16px;
+  --sat-platform-nav-animation-duration: 400ms;
+  --sat-platform-nav-animation-curve: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --sat-tag-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-tag-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-tag-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-tag-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-tag-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-tag-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-tag-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-tag-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-tag-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-tag-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-tag-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-tag-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-tag-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-tag-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-tag-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-tag-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-tag-cat-gray-container: var(--sat-sys-cat-gray-container);
+  --sat-tag-on-cat-gray-container: var(--sat-sys-on-cat-gray-container);
+  --sat-tag-info-container: var(--sat-sys-info-container);
+  --sat-tag-on-info-container: var(--sat-sys-on-info-container);
+  --sat-tag-important-container: var(--sat-sys-important-container);
+  --sat-tag-on-important-container: var(--sat-sys-on-important-container);
+  --sat-tag-important-loud-container: var(--sat-sys-important-loud-container);
+  --sat-tag-on-important-loud-container: var(--sat-sys-on-important-loud-container);
+  --sat-tag-success-container: var(--sat-sys-success-container);
+  --sat-tag-on-success-container: var(--sat-sys-on-success-container);
+  --sat-tag-warning-container: var(--sat-sys-warning-container);
+  --sat-tag-on-warning-container: var(--sat-sys-on-warning-container);
+  --sat-tag-neutral-container: var(--sat-sys-neutral-container);
+  --sat-tag-on-neutral-container: var(--sat-sys-on-neutral-container);
+  --sat-tag-neutral-quiet-container: transparent;
+  --sat-tag-on-neutral-quiet-container: var(--mat-sys-on-surface);
+  --sat-tag-label-font: var(--mat-sys-label-large-font);
+  --sat-tag-label-size: var(--mat-sys-label-large-size);
+  --sat-tag-label-line-height: var(--mat-sys-label-large-line-height);
+  --sat-tag-label-tracking: var(--mat-sys-label-large-tracking);
+  --sat-tag-label-weight: var(--mat-sys-label-large-weight);
+  --sat-tag-corner: var(--mat-sys-corner-extra-small);
+  --mat-sys-body-medium: var(--mat-sys-body-medium-weight) 0.875rem/1.375rem var(--mat-sys-body-medium-font);
+  --mat-sys-body-medium-line-height: 1.375rem;
+  --mat-sys-body-small: var(--mat-sys-body-small-weight) 0.75rem/1.125rem var(--mat-sys-body-small-font);
+  --mat-sys-body-small-line-height: 1.125rem;
+  --mat-focus-indicator-border-width: 2px;
+  --mat-focus-indicator-border-color: var(--mat-sys-primary);
+  --mat-focus-indicator-display: block;
+  --mat-sys-background: var(--mat-sys-surface-container-low);
+  --mat-button-protected-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-elevated-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-filled-container-color: var(--mat-sys-surface-container-low);
+  --mat-expansion-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-paginator-container-background-color: transparent;
+  --mat-sidenav-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-stepper-container-color: transparent;
+  --mat-table-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-table-row-item-outline-color: var(--mat-sys-outline-variant);
+  --mat-toolbar-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-tree-container-background-color: transparent;
+  --mat-slider-inactive-track-color: var(--mat-sys-secondary);
+  --mat-slider-with-tick-marks-inactive-container-color: var(--mat-sys-on-secondary-container);
+  --mat-slider-with-tick-marks-inactive-container-opacity: 1;
+  --mat-slider-with-tick-marks-active-container-opacity: 1;
+  --mat-progress-bar-track-color: var(--mat-sys-secondary-container);
+  --mat-progress-bar-track-shape: var(--mat-sys-corner-full);
+  --mat-tab-divider-color: var(--mat-sys-outline-variant);
+}
+html[data-app-theme=nuxeo] html,
+html:not([data-app-theme]) html {
+  --mat-sys-on-surface: initial;
+}
+.mat-app-background {
+  background-color: var(--mat-app-background-color, var(--mat-sys-background, transparent));
+  color: var(--mat-app-text-color, var(--mat-sys-on-background, inherit));
+}
+html[data-app-theme=nuxeo] .sat-rich-tooltip-container,
+html:not([data-app-theme]) .sat-rich-tooltip-container {
+  box-shadow:
+    0px 3px 1px -2px rgba(0, 0, 0, 0.2),
+    0px 2px 2px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+  background: var(--mat-sys-surface-container);
+}
+html[data-app-theme=nuxeo] .sat-rich-tooltip-title,
+html:not([data-app-theme]) .sat-rich-tooltip-title {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=nuxeo] .sat-rich-tooltip-content,
+html:not([data-app-theme]) .sat-rich-tooltip-content {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=nuxeo] .sat-rich-tooltip-title,
+html:not([data-app-theme]) .sat-rich-tooltip-title {
+  font: var(--mat-sys-title-small-font);
+  font-size: var(--mat-sys-title-small-size);
+  line-height: var(--mat-sys-title-small-line-height);
+  letter-spacing: var(--mat-sys-title-small-tracking);
+  font-weight: var(--mat-sys-title-small-weight);
+}
+html[data-app-theme=nuxeo] .sat-rich-tooltip-content,
+html:not([data-app-theme]) .sat-rich-tooltip-content {
+  font: var(--mat-sys-body-medium-font);
+  font-size: var(--mat-sys-body-medium-size);
+  line-height: var(--mat-sys-body-medium-line-height);
+  letter-spacing: var(--mat-sys-body-medium-tracking);
+  font-weight: var(--mat-sys-body-medium-weight);
+}
+html[data-app-theme=nuxeo].sat-form-field-error-icon mat-form-field mat-error,
+html[data-app-theme=nuxeo].sat-form-field-error-icon mat-form-field [matError],
+html:not([data-app-theme]).sat-form-field-error-icon mat-form-field mat-error,
+html:not([data-app-theme]).sat-form-field-error-icon mat-form-field [matError] {
+  padding-top: 3px;
+}
+html[data-app-theme=nuxeo].sat-form-field-error-icon mat-error::before,
+html[data-app-theme=nuxeo].sat-form-field-error-icon [matError]::before,
+html:not([data-app-theme]).sat-form-field-error-icon mat-error::before,
+html:not([data-app-theme]).sat-form-field-error-icon [matError]::before {
+  display: inline-block;
+  content: "";
+  margin-block-end: -5px;
+  margin-inline-end: 4px;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  -webkit-mask-image: var(--sat-form-field-error-mask-image);
+  mask-image: var(--sat-form-field-error-mask-image);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+html[data-app-theme=nuxeo].sat-form-field-error-icon mat-error:has(mat-icon)::before,
+html[data-app-theme=nuxeo].sat-form-field-error-icon [matError]:has(mat-icon)::before,
+html:not([data-app-theme]).sat-form-field-error-icon mat-error:has(mat-icon)::before,
+html:not([data-app-theme]).sat-form-field-error-icon [matError]:has(mat-icon)::before {
+  display: none;
+}
+html[data-app-theme=nuxeo] mat-icon svg,
+html:not([data-app-theme]) mat-icon svg {
+  display: block;
+}
+html[data-app-theme=nuxeo] a:where(:link),
+html:not([data-app-theme]) a:where(:link) {
+  color: var(--mat-sys-primary);
+}
+html[data-app-theme=nuxeo] a:where(:link):where(:hover:not(:active)),
+html:not([data-app-theme]) a:where(:link):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+}
+html[data-app-theme=nuxeo] a:where(:visited),
+html:not([data-app-theme]) a:where(:visited) {
+  color: var(--mat-sys-secondary);
+}
+html[data-app-theme=nuxeo] a:where(:visited):where(:hover:not(:active)),
+html:not([data-app-theme]) a:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-secondary-container);
+}
+html[data-app-theme=nuxeo] a:where(:focus-visible),
+html:not([data-app-theme]) a:where(:focus-visible) {
+  outline: 1px solid currentcolor;
+  outline-offset: 0.125rem;
+  border-radius: 0.25rem;
+}
+html[data-app-theme=nuxeo] .mat-display-large,
+html[data-app-theme=nuxeo] .mat-typography .mat-display-large,
+html[data-app-theme=nuxeo] .mat-typography h1,
+html:not([data-app-theme]) .mat-display-large,
+html:not([data-app-theme]) .mat-typography .mat-display-large,
+html:not([data-app-theme]) .mat-typography h1 {
+  font:
+    400 3.562rem / 4rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: -0.016rem;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=nuxeo] .mat-display-medium,
+html[data-app-theme=nuxeo] .mat-typography .mat-display-medium,
+html[data-app-theme=nuxeo] .mat-typography h2,
+html:not([data-app-theme]) .mat-display-medium,
+html:not([data-app-theme]) .mat-typography .mat-display-medium,
+html:not([data-app-theme]) .mat-typography h2 {
+  font:
+    400 2.812rem / 3.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=nuxeo] .mat-display-small,
+html[data-app-theme=nuxeo] .mat-typography .mat-display-small,
+html[data-app-theme=nuxeo] .mat-typography h3,
+html:not([data-app-theme]) .mat-display-small,
+html:not([data-app-theme]) .mat-typography .mat-display-small,
+html:not([data-app-theme]) .mat-typography h3 {
+  font:
+    400 2.25rem / 2.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=nuxeo] .mat-headline-large,
+html[data-app-theme=nuxeo] .mat-typography .mat-headline-large,
+html[data-app-theme=nuxeo] .mat-typography h4,
+html:not([data-app-theme]) .mat-headline-large,
+html:not([data-app-theme]) .mat-typography .mat-headline-large,
+html:not([data-app-theme]) .mat-typography h4 {
+  font:
+    400 2rem / 2.5rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=nuxeo] .mat-headline-medium,
+html[data-app-theme=nuxeo] .mat-typography .mat-headline-medium,
+html[data-app-theme=nuxeo] .mat-typography h5,
+html:not([data-app-theme]) .mat-headline-medium,
+html:not([data-app-theme]) .mat-typography .mat-headline-medium,
+html:not([data-app-theme]) .mat-typography h5 {
+  font:
+    400 1.75rem / 2.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=nuxeo] .mat-headline-small,
+html[data-app-theme=nuxeo] .mat-typography .mat-headline-small,
+html[data-app-theme=nuxeo] .mat-typography h6,
+html:not([data-app-theme]) .mat-headline-small,
+html:not([data-app-theme]) .mat-typography .mat-headline-small,
+html:not([data-app-theme]) .mat-typography h6 {
+  font:
+    400 1.5rem / 2rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=nuxeo] .mat-title-large,
+html[data-app-theme=nuxeo] .mat-typography .mat-title-large,
+html:not([data-app-theme]) .mat-title-large,
+html:not([data-app-theme]) .mat-typography .mat-title-large {
+  font:
+    400 1.375rem / 1.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+}
+html[data-app-theme=nuxeo] .mat-title-medium,
+html[data-app-theme=nuxeo] .mat-typography .mat-title-medium,
+html:not([data-app-theme]) .mat-title-medium,
+html:not([data-app-theme]) .mat-typography .mat-title-medium {
+  font: 500 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.009rem;
+}
+html[data-app-theme=nuxeo] .mat-title-small,
+html[data-app-theme=nuxeo] .mat-typography .mat-title-small,
+html:not([data-app-theme]) .mat-title-small,
+html:not([data-app-theme]) .mat-typography .mat-title-small {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=nuxeo] .mat-body-large,
+html[data-app-theme=nuxeo] .mat-typography .mat-body-large,
+html[data-app-theme=nuxeo] .mat-typography,
+html:not([data-app-theme]) .mat-body-large,
+html:not([data-app-theme]) .mat-typography .mat-body-large,
+html:not([data-app-theme]) .mat-typography {
+  font: 400 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=nuxeo] .mat-body-large p,
+html[data-app-theme=nuxeo] .mat-typography .mat-body-large p,
+html[data-app-theme=nuxeo] .mat-typography p,
+html:not([data-app-theme]) .mat-body-large p,
+html:not([data-app-theme]) .mat-typography .mat-body-large p,
+html:not([data-app-theme]) .mat-typography p {
+  margin: 0 0 0.75em;
+}
+html[data-app-theme=nuxeo] .mat-body-medium,
+html[data-app-theme=nuxeo] .mat-typography .mat-body-medium,
+html:not([data-app-theme]) .mat-body-medium,
+html:not([data-app-theme]) .mat-typography .mat-body-medium {
+  font: 400 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.016rem;
+}
+html[data-app-theme=nuxeo] .mat-body-small,
+html[data-app-theme=nuxeo] .mat-typography .mat-body-small,
+html:not([data-app-theme]) .mat-body-small,
+html:not([data-app-theme]) .mat-typography .mat-body-small {
+  font: 400 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.025rem;
+}
+html[data-app-theme=nuxeo] .mat-label-large,
+html[data-app-theme=nuxeo] .mat-typography .mat-label-large,
+html:not([data-app-theme]) .mat-label-large,
+html:not([data-app-theme]) .mat-typography .mat-label-large {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=nuxeo] .mat-label-medium,
+html[data-app-theme=nuxeo] .mat-typography .mat-label-medium,
+html:not([data-app-theme]) .mat-label-medium,
+html:not([data-app-theme]) .mat-typography .mat-label-medium {
+  font: 500 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=nuxeo] .mat-label-small,
+html[data-app-theme=nuxeo] .mat-typography .mat-label-small,
+html:not([data-app-theme]) .mat-label-small,
+html:not([data-app-theme]) .mat-typography .mat-label-small {
+  font: 500 0.688rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=nuxeo] .cdk-visually-hidden,
+html:not([data-app-theme]) .cdk-visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+  outline: 0;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  left: 0;
+}
+[dir=rtl] html[data-app-theme=nuxeo] .cdk-visually-hidden,
+[dir=rtl] html:not([data-app-theme]) .cdk-visually-hidden {
+  left: auto;
+  right: 0;
+}
+html[data-app-theme=nuxeo] mat-list,
+html[data-app-theme=nuxeo] mat-action-list,
+html[data-app-theme=nuxeo] mat-selection-list,
+html[data-app-theme=nuxeo] mat-nav-list,
+html:not([data-app-theme]) mat-list,
+html:not([data-app-theme]) mat-action-list,
+html:not([data-app-theme]) mat-selection-list,
+html:not([data-app-theme]) mat-nav-list {
+  --mat-list-list-item-leading-icon-start-space: 12px;
+  --mat-list-list-item-leading-icon-end-space: 12px;
+}
+html[data-app-theme=nuxeo] mat-nav-list,
+html:not([data-app-theme]) mat-nav-list {
+  --mat-list-active-indicator-shape: 12px;
+  --mat-list-list-item-leading-icon-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-font: var(--mat-sys-label-large-font);
+  --mat-list-list-item-label-text-line-height: var(--mat-sys-label-large-line-height);
+  --mat-list-list-item-label-text-size: var(--mat-sys-label-large-size);
+  --mat-list-list-item-label-text-tracking: var(--mat-sys-label-large-tracking);
+  --mat-list-list-item-label-text-weight: var(--mat-sys-label-large-weight);
+}
+html[data-app-theme=nuxeo] .mat-mdc-list-item.mdc-list-item.mdc-list-item--activated .mdc-list-item__primary-text,
+html:not([data-app-theme]) .mat-mdc-list-item.mdc-list-item.mdc-list-item--activated .mdc-list-item__primary-text {
+  font-weight: var(--mat-sys-label-large-weight-prominent);
+}
+@supports selector(:focus-visible) {
+  html[data-app-theme=nuxeo] .mat-focus-indicator:focus:not(:focus-visible)::before,
+  html[data-app-theme=nuxeo] :focus:not(:focus-visible) .mat-focus-indicator::before,
+  html:not([data-app-theme]) .mat-focus-indicator:focus:not(:focus-visible)::before,
+  html:not([data-app-theme]) :focus:not(:focus-visible) .mat-focus-indicator::before {
+    content: none !important;
+  }
+}
+html[data-app-theme=nuxeo] .mat-focus-indicator::before,
+html:not([data-app-theme]) .mat-focus-indicator::before {
+  z-index: 1;
+}
+html[data-app-theme=nuxeo] [mat-fab],
+html:not([data-app-theme]) [mat-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-container-shape, var(--mat-sys-corner-large)) + 4px );
+}
+html[data-app-theme=nuxeo] [mat-mini-fab],
+html:not([data-app-theme]) [mat-mini-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-small-container-shape, var(--mat-sys-corner-medium)) + 4px );
+}
+html[data-app-theme=nuxeo] .mat-calendar-body-cell,
+html:not([data-app-theme]) .mat-calendar-body-cell {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=nuxeo] mat-expansion-panel-header,
+html:not([data-app-theme]) mat-expansion-panel-header {
+  --mat-focus-indicator-border-radius: var( --mat-expansion-container-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=nuxeo] mat-step-header,
+html:not([data-app-theme]) mat-step-header {
+  --mat-focus-indicator-border-radius: var( --mat-stepper-header-hover-state-layer-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=nuxeo] mat-tab-header,
+html:not([data-app-theme]) mat-tab-header {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=nuxeo] mat-slide-toggle,
+html:not([data-app-theme]) mat-slide-toggle {
+  --mat-focus-indicator-border-color: var(--sat-sys-primary-loud);
+}
+html[data-app-theme=nuxeo] mat-snack-bar-container,
+html:not([data-app-theme]) mat-snack-bar-container {
+  --mat-focus-indicator-border-color: var(--mat-sys-inverse-primary);
+}
+html[data-app-theme=nuxeo] [mat-sort-header].cdk-program-focused .mat-sort-header-container,
+html[data-app-theme=nuxeo] [mat-sort-header].cdk-keyboard-focused .mat-sort-header-container,
+html:not([data-app-theme]) [mat-sort-header].cdk-program-focused .mat-sort-header-container,
+html:not([data-app-theme]) [mat-sort-header].cdk-keyboard-focused .mat-sort-header-container {
+  border-bottom: none;
+}
+html[data-app-theme=nuxeo] .mat-nested-tree-node.mat-focus-indicator,
+html:not([data-app-theme]) .mat-nested-tree-node.mat-focus-indicator {
+  outline: none;
+  display: block;
+}
+html[data-app-theme=nuxeo] .mat-tree-node.mat-focus-indicator,
+html:not([data-app-theme]) .mat-tree-node.mat-focus-indicator {
+  outline: none;
+}
+html[data-app-theme=nuxeo],
+html:not([data-app-theme]) {
+  --hxp-primary: var(--mat-sys-primary);
+  --hxp-on-surface: var(--mat-sys-on-surface);
+  --hxp-on-surface-variant: var(--mat-sys-on-surface-variant);
+  --hxp-muted: color-mix(in srgb, var(--mat-sys-on-surface-variant) 72%, transparent);
+  --hxp-surface: var(--mat-sys-surface);
+  --hxp-surface-container-low: var(--mat-sys-surface-container-low);
+  --hxp-surface-container: var(--mat-sys-surface-container);
+  --hxp-surface-container-lowest: var(--mat-sys-surface-container-lowest);
+  --hxp-primary-container: var(--mat-sys-primary-container);
+  --hxp-on-primary-container: var(--mat-sys-on-primary-container);
+  --hxp-outline-variant: var(--mat-sys-outline-variant);
+  --hxp-error: var(--mat-sys-error);
+  --hxp-folder-icon: var(--mat-sys-tertiary);
+  --hxp-input-border: var(--mat-sys-outline-variant);
+  --hxp-input-bg: var(--mat-sys-surface);
+  --hxp-hover-surface: var(--mat-sys-surface-container-low);
+  --hxp-on-primary: var(--mat-sys-on-primary);
+}
+html[data-app-theme=dark] {
+  color-scheme: dark;
+  --mat-sys-background: #121316;
+  --mat-sys-error: #ffb4ab;
+  --mat-sys-error-container: #93000a;
+  --mat-sys-inverse-on-surface: #2f3033;
+  --mat-sys-inverse-primary: #005cbb;
+  --mat-sys-inverse-surface: #e3e2e6;
+  --mat-sys-on-background: #e3e2e6;
+  --mat-sys-on-error: #690005;
+  --mat-sys-on-error-container: #ffdad6;
+  --mat-sys-on-primary: #002f65;
+  --mat-sys-on-primary-container: #d7e3ff;
+  --mat-sys-on-primary-fixed: #001b3f;
+  --mat-sys-on-primary-fixed-variant: #00458f;
+  --mat-sys-on-secondary: #283041;
+  --mat-sys-on-secondary-container: #dae2f9;
+  --mat-sys-on-secondary-fixed: #131c2b;
+  --mat-sys-on-secondary-fixed-variant: #3e4759;
+  --mat-sys-on-surface: #e3e2e6;
+  --mat-sys-on-surface-variant: #e0e2ec;
+  --mat-sys-on-tertiary: #42008a;
+  --mat-sys-on-tertiary-container: #ecdcff;
+  --mat-sys-on-tertiary-fixed: #270057;
+  --mat-sys-on-tertiary-fixed-variant: #5f00c0;
+  --mat-sys-outline: #8e9099;
+  --mat-sys-outline-variant: #44474e;
+  --mat-sys-primary: #abc7ff;
+  --mat-sys-primary-container: #00458f;
+  --mat-sys-primary-fixed: #d7e3ff;
+  --mat-sys-primary-fixed-dim: #abc7ff;
+  --mat-sys-scrim: #000000;
+  --mat-sys-secondary: #bec6dc;
+  --mat-sys-secondary-container: #3e4759;
+  --mat-sys-secondary-fixed: #dae2f9;
+  --mat-sys-secondary-fixed-dim: #bec6dc;
+  --mat-sys-shadow: #000000;
+  --mat-sys-surface: #121316;
+  --mat-sys-surface-bright: #38393c;
+  --mat-sys-surface-container: #1f2022;
+  --mat-sys-surface-container-high: #292a2c;
+  --mat-sys-surface-container-highest: #343537;
+  --mat-sys-surface-container-low: #1a1b1f;
+  --mat-sys-surface-container-lowest: #0d0e11;
+  --mat-sys-surface-dim: #121316;
+  --mat-sys-surface-tint: #abc7ff;
+  --mat-sys-surface-variant: #44474e;
+  --mat-sys-tertiary: #d5baff;
+  --mat-sys-tertiary-container: #5f00c0;
+  --mat-sys-tertiary-fixed: #ecdcff;
+  --mat-sys-tertiary-fixed-dim: #d5baff;
+  --mat-sys-neutral-variant20: #2d3038;
+  --mat-sys-neutral10: #1a1b1f;
+  --mat-sys-level0:
+    0px 0px 0px 0px rgba(0, 0, 0, 0.2),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.14),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level1:
+    0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+    0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level2:
+    0px 3px 3px -2px rgba(0, 0, 0, 0.2),
+    0px 3px 4px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 8px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level3:
+    0px 3px 5px -1px rgba(0, 0, 0, 0.2),
+    0px 6px 10px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 18px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level4:
+    0px 5px 5px -3px rgba(0, 0, 0, 0.2),
+    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+  --mat-sys-level5:
+    0px 7px 8px -4px rgba(0, 0, 0, 0.2),
+    0px 12px 17px 2px rgba(0, 0, 0, 0.14),
+    0px 5px 22px 4px rgba(0, 0, 0, 0.12);
+  --mat-sys-body-large: 400 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-body-large-font: Noto Sans, sans-serif;
+  --mat-sys-body-large-line-height: 1.5rem;
+  --mat-sys-body-large-size: 1rem;
+  --mat-sys-body-large-tracking: 0.031rem;
+  --mat-sys-body-large-weight: 400;
+  --mat-sys-body-medium: 400 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-body-medium-font: Noto Sans, sans-serif;
+  --mat-sys-body-medium-line-height: 1.25rem;
+  --mat-sys-body-medium-size: 0.875rem;
+  --mat-sys-body-medium-tracking: 0.016rem;
+  --mat-sys-body-medium-weight: 400;
+  --mat-sys-body-small: 400 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-body-small-font: Noto Sans, sans-serif;
+  --mat-sys-body-small-line-height: 1rem;
+  --mat-sys-body-small-size: 0.75rem;
+  --mat-sys-body-small-tracking: 0.025rem;
+  --mat-sys-body-small-weight: 400;
+  --mat-sys-display-large:
+    400 3.562rem / 4rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-line-height: 4rem;
+  --mat-sys-display-large-size: 3.562rem;
+  --mat-sys-display-large-tracking: -0.016rem;
+  --mat-sys-display-large-weight: 400;
+  --mat-sys-display-medium:
+    400 2.812rem / 3.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-line-height: 3.25rem;
+  --mat-sys-display-medium-size: 2.812rem;
+  --mat-sys-display-medium-tracking: 0;
+  --mat-sys-display-medium-weight: 400;
+  --mat-sys-display-small:
+    400 2.25rem / 2.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-line-height: 2.75rem;
+  --mat-sys-display-small-size: 2.25rem;
+  --mat-sys-display-small-tracking: 0;
+  --mat-sys-display-small-weight: 400;
+  --mat-sys-headline-large:
+    400 2rem / 2.5rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-line-height: 2.5rem;
+  --mat-sys-headline-large-size: 2rem;
+  --mat-sys-headline-large-tracking: 0;
+  --mat-sys-headline-large-weight: 400;
+  --mat-sys-headline-medium:
+    400 1.75rem / 2.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-line-height: 2.25rem;
+  --mat-sys-headline-medium-size: 1.75rem;
+  --mat-sys-headline-medium-tracking: 0;
+  --mat-sys-headline-medium-weight: 400;
+  --mat-sys-headline-small:
+    400 1.5rem / 2rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-line-height: 2rem;
+  --mat-sys-headline-small-size: 1.5rem;
+  --mat-sys-headline-small-tracking: 0;
+  --mat-sys-headline-small-weight: 400;
+  --mat-sys-label-large: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-label-large-font: Noto Sans, sans-serif;
+  --mat-sys-label-large-line-height: 1.25rem;
+  --mat-sys-label-large-size: 0.875rem;
+  --mat-sys-label-large-tracking: 0.006rem;
+  --mat-sys-label-large-weight: 500;
+  --mat-sys-label-large-weight-prominent: 600;
+  --mat-sys-label-medium: 500 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-medium-font: Noto Sans, sans-serif;
+  --mat-sys-label-medium-line-height: 1rem;
+  --mat-sys-label-medium-size: 0.75rem;
+  --mat-sys-label-medium-tracking: 0.031rem;
+  --mat-sys-label-medium-weight: 500;
+  --mat-sys-label-medium-weight-prominent: 600;
+  --mat-sys-label-small: 500 0.688rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-small-font: Noto Sans, sans-serif;
+  --mat-sys-label-small-line-height: 1rem;
+  --mat-sys-label-small-size: 0.688rem;
+  --mat-sys-label-small-tracking: 0.031rem;
+  --mat-sys-label-small-weight: 500;
+  --mat-sys-title-large:
+    400 1.375rem / 1.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-line-height: 1.75rem;
+  --mat-sys-title-large-size: 1.375rem;
+  --mat-sys-title-large-tracking: 0;
+  --mat-sys-title-large-weight: 400;
+  --mat-sys-title-medium: 500 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-title-medium-font: Noto Sans, sans-serif;
+  --mat-sys-title-medium-line-height: 1.5rem;
+  --mat-sys-title-medium-size: 1rem;
+  --mat-sys-title-medium-tracking: 0.009rem;
+  --mat-sys-title-medium-weight: 500;
+  --mat-sys-title-small: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-title-small-font: Noto Sans, sans-serif;
+  --mat-sys-title-small-line-height: 1.25rem;
+  --mat-sys-title-small-size: 0.875rem;
+  --mat-sys-title-small-tracking: 0.006rem;
+  --mat-sys-title-small-weight: 500;
+  --mat-sys-corner-extra-large: 28px;
+  --mat-sys-corner-extra-large-top: 28px 28px 0 0;
+  --mat-sys-corner-extra-small: 4px;
+  --mat-sys-corner-extra-small-top: 4px 4px 0 0;
+  --mat-sys-corner-full: 9999px;
+  --mat-sys-corner-large: 16px;
+  --mat-sys-corner-large-end: 0 16px 16px 0;
+  --mat-sys-corner-large-start: 16px 0 0 16px;
+  --mat-sys-corner-large-top: 16px 16px 0 0;
+  --mat-sys-corner-medium: 12px;
+  --mat-sys-corner-none: 0;
+  --mat-sys-corner-small: 8px;
+  --mat-sys-dragged-state-layer-opacity: 0.16;
+  --mat-sys-focus-state-layer-opacity: 0.12;
+  --mat-sys-hover-state-layer-opacity: 0.08;
+  --mat-sys-pressed-state-layer-opacity: 0.12;
+  --sat-sys-cat-purple-container: light-dark( #f4f0fb, #2a2a40 );
+  --sat-sys-cat-purple-icon: light-dark( #6966db, #7976ec );
+  --sat-sys-on-cat-purple-container: light-dark( #5c59b6, #a4a2f5 );
+  --sat-sys-cat-blue-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-cat-blue-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-on-cat-blue-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-cat-pink-container: light-dark( #f6eef6, #331d2b );
+  --sat-sys-cat-pink-icon: light-dark( #bf55a0, #b34494 );
+  --sat-sys-on-cat-pink-container: light-dark( #89517a, #de81c4 );
+  --sat-sys-cat-teal-container: light-dark( #e1f7f7, #123132 );
+  --sat-sys-cat-teal-icon: light-dark( #3a9799, #3a9a7d );
+  --sat-sys-on-cat-teal-container: light-dark( #3d7879, #44b295 );
+  --sat-sys-cat-yellow-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-cat-yellow-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-on-cat-yellow-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-cat-green-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-cat-green-icon: light-dark( #4d9c4c, #579152 );
+  --sat-sys-on-cat-green-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-cat-red-container: light-dark( #faeae9, #401315 );
+  --sat-sys-cat-red-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-on-cat-red-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-cat-orange-container: light-dark( #fde9d5, #3f221c );
+  --sat-sys-cat-orange-icon: light-dark( #c06f3a, #c57946 );
+  --sat-sys-on-cat-orange-container: light-dark( #a4552d, #da8e5e );
+  --sat-sys-cat-gray-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-cat-gray-icon: light-dark( #828282, #828282 );
+  --sat-sys-on-cat-gray-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-info-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-info-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-on-info-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-important-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-important-container: light-dark( #faeae9, #401315 );
+  --sat-sys-on-important-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-important-loud-container: light-dark( #ca474f, #93222b );
+  --sat-sys-on-important-loud-container: light-dark( #ffffff, #ffffff );
+  --sat-sys-success-icon: light-dark( #4d9c4c, #4b9344 );
+  --sat-sys-success-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-on-success-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-warning-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-warning-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-on-warning-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-neutral-icon: light-dark( #828282, #828282 );
+  --sat-sys-neutral-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-on-neutral-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-on-status-icon: light-dark( #ffffff, #ffffff );
+  --sat-sys-primary-loud: light-dark( #322f86, #e2dfff );
+  --sat-sys-inverse-surface-loud: light-dark( #101112, #f1f0f4 );
+  --sat-sys-on-primary-opacity-08: light-dark( rgba(255, 255, 255, 0.08), rgba(38, 34, 123, 0.08) );
+  --sat-sys-on-primary-opacity-12: light-dark( rgba(255, 255, 255, 0.12), rgba(38, 34, 123, 0.12) );
+  --sat-sys-hyland-dark-blue: light-dark( #191f5e, #ffffff );
+  --sat-sys-hyland-teal: light-dark( #03eac1, #03eac1 );
+  --sat-sys-hyland-purple: light-dark( #6e33ff, #6e33ff );
+  --sat-sys-hyland-blue: light-dark( #52a1ff, #52a1ff );
+  --sat-sys-hyland-yellow: light-dark( #f9c947, #f9c947 );
+  --sat-app-header-title-color: var(--mat-sys-on-surface-variant);
+  --sat-app-header-title-font: var(--mat-sys-headline-small-font);
+  --sat-app-header-title-size: var(--mat-sys-headline-small-size);
+  --sat-app-header-title-line-height: var(--mat-sys-headline-small-line-height);
+  --sat-app-header-title-letter-spacing: var(--mat-sys-headline-small-tracking);
+  --sat-app-header-title-weight: var(--mat-sys-headline-small-weight);
+  --sat-app-header-title-height: 4rem;
+  --sat-avatar-border: var(--mat-sys-surface-container-lowest);
+  --sat-avatar-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-avatar-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-avatar-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-avatar-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-avatar-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-avatar-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-avatar-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-avatar-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-avatar-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-avatar-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-avatar-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-avatar-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-avatar-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-avatar-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-avatar-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-avatar-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-avatar-indicator-active: var(--sat-sys-success-icon);
+  --sat-avatar-indicator-away: var(--sat-sys-warning-icon);
+  --sat-avatar-indicator-offline: var(--sat-sys-important-icon);
+  --sat-avatar-indicator-readonly: var(--sat-sys-neutral-icon);
+  --sat-avatar-on-indicator: var(--sat-sys-on-status-icon, #fff);
+  --sat-avatar-headline-large: var(--mat-sys-headline-large);
+  --sat-avatar-headline-small: var(--mat-sys-headline-small);
+  --sat-avatar-title-large: var(--mat-sys-title-large);
+  --sat-avatar-label-large: var(--mat-sys-label-large);
+  --sat-avatar-label-small: var(--mat-sys-label-small);
+  --sat-avatar-corner-full: 100%;
+  --sat-breadcrumbs-gap: 4px;
+  --sat-logo-hyland-dark-blue-color: var(--sat-sys-hyland-dark-blue, #191f5e);
+  --sat-logo-hyland-teal-color: var(--sat-sys-hyland-teal, #13eac1);
+  --sat-logo-hyland-purple-color: var(--sat-sys-hyland-purple, #6e33ff);
+  --sat-logo-hyland-blue-color: var(--sat-sys-hyland-blue, #52a1ff);
+  --sat-logo-hyland-yellow-color: var(--sat-sys-hyland-yellow, #f1cb61);
+  --sat-environment-switcher-hover-layer-color: color-mix( in srgb, var(--mat-sys-on-surface) calc(var(--mat-sys-hover-state-layer-opacity) * 100%), transparent );
+  --sat-platform-nav-title-font: var(--mat-sys-title-small-font);
+  --sat-platform-nav-title-medium-size: var(--mat-sys-title-medium-size);
+  --sat-platform-nav-title-line-height: var(--mat-sys-title-medium-line-height);
+  --sat-platform-nav-title-letter-spacing: var(--mat-sys-title-medium-tracking);
+  --sat-platform-nav-label-large-font: var(--mat-sys-label-large-font);
+  --sat-platform-nav-label-large-size: var(--mat-sys-label-large-size);
+  --sat-platform-nav-label-large-line-height: var(--mat-sys-label-large-line-height);
+  --sat-platform-nav-label-large-tracking: var(--mat-sys-label-large-tracking);
+  --sat-platform-nav-label-medium-font: var(--mat-sys-label-medium-font);
+  --sat-platform-nav-label-medium-size: var(--mat-sys-label-medium-size);
+  --sat-platform-nav-label-medium-line-height: var(--mat-sys-label-medium-line-height);
+  --sat-platform-nav-label-medium-tracking: var(--mat-sys-label-medium-tracking);
+  --sat-platform-nav-body-small-size: var(--mat-sys-body-small-size);
+  --sat-platform-nav-body-large-line-height: var(--mat-sys-body-large-line-height);
+  --sat-platform-nav-body-large-tracking: var(--mat-sys-body-large-tracking);
+  --sat-platform-nav-corner-extra-small: 4px;
+  --sat-platform-nav-corner-medium: 12px;
+  --sat-platform-nav-corner-large: 16px;
+  --sat-platform-nav-corner-full: 1000px;
+  --sat-platform-nav-collapsed-width: 56px;
+  --sat-platform-nav-expanded-width: 300px;
+  --sat-platform-nav-height-extra-small: 16px;
+  --sat-platform-nav-height-small: 24px;
+  --sat-platform-nav-height-medium: 28px;
+  --sat-platform-nav-height-high: 48px;
+  --sat-platform-nav-height-max: 100%;
+  --sat-platform-nav-width-extra-small: 16px;
+  --sat-platform-nav-width-small: 24px;
+  --sat-platform-nav-width-medium: 28px;
+  --sat-platform-nav-width-high: 48px;
+  --sat-platform-nav-width-max: 100%;
+  --sat-platform-nav-gap-small: 7px;
+  --sat-platform-nav-gap-medium: 12px;
+  --sat-platform-nav-gap-large: 16px;
+  --sat-platform-nav-animation-duration: 400ms;
+  --sat-platform-nav-animation-curve: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --sat-tag-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-tag-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-tag-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-tag-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-tag-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-tag-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-tag-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-tag-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-tag-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-tag-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-tag-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-tag-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-tag-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-tag-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-tag-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-tag-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-tag-cat-gray-container: var(--sat-sys-cat-gray-container);
+  --sat-tag-on-cat-gray-container: var(--sat-sys-on-cat-gray-container);
+  --sat-tag-info-container: var(--sat-sys-info-container);
+  --sat-tag-on-info-container: var(--sat-sys-on-info-container);
+  --sat-tag-important-container: var(--sat-sys-important-container);
+  --sat-tag-on-important-container: var(--sat-sys-on-important-container);
+  --sat-tag-important-loud-container: var(--sat-sys-important-loud-container);
+  --sat-tag-on-important-loud-container: var(--sat-sys-on-important-loud-container);
+  --sat-tag-success-container: var(--sat-sys-success-container);
+  --sat-tag-on-success-container: var(--sat-sys-on-success-container);
+  --sat-tag-warning-container: var(--sat-sys-warning-container);
+  --sat-tag-on-warning-container: var(--sat-sys-on-warning-container);
+  --sat-tag-neutral-container: var(--sat-sys-neutral-container);
+  --sat-tag-on-neutral-container: var(--sat-sys-on-neutral-container);
+  --sat-tag-neutral-quiet-container: transparent;
+  --sat-tag-on-neutral-quiet-container: var(--mat-sys-on-surface);
+  --sat-tag-label-font: var(--mat-sys-label-large-font);
+  --sat-tag-label-size: var(--mat-sys-label-large-size);
+  --sat-tag-label-line-height: var(--mat-sys-label-large-line-height);
+  --sat-tag-label-tracking: var(--mat-sys-label-large-tracking);
+  --sat-tag-label-weight: var(--mat-sys-label-large-weight);
+  --sat-tag-corner: var(--mat-sys-corner-extra-small);
+  --mat-sys-body-medium: var(--mat-sys-body-medium-weight) 0.875rem/1.375rem var(--mat-sys-body-medium-font);
+  --mat-sys-body-medium-line-height: 1.375rem;
+  --mat-sys-body-small: var(--mat-sys-body-small-weight) 0.75rem/1.125rem var(--mat-sys-body-small-font);
+  --mat-sys-body-small-line-height: 1.125rem;
+  --mat-focus-indicator-border-width: 2px;
+  --mat-focus-indicator-border-color: var(--mat-sys-primary);
+  --mat-focus-indicator-display: block;
+  --mat-sys-background: var(--mat-sys-surface-container-low);
+  --mat-button-protected-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-elevated-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-filled-container-color: var(--mat-sys-surface-container-low);
+  --mat-expansion-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-paginator-container-background-color: transparent;
+  --mat-sidenav-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-stepper-container-color: transparent;
+  --mat-table-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-table-row-item-outline-color: var(--mat-sys-outline-variant);
+  --mat-toolbar-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-tree-container-background-color: transparent;
+  --mat-slider-inactive-track-color: var(--mat-sys-secondary);
+  --mat-slider-with-tick-marks-inactive-container-color: var(--mat-sys-on-secondary-container);
+  --mat-slider-with-tick-marks-inactive-container-opacity: 1;
+  --mat-slider-with-tick-marks-active-container-opacity: 1;
+  --mat-progress-bar-track-color: var(--mat-sys-secondary-container);
+  --mat-progress-bar-track-shape: var(--mat-sys-corner-full);
+  --mat-tab-divider-color: var(--mat-sys-outline-variant);
+}
+html[data-app-theme=dark] html {
+  --mat-sys-on-surface: initial;
+}
+.mat-app-background {
+  background-color: var(--mat-app-background-color, var(--mat-sys-background, transparent));
+  color: var(--mat-app-text-color, var(--mat-sys-on-background, inherit));
+}
+html[data-app-theme=dark] .sat-rich-tooltip-container {
+  box-shadow:
+    0px 3px 1px -2px rgba(0, 0, 0, 0.2),
+    0px 2px 2px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+  background: var(--mat-sys-surface-container);
+}
+html[data-app-theme=dark] .sat-rich-tooltip-title {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=dark] .sat-rich-tooltip-content {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=dark] .sat-rich-tooltip-title {
+  font: var(--mat-sys-title-small-font);
+  font-size: var(--mat-sys-title-small-size);
+  line-height: var(--mat-sys-title-small-line-height);
+  letter-spacing: var(--mat-sys-title-small-tracking);
+  font-weight: var(--mat-sys-title-small-weight);
+}
+html[data-app-theme=dark] .sat-rich-tooltip-content {
+  font: var(--mat-sys-body-medium-font);
+  font-size: var(--mat-sys-body-medium-size);
+  line-height: var(--mat-sys-body-medium-line-height);
+  letter-spacing: var(--mat-sys-body-medium-tracking);
+  font-weight: var(--mat-sys-body-medium-weight);
+}
+html[data-app-theme=dark].sat-form-field-error-icon mat-form-field mat-error,
+html[data-app-theme=dark].sat-form-field-error-icon mat-form-field [matError] {
+  padding-top: 3px;
+}
+html[data-app-theme=dark].sat-form-field-error-icon mat-error::before,
+html[data-app-theme=dark].sat-form-field-error-icon [matError]::before {
+  display: inline-block;
+  content: "";
+  margin-block-end: -5px;
+  margin-inline-end: 4px;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  -webkit-mask-image: var(--sat-form-field-error-mask-image);
+  mask-image: var(--sat-form-field-error-mask-image);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+html[data-app-theme=dark].sat-form-field-error-icon mat-error:has(mat-icon)::before,
+html[data-app-theme=dark].sat-form-field-error-icon [matError]:has(mat-icon)::before {
+  display: none;
+}
+html[data-app-theme=dark] mat-icon svg {
+  display: block;
+}
+html[data-app-theme=dark] a:where(:link) {
+  color: var(--mat-sys-primary);
+}
+html[data-app-theme=dark] a:where(:link):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+}
+html[data-app-theme=dark] a:where(:visited) {
+  color: var(--mat-sys-secondary);
+}
+html[data-app-theme=dark] a:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-secondary-container);
+}
+html[data-app-theme=dark] a:where(:focus-visible) {
+  outline: 1px solid currentcolor;
+  outline-offset: 0.125rem;
+  border-radius: 0.25rem;
+}
+html[data-app-theme=dark] .mat-display-large,
+html[data-app-theme=dark] .mat-typography .mat-display-large,
+html[data-app-theme=dark] .mat-typography h1 {
+  font:
+    400 3.562rem / 4rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: -0.016rem;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=dark] .mat-display-medium,
+html[data-app-theme=dark] .mat-typography .mat-display-medium,
+html[data-app-theme=dark] .mat-typography h2 {
+  font:
+    400 2.812rem / 3.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=dark] .mat-display-small,
+html[data-app-theme=dark] .mat-typography .mat-display-small,
+html[data-app-theme=dark] .mat-typography h3 {
+  font:
+    400 2.25rem / 2.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=dark] .mat-headline-large,
+html[data-app-theme=dark] .mat-typography .mat-headline-large,
+html[data-app-theme=dark] .mat-typography h4 {
+  font:
+    400 2rem / 2.5rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=dark] .mat-headline-medium,
+html[data-app-theme=dark] .mat-typography .mat-headline-medium,
+html[data-app-theme=dark] .mat-typography h5 {
+  font:
+    400 1.75rem / 2.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=dark] .mat-headline-small,
+html[data-app-theme=dark] .mat-typography .mat-headline-small,
+html[data-app-theme=dark] .mat-typography h6 {
+  font:
+    400 1.5rem / 2rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=dark] .mat-title-large,
+html[data-app-theme=dark] .mat-typography .mat-title-large {
+  font:
+    400 1.375rem / 1.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+}
+html[data-app-theme=dark] .mat-title-medium,
+html[data-app-theme=dark] .mat-typography .mat-title-medium {
+  font: 500 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.009rem;
+}
+html[data-app-theme=dark] .mat-title-small,
+html[data-app-theme=dark] .mat-typography .mat-title-small {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=dark] .mat-body-large,
+html[data-app-theme=dark] .mat-typography .mat-body-large,
+html[data-app-theme=dark] .mat-typography {
+  font: 400 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=dark] .mat-body-large p,
+html[data-app-theme=dark] .mat-typography .mat-body-large p,
+html[data-app-theme=dark] .mat-typography p {
+  margin: 0 0 0.75em;
+}
+html[data-app-theme=dark] .mat-body-medium,
+html[data-app-theme=dark] .mat-typography .mat-body-medium {
+  font: 400 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.016rem;
+}
+html[data-app-theme=dark] .mat-body-small,
+html[data-app-theme=dark] .mat-typography .mat-body-small {
+  font: 400 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.025rem;
+}
+html[data-app-theme=dark] .mat-label-large,
+html[data-app-theme=dark] .mat-typography .mat-label-large {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=dark] .mat-label-medium,
+html[data-app-theme=dark] .mat-typography .mat-label-medium {
+  font: 500 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=dark] .mat-label-small,
+html[data-app-theme=dark] .mat-typography .mat-label-small {
+  font: 500 0.688rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=dark] .cdk-visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+  outline: 0;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  left: 0;
+}
+[dir=rtl] html[data-app-theme=dark] .cdk-visually-hidden {
+  left: auto;
+  right: 0;
+}
+html[data-app-theme=dark] mat-list,
+html[data-app-theme=dark] mat-action-list,
+html[data-app-theme=dark] mat-selection-list,
+html[data-app-theme=dark] mat-nav-list {
+  --mat-list-list-item-leading-icon-start-space: 12px;
+  --mat-list-list-item-leading-icon-end-space: 12px;
+}
+html[data-app-theme=dark] mat-nav-list {
+  --mat-list-active-indicator-shape: 12px;
+  --mat-list-list-item-leading-icon-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-font: var(--mat-sys-label-large-font);
+  --mat-list-list-item-label-text-line-height: var(--mat-sys-label-large-line-height);
+  --mat-list-list-item-label-text-size: var(--mat-sys-label-large-size);
+  --mat-list-list-item-label-text-tracking: var(--mat-sys-label-large-tracking);
+  --mat-list-list-item-label-text-weight: var(--mat-sys-label-large-weight);
+}
+html[data-app-theme=dark] .mat-mdc-list-item.mdc-list-item.mdc-list-item--activated .mdc-list-item__primary-text {
+  font-weight: var(--mat-sys-label-large-weight-prominent);
+}
+@supports selector(:focus-visible) {
+  html[data-app-theme=dark] .mat-focus-indicator:focus:not(:focus-visible)::before,
+  html[data-app-theme=dark] :focus:not(:focus-visible) .mat-focus-indicator::before {
+    content: none !important;
+  }
+}
+html[data-app-theme=dark] .mat-focus-indicator::before {
+  z-index: 1;
+}
+html[data-app-theme=dark] [mat-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-container-shape, var(--mat-sys-corner-large)) + 4px );
+}
+html[data-app-theme=dark] [mat-mini-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-small-container-shape, var(--mat-sys-corner-medium)) + 4px );
+}
+html[data-app-theme=dark] .mat-calendar-body-cell {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=dark] mat-expansion-panel-header {
+  --mat-focus-indicator-border-radius: var( --mat-expansion-container-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=dark] mat-step-header {
+  --mat-focus-indicator-border-radius: var( --mat-stepper-header-hover-state-layer-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=dark] mat-tab-header {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=dark] mat-slide-toggle {
+  --mat-focus-indicator-border-color: var(--sat-sys-primary-loud);
+}
+html[data-app-theme=dark] mat-snack-bar-container {
+  --mat-focus-indicator-border-color: var(--mat-sys-inverse-primary);
+}
+html[data-app-theme=dark] [mat-sort-header].cdk-program-focused .mat-sort-header-container,
+html[data-app-theme=dark] [mat-sort-header].cdk-keyboard-focused .mat-sort-header-container {
+  border-bottom: none;
+}
+html[data-app-theme=dark] .mat-nested-tree-node.mat-focus-indicator {
+  outline: none;
+  display: block;
+}
+html[data-app-theme=dark] .mat-tree-node.mat-focus-indicator {
+  outline: none;
+}
+html[data-app-theme=dark] {
+  --hxp-primary: var(--mat-sys-primary);
+  --hxp-on-surface: var(--mat-sys-on-surface);
+  --hxp-on-surface-variant: var(--mat-sys-on-surface-variant);
+  --hxp-muted: color-mix(in srgb, var(--mat-sys-on-surface-variant) 72%, transparent);
+  --hxp-surface: var(--mat-sys-surface);
+  --hxp-surface-container-low: var(--mat-sys-surface-container-low);
+  --hxp-surface-container: var(--mat-sys-surface-container);
+  --hxp-surface-container-lowest: var(--mat-sys-surface-container-lowest);
+  --hxp-primary-container: var(--mat-sys-primary-container);
+  --hxp-on-primary-container: var(--mat-sys-on-primary-container);
+  --hxp-outline-variant: var(--mat-sys-outline-variant);
+  --hxp-error: var(--mat-sys-error);
+  --hxp-folder-icon: var(--mat-sys-tertiary);
+  --hxp-input-border: var(--mat-sys-outline-variant);
+  --hxp-input-bg: var(--mat-sys-surface);
+  --hxp-hover-surface: var(--mat-sys-surface-container-low);
+  --hxp-on-primary: var(--mat-sys-on-primary);
+}
+html[data-app-theme=kawaii] {
+  color-scheme: light;
+  --mat-sys-background: #fff8f8;
+  --mat-sys-error: #ba1a1a;
+  --mat-sys-error-container: #ffdad6;
+  --mat-sys-inverse-on-surface: #faeeef;
+  --mat-sys-inverse-primary: #ffb1c5;
+  --mat-sys-inverse-surface: #352f30;
+  --mat-sys-on-background: #201a1b;
+  --mat-sys-on-error: #ffffff;
+  --mat-sys-on-error-container: #93000a;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-on-primary-container: #8f0045;
+  --mat-sys-on-primary-fixed: #3f001b;
+  --mat-sys-on-primary-fixed-variant: #8f0045;
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-on-secondary-container: #5b3f46;
+  --mat-sys-on-secondary-fixed: #2b151b;
+  --mat-sys-on-secondary-fixed-variant: #5b3f46;
+  --mat-sys-on-surface: #201a1b;
+  --mat-sys-on-surface-variant: #514346;
+  --mat-sys-on-tertiary: #ffffff;
+  --mat-sys-on-tertiary-container: #810081;
+  --mat-sys-on-tertiary-fixed: #380038;
+  --mat-sys-on-tertiary-fixed-variant: #810081;
+  --mat-sys-outline: #847376;
+  --mat-sys-outline-variant: #d6c2c5;
+  --mat-sys-primary: #ba005c;
+  --mat-sys-primary-container: #ffd9e1;
+  --mat-sys-primary-fixed: #ffd9e1;
+  --mat-sys-primary-fixed-dim: #ffb1c5;
+  --mat-sys-scrim: #000000;
+  --mat-sys-secondary: #74565d;
+  --mat-sys-secondary-container: #ffd9e1;
+  --mat-sys-secondary-fixed: #ffd9e1;
+  --mat-sys-secondary-fixed-dim: #e3bdc5;
+  --mat-sys-shadow: #000000;
+  --mat-sys-surface: #fff8f8;
+  --mat-sys-surface-bright: #fff8f8;
+  --mat-sys-surface-container: #f7ebec;
+  --mat-sys-surface-container-high: #f1e5e6;
+  --mat-sys-surface-container-highest: #ece0e1;
+  --mat-sys-surface-container-low: #fdf1f2;
+  --mat-sys-surface-container-lowest: #ffffff;
+  --mat-sys-surface-dim: #e3d7d8;
+  --mat-sys-surface-tint: #ba005c;
+  --mat-sys-surface-variant: #f3dde1;
+  --mat-sys-tertiary: #a900a9;
+  --mat-sys-tertiary-container: #ffd7f5;
+  --mat-sys-tertiary-fixed: #ffd7f5;
+  --mat-sys-tertiary-fixed-dim: #ffabf3;
+  --mat-sys-neutral-variant20: #3a2d30;
+  --mat-sys-neutral10: #201a1b;
+  --mat-sys-level0:
+    0px 0px 0px 0px rgba(0, 0, 0, 0.2),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.14),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level1:
+    0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+    0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level2:
+    0px 3px 3px -2px rgba(0, 0, 0, 0.2),
+    0px 3px 4px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 8px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level3:
+    0px 3px 5px -1px rgba(0, 0, 0, 0.2),
+    0px 6px 10px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 18px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level4:
+    0px 5px 5px -3px rgba(0, 0, 0, 0.2),
+    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+  --mat-sys-level5:
+    0px 7px 8px -4px rgba(0, 0, 0, 0.2),
+    0px 12px 17px 2px rgba(0, 0, 0, 0.14),
+    0px 5px 22px 4px rgba(0, 0, 0, 0.12);
+  --mat-sys-body-large: 400 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-body-large-font: Noto Sans, sans-serif;
+  --mat-sys-body-large-line-height: 1.5rem;
+  --mat-sys-body-large-size: 1rem;
+  --mat-sys-body-large-tracking: 0.031rem;
+  --mat-sys-body-large-weight: 400;
+  --mat-sys-body-medium: 400 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-body-medium-font: Noto Sans, sans-serif;
+  --mat-sys-body-medium-line-height: 1.25rem;
+  --mat-sys-body-medium-size: 0.875rem;
+  --mat-sys-body-medium-tracking: 0.016rem;
+  --mat-sys-body-medium-weight: 400;
+  --mat-sys-body-small: 400 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-body-small-font: Noto Sans, sans-serif;
+  --mat-sys-body-small-line-height: 1rem;
+  --mat-sys-body-small-size: 0.75rem;
+  --mat-sys-body-small-tracking: 0.025rem;
+  --mat-sys-body-small-weight: 400;
+  --mat-sys-display-large:
+    400 3.562rem / 4rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-line-height: 4rem;
+  --mat-sys-display-large-size: 3.562rem;
+  --mat-sys-display-large-tracking: -0.016rem;
+  --mat-sys-display-large-weight: 400;
+  --mat-sys-display-medium:
+    400 2.812rem / 3.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-line-height: 3.25rem;
+  --mat-sys-display-medium-size: 2.812rem;
+  --mat-sys-display-medium-tracking: 0;
+  --mat-sys-display-medium-weight: 400;
+  --mat-sys-display-small:
+    400 2.25rem / 2.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-line-height: 2.75rem;
+  --mat-sys-display-small-size: 2.25rem;
+  --mat-sys-display-small-tracking: 0;
+  --mat-sys-display-small-weight: 400;
+  --mat-sys-headline-large:
+    400 2rem / 2.5rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-line-height: 2.5rem;
+  --mat-sys-headline-large-size: 2rem;
+  --mat-sys-headline-large-tracking: 0;
+  --mat-sys-headline-large-weight: 400;
+  --mat-sys-headline-medium:
+    400 1.75rem / 2.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-line-height: 2.25rem;
+  --mat-sys-headline-medium-size: 1.75rem;
+  --mat-sys-headline-medium-tracking: 0;
+  --mat-sys-headline-medium-weight: 400;
+  --mat-sys-headline-small:
+    400 1.5rem / 2rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-line-height: 2rem;
+  --mat-sys-headline-small-size: 1.5rem;
+  --mat-sys-headline-small-tracking: 0;
+  --mat-sys-headline-small-weight: 400;
+  --mat-sys-label-large: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-label-large-font: Noto Sans, sans-serif;
+  --mat-sys-label-large-line-height: 1.25rem;
+  --mat-sys-label-large-size: 0.875rem;
+  --mat-sys-label-large-tracking: 0.006rem;
+  --mat-sys-label-large-weight: 500;
+  --mat-sys-label-large-weight-prominent: 600;
+  --mat-sys-label-medium: 500 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-medium-font: Noto Sans, sans-serif;
+  --mat-sys-label-medium-line-height: 1rem;
+  --mat-sys-label-medium-size: 0.75rem;
+  --mat-sys-label-medium-tracking: 0.031rem;
+  --mat-sys-label-medium-weight: 500;
+  --mat-sys-label-medium-weight-prominent: 600;
+  --mat-sys-label-small: 500 0.688rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-small-font: Noto Sans, sans-serif;
+  --mat-sys-label-small-line-height: 1rem;
+  --mat-sys-label-small-size: 0.688rem;
+  --mat-sys-label-small-tracking: 0.031rem;
+  --mat-sys-label-small-weight: 500;
+  --mat-sys-title-large:
+    400 1.375rem / 1.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-line-height: 1.75rem;
+  --mat-sys-title-large-size: 1.375rem;
+  --mat-sys-title-large-tracking: 0;
+  --mat-sys-title-large-weight: 400;
+  --mat-sys-title-medium: 500 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-title-medium-font: Noto Sans, sans-serif;
+  --mat-sys-title-medium-line-height: 1.5rem;
+  --mat-sys-title-medium-size: 1rem;
+  --mat-sys-title-medium-tracking: 0.009rem;
+  --mat-sys-title-medium-weight: 500;
+  --mat-sys-title-small: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-title-small-font: Noto Sans, sans-serif;
+  --mat-sys-title-small-line-height: 1.25rem;
+  --mat-sys-title-small-size: 0.875rem;
+  --mat-sys-title-small-tracking: 0.006rem;
+  --mat-sys-title-small-weight: 500;
+  --mat-sys-corner-extra-large: 28px;
+  --mat-sys-corner-extra-large-top: 28px 28px 0 0;
+  --mat-sys-corner-extra-small: 4px;
+  --mat-sys-corner-extra-small-top: 4px 4px 0 0;
+  --mat-sys-corner-full: 9999px;
+  --mat-sys-corner-large: 16px;
+  --mat-sys-corner-large-end: 0 16px 16px 0;
+  --mat-sys-corner-large-start: 16px 0 0 16px;
+  --mat-sys-corner-large-top: 16px 16px 0 0;
+  --mat-sys-corner-medium: 12px;
+  --mat-sys-corner-none: 0;
+  --mat-sys-corner-small: 8px;
+  --mat-sys-dragged-state-layer-opacity: 0.16;
+  --mat-sys-focus-state-layer-opacity: 0.12;
+  --mat-sys-hover-state-layer-opacity: 0.08;
+  --mat-sys-pressed-state-layer-opacity: 0.12;
+  --sat-sys-cat-purple-container: light-dark( #f4f0fb, #2a2a40 );
+  --sat-sys-cat-purple-icon: light-dark( #6966db, #7976ec );
+  --sat-sys-on-cat-purple-container: light-dark( #5c59b6, #a4a2f5 );
+  --sat-sys-cat-blue-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-cat-blue-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-on-cat-blue-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-cat-pink-container: light-dark( #f6eef6, #331d2b );
+  --sat-sys-cat-pink-icon: light-dark( #bf55a0, #b34494 );
+  --sat-sys-on-cat-pink-container: light-dark( #89517a, #de81c4 );
+  --sat-sys-cat-teal-container: light-dark( #e1f7f7, #123132 );
+  --sat-sys-cat-teal-icon: light-dark( #3a9799, #3a9a7d );
+  --sat-sys-on-cat-teal-container: light-dark( #3d7879, #44b295 );
+  --sat-sys-cat-yellow-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-cat-yellow-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-on-cat-yellow-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-cat-green-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-cat-green-icon: light-dark( #4d9c4c, #579152 );
+  --sat-sys-on-cat-green-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-cat-red-container: light-dark( #faeae9, #401315 );
+  --sat-sys-cat-red-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-on-cat-red-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-cat-orange-container: light-dark( #fde9d5, #3f221c );
+  --sat-sys-cat-orange-icon: light-dark( #c06f3a, #c57946 );
+  --sat-sys-on-cat-orange-container: light-dark( #a4552d, #da8e5e );
+  --sat-sys-cat-gray-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-cat-gray-icon: light-dark( #828282, #828282 );
+  --sat-sys-on-cat-gray-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-info-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-info-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-on-info-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-important-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-important-container: light-dark( #faeae9, #401315 );
+  --sat-sys-on-important-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-important-loud-container: light-dark( #ca474f, #93222b );
+  --sat-sys-on-important-loud-container: light-dark( #ffffff, #ffffff );
+  --sat-sys-success-icon: light-dark( #4d9c4c, #4b9344 );
+  --sat-sys-success-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-on-success-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-warning-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-warning-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-on-warning-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-neutral-icon: light-dark( #828282, #828282 );
+  --sat-sys-neutral-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-on-neutral-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-on-status-icon: light-dark( #ffffff, #ffffff );
+  --sat-sys-primary-loud: light-dark( #322f86, #e2dfff );
+  --sat-sys-inverse-surface-loud: light-dark( #101112, #f1f0f4 );
+  --sat-sys-on-primary-opacity-08: light-dark( rgba(255, 255, 255, 0.08), rgba(38, 34, 123, 0.08) );
+  --sat-sys-on-primary-opacity-12: light-dark( rgba(255, 255, 255, 0.12), rgba(38, 34, 123, 0.12) );
+  --sat-sys-hyland-dark-blue: light-dark( #191f5e, #ffffff );
+  --sat-sys-hyland-teal: light-dark( #03eac1, #03eac1 );
+  --sat-sys-hyland-purple: light-dark( #6e33ff, #6e33ff );
+  --sat-sys-hyland-blue: light-dark( #52a1ff, #52a1ff );
+  --sat-sys-hyland-yellow: light-dark( #f9c947, #f9c947 );
+  --sat-app-header-title-color: var(--mat-sys-on-surface-variant);
+  --sat-app-header-title-font: var(--mat-sys-headline-small-font);
+  --sat-app-header-title-size: var(--mat-sys-headline-small-size);
+  --sat-app-header-title-line-height: var(--mat-sys-headline-small-line-height);
+  --sat-app-header-title-letter-spacing: var(--mat-sys-headline-small-tracking);
+  --sat-app-header-title-weight: var(--mat-sys-headline-small-weight);
+  --sat-app-header-title-height: 4rem;
+  --sat-avatar-border: var(--mat-sys-surface-container-lowest);
+  --sat-avatar-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-avatar-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-avatar-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-avatar-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-avatar-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-avatar-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-avatar-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-avatar-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-avatar-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-avatar-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-avatar-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-avatar-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-avatar-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-avatar-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-avatar-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-avatar-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-avatar-indicator-active: var(--sat-sys-success-icon);
+  --sat-avatar-indicator-away: var(--sat-sys-warning-icon);
+  --sat-avatar-indicator-offline: var(--sat-sys-important-icon);
+  --sat-avatar-indicator-readonly: var(--sat-sys-neutral-icon);
+  --sat-avatar-on-indicator: var(--sat-sys-on-status-icon, #fff);
+  --sat-avatar-headline-large: var(--mat-sys-headline-large);
+  --sat-avatar-headline-small: var(--mat-sys-headline-small);
+  --sat-avatar-title-large: var(--mat-sys-title-large);
+  --sat-avatar-label-large: var(--mat-sys-label-large);
+  --sat-avatar-label-small: var(--mat-sys-label-small);
+  --sat-avatar-corner-full: 100%;
+  --sat-breadcrumbs-gap: 4px;
+  --sat-logo-hyland-dark-blue-color: var(--sat-sys-hyland-dark-blue, #191f5e);
+  --sat-logo-hyland-teal-color: var(--sat-sys-hyland-teal, #13eac1);
+  --sat-logo-hyland-purple-color: var(--sat-sys-hyland-purple, #6e33ff);
+  --sat-logo-hyland-blue-color: var(--sat-sys-hyland-blue, #52a1ff);
+  --sat-logo-hyland-yellow-color: var(--sat-sys-hyland-yellow, #f1cb61);
+  --sat-environment-switcher-hover-layer-color: color-mix( in srgb, var(--mat-sys-on-surface) calc(var(--mat-sys-hover-state-layer-opacity) * 100%), transparent );
+  --sat-platform-nav-title-font: var(--mat-sys-title-small-font);
+  --sat-platform-nav-title-medium-size: var(--mat-sys-title-medium-size);
+  --sat-platform-nav-title-line-height: var(--mat-sys-title-medium-line-height);
+  --sat-platform-nav-title-letter-spacing: var(--mat-sys-title-medium-tracking);
+  --sat-platform-nav-label-large-font: var(--mat-sys-label-large-font);
+  --sat-platform-nav-label-large-size: var(--mat-sys-label-large-size);
+  --sat-platform-nav-label-large-line-height: var(--mat-sys-label-large-line-height);
+  --sat-platform-nav-label-large-tracking: var(--mat-sys-label-large-tracking);
+  --sat-platform-nav-label-medium-font: var(--mat-sys-label-medium-font);
+  --sat-platform-nav-label-medium-size: var(--mat-sys-label-medium-size);
+  --sat-platform-nav-label-medium-line-height: var(--mat-sys-label-medium-line-height);
+  --sat-platform-nav-label-medium-tracking: var(--mat-sys-label-medium-tracking);
+  --sat-platform-nav-body-small-size: var(--mat-sys-body-small-size);
+  --sat-platform-nav-body-large-line-height: var(--mat-sys-body-large-line-height);
+  --sat-platform-nav-body-large-tracking: var(--mat-sys-body-large-tracking);
+  --sat-platform-nav-corner-extra-small: 4px;
+  --sat-platform-nav-corner-medium: 12px;
+  --sat-platform-nav-corner-large: 16px;
+  --sat-platform-nav-corner-full: 1000px;
+  --sat-platform-nav-collapsed-width: 56px;
+  --sat-platform-nav-expanded-width: 300px;
+  --sat-platform-nav-height-extra-small: 16px;
+  --sat-platform-nav-height-small: 24px;
+  --sat-platform-nav-height-medium: 28px;
+  --sat-platform-nav-height-high: 48px;
+  --sat-platform-nav-height-max: 100%;
+  --sat-platform-nav-width-extra-small: 16px;
+  --sat-platform-nav-width-small: 24px;
+  --sat-platform-nav-width-medium: 28px;
+  --sat-platform-nav-width-high: 48px;
+  --sat-platform-nav-width-max: 100%;
+  --sat-platform-nav-gap-small: 7px;
+  --sat-platform-nav-gap-medium: 12px;
+  --sat-platform-nav-gap-large: 16px;
+  --sat-platform-nav-animation-duration: 400ms;
+  --sat-platform-nav-animation-curve: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --sat-tag-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-tag-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-tag-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-tag-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-tag-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-tag-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-tag-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-tag-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-tag-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-tag-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-tag-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-tag-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-tag-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-tag-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-tag-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-tag-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-tag-cat-gray-container: var(--sat-sys-cat-gray-container);
+  --sat-tag-on-cat-gray-container: var(--sat-sys-on-cat-gray-container);
+  --sat-tag-info-container: var(--sat-sys-info-container);
+  --sat-tag-on-info-container: var(--sat-sys-on-info-container);
+  --sat-tag-important-container: var(--sat-sys-important-container);
+  --sat-tag-on-important-container: var(--sat-sys-on-important-container);
+  --sat-tag-important-loud-container: var(--sat-sys-important-loud-container);
+  --sat-tag-on-important-loud-container: var(--sat-sys-on-important-loud-container);
+  --sat-tag-success-container: var(--sat-sys-success-container);
+  --sat-tag-on-success-container: var(--sat-sys-on-success-container);
+  --sat-tag-warning-container: var(--sat-sys-warning-container);
+  --sat-tag-on-warning-container: var(--sat-sys-on-warning-container);
+  --sat-tag-neutral-container: var(--sat-sys-neutral-container);
+  --sat-tag-on-neutral-container: var(--sat-sys-on-neutral-container);
+  --sat-tag-neutral-quiet-container: transparent;
+  --sat-tag-on-neutral-quiet-container: var(--mat-sys-on-surface);
+  --sat-tag-label-font: var(--mat-sys-label-large-font);
+  --sat-tag-label-size: var(--mat-sys-label-large-size);
+  --sat-tag-label-line-height: var(--mat-sys-label-large-line-height);
+  --sat-tag-label-tracking: var(--mat-sys-label-large-tracking);
+  --sat-tag-label-weight: var(--mat-sys-label-large-weight);
+  --sat-tag-corner: var(--mat-sys-corner-extra-small);
+  --mat-sys-body-medium: var(--mat-sys-body-medium-weight) 0.875rem/1.375rem var(--mat-sys-body-medium-font);
+  --mat-sys-body-medium-line-height: 1.375rem;
+  --mat-sys-body-small: var(--mat-sys-body-small-weight) 0.75rem/1.125rem var(--mat-sys-body-small-font);
+  --mat-sys-body-small-line-height: 1.125rem;
+  --mat-focus-indicator-border-width: 2px;
+  --mat-focus-indicator-border-color: var(--mat-sys-primary);
+  --mat-focus-indicator-display: block;
+  --mat-sys-background: var(--mat-sys-surface-container-low);
+  --mat-button-protected-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-elevated-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-filled-container-color: var(--mat-sys-surface-container-low);
+  --mat-expansion-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-paginator-container-background-color: transparent;
+  --mat-sidenav-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-stepper-container-color: transparent;
+  --mat-table-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-table-row-item-outline-color: var(--mat-sys-outline-variant);
+  --mat-toolbar-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-tree-container-background-color: transparent;
+  --mat-slider-inactive-track-color: var(--mat-sys-secondary);
+  --mat-slider-with-tick-marks-inactive-container-color: var(--mat-sys-on-secondary-container);
+  --mat-slider-with-tick-marks-inactive-container-opacity: 1;
+  --mat-slider-with-tick-marks-active-container-opacity: 1;
+  --mat-progress-bar-track-color: var(--mat-sys-secondary-container);
+  --mat-progress-bar-track-shape: var(--mat-sys-corner-full);
+  --mat-tab-divider-color: var(--mat-sys-outline-variant);
+}
+html[data-app-theme=kawaii] html {
+  --mat-sys-on-surface: initial;
+}
+.mat-app-background {
+  background-color: var(--mat-app-background-color, var(--mat-sys-background, transparent));
+  color: var(--mat-app-text-color, var(--mat-sys-on-background, inherit));
+}
+html[data-app-theme=kawaii] .sat-rich-tooltip-container {
+  box-shadow:
+    0px 3px 1px -2px rgba(0, 0, 0, 0.2),
+    0px 2px 2px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+  background: var(--mat-sys-surface-container);
+}
+html[data-app-theme=kawaii] .sat-rich-tooltip-title {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=kawaii] .sat-rich-tooltip-content {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=kawaii] .sat-rich-tooltip-title {
+  font: var(--mat-sys-title-small-font);
+  font-size: var(--mat-sys-title-small-size);
+  line-height: var(--mat-sys-title-small-line-height);
+  letter-spacing: var(--mat-sys-title-small-tracking);
+  font-weight: var(--mat-sys-title-small-weight);
+}
+html[data-app-theme=kawaii] .sat-rich-tooltip-content {
+  font: var(--mat-sys-body-medium-font);
+  font-size: var(--mat-sys-body-medium-size);
+  line-height: var(--mat-sys-body-medium-line-height);
+  letter-spacing: var(--mat-sys-body-medium-tracking);
+  font-weight: var(--mat-sys-body-medium-weight);
+}
+html[data-app-theme=kawaii].sat-form-field-error-icon mat-form-field mat-error,
+html[data-app-theme=kawaii].sat-form-field-error-icon mat-form-field [matError] {
+  padding-top: 3px;
+}
+html[data-app-theme=kawaii].sat-form-field-error-icon mat-error::before,
+html[data-app-theme=kawaii].sat-form-field-error-icon [matError]::before {
+  display: inline-block;
+  content: "";
+  margin-block-end: -5px;
+  margin-inline-end: 4px;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  -webkit-mask-image: var(--sat-form-field-error-mask-image);
+  mask-image: var(--sat-form-field-error-mask-image);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+html[data-app-theme=kawaii].sat-form-field-error-icon mat-error:has(mat-icon)::before,
+html[data-app-theme=kawaii].sat-form-field-error-icon [matError]:has(mat-icon)::before {
+  display: none;
+}
+html[data-app-theme=kawaii] mat-icon svg {
+  display: block;
+}
+html[data-app-theme=kawaii] a:where(:link) {
+  color: var(--mat-sys-primary);
+}
+html[data-app-theme=kawaii] a:where(:link):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+}
+html[data-app-theme=kawaii] a:where(:visited) {
+  color: var(--mat-sys-secondary);
+}
+html[data-app-theme=kawaii] a:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-secondary-container);
+}
+html[data-app-theme=kawaii] a:where(:focus-visible) {
+  outline: 1px solid currentcolor;
+  outline-offset: 0.125rem;
+  border-radius: 0.25rem;
+}
+html[data-app-theme=kawaii] .mat-display-large,
+html[data-app-theme=kawaii] .mat-typography .mat-display-large,
+html[data-app-theme=kawaii] .mat-typography h1 {
+  font:
+    400 3.562rem / 4rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: -0.016rem;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=kawaii] .mat-display-medium,
+html[data-app-theme=kawaii] .mat-typography .mat-display-medium,
+html[data-app-theme=kawaii] .mat-typography h2 {
+  font:
+    400 2.812rem / 3.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=kawaii] .mat-display-small,
+html[data-app-theme=kawaii] .mat-typography .mat-display-small,
+html[data-app-theme=kawaii] .mat-typography h3 {
+  font:
+    400 2.25rem / 2.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=kawaii] .mat-headline-large,
+html[data-app-theme=kawaii] .mat-typography .mat-headline-large,
+html[data-app-theme=kawaii] .mat-typography h4 {
+  font:
+    400 2rem / 2.5rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=kawaii] .mat-headline-medium,
+html[data-app-theme=kawaii] .mat-typography .mat-headline-medium,
+html[data-app-theme=kawaii] .mat-typography h5 {
+  font:
+    400 1.75rem / 2.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=kawaii] .mat-headline-small,
+html[data-app-theme=kawaii] .mat-typography .mat-headline-small,
+html[data-app-theme=kawaii] .mat-typography h6 {
+  font:
+    400 1.5rem / 2rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=kawaii] .mat-title-large,
+html[data-app-theme=kawaii] .mat-typography .mat-title-large {
+  font:
+    400 1.375rem / 1.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+}
+html[data-app-theme=kawaii] .mat-title-medium,
+html[data-app-theme=kawaii] .mat-typography .mat-title-medium {
+  font: 500 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.009rem;
+}
+html[data-app-theme=kawaii] .mat-title-small,
+html[data-app-theme=kawaii] .mat-typography .mat-title-small {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=kawaii] .mat-body-large,
+html[data-app-theme=kawaii] .mat-typography .mat-body-large,
+html[data-app-theme=kawaii] .mat-typography {
+  font: 400 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=kawaii] .mat-body-large p,
+html[data-app-theme=kawaii] .mat-typography .mat-body-large p,
+html[data-app-theme=kawaii] .mat-typography p {
+  margin: 0 0 0.75em;
+}
+html[data-app-theme=kawaii] .mat-body-medium,
+html[data-app-theme=kawaii] .mat-typography .mat-body-medium {
+  font: 400 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.016rem;
+}
+html[data-app-theme=kawaii] .mat-body-small,
+html[data-app-theme=kawaii] .mat-typography .mat-body-small {
+  font: 400 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.025rem;
+}
+html[data-app-theme=kawaii] .mat-label-large,
+html[data-app-theme=kawaii] .mat-typography .mat-label-large {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=kawaii] .mat-label-medium,
+html[data-app-theme=kawaii] .mat-typography .mat-label-medium {
+  font: 500 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=kawaii] .mat-label-small,
+html[data-app-theme=kawaii] .mat-typography .mat-label-small {
+  font: 500 0.688rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=kawaii] .cdk-visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+  outline: 0;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  left: 0;
+}
+[dir=rtl] html[data-app-theme=kawaii] .cdk-visually-hidden {
+  left: auto;
+  right: 0;
+}
+html[data-app-theme=kawaii] mat-list,
+html[data-app-theme=kawaii] mat-action-list,
+html[data-app-theme=kawaii] mat-selection-list,
+html[data-app-theme=kawaii] mat-nav-list {
+  --mat-list-list-item-leading-icon-start-space: 12px;
+  --mat-list-list-item-leading-icon-end-space: 12px;
+}
+html[data-app-theme=kawaii] mat-nav-list {
+  --mat-list-active-indicator-shape: 12px;
+  --mat-list-list-item-leading-icon-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-font: var(--mat-sys-label-large-font);
+  --mat-list-list-item-label-text-line-height: var(--mat-sys-label-large-line-height);
+  --mat-list-list-item-label-text-size: var(--mat-sys-label-large-size);
+  --mat-list-list-item-label-text-tracking: var(--mat-sys-label-large-tracking);
+  --mat-list-list-item-label-text-weight: var(--mat-sys-label-large-weight);
+}
+html[data-app-theme=kawaii] .mat-mdc-list-item.mdc-list-item.mdc-list-item--activated .mdc-list-item__primary-text {
+  font-weight: var(--mat-sys-label-large-weight-prominent);
+}
+@supports selector(:focus-visible) {
+  html[data-app-theme=kawaii] .mat-focus-indicator:focus:not(:focus-visible)::before,
+  html[data-app-theme=kawaii] :focus:not(:focus-visible) .mat-focus-indicator::before {
+    content: none !important;
+  }
+}
+html[data-app-theme=kawaii] .mat-focus-indicator::before {
+  z-index: 1;
+}
+html[data-app-theme=kawaii] [mat-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-container-shape, var(--mat-sys-corner-large)) + 4px );
+}
+html[data-app-theme=kawaii] [mat-mini-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-small-container-shape, var(--mat-sys-corner-medium)) + 4px );
+}
+html[data-app-theme=kawaii] .mat-calendar-body-cell {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=kawaii] mat-expansion-panel-header {
+  --mat-focus-indicator-border-radius: var( --mat-expansion-container-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=kawaii] mat-step-header {
+  --mat-focus-indicator-border-radius: var( --mat-stepper-header-hover-state-layer-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=kawaii] mat-tab-header {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=kawaii] mat-slide-toggle {
+  --mat-focus-indicator-border-color: var(--sat-sys-primary-loud);
+}
+html[data-app-theme=kawaii] mat-snack-bar-container {
+  --mat-focus-indicator-border-color: var(--mat-sys-inverse-primary);
+}
+html[data-app-theme=kawaii] [mat-sort-header].cdk-program-focused .mat-sort-header-container,
+html[data-app-theme=kawaii] [mat-sort-header].cdk-keyboard-focused .mat-sort-header-container {
+  border-bottom: none;
+}
+html[data-app-theme=kawaii] .mat-nested-tree-node.mat-focus-indicator {
+  outline: none;
+  display: block;
+}
+html[data-app-theme=kawaii] .mat-tree-node.mat-focus-indicator {
+  outline: none;
+}
+html[data-app-theme=kawaii] {
+  --hxp-primary: var(--mat-sys-primary);
+  --hxp-on-surface: var(--mat-sys-on-surface);
+  --hxp-on-surface-variant: var(--mat-sys-on-surface-variant);
+  --hxp-muted: color-mix(in srgb, var(--mat-sys-on-surface-variant) 72%, transparent);
+  --hxp-surface: var(--mat-sys-surface);
+  --hxp-surface-container-low: var(--mat-sys-surface-container-low);
+  --hxp-surface-container: var(--mat-sys-surface-container);
+  --hxp-surface-container-lowest: var(--mat-sys-surface-container-lowest);
+  --hxp-primary-container: var(--mat-sys-primary-container);
+  --hxp-on-primary-container: var(--mat-sys-on-primary-container);
+  --hxp-outline-variant: var(--mat-sys-outline-variant);
+  --hxp-error: var(--mat-sys-error);
+  --hxp-folder-icon: var(--mat-sys-tertiary);
+  --hxp-input-border: var(--mat-sys-outline-variant);
+  --hxp-input-bg: var(--mat-sys-surface);
+  --hxp-hover-surface: var(--mat-sys-surface-container-low);
+  --hxp-on-primary: var(--mat-sys-on-primary);
+}
+html[data-app-theme=light] {
+  color-scheme: light;
+  --mat-sys-background: #f7faf9;
+  --mat-sys-error: #ba1a1a;
+  --mat-sys-error-container: #ffdad6;
+  --mat-sys-inverse-on-surface: #eff1f0;
+  --mat-sys-inverse-primary: #00dddd;
+  --mat-sys-inverse-surface: #2d3131;
+  --mat-sys-on-background: #191c1c;
+  --mat-sys-on-error: #ffffff;
+  --mat-sys-on-error-container: #93000a;
+  --mat-sys-on-primary: #ffffff;
+  --mat-sys-on-primary-container: #004f4f;
+  --mat-sys-on-primary-fixed: #002020;
+  --mat-sys-on-primary-fixed-variant: #004f4f;
+  --mat-sys-on-secondary: #ffffff;
+  --mat-sys-on-secondary-container: #324b4b;
+  --mat-sys-on-secondary-fixed: #051f1f;
+  --mat-sys-on-secondary-fixed-variant: #324b4b;
+  --mat-sys-on-surface: #191c1c;
+  --mat-sys-on-surface-variant: #3f4948;
+  --mat-sys-on-tertiary: #ffffff;
+  --mat-sys-on-tertiary-container: #0000ef;
+  --mat-sys-on-tertiary-fixed: #00006e;
+  --mat-sys-on-tertiary-fixed-variant: #0000ef;
+  --mat-sys-outline: #6f7979;
+  --mat-sys-outline-variant: #bec9c8;
+  --mat-sys-primary: #006a6a;
+  --mat-sys-primary-container: #00fbfb;
+  --mat-sys-primary-fixed: #00fbfb;
+  --mat-sys-primary-fixed-dim: #00dddd;
+  --mat-sys-scrim: #000000;
+  --mat-sys-secondary: #4a6363;
+  --mat-sys-secondary-container: #cce8e7;
+  --mat-sys-secondary-fixed: #cce8e7;
+  --mat-sys-secondary-fixed-dim: #b0cccb;
+  --mat-sys-shadow: #000000;
+  --mat-sys-surface: #f7faf9;
+  --mat-sys-surface-bright: #f7faf9;
+  --mat-sys-surface-container: #ebefed;
+  --mat-sys-surface-container-high: #e6e9e7;
+  --mat-sys-surface-container-highest: #e0e3e2;
+  --mat-sys-surface-container-low: #f1f4f3;
+  --mat-sys-surface-container-lowest: #ffffff;
+  --mat-sys-surface-dim: #d7dbd9;
+  --mat-sys-surface-tint: #006a6a;
+  --mat-sys-surface-variant: #dae5e4;
+  --mat-sys-tertiary: #343dff;
+  --mat-sys-tertiary-container: #e0e0ff;
+  --mat-sys-tertiary-fixed: #e0e0ff;
+  --mat-sys-tertiary-fixed-dim: #bec2ff;
+  --mat-sys-neutral-variant20: #293232;
+  --mat-sys-neutral10: #191c1c;
+  --mat-sys-level0:
+    0px 0px 0px 0px rgba(0, 0, 0, 0.2),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.14),
+    0px 0px 0px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level1:
+    0px 2px 1px -1px rgba(0, 0, 0, 0.2),
+    0px 1px 1px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level2:
+    0px 3px 3px -2px rgba(0, 0, 0, 0.2),
+    0px 3px 4px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 8px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level3:
+    0px 3px 5px -1px rgba(0, 0, 0, 0.2),
+    0px 6px 10px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 18px 0px rgba(0, 0, 0, 0.12);
+  --mat-sys-level4:
+    0px 5px 5px -3px rgba(0, 0, 0, 0.2),
+    0px 8px 10px 1px rgba(0, 0, 0, 0.14),
+    0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+  --mat-sys-level5:
+    0px 7px 8px -4px rgba(0, 0, 0, 0.2),
+    0px 12px 17px 2px rgba(0, 0, 0, 0.14),
+    0px 5px 22px 4px rgba(0, 0, 0, 0.12);
+  --mat-sys-body-large: 400 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-body-large-font: Noto Sans, sans-serif;
+  --mat-sys-body-large-line-height: 1.5rem;
+  --mat-sys-body-large-size: 1rem;
+  --mat-sys-body-large-tracking: 0.031rem;
+  --mat-sys-body-large-weight: 400;
+  --mat-sys-body-medium: 400 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-body-medium-font: Noto Sans, sans-serif;
+  --mat-sys-body-medium-line-height: 1.25rem;
+  --mat-sys-body-medium-size: 0.875rem;
+  --mat-sys-body-medium-tracking: 0.016rem;
+  --mat-sys-body-medium-weight: 400;
+  --mat-sys-body-small: 400 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-body-small-font: Noto Sans, sans-serif;
+  --mat-sys-body-small-line-height: 1rem;
+  --mat-sys-body-small-size: 0.75rem;
+  --mat-sys-body-small-tracking: 0.025rem;
+  --mat-sys-body-small-weight: 400;
+  --mat-sys-display-large:
+    400 3.562rem / 4rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-large-line-height: 4rem;
+  --mat-sys-display-large-size: 3.562rem;
+  --mat-sys-display-large-tracking: -0.016rem;
+  --mat-sys-display-large-weight: 400;
+  --mat-sys-display-medium:
+    400 2.812rem / 3.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-medium-line-height: 3.25rem;
+  --mat-sys-display-medium-size: 2.812rem;
+  --mat-sys-display-medium-tracking: 0;
+  --mat-sys-display-medium-weight: 400;
+  --mat-sys-display-small:
+    400 2.25rem / 2.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-display-small-line-height: 2.75rem;
+  --mat-sys-display-small-size: 2.25rem;
+  --mat-sys-display-small-tracking: 0;
+  --mat-sys-display-small-weight: 400;
+  --mat-sys-headline-large:
+    400 2rem / 2.5rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-large-line-height: 2.5rem;
+  --mat-sys-headline-large-size: 2rem;
+  --mat-sys-headline-large-tracking: 0;
+  --mat-sys-headline-large-weight: 400;
+  --mat-sys-headline-medium:
+    400 1.75rem / 2.25rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-medium-line-height: 2.25rem;
+  --mat-sys-headline-medium-size: 1.75rem;
+  --mat-sys-headline-medium-tracking: 0;
+  --mat-sys-headline-medium-weight: 400;
+  --mat-sys-headline-small:
+    400 1.5rem / 2rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-headline-small-line-height: 2rem;
+  --mat-sys-headline-small-size: 1.5rem;
+  --mat-sys-headline-small-tracking: 0;
+  --mat-sys-headline-small-weight: 400;
+  --mat-sys-label-large: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-label-large-font: Noto Sans, sans-serif;
+  --mat-sys-label-large-line-height: 1.25rem;
+  --mat-sys-label-large-size: 0.875rem;
+  --mat-sys-label-large-tracking: 0.006rem;
+  --mat-sys-label-large-weight: 500;
+  --mat-sys-label-large-weight-prominent: 600;
+  --mat-sys-label-medium: 500 0.75rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-medium-font: Noto Sans, sans-serif;
+  --mat-sys-label-medium-line-height: 1rem;
+  --mat-sys-label-medium-size: 0.75rem;
+  --mat-sys-label-medium-tracking: 0.031rem;
+  --mat-sys-label-medium-weight: 500;
+  --mat-sys-label-medium-weight-prominent: 600;
+  --mat-sys-label-small: 500 0.688rem / 1rem Noto Sans, sans-serif;
+  --mat-sys-label-small-font: Noto Sans, sans-serif;
+  --mat-sys-label-small-line-height: 1rem;
+  --mat-sys-label-small-size: 0.688rem;
+  --mat-sys-label-small-tracking: 0.031rem;
+  --mat-sys-label-small-weight: 500;
+  --mat-sys-title-large:
+    400 1.375rem / 1.75rem Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-font:
+    Figtree,
+    Noto Sans,
+    sans-serif;
+  --mat-sys-title-large-line-height: 1.75rem;
+  --mat-sys-title-large-size: 1.375rem;
+  --mat-sys-title-large-tracking: 0;
+  --mat-sys-title-large-weight: 400;
+  --mat-sys-title-medium: 500 1rem / 1.5rem Noto Sans, sans-serif;
+  --mat-sys-title-medium-font: Noto Sans, sans-serif;
+  --mat-sys-title-medium-line-height: 1.5rem;
+  --mat-sys-title-medium-size: 1rem;
+  --mat-sys-title-medium-tracking: 0.009rem;
+  --mat-sys-title-medium-weight: 500;
+  --mat-sys-title-small: 500 0.875rem / 1.25rem Noto Sans, sans-serif;
+  --mat-sys-title-small-font: Noto Sans, sans-serif;
+  --mat-sys-title-small-line-height: 1.25rem;
+  --mat-sys-title-small-size: 0.875rem;
+  --mat-sys-title-small-tracking: 0.006rem;
+  --mat-sys-title-small-weight: 500;
+  --mat-sys-corner-extra-large: 28px;
+  --mat-sys-corner-extra-large-top: 28px 28px 0 0;
+  --mat-sys-corner-extra-small: 4px;
+  --mat-sys-corner-extra-small-top: 4px 4px 0 0;
+  --mat-sys-corner-full: 9999px;
+  --mat-sys-corner-large: 16px;
+  --mat-sys-corner-large-end: 0 16px 16px 0;
+  --mat-sys-corner-large-start: 16px 0 0 16px;
+  --mat-sys-corner-large-top: 16px 16px 0 0;
+  --mat-sys-corner-medium: 12px;
+  --mat-sys-corner-none: 0;
+  --mat-sys-corner-small: 8px;
+  --mat-sys-dragged-state-layer-opacity: 0.16;
+  --mat-sys-focus-state-layer-opacity: 0.12;
+  --mat-sys-hover-state-layer-opacity: 0.08;
+  --mat-sys-pressed-state-layer-opacity: 0.12;
+  --sat-sys-cat-purple-container: light-dark( #f4f0fb, #2a2a40 );
+  --sat-sys-cat-purple-icon: light-dark( #6966db, #7976ec );
+  --sat-sys-on-cat-purple-container: light-dark( #5c59b6, #a4a2f5 );
+  --sat-sys-cat-blue-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-cat-blue-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-on-cat-blue-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-cat-pink-container: light-dark( #f6eef6, #331d2b );
+  --sat-sys-cat-pink-icon: light-dark( #bf55a0, #b34494 );
+  --sat-sys-on-cat-pink-container: light-dark( #89517a, #de81c4 );
+  --sat-sys-cat-teal-container: light-dark( #e1f7f7, #123132 );
+  --sat-sys-cat-teal-icon: light-dark( #3a9799, #3a9a7d );
+  --sat-sys-on-cat-teal-container: light-dark( #3d7879, #44b295 );
+  --sat-sys-cat-yellow-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-cat-yellow-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-on-cat-yellow-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-cat-green-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-cat-green-icon: light-dark( #4d9c4c, #579152 );
+  --sat-sys-on-cat-green-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-cat-red-container: light-dark( #faeae9, #401315 );
+  --sat-sys-cat-red-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-on-cat-red-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-cat-orange-container: light-dark( #fde9d5, #3f221c );
+  --sat-sys-cat-orange-icon: light-dark( #c06f3a, #c57946 );
+  --sat-sys-on-cat-orange-container: light-dark( #a4552d, #da8e5e );
+  --sat-sys-cat-gray-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-cat-gray-icon: light-dark( #828282, #828282 );
+  --sat-sys-on-cat-gray-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-info-icon: light-dark( #5384f1, #5f8be9 );
+  --sat-sys-info-container: light-dark( #e5f3fc, #1f283b );
+  --sat-sys-on-info-container: light-dark( #3060c6, #86adf4 );
+  --sat-sys-important-icon: light-dark( #c74f54, #c54b51 );
+  --sat-sys-important-container: light-dark( #faeae9, #401315 );
+  --sat-sys-on-important-container: light-dark( #ac4848, #ef7678 );
+  --sat-sys-important-loud-container: light-dark( #ca474f, #93222b );
+  --sat-sys-on-important-loud-container: light-dark( #ffffff, #ffffff );
+  --sat-sys-success-icon: light-dark( #4d9c4c, #4b9344 );
+  --sat-sys-success-container: light-dark( #eef6e8, #1d2b1a );
+  --sat-sys-on-success-container: light-dark( #3d7231, #70af6c );
+  --sat-sys-warning-icon: light-dark( #967c39, #9c813d );
+  --sat-sys-warning-container: light-dark( #fbf3db, #312611 );
+  --sat-sys-on-warning-container: light-dark( #7e651b, #c0a358 );
+  --sat-sys-neutral-icon: light-dark( #828282, #828282 );
+  --sat-sys-neutral-container: light-dark( #f0f0f0, #292929 );
+  --sat-sys-on-neutral-container: light-dark( #5e5e5e, #adadad );
+  --sat-sys-on-status-icon: light-dark( #ffffff, #ffffff );
+  --sat-sys-primary-loud: light-dark( #322f86, #e2dfff );
+  --sat-sys-inverse-surface-loud: light-dark( #101112, #f1f0f4 );
+  --sat-sys-on-primary-opacity-08: light-dark( rgba(255, 255, 255, 0.08), rgba(38, 34, 123, 0.08) );
+  --sat-sys-on-primary-opacity-12: light-dark( rgba(255, 255, 255, 0.12), rgba(38, 34, 123, 0.12) );
+  --sat-sys-hyland-dark-blue: light-dark( #191f5e, #ffffff );
+  --sat-sys-hyland-teal: light-dark( #03eac1, #03eac1 );
+  --sat-sys-hyland-purple: light-dark( #6e33ff, #6e33ff );
+  --sat-sys-hyland-blue: light-dark( #52a1ff, #52a1ff );
+  --sat-sys-hyland-yellow: light-dark( #f9c947, #f9c947 );
+  --sat-app-header-title-color: var(--mat-sys-on-surface-variant);
+  --sat-app-header-title-font: var(--mat-sys-headline-small-font);
+  --sat-app-header-title-size: var(--mat-sys-headline-small-size);
+  --sat-app-header-title-line-height: var(--mat-sys-headline-small-line-height);
+  --sat-app-header-title-letter-spacing: var(--mat-sys-headline-small-tracking);
+  --sat-app-header-title-weight: var(--mat-sys-headline-small-weight);
+  --sat-app-header-title-height: 4rem;
+  --sat-avatar-border: var(--mat-sys-surface-container-lowest);
+  --sat-avatar-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-avatar-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-avatar-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-avatar-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-avatar-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-avatar-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-avatar-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-avatar-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-avatar-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-avatar-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-avatar-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-avatar-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-avatar-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-avatar-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-avatar-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-avatar-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-avatar-indicator-active: var(--sat-sys-success-icon);
+  --sat-avatar-indicator-away: var(--sat-sys-warning-icon);
+  --sat-avatar-indicator-offline: var(--sat-sys-important-icon);
+  --sat-avatar-indicator-readonly: var(--sat-sys-neutral-icon);
+  --sat-avatar-on-indicator: var(--sat-sys-on-status-icon, #fff);
+  --sat-avatar-headline-large: var(--mat-sys-headline-large);
+  --sat-avatar-headline-small: var(--mat-sys-headline-small);
+  --sat-avatar-title-large: var(--mat-sys-title-large);
+  --sat-avatar-label-large: var(--mat-sys-label-large);
+  --sat-avatar-label-small: var(--mat-sys-label-small);
+  --sat-avatar-corner-full: 100%;
+  --sat-breadcrumbs-gap: 4px;
+  --sat-logo-hyland-dark-blue-color: var(--sat-sys-hyland-dark-blue, #191f5e);
+  --sat-logo-hyland-teal-color: var(--sat-sys-hyland-teal, #13eac1);
+  --sat-logo-hyland-purple-color: var(--sat-sys-hyland-purple, #6e33ff);
+  --sat-logo-hyland-blue-color: var(--sat-sys-hyland-blue, #52a1ff);
+  --sat-logo-hyland-yellow-color: var(--sat-sys-hyland-yellow, #f1cb61);
+  --sat-environment-switcher-hover-layer-color: color-mix( in srgb, var(--mat-sys-on-surface) calc(var(--mat-sys-hover-state-layer-opacity) * 100%), transparent );
+  --sat-platform-nav-title-font: var(--mat-sys-title-small-font);
+  --sat-platform-nav-title-medium-size: var(--mat-sys-title-medium-size);
+  --sat-platform-nav-title-line-height: var(--mat-sys-title-medium-line-height);
+  --sat-platform-nav-title-letter-spacing: var(--mat-sys-title-medium-tracking);
+  --sat-platform-nav-label-large-font: var(--mat-sys-label-large-font);
+  --sat-platform-nav-label-large-size: var(--mat-sys-label-large-size);
+  --sat-platform-nav-label-large-line-height: var(--mat-sys-label-large-line-height);
+  --sat-platform-nav-label-large-tracking: var(--mat-sys-label-large-tracking);
+  --sat-platform-nav-label-medium-font: var(--mat-sys-label-medium-font);
+  --sat-platform-nav-label-medium-size: var(--mat-sys-label-medium-size);
+  --sat-platform-nav-label-medium-line-height: var(--mat-sys-label-medium-line-height);
+  --sat-platform-nav-label-medium-tracking: var(--mat-sys-label-medium-tracking);
+  --sat-platform-nav-body-small-size: var(--mat-sys-body-small-size);
+  --sat-platform-nav-body-large-line-height: var(--mat-sys-body-large-line-height);
+  --sat-platform-nav-body-large-tracking: var(--mat-sys-body-large-tracking);
+  --sat-platform-nav-corner-extra-small: 4px;
+  --sat-platform-nav-corner-medium: 12px;
+  --sat-platform-nav-corner-large: 16px;
+  --sat-platform-nav-corner-full: 1000px;
+  --sat-platform-nav-collapsed-width: 56px;
+  --sat-platform-nav-expanded-width: 300px;
+  --sat-platform-nav-height-extra-small: 16px;
+  --sat-platform-nav-height-small: 24px;
+  --sat-platform-nav-height-medium: 28px;
+  --sat-platform-nav-height-high: 48px;
+  --sat-platform-nav-height-max: 100%;
+  --sat-platform-nav-width-extra-small: 16px;
+  --sat-platform-nav-width-small: 24px;
+  --sat-platform-nav-width-medium: 28px;
+  --sat-platform-nav-width-high: 48px;
+  --sat-platform-nav-width-max: 100%;
+  --sat-platform-nav-gap-small: 7px;
+  --sat-platform-nav-gap-medium: 12px;
+  --sat-platform-nav-gap-large: 16px;
+  --sat-platform-nav-animation-duration: 400ms;
+  --sat-platform-nav-animation-curve: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --sat-tag-cat-purple-container: var(--sat-sys-cat-purple-container);
+  --sat-tag-on-cat-purple-container: var(--sat-sys-on-cat-purple-container);
+  --sat-tag-cat-blue-container: var(--sat-sys-cat-blue-container);
+  --sat-tag-on-cat-blue-container: var(--sat-sys-on-cat-blue-container);
+  --sat-tag-cat-pink-container: var(--sat-sys-cat-pink-container);
+  --sat-tag-on-cat-pink-container: var(--sat-sys-on-cat-pink-container);
+  --sat-tag-cat-teal-container: var(--sat-sys-cat-teal-container);
+  --sat-tag-on-cat-teal-container: var(--sat-sys-on-cat-teal-container);
+  --sat-tag-cat-yellow-container: var(--sat-sys-cat-yellow-container);
+  --sat-tag-on-cat-yellow-container: var(--sat-sys-on-cat-yellow-container);
+  --sat-tag-cat-green-container: var(--sat-sys-cat-green-container);
+  --sat-tag-on-cat-green-container: var(--sat-sys-on-cat-green-container);
+  --sat-tag-cat-red-container: var(--sat-sys-cat-red-container);
+  --sat-tag-on-cat-red-container: var(--sat-sys-on-cat-red-container);
+  --sat-tag-cat-orange-container: var(--sat-sys-cat-orange-container);
+  --sat-tag-on-cat-orange-container: var(--sat-sys-on-cat-orange-container);
+  --sat-tag-cat-gray-container: var(--sat-sys-cat-gray-container);
+  --sat-tag-on-cat-gray-container: var(--sat-sys-on-cat-gray-container);
+  --sat-tag-info-container: var(--sat-sys-info-container);
+  --sat-tag-on-info-container: var(--sat-sys-on-info-container);
+  --sat-tag-important-container: var(--sat-sys-important-container);
+  --sat-tag-on-important-container: var(--sat-sys-on-important-container);
+  --sat-tag-important-loud-container: var(--sat-sys-important-loud-container);
+  --sat-tag-on-important-loud-container: var(--sat-sys-on-important-loud-container);
+  --sat-tag-success-container: var(--sat-sys-success-container);
+  --sat-tag-on-success-container: var(--sat-sys-on-success-container);
+  --sat-tag-warning-container: var(--sat-sys-warning-container);
+  --sat-tag-on-warning-container: var(--sat-sys-on-warning-container);
+  --sat-tag-neutral-container: var(--sat-sys-neutral-container);
+  --sat-tag-on-neutral-container: var(--sat-sys-on-neutral-container);
+  --sat-tag-neutral-quiet-container: transparent;
+  --sat-tag-on-neutral-quiet-container: var(--mat-sys-on-surface);
+  --sat-tag-label-font: var(--mat-sys-label-large-font);
+  --sat-tag-label-size: var(--mat-sys-label-large-size);
+  --sat-tag-label-line-height: var(--mat-sys-label-large-line-height);
+  --sat-tag-label-tracking: var(--mat-sys-label-large-tracking);
+  --sat-tag-label-weight: var(--mat-sys-label-large-weight);
+  --sat-tag-corner: var(--mat-sys-corner-extra-small);
+  --mat-sys-body-medium: var(--mat-sys-body-medium-weight) 0.875rem/1.375rem var(--mat-sys-body-medium-font);
+  --mat-sys-body-medium-line-height: 1.375rem;
+  --mat-sys-body-small: var(--mat-sys-body-small-weight) 0.75rem/1.125rem var(--mat-sys-body-small-font);
+  --mat-sys-body-small-line-height: 1.125rem;
+  --mat-focus-indicator-border-width: 2px;
+  --mat-focus-indicator-border-color: var(--mat-sys-primary);
+  --mat-focus-indicator-display: block;
+  --mat-sys-background: var(--mat-sys-surface-container-low);
+  --mat-button-protected-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-elevated-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-filled-container-color: var(--mat-sys-surface-container-low);
+  --mat-expansion-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-paginator-container-background-color: transparent;
+  --mat-sidenav-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-stepper-container-color: transparent;
+  --mat-table-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-table-row-item-outline-color: var(--mat-sys-outline-variant);
+  --mat-toolbar-container-background-color: var(--mat-sys-surface-container-lowest);
+  --mat-tree-container-background-color: transparent;
+  --mat-slider-inactive-track-color: var(--mat-sys-secondary);
+  --mat-slider-with-tick-marks-inactive-container-color: var(--mat-sys-on-secondary-container);
+  --mat-slider-with-tick-marks-inactive-container-opacity: 1;
+  --mat-slider-with-tick-marks-active-container-opacity: 1;
+  --mat-progress-bar-track-color: var(--mat-sys-secondary-container);
+  --mat-progress-bar-track-shape: var(--mat-sys-corner-full);
+  --mat-tab-divider-color: var(--mat-sys-outline-variant);
+}
+html[data-app-theme=light] html {
+  --mat-sys-on-surface: initial;
+}
+.mat-app-background {
+  background-color: var(--mat-app-background-color, var(--mat-sys-background, transparent));
+  color: var(--mat-app-text-color, var(--mat-sys-on-background, inherit));
+}
+html[data-app-theme=light] .sat-rich-tooltip-container {
+  box-shadow:
+    0px 3px 1px -2px rgba(0, 0, 0, 0.2),
+    0px 2px 2px 0px rgba(0, 0, 0, 0.14),
+    0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+  background: var(--mat-sys-surface-container);
+}
+html[data-app-theme=light] .sat-rich-tooltip-title {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=light] .sat-rich-tooltip-content {
+  color: var(--mat-sys-on-surface-variant);
+}
+html[data-app-theme=light] .sat-rich-tooltip-title {
+  font: var(--mat-sys-title-small-font);
+  font-size: var(--mat-sys-title-small-size);
+  line-height: var(--mat-sys-title-small-line-height);
+  letter-spacing: var(--mat-sys-title-small-tracking);
+  font-weight: var(--mat-sys-title-small-weight);
+}
+html[data-app-theme=light] .sat-rich-tooltip-content {
+  font: var(--mat-sys-body-medium-font);
+  font-size: var(--mat-sys-body-medium-size);
+  line-height: var(--mat-sys-body-medium-line-height);
+  letter-spacing: var(--mat-sys-body-medium-tracking);
+  font-weight: var(--mat-sys-body-medium-weight);
+}
+html[data-app-theme=light].sat-form-field-error-icon mat-form-field mat-error,
+html[data-app-theme=light].sat-form-field-error-icon mat-form-field [matError] {
+  padding-top: 3px;
+}
+html[data-app-theme=light].sat-form-field-error-icon mat-error::before,
+html[data-app-theme=light].sat-form-field-error-icon [matError]::before {
+  display: inline-block;
+  content: "";
+  margin-block-end: -5px;
+  margin-inline-end: 4px;
+  width: 18px;
+  height: 18px;
+  background-color: currentColor;
+  -webkit-mask-image: var(--sat-form-field-error-mask-image);
+  mask-image: var(--sat-form-field-error-mask-image);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+html[data-app-theme=light].sat-form-field-error-icon mat-error:has(mat-icon)::before,
+html[data-app-theme=light].sat-form-field-error-icon [matError]:has(mat-icon)::before {
+  display: none;
+}
+html[data-app-theme=light] mat-icon svg {
+  display: block;
+}
+html[data-app-theme=light] a:where(:link) {
+  color: var(--mat-sys-primary);
+}
+html[data-app-theme=light] a:where(:link):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+}
+html[data-app-theme=light] a:where(:visited) {
+  color: var(--mat-sys-secondary);
+}
+html[data-app-theme=light] a:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-secondary-container);
+}
+html[data-app-theme=light] a:where(:focus-visible) {
+  outline: 1px solid currentcolor;
+  outline-offset: 0.125rem;
+  border-radius: 0.25rem;
+}
+html[data-app-theme=light] .mat-display-large,
+html[data-app-theme=light] .mat-typography .mat-display-large,
+html[data-app-theme=light] .mat-typography h1 {
+  font:
+    400 3.562rem / 4rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: -0.016rem;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=light] .mat-display-medium,
+html[data-app-theme=light] .mat-typography .mat-display-medium,
+html[data-app-theme=light] .mat-typography h2 {
+  font:
+    400 2.812rem / 3.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=light] .mat-display-small,
+html[data-app-theme=light] .mat-typography .mat-display-small,
+html[data-app-theme=light] .mat-typography h3 {
+  font:
+    400 2.25rem / 2.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=light] .mat-headline-large,
+html[data-app-theme=light] .mat-typography .mat-headline-large,
+html[data-app-theme=light] .mat-typography h4 {
+  font:
+    400 2rem / 2.5rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=light] .mat-headline-medium,
+html[data-app-theme=light] .mat-typography .mat-headline-medium,
+html[data-app-theme=light] .mat-typography h5 {
+  font:
+    400 1.75rem / 2.25rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=light] .mat-headline-small,
+html[data-app-theme=light] .mat-typography .mat-headline-small,
+html[data-app-theme=light] .mat-typography h6 {
+  font:
+    400 1.5rem / 2rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+  margin: 0 0 0.5em;
+}
+html[data-app-theme=light] .mat-title-large,
+html[data-app-theme=light] .mat-typography .mat-title-large {
+  font:
+    400 1.375rem / 1.75rem "Figtree",
+    "Noto Sans",
+    sans-serif;
+  letter-spacing: 0;
+}
+html[data-app-theme=light] .mat-title-medium,
+html[data-app-theme=light] .mat-typography .mat-title-medium {
+  font: 500 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.009rem;
+}
+html[data-app-theme=light] .mat-title-small,
+html[data-app-theme=light] .mat-typography .mat-title-small {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=light] .mat-body-large,
+html[data-app-theme=light] .mat-typography .mat-body-large,
+html[data-app-theme=light] .mat-typography {
+  font: 400 1rem / 1.5rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=light] .mat-body-large p,
+html[data-app-theme=light] .mat-typography .mat-body-large p,
+html[data-app-theme=light] .mat-typography p {
+  margin: 0 0 0.75em;
+}
+html[data-app-theme=light] .mat-body-medium,
+html[data-app-theme=light] .mat-typography .mat-body-medium {
+  font: 400 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.016rem;
+}
+html[data-app-theme=light] .mat-body-small,
+html[data-app-theme=light] .mat-typography .mat-body-small {
+  font: 400 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.025rem;
+}
+html[data-app-theme=light] .mat-label-large,
+html[data-app-theme=light] .mat-typography .mat-label-large {
+  font: 500 0.875rem / 1.25rem "Noto Sans", sans-serif;
+  letter-spacing: 0.006rem;
+}
+html[data-app-theme=light] .mat-label-medium,
+html[data-app-theme=light] .mat-typography .mat-label-medium {
+  font: 500 0.75rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=light] .mat-label-small,
+html[data-app-theme=light] .mat-typography .mat-label-small {
+  font: 500 0.688rem / 1rem "Noto Sans", sans-serif;
+  letter-spacing: 0.031rem;
+}
+html[data-app-theme=light] .cdk-visually-hidden {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  width: 1px;
+  white-space: nowrap;
+  outline: 0;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  left: 0;
+}
+[dir=rtl] html[data-app-theme=light] .cdk-visually-hidden {
+  left: auto;
+  right: 0;
+}
+html[data-app-theme=light] mat-list,
+html[data-app-theme=light] mat-action-list,
+html[data-app-theme=light] mat-selection-list,
+html[data-app-theme=light] mat-nav-list {
+  --mat-list-list-item-leading-icon-start-space: 12px;
+  --mat-list-list-item-leading-icon-end-space: 12px;
+}
+html[data-app-theme=light] mat-nav-list {
+  --mat-list-active-indicator-shape: 12px;
+  --mat-list-list-item-leading-icon-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-color: var(--mat-sys-on-surface-variant);
+  --mat-list-list-item-label-text-font: var(--mat-sys-label-large-font);
+  --mat-list-list-item-label-text-line-height: var(--mat-sys-label-large-line-height);
+  --mat-list-list-item-label-text-size: var(--mat-sys-label-large-size);
+  --mat-list-list-item-label-text-tracking: var(--mat-sys-label-large-tracking);
+  --mat-list-list-item-label-text-weight: var(--mat-sys-label-large-weight);
+}
+html[data-app-theme=light] .mat-mdc-list-item.mdc-list-item.mdc-list-item--activated .mdc-list-item__primary-text {
+  font-weight: var(--mat-sys-label-large-weight-prominent);
+}
+@supports selector(:focus-visible) {
+  html[data-app-theme=light] .mat-focus-indicator:focus:not(:focus-visible)::before,
+  html[data-app-theme=light] :focus:not(:focus-visible) .mat-focus-indicator::before {
+    content: none !important;
+  }
+}
+html[data-app-theme=light] .mat-focus-indicator::before {
+  z-index: 1;
+}
+html[data-app-theme=light] [mat-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-container-shape, var(--mat-sys-corner-large)) + 4px );
+}
+html[data-app-theme=light] [mat-mini-fab] {
+  --mat-focus-indicator-border-radius: calc( var(--mdc-fab-small-container-shape, var(--mat-sys-corner-medium)) + 4px );
+}
+html[data-app-theme=light] .mat-calendar-body-cell {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=light] mat-expansion-panel-header {
+  --mat-focus-indicator-border-radius: var( --mat-expansion-container-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=light] mat-step-header {
+  --mat-focus-indicator-border-radius: var( --mat-stepper-header-hover-state-layer-shape, var(--mat-sys-corner-medium, 12px) );
+}
+html[data-app-theme=light] mat-tab-header {
+  --mat-focus-indicator-border-radius: var(--mat-sys-corner-small, 8px);
+}
+html[data-app-theme=light] mat-slide-toggle {
+  --mat-focus-indicator-border-color: var(--sat-sys-primary-loud);
+}
+html[data-app-theme=light] mat-snack-bar-container {
+  --mat-focus-indicator-border-color: var(--mat-sys-inverse-primary);
+}
+html[data-app-theme=light] [mat-sort-header].cdk-program-focused .mat-sort-header-container,
+html[data-app-theme=light] [mat-sort-header].cdk-keyboard-focused .mat-sort-header-container {
+  border-bottom: none;
+}
+html[data-app-theme=light] .mat-nested-tree-node.mat-focus-indicator {
+  outline: none;
+  display: block;
+}
+html[data-app-theme=light] .mat-tree-node.mat-focus-indicator {
+  outline: none;
+}
+html[data-app-theme=light] {
+  --hxp-primary: var(--mat-sys-primary);
+  --hxp-on-surface: var(--mat-sys-on-surface);
+  --hxp-on-surface-variant: var(--mat-sys-on-surface-variant);
+  --hxp-muted: color-mix(in srgb, var(--mat-sys-on-surface-variant) 72%, transparent);
+  --hxp-surface: var(--mat-sys-surface);
+  --hxp-surface-container-low: var(--mat-sys-surface-container-low);
+  --hxp-surface-container: var(--mat-sys-surface-container);
+  --hxp-surface-container-lowest: var(--mat-sys-surface-container-lowest);
+  --hxp-primary-container: var(--mat-sys-primary-container);
+  --hxp-on-primary-container: var(--mat-sys-on-primary-container);
+  --hxp-outline-variant: var(--mat-sys-outline-variant);
+  --hxp-error: var(--mat-sys-error);
+  --hxp-folder-icon: var(--mat-sys-tertiary);
+  --hxp-input-border: var(--mat-sys-outline-variant);
+  --hxp-input-bg: var(--mat-sys-surface);
+  --hxp-hover-surface: var(--mat-sys-surface-container-low);
+  --hxp-on-primary: var(--mat-sys-on-primary);
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+app-root {
+  display: block;
+  height: 100%;
+}
+html[data-app-theme] body.mat-typography sat-platform-nav h2.sat-platform-nav-title {
+  font-family: var(--sat-platform-nav-title-font);
+  font-size: var(--sat-platform-nav-title-medium-size, 1rem);
+  font-style: normal;
+  font-weight: 500;
+  line-height: var(--sat-platform-nav-title-line-height, 1.5rem);
+  letter-spacing: var(--sat-platform-nav-title-letter-spacing, 0.009rem);
+  margin: 0;
+}
+html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-nav-title {
+  font-family: var(--sat-platform-nav-title-font);
+  font-size: var(--sat-platform-nav-title-medium-size, 1rem);
+  font-style: normal;
+  font-weight: 500;
+  line-height: var(--sat-platform-nav-title-line-height, 1.5rem);
+  letter-spacing: var(--sat-platform-nav-title-letter-spacing, 0.009rem);
+  margin: 0;
+}
+sat-platform-nav .sat-platform-nav-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+sat-platform-nav .sat-platform-nav-list::-webkit-scrollbar {
+  display: none;
+}
+sat-platform-nav .sat-platform-nav-list:hover {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+sat-app-header .sat-app-header-leading-container {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+sat-app-header .sat-app-header-title,
+sat-app-header h1.sat-app-header-title,
+sat-app-header h2.sat-app-header-title {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+sat-app-header .sat-app-header-trailing-container,
+sat-app-header .sat-app-header-actions,
+sat-app-header sat-word-mark-logo.sat-app-header-logo,
+sat-app-header .sat-app-header-logo sat-word-mark-logo {
+  flex-shrink: 0;
+}
+sat-platform-nav p.sat-platform-nav-item-label {
+  margin: 0 !important;
+}
+.mat-mdc-fab.mat-accent {
+  --mdc-fab-container-color: var(--mat-sys-primary);
+  --mat-fab-foreground-color: var(--mat-sys-on-primary);
+}
+.mat-mdc-mini-fab.mat-accent {
+  --mdc-fab-small-container-color: var(--mat-sys-primary);
+  --mat-fab-small-foreground-color: var(--mat-sys-on-primary);
+}
+.mat-mdc-form-field-appearance-outline {
+  overflow: visible;
+}
+.mat-mdc-form-field-appearance-outline .mat-mdc-text-field-wrapper {
+  overflow: visible;
+}
+.asset-type-pill,
+.result-type-pill,
+.simple-list-type-badge,
+.type-badge,
+.doc-type-badge,
+.task-workflow-badge,
+.state-badge,
+.version-badge,
+.classify-pill,
+.platform-badge,
+.state-chip,
+.tag-chip,
+.collection-chip,
+.sentiment-badge,
+.ai-tag-chip,
+.ai-anomaly-badge,
+.overdue-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--agentic-pill-padding, 2px 8px);
+  border-radius: var(--agentic-pill-radius, 999px);
+  background: var(--agentic-pill-background, var(--mat-sys-surface-container-high, #eef0f4));
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2));
+  color: var(--agentic-pill-color, var(--mat-sys-on-surface-variant, #5c5f6b));
+  font-size: var(--agentic-pill-font-size, 11px);
+  font-weight: var(--agentic-pill-font-weight, 600);
+  line-height: 1;
+  text-align: center;
+  max-width: var(--agentic-pill-max-width, 120px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.sat-tag.sat-tag {
+  --sat-tag-cat-blue-container: var( --agentic-pill-background, var(--mat-sys-surface-container-high, #eef0f4) );
+  --sat-tag-on-cat-blue-container: var( --agentic-pill-color, var(--mat-sys-on-surface-variant, #5c5f6b) );
+  --sat-tag-info-container: var( --agentic-pill-background, var(--mat-sys-surface-container-high, #eef0f4) );
+  --sat-tag-on-info-container: var( --agentic-pill-color, var(--mat-sys-on-surface-variant, #5c5f6b) );
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--agentic-pill-padding, 2px 8px);
+  border-radius: var(--agentic-pill-radius, 999px);
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2));
+  font-size: var(--agentic-pill-font-size, 11px);
+  font-weight: var(--agentic-pill-font-weight, 600);
+  line-height: 1;
+  text-align: center;
+  max-width: var(--agentic-pill-max-width, 120px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  min-height: auto;
+  box-shadow: none;
+}
+sat-category-tag,
+sat-status-tag {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+.sat-tag.sat-tag .sat-tag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.sat-tag.sat-tag .sat-tag-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+.mat-mdc-dialog-container {
+  --mat-dialog-subhead-size: var(--agentic-dialog-title-font-size, 1.375rem);
+  --mat-dialog-subhead-line-height: var(--agentic-dialog-title-line-height, 1.75rem);
+  --mat-dialog-subhead-weight: var(--agentic-dialog-title-font-weight, 500);
+  --mat-dialog-subhead-tracking: 0;
+}
+html .mat-mdc-dialog-container .mat-mdc-dialog-title.mat-mdc-dialog-title {
+  font-size: var(--agentic-dialog-title-font-size, 1.375rem);
+  line-height: var(--agentic-dialog-title-line-height, 1.75rem);
+  font-weight: var(--agentic-dialog-title-font-weight, 500);
+  letter-spacing: 0;
+}
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  width: auto;
+  max-width: 95vw;
+}
+.mat-mdc-tooltip.mat-tooltip-multiline .mdc-tooltip__surface {
+  max-width: min(20rem, 100vw - 1.5rem);
+  white-space: pre-line;
+  text-align: center;
+  line-height: 1.4;
+  padding-block: 6px;
+}
+.mat-mdc-tooltip.selection-topbar-tooltip .mdc-tooltip__surface {
+  max-width: min(18rem, 100vw - 2rem);
+  white-space: normal;
+  text-align: center;
+  line-height: 1.35;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: var(--mat-sys-inverse-surface, #2f3033);
+  color: var(--mat-sys-inverse-on-surface, #f2f0f4);
+  box-shadow: var(--mat-sys-level3, 0 4px 14px rgba(0, 0, 0, 0.2784313725));
+}
+.cdk-overlay-pane.document-compare-dialog-panel {
+  max-width: 96vw !important;
+}
+.document-compare-dialog-panel .mat-mdc-dialog-surface {
+  max-width: 96vw;
+}
+.cdk-overlay-container .mat-mdc-tooltip-panel:has(.selection-topbar-tooltip) {
+  z-index: 1300;
+}
+
+/* angular:styles/global:styles */
+/*# sourceMappingURL=styles.css.map */

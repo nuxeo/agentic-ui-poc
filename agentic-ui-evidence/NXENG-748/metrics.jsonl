@@ -1,0 +1,7 @@
+{"at":"2026-09-16T12:29:36.694Z","type":"start","ticket":"NXENG-748","kind":"bug","model":"auto","account":"akshitha.koppaka@hyland.com","branch":"main","node":"v20.20.2"}
+{"at":"2026-09-16T12:34:07.783Z","type":"phase","phase":"ticket"}
+{"at":"2026-09-16T12:34:08.085Z","type":"phase","phase":"expected"}
+{"at":"2026-09-16T12:34:08.400Z","type":"phase","phase":"reproduce"}
+{"at":"2026-09-16T12:48:52.985Z","type":"phase","phase":"pr"}
+{"at":"2026-09-16T12:51:25.314Z","type":"end","outcome":"pr-open"}
+{"at":"2026-09-17T05:51:04.092Z","type":"phase","phase":"evidence-before"}

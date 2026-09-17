@@ -1,0 +1,153 @@
+
+=== Recapture start 2026-09-15T17:06:04.0087645+05:30 count=44 ===
+17:06:04 START NXENG-746
+focus: A Hyland
+OK NXENG-746
+17:06:19 START NXENG-747
+focus: INPUT 
+OK NXENG-747
+17:06:42 START NXENG-748
+focus: INPUT 
+OK NXENG-748
+17:06:58 START NXENG-749
+SKIP NXENG-749 already re-captured
+17:06:58 START NXENG-750
+focus: INPUT 
+OK NXENG-750
+17:07:21 START NXENG-751
+focus: INPUT 
+OK NXENG-751
+17:07:44 START NXENG-752
+focus: INPUT 
+OK NXENG-752
+17:08:02 START NXENG-753
+focus: INPUT 
+OK NXENG-753
+17:08:19 START NXENG-754
+focus: INPUT 
+OK NXENG-754
+17:08:36 START NXENG-755
+focus: INPUT 
+OK NXENG-755
+17:08:52 START NXENG-756
+focus: INPUT 
+OK NXENG-756
+17:09:14 START NXENG-758
+SKIP NXENG-758 already re-captured
+17:09:14 START NXENG-759
+browse items: 15
+focus: A Skip to main content
+OK NXENG-759
+17:09:37 START NXENG-760
+focus: A Skip to main content
+OK NXENG-760
+17:09:57 START NXENG-761
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-761
+17:10:18 START NXENG-762
+browse items: 15
+focus: A Skip to main content
+OK NXENG-762
+17:10:39 START NXENG-763
+
+=== Recapture resume 2026-09-15T17:10:53.2741401+05:30 eligible=44 todo=28 ===
+17:10:53 START NXENG-763
+focus: A Skip to main content
+OK NXENG-763
+17:11:12 START NXENG-764
+focus: A Skip to main content
+OK NXENG-764
+17:11:32 START NXENG-765
+browse items: 15
+focus: A Skip to main content
+OK NXENG-765
+17:11:53 START NXENG-766
+focus: A Skip to main content
+OK NXENG-766
+17:12:15 START NXENG-767
+browse items: 15
+focus: A Skip to main content
+OK NXENG-767
+17:12:37 START NXENG-768
+focus: A Skip to main content
+OK NXENG-768
+17:12:56 START NXENG-769
+focus: A Skip to main content
+OK NXENG-769
+17:13:15 START NXENG-770
+browse items: 15
+focus: A Skip to main content
+OK NXENG-770
+17:13:37 START NXENG-771
+focus: A Skip to main content
+OK NXENG-771
+17:13:54 START NXENG-772
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-772
+17:14:15 START NXENG-773
+focus: A Skip to main content
+OK NXENG-773
+17:14:34 START NXENG-774
+focus: A Skip to main content
+OK NXENG-774
+17:14:53 START NXENG-775
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-775
+17:15:14 START NXENG-776
+focus: A Skip to main content
+OK NXENG-776
+17:15:33 START NXENG-777
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-777
+17:15:54 START NXENG-778
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-778
+17:16:14 START NXENG-779
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-779
+17:16:34 START NXENG-780
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-780
+17:16:55 START NXENG-781
+focus: A Skip to main content
+OK NXENG-781
+17:17:13 START NXENG-782
+focus: A Skip to main content
+OK NXENG-782
+17:17:32 START NXENG-783
+browse items: 15
+focus: A Skip to main content
+OK NXENG-783
+17:17:52 START NXENG-784
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-784
+17:18:13 START NXENG-785
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-785
+17:18:33 START NXENG-786
+focus: A Skip to main content
+OK NXENG-786
+17:18:50 START NXENG-787
+browse items: 15
+focus: A Browse (adf-hx POC)
+OK NXENG-787
+17:19:10 START NXENG-788
+browse items: 15
+focus: A Skip to main content
+OK NXENG-788
+17:19:30 START NXENG-789
+focus: A Skip to main content
+OK NXENG-789
+17:19:47 START NXENG-790
+focus: A Skip to main content
+OK NXENG-790
+=== Recapture batch end 2026-09-15T17:20:06.3484591+05:30 ok=28 skip=0 fail=0 ===

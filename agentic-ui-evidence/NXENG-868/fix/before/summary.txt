@@ -1,0 +1,1 @@
+[Dashboard] [Needs review] Focused element may be obscured (2.4.11 Focus Not Obscured (Minimum)) (WCAG AA)

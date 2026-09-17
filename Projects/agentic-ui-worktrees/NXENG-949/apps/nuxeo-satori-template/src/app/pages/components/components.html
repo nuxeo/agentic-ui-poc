@@ -1,0 +1,240 @@
+<div class="components-page">
+  <header class="page-header">
+    <div>
+      <h1>UI Components Library</h1>
+      <p class="subtitle">
+        All components are imported from
+        <code>&#64;nuxeo-satori/platform/ui</code>
+      </p>
+      <p class="description">
+        This showcase demonstrates every UI component available to customer extensions. Click the
+        buttons below to interact with each component.
+      </p>
+    </div>
+
+    <div class="action-buttons">
+      <button mat-raised-button color="primary" (click)="openConfirmDialog()">
+        <mat-icon>help_outline</mat-icon>
+        Confirm Dialog
+      </button>
+      <button mat-raised-button color="primary" (click)="openShareDialog()">
+        <mat-icon>share</mat-icon>
+        Share Dialog
+      </button>
+      <button mat-raised-button color="primary" (click)="openExportDialog()">
+        <mat-icon>download</mat-icon>
+        Export Dialog
+      </button>
+      <button mat-raised-button color="primary" (click)="openSavedSearchDialog()">
+        <mat-icon>save</mat-icon>
+        Save Search
+      </button>
+      <button mat-raised-button color="primary" (click)="toggleSelection()">
+        <mat-icon>check_box</mat-icon>
+        Selection Bar
+      </button>
+    </div>
+  </header>
+
+  <!-- Selection Topbar Demo -->
+  @if (showSelection()) {
+    <lib-selection-topbar
+      [selectedCount]="mockSelectedItems().length"
+      [selectedItems]="mockSelectedItems()"
+      (cleared)="clearSelection()"
+      class="selection-demo"
+    />
+  }
+
+  <!-- Layout Components -->
+  <section class="section">
+    <h2>
+      <mat-icon>view_module</mat-icon>
+      Layout Components
+    </h2>
+    <p class="section-description">
+      <code>WidgetGridComponent</code> and <code>WidgetContainerComponent</code> provide responsive
+      grid layouts and card-style containers for building dashboards.
+    </p>
+
+    <lib-widget-grid [columns]="3">
+      <lib-widget-container
+        title="Documents"
+        icon="folder"
+        iconColor="var(--mat-sys-primary, #1976d2)"
+      >
+        <div class="widget-content">
+          <div class="stat-value">1,247</div>
+          <div class="stat-label">Total documents</div>
+        </div>
+      </lib-widget-container>
+
+      <lib-widget-container
+        title="Storage"
+        icon="storage"
+        iconColor="var(--mat-sys-tertiary, #388e3c)"
+      >
+        <div class="widget-content">
+          <div class="stat-value">24.8 GB</div>
+          <div class="stat-label">Used storage</div>
+        </div>
+      </lib-widget-container>
+
+      <lib-widget-container title="Users" icon="people" iconColor="var(--mat-sys-error, #f57c00)">
+        <div class="widget-content">
+          <div class="stat-value">42</div>
+          <div class="stat-label">Active users</div>
+        </div>
+      </lib-widget-container>
+    </lib-widget-grid>
+  </section>
+
+  <!-- Recent Activity -->
+  <section class="section">
+    <h2>
+      <mat-icon>history</mat-icon>
+      Widget Container Example
+    </h2>
+
+    <lib-widget-container title="Recent Activity" icon="notifications">
+      <div class="activity-list">
+        <div class="activity-item">
+          <mat-icon class="activity-icon success">check_circle</mat-icon>
+          <div class="activity-details">
+            <div class="activity-title">Document uploaded successfully</div>
+            <div class="activity-time">2 minutes ago</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <mat-icon class="activity-icon warning">schedule</mat-icon>
+          <div class="activity-details">
+            <div class="activity-title">Workflow pending approval</div>
+            <div class="activity-time">15 minutes ago</div>
+          </div>
+        </div>
+        <div class="activity-item">
+          <mat-icon class="activity-icon info">person_add</mat-icon>
+          <div class="activity-details">
+            <div class="activity-title">New user added to workspace</div>
+            <div class="activity-time">1 hour ago</div>
+          </div>
+        </div>
+      </div>
+    </lib-widget-container>
+  </section>
+
+  <!-- Component Reference -->
+  <section class="section">
+    <h2>
+      <mat-icon>code</mat-icon>
+      Available Components
+    </h2>
+
+    <lib-widget-grid [columns]="2">
+      <lib-widget-container title="Dialog Components">
+        <div class="component-list">
+          <div class="component-item">
+            <code>ConfirmDialogComponent</code>
+            <span class="badge live">Live demo above</span>
+            <p class="component-desc">Confirmation prompts for destructive actions</p>
+          </div>
+          <div class="component-item">
+            <code>ShareDialogComponent</code>
+            <span class="badge live">Live demo above</span>
+            <p class="component-desc">Document sharing with link copying</p>
+          </div>
+          <div class="component-item">
+            <code>ExportDialogComponent</code>
+            <span class="badge live">Live demo above</span>
+            <p class="component-desc">Export options (PDF, ZIP, XML, Thumbnail)</p>
+          </div>
+          <div class="component-item">
+            <code>SavedSearchDialogComponent</code>
+            <span class="badge live">Live demo above</span>
+            <p class="component-desc">Save and manage search queries</p>
+          </div>
+          <div class="component-item">
+            <code>DocumentCompareDialogComponent</code>
+            <span class="badge">Requires documents</span>
+            <p class="component-desc">Side-by-side document comparison</p>
+          </div>
+        </div>
+      </lib-widget-container>
+
+      <lib-widget-container title="Display Components">
+        <div class="component-list">
+          <div class="component-item">
+            <code>SelectionTopbarComponent</code>
+            <span class="badge live">Live demo above</span>
+            <p class="component-desc">Bulk action bar for selected items</p>
+          </div>
+          <div class="component-item">
+            <code>WidgetGridComponent</code>
+            <span class="badge active">In use on this page</span>
+            <p class="component-desc">Responsive grid layout system</p>
+          </div>
+          <div class="component-item">
+            <code>WidgetContainerComponent</code>
+            <span class="badge active">In use on this page</span>
+            <p class="component-desc">Card-style container with header</p>
+          </div>
+          <div class="component-item">
+            <code>DocumentViewerComponent</code>
+            <span class="badge">Requires document</span>
+            <p class="component-desc">Rich document preview component</p>
+          </div>
+        </div>
+      </lib-widget-container>
+    </lib-widget-grid>
+  </section>
+
+  <!-- Code Example -->
+  <section class="section">
+    <h2>
+      <mat-icon>integration_instructions</mat-icon>
+      Usage in Your Extension
+    </h2>
+
+    <mat-card class="code-card">
+      <mat-card-content>
+        <pre class="code-block">
+import {{ '{' }} Component {{ '}' }} from '&#64;angular/core';
+
+// Import components from the platform package
+import {{ '{' }}
+  WidgetContainerComponent,
+  WidgetGridComponent,
+  ConfirmDialogComponent,
+{{ '}' }} from '&#64;nuxeo-satori/platform/ui';
+
+&#64;Component({{ '{' }}
+  selector: 'app-my-dashboard',
+  standalone: true,
+  imports: [
+    WidgetContainerComponent,
+    WidgetGridComponent,
+  ],
+  template: \`
+    &lt;lib-widget-grid [columns]="3"&gt;
+      &lt;lib-widget-container title="My Widget" icon="dashboard"&gt;
+        &lt;!-- Your content --&gt;
+      &lt;/lib-widget-container&gt;
+    &lt;/lib-widget-grid&gt;
+  \`
+{{ '}' }})
+export class MyDashboardComponent {{ '{' }} {{ '}' }}</pre>
+      </mat-card-content>
+    </mat-card>
+  </section>
+
+  <!-- Integration Note -->
+  <div class="info-banner">
+    <mat-icon>info</mat-icon>
+    <div>
+      <strong>For customer extensions:</strong>
+      All components shown are available in your Layer 2 extension code. Import them from
+      <code>&#64;nuxeo-satori/platform/ui</code> and use them in your own pages, dialogs, and
+      dashboards. No forking required.
+    </div>
+  </div>
+</div>

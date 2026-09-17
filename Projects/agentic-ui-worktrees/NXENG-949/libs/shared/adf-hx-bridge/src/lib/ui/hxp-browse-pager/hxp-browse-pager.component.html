@@ -1,0 +1,21 @@
+<nav class="hxp-pager" aria-label="Document list pages">
+  <span class="hxp-pager__range" role="status">{{ rangeLabel() }}</span>
+  <button
+    type="button"
+    class="hxp-pager__btn"
+    aria-label="Previous page"
+    [disabled]="!canPrevious()"
+    (click)="previous()"
+  >
+    Previous
+  </button>
+  <button
+    type="button"
+    class="hxp-pager__btn"
+    aria-label="Next page"
+    [disabled]="!canNext()"
+    (click)="next()"
+  >
+    Next
+  </button>
+</nav>

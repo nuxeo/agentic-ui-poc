@@ -1,0 +1,18 @@
+<div class="hxp-browse-nav-drawer">
+  <div class="drawer-header">
+    <div class="drawer-title" role="heading" aria-level="2">{{ title() }}</div>
+    <button type="button" class="refresh-btn" title="Refresh" (click)="refreshTree()">
+      <hxp-icon name="refresh" size="sm" [decorative]="true" />
+    </button>
+  </div>
+
+  <!-- Upstream's tree owns its own loading, empty and expansion state, so the wrappers our
+       hand-written tree needed are gone. It emits the selected Document rather than a path. -->
+  <div class="folder-tree">
+    <hxp-document-tree
+      [rootDocument]="rootDocument"
+      [multiSelection]="false"
+      (selectedDocument)="onDocumentSelected($event)"
+    />
+  </div>
+</div>

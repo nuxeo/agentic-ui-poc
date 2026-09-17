@@ -1,0 +1,36 @@
+﻿{
+    "capturedAt":  "2026-07-14T06:26:48.2489326Z",
+    "request":  {
+                    "method":  "GET",
+                    "url":  "https://satori-ui.beta.nuxeocloud.com/nuxeo/api/v1/me",
+                    "headers":  {
+                                    "Authorization":  "Basic \u003credacted\u003e"
+                                },
+                    "body":  ""
+                },
+    "status":  "success",
+    "response":  {
+                     "entity-type":  "user",
+                     "id":  "randomUser01",
+                     "name":  "randomUser01",
+                     "properties":  {
+                                        "firstName":  "Random",
+                                        "lastName":  "User 01",
+                                        "tenantId":  null,
+                                        "groups":  [
+                                                       "readonly-group"
+                                                   ],
+                                        "company":  null,
+                                        "email":  "saicharan.somisetty@hyland.com",
+                                        "username":  "randomUser01"
+                                    },
+                     "extendedGroups":  [
+                                            {
+                                                "name":  "readonly-group",
+                                                "label":  "Readonly Group",
+                                                "url":  "group/readonly-group"
+                                            }
+                                        ],
+                     "isAnonymous":  false
+                 }
+}

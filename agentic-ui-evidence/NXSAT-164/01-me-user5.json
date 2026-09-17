@@ -1,0 +1,33 @@
+﻿{
+    "capturedAt":  "2026-07-14T06:30:06.0767551Z",
+    "request":  {
+                    "method":  "GET",
+                    "url":  "https://satori-ui.beta.nuxeocloud.com/nuxeo/api/v1/me",
+                    "user":  "user5"
+                },
+    "status":  "success",
+    "response":  {
+                     "entity-type":  "user",
+                     "id":  "user5",
+                     "name":  "user5",
+                     "properties":  {
+                                        "firstName":  "Regular",
+                                        "lastName":  "User5",
+                                        "tenantId":  null,
+                                        "groups":  [
+                                                       "members"
+                                                   ],
+                                        "company":  "Nuxeo QA",
+                                        "email":  "user5@test.nuxeo.com",
+                                        "username":  "user5"
+                                    },
+                     "extendedGroups":  [
+                                            {
+                                                "name":  "members",
+                                                "label":  "Members group",
+                                                "url":  "group/members"
+                                            }
+                                        ],
+                     "isAnonymous":  false
+                 }
+}

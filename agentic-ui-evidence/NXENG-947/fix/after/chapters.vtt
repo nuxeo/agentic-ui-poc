@@ -1,0 +1,16 @@
+WEBVTT
+
+NOTE Offsets are measured from browser-context creation and are accurate to roughly
+NOTE 100ms — recording starts inside newContext, marginally before the first timestamp.
+
+1
+00:00:02.304 --> 00:00:07.562
+Act 1 — Open the login screen
+
+2
+00:00:07.562 --> 00:00:10.525
+Act 2 — Landmarks contain the sign-in panel
+
+3
+00:00:10.525 --> 00:00:18.525
+Act 3 — Sign-in still works

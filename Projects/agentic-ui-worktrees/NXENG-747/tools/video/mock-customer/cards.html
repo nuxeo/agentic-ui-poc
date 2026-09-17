@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Acme Insurance — card</title>
+    <!--
+      Two title cards, and deliberately only two.
+
+      An earlier cut of this screencast was rejected as "more of a PPT
+      presentation": the deck did the talking and the application appeared in
+      cutaways. So this file is not a deck. It holds an opening card and a closing
+      card, together under twenty seconds of a four-minute recording, and
+      everything between them is the real application against the real server.
+
+      It is self-contained — no shared CSS, no deck engine — because
+      `tools/video/deck.html`, `deck.css` and `decks/*.json` belong to another
+      workstream and this scene must not depend on their content.
+    -->
+    <style>
+      :root {
+        --card-bg: #0b1622;
+        --card-fg: #eef4fb;
+        --card-muted: #9fb4ca;
+        --card-accent: #4c9aff;
+        --card-rule: #24405c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--card-bg);
+        color: var(--card-fg);
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+      }
+
+      main {
+        display: none;
+        height: 100%;
+        padding: 7rem 8rem;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      main[data-active='true'] {
+        display: flex;
+      }
+
+      .eyebrow {
+        margin: 0 0 1.25rem;
+        font-size: 1.375rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--card-accent);
+      }
+
+      h1 {
+        margin: 0 0 1.5rem;
+        font-size: 4.25rem;
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+      }
+
+      p.lede {
+        margin: 0 0 2.5rem;
+        max-width: 46ch;
+        font-size: 1.875rem;
+        line-height: 1.45;
+        color: var(--card-muted);
+      }
+
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 1rem;
+        max-width: 62ch;
+      }
+
+      li {
+        padding-left: 2.25rem;
+        position: relative;
+        font-size: 1.625rem;
+        line-height: 1.4;
+      }
+
+      li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.6em;
+        width: 1rem;
+        height: 1rem;
+        border-radius: 3px;
+        background: var(--card-accent);
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, monospace;
+        font-size: 0.92em;
+        color: var(--card-fg);
+      }
+
+      .foot {
+        margin-top: 3rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--card-rule);
+        font-size: 1.25rem;
+        line-height: 1.5;
+        color: var(--card-muted);
+        max-width: 100ch;
+      }
+    </style>
+  </head>
+  <body>
+    <main data-card="open">
+      <p class="eyebrow">Nuxeo Satori — Beta</p>
+      <h1>Acme Insurance builds its own UI.</h1>
+      <p class="lede">
+        Their application. Our platform package. One real Nuxeo server, with their real documents in
+        it.
+      </p>
+      <ul>
+        <li>
+          Their own shell, sign-in, browser, metadata view and search — no adf-hx, no Material
+        </li>
+        <li>Built only on <code>@nuxeo-satori/platform</code> and its services</li>
+        <li>Then customised through the four layers, live, with no rebuild</li>
+      </ul>
+    </main>
+
+    <main data-card="close">
+      <p class="eyebrow">What you just watched</p>
+      <h1>Real data. Real customisation.</h1>
+      <ul>
+        <li>
+          Every document, folder, metadata field and search hit came from Nuxeo on
+          <code>localhost:8080</code> — 11 seeded Acme documents in a repository of ~120
+        </li>
+        <li>
+          <strong>Layer 0</strong> — <code>bootstrap.json</code> beside the bundle: rebranded and
+          re-themed two ways on the same bytes, reload only
+        </li>
+        <li>
+          <strong>Layer 2</strong> — <code>provideAcmeExtensions()</code>, one line in
+          <code>app.config.ts</code>: a nav entry, a fail-closed rule and a panel resolved by ID
+        </li>
+        <li>
+          <strong>Layer 1</strong> — a Nuxeo document: renamed, reordered and hid navigation the
+          build knows nothing about
+        </li>
+      </ul>
+      <p class="foot">
+        Layer 3 (fork the template) is what the whole application on screen is. The Layer 1 manifest
+        is fetched during startup, so it applies from the first load that has a session — an
+        anonymous first load falls back to the packaged defaults, which the shell reports rather
+        than hides.
+      </p>
+    </main>
+
+    <script>
+      const wanted = new URL(location.href).searchParams.get('card') ?? 'open';
+      for (const card of document.querySelectorAll('main')) {
+        card.dataset.active = String(card.dataset.card === wanted);
+      }
+      document.body.dataset.ready = 'true';
+    </script>
+  </body>
+</html>

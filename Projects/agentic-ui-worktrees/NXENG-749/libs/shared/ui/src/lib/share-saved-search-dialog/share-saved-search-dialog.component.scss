@@ -1,0 +1,195 @@
+:host {
+  display: block;
+  width: min(95vw, 1080px);
+  max-width: 95vw;
+  max-height: 90vh;
+}
+
+.dialog-header {
+  position: relative;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  padding-right: 40px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  color: #667085;
+}
+
+mat-dialog-content {
+  padding: 16px 24px 0 !important;
+  overflow: auto;
+  max-height: min(72vh, 780px);
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.loading-container p {
+  margin-top: 16px;
+  color: #667085;
+  font-size: 14px;
+}
+
+.permissions-section {
+  border: 1px solid #eaecf0;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.muted-section {
+  background: #fcfcfd;
+}
+
+.table-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.table-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #101828;
+  flex: 1;
+  min-width: 0;
+}
+
+.section-note {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 4px solid #f97066;
+  color: #667085;
+  background: #fff;
+  line-height: 1.4;
+  font-size: 13px;
+}
+
+.table-wrap {
+  overflow-x: hidden;
+  border-radius: 8px;
+}
+
+.permissions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  table-layout: fixed;
+}
+
+.permissions-table th {
+  text-align: left;
+  padding: 10px 8px;
+  font-weight: 600;
+  color: #344054;
+  border-bottom: 2px solid #e4e7ec;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.permissions-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f2f4f7;
+  vertical-align: middle;
+  color: #475467;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.permissions-table td:first-child {
+  width: 25%;
+}
+
+.permissions-table td:nth-child(2) {
+  width: 20%;
+}
+
+.permissions-table td:nth-child(3) {
+  width: 25%;
+}
+
+.permissions-table td:nth-child(4) {
+  width: 20%;
+}
+
+.actions-cell {
+  width: 10%;
+  text-align: center;
+  padding: 8px 4px;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.edit-btn {
+  color: #175cd3;
+  min-width: 32px;
+}
+
+.delete-btn {
+  color: #f04438;
+  min-width: 32px;
+}
+
+.empty-row {
+  text-align: center;
+  color: #667085;
+  padding: 24px 8px !important;
+  font-style: italic;
+}
+
+.add-btn {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.link-action-btn {
+  color: #175cd3;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.readonly-table td {
+  padding: 10px 8px;
+}
+
+mat-dialog-actions {
+  padding: 16px 24px 20px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

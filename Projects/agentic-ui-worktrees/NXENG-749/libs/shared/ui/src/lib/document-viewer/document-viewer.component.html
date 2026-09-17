@@ -1,0 +1,345 @@
+<div class="viewer-panel">
+  <!-- Content area -->
+  <div class="viewer-content" [class.fit-real]="fitMode() === 'real' && contentType() === 'image'">
+    @if (loading()) {
+      <div class="viewer-loading">
+        <mat-spinner diameter="36" aria-label="Loading" />
+      </div>
+    } @else if (annotationsTab() && !arenderAvailable()) {
+      <div class="viewer-placeholder">
+        <mat-icon class="placeholder-icon">edit_note</mat-icon>
+        <p>Annotations are not available for this document.</p>
+        <span class="mime-label">Use the View tab for the standard preview.</span>
+      </div>
+    } @else if (showARenderViewer()) {
+      @for (rid of [arenderReloadId()]; track rid) {
+        <iframe
+          [src]="arenderUrl()"
+          class="viewer-iframe arender-frame"
+          allow="fullscreen"
+        ></iframe>
+      }
+    } @else {
+      @switch (contentType()) {
+        @case ('image') {
+          <img
+            [src]="blobUrl()"
+            [alt]="fileName()"
+            class="viewer-image"
+            [class.fit-real]="fitMode() === 'real'"
+            [style.transform]="transform()"
+          />
+        }
+        @case ('video') {
+          <div class="viewer-video-container">
+            <video #videoPlayer controls class="viewer-video" [poster]="posterUrl()">
+              @if (videoSources().length > 0) {
+                @for (src of videoSources(); track src.url) {
+                  <source [src]="src.url" [type]="src.mimeType" />
+                }
+              } @else {
+                <source [src]="rawBlobUrl()" />
+              }
+              Your browser does not support video playback.
+            </video>
+          </div>
+        }
+        @case ('audio') {
+          <div class="viewer-audio-wrapper">
+            <mat-icon class="audio-icon">audiotrack</mat-icon>
+            <audio [src]="rawBlobUrl()" controls class="viewer-audio"></audio>
+          </div>
+        }
+        @case ('markdown') {
+          <div class="viewer-markdown-content" [innerHTML]="noteHtml()"></div>
+        }
+        @case ('html') {
+          <iframe
+            class="viewer-iframe viewer-html-frame"
+            [srcdoc]="noteContent()"
+            sandbox="allow-same-origin"
+          ></iframe>
+        }
+        @case ('xml') {
+          <pre class="viewer-preformatted viewer-xml">{{ noteContent() }}</pre>
+        }
+        @case ('text') {
+          <pre class="viewer-preformatted">{{ noteContent() }}</pre>
+        }
+        @case ('pdf') {
+          <iframe [src]="blobUrl()" class="viewer-iframe"></iframe>
+        }
+        @case ('pdfRendition') {
+          <iframe [src]="blobUrl()" class="viewer-iframe"></iframe>
+        }
+        @case ('preview') {
+          <iframe [src]="previewUrl()" class="viewer-iframe"></iframe>
+        }
+        @default {
+          <div class="viewer-placeholder">
+            <mat-icon class="placeholder-icon">insert_drive_file</mat-icon>
+            <p>Preview not available</p>
+            @if (mimeType()) {
+              <span class="mime-label">{{ mimeType() }}</span>
+            }
+          </div>
+        }
+      }
+    }
+  </div>
+
+  <!-- Video storyboard -->
+  @if (showVideoStoryboard()) {
+    <div class="viewer-storyboard">
+      @for (item of storyboard(); track item.timecode) {
+        <button
+          type="button"
+          class="storyboard-item"
+          [matTooltip]="item.label || formatTimecode(item.timecode)"
+          (click)="seekTo(item.timecode)"
+        >
+          <img [src]="item.thumbnailUrl" [alt]="item.label" class="storyboard-thumb" />
+          <span class="storyboard-time">{{ formatTimecode(item.timecode) }}</span>
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Image toolbar (zoom/rotate) -->
+  @if (showImageToolbar()) {
+    <div class="viewer-toolbar">
+      <button mat-icon-button matTooltip="Zoom in" aria-label="Zoom in" (click)="zoomIn()">
+        <mat-icon>zoom_in</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        [matTooltip]="fitMode() === 'width' ? 'Actual size' : 'Fit to viewer'"
+        aria-label="Toggle fit"
+        (click)="toggleFit()"
+      >
+        <mat-icon>{{ fitMode() === 'width' ? 'crop_free' : 'fit_screen' }}</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Zoom out" aria-label="Zoom out" (click)="zoomOut()">
+        <mat-icon>zoom_out</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        matTooltip="Rotate left"
+        aria-label="Rotate left"
+        (click)="rotateLeft()"
+      >
+        <mat-icon>rotate_left</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        matTooltip="Rotate right"
+        aria-label="Rotate right"
+        (click)="rotateRight()"
+      >
+        <mat-icon>rotate_right</mat-icon>
+      </button>
+    </div>
+  }
+
+  <!-- Footer -->
+  <div class="viewer-footer">
+    <div class="viewer-footer-info">
+      <span class="file-name">{{ fileName() }}</span>
+      @if (fileSize()) {
+        <span class="file-size">{{ fileSize() }}</span>
+      }
+    </div>
+    <div class="viewer-footer-actions">
+      @if (!annotationsTab()) {
+        <button
+          mat-icon-button
+          matTooltip="Open with Nuxeo Drive"
+          aria-label="Open with Nuxeo Drive"
+          (click)="openWithDriveClicked.emit()"
+        >
+          <mat-icon>cloud_sync</mat-icon>
+        </button>
+      }
+      <button
+        mat-icon-button
+        matTooltip="Preview"
+        aria-label="Preview"
+        (click)="previewClicked.emit()"
+      >
+        <mat-icon>visibility</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        matTooltip="Download"
+        aria-label="Download"
+        (click)="downloadClicked.emit()"
+      >
+        <mat-icon>download</mat-icon>
+      </button>
+      @if (showMainFileControls()) {
+        <button
+          mat-icon-button
+          matTooltip="Replace"
+          aria-label="Replace main file"
+          [disabled]="mainFileActionInProgress() === 'replace-main'"
+          (click)="replaceMainFileClicked.emit()"
+        >
+          <mat-icon>find_replace</mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          matTooltip="Remove"
+          aria-label="Remove main file"
+          class="footer-remove-btn"
+          [disabled]="mainFileActionInProgress() === 'remove-main'"
+          (click)="removeMainFileClicked.emit()"
+        >
+          <mat-icon>cancel</mat-icon>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Video metadata card -->
+  @if (showVideoInfoCard()) {
+    <div class="picture-cards">
+      <div class="picture-card">
+        <h4 class="picture-card-title">Video Info</h4>
+        <div class="picture-card-body">
+          @if (videoInfo(); as vi) {
+            @if (isFiniteNumber(vi.duration)) {
+              <div class="info-row">
+                <span class="info-label">Duration</span>
+                <span class="info-value">{{ formatDuration(vi.duration) }}</span>
+              </div>
+            }
+            @if (vi.width && vi.height) {
+              <div class="info-row">
+                <span class="info-label">Resolution</span>
+                <span class="info-value">{{ vi.width }} × {{ vi.height }}</span>
+              </div>
+            }
+            @if (vi.format) {
+              <div class="info-row">
+                <span class="info-label">Format</span>
+                <span class="info-value">{{ vi.format }}</span>
+              </div>
+            }
+            @if (vi.videoCodec) {
+              <div class="info-row">
+                <span class="info-label">Video Codec</span>
+                <span class="info-value">{{ vi.videoCodec }}</span>
+              </div>
+            }
+            @if (vi.audioCodec) {
+              <div class="info-row">
+                <span class="info-label">Audio Codec</span>
+                <span class="info-value">{{ vi.audioCodec }}</span>
+              </div>
+            }
+            @if (vi.frameRate) {
+              <div class="info-row">
+                <span class="info-label">Frame Rate</span>
+                <span class="info-value">{{ vi.frameRate }} fps</span>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Picture metadata cards -->
+  @if (showPictureCards()) {
+    <div class="picture-cards">
+      <!-- Picture Info -->
+      <div class="picture-card">
+        <h4 class="picture-card-title">Picture Info</h4>
+        <div class="picture-card-body">
+          <div class="info-row">
+            <span class="info-label">Dimensions</span>
+            <span class="info-value">{{ pictureInfo()!.width }} x {{ pictureInfo()!.height }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Format</span>
+            <span class="info-value">{{ pictureInfo()!.format }}</span>
+          </div>
+          @if (pictureInfo()!.colorSpace) {
+            <div class="info-row">
+              <span class="info-label">Color Profile</span>
+              <span class="info-value">{{ pictureInfo()!.colorSpace }}</span>
+            </div>
+          }
+          @if (pictureInfo()!.depth) {
+            <div class="info-row">
+              <span class="info-label">Bit Depth per Channel</span>
+              <span class="info-value">{{ pictureInfo()!.depth }}</span>
+            </div>
+          }
+          <div class="info-row">
+            <span class="info-label">Weight</span>
+            <span class="info-value">{{ pictureInfo()!.weight }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Formats -->
+      @if (pictureViews().length > 0) {
+        <div class="picture-card">
+          <h4 class="picture-card-title">Additional Formats</h4>
+          <div class="picture-card-body">
+            @for (view of pictureViews(); track view.title) {
+              <div class="format-row">
+                <span class="format-name">{{ view.title }}</span>
+                <span class="format-details">
+                  {{ view.width }} x {{ view.height }}
+                  <span class="format-size">{{ view.fileSize }}</span>
+                  <span class="format-type">{{ view.format }}</span>
+                </span>
+                <button
+                  mat-icon-button
+                  class="format-download-btn"
+                  matTooltip="Download {{ view.title }}"
+                  aria-label="Download {{ view.title }}"
+                  (click)="formatDownload.emit(view.downloadUrl)"
+                >
+                  <mat-icon>download</mat-icon>
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- EXIF -->
+      @if (exifEntries().length > 0) {
+        <div class="picture-card">
+          <h4 class="picture-card-title">EXIF</h4>
+          <div class="picture-card-body">
+            @for (entry of exifEntries(); track entry.label) {
+              <div class="info-row">
+                <span class="info-label">{{ entry.label }}</span>
+                <span class="info-value">{{ entry.value }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- IPTC -->
+      @if (iptcEntries().length > 0) {
+        <div class="picture-card">
+          <h4 class="picture-card-title">IPTC</h4>
+          <div class="picture-card-body">
+            @for (entry of iptcEntries(); track entry.label) {
+              <div class="info-row">
+                <span class="info-label">{{ entry.label }}</span>
+                <span class="info-value">{{ entry.value }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

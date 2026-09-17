@@ -1,0 +1,132 @@
+{
+  "results": [
+    {
+      "ruleId": "html_skipnav_exists",
+      "value": [
+        "VIOLATION",
+        "POTENTIAL"
+      ],
+      "path": {
+        "dom": "/html[1]",
+        "aria": "/document[1]"
+      },
+      "ruleTime": 0,
+      "reasonId": "Potential_1",
+      "message": "Verify there is a way to bypass blocks of content that are repeated on multiple Web pages",
+      "messageArgs": [],
+      "apiArgs": [],
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "height": 600,
+        "width": 800
+      },
+      "snippet": "<html style=\"--sat-form-field-error-mask-image:url(\"data:image/svg+xml,%3Csvg%20id%3D%22error%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Cpath%20d%3D%22M2.72497%2021C2.54164%2021%202.37497%2020.9542%202.22497%2020.8625C2.07497%2020.7708%201.95831%2020.65%201.87497%2020.5C1.79164%2020.35%201.74581%2020.1875%201.73747%2020.0125C1.72914%2019.8375%201.77497%2019.6667%201.87497%2019.5L11.125%203.5C11.225%203.33333%2011.3541%203.20833%2011.5125%203.125C11.6708%203.04167%2011.8333%203%2012%203C12.1666%203%2012.3291%203.04167%2012.4875%203.125C12.6458%203.20833%2012.775%203.33333%2012.875%203.5L22.125%2019.5C22.225%2019.6667%2022.2708%2019.8375%2022.2625%2020.0125C22.2541%2020.1875%2022.2083%2020.35%2022.125%2020.5C22.0416%2020.65%2021.925%2020.7708%2021.775%2020.8625C21.625%2020.9542%2021.4583%2021%2021.275%2021H2.72497ZM4.44997%2019H19.55L12%206L4.44997%2019ZM12%2018C12.2833%2018%2012.5208%2017.9042%2012.7125%2017.7125C12.9041%2017.5208%2013%2017.2833%2013%2017C13%2016.7167%2012.9041%2016.4792%2012.7125%2016.2875C12.5208%2016.0958%2012.2833%2016%2012%2016C11.7166%2016%2011.4791%2016.0958%2011.2875%2016.2875C11.0958%2016.4792%2011%2016.7167%2011%2017C11%2017.2833%2011.0958%2017.5208%2011.2875%2017.7125C11.4791%2017.9042%2011.7166%2018%2012%2018ZM12%2015C12.2833%2015%2012.5208%2014.9042%2012.7125%2014.7125C12.9041%2014.5208%2013%2014.2833%2013%2014V11C13%2010.7167%2012.9041%2010.4792%2012.7125%2010.2875C12.5208%2010.0958%2012.2833%2010%2012%2010C11.7166%2010%2011.4791%2010.0958%2011.2875%2010.2875C11.0958%2010.4792%2011%2010.7167%2011%2011V14C11%2014.2833%2011.0958%2014.5208%2011.2875%2014.7125C11.4791%2014.9042%2011.7166%2015%2012%2015Z%22%20fill%3D%22currentColor%22%2F%3E%0A%3C%2Fsvg%3E\");\" data-app-theme-id=\"nuxeo\" data-app-theme=\"nuxeo\" class=\"sat-form-field-error-icon\" lang=\"en\">",
+      "source": null,
+      "category": "Accessibility",
+      "ignored": false,
+      "level": "potentialviolation",
+      "help": "https://able.ibm.com/rules/archives/2026.07.13/doc/en-US/html_skipnav_exists.html#%7B%22message%22%3A%22Verify%20there%20is%20a%20way%20to%20bypass%20blocks%20of%20content%20that%20are%20repeated%20on%20multiple%20Web%20pages%22%2C%22snippet%22%3A%22%3Chtml%20style%3D%5C%22--sat-form-field-error-mask-image%3Aurl(%5C%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520id%253D%2522error%2522%2520width%253D%252224%2522%2520height%253D%252224%2522%2520viewBox%253D%25220%25200%252024%252024%2522%2520fill%253D%2522none%2522%2520xmlns%253D%2522http%253A%252F%252Fwww.w3.org%252F2000%252Fsvg%2522%253E%250A%253Cpath%2520d%253D%2522M2.72497%252021C2.54164%252021%25202.37497%252020.9542%25202.22497%252020.8625C2.07497%252020.7708%25201.95831%252020.65%25201.87497%252020.5C1.79164%252020.35%25201.74581%252020.1875%25201.73747%252020.0125C1.72914%252019.8375%25201.77497%252019.6667%25201.87497%252019.5L11.125%25203.5C11.225%25203.33333%252011.3541%25203.20833%252011.5125%25203.125C11.6708%25203.04167%252011.8333%25203%252012%25203C12.1666%25203%252012.3291%25203.04167%252012.4875%25203.125C12.6458%25203.20833%252012.775%25203.33333%252012.875%25203.5L22.125%252019.5C22.225%252019.6667%252022.2708%252019.8375%252022.2625%252020.0125C22.2541%252020.1875%252022.2083%252020.35%252022.125%252020.5C22.0416%252020.65%252021.925%252020.7708%252021.775%252020.8625C21.625%252020.9542%252021.4583%252021%252021.275%252021H2.72497ZM4.44997%252019H19.55L12%25206L4.44997%252019ZM12%252018C12.2833%252018%252012.5208%252017.9042%252012.7125%252017.7125C12.9041%252017.5208%252013%252017.2833%252013%252017C13%252016.7167%252012.9041%252016.4792%252012.7125%252016.2875C12.5208%252016.0958%252012.2833%252016%252012%252016C11.7166%252016%252011.4791%252016.0958%252011.2875%252016.2875C11.0958%252016.4792%252011%252016.7167%252011%252017C11%252017.2833%252011.0958%252017.5208%252011.2875%252017.7125C11.4791%252017.9042%252011.7166%252018%252012%252018ZM12%252015C12.2833%252015%252012.5208%252014.9042%252012.7125%252014.7125C12.9041%252014.5208%252013%252014.2833%252013%252014V11C13%252010.7167%252012.9041%252010.4792%252012.7125%252010.2875C12.5208%252010.0958%252012.2833%252010%252012%252010C11.7166%252010%252011.4791%252010.0958%252011.2875%252010.2875C11.0958%252010.4792%252011%252010.7167%252011%252011V14C11%252014.2833%252011.0958%252014.5208%252011.2875%252014.7125C11.4791%252014.9042%252011.7166%252015%252012%252015Z%2522%2520fill%253D%2522currentColor%2522%252F%253E%250A%253C%252Fsvg%253E%5C%22)%3B%5C%22%20data-app-theme-id%3D%5C%22nuxeo%5C%22%20data-app-theme%3D%5C%22nuxeo%5C%22%20class%3D%5C%22sat-form-field-error-icon%5C%22%20lang%3D%5C%22en%5C%22%3E%22%2C%22value%22%3A%5B%22VIOLATION%22%2C%22POTENTIAL%22%5D%2C%22reasonId%22%3A%22Potential_1%22%2C%22ruleId%22%3A%22html_skipnav_exists%22%2C%22msgArgs%22%3A%5B%5D%7D"
+    },
+    {
+      "ruleId": "style_color_misuse",
+      "value": [
+        "VIOLATION",
+        "POTENTIAL"
+      ],
+      "path": {
+        "dom": "/html[1]/head[1]/link[5]",
+        "aria": "/document[1]"
+      },
+      "ruleTime": 6,
+      "reasonId": "Potential_1",
+      "message": "Verify color is not used as the only visual means of conveying information",
+      "messageArgs": [],
+      "apiArgs": [],
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "height": 0,
+        "width": 0
+      },
+      "snippet": "<link href=\"styles.css\" rel=\"stylesheet\">",
+      "source": null,
+      "category": "Accessibility",
+      "ignored": false,
+      "level": "potentialviolation",
+      "help": "https://able.ibm.com/rules/archives/2026.07.13/doc/en-US/style_color_misuse.html#%7B%22message%22%3A%22Verify%20color%20is%20not%20used%20as%20the%20only%20visual%20means%20of%20conveying%20information%22%2C%22snippet%22%3A%22%3Clink%20href%3D%5C%22styles.css%5C%22%20rel%3D%5C%22stylesheet%5C%22%3E%22%2C%22value%22%3A%5B%22VIOLATION%22%2C%22POTENTIAL%22%5D%2C%22reasonId%22%3A%22Potential_1%22%2C%22ruleId%22%3A%22style_color_misuse%22%2C%22msgArgs%22%3A%5B%5D%7D"
+    },
+    {
+      "ruleId": "skip_main_exists",
+      "value": [
+        "VIOLATION",
+        "FAIL"
+      ],
+      "path": {
+        "dom": "/html[1]/body[1]",
+        "aria": "/document[1]"
+      },
+      "ruleTime": 0,
+      "reasonId": "Fail_1",
+      "message": "The page does not provide a way to quickly navigate to the main content (ARIA \"main\" landmark or a skip link)",
+      "messageArgs": [],
+      "apiArgs": [],
+      "bounds": {
+        "left": 0,
+        "top": 0,
+        "height": 600,
+        "width": 800
+      },
+      "snippet": "<body class=\"mat-app-background mat-typography\">",
+      "source": null,
+      "category": "Accessibility",
+      "ignored": false,
+      "level": "violation",
+      "help": "https://able.ibm.com/rules/archives/2026.07.13/doc/en-US/skip_main_exists.html#%7B%22message%22%3A%22The%20page%20does%20not%20provide%20a%20way%20to%20quickly%20navigate%20to%20the%20main%20content%20(ARIA%20%5C%22main%5C%22%20landmark%20or%20a%20skip%20link)%22%2C%22snippet%22%3A%22%3Cbody%20class%3D%5C%22mat-app-background%20mat-typography%5C%22%3E%22%2C%22value%22%3A%5B%22VIOLATION%22%2C%22FAIL%22%5D%2C%22reasonId%22%3A%22Fail_1%22%2C%22ruleId%22%3A%22skip_main_exists%22%2C%22msgArgs%22%3A%5B%5D%7D"
+    }
+  ],
+  "numExecuted": 53,
+  "ruleTime": 9,
+  "nls": {
+    "html_skipnav_exists": {
+      "0": "Provide a way to bypass blocks of content that are repeated on multiple Web pages",
+      "Potential_1": "Verify there is a way to bypass blocks of content that are repeated on multiple Web pages"
+    },
+    "style_color_misuse": {
+      "0": "Combine color and descriptive markup to convey information",
+      "Potential_1": "Verify color is not used as the only visual means of conveying information"
+    },
+    "skip_main_exists": {
+      "0": "Pages must provide a way to skip directly to the main content",
+      "Fail_1": "The page does not provide a way to quickly navigate to the main content (ARIA \"main\" landmark or a skip link)"
+    }
+  },
+  "summary": {
+    "counts": {
+      "violation": 1,
+      "potentialviolation": 2,
+      "recommendation": 0,
+      "potentialrecommendation": 0,
+      "manual": 1,
+      "pass": 49,
+      "ignored": 0,
+      "elements": 15,
+      "elementsViolation": 1,
+      "elementsViolationReview": 3
+    },
+    "scanTime": 21,
+    "ruleArchive": "Latest Deployment (latest)",
+    "policies": [
+      "IBM_Accessibility"
+    ],
+    "reportLevels": [
+      "violation",
+      "potentialviolation"
+    ],
+    "startScan": 1789639064986,
+    "URL": "http://localhost:4216/#/login"
+  },
+  "scanID": "3b82c908-8a69-4144-a71e-56eef356c147",
+  "toolID": "accessibility-checker-v3.1.73",
+  "label": "http_localhost_4216_login"
+}

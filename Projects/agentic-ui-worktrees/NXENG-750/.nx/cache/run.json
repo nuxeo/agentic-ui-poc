@@ -1,0 +1,21 @@
+{
+  "run": {
+    "command": "nx run nuxeo-ui:test --skip-nx-cache",
+    "startTime": "2026-09-17T11:24:44.152Z",
+    "endTime": "2026-09-17T11:25:39.619Z",
+    "inner": false
+  },
+  "tasks": [
+    {
+      "taskId": "nuxeo-ui:test",
+      "target": "test",
+      "projectName": "nuxeo-ui",
+      "hash": "8662774793309323429",
+      "startTime": "2026-09-17T11:24:44.187Z",
+      "endTime": "2026-09-17T11:25:39.618Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 0
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "$comment": "Layer 1 runtime manifest — EXAMPLE, not loaded by the build. In production this JSON is the payload of a Nuxeo document (default `note:note` on the document named by `manifestDocumentPath`), NOT a file in the bundle. That is deliberate: a Nuxeo document inherits the repository's versioning, audit trail and ACLs, and it survives a marketplace upgrade. To try it, create the document and paste this in.",
+
+  "version": 1,
+
+  "$labels": "Overrides for i18n keys, layered on by the translate loader.",
+  "labels": {},
+
+  "$featureToggles": "Read via AppConfigService.featureToggle(id, fallback).",
+  "featureToggles": {
+    "acme.reports.betaExport": true
+  },
+
+  "$extensions": "Everything addressable. Slot names and IDs come from docs/extension-reference.md.",
+  "extensions": {
+    "$name": "acme-customisation",
+    "$version": "1.0.0",
+
+    "$overrides": "Change a registered descriptor without restating it. Keyed by ID.",
+    "overrides": {
+      "$comment_hide": "Hide the template's Reports entry entirely.",
+      "template.navbar.reports": { "visible": false },
+
+      "$comment_relabel": "Relabel and move Home without touching code.",
+      "template.navbar.home": { "label": "Dashboard", "order": 5 }
+    },
+
+    "$slots": "Add entries a manifest owns. These merge with what code registered; they do not replace it.",
+    "slots": {
+      "navbar": [
+        {
+          "id": "acme.navbar.contracts",
+          "label": "Contracts",
+          "path": "/reports",
+          "icon": "folder",
+          "order": 35
+        }
+      ],
+
+      "$comment_drawer": "Place the component registered under `template.sidebar.reports` into a drawer. The ID is the contract — the manifest never names a class.",
+      "sidebar": [
+        {
+          "id": "acme.sidebar.reports",
+          "label": "Reports",
+          "component": "template.sidebar.reports",
+          "order": 10
+        }
+      ],
+
+      "$comment_action": "Place the registered handler `template.actions.exportSummary` on the toolbar, gated by a rule the template registered.",
+      "toolbar": [
+        {
+          "id": "acme.toolbar.exportSummary",
+          "label": "Export summary",
+          "icon": "download",
+          "action": "template.actions.exportSummary",
+          "rule": "template.rules.isSignedIn",
+          "order": 40
+        }
+      ]
+    }
+  }
+}

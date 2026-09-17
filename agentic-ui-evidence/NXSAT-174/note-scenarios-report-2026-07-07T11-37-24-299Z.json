@@ -1,0 +1,18 @@
+{
+  "results": [
+    {
+      "step": "Login",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "step": "1. Create HTML note — auto-open, Quill editor, format label",
+      "status": "FAIL",
+      "detail": "locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for locator('mat-dialog-container').getByRole('listitem').filter({ hasText: /^Note$/ })\n"
+    }
+  ],
+  "videoPath": "C:\\Users\\akoppaka\\Desktop\\NXSAT-174\\videos\\nxsat-174-note-scenarios-2026-07-07T11-37-24-299Z.webm",
+  "parentPath": "/default-domain/workspaces/Akshitha",
+  "baseUrl": "http://localhost:4200",
+  "recordedAt": "2026-07-07T11-37-24-299Z"
+}

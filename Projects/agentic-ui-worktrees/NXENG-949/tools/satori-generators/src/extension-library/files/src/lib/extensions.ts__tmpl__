@@ -1,0 +1,114 @@
+import { inject, type EnvironmentProviders } from '@angular/core';
+
+import {
+  EXTENSION_SLOTS,
+  provideSatoriExtensions,
+  type NavItemDescriptor,
+  type SatoriExtensionContributions,
+} from '@nuxeo-satori/platform/extensions';
+
+import { <%= baseName %>RulesService } from './rules.service';
+
+/**
+ * Every ID this library registers.
+ *
+ * Exported and asserted by the spec, so the list cannot drift from what is
+ * actually registered. IDs are a **public contract**: once a manifest references
+ * one, renaming it is a breaking change. The `<%= owner %>.` prefix keeps them
+ * from ever colliding with the platform's `app.` IDs.
+ */
+export const <%= constantName %>_EXTENSION_IDS = Object.freeze({
+  navbar: ['<%= owner %>.navbar.<%= propertyName %>'],
+  rules: [
+    '<%= owner %>.rules.canUse<%= baseName %>',
+    // satori:ids:rules — `nx g ...:extension-rule` inserts here. Keep the marker.
+  ],
+  actions: [
+    '<%= owner %>.actions.<%= propertyName %>Export',
+    // satori:ids:actions — `nx g ...:extension-action` inserts here. Keep the marker.
+  ],
+  components: [
+    '<%= owner %>.panel.<%= propertyName %>',
+    // satori:ids:components — `nx g ...:extension-component` inserts here. Keep the marker.
+  ],
+} as const);
+
+/**
+ * Navigation contributed by this library.
+ *
+ * A typed `const` rather than an inline literal inside `slots`, and that matters:
+ * `slots` is typed `Record<ExtensionSlotId, readonly ExtensionElement[]>`, and
+ * `ExtensionElement` carries only `id`, `disabled` and `order`. An inline literal
+ * is a *fresh* object literal, so TypeScript applies excess property checking and
+ * rejects `label`, `path` and `icon` with TS2418. Assigning an already-typed
+ * `readonly NavItemDescriptor[]` is fine, because it is not fresh.
+ */
+const NAV_ITEMS: readonly NavItemDescriptor[] = [
+  {
+    id: <%= constantName %>_EXTENSION_IDS.navbar[0],
+    label: '<%= className %>',
+    path: '/<%= fileName %>',
+    icon: 'extension',
+    // Spaced by ten so a manifest can insert between entries without restating
+    // the list. Absent `order` sorts last, stably.
+    order: 500,
+    rule: <%= constantName %>_EXTENSION_IDS.rules[0],
+  },
+];
+
+/**
+ * Contribute this library's slots, rules, actions and components.
+ *
+ * Add to an application's `providers`. Nothing here runs until then — a Layer 2
+ * library is inert until an application opts in, which is what keeps installing
+ * one from changing behaviour by surprise.
+ *
+ * The **factory form** is used because the rule needs `inject()`. A rule that
+ * only reads its argument can use the plain-object form:
+ * `provideSatoriExtensions({ rules: { ... } })`.
+ */
+export function <%= providerName %>(): EnvironmentProviders {
+  return provideSatoriExtensions((): SatoriExtensionContributions => {
+    // Runs inside an injection context, so contributions may depend on services.
+    const rules = inject(<%= baseName %>RulesService);
+
+    return {
+      slots: {
+        [EXTENSION_SLOTS.navbar]: NAV_ITEMS,
+      },
+
+      rules: {
+        [<%= constantName %>_EXTENSION_IDS.rules[0]]: (context) => rules.canUse(context),
+        // satori:register:rules
+      },
+
+      /**
+       * Deny when unregistered rather than permit.
+       *
+       * An unknown rule ID normally evaluates to `true`, deliberately, so a
+       * manifest typo cannot silently strip working actions out of the UI. That
+       * default is wrong for a rule gating a surface, because the unsafe window is
+       * exactly the one before registration completes.
+       *
+       * This is **not** a security control. Nuxeo evaluates the real permission
+       * server-side on every operation; hiding a control does not protect it.
+       */
+      failClosedRules: [...<%= constantName %>_EXTENSION_IDS.rules],
+
+      components: {
+        // Behind a dynamic import, so the chunk is only fetched if a manifest
+        // actually places the panel somewhere.
+        [<%= constantName %>_EXTENSION_IDS.components[0]]: () =>
+          import('./panel/<%= owner %>-panel').then((m) => m.<%= baseName %>PanelComponent),
+        // satori:register:components
+      },
+
+      actions: {
+        [<%= constantName %>_EXTENSION_IDS.actions[0]]: {
+          execute: (context) => rules.exportSummary(context),
+        },
+        // satori:register:actions
+      },
+    };
+  });
+}

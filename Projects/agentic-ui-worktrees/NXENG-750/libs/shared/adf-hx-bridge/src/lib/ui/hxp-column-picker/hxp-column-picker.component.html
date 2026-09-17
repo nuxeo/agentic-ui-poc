@@ -1,0 +1,35 @@
+<button
+  type="button"
+  class="hxp-col-panel-backdrop"
+  aria-label="Close column picker"
+  (click)="dismiss.emit()"
+></button>
+<div
+  #panel
+  class="hxp-col-panel"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Column Settings"
+  tabindex="-1"
+>
+  <p class="hxp-col-panel-title">Column Settings</p>
+  <div class="hxp-col-panel-list">
+    @for (col of columns(); track col.key) {
+      <label class="hxp-col-panel-option">
+        <input
+          type="checkbox"
+          [checked]="isChosen(col.key)"
+          [disabled]="isRequired(col.key)"
+          (change)="toggle(col.key)"
+        />
+        {{ col.label }}
+      </label>
+    }
+  </div>
+  <div class="hxp-col-panel-actions">
+    <button type="button" class="hxp-col-panel-btn" (click)="reset()">Reset</button>
+    <button type="button" class="hxp-col-panel-btn hxp-col-panel-btn--primary" (click)="commit()">
+      Done
+    </button>
+  </div>
+</div>

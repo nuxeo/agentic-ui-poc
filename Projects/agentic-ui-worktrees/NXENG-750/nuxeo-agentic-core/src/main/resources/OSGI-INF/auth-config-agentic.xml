@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<component name="org.nuxeo.agentic.ui.authentication.contrib">
+
+  <extension point="startURL"
+             target="org.nuxeo.ecm.platform.ui.web.auth.service.PluggableAuthenticationService">
+    <startURLPattern>
+      <patterns>
+        <pattern>agentic-ui</pattern>
+      </patterns>
+    </startURLPattern>
+  </extension>
+
+  <extension point="openUrl"
+             target="org.nuxeo.ecm.platform.ui.web.auth.service.PluggableAuthenticationService">
+    <openUrl name="agenticUIImages">
+      <grantPattern>${org.nuxeo.ecm.contextPath}/agentic-ui/assets/.*</grantPattern>
+    </openUrl>
+  </extension>
+
+</component>

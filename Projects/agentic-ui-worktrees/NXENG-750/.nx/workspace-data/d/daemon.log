@@ -1,0 +1,915 @@
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:15.146Z - [Client] Starting new daemon server in background
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:15.365Z - [Client] Waiting for server (max: 6000 attempts, 10ms interval)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.414Z - Time taken for 'workspace context init' 1.2065000000000055ms
+DEBUG nx::native::telemetry: Telemetry service initialized successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.487Z - New daemon starting from: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\daemon\server\server.js
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.487Z - New daemon __dirname: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\daemon\server
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.488Z - New daemon nxVersion: 22.7.8
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.491Z - New daemon getInstalledNxVersion(): 22.7.8
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.493Z - [Server] Starting outdated check interval (20ms)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.495Z - Started listening on: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\f47968e47bfd388dbe3f\d.sock
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.509Z - [WATCHER]: Subscribed to changes within: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750 (native)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.509Z - [LATEST-NX]: Pulling latest Nx...
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:16.520Z - [Client] Server available
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:16.520Z - [Client] Daemon server started, pid=6240
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:16.522Z - [Messenger] Setting up socket listeners
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:16.522Z - [Messenger] listen() complete
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.527Z - [AI-AGENTS]: Starting agent configuration status computation
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.532Z - Established a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.533Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:16.533Z - Closed a connection. Number of open connections: 1
+[isolated-plugin] spawned worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\js" (pid: 52768, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-0-1269.0299.sock)
+[isolated-plugin] spawned worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\adapter\angular-json" (pid: 2948, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-1-1511.0694.sock)
+[isolated-plugin] spawned worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\package-json" (pid: 40260, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-2-1755.8078.sock)
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:17.411Z - [Messenger] Sending message type: REQUEST_PROJECT_GRAPH
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:17.413Z - [Messenger] Message sent
+[isolated-plugin] spawned worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\project-json\build-nodes\project-json" (pid: 33768, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-3-2019.4741.sock)
+[isolated-plugin] spawned worker for "@nx/eslint/plugin" (pid: 30900, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-4-2262.8304.sock)
+[isolated-plugin] connected to worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\js" (pid: 52768)
+[isolated-plugin] connected to worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\adapter\angular-json" (pid: 2948)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:17.906Z - Received raw message of length 5590
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:17.907Z - Received json message of type REQUEST_PROJECT_GRAPH
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:17.907Z - [REQUEST]: Client Request for Project Graph Received
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\js" (pid: 52768) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-0-1269.0299.sock
+Time taken for 'plugin worker 52768 code loading' 531.1768999999999ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\js" (pid: 52768) connected
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\adapter\angular-json" (pid: 2948) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-1-1511.0694.sock
+Time taken for 'plugin worker 2948 code loading' 502.47650000000004ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\adapter\angular-json" (pid: 2948) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:17.909Z - Time taken for 'start-plugin-worker:C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\js' 1249.0092ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:17.909Z - Time taken for 'start-plugin-worker:C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\adapter\angular-json' 1008.5989ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\package-json" (pid: 40260) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-2-1755.8078.sock
+Time taken for 'plugin worker 40260 code loading' 512.1052999999999ms
+[isolated-plugin] connected to worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\package-json" (pid: 40260)
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\package-json" (pid: 40260) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:17.996Z - Time taken for 'start-plugin-worker:C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\package-json' 854.7050999999999ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\adapter\angular-json" (pid: 2948) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:18.117Z - Time taken for 'Load Nx Plugin: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\adapter\angular-json' 1480.2572ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\package-json" (pid: 40260) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:18.205Z - Time taken for 'Load Nx Plugin: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\package-json' 1567.455ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\project-json\build-nodes\project-json" (pid: 33768) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-3-2019.4741.sock
+Time taken for 'plugin worker 33768 code loading' 520.9115ms
+[isolated-plugin] connected to worker for "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\project-json\build-nodes\project-json" (pid: 33768)
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\project-json\build-nodes\project-json" (pid: 33768) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:18.246Z - Time taken for 'start-plugin-worker:C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\project-json\build-nodes\project-json' 841.1997999999999ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\project-json\build-nodes\project-json" (pid: 33768) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:18.412Z - Time taken for 'Load Nx Plugin: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\project-json\build-nodes\project-json' 1773.8709999999999ms
+[plugin-worker] "C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\js" (pid: 52768) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:18.438Z - Time taken for 'loadDefaultNxPlugins' 1819.0556000000001ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:18.438Z - Time taken for 'Load Nx Plugin: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\node_modules\nx\dist\src\plugins\js' 1802.3608000000002ms
+[plugin-worker] "@nx/eslint/plugin" (pid: 30900) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-4-2262.8304.sock
+[isolated-plugin] connected to worker for "@nx/eslint/plugin" (pid: 30900)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:18.477Z - Time taken for 'start-plugin-worker:@nx/eslint/plugin' 829.3426ms
+[plugin-worker] "@nx/eslint/plugin" (pid: 30900) connected
+Time taken for 'plugin worker 30900 code loading' 509.7598ms
+Fetching nx...
+[plugin-worker] "@nx/eslint/plugin" (pid: 30900) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.869Z - [REQUEST]: Updated workspace context based on watched changes, recomputing project graph...
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.869Z - [REQUEST]: 
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.869Z - [REQUEST]: 
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.875Z - Reusing in-memory cached project graph because no files changed.
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.876Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:21.876Z - [Messenger] Received message, length: 47
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.901Z - Time taken for 'loadSpecifiedNxPlugins' 5228.1806ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.901Z - Time taken for 'Load Nx Plugin: @nx/eslint/plugin' 5228.0714ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.901Z - Time taken for 'hash changed files from watcher' 2.233400000000074ms
+Time taken for 'nx-angular-json-plugin:createNodes' 15.60949999999957ms
+[isolated-plugin] shutting down worker for "nx-angular-json-plugin" after createNodes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.930Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:21.930Z - [Messenger] Received message, length: 202
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.932Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.933Z - Closed a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.934Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:21.934Z - [Messenger] Setting up socket listeners
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:21.937Z - [Messenger] listen() complete
+Time taken for 'nx/js/dependencies-and-lockfile:createNodes' 45.0006999999996ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:21.960Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:21.960Z - [Messenger] Received message, length: 165
+Time taken for 'nx/core/package-json:createNodes' 123.2475000000004ms
+[isolated-plugin] shutting down worker for "nx/core/package-json" after createNodes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.038Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.037Z - [Messenger] Received message, length: 139
+Time taken for 'nx/core/project-json:createNodes' 276.9414000000006ms
+[isolated-plugin] shutting down worker for "nx/core/project-json" after createNodes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.187Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.187Z - [Messenger] Received message, length: 98
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.520Z - [Messenger] Sending message type: GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.521Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.523Z - Received raw message of length 73
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.523Z - Received json message of type GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.525Z - Serializing response for GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.525Z - Responding to GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.525Z - [REQUEST]: Responding to the client. handleGlob
+Time taken for 'daemon-message-serialization-GLOB' 0.03979999999955908ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.526Z - Done responding to the client handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.526Z - Handled json message GLOB. Handling time: 2. Response time: 1.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.526Z - [Messenger] Received message, length: 50337
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.637Z - [Messenger] Sending message type: HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.638Z - [Messenger] Message sent
+Time taken for 'GLOB round trip' 6.269199999999728ms
+Time taken for 'deserialize daemon response - GLOB' 0.0830999999998312ms
+Time taken for 'daemon-message-serialization-HASH_MULTI_GLOB' 0.05029999999987922ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.641Z - Received raw message of length 3050
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.641Z - Received json message of type HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.658Z - Serializing response for HASH_GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.658Z - Responding to HASH_GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.658Z - [REQUEST]: Responding to the client. handleHashMultiGlob
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:22.658Z - [Messenger] Received message, length: 630
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.661Z - Done responding to the client handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:22.661Z - Handled json message HASH_GLOB. Handling time: 16. Response time: 4.
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:26.676Z - [LATEST-NX]: Successfully pulled latest Nx to C:\Users\akoppaka\AppData\Local\Temp\tmp-6240-tcD7Dfs89jsz
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:26.678Z - [NX-CONSOLE]: Using local implementation (NX_USE_LOCAL=true or inner call)
+DEBUG nx::native::ide::install: Detected editor: Unknown
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:26.679Z - [AI-AGENTS]: Failed to compute agent configuration status from latest Nx. Error: Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:26.679Z - [AI-AGENTS]: Agent configuration status computation completed: 0 fully configured, 0 outdated, 0 partially configured, 0 non-configured
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:26.679Z - [NX-CONSOLE]: Console status check completed, shouldPrompt: false
+Time taken for 'HASH_MULTI_GLOB round trip' 21.71519999999964ms
+Time taken for 'deserialize daemon response - HASH_MULTI_GLOB' 0.041499999999359716ms
+Time taken for '@nx/eslint/plugin:createNodes' 21770.2589ms
+[isolated-plugin] shutting down worker for "@nx/eslint/plugin" after createNodes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.682Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:43.682Z - [Messenger] Received message, length: 47
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.802Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.806Z - Time taken for 'build-project-configs' 21887.0596ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.806Z - Time taken for 'createNodes:merge' 80.12149999999747ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.806Z - Time taken for 'native-file-deps' 0.012800000000424916ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.806Z - Time taken for 'get-workspace-files' 3.461800000000949ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.806Z - Time taken for 'get-all-workspace-files' 0.5614999999997963ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.806Z - Time taken for 'read cache' 14.02900000000227ms
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:43.808Z - [Messenger] Received message, length: 47
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:43.869Z - Closed a connection. Number of open connections: 1
+Time taken for 'build typescript dependencies' 200.17709999999715ms
+[isolated-plugin] shutting down worker for "nx/js/dependencies-and-lockfile" after createDependencies
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.041Z - Streaming message to client: progress update for topic graph-construction
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.041Z - [Messenger] Received message, length: 47
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.052Z - [SYNC]: collect registered sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.065Z - Wrote project graph cache to C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-750\.nx\workspace-data\project-graph.json
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Serializing response for REQUEST_PROJECT_GRAPH message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Responding to REQUEST_PROJECT_GRAPH message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - [REQUEST]: Responding to the client. project-graph
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Time taken for 'total for creating and serializing project graph' 26158.666400000002ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Time taken for 'total execution time for createProjectGraph()' 270.5050999999985ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Time taken for 'createDependencies' 243.63540000000285ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Time taken for 'nx/js/dependencies-and-lockfile:createDependencies' 243.32810000000245ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Time taken for 'createMetadata' 0.016499999997904524ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Time taken for 'serialize graph' 3.4716999999982363ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.066Z - Time taken for 'write cache' 11.666100000002189ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.070Z - Done responding to the client project-graph
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.071Z - Handled json message REQUEST_PROJECT_GRAPH. Handling time: 26159. Response time: 5.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.071Z - [Messenger] Received message, length: 854405
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.079Z - [Messenger] Sending message type: PRE_TASKS_EXECUTION
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.079Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.082Z - Received raw message of length 1396
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.082Z - Received json message of type PRE_TASKS_EXECUTION
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.085Z - Serializing response for PRE_TASKS_EXECUTION message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.085Z - Responding to PRE_TASKS_EXECUTION message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.085Z - [REQUEST]: Responding to the client. handleRunPreTasksExecution
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.085Z - Time taken for 'preTasksExecution' 2.8096000000005006ms
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.085Z - [Messenger] Received message, length: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.088Z - Done responding to the client handleRunPreTasksExecution
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.088Z - Handled json message PRE_TASKS_EXECUTION. Handling time: 3. Response time: 3.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.123Z - [Messenger] Sending message type: HASH_TASKS
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.123Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.125Z - Received raw message of length 8591
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.125Z - Received json message of type HASH_TASKS
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.126Z - Reusing in-memory cached project graph because no files changed.
+DEBUG nx::native::tasks::hash_planner: get_plans_internal COMPLETED in 4.1945ms - processed 1 tasks (setup: 2.976ms, parallel_planning: 1.2136ms)
+DEBUG nx::native::tasks::hashers::hash_workspace_files: Hashing workspace fileset with inputs: Adding "16937103959813543509" ("nx.json") to hash
+DEBUG nx::native::tasks::hashers::hash_workspace_files: Hashing workspace fileset with inputs: Hash Value: "11484941598654173454"
+DEBUG nx::native::tasks::task_hasher: hash_plans COMPLETED in 5.2837ms - processed 1 plans (setup: 304.8µs, hashing: 4.9774ms, assembly: 1.446ms)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.146Z - Serializing response for HASH_TASKS message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.146Z - Responding to HASH_TASKS message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.146Z - [REQUEST]: Responding to the client. handleHashTasks
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.146Z - [Messenger] Received message, length: 65609
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.149Z - Done responding to the client handleHashTasks
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.150Z - Handled json message HASH_TASKS. Handling time: 21. Response time: 4.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.167Z - [Messenger] Sending message type: GET_ESTIMATED_TASK_TIMINGS
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.168Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.173Z - Received raw message of length 88
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.173Z - Received json message of type GET_ESTIMATED_TASK_TIMINGS
+DEBUG nx::native::telemetry::service: Sent 1 events: [nx/js/dependencies-and-lockfile:createDe]
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.185Z - Serializing response for GET_ESTIMATED_TASK_TIMINGS message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.185Z - Responding to GET_ESTIMATED_TASK_TIMINGS message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.185Z - [REQUEST]: Responding to the client. handleGetEstimatedTaskTimings
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.186Z - Done responding to the client handleGetEstimatedTaskTimings
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.186Z - Handled json message GET_ESTIMATED_TASK_TIMINGS. Handling time: 12. Response time: 1.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:44.185Z - [Messenger] Received message, length: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.236Z - [WATCHER]: 0 file(s) created or restored, 0 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.345Z - [REQUEST]: Updated workspace context based on watched changes, recomputing project graph...
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.345Z - [REQUEST]: 
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:44.345Z - [REQUEST]: 
+[plugin-client] restarting worker for "@nx/eslint/plugin"
+[isolated-plugin] spawned worker for "@nx/eslint/plugin" (pid: 15320, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-5-28969.1184.sock)
+[plugin-client] restarting worker for "nx/js/dependencies-and-lockfile"
+[isolated-plugin] spawned worker for "nx/js/dependencies-and-lockfile" (pid: 39364, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-6-29201.3792.sock)
+[plugin-client] restarting worker for "nx-angular-json-plugin"
+[isolated-plugin] spawned worker for "nx-angular-json-plugin" (pid: 49652, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-7-29436.1429.sock)
+[plugin-client] restarting worker for "nx/core/package-json"
+[isolated-plugin] spawned worker for "nx/core/package-json" (pid: 2768, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-8-29689.2938.sock)
+[plugin-client] restarting worker for "nx/core/project-json"
+[isolated-plugin] spawned worker for "nx/core/project-json" (pid: 35092, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-9-29948.2896.sock)
+[isolated-plugin] connected to worker for "@nx/eslint/plugin" (pid: 15320)
+[isolated-plugin] connected to worker for "nx/js/dependencies-and-lockfile" (pid: 39364)
+[plugin-worker] "@nx/eslint/plugin" (pid: 15320) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-5-28969.1184.sock
+Time taken for 'plugin worker 15320 code loading' 446.3854ms
+[plugin-worker] "@nx/eslint/plugin" (pid: 15320) connected
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 39364) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-6-29201.3792.sock
+Time taken for 'plugin worker 39364 code loading' 512.7624ms
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 39364) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:45.625Z - Time taken for 'hash changed files from watcher' 1.2203000000008615ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:45.625Z - Time taken for 'start-plugin-worker:@nx/eslint/plugin' 1270.0504ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:45.625Z - Time taken for 'start-plugin-worker:nx/js/dependencies-and-lockfile' 1038.026600000001ms
+[isolated-plugin] connected to worker for "nx-angular-json-plugin" (pid: 49652)
+[plugin-worker] "nx-angular-json-plugin" (pid: 49652) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-7-29436.1429.sock
+[plugin-worker] "nx-angular-json-plugin" (pid: 49652) connected
+Time taken for 'plugin worker 49652 code loading' 565.3513999999999ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:45.716Z - Time taken for 'start-plugin-worker:nx-angular-json-plugin' 895.0298999999977ms
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 39364) loaded successfully
+Time taken for 'nx/js/dependencies-and-lockfile:createNodes' 23.838799999999992ms
+[plugin-worker] "nx-angular-json-plugin" (pid: 49652) loaded successfully
+[isolated-plugin] shutting down worker for "nx-angular-json-plugin" after createNodes
+[plugin-worker] "nx/core/package-json" (pid: 2768) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-8-29689.2938.sock
+Time taken for 'plugin worker 2768 code loading' 624.5192999999999ms
+[isolated-plugin] connected to worker for "nx/core/package-json" (pid: 2768)
+[plugin-worker] "nx/core/package-json" (pid: 2768) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.036Z - Time taken for 'start-plugin-worker:nx/core/package-json' 960.7294000000002ms
+[plugin-worker] "nx/core/package-json" (pid: 2768) loaded successfully
+Time taken for 'nx/core/package-json:createNodes' 17.92579999999998ms
+[isolated-plugin] shutting down worker for "nx/core/package-json" after createNodes
+[plugin-worker] "nx/core/project-json" (pid: 35092) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-9-29948.2896.sock
+[isolated-plugin] connected to worker for "nx/core/project-json" (pid: 35092)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.313Z - Time taken for 'start-plugin-worker:nx/core/project-json' 979.5144ms
+[plugin-worker] "nx/core/project-json" (pid: 35092) connected
+Time taken for 'plugin worker 35092 code loading' 607.8248ms
+[plugin-worker] "@nx/eslint/plugin" (pid: 15320) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.409Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.409Z - Closed a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.410Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.410Z - [Messenger] Setting up socket listeners
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.413Z - [Messenger] listen() complete
+[plugin-worker] "nx/core/project-json" (pid: 35092) loaded successfully
+Time taken for 'nx/core/project-json:createNodes' 27.589399999999955ms
+[isolated-plugin] shutting down worker for "nx/core/project-json" after createNodes
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.897Z - [Messenger] Sending message type: GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.898Z - [Messenger] Message sent
+Time taken for 'daemon-message-serialization-GLOB' 0.06989999999996144ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.902Z - Received raw message of length 73
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.902Z - Received json message of type GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.903Z - Serializing response for GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.903Z - Responding to GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.903Z - [REQUEST]: Responding to the client. handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.903Z - Done responding to the client handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.904Z - Handled json message GLOB. Handling time: 1. Response time: 1.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.903Z - [Messenger] Received message, length: 50337
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.932Z - [Messenger] Sending message type: HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.933Z - [Messenger] Message sent
+Time taken for 'GLOB round trip' 7.307299999999941ms
+Time taken for 'deserialize daemon response - GLOB' 0.07990000000017972ms
+Time taken for 'daemon-message-serialization-HASH_MULTI_GLOB' 0.057400000000143336ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.934Z - Received raw message of length 3050
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.934Z - Received json message of type HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.940Z - Serializing response for HASH_GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.940Z - Responding to HASH_GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.940Z - [REQUEST]: Responding to the client. handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.940Z - Done responding to the client handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:46.940Z - Handled json message HASH_GLOB. Handling time: 6. Response time: 0.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:24:46.940Z - [Messenger] Received message, length: 630
+Time taken for '@nx/eslint/plugin:createNodes' 854.4218000000001ms
+Time taken for 'HASH_MULTI_GLOB round trip' 9.1253999999999ms
+Time taken for 'deserialize daemon response - HASH_MULTI_GLOB' 0.03690000000005966ms
+[isolated-plugin] shutting down worker for "@nx/eslint/plugin" after createNodes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.277Z - Time taken for 'build-project-configs' 2915.533099999997ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.277Z - Time taken for 'createNodes:merge' 2.7537999999985914ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.277Z - Time taken for 'get-all-workspace-files' 0.6837000000014086ms
+Time taken for 'build typescript dependencies' 0.15690000000040527ms
+[isolated-plugin] shutting down worker for "nx/js/dependencies-and-lockfile" after createDependencies
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.302Z - [SYNC]: collect registered sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.305Z - [SYNC]: project graph hash is the same, not collecting task sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.305Z - [SYNC]: nx.json hash is the same, not collecting global sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.305Z - Time taken for 'total execution time for createProjectGraph()' 33.215000000000146ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.305Z - Time taken for 'createDependencies' 23.42909999999756ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.305Z - Time taken for 'nx/js/dependencies-and-lockfile:createDependencies' 23.3137999999999ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.305Z - Time taken for 'createMetadata' 0.01450000000113505ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.305Z - Time taken for 'serialize graph' 3.203799999999319ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:24:47.330Z - Closed a connection. Number of open connections: 1
+DEBUG nx::native::telemetry::service: Sent 1 events: [nx/js/dependencies-and-lockfile:createDe]
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:16.866Z - [WATCHER]: 0 file(s) created or restored, 0 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:17.087Z - [REQUEST]: Updated workspace context based on watched changes, recomputing project graph...
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:17.087Z - [REQUEST]: 
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:17.088Z - [REQUEST]: 
+[plugin-client] restarting worker for "@nx/eslint/plugin"
+[isolated-plugin] spawned worker for "@nx/eslint/plugin" (pid: 16968, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-10-61723.4762.sock)
+[plugin-client] restarting worker for "nx/js/dependencies-and-lockfile"
+[isolated-plugin] spawned worker for "nx/js/dependencies-and-lockfile" (pid: 53640, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-11-62026.1638.sock)
+[plugin-client] restarting worker for "nx-angular-json-plugin"
+[isolated-plugin] spawned worker for "nx-angular-json-plugin" (pid: 45532, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-12-62346.5027.sock)
+[plugin-client] restarting worker for "nx/core/package-json"
+[isolated-plugin] spawned worker for "nx/core/package-json" (pid: 51336, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-13-62621.0317.sock)
+[plugin-client] restarting worker for "nx/core/project-json"
+[isolated-plugin] spawned worker for "nx/core/project-json" (pid: 32100, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-14-62940.2032.sock)
+[isolated-plugin] connected to worker for "@nx/eslint/plugin" (pid: 16968)
+[isolated-plugin] connected to worker for "nx/js/dependencies-and-lockfile" (pid: 53640)
+[plugin-worker] "@nx/eslint/plugin" (pid: 16968) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-10-61723.4762.sock
+Time taken for 'plugin worker 16968 code loading' 627.0061999999999ms
+[plugin-worker] "@nx/eslint/plugin" (pid: 16968) connected
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 53640) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-11-62026.1638.sock
+Time taken for 'plugin worker 53640 code loading' 631.4277ms
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 53640) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:18.726Z - Time taken for 'hash changed files from watcher' 2.034700000003795ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:18.726Z - Time taken for 'start-plugin-worker:@nx/eslint/plugin' 1616.9418000000005ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:18.726Z - Time taken for 'start-plugin-worker:nx/js/dependencies-and-lockfile' 1314.736800000006ms
+[plugin-worker] "nx-angular-json-plugin" (pid: 45532) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-12-62346.5027.sock
+Time taken for 'plugin worker 45532 code loading' 821.4139ms
+[isolated-plugin] connected to worker for "nx-angular-json-plugin" (pid: 45532)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:18.915Z - Time taken for 'start-plugin-worker:nx-angular-json-plugin' 1182.9230000000025ms
+[plugin-worker] "nx-angular-json-plugin" (pid: 45532) connected
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 53640) loaded successfully
+Time taken for 'nx/js/dependencies-and-lockfile:createNodes' 21.558899999999994ms
+[plugin-worker] "nx-angular-json-plugin" (pid: 45532) loaded successfully
+[isolated-plugin] shutting down worker for "nx-angular-json-plugin" after createNodes
+[plugin-worker] "nx/core/package-json" (pid: 51336) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-13-62621.0317.sock
+Time taken for 'plugin worker 51336 code loading' 909.8955ms
+[isolated-plugin] connected to worker for "nx/core/package-json" (pid: 51336)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:19.336Z - Time taken for 'start-plugin-worker:nx/core/package-json' 1329.7727999999988ms
+[plugin-worker] "nx/core/package-json" (pid: 51336) connected
+[plugin-worker] "nx/core/package-json" (pid: 51336) loaded successfully
+Time taken for 'nx/core/package-json:createNodes' 21.207000000000107ms
+[isolated-plugin] shutting down worker for "nx/core/package-json" after createNodes
+[plugin-worker] "nx/core/project-json" (pid: 32100) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-14-62940.2032.sock
+Time taken for 'plugin worker 32100 code loading' 873.3274ms
+[isolated-plugin] connected to worker for "nx/core/project-json" (pid: 32100)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:19.703Z - Time taken for 'start-plugin-worker:nx/core/project-json' 1378.2105999999985ms
+[plugin-worker] "nx/core/project-json" (pid: 32100) connected
+[plugin-worker] "@nx/eslint/plugin" (pid: 16968) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:19.735Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:19.735Z - Closed a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:19.736Z - [Messenger] Setting up socket listeners
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:19.739Z - [Messenger] listen() complete
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:19.741Z - Established a connection. Number of open connections: 2
+[plugin-worker] "nx/core/project-json" (pid: 32100) loaded successfully
+Time taken for 'nx/core/project-json:createNodes' 47.64170000000013ms
+[isolated-plugin] shutting down worker for "nx/core/project-json" after createNodes
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:20.857Z - [Messenger] Sending message type: GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:20.859Z - [Messenger] Message sent
+Time taken for 'daemon-message-serialization-GLOB' 0.0656000000003587ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.860Z - Received raw message of length 73
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.860Z - Received json message of type GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.862Z - Serializing response for GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.862Z - Responding to GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.862Z - [REQUEST]: Responding to the client. handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.863Z - Done responding to the client handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.863Z - Handled json message GLOB. Handling time: 2. Response time: 1.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:20.863Z - [Messenger] Received message, length: 50337
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:20.914Z - [Messenger] Sending message type: HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:20.915Z - [Messenger] Message sent
+Time taken for 'GLOB round trip' 6.370600000000195ms
+Time taken for 'deserialize daemon response - GLOB' 0.08870000000024447ms
+Time taken for 'daemon-message-serialization-HASH_MULTI_GLOB' 0.09470000000010259ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.917Z - Received raw message of length 3050
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.917Z - Received json message of type HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.930Z - Serializing response for HASH_GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.930Z - Responding to HASH_GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.930Z - [REQUEST]: Responding to the client. handleHashMultiGlob
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:20.931Z - [Messenger] Received message, length: 630
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.935Z - Done responding to the client handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:20.935Z - Handled json message HASH_GLOB. Handling time: 13. Response time: 5.
+Time taken for '@nx/eslint/plugin:createNodes' 1796.9667ms
+Time taken for 'HASH_MULTI_GLOB round trip' 18.379599999999755ms
+Time taken for 'deserialize daemon response - HASH_MULTI_GLOB' 0.05969999999979336ms
+[isolated-plugin] shutting down worker for "@nx/eslint/plugin" after createNodes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.553Z - Time taken for 'build-project-configs' 4435.021499999995ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.553Z - Time taken for 'createNodes:merge' 3.9644999999873107ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.553Z - Time taken for 'get-all-workspace-files' 0.6468000000022585ms
+Time taken for 'build typescript dependencies' 0.1793999999999869ms
+[isolated-plugin] shutting down worker for "nx/js/dependencies-and-lockfile" after createDependencies
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.606Z - [SYNC]: collect registered sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.609Z - [SYNC]: project graph hash is the same, not collecting task sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.609Z - [SYNC]: nx.json hash is the same, not collecting global sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.609Z - Time taken for 'total execution time for createProjectGraph()' 66.90690000000177ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.609Z - Time taken for 'createDependencies' 51.56260000000475ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.609Z - Time taken for 'nx/js/dependencies-and-lockfile:createDependencies' 51.41070000000764ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.609Z - Time taken for 'createMetadata' 0.023200000010547228ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.609Z - Time taken for 'serialize graph' 5.658599999995204ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:21.617Z - Closed a connection. Number of open connections: 1
+DEBUG nx::native::telemetry::service: Sent 1 events: [nx/js/dependencies-and-lockfile:createDe]
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.785Z - [WATCHER]: 0 file(s) created or restored, 0 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.902Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.904Z - [WATCHER]: 0 file(s) created or restored, 44 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.909Z - [WATCHER]: File changes detected:
+Created:
+(none)
+Updated:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LBCC23YK.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-CV22Y4LA.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-D7ZLK3RQ.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DV4UJ663.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2DQRJ6HX.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-X3TSLZPG.js.map
+  ... and 34 more
+Deleted:
+(none)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.910Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.915Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.916Z - [WATCHER]: 32 file(s) created or restored, 15 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.921Z - [WATCHER]: File changes detected:
+Created:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6FJ32F7J.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-B5E3XTYV.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-EVZY3IIA.js
+  ... and 22 more
+Updated:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PKEVCDCF.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I3HIRH4J.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js.map
+  ... and 5 more
+Deleted:
+(none)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:27.921Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.018Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.020Z - [WATCHER]: 32 file(s) created or restored, 6 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.024Z - [WATCHER]: File changes detected:
+Created:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-YZ6E3F6T.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PBRXNTRF.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UFW4A3YJ.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PJKCQCG2.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KESBT7FE.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-S7CDGBRQ.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js
+  ... and 22 more
+Updated:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-app.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UL4XZEZA.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LWJPHQG5.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GA7PAOZX.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-drawer-route-match.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js
+Deleted:
+(none)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.024Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.039Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.125Z - [WATCHER]: 41 file(s) created or restored, 64 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.133Z - [WATCHER]: File changes detected:
+Created:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-auth.service.spec.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UO6MZZ4E.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FS5SRXWM.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-62M6YFOD.js
+  ... and 31 more
+Updated:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IDE3SSEC.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ASQ7P3CM.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-1.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js
+  ... and 54 more
+Deleted:
+(none)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.133Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.189Z - [WATCHER]: 29 file(s) created or restored, 41 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.195Z - [WATCHER]: File changes detected:
+Created:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-V5LB7KHM.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TIU7KR3V.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/add-to-collection-dialog.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/saved-search-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js
+  ... and 19 more
+Updated:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DF7J2IP5.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-K5HE6IXY.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-JAKJXSOU.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VHAB6T5P.js.map
+  ... and 31 more
+Deleted:
+(none)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.195Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.195Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.415Z - [REQUEST]: Updated workspace context based on watched changes, recomputing project graph...
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.415Z - [REQUEST]: dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LBCC23YK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-CV22Y4LA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-D7ZLK3RQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DV4UJ663.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2DQRJ6HX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-X3TSLZPG.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZG6CPNKO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-URQDA6IM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DH3CL5XQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DV4UJ663.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-32JDRLHS.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FTNWMDKP.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RVOHY3EV.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-32JDRLHS.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-URQDA6IM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H5UKKVS3.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2N7AZGHL.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2N7AZGHL.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H5UKKVS3.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-XFXSUVE4.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-4W5W6LIU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4XUL4JK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-CV22Y4LA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2DQRJ6HX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-AGWMSP3K.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZG6CPNKO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-AGWMSP3K.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FTNWMDKP.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RVOHY3EV.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-D7ZLK3RQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-XFXSUVE4.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-4W5W6LIU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LBCC23YK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4XUL4JK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DH3CL5XQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-X3TSLZPG.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6FJ32F7J.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-B5E3XTYV.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-EVZY3IIA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-EVZY3IIA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-app.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-1.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GA7PAOZX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UL4XZEZA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-app.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UL4XZEZA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-drawer-route-match.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-B5E3XTYV.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GA7PAOZX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6FJ32F7J.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LWJPHQG5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-1.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LWJPHQG5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IDE3SSEC.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PKEVCDCF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I3HIRH4J.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I3HIRH4J.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PKEVCDCF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HAWML2SX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HAWML2SX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-drawer-route-match.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-YZ6E3F6T.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PBRXNTRF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UFW4A3YJ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PJKCQCG2.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KESBT7FE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-S7CDGBRQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6J3BZWYP.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KESBT7FE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NEX6ELQY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6J3BZWYP.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-YZ6E3F6T.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IDE3SSEC.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ASQ7P3CM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-34WWIZLQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-S7CDGBRQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ASQ7P3CM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5KK2I6WF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RSA7SGGB.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PBRXNTRF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NEX6ELQY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-34WWIZLQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5KK2I6WF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RSA7SGGB.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZZVMHJLI.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PJKCQCG2.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UFW4A3YJ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZZVMHJLI.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-auth.service.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UO6MZZ4E.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FS5SRXWM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-62M6YFOD.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VHAB6T5P.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-share-token.util.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-manifest-refresh.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-JAKJXSOU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5POV4T7I.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FS5SRXWM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DF7J2IP5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VHAB6T5P.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-K5HE6IXY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-JAKJXSOU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5POV4T7I.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UO6MZZ4E.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IBMDBNAM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-platform-nav-items.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-62M6YFOD.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IBMDBNAM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-auth.service.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-nuxeo-auth.interceptor.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2Z2ZCDOY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-nuxeo-auth.interceptor.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2Z2ZCDOY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-K5HE6IXY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DF7J2IP5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-platform-nav-items.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-V5LB7KHM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TIU7KR3V.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/add-to-collection-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/saved-search-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-manifest-refresh.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/group-form-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VYANX7KN.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-V5LB7KHM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-QQ6R3ZVR.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/confirm-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TIU7KR3V.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UXAN4KKZ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-QQ6R3ZVR.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VDNL4HON.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VYANX7KN.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/placeholder-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UXAN4KKZ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VDNL4HON.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/change-password-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-share-token.util.spec.js
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:28.415Z - [REQUEST]: 
+[plugin-client] restarting worker for "@nx/eslint/plugin"
+[isolated-plugin] spawned worker for "@nx/eslint/plugin" (pid: 9028, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-15-73042.3248.sock)
+[plugin-client] restarting worker for "nx/js/dependencies-and-lockfile"
+[isolated-plugin] spawned worker for "nx/js/dependencies-and-lockfile" (pid: 3964, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-16-73343.7129.sock)
+[plugin-client] restarting worker for "nx-angular-json-plugin"
+[isolated-plugin] spawned worker for "nx-angular-json-plugin" (pid: 49656, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-17-73639.6549.sock)
+[plugin-client] restarting worker for "nx/core/package-json"
+[isolated-plugin] spawned worker for "nx/core/package-json" (pid: 41588, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-18-73908.3543.sock)
+[plugin-client] restarting worker for "nx/core/project-json"
+[isolated-plugin] spawned worker for "nx/core/project-json" (pid: 39008, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-19-74208.8247.sock)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.875Z - [WATCHER]: 58 file(s) created or restored, 2 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.879Z - [WATCHER]: File changes detected:
+Created:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-external-dialog.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-toolbar.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-nxql-search-page.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-metadata-dialog.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/export-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-users-groups-page.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/trash-filters-drawer.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-adf-hx.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/browse-adf-hx-poc.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/profile-page.component.css.map
+  ... and 48 more
+Updated:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/confirm-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/saved-search-dialog.component.css.map
+Deleted:
+(none)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.880Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.880Z - [WATCHER]: 28 file(s) created or restored, 62 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.885Z - [WATCHER]: File changes detected:
+Created:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/styles.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/contracts-page.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/browse.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-external-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/asset-search-results.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-audit-page.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/create-import-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/styles.css
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-user-details-page.component.css.map
+  ... and 18 more
+Updated:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/dashboard-page.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/assets-drawer.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/themes-page.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/selection-topbar.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/compare-icon-image.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/change-password-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/export-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-toolbar.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-adf-hx.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-document-dialog.css.map
+  ... and 52 more
+Deleted:
+(none)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.885Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.885Z - [WATCHER]: 0 file(s) created or restored, 0 file(s) modified, 0 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.885Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.885Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.886Z - [WATCHER]: Processing file changes in outputs
+[plugin-worker] "@nx/eslint/plugin" (pid: 9028) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-15-73042.3248.sock
+Time taken for 'plugin worker 9028 code loading' 552.9078ms
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 3964) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-16-73343.7129.sock
+Time taken for 'plugin worker 3964 code loading' 554.4502ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.890Z - Time taken for 'hash changed files from watcher' 218.11770000000251ms
+[isolated-plugin] connected to worker for "@nx/eslint/plugin" (pid: 9028)
+[isolated-plugin] connected to worker for "nx/js/dependencies-and-lockfile" (pid: 3964)
+[plugin-worker] "@nx/eslint/plugin" (pid: 9028) connected
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 3964) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.892Z - Time taken for 'start-plugin-worker:@nx/eslint/plugin' 1464.262699999992ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.892Z - Time taken for 'start-plugin-worker:nx/js/dependencies-and-lockfile' 1162.8338999999978ms
+[plugin-worker] "nx-angular-json-plugin" (pid: 49656) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-17-73639.6549.sock
+Time taken for 'plugin worker 49656 code loading' 562.7212999999999ms
+[isolated-plugin] connected to worker for "nx-angular-json-plugin" (pid: 49656)
+[plugin-worker] "nx-angular-json-plugin" (pid: 49656) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:29.934Z - Time taken for 'start-plugin-worker:nx-angular-json-plugin' 909.2609000000084ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.003Z - [REQUEST]: Updated workspace context based on watched changes, recomputing project graph...
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.003Z - [REQUEST]: dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LBCC23YK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-CV22Y4LA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-D7ZLK3RQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DV4UJ663.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2DQRJ6HX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-X3TSLZPG.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZG6CPNKO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-URQDA6IM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DH3CL5XQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DV4UJ663.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-32JDRLHS.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FTNWMDKP.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RVOHY3EV.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-32JDRLHS.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-URQDA6IM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H5UKKVS3.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2N7AZGHL.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2N7AZGHL.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H5UKKVS3.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-XFXSUVE4.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-4W5W6LIU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4XUL4JK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-CV22Y4LA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2DQRJ6HX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-AGWMSP3K.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZG6CPNKO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-AGWMSP3K.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FTNWMDKP.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RVOHY3EV.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-D7ZLK3RQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-XFXSUVE4.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-4W5W6LIU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LBCC23YK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4XUL4JK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DH3CL5XQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-X3TSLZPG.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6FJ32F7J.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-B5E3XTYV.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-EVZY3IIA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-EVZY3IIA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-app.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-1.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GA7PAOZX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UL4XZEZA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-app.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UL4XZEZA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-drawer-route-match.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-B5E3XTYV.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GA7PAOZX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6FJ32F7J.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LWJPHQG5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-1.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LWJPHQG5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IDE3SSEC.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PKEVCDCF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I3HIRH4J.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I3HIRH4J.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PKEVCDCF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HAWML2SX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HAWML2SX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-drawer-route-match.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-YZ6E3F6T.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PBRXNTRF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UFW4A3YJ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PJKCQCG2.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KESBT7FE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-S7CDGBRQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6J3BZWYP.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KESBT7FE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NEX6ELQY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6J3BZWYP.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-YZ6E3F6T.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IDE3SSEC.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ASQ7P3CM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-34WWIZLQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-S7CDGBRQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ASQ7P3CM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5KK2I6WF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RSA7SGGB.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PBRXNTRF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NEX6ELQY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-34WWIZLQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5KK2I6WF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RSA7SGGB.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZZVMHJLI.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PJKCQCG2.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UFW4A3YJ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZZVMHJLI.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-auth.service.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UO6MZZ4E.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FS5SRXWM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-62M6YFOD.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VHAB6T5P.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-share-token.util.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-manifest-refresh.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-JAKJXSOU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5POV4T7I.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FS5SRXWM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DF7J2IP5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VHAB6T5P.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-K5HE6IXY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-JAKJXSOU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5POV4T7I.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UO6MZZ4E.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IBMDBNAM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-platform-nav-items.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-62M6YFOD.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IBMDBNAM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-auth.service.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-nuxeo-auth.interceptor.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2Z2ZCDOY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-nuxeo-auth.interceptor.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2Z2ZCDOY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-K5HE6IXY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DF7J2IP5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-platform-nav-items.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-V5LB7KHM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TIU7KR3V.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/add-to-collection-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/saved-search-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-manifest-refresh.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/group-form-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VYANX7KN.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-V5LB7KHM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-QQ6R3ZVR.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/confirm-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TIU7KR3V.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UXAN4KKZ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-QQ6R3ZVR.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VDNL4HON.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VYANX7KN.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/placeholder-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UXAN4KKZ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VDNL4HON.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/change-password-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-share-token.util.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-external-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-toolbar.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-nxql-search-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-metadata-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/export-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-users-groups-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/trash-filters-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-adf-hx.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/browse-adf-hx-poc.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/profile-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/app.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-vocabularies-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/administration-shell.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-spinner.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-document-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/selection-topbar.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/login-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/user-form-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-add-permission-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/knowledge-discovery.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/note-editor.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/nav-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/widget-container.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-pager.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/nuxeo-drive-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/widget-grid.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/update-permission-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/attachment-preview-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-document-cards.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/remove-attachment-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-trash.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/authorized-applications-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/add-permission-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/app-shell.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/drive-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/vocabulary-entry-form-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/content-lake-upload.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/trash.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/column-settings-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-history.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-cloud-services-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/create-version-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/assets-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/session-expiry-warning-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/document-viewer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/collection-detail.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/themes-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/compare-icon-image.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-analytics-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-column-picker.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/dashboard-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/publish-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/replace-attachment-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/note-image-picker-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-nav-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/cloud-services-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/delete-permission-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/styles.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/contracts-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/browse.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-external-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/asset-search-results.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-audit-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/create-import-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/styles.css,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-user-details-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-group-details-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-queue.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/document-compare-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-folder-header.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/assets-queue.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/polyfills.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-filters-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/polyfills.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-domain-hint.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/ui.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-details-panel.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-collection-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/kd-citation-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/personal-space-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/tasks-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-icon.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/document-detail.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-tabs.component.css.map
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.003Z - [REQUEST]: 
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.024Z - Time taken for 'hash changed files from watcher' 18.502599999992526ms
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 3964) loaded successfully
+[plugin-worker] "nx-angular-json-plugin" (pid: 49656) loaded successfully
+[isolated-plugin] shutting down worker for "nx-angular-json-plugin" after createNodes
+Time taken for 'nx/js/dependencies-and-lockfile:createNodes' 13.636299999999892ms
+Time taken for 'nx/js/dependencies-and-lockfile:createNodes' 13.745999999999867ms
+[isolated-plugin] connected to worker for "nx/core/package-json" (pid: 41588)
+[plugin-worker] "nx/core/package-json" (pid: 41588) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-18-73908.3543.sock
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.169Z - Time taken for 'start-plugin-worker:nx/core/package-json' 875.9970999999932ms
+[plugin-worker] "nx/core/package-json" (pid: 41588) connected
+Time taken for 'plugin worker 41588 code loading' 506.26770000000005ms
+[plugin-worker] "nx/core/package-json" (pid: 41588) loaded successfully
+Time taken for 'nx/core/package-json:createNodes' 12.327199999999948ms
+Time taken for 'nx/core/package-json:createNodes' 12.42859999999996ms
+[isolated-plugin] shutting down worker for "nx/core/package-json" after createNodes
+[plugin-worker] "nx/core/project-json" (pid: 39008) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-19-74208.8247.sock
+Time taken for 'plugin worker 39008 code loading' 497.34220000000005ms
+[isolated-plugin] connected to worker for "nx/core/project-json" (pid: 39008)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.432Z - Time taken for 'start-plugin-worker:nx/core/project-json' 838.1319000000076ms
+[plugin-worker] "nx/core/project-json" (pid: 39008) connected
+[plugin-worker] "@nx/eslint/plugin" (pid: 9028) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.500Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.500Z - Closed a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:30.500Z - [Messenger] Setting up socket listeners
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:30.502Z - [Messenger] listen() complete
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:30.505Z - Established a connection. Number of open connections: 2
+[plugin-worker] "nx/core/project-json" (pid: 39008) loaded successfully
+Time taken for 'nx/core/project-json:createNodes' 22.127099999999928ms
+Time taken for 'nx/core/project-json:createNodes' 22.31129999999996ms
+[isolated-plugin] shutting down worker for "nx/core/project-json" after createNodes
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.038Z - [Messenger] Sending message type: GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.039Z - [Messenger] Message sent
+Time taken for 'daemon-message-serialization-GLOB' 0.04329999999981737ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.041Z - Received raw message of length 73
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.041Z - Received json message of type GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.044Z - Serializing response for GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.044Z - Responding to GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.044Z - [REQUEST]: Responding to the client. handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.044Z - Done responding to the client handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.044Z - Handled json message GLOB. Handling time: 3. Response time: 0.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.044Z - [Messenger] Received message, length: 57181
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.078Z - [Messenger] Sending message type: GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.079Z - [Messenger] Message sent
+Time taken for 'GLOB round trip' 6.274600000000191ms
+Time taken for 'deserialize daemon response - GLOB' 0.10019999999985885ms
+Time taken for 'daemon-message-serialization-GLOB' 0.12889999999970314ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.084Z - Received raw message of length 73
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.084Z - Received json message of type GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.086Z - Serializing response for GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.086Z - Responding to GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.086Z - [REQUEST]: Responding to the client. handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.086Z - Done responding to the client handleGlob
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.086Z - [Messenger] Received message, length: 57181
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.087Z - Handled json message GLOB. Handling time: 2. Response time: 1.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.115Z - [Messenger] Sending message type: HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.117Z - [Messenger] Message sent
+Time taken for 'GLOB round trip' 8.292300000000068ms
+Time taken for 'deserialize daemon response - GLOB' 0.13220000000001164ms
+Time taken for 'daemon-message-serialization-HASH_MULTI_GLOB' 0.09390000000030341ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.119Z - Received raw message of length 3050
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.119Z - Received json message of type HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.126Z - Serializing response for HASH_GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.126Z - Responding to HASH_GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.126Z - [REQUEST]: Responding to the client. handleHashMultiGlob
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.126Z - [Messenger] Received message, length: 630
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.128Z - [Messenger] Sending message type: HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.129Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.130Z - Done responding to the client handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.130Z - Handled json message HASH_GLOB. Handling time: 7. Response time: 4.
+Time taken for 'HASH_MULTI_GLOB round trip' 11.35609999999997ms
+Time taken for 'deserialize daemon response - HASH_MULTI_GLOB' 0.03459999999995489ms
+Time taken for 'daemon-message-serialization-HASH_MULTI_GLOB' 0.061700000000200816ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.577Z - Received raw message of length 3050
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.577Z - Received json message of type HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.584Z - Serializing response for HASH_GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.584Z - Responding to HASH_GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.584Z - [REQUEST]: Responding to the client. handleHashMultiGlob
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:31.585Z - [Messenger] Received message, length: 630
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.589Z - Done responding to the client handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:31.589Z - Handled json message HASH_GLOB. Handling time: 7. Response time: 5.
+Time taken for 'HASH_MULTI_GLOB round trip' 457.6104ms
+Time taken for 'deserialize daemon response - HASH_MULTI_GLOB' 0.051899999999932334ms
+Time taken for '@nx/eslint/plugin:createNodes' 2563.5373999999997ms
+Time taken for '@nx/eslint/plugin:createNodes' 2563.7589000000003ms
+[isolated-plugin] shutting down worker for "@nx/eslint/plugin" after createNodes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.105Z - Time taken for 'build-project-configs' 3063.502800000002ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.106Z - Time taken for 'build-project-configs' 3068.1693000000087ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.106Z - Time taken for 'createNodes:merge' 5.530399999988731ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.106Z - Time taken for 'createNodes:merge' 4.563099999999395ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.106Z - Time taken for 'get-all-workspace-files' 1.5416999999870313ms
+Time taken for 'build typescript dependencies' 0.21499999999969077ms
+[isolated-plugin] shutting down worker for "nx/js/dependencies-and-lockfile" after createDependencies
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.156Z - [SYNC]: collect registered sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.158Z - [SYNC]: project graph hash is the same, not collecting task sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.158Z - [SYNC]: nx.json hash is the same, not collecting global sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.158Z - [SYNC]: collect registered sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.160Z - [SYNC]: project graph hash is the same, not collecting task sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.160Z - [SYNC]: nx.json hash is the same, not collecting global sync generators
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.160Z - Time taken for 'total execution time for createProjectGraph()' 65.83349999999336ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.161Z - Time taken for 'createDependencies' 47.29100000001199ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.161Z - Time taken for 'nx/js/dependencies-and-lockfile:createDependencies' 47.126600000003236ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.161Z - Time taken for 'createMetadata' 0.015599999998812564ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.161Z - Time taken for 'serialize graph' 6.760399999999208ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:33.168Z - Closed a connection. Number of open connections: 1
+DEBUG nx::native::telemetry::service: Sent 1 events: [nx/js/dependencies-and-lockfile:createDe]
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.467Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.467Z - [WATCHER]: 0 file(s) created or restored, 0 file(s) modified, 108 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.467Z - [WATCHER]: File changes detected:
+Created:
+(none)
+Updated:
+(none)
+Deleted:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5POV4T7I.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-vocabularies-page.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4XUL4JK.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/browse.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H5UKKVS3.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js
+  ... and 98 more
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.467Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.518Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.518Z - [WATCHER]: 0 file(s) created or restored, 0 file(s) modified, 94 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.519Z - [WATCHER]: File changes detected:
+Created:
+(none)
+Updated:
+(none)
+Deleted:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RVOHY3EV.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZG6CPNKO.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/document-viewer.component.css.map
+  ... and 84 more
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.519Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.573Z - [WATCHER]: 0 file(s) created or restored, 0 file(s) modified, 86 file(s) deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.573Z - [WATCHER]: File changes detected:
+Created:
+(none)
+Updated:
+(none)
+Deleted:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/media/Figtree.woff2
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-spinner.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/media/NotoSans.woff2
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/login
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-dialog.component.css.map
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-share-token.util.spec.js
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/ui.css.map
+  ... and 76 more
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.573Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.581Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.621Z - [Messenger] Sending message type: RECORD_TASK_RUNS
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.622Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.623Z - Received raw message of length 206
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.623Z - Received json message of type RECORD_TASK_RUNS
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.628Z - Serializing response for RECORD_TASK_RUNS message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.628Z - Responding to RECORD_TASK_RUNS message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.628Z - [REQUEST]: Responding to the client. handleRecordTaskRuns
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.628Z - [Messenger] Received message, length: 4
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.630Z - [Messenger] Sending message type: GET_FLAKY_TASKS
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.631Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - [WATCHER]: dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec was deleted
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - [WATCHER]: File changes detected:
+Created:
+(none)
+Updated:
+(none)
+Deleted:
+  - dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - [SYNC]: clearing sync generators cache due to file changes
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - [WATCHER]: Processing file changes in outputs
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - Done responding to the client handleRecordTaskRuns
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - Handled json message RECORD_TASK_RUNS. Handling time: 5. Response time: 4.
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - Received raw message of length 59
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - Received json message of type GET_FLAKY_TASKS
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.632Z - Serializing response for GET_FLAKY_TASKS message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.633Z - Responding to GET_FLAKY_TASKS message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.633Z - [REQUEST]: Responding to the client. handleGetFlakyTasks
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.633Z - Done responding to the client handleGetFlakyTasks
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.633Z - Handled json message GET_FLAKY_TASKS. Handling time: 0. Response time: 1.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.633Z - [Messenger] Received message, length: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.634Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.635Z - Closed a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.634Z - [Messenger] Sending message type: GET_CONFIGURE_AI_AGENTS_STATUS
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.635Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - Received raw message of length 41
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - Received json message of type GET_CONFIGURE_AI_AGENTS_STATUS
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - [AI-AGENTS]: Returning cached agent configuration status
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - Serializing response for GET_CONFIGURE_AI_AGENTS_STATUS message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - Responding to GET_CONFIGURE_AI_AGENTS_STATUS message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - [REQUEST]: Responding to the client. handleGetConfigureAiAgentsStatus
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - Done responding to the client handleGetConfigureAiAgentsStatus
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.636Z - Handled json message GET_CONFIGURE_AI_AGENTS_STATUS. Handling time: 0. Response time: 0.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.636Z - [Messenger] Received message, length: 104
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.637Z - [Messenger] Sending message type: POST_TASKS_EXECUTION
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.638Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.639Z - Received raw message of length 90299
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.640Z - Received json message of type POST_TASKS_EXECUTION
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.642Z - Serializing response for POST_TASKS_EXECUTION message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.642Z - Responding to POST_TASKS_EXECUTION message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.642Z - [REQUEST]: Responding to the client. handleRunPostTasksExecution
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.642Z - Time taken for 'postTasksExecution' 1.4869999999937136ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.642Z - Done responding to the client handleRunPostTasksExecution
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.642Z - Handled json message POST_TASKS_EXECUTION. Handling time: 2. Response time: 0.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:39.642Z - [Messenger] Received message, length: 4
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.675Z - [REQUEST]: Updated workspace context based on watched changes, recomputing project graph...
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.675Z - [REQUEST]: 
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:39.675Z - [REQUEST]: dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5POV4T7I.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-vocabularies-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4XUL4JK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/browse.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H5UKKVS3.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/app-shell.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IBMDBNAM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/administration-shell.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IDE3SSEC.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-JAKJXSOU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ASQ7P3CM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HAWML2SX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FQ6VSH4Z.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FTNWMDKP.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-62M6YFOD.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DV4UJ663.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-D7ZLK3RQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5KK2I6WF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6FJ32F7J.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IBMDBNAM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-K5HE6IXY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I3HIRH4J.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HAWML2SX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/assets-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-3X3WMKDG.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6J3BZWYP.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-32JDRLHS.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2Z2ZCDOY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-32JDRLHS.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-audit-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-group-details-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-CV22Y4LA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-AGWMSP3K.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DH3CL5XQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-B5E3XTYV.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-analytics-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FTNWMDKP.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6FJ32F7J.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GA7PAOZX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/add-to-collection-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GVTGUEXK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4ABIIDW.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-users-groups-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2DQRJ6HX.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FS5SRXWM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5KK2I6WF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I3HIRH4J.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KESBT7FE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-cloud-services-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-D7ZLK3RQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-4W5W6LIU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-G4KWRQ7H.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H5UKKVS3.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GA7PAOZX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/asset-search-results.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-34WWIZLQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2N7AZGHL.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/attachment-preview-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DV4UJ663.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-4W5W6LIU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-GFJ2INKB.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HXDIZETW.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-I7GP24NR.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-6J3BZWYP.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-IDE3SSEC.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-HCADMBF4.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2Z2ZCDOY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DF7J2IP5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2ZQJ2K7O.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/browse-adf-hx-poc.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-34WWIZLQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2665NVHE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-62M6YFOD.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2N7AZGHL.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-nxql-search-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-FS5SRXWM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/authorized-applications-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-2DQRJ6HX.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DH3CL5XQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-K5HE6IXY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-7IJWQPUT.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-AGWMSP3K.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/change-password-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-EVZY3IIA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-H4XUL4JK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-DF7J2IP5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-JAKJXSOU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/add-permission-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/app.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/assets-queue.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-B5E3XTYV.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/admin-user-details-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-EVZY3IIA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ASQ7P3CM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-5POV4T7I.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-CV22Y4LA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RVOHY3EV.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZG6CPNKO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/document-viewer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UFW4A3YJ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VYANX7KN.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NEX6ELQY.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UXAN4KKZ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/collection-detail.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/drive-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-pager.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZZVMHJLI.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/favicon.ico,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UO6MZZ4E.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UL4XZEZA.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZWAKOSGO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZG6CPNKO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PJKCQCG2.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VHAB6T5P.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-history.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-nav-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/compare-icon-image.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NGOYQSBE.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LWJPHQG5.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VYANX7KN.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/document-detail.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/dashboard-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-XFXSUVE4.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PBRXNTRF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LBCC23YK.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-U5A75NN5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-V5LB7KHM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/group-form-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/document-compare-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-YZ6E3F6T.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KESBT7FE.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-URQDA6IM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/contracts-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/create-import-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UL4XZEZA.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-collection-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VHAB6T5P.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/cloud-services-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TIU7KR3V.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/create-version-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-V5LB7KHM.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UFW4A3YJ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VDNL4HON.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PKEVCDCF.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/column-settings-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PBRXNTRF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-VDNL4HON.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MIAU2A5V.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-X3TSLZPG.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-metadata-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PJKCQCG2.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-S7CDGBRQ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TMWVCRBO.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-QQ6R3ZVR.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-URQDA6IM.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-KIZEYA6I.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UXAN4KKZ.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-NEX6ELQY.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-X3TSLZPG.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-YZ6E3F6T.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/delete-permission-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LWJPHQG5.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/content-lake-upload.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RSA7SGGB.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PROC6UIU.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-QQ6R3ZVR.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-S7CDGBRQ.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RSA7SGGB.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/export-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-PKEVCDCF.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-ZZVMHJLI.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-RVOHY3EV.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/confirm-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-XFXSUVE4.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/edit-document-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MOBNAUCI.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-TIU7KR3V.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-MP42TKUT.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-LBCC23YK.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/chunk-UO6MZZ4E.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-details-panel.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/media/Figtree.woff2,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/test_main.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-spinner.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/media/NotoSans.woff2,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/login,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-share-token.util.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/ui.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/media,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/personal-space-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/publish-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/saved-search-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-drawer-route-match.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-add-permission-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-nuxeo-auth.interceptor.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/nuxeo-drive-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/styles.css,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/trash-filters-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-1.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-1.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-adf-hx.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-drawer-route-match.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-platform-nav-items.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/placeholder-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/replace-attachment-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-manifest-refresh.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/trash.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/note-editor.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-app.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-nuxeo-auth.interceptor.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-domain-hint.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/polyfills.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-queue.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-share-token.util.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/session-expiry-warning-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-trash.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/profile-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/styles.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-manifest-refresh.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/polyfills.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/remove-attachment-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-icon.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-column-picker.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/media/NotoSans-Italic.woff2,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-profile-page.component.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/user-form-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-folder-header.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/widget-container.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-document-cards.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/note-image-picker-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/media/Figtree-Italic.woff2,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/selection-topbar.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/i18n,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-login-page.component.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-platform-nav-items.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-provide-app-extensions.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/vocabulary-entry-form-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/login-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/images,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/search-filters-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/themes-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/widget-grid.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-tabs.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-auth.service.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/hxp-browse-toolbar.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-auth.service.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/tasks-page.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-saved-search-external-dialog.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/kd-citation-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/share-external-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/jasmine-cleanup-0.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/nav-drawer.component.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.config.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-session-timeout.service.spec.js.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/spec-app.spec.js,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/update-permission-dialog.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec/knowledge-discovery.css.map,dist/test-out/247cc8e3-9962-4d68-99ce-74dadf177aec
+[plugin-client] restarting worker for "@nx/eslint/plugin"
+[isolated-plugin] spawned worker for "@nx/eslint/plugin" (pid: 15944, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-20-84301.9154.sock)
+[plugin-client] restarting worker for "nx/js/dependencies-and-lockfile"
+[isolated-plugin] spawned worker for "nx/js/dependencies-and-lockfile" (pid: 38188, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-21-84550.0491.sock)
+[plugin-client] restarting worker for "nx-angular-json-plugin"
+[isolated-plugin] spawned worker for "nx-angular-json-plugin" (pid: 54472, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-22-84801.7733.sock)
+[plugin-client] restarting worker for "nx/core/package-json"
+[isolated-plugin] spawned worker for "nx/core/package-json" (pid: 38832, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-23-85049.4555.sock)
+[plugin-client] restarting worker for "nx/core/project-json"
+[isolated-plugin] spawned worker for "nx/core/project-json" (pid: 56024, socket: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-24-85305.5696.sock)
+[isolated-plugin] connected to worker for "@nx/eslint/plugin" (pid: 15944)
+[isolated-plugin] connected to worker for "nx/js/dependencies-and-lockfile" (pid: 38188)
+[plugin-worker] "@nx/eslint/plugin" (pid: 15944) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-20-84301.9154.sock
+Time taken for 'plugin worker 15944 code loading' 454.0481ms
+[plugin-worker] "@nx/eslint/plugin" (pid: 15944) connected
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 38188) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-21-84550.0491.sock
+Time taken for 'plugin worker 38188 code loading' 434.9895ms
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 38188) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:40.965Z - Time taken for 'hash changed files from watcher' 2.353000000002794ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:40.965Z - Time taken for 'start-plugin-worker:@nx/eslint/plugin' 1277.5283000000054ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:40.965Z - Time taken for 'start-plugin-worker:nx/js/dependencies-and-lockfile' 1029.6149999999907ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:40.965Z - Closed a connection. Number of open connections: 0
+[plugin-worker] "nx-angular-json-plugin" (pid: 54472) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-22-84801.7733.sock
+Time taken for 'plugin worker 54472 code loading' 499.0912ms
+[isolated-plugin] connected to worker for "nx-angular-json-plugin" (pid: 54472)
+[plugin-worker] "nx-angular-json-plugin" (pid: 54472) connected
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:40.995Z - Time taken for 'start-plugin-worker:nx-angular-json-plugin' 808.4600999999966ms
+[plugin-worker] "nx-angular-json-plugin" (pid: 54472) loaded successfully
+[plugin-worker] "nx/js/dependencies-and-lockfile" (pid: 38188) loaded successfully
+Time taken for 'nx-angular-json-plugin:createNodes' 1.717899999999986ms
+[isolated-plugin] shutting down worker for "nx-angular-json-plugin" after createNodes
+Time taken for 'nx/js/dependencies-and-lockfile:createNodes' 16.705400000000054ms
+[plugin-worker] "nx/core/package-json" (pid: 38832) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-23-85049.4555.sock
+[isolated-plugin] connected to worker for "nx/core/package-json" (pid: 38832)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:41.302Z - Time taken for 'start-plugin-worker:nx/core/package-json' 867.3568999999989ms
+[plugin-worker] "nx/core/package-json" (pid: 38832) connected
+Time taken for 'plugin worker 38832 code loading' 548.5889999999999ms
+[plugin-worker] "nx/core/package-json" (pid: 38832) loaded successfully
+Time taken for 'nx/core/package-json:createNodes' 18.569600000000037ms
+[isolated-plugin] shutting down worker for "nx/core/package-json" after createNodes
+[plugin-worker] "nx/core/project-json" (pid: 56024) listening on \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\plugin6240-24-85305.5696.sock
+Time taken for 'plugin worker 56024 code loading' 541.5501ms
+[isolated-plugin] connected to worker for "nx/core/project-json" (pid: 56024)
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:41.591Z - Time taken for 'start-plugin-worker:nx/core/project-json' 900.5995000000112ms
+[plugin-worker] "nx/core/project-json" (pid: 56024) connected
+[plugin-worker] "@nx/eslint/plugin" (pid: 15944) loaded successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:41.652Z - Established a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:41.652Z - Closed a connection. Number of open connections: 0
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:41.653Z - Established a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:41.653Z - [Messenger] Setting up socket listeners
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:41.655Z - [Messenger] listen() complete
+[plugin-worker] "nx/core/project-json" (pid: 56024) loaded successfully
+Time taken for 'nx/core/project-json:createNodes' 21.639800000000037ms
+[isolated-plugin] shutting down worker for "nx/core/project-json" after createNodes
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:42.111Z - [Messenger] Sending message type: GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:42.111Z - [Messenger] Message sent
+Time taken for 'daemon-message-serialization-GLOB' 0.0443000000000211ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.115Z - Received raw message of length 73
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.115Z - Received json message of type GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.116Z - Serializing response for GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.116Z - Responding to GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.116Z - [REQUEST]: Responding to the client. handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.116Z - Done responding to the client handleGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.116Z - Handled json message GLOB. Handling time: 1. Response time: 0.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:42.117Z - [Messenger] Received message, length: 50337
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:42.146Z - [Messenger] Sending message type: HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:42.146Z - [Messenger] Message sent
+Time taken for 'GLOB round trip' 7.032000000000153ms
+Time taken for 'deserialize daemon response - GLOB' 0.08240000000023429ms
+Time taken for 'daemon-message-serialization-HASH_MULTI_GLOB' 0.04959999999982756ms
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.147Z - Received raw message of length 3050
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.147Z - Received json message of type HASH_MULTI_GLOB
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.152Z - Serializing response for HASH_GLOB message in json mode
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.152Z - Responding to HASH_GLOB message
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.152Z - [REQUEST]: Responding to the client. handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.152Z - Done responding to the client handleHashMultiGlob
+[NX v22.7.8 Daemon Server] - 2026-09-17T11:25:42.152Z - Handled json message HASH_GLOB. Handling time: 5. Response time: 0.
+[NX v22.7.8 Daemon Client] - 2026-09-17T11:25:42.152Z - [Messenger] Received message, length: 630

@@ -1,0 +1,213 @@
+:host {
+  display: block;
+  width: min(96vw, 1180px);
+}
+
+.kd-citation-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh;
+  background: var(--mat-sys-surface, #fff);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.kd-citation-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant, #e8eaef);
+  background: var(--mat-sys-surface-container-lowest, #fafbfd);
+}
+
+.kd-citation-dialog__header-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.kd-citation-dialog__brand {
+  color: var(--mat-sys-primary, #005cbb);
+}
+
+.kd-citation-dialog__header-text {
+  min-width: 0;
+}
+
+.kd-citation-dialog__title,
+.kd-citation-dialog__path {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.kd-citation-dialog__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+}
+
+.kd-citation-dialog__path {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+}
+
+.kd-citation-dialog__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.85fr);
+  min-height: 520px;
+  max-height: calc(88vh - 64px);
+}
+
+.kd-citation-dialog__viewer {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background: var(--mat-sys-surface-container, #eef1f6);
+  overflow: auto;
+}
+
+.kd-citation-dialog__frame,
+.kd-citation-dialog__image {
+  width: 100%;
+  height: 100%;
+  min-height: 520px;
+  border: 0;
+  object-fit: contain;
+  background: var(--mat-sys-surface, #fff);
+}
+
+.kd-citation-dialog__text {
+  width: 100%;
+  padding: 24px;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-size: 13px;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+  background: var(--mat-sys-surface, #fff);
+}
+
+.kd-citation-dialog__highlight {
+  background: var(--mat-sys-tertiary-fixed-dim, #fff59d);
+  padding: 0 2px;
+}
+
+.kd-citation-dialog__state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 32px;
+  text-align: center;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+
+  mat-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+
+.kd-citation-dialog__state--error mat-icon {
+  color: var(--mat-sys-error, #ba1a1a);
+}
+
+.kd-citation-dialog__mime {
+  font-size: 11px;
+  color: var(--mat-sys-outline, #74777f);
+}
+
+.kd-citation-dialog__references {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  overflow: auto;
+  background: var(--mat-sys-surface-container-low, #f8fafc);
+  border-left: 1px solid var(--mat-sys-outline-variant, #e8eaef);
+}
+
+.kd-citation-dialog__reference {
+  border: 1px solid var(--mat-sys-tertiary, #f0d27a);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--mat-sys-tertiary-container, #fff9e6);
+}
+
+.kd-citation-dialog__reference--link {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--mat-sys-tertiary-fixed-dim, #fff4cc);
+  }
+}
+
+.kd-citation-dialog__reference-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--mat-sys-on-surface-variant, #5c5f6b);
+}
+
+.kd-citation-dialog__reference-id {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+  word-break: break-all;
+}
+
+.kd-citation-dialog__reference-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.kd-citation-dialog__reference-content {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mat-sys-on-surface, #1a1c1e);
+  display: -webkit-box;
+  -webkit-line-clamp: 8;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.kd-citation-dialog__reference-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 960px) {
+  .kd-citation-dialog__body {
+    grid-template-columns: 1fr;
+    max-height: none;
+  }
+
+  .kd-citation-dialog__references {
+    border-left: none;
+    border-top: 1px solid var(--mat-sys-outline-variant, #e8eaef);
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "nuxeo-ui",
+  "projectType": "application",
+  "generators": {
+    "@schematics/angular:component": {
+      "style": "scss"
+    }
+  },
+  "sourceRoot": "apps/nuxeo-ui/src",
+  "prefix": "app",
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "$comment": "@nx/eslint/plugin infers this as `eslint:lint`, which `nx affected -t lint` does NOT match — so the gate and CI never linted this project. Declaring it explicitly is what puts it under the gate."
+    },
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/nuxeo-ui"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng build nuxeo-ui"
+      },
+      "configurations": {
+        "production": {
+          "command": "ng build nuxeo-ui --configuration=production"
+        },
+        "development": {
+          "command": "ng build nuxeo-ui --configuration=development"
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng serve nuxeo-ui"
+      },
+      "configurations": {
+        "production": {
+          "command": "ng serve nuxeo-ui --configuration=production"
+        },
+        "development": {
+          "command": "ng serve nuxeo-ui --configuration=development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ng test nuxeo-ui --no-watch --browsers=ChromeHeadless"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "outputs": ["{workspaceRoot}/dist/out-tsc/apps/nuxeo-ui"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "command": "ngc -p apps/nuxeo-ui/tsconfig.app.json --outDir dist/out-tsc/apps/nuxeo-ui"
+      }
+    }
+  },
+  "tags": ["scope:app", "type:app"]
+}

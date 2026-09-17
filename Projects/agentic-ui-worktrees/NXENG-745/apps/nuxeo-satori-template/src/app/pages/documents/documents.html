@@ -1,0 +1,83 @@
+<nav class="docs__crumbs" aria-label="Breadcrumb">
+  <a class="docs__crumb" [routerLink]="['/documents']">repository</a>
+  @for (crumb of breadcrumbs(); track crumb.path) {
+    <span class="docs__crumb-sep" aria-hidden="true">/</span>
+    <a class="docs__crumb" [routerLink]="['/documents']" [queryParams]="{ path: crumb.path }">
+      {{ crumb.label }}
+    </a>
+  }
+</nav>
+
+@if (loading()) {
+  <p class="docs__status" role="status">Loading from Nuxeo…</p>
+}
+
+@if (errorMessage(); as message) {
+  <p class="docs__error" role="alert">{{ message }}</p>
+}
+
+@if (ready(); as ready) {
+  <header class="docs__header">
+    <h1 class="docs__title">{{ ready.folder.title }}</h1>
+    <p class="docs__meta">
+      <span class="docs__badge">{{ ready.folder.type }}</span>
+      <code>{{ ready.folder.path }}</code>
+      <span>{{ ready.rows.length }} item(s)</span>
+    </p>
+  </header>
+
+  @if (ready.rows.length) {
+    <table class="docs__table">
+      <caption class="docs__caption">
+        Children returned by
+        <code>BrowseService.getBrowseFolderContents()</code>
+        — read live from the Nuxeo REST API.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Title</th>
+          <th scope="col">Type</th>
+          <th scope="col">Modified</th>
+          <th scope="col">Author</th>
+          <th scope="col" class="docs__cell--right">Size</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of ready.rows; track row.uid) {
+          <tr>
+            <td>
+              @if (row.folderish) {
+                <a
+                  class="docs__link"
+                  [routerLink]="['/documents']"
+                  [queryParams]="{ path: row.path }"
+                  >{{ row.title }}</a
+                >
+              } @else {
+                <a class="docs__link" [routerLink]="['/documents', row.uid]">{{ row.title }}</a>
+              }
+              @if (row.description) {
+                <span class="docs__row-description">{{ row.description }}</span>
+              }
+            </td>
+            <td>
+              <span class="docs__badge">{{ row.type }}</span>
+            </td>
+            <td>{{ row.modified }}</td>
+            <td>{{ row.creator }}</td>
+            <td class="docs__cell--right">{{ row.size }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (ready.hasMore) {
+      <p class="docs__status">
+        Nuxeo has more children than this page requested. Paging is a fork's decision, so the
+        template does not guess at one.
+      </p>
+    }
+  } @else {
+    <p class="docs__status">This folder is empty.</p>
+  }
+}

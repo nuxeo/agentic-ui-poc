@@ -1,0 +1,510 @@
+<div class="results-page">
+  <!-- AI Search Bar -->
+  @if (featureFlags.aiEnabled()) {
+    <div class="ai-search-section">
+      <div class="ai-search-header">
+        <button
+          mat-flat-button
+          class="ai-toggle-btn"
+          [class.active]="aiSearchMode()"
+          (click)="toggleAiSearch()"
+        >
+          <mat-icon class="ai-sparkle-icon">auto_awesome</mat-icon>
+          {{ aiSearchMode() ? 'AI Search Active' : 'AI Search' }}
+        </button>
+        @if (aiSearchMode() && aiGeneratedNxql()) {
+          <button
+            mat-stroked-button
+            class="nxql-toggle-btn"
+            (click)="showNxqlPanel.set(!showNxqlPanel())"
+          >
+            <mat-icon>code</mat-icon>
+            {{ showNxqlPanel() ? 'Hide Query' : 'View Query' }}
+          </button>
+        }
+      </div>
+
+      @if (aiSearchMode()) {
+        <div class="ai-search-bar">
+          <mat-icon class="ai-search-icon">auto_awesome</mat-icon>
+          <input
+            class="ai-search-input"
+            type="text"
+            placeholder="Ask in natural language... e.g. 'PDFs uploaded last week by Administrator'"
+            [ngModel]="aiQuery()"
+            (ngModelChange)="onAiQueryInput($event)"
+            (keydown.enter)="executeAiSearch()"
+            [matAutocomplete]="aiAutoComplete"
+          />
+          @if (aiLoading()) {
+            <mat-spinner diameter="20" class="ai-search-spinner" aria-label="Loading"></mat-spinner>
+          } @else {
+            <button
+              mat-icon-button
+              class="ai-search-go"
+              aria-label="Run AI search"
+              (click)="executeAiSearch()"
+              [disabled]="!aiQuery().trim()"
+            >
+              <mat-icon>send</mat-icon>
+            </button>
+          }
+          <mat-autocomplete
+            #aiAutoComplete="matAutocomplete"
+            (optionSelected)="selectAiSuggestion($event.option.value)"
+          >
+            @for (suggestion of aiSuggestions(); track suggestion) {
+              <mat-option [value]="suggestion">
+                <mat-icon class="suggestion-icon">auto_awesome</mat-icon>
+                {{ suggestion }}
+              </mat-option>
+            }
+          </mat-autocomplete>
+        </div>
+
+        @if (aiError()) {
+          <div class="ai-error">
+            <mat-icon>error_outline</mat-icon>
+            {{ aiError() }}
+          </div>
+        }
+
+        @if (showNxqlPanel() && aiGeneratedNxql()) {
+          <div class="ai-nxql-panel">
+            <div class="ai-nxql-explanation">
+              <mat-icon>info_outline</mat-icon>
+              <span>{{ aiExplanation() }}</span>
+            </div>
+            <pre class="ai-nxql-code">{{ aiGeneratedNxql() }}</pre>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <div class="results-top-actions">
+    @if (hasSavableFilters()) {
+      <button
+        mat-flat-button
+        color="primary"
+        class="top-action-btn save-as-btn"
+        type="button"
+        (click)="openSaveAsDialog()"
+      >
+        <mat-icon>bookmark_add</mat-icon>
+        Save As
+      </button>
+    }
+    @if (hasSelectedSavedSearch()) {
+      <button
+        mat-flat-button
+        class="top-action-btn save-btn"
+        type="button"
+        (click)="onSaveSelectedSavedSearch()"
+      >
+        Save
+      </button>
+    }
+    @if (hasSelectedSavedSearch()) {
+      <button
+        mat-icon-button
+        type="button"
+        [matMenuTriggerFor]="resultsActionsMenu"
+        aria-label="Results actions"
+      >
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #resultsActionsMenu="matMenu">
+        <button mat-menu-item type="button" (click)="onEditSelectedSavedSearch()">Edit</button>
+        <button mat-menu-item type="button" (click)="onShareSelectedSavedSearch()">Share</button>
+        <button mat-menu-item type="button" (click)="onDeleteSelectedSavedSearch()">Delete</button>
+      </mat-menu>
+    }
+  </div>
+
+  <div class="results-toolbar">
+    <div class="results-summary">
+      @if (resultCount() > 0) {
+        <span class="results-count">{{ resultCount() }} result(s)</span>
+      }
+
+      <div class="quick-filters">
+        @for (filter of quickFilterOptions; track filter.value) {
+          <button
+            mat-stroked-button
+            type="button"
+            class="quick-filter-btn"
+            [class.active]="isQuickFilterSelected(filter.value)"
+            (click)="toggleQuickFilter(filter.value)"
+          >
+            {{ filter.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="toolbar-actions">
+      <button
+        mat-icon-button
+        matTooltip="Export CSV"
+        aria-label="Export CSV"
+        (click)="exportCsv()"
+        class="toolbar-btn"
+      >
+        <mat-icon>download</mat-icon>
+      </button>
+
+      <!--
+        The label is static and the *state* is carried by `aria-pressed`, rather than folding
+        both into a conditional tooltip. The tooltip below is deliberately empty for the active
+        view — sensible for a sighted user, but as an accessible name it left the selected
+        button with no name at all, which is the `button-name` violation this fixes.
+      -->
+      <button
+        mat-icon-button
+        [class.active]="viewMode() === 'grid'"
+        [matTooltip]="viewMode() !== 'grid' ? 'Switch to Grid View' : ''"
+        aria-label="Grid view"
+        [attr.aria-pressed]="viewMode() === 'grid'"
+        (click)="setViewMode('grid')"
+        class="toolbar-btn"
+      >
+        <mat-icon>grid_view</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        [class.active]="viewMode() === 'table'"
+        [matTooltip]="viewMode() !== 'table' ? 'Switch to Table View' : ''"
+        aria-label="Table view"
+        [attr.aria-pressed]="viewMode() === 'table'"
+        (click)="setViewMode('table')"
+        class="toolbar-btn"
+      >
+        <mat-icon>view_list</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        class="toolbar-btn list-view-btn"
+        [class.active]="viewMode() === 'list'"
+        [matTooltip]="viewMode() !== 'list' ? 'Switch to List view' : ''"
+        aria-label="List view"
+        [attr.aria-pressed]="viewMode() === 'list'"
+        (click)="setViewMode('list')"
+      >
+        <mat-icon>format_list_bulleted</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  @if (busy()) {
+    <div class="results-loading">
+      <mat-spinner diameter="32" aria-label="Loading" />
+    </div>
+  }
+
+  @if (!busy() && viewMode() === 'grid') {
+    <div class="grid-container">
+      <div class="grid-action-bar">
+        <div class="grid-actions-left">
+          <mat-select
+            [value]="gridGroupBy()"
+            (selectionChange)="setGridGroupBy($event.value)"
+            class="grid-select"
+          >
+            <mat-option value="title">Title</mat-option>
+            <mat-option value="created">Created</mat-option>
+            <mat-option value="modified">Modified</mat-option>
+            <mat-option value="contributor">Last contributor</mat-option>
+            <mat-option value="state">State</mat-option>
+            <mat-option value="nature">Nature</mat-option>
+            <mat-option value="coverage">Coverage</mat-option>
+          </mat-select>
+
+          <button
+            mat-icon-button
+            matTooltip="Revert sort order"
+            aria-label="Revert sort order"
+            (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
+            class="action-btn"
+          >
+            <mat-icon>{{ gridSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        @for (row of displayResults(); track row.id) {
+          <div class="result-card" [class.selected]="isSelected(row.id)">
+            <div class="grid-card-checkbox col-hover-select">
+              <mat-checkbox
+                [checked]="isSelected(row.id)"
+                [aria-label]="'Select ' + row.name"
+                (change)="toggleSelection(row.id)"
+                (click)="$event.stopPropagation()"
+              ></mat-checkbox>
+            </div>
+            <div class="result-card-thumbnail">
+              @if (thumbnailMap()[row.id]; as thumb) {
+                <img class="result-thumbnail-image" [src]="thumb" alt="" />
+              } @else {
+                <mat-icon class="result-icon">{{ row.icon }}</mat-icon>
+              }
+            </div>
+            <div class="result-card-body">
+              <div class="result-head">
+                <button
+                  type="button"
+                  class="result-name"
+                  [title]="row.name"
+                  (click)="openDocument(row.id); $event.stopPropagation()"
+                >
+                  {{ row.name }}
+                </button>
+                <span class="result-type-pill" [title]="row.type">{{ row.type }}</span>
+              </div>
+              <div class="grid-card-actions col-hover-actions">
+                <button
+                  mat-icon-button
+                  matTooltip="Add to favorites"
+                  aria-label="Add to favorites"
+                  class="action-btn"
+                  [disabled]="favoritePendingIds().has(row.id)"
+                  (click)="toggleFavorite(row.id, $event)"
+                >
+                  <mat-icon class="action-icon" [class.favorited]="isFavorited(row.id)">{{
+                    isFavorited(row.id) ? 'star' : 'star_outline'
+                  }}</mat-icon>
+                </button>
+                @if (isDownloadableType(row.type)) {
+                  <button
+                    mat-icon-button
+                    matTooltip="Download"
+                    aria-label="Download"
+                    class="action-btn"
+                    (click)="downloadDocument(row.id, row.name, $event)"
+                  >
+                    <mat-icon class="action-icon">download</mat-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (resultCount() === 0) {
+          <div class="results-empty results-empty--grid">
+            No documents match the search criteria.
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (!busy() && viewMode() === 'table') {
+    <div class="list-wrapper">
+      @if (columnPanelOpen()) {
+        <button
+          type="button"
+          class="col-panel-backdrop"
+          aria-label="Close column picker"
+          (click)="closeColumnPanel()"
+          (keydown.escape)="closeColumnPanel()"
+        ></button>
+        <div class="col-panel">
+          <p class="col-panel-title">Column Settings</p>
+          <div class="col-panel-list">
+            @for (col of columnsForPanel; track col.key) {
+              <mat-checkbox
+                class="col-panel-option"
+                [checked]="isPendingColumn(col.key)"
+                (change)="togglePendingColumn(col.key)"
+                >{{ col.label }}</mat-checkbox
+              >
+            }
+          </div>
+          <div class="col-panel-actions">
+            <button mat-button (click)="resetColumns()">Reset</button>
+            <button mat-flat-button color="primary" (click)="applyColumns()">Done</button>
+          </div>
+        </div>
+      }
+
+      <div class="result-list">
+        <div class="list-header" [style.grid-template-columns]="gridTemplate()">
+          <span class="col-checkbox"></span>
+          @for (col of visibleColumns(); track col.key) {
+            @if (SORTABLE_COLUMNS.has(col.key)) {
+              <button
+                type="button"
+                [class.col-name]="col.key === 'name'"
+                class="col-sortable"
+                (click)="sortBy(col.key)"
+              >
+                {{ col.label }}
+                <mat-icon class="sort-icon" [class.sort-active]="sortColumn() === col.key">
+                  {{
+                    sortColumn() === col.key && sortDirection() === 'desc'
+                      ? 'arrow_downward'
+                      : 'arrow_upward'
+                  }}
+                </mat-icon>
+              </button>
+            } @else {
+              <span>{{ col.label }}</span>
+            }
+          }
+          <span class="col-gear">
+            <button
+              mat-icon-button
+              class="gear-btn"
+              matTooltip="Manage columns"
+              aria-label="Manage columns"
+              (click)="openColumnPanel()"
+            >
+              <mat-icon>tune</mat-icon>
+            </button>
+          </span>
+        </div>
+
+        @for (row of sortedResults(); track row.id) {
+          <div
+            class="list-row"
+            [class.selected]="isSelected(row.id)"
+            [style.grid-template-columns]="gridTemplate()"
+          >
+            <span class="col-checkbox col-hover-select">
+              <mat-checkbox
+                [checked]="isSelected(row.id)"
+                [aria-label]="'Select ' + row.name"
+                (click)="$event.stopPropagation()"
+                (change)="toggleSelection(row.id)"
+              ></mat-checkbox>
+            </span>
+            @for (col of visibleColumns(); track col.key) {
+              @if (col.key === 'name') {
+                <span class="col-name">
+                  @if (thumbnailMap()[row.id]; as thumb) {
+                    <img class="row-thumbnail-image" [src]="thumb" alt="" />
+                  } @else {
+                    <mat-icon class="row-icon">{{ row.icon }}</mat-icon>
+                  }
+                  <button
+                    type="button"
+                    class="row-name-text"
+                    [title]="row.name"
+                    (click)="openDocument(row.id); $event.stopPropagation()"
+                  >
+                    {{ row.name }}
+                  </button>
+                </span>
+              } @else {
+                <span>{{ getCellValue(row, col.key) }}</span>
+              }
+            }
+            <span class="col-gear"></span>
+          </div>
+        }
+
+        @if (resultCount() === 0) {
+          <div class="results-empty">No documents match the search criteria.</div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (!busy() && viewMode() === 'list') {
+    <div class="list-action-bar">
+      <div class="list-actions-left">
+        <mat-select
+          [value]="gridGroupBy()"
+          (selectionChange)="setGridGroupBy($event.value)"
+          class="list-select"
+        >
+          <mat-option value="title">Title</mat-option>
+          <mat-option value="created">Created</mat-option>
+          <mat-option value="modified">Modified</mat-option>
+          <mat-option value="contributor">Last contributor</mat-option>
+          <mat-option value="state">State</mat-option>
+          <mat-option value="nature">Nature</mat-option>
+          <mat-option value="coverage">Coverage</mat-option>
+        </mat-select>
+
+        <button
+          mat-icon-button
+          matTooltip="Revert sort order"
+          aria-label="Revert sort order"
+          (click)="setGridSortOrder(gridSortOrder() === 'asc' ? 'desc' : 'asc')"
+          class="action-btn"
+        >
+          <mat-icon>{{ gridSortOrder() === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="simple-list">
+      @for (row of displayResults(); track row.id) {
+        <div class="simple-list-item" [class.selected]="isSelected(row.id)">
+          <div class="simple-list-thumb-wrap">
+            @if (thumbnailMap()[row.id]; as thumb) {
+              <img class="simple-list-thumb" [src]="thumb" alt="" />
+            } @else {
+              <mat-icon class="simple-list-icon">{{ row.icon }}</mat-icon>
+            }
+            <span class="simple-list-checkbox col-hover-select">
+              <mat-checkbox
+                [checked]="isSelected(row.id)"
+                [aria-label]="'Select ' + row.name"
+                (click)="$event.stopPropagation()"
+                (change)="toggleSelection(row.id)"
+              ></mat-checkbox>
+            </span>
+          </div>
+          <div class="simple-list-body">
+            <div class="simple-list-header">
+              <button
+                type="button"
+                class="simple-list-title"
+                [title]="row.name"
+                (click)="openDocument(row.id); $event.stopPropagation()"
+              >
+                {{ row.name }}
+              </button>
+              <span class="simple-list-type-badge" [title]="row.type">{{ row.type }}</span>
+            </div>
+            <div class="simple-list-actions col-hover-actions">
+              <button
+                mat-icon-button
+                matTooltip="Add to favorites"
+                aria-label="Add to favorites"
+                class="action-btn"
+                [disabled]="favoritePendingIds().has(row.id)"
+                (click)="toggleFavorite(row.id, $event)"
+              >
+                <mat-icon class="action-icon" [class.favorited]="isFavorited(row.id)">{{
+                  isFavorited(row.id) ? 'star' : 'star_outline'
+                }}</mat-icon>
+              </button>
+              @if (isDownloadableType(row.type)) {
+                <button
+                  mat-icon-button
+                  matTooltip="Download"
+                  aria-label="Download"
+                  class="action-btn"
+                  (click)="downloadDocument(row.id, row.name, $event)"
+                >
+                  <mat-icon class="action-icon">download</mat-icon>
+                </button>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (resultCount() === 0) {
+        <div class="results-empty">No documents match the search criteria.</div>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "SatoriExtensionAction",
+  "title": "Add an action to a Satori extension library",
+  "description": "Registers a handler a manifest can place in any slot by ID. Where it appears is Layer 1 configuration; what it does is this handler.",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Action name, kebab-case. Becomes <owner>.actions.<camelCase>.",
+      "$default": { "$source": "argv", "index": 0 },
+      "x-prompt": "Action name (kebab-case, e.g. export-claim)?",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
+    },
+    "library": {
+      "type": "string",
+      "description": "The extension library to add it to.",
+      "x-prompt": "Which extension library (e.g. acme-extensions)?"
+    }
+  },
+  "required": ["name", "library"]
+}

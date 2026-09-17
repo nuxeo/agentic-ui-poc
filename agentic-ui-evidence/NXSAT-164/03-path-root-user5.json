@@ -1,0 +1,10 @@
+﻿{
+    "capturedAt":  "2026-07-14T06:30:06.8780603Z",
+    "request":  {
+                    "method":  "GET",
+                    "url":  "https://satori-ui.beta.nuxeocloud.com/nuxeo/api/v1/path/",
+                    "user":  "user5"
+                },
+    "status":  "error",
+    "error":  "The remote server returned an error: (403) Forbidden."
+}

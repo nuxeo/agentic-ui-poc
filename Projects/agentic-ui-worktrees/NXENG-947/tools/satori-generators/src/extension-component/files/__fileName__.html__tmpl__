@@ -1,0 +1,9 @@
+<section class="<%= owner %>-<%= fileName %>">
+  <h2><%= className %></h2>
+  <p>
+    Registered as <code><%= componentId %></code> by
+    <code><%= projectName %></code>, and resolved from the registry — the host never
+    imported this class.
+  </p>
+  <p class="<%= owner %>-<%= fileName %>__hint">Replace this with your own content.</p>
+</section>

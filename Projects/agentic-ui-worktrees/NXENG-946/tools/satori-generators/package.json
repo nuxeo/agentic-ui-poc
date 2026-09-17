@@ -1,0 +1,7 @@
+{
+  "name": "@nuxeo-satori/generators",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nx generators for Nuxeo Satori customer extension libraries.",
+  "generators": "./generators.json"
+}

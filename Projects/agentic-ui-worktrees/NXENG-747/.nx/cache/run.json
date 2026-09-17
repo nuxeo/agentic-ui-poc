@@ -1,0 +1,21 @@
+{
+  "run": {
+    "command": "nx run nuxeo-ui:build --skip-nx-cache",
+    "startTime": "2026-09-17T11:24:43.967Z",
+    "endTime": "2026-09-17T11:25:31.584Z",
+    "inner": false
+  },
+  "tasks": [
+    {
+      "taskId": "nuxeo-ui:build:production",
+      "target": "build",
+      "projectName": "nuxeo-ui",
+      "hash": "5194595130899389704",
+      "startTime": "2026-09-17T11:24:43.998Z",
+      "endTime": "2026-09-17T11:25:31.565Z",
+      "params": "",
+      "cacheStatus": "cache-miss",
+      "status": 0
+    }
+  ]
+}

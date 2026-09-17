@@ -1,0 +1,74 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../dist/out-tsc/libs/platform",
+    "declaration": true,
+    "declarationMap": true,
+    "inlineSources": true,
+    "sourceMap": true,
+    "types": [],
+
+    // `tsconfig.base.json` does **not** set `strict`; every library sets it in its own
+    // `tsconfig.json`. This file extends the base directly, so without restating these
+    // the whole package was compiled with `strictNullChecks: false` — which silently
+    // collapsed `string | null` to `string` and shipped 8 wrong nullable types in the
+    // public API. A customer calling `ruleContext.username.set(null)` on sign-out got a
+    // compile error that our own source tree does not produce.
+    //
+    // Nothing caught it: `test` does not typecheck, `build` and `typecheck` run against
+    // the per-library configs which are strict, and the API snapshot recorded the wrong
+    // types as the baseline. Only `fork-simulation` — compiling the template against the
+    // built declarations — surfaced it. Keep these in step with
+    // `libs/shared/*/tsconfig.json`.
+    "strict": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "isolatedModules": true,
+    "moduleResolution": "bundler"
+  },
+  "angularCompilerOptions": {
+    // Partial ("linked") compilation — Angular's library distribution format. It emits
+    // `ɵɵngDeclareComponent` calls that the consuming application's linker lowers to the
+    // `ɵɵdefineComponent` of *its own* Angular version, which is what lets one published
+    // tarball work across minor versions.
+    //
+    // This is the SAME root cause as the `strict` block above, and that is the lesson:
+    // `@nx/angular:package` with a `tsConfig` option calls
+    // `parseRemappedTsConfigAndMergeDefaults`, which despite its name merges only eight
+    // hardcoded options and otherwise REPLACES ng-packagr's bundled
+    // `ng-packagr/src/lib/ts/conf/tsconfig.ngc.json`. That bundled file is the only place
+    // `compilationMode: partial` is set; Angular's own default is `FULL`. So this file is
+    // not a layer on top of sensible defaults — it is the entire configuration, and
+    // anything it fails to restate is lost.
+    //
+    // The consequence was not subtle and still went unnoticed for a whole phase:
+    // ng-packagr writes a `prepublishOnly` script that hard-fails `npm publish` for any
+    // full-mode package, so `@nuxeo-satori/platform` could not be published at all —
+    // while Phase 4's central claim was that a customer upgrade is an `npm version` bump.
+    // `scripts/beta-harness/publishability.mjs` is the gate that now runs a real
+    // `npm publish --dry-run` against the built bytes, which is the only check that
+    // executes the `prepublishOnly` script this omission caused ng-packagr to write.
+    "compilationMode": "partial",
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
+  },
+  "include": ["src/**/*.ts", "../shared/*/src/**/*.ts"],
+  // The `../shared/*` patterns are not redundant. TypeScript resolves `exclude` globs
+  // relative to this directory and `**` never matches `..`, so the bare `**/*.spec.ts`
+  // silently failed to exclude the specs pulled in by the `../shared/*` include — the
+  // 1,457 "Cannot find name 'describe'" errors that appear on a direct `tsc -p` run,
+  // every one of them in `libs/shared`. ng-packagr compiles from the public API and so
+  // never reached them, which is why the `build` gate stayed green over it.
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/test-setup.ts",
+    "../shared/*/src/**/*.spec.ts",
+    "../shared/*/src/**/*.test.ts",
+    "../shared/*/src/**/test-setup.ts"
+  ]
+}

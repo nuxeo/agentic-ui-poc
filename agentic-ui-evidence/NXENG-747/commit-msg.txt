@@ -1,0 +1,4 @@
+fix(NXENG-747): add link underline and login WCAG 1.4.1 tests
+
+Pair Satori link colors with underline in global styles and add regression
+tests for login required labels and error text cues.

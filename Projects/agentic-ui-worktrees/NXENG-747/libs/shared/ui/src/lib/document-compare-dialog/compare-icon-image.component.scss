@@ -1,0 +1,14 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+}
+
+.compare-icon-image {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.compare-icon-fallback {
+  font-size: 13px;
+}

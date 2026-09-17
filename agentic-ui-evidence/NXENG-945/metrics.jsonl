@@ -1,0 +1,12 @@
+{"at":"2026-09-17T07:35:00.591Z","type":"start","ticket":"NXENG-945","kind":"bug","model":"composer-2.5-fast","account":"akshitha.koppaka@hyland.com","branch":"fix/nxeng-945","node":"v20.20.2"}
+{"at":"2026-09-17T07:35:00.874Z","type":"phase","phase":"ticket"}
+{"at":"2026-09-17T07:38:28.847Z","type":"phase","phase":"expected"}
+{"at":"2026-09-17T07:38:29.175Z","type":"phase","phase":"reproduce"}
+{"at":"2026-09-17T07:40:36.554Z","type":"phase","phase":"evidence-before"}
+{"at":"2026-09-17T07:58:42.412Z","type":"phase","phase":"decide"}
+{"at":"2026-09-17T07:58:42.685Z","type":"phase","phase":"fix"}
+{"at":"2026-09-17T08:05:00.618Z","type":"phase","phase":"regression-test"}
+{"at":"2026-09-17T08:05:00.891Z","type":"phase","phase":"blast-radius"}
+{"at":"2026-09-17T08:11:30.532Z","type":"phase","phase":"gate"}
+{"at":"2026-09-17T08:11:30.785Z","type":"event","event":"gate-fail","detail":null}
+{"at":"2026-09-17T08:11:31.038Z","type":"end","outcome":"blocked"}

@@ -1,0 +1,56 @@
+@if (loading()) {
+  <p class="detail__status" role="status">Loading document from Nuxeo…</p>
+}
+
+@if (errorMessage(); as message) {
+  <p class="detail__error" role="alert">{{ message }}</p>
+}
+
+@if (doc(); as doc) {
+  <nav class="detail__crumbs" aria-label="Breadcrumb">
+    @if (parentPath(); as parent) {
+      <a class="detail__crumb" [routerLink]="['/documents']" [queryParams]="{ path: parent }">
+        ← {{ parent }}
+      </a>
+    }
+  </nav>
+
+  <header class="detail__header">
+    <h1 class="detail__title">{{ doc.title }}</h1>
+    @if (description(); as description) {
+      <p class="detail__description">{{ description }}</p>
+    }
+  </header>
+
+  <section class="detail__panel">
+    <h2>Metadata</h2>
+    <p class="detail__hint">
+      Every row below came from <code>GET /nuxeo/api/v1/id/{{ doc.uid }}</code> with
+      <code>properties: *</code>.
+    </p>
+    <dl class="detail__facts">
+      @for (fact of facts(); track fact.label) {
+        <dt>{{ fact.label }}</dt>
+        <dd>{{ fact.value }}</dd>
+      }
+    </dl>
+  </section>
+
+  @if (noteContent(); as note) {
+    <section class="detail__panel">
+      <h2>Note content</h2>
+      <pre class="detail__content">{{ note }}</pre>
+    </section>
+  }
+
+  @if (preview(); as preview) {
+    <section class="detail__panel">
+      <h2>File content</h2>
+      <p class="detail__hint">
+        Downloaded as a blob through <code>DocumentDetailService.fetchBlob()</code>, so it carries
+        this application's authentication.
+      </p>
+      <pre class="detail__content">{{ preview }}</pre>
+    </section>
+  }
+}

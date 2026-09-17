@@ -1,0 +1,1 @@
+[Browse] [Needs review] Placeholder is the only visible label (2.5.3 Label in Name) (WCAG A; A)

@@ -1,0 +1,1 @@
+[Browse] [Violation] SVG element has no accessible name (1.1.1 Non-text Content) (WCAG A)

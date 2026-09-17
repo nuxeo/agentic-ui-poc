@@ -1,0 +1,375 @@
+{
+  "title": "Customising and building — the code, then the result",
+  "slides": [
+    {
+      "kind": "title",
+      "eyebrow": "Nuxeo Satori Beta · walkthrough",
+      "rule": true,
+      "title": "The edit, then the result",
+      "lede": "Every pair in this deck is one change and what it did. The left-hand slide is the actual edit — a config file, a manifest document, a TypeScript component. The right-hand slide is a real screenshot of the running application afterwards."
+    },
+    {
+      "eyebrow": "How to read this deck",
+      "title": "Two tracks, both real",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            {
+              "title": "Track A — customise the shipped app",
+              "text": "Edit configuration or the manifest document. **No rebuild, no deploy, no fork.** The running app changes on the next reload.",
+              "series": "adfhx"
+            },
+            {
+              "title": "Track B — build a UI from scratch",
+              "text": "A separate application on the published package. Write a component, add a route, register a nav entry. **Their repo, their build.**",
+              "series": "ours"
+            }
+          ]
+        }
+      ],
+      "footnote": "Every screenshot was produced by `scripts/demo-deck/capture.mjs`, which asserts each image's own content before releasing it — so a slide captioned \"the label changed\" cannot carry a picture where it did not."
+    },
+    {
+      "eyebrow": "Track A · baseline",
+      "title": "Where we start",
+      "lede": "The product as shipped, against a real Nuxeo repository, with an **empty manifest**. Columns read `Title, Modified, Last Contributor`. Everything after this slide is a change to this app.",
+      "blocks": [
+        {
+          "type": "shot",
+          "src": "shots/a0-browse-before.png",
+          "alt": "Browse page with default columns"
+        }
+      ],
+      "footnote": "The manifest is reset to `{\"version\": 1}` for this capture on purpose. An earlier run had left column overrides applied, which would have made a customised screen look like the baseline."
+    },
+    {
+      "eyebrow": "Track A · 1 of 5 — rebrand",
+      "title": "Make it their product, in a file",
+      "lede": "Branding is **Layer 0 and lives in a file**, not in the manifest document — `runtime-manifest.ts` has no `branding` or `themes` key at all. Confusing the two stores is the most common way this goes wrong.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// agentic-ui-config/bootstrap.json — installed BESIDE the bundle with</span>\n<span class=\"c\">// overwrite=\"false\", so a customer's edits survive every upgrade.</span>\n{\n  <b>\"branding\"</b>: {\n    <b>\"applicationTitle\"</b>: \"Acme Insurance\",\n    <b>\"documentTitle\"</b>:    \"Acme Insurance\"\n  },\n  <b>\"defaultThemeId\"</b>: \"acme\",\n  <b>\"themes\"</b>: [{\n    \"id\": \"acme\", \"label\": \"Acme Brand\", \"base\": \"light\",\n    <span class=\"c\">// CSS custom properties applied to &lt;html&gt; — no rebuild</span>\n    <b>\"tokens\"</b>: {\n      \"--mat-sys-primary\": \"rgb(123, 47, 247)\",\n      \"--agentic-pill-radius\": \"4px\"\n    }\n  }]\n}"
+        }
+      ],
+      "footnote": "Every key is optional; anything omitted falls back to the compiled-in value, so an untouched file behaves exactly like no file. There is **no logo or favicon key** — product name and theme colours only. Say that plainly rather than being asked."
+    },
+    {
+      "eyebrow": "Track A · 1 of 5 — rebrand",
+      "title": "The result: a new brand and a fifth theme",
+      "blocks": [
+        {
+          "type": "shots",
+          "items": [
+            {
+              "label": "Before",
+              "src": "shots/a3-rebrand-before.png",
+              "alt": "Themes page with the shipped Nuxeo branding"
+            },
+            {
+              "label": "After",
+              "src": "shots/a3-rebrand-after.png",
+              "alt": "Themes page with the Acme Brand theme added and applied"
+            }
+          ]
+        }
+      ],
+      "footnote": "The strongest version of this beat: the JavaScript bundle is **byte-identical** before and after — verified by hashing `main-*.js` across a rebrand. Nothing was rebuilt; a file was edited."
+    },
+    {
+      "eyebrow": "Track A · 2 of 5 — their vocabulary",
+      "title": "Make it speak the customer's language",
+      "lede": "Not a settings heading — the words their users read all day. Every one of the **fifteen** packaged nav ids is relabellable, reorderable and hideable by id, and the same mechanism renames list columns.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// the manifest document at /default-domain/config/agentic-ui</span>\n<b>\"overrides\"</b>: {\n  <span class=\"c\">// their words, on the surfaces users live in</span>\n  \"app.navbar.browse\":         { <b>\"label\"</b>: \"Claim Files\",        \"order\": 10 },\n  \"app.navbar.collections\":    { <b>\"label\"</b>: \"Policies\",           \"order\": 20 },\n  \"app.navbar.tasks\":          { <b>\"label\"</b>: \"Underwriting Queue\", \"order\": 30 },\n  \"app.navbar.favorites\":      { <b>\"label\"</b>: \"Flagged Claims\",     \"order\": 40 },\n  \"app.navbar.expiredQueue\":   { <b>\"label\"</b>: \"Lapsed Policies\",    \"order\": 50 },\n  \"app.navbar.recentlyViewed\": { <b>\"label\"</b>: \"Recent Activity\",    \"order\": 60 },\n\n  <span class=\"c\">// irrelevant to this customer — gone, not greyed</span>\n  \"app.navbar.knowledgeDiscovery\": { <b>\"visible\"</b>: false },\n  \"app.navbar.assets\":             { <b>\"visible\"</b>: false },\n  \"app.navbar.browseAdfHx\":        { <b>\"visible\"</b>: false },\n\n  <span class=\"c\">// the list speaks it too</span>\n  \"app.documentList.lastContributor\": { <b>\"label\"</b>: \"Adjuster\", \"order\": 5 }\n}"
+        }
+      ],
+      "footnote": "Use `overrides.<id>.label` for navigation, not the `labels` catalogue — nav labels are literal strings on descriptors, rendered without the translate pipe, so `labels` cannot reach them."
+    },
+    {
+      "eyebrow": "Track A · 2 of 5 — their vocabulary",
+      "title": "The result: it reads like their product",
+      "blocks": [
+        {
+          "type": "shots",
+          "items": [
+            {
+              "label": "Before",
+              "src": "shots/a1-vocab-before.png",
+              "alt": "Default navigation and columns"
+            },
+            {
+              "label": "After",
+              "src": "shots/a1-vocab-after.png",
+              "alt": "Insurance vocabulary throughout the navigation and columns"
+            }
+          ]
+        }
+      ],
+      "footnote": "Twelve nav entries renamed or removed and a column relabelled, from one manifest document. Same bundle, same deployment, no rebuild — and the nav rail is expanded here on purpose, because collapsed it hides every label behind an icon."
+    },
+    {
+      "eyebrow": "Track A · 3 of 5 — columns",
+      "title": "Shape the column picker, not just the table",
+      "lede": "Two different controls, and the difference matters to an administrator. `disabled` **takes a column away from the user entirely**. `hiddenByDefault` **offers it, starting unchecked**.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<b>\"overrides\"</b>: {\n  <span class=\"c\">// rename, and move it to the front</span>\n  \"app.documentList.lastContributor\": { <b>\"label\"</b>: \"Adjuster\", \"order\": 5 }\n},\n\n<b>\"slots\"</b>: {\n  <b>\"documentList\"</b>: [\n    <span class=\"c\">// gone from the picker — the user cannot turn it back on</span>\n    { \"id\": \"app.documentList.state\",   <b>\"disabled\"</b>: true },\n\n    <span class=\"c\">// in the picker, but starts unchecked</span>\n    { \"id\": \"app.documentList.version\", <b>\"hiddenByDefault\"</b>: true }\n  ]\n}"
+        }
+      ],
+      "footnote": "`hiddenByDefault` and `sortable` are honoured in `slots.documentList`, **not** in `overrides` — `overrides` reads only `order`, `label`, `rule` and `visible`, and silently drops the rest. The same descriptor ids drive the product's own list and upstream's `hxp-document-list`."
+    },
+    {
+      "eyebrow": "Track A · 3 of 5 — columns",
+      "title": "The result: the picker, opened",
+      "blocks": [
+        {
+          "type": "shot",
+          "src": "shots/a3-columns-picker.png",
+          "alt": "Column settings panel open, showing Version offered but unchecked and State absent"
+        }
+      ],
+      "footnote": "Read the panel, not the table: **Adjuster** is the renamed column, **Version** is present but unchecked, and **State is absent altogether**. A screenshot of the resulting table shows the outcome but cannot show the control — which is why this slide opens it."
+    },
+    {
+      "eyebrow": "Track A · 4 of 5 — custom pages",
+      "title": "Add whole pages, and route to them",
+      "lede": "A manifest is not limited to renaming what ships. It can contribute **routes** as well as entries, resolving a registered component by id — so a customer places their own pages wherever they want them, as many as they want.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// one-time, in code (Layer 2): make the page addressable by id</span>\ncomponents: {\n  <b>'app.page.contracts'</b>: () =>\n    import('../features/contracts/contracts-page.component')\n      .then((m) => m.ContractsPageComponent),\n}\n\n<span class=\"c\">// from then on it is all manifest (Layer 1) — no rebuild</span>\n<b>\"slots\"</b>: {\n  <b>\"routes\"</b>: [ { \"id\": \"app.page.contracts\", \"path\": \"contracts\" } ],\n  <b>\"navbar\"</b>: [\n    { \"label\": \"Contracts\",  \"path\": \"/contracts\", \"icon\": \"gavel\",     \"order\": 15 },\n    { \"label\": \"Renewals\",   \"path\": \"/contracts\", \"icon\": \"autorenew\", \"order\": 16 },\n    { \"label\": \"Compliance\", \"path\": \"/contracts\", \"icon\": \"verified\",  \"order\": 17 }\n  ]\n}"
+        }
+      ],
+      "footnote": "Stated honestly: the **component** must be compiled in — that is the one-time Layer 2 step. Placing it, routing it, naming it and rule-gating it are Layer 1 and need no build. The `routes` slot went live on 2026-08-31; `app.page.contracts` was registered because until then the product shipped **no** component a manifest route could resolve, so the slot was live and unusable here."
+    },
+    {
+      "eyebrow": "Track A · 4 of 5 — custom pages",
+      "title": "The result: three new destinations, and the page behind them",
+      "blocks": [
+        {
+          "type": "shots",
+          "items": [
+            {
+              "label": "The entries",
+              "src": "shots/a2-custom-nav.png",
+              "alt": "Navigation with Contracts, Renewals and Compliance added by manifest"
+            },
+            {
+              "label": "The page",
+              "src": "shots/a2-custom-page.png",
+              "alt": "The custom contracts page rendering"
+            }
+          ]
+        }
+      ],
+      "footnote": "Two images because the expanded drawer is an **overlay** — open, it clips the page heading, so one frame cannot honestly show both. Both come from the same manifest. Note the page is headed “Component Showcase”: `contracts-page.component` doubles as the platform-UI catalogue, so the entry and the heading disagree. The mechanism is what this slide is about, not that page's content."
+    },
+    {
+      "eyebrow": "Track A · 5 of 5 — actions and rules",
+      "title": "Add actions, and gate them declaratively",
+      "lede": "Two different gates, and the difference is the point. `rule` **removes** the action when it does not hold. `enabledRule` **keeps it and greys it out**. Same declarative mechanism, two user experiences, no code.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<b>\"bulk-actions\"</b>: [\n  { \"id\": \"acme.bulkActions.archive\",\n    \"label\": \"Archive\", \"icon\": \"inventory_2\", \"order\": 15 },\n\n  { \"id\": \"acme.bulkActions.merge\",\n    \"label\": \"Merge selected\", \"icon\": \"merge\", \"order\": 25,\n    <b>\"rule\"</b>: \"app.rules.hasMultipleSelection\" },        <span class=\"c\">// removes</span>\n\n  { \"id\": \"acme.bulkActions.review\",\n    \"label\": \"Send for review\", \"icon\": \"rate_review\", \"order\": 26,\n    <b>\"enabledRule\"</b>: \"app.rules.hasMultipleSelection\" }  <span class=\"c\">// disables</span>\n]"
+        }
+      ],
+      "footnote": "`app.bulkActions.publish` is hidden by an override in the same edit. Adding a seventh bulk action used to be a button, an `@Output()` and a shell handler across three files in two projects; it is now two registrations."
+    },
+    {
+      "eyebrow": "Track A · 5 of 5 — actions and rules",
+      "title": "The result: three new actions on a selection",
+      "blocks": [
+        {
+          "type": "shot",
+          "src": "shots/a4-bulk-two-selected.png",
+          "alt": "Bulk action topbar with two rows selected"
+        }
+      ],
+      "footnote": "With **one** row selected, Merge disappears entirely and Send-for-review stays but greys out. The topbar renders icon-only buttons, so the labels are on `aria-label` — which is where the capture asserts them, after first asserting them as text and failing while the feature worked."
+    },
+    {
+      "eyebrow": "Track B · 1 of 5 — wiring a page",
+      "title": "A page is three edits, and the platform does the rest",
+      "lede": "This is the whole mechanism for adding a surface to an app built on the published package. Nothing here is scaffolding you have to understand — a component, a lazy route, a nav descriptor.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// 1 — the component. pages/case-file/case-file.ts</span>\n<span class=\"c\">//     Only published entry points, and that is the whole contract.</span>\nimport { DocumentDetailService, SearchService }\n  from <b>'@nuxeo-satori/platform/nuxeo-client'</b>;\nimport { DocumentViewerComponent, ShareDialogComponent }\n  from <b>'@nuxeo-satori/platform/ui'</b>;\n\n@Component({ selector: 'app-case-file', standalone: true, /* … */ })\nexport class CaseFileComponent { /* … */ }\n\n<span class=\"c\">// 2 — the route. app.routes.ts — lazy, so its chunk is only</span>\n<span class=\"c\">//     fetched when someone actually navigates here.</span>\n{ path: <b>'case-file'</b>,\n  loadComponent: () =>\n    import('./pages/case-file/case-file').then((m) => m.CaseFileComponent) }\n\n<span class=\"c\">// 3 — the nav entry. extensions/template-extensions.ts</span>\n{ id: <b>'template.navbar.caseFile'</b>, label: 'Case File',\n  path: '/case-file', icon: 'folder_special', order: 15,\n  <span class=\"c\">// rule-gated: with no credential every request 401s, and a link</span>\n  <span class=\"c\">// that can only fail is worse than no link</span>\n  rule: 'template.rules.isSignedIn' }"
+        }
+      ],
+      "footnote": "`order: 15` places it between two existing entries without restating the list — the same ten-spacing convention the product uses. The rule is registered in the same file and declared **fail-closed**, so an unregistered build hides the entry rather than offering it."
+    },
+    {
+      "eyebrow": "Track B · 2 of 5 — an ECM surface",
+      "title": "Search, metadata, preview and actions",
+      "lede": "What a content application actually needs, and where each part comes from. The **two-step** is the bit worth noticing: a search row is not a document.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// FIND — search() answers SearchResultItem: flat, list-shaped.</span>\n<span class=\"c\">// It carries no properties bag and no blob, so it cannot feed</span>\n<span class=\"c\">// a metadata panel or a preview.</span>\nthis.search.search({ pageSize: 40 })\n\n<span class=\"c\">// METADATA — selecting a row fetches the FULL document.</span>\nthis.documents.<b>getFullDocument</b>(item.id)\n\n<span class=\"c\">// PREVIEW — fetch the blob through the service, wrap it in an</span>\n<span class=\"c\">// object URL, and revoke it. Never bind a Nuxeo URL to [src]:</span>\n<span class=\"c\">// that request leaves the auth interceptor behind and 401s.</span>\nthis.documents.<b>fetchBlob</b>(doc.uid).subscribe((data) => {\n  this.rawObjectUrl = URL.createObjectURL(data);\n  this.blobUrl.set(sanitizer.bypassSecurityTrustResourceUrl(this.rawObjectUrl));\n});\n<b>destroyRef.onDestroy</b>(() => URL.revokeObjectURL(this.rawObjectUrl));\n\n<span class=\"c\">// ACTIONS — the platform's dialogs; the host supplies how bytes</span>\n<span class=\"c\">// are fetched, because the platform never builds an auth header.</span>\nthis.dialog.open(<b>ShareDialogComponent</b>,  { data: { title, url } });\nthis.dialog.open(<b>ExportDialogComponent</b>, { data: { exportFn } });"
+        }
+      ],
+      "footnote": "The revoke is the half that gets forgotten, and it has to happen **on replacement as well as on destroy** — otherwise every document a user clicks leaks a blob for the life of the page."
+    },
+    {
+      "eyebrow": "Track B · 2 of 5 — an ECM surface",
+      "title": "The result: a working case file",
+      "blocks": [
+        {
+          "type": "shot",
+          "src": "shots/b1b-template-case-file.png",
+          "alt": "Case File page with document list, metadata, actions and a rendered preview"
+        }
+      ],
+      "footnote": "Real repository, real metadata, real blob rendered through the platform's own `DocumentViewerComponent`. The capture clicks rows until a preview actually renders — only 5 of 46 documents here carry an attachment, and Nuxeo's `File` type does not imply one."
+    },
+    {
+      "eyebrow": "Track B · 3 of 5 — the repository",
+      "title": "Browsing, paging and searching the real repository",
+      "lede": "The page a customer's users would live in. `BrowseService` for folder children, `SearchService` for queries — the same services the product itself uses, reached through the published entry point.",
+      "blocks": [
+        {
+          "type": "shot",
+          "src": "shots/b0-template-documents.png",
+          "alt": "The template application browsing the real Nuxeo repository"
+        }
+      ],
+      "footnote": "Missing from an earlier cut of this deck, which showed the platform's widgets and a diagnostics screen but never the repository browser — the one surface a content application cannot do without."
+    },
+    {
+      "eyebrow": "Track B · 4 of 5 — what comes for free",
+      "title": "The components, and a screen that explains itself",
+      "blocks": [
+        {
+          "type": "shots",
+          "items": [
+            {
+              "label": "Published UI components",
+              "src": "shots/b2-template-components.png",
+              "alt": "The UI components catalogue page"
+            },
+            {
+              "label": "Diagnostics",
+              "src": "shots/b3-template-diagnostics.png",
+              "alt": "Diagnostics page listing configuration sources and every registered extension id"
+            }
+          ]
+        }
+      ],
+      "footnote": "Diagnostics is the screen to open when a customisation does not appear: it distinguishes \"the manifest did not load\" from \"the id is not registered\" from \"a rule denied it\" — three failures that look identical in the UI. Four Nx generators scaffold the rest; the three contribution generators write registrations but **no specs**."
+    },
+    {
+      "eyebrow": "Track B · 5 of 5 — scaffolding",
+      "title": "Four commands that write the boilerplate",
+      "lede": "A customer does not start from a blank file. One command scaffolds a whole extension library; three more add a rule, an action or a component to an existing one.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"c\">// 1 — a whole extension library, owner-prefixed</span>\nnpx nx g <b>extension-library</b> contoso-extensions --owner=contoso\n\n<span class=\"c\">// 2 — a rule: visibility logic the manifest can reference by id</span>\nnpx nx g <b>extension-rule</b>      is-underwriter --library=contoso-extensions\n\n<span class=\"c\">// 3 — an action: a handler a manifest can place in any slot</span>\nnpx nx g <b>extension-action</b>    export-policy  --library=contoso-extensions\n\n<span class=\"c\">// 4 — a component: a lazily-loaded panel or page, addressable by id</span>\nnpx nx g <b>extension-component</b> claim-summary  --library=contoso-extensions"
+        }
+      ],
+      "footnote": "The generators ship **inside** the published package, so a customer runs them against their own repo rather than ours. All four commands above were run with `--dry-run` to produce the next slide, and the working tree was verified unchanged afterwards."
+    },
+    {
+      "eyebrow": "Track B · 5 of 5 — scaffolding",
+      "title": "What the commands actually produce",
+      "lede": "Real output, captured from the four runs — not a description of them.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"ok\">$ nx g extension-library contoso-extensions --owner=contoso</span>\nCREATE libs/extensions/contoso-extensions/project.json\nCREATE libs/extensions/contoso-extensions/README.md\nCREATE libs/extensions/contoso-extensions/src/index.ts\nCREATE libs/extensions/contoso-extensions/src/lib/<b>extensions.ts</b>\nCREATE libs/extensions/contoso-extensions/src/lib/<b>extensions.spec.ts</b>\nCREATE libs/extensions/contoso-extensions/src/lib/panel/contoso-panel.ts\nCREATE libs/extensions/contoso-extensions/src/lib/rules.service.ts\n<span class=\"c\">   … 14 files in total, plus</span>\nUPDATE tsconfig.base.json\n\n<span class=\"ok\">$ nx g extension-rule is-underwriter --library=…</span>\nUPDATE .../src/lib/<b>extensions.ts</b>        <span class=\"c\">// registers the id</span>\nUPDATE .../src/lib/<b>rules.service.ts</b>     <span class=\"c\">// where the logic goes</span>\n\n<span class=\"ok\">$ nx g extension-component claim-summary --library=…</span>\nCREATE .../src/lib/claim-summary/claim-summary.ts\nCREATE .../src/lib/claim-summary/claim-summary.html\nCREATE .../src/lib/claim-summary/claim-summary.scss\nUPDATE .../src/lib/<b>extensions.ts</b>        <span class=\"c\">// registers + lazy-loads it</span>"
+        }
+      ],
+      "footnote": "**Be honest if asked:** the library generator writes a spec; the three contribution generators write registrations but **no specs**. They also shipped broken once — every insertion landed inside the marker comment, and lint, typecheck and six specs all passed. `insertAboveMarker` now asserts, after writing, that the inserted line exists as a line of its own."
+    },
+    {
+      "eyebrow": "Layer 3 — the agent harness",
+      "title": "The customer points an AI agent at it",
+      "lede": "Layer 3 makes Layer 2 cheap, and it **ships inside the package** — a customer's agent reads it in their own checkout, with no access to our source.",
+      "blocks": [
+        {
+          "type": "steps",
+          "items": [
+            {
+              "title": "`AGENTS.md` — written **to** the agent",
+              "text": "The layer cost table, the four traps, and rules aimed at agents: never edit the platform; prefer a generator; an ID is a public contract.",
+              "series": "ours"
+            },
+            {
+              "title": "`extension-reference.md` — every addressable ID",
+              "text": "With each slot's **real state**. An agent that guesses an id gets a silent no-op; this is how it stops guessing.",
+              "series": "adfhx"
+            },
+            {
+              "title": "Four generators — conforming code by default",
+              "text": "Registration, marker comments and a spec, so the first attempt already follows the conventions.",
+              "series": "ours"
+            },
+            {
+              "title": "A runnable guardrail — the agent's own check",
+              "text": "Not a review checklist. An exit code, in the customer's CI.",
+              "series": "adfhx"
+            }
+          ]
+        }
+      ],
+      "footnote": "The rule the layer exists to enforce, quoted from the file: **\"Never fork to change something a layer already addresses.\"** With the corollary that keeps us honest — a gap at every layer is **a gap worth raising, not a reason to fork**."
+    },
+    {
+      "eyebrow": "Layer 3 — the agent harness",
+      "title": "Why an agent can be trusted here: it gets told off",
+      "lede": "An agent that only compiles its work will ship something that registers nothing. So the harness closes the loop with a check the agent runs itself — and the failure names the file, the bad import, and the five entry points it should have used.",
+      "blocks": [
+        {
+          "type": "code",
+          "code": "<span class=\"ok\">$ npm run beta:customer-guardrails          # the agent's own work, clean</span>\ncheck-extension-library: <b>pass</b> — libs/extensions/acme-extensions\n  (owner `acme`), 6 source file(s), 2 spec file(s).\n\n<span class=\"ok\">$ # …and the same check on a library that reached into internals</span>\ncheck-extension-library: <b>FAIL</b>\n\n- src/lib/rules.service.ts imports\n  `@nuxeo-satori/platform/extensions<b>/internal/rule-registry</b>`,\n  which is not a published entry point.\n\n    Published: @nuxeo-satori/platform, /extensions, /app-config,\n               /nuxeo-client, /ui\n\n    A deep path into internals will break without that being a\n    breaking change."
+        }
+      ],
+      "footnote": "**eslint cannot enforce this**, and says so in its own config comment: a path alias makes a supported import and a raw internal one the same edge in the dependency graph. This script is what actually holds the support boundary — which is why it ships to the customer instead of living in our CI."
+    },
+    {
+      "eyebrow": "What this costs to maintain",
+      "title": "Where each change lived",
+      "blocks": [
+        {
+          "type": "split",
+          "panels": [
+            {
+              "title": "Track A — no build",
+              "series": "adfhx",
+              "sub": "Five changes, none of them a rebuild",
+              "items": [
+                "Rebrand — a config **file**, byte-identical bundle",
+                "Their vocabulary — 12 nav entries renamed or hidden, plus a column",
+                "Columns — the picker shaped, not just the table",
+                "Custom pages — a route and three entries, resolving a registered component",
+                "Actions and rules — three slot entries, two kinds of gate",
+                "**Nothing rebuilt. Nothing deployed. Nothing forked.**"
+              ]
+            },
+            {
+              "title": "Track B — their build",
+              "series": "ours",
+              "sub": "A real ECM surface, end to end",
+              "items": [
+                "One component against published entry points",
+                "One lazy route",
+                "One rule-gated nav registration",
+                "Search, metadata, preview and actions — all published APIs",
+                "Four generators scaffold the boilerplate — they ship inside the package",
+                "**Zero edits to our libraries** — enforced by a guardrail that ships in the package"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": "The upgrade rehearsal (`npm run beta:upgrade`) installs a customisation across both tracks, upgrades the platform, and asserts all 21 customer files are byte-identical and every slot the manifest names still exists. `--break-slot toolbar` makes it go red on demand."
+    }
+  ]
+}

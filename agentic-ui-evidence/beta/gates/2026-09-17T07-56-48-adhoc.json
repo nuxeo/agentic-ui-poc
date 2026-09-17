@@ -1,0 +1,85 @@
+{
+  "phase": "adhoc",
+  "verdict": "fail",
+  "base": "origin/main",
+  "ranAt": "2026-09-17T07:56:48.586Z",
+  "commit": "dc2c622c58f661b71e44da3bc522bb5cf181e5df",
+  "dirty": true,
+  "gates": {
+    "available": [
+      "node",
+      "lockfile",
+      "supply-chain",
+      "code-scanning",
+      "guardrails",
+      "sanitizer-audit",
+      "sanitizer-selftest",
+      "assertions",
+      "lint",
+      "test",
+      "build",
+      "typecheck",
+      "spec-types",
+      "bundle",
+      "api-surface",
+      "publishability",
+      "fork-simulation",
+      "upgrade-rehearsal",
+      "reference-drift",
+      "agent-mirror",
+      "customer-guardrails"
+    ],
+    "requested": [
+      "guardrails",
+      "lint",
+      "test",
+      "build",
+      "typecheck"
+    ],
+    "ran": [
+      "guardrails"
+    ],
+    "skipped": [
+      "lint",
+      "test",
+      "build",
+      "typecheck"
+    ],
+    "notRequested": [
+      "node",
+      "lockfile",
+      "supply-chain",
+      "code-scanning",
+      "sanitizer-audit",
+      "sanitizer-selftest",
+      "assertions",
+      "spec-types",
+      "bundle",
+      "api-surface",
+      "publishability",
+      "fork-simulation",
+      "upgrade-rehearsal",
+      "reference-drift",
+      "agent-mirror",
+      "customer-guardrails"
+    ],
+    "coverage": "partial"
+  },
+  "results": [
+    {
+      "id": "guardrails",
+      "label": "Review guardrails",
+      "passed": false,
+      "exitCode": 1,
+      "durationMs": 1820,
+      "command": "node scripts/review-guardrails.mjs --base origin/main",
+      "outputTail": "Review guardrail failures:\n- libs\\shared\\adf-hx-bridge\\src\\lib\\ui\\hxp-browse-nav-drawer\\hxp-browse-nav-drawer.component.ts imports from `@alfresco/*` and is reachable from the public barrel libs/shared/adf-hx-bridge/src/index.ts via libs\\shared\\adf-hx-bridge\\src\\lib\\ui\\hxp-browse-nav-drawer\\hxp-browse-nav-drawer.component.ts. That both leaks an adf-hx type into our public API and makes adf-core reachable from anything importing the barrel, which puts it in the initial bundle. Move it behind a secondary entry point, as `libs/shared/adf-hx-bridge/src/providers.ts` does."
+    }
+  ],
+  "skipped": [
+    "lint",
+    "test",
+    "build",
+    "typecheck"
+  ]
+}

@@ -1,0 +1,38 @@
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:00.079Z - [Client] Starting new daemon server in background
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:00.541Z - [Client] Waiting for server (max: 6000 attempts, 10ms interval)
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.417Z - Time taken for 'workspace context init' 7.1229999999995925ms
+DEBUG nx::native::telemetry: Telemetry service initialized successfully
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.512Z - New daemon starting from: c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\daemon\server\server.js
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.512Z - New daemon __dirname: c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\daemon\server
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.513Z - New daemon nxVersion: 22.7.8
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.517Z - New daemon getInstalledNxVersion(): 22.7.8
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.521Z - [Server] Starting outdated check interval (20ms)
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.523Z - Started listening on: \\.\pipe\nx\C:\Users\akoppaka\AppData\Local\Temp\473c36dc16ff278c9866\d.sock
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.542Z - [WATCHER]: Subscribed to changes within: C:\Users\akoppaka\Desktop\Projects\agentic-ui-worktrees\NXENG-745 (native)
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.543Z - [LATEST-NX]: Pulling latest Nx...
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:08.548Z - [Client] Server available
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:08.549Z - [Client] Daemon server started, pid=52780
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:08.550Z - [Messenger] Setting up socket listeners
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:08.551Z - [Messenger] listen() complete
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:08.553Z - [Messenger] Sending message type: RECORD_TASK_RUNS
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:08.554Z - [Messenger] Message sent
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.565Z - [AI-AGENTS]: Starting agent configuration status computation
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.570Z - Established a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.570Z - Established a connection. Number of open connections: 2
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.571Z - Closed a connection. Number of open connections: 1
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.572Z - Received raw message of length 239
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.572Z - Received json message of type RECORD_TASK_RUNS
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.599Z - [REQUEST]: Responding to the client with an error. [RECORD_TASK_RUNS] DB transaction error: SqliteFailure(Error { code: ConstraintViolation, extended_code: 787 }, Some("FOREIGN KEY constraint failed"))
+Error: DB transaction error: SqliteFailure(Error { code: ConstraintViolation, extended_code: 787 }, Some("FOREIGN KEY constraint failed"))
+    at TaskHistory.recordTaskRuns (c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\utils\task-history.js:32:37)
+    at handleRecordTaskRuns (c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\daemon\server\handle-task-history.js:9:23)
+    at c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\daemon\server\server.js:189:122
+    at handleResult (c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\daemon\server\server.js:232:20)
+    at handleMessage (c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\daemon\server\server.js:189:15)
+    at c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\daemon\server\server.js:79:15
+    at Socket.<anonymous> (c:\Users\akoppaka\Documents\GitHub\agentic-ui-poc\node_modules\nx\dist\src\utils\consume-messages-from-socket.js:27:21)
+    at Socket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+[NX v22.7.8 Daemon Client] - 2026-09-17T07:45:08.602Z - [Messenger] Received message, length: 1556
+[NX v22.7.8 Daemon Server] - 2026-09-17T07:45:08.605Z - Done responding to the client null

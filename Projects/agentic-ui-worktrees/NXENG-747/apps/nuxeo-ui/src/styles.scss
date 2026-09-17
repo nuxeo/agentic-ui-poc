@@ -1,0 +1,391 @@
+@use '@angular/material' as mat;
+@use '@hylandsoftware/satori-ui/theme' as sat;
+@use './styles/hxp-theme' as hxp;
+
+html[data-app-theme='nuxeo'],
+html:not([data-app-theme]) {
+  color-scheme: light dark;
+  @include sat.theme;
+  @include hxp.tokens-from-satori;
+}
+
+html[data-app-theme='dark'] {
+  color-scheme: dark;
+  @include sat.theme(
+    (
+      color: (
+        theme-type: dark,
+        primary: mat.$azure-palette,
+        tertiary: mat.$violet-palette,
+      ),
+    )
+  );
+  @include hxp.tokens-from-satori;
+}
+
+html[data-app-theme='kawaii'] {
+  color-scheme: light;
+  @include sat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$rose-palette,
+        tertiary: mat.$magenta-palette,
+      ),
+    )
+  );
+  @include hxp.tokens-from-satori;
+}
+
+html[data-app-theme='light'] {
+  color-scheme: light;
+  @include sat.theme(
+    (
+      color: (
+        theme-type: light,
+        primary: mat.$cyan-palette,
+        tertiary: mat.$blue-palette,
+      ),
+    )
+  );
+  @include hxp.tokens-from-satori;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+/* WCAG 1.4.1 — underline + color for prose links; :where() keeps component link styles winning. */
+$hxp-prose-link: ':where(a):where(:not(.login-brand)):where(:not(.profile-card__pill-link)):where(:not([mat-menu-item])):where(:not([mat-button])):where(:not([mat-flat-button])):where(:not([mat-stroked-button])):where(:not([mat-icon-button]))';
+
+:where(html[data-app-theme], html:not([data-app-theme])) #{$hxp-prose-link}:where(:any-link) {
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+:where(html[data-app-theme], html:not([data-app-theme]))
+  #{$hxp-prose-link}:where(:any-link):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+:where(html[data-app-theme], html:not([data-app-theme])) #{$hxp-prose-link}:where(:visited) {
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+:where(html[data-app-theme], html:not([data-app-theme]))
+  #{$hxp-prose-link}:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+app-root {
+  display: block;
+  height: 100%;
+}
+
+/*
+ * Material theme typography maps `h2` to display-medium (large `font` shorthand). Satori's
+ * sidebar title is still an `h2.sat-platform-nav-title` — restore its intended type scale so it
+ * wins over `html[data-app-theme] .mat-typography h2` from the generated theme.
+ */
+html[data-app-theme] body.mat-typography sat-platform-nav h2.sat-platform-nav-title {
+  font-family: var(--sat-platform-nav-title-font);
+  font-size: var(--sat-platform-nav-title-medium-size, 1rem);
+  font-style: normal;
+  font-weight: 500;
+  line-height: var(--sat-platform-nav-title-line-height, 1.5rem);
+  letter-spacing: var(--sat-platform-nav-title-letter-spacing, 0.009rem);
+  margin: 0;
+}
+
+/* Same conflict before `data-app-theme` is applied (e.g. first paint). */
+html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-nav-title {
+  font-family: var(--sat-platform-nav-title-font);
+  font-size: var(--sat-platform-nav-title-medium-size, 1rem);
+  font-style: normal;
+  font-weight: 500;
+  line-height: var(--sat-platform-nav-title-line-height, 1.5rem);
+  letter-spacing: var(--sat-platform-nav-title-letter-spacing, 0.009rem);
+  margin: 0;
+}
+
+/* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
+sat-platform-nav .sat-platform-nav-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+sat-platform-nav .sat-platform-nav-list:hover {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Long page titles must not squeeze the trailing logo + actions (avoids clipped "HYLAND" / settings). */
+sat-app-header .sat-app-header-leading-container {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+sat-app-header .sat-app-header-title,
+sat-app-header h1.sat-app-header-title,
+sat-app-header h2.sat-app-header-title {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+sat-app-header .sat-app-header-trailing-container,
+sat-app-header .sat-app-header-actions,
+sat-app-header sat-word-mark-logo.sat-app-header-logo,
+sat-app-header .sat-app-header-logo sat-word-mark-logo {
+  flex-shrink: 0;
+}
+
+/* Material typography adds `margin: 0 0 .75em` to all <p> tags via `.mat-typography p`.
+   This pushes the nav-rail label text down, misaligning it with the icon. Reset it. */
+sat-platform-nav p.sat-platform-nav-item-label {
+  margin: 0 !important;
+}
+
+/*
+ * Floating action buttons: Angular Material defaults mat-fab / mat-mini-fab to color=accent
+ * (often blue). Map accent FABs to semantic primary so they match Satori / nav purple.
+ * App also sets MAT_FAB_DEFAULT_OPTIONS to primary; this covers explicit color="accent".
+ */
+.mat-mdc-fab.mat-accent {
+  --mdc-fab-container-color: var(--mat-sys-primary);
+  --mat-fab-foreground-color: var(--mat-sys-on-primary);
+}
+
+.mat-mdc-mini-fab.mat-accent {
+  --mdc-fab-small-container-color: var(--mat-sys-primary);
+  --mat-fab-small-foreground-color: var(--mat-sys-on-primary);
+}
+
+/*
+ * Outline fields: the floating label sits in the top notch. MDC sets overflow: hidden on
+ * .mat-mdc-text-field-wrapper (often with border-radius) which crops "Choose a …" style labels
+ * in dialogs, filters, and anywhere the wrapper is rounded — fix once app-wide.
+ */
+.mat-mdc-form-field-appearance-outline {
+  overflow: visible;
+
+  .mat-mdc-text-field-wrapper {
+    overflow: visible;
+  }
+}
+
+/*
+ * App-wide pill normalization using the Asset Grid pill style as the single source.
+ *
+ * Layer 0: every value is a `--agentic-pill-*` custom property, so a customer can
+ * restyle every badge in the product from configuration. `!important` was removed
+ * from this block — nothing in Material or Satori targets these app-owned class
+ * names, so the flags only served to make the rules unoverridable by the customer
+ * CSS they are supposed to coexist with.
+ */
+.asset-type-pill,
+.result-type-pill,
+.simple-list-type-badge,
+.type-badge,
+.doc-type-badge,
+.task-workflow-badge,
+.state-badge,
+.version-badge,
+.classify-pill,
+.platform-badge,
+.state-chip,
+.tag-chip,
+.collection-chip,
+.sentiment-badge,
+.ai-tag-chip,
+.ai-anomaly-badge,
+.overdue-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--agentic-pill-padding, 2px 8px);
+  border-radius: var(--agentic-pill-radius, 999px);
+  background: var(--agentic-pill-background, var(--mat-sys-surface-container-high, #eef0f4));
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2));
+  color: var(--agentic-pill-color, var(--mat-sys-on-surface-variant, #5c5f6b));
+  font-size: var(--agentic-pill-font-size, 11px);
+  font-weight: var(--agentic-pill-font-weight, 600);
+  line-height: 1;
+  text-align: center;
+  max-width: var(--agentic-pill-max-width, 120px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+/*
+ * `.sat-tag` is a Satori component class. Its own stylesheet is a `sat-tag`
+ * component style with `ViewEncapsulation.None`, injected into <head> when the
+ * component first loads — which is after this global sheet, so at equal
+ * specificity Satori wins on source order. The repeated class (`.sat-tag.sat-tag`,
+ * 0-2-0) beats it on specificity instead, which is what let the `!important`
+ * flags go. A customer can still override with any 0-3-0 selector; they could not
+ * override `!important` at all without matching it.
+ *
+ * Colour is the one thing specificity cannot win. Satori sets the palette as an
+ * *inline* style on the host — `background-color: var(--sat-tag-cat-blue-container)`
+ * for category tags, `var(--sat-tag-info-container)` for status tags — and an
+ * inline declaration outranks every author rule. Redefining the custom properties
+ * that inline style reads reaches the same result through Satori's own token
+ * indirection, and keeps the value a token rather than a hardcoded colour.
+ * Only the variants this application actually renders are remapped; any other
+ * category or status keeps Satori's semantic colour.
+ */
+.sat-tag.sat-tag {
+  --sat-tag-cat-blue-container: var(
+    --agentic-pill-background,
+    var(--mat-sys-surface-container-high, #eef0f4)
+  );
+  --sat-tag-on-cat-blue-container: var(
+    --agentic-pill-color,
+    var(--mat-sys-on-surface-variant, #5c5f6b)
+  );
+  --sat-tag-info-container: var(
+    --agentic-pill-background,
+    var(--mat-sys-surface-container-high, #eef0f4)
+  );
+  --sat-tag-on-info-container: var(
+    --agentic-pill-color,
+    var(--mat-sys-on-surface-variant, #5c5f6b)
+  );
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--agentic-pill-padding, 2px 8px);
+  border-radius: var(--agentic-pill-radius, 999px);
+  border: 1px solid var(--agentic-pill-border-color, var(--mat-sys-outline-variant, #d8dbe2));
+  font-size: var(--agentic-pill-font-size, 11px);
+  font-weight: var(--agentic-pill-font-weight, 600);
+  line-height: 1;
+  text-align: center;
+  max-width: var(--agentic-pill-max-width, 120px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  min-height: auto;
+  box-shadow: none;
+}
+
+sat-category-tag,
+sat-status-tag {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.sat-tag.sat-tag .sat-tag-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sat-tag.sat-tag .sat-tag-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/*
+ * Dialog title: Material's default maps mat-dialog-title to display-medium (~2rem).
+ * Reduce to title-large (1.375rem / 1.75rem line-height) for a more compact feel across
+ * all dialogs in the application.
+ *
+ * Two rules, because two different things size this element.
+ *
+ * Material's own dialog rule reads `var(--mat-dialog-subhead-size, …)`, so the
+ * first block sets the value through the supported theming API. That alone was
+ * not enough: dialog titles are `<h2>`, and Material's typography hierarchy
+ * matches them with `html[data-app-theme="…"] .mat-typography h2` (0-2-2), whose
+ * `font` shorthand is display-medium — measured at 44.99px with only the token
+ * block in place. The second rule is deliberately 0-3-1 so it outranks that
+ * without `!important`; a customer stylesheet can still beat it, which an
+ * `!important` declaration did not allow.
+ */
+.mat-mdc-dialog-container {
+  --mat-dialog-subhead-size: var(--agentic-dialog-title-font-size, 1.375rem);
+  --mat-dialog-subhead-line-height: var(--agentic-dialog-title-line-height, 1.75rem);
+  --mat-dialog-subhead-weight: var(--agentic-dialog-title-font-weight, 500);
+  --mat-dialog-subhead-tracking: 0;
+}
+
+html .mat-mdc-dialog-container .mat-mdc-dialog-title.mat-mdc-dialog-title {
+  font-size: var(--agentic-dialog-title-font-size, 1.375rem);
+  line-height: var(--agentic-dialog-title-line-height, 1.75rem);
+  font-weight: var(--agentic-dialog-title-font-weight, 500);
+  letter-spacing: 0;
+}
+
+/*
+ * Dialog panel: let every dialog size itself from its own component CSS (min-width / width)
+ * rather than a hardcoded pixel value passed to dialog.open(). The cap at 95vw ensures
+ * dialogs never overflow narrow viewports. Large dialogs (preview, share-saved-search)
+ * declare their own width/min-width so they still fill the appropriate area.
+ */
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  width: auto;
+  max-width: 95vw;
+}
+
+/* Long tooltips: allow wrapping instead of clipping on a single line. */
+.mat-mdc-tooltip.mat-tooltip-multiline .mdc-tooltip__surface {
+  max-width: min(20rem, calc(100vw - 1.5rem));
+  white-space: pre-line;
+  text-align: center;
+  line-height: 1.4;
+  padding-block: 6px;
+}
+
+/* Selection topbar sits at z-index 1200 — keep its tooltips above the bar. */
+.mat-mdc-tooltip.selection-topbar-tooltip .mdc-tooltip__surface {
+  max-width: min(18rem, calc(100vw - 2rem));
+  white-space: normal;
+  text-align: center;
+  line-height: 1.35;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: var(--mat-sys-inverse-surface, #2f3033);
+  color: var(--mat-sys-inverse-on-surface, #f2f0f4);
+  box-shadow: var(--mat-sys-level3, 0 4px 14px #00000047);
+}
+
+.cdk-overlay-pane.document-compare-dialog-panel {
+  max-width: 96vw !important;
+}
+
+.document-compare-dialog-panel .mat-mdc-dialog-surface {
+  max-width: 96vw;
+}
+
+.cdk-overlay-container .mat-mdc-tooltip-panel:has(.selection-topbar-tooltip) {
+  z-index: 1300;
+}

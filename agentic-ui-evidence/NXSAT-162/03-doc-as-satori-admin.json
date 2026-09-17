@@ -1,0 +1,177 @@
+﻿{
+    "capturedAt":  "2026-07-14T06:26:47.9151719Z",
+    "request":  {
+                    "method":  "GET",
+                    "url":  "https://satori-ui.beta.nuxeocloud.com/nuxeo/api/v1/id/e28a9505-b85e-4a0f-a762-fb5060106b45",
+                    "headers":  [
+                                    {
+                                        "enrichers-document":  "acls,permissions,userVisiblePermissions"
+                                    },
+                                    {
+                                        "Authorization":  "Basic \u003credacted\u003e"
+                                    },
+                                    {
+                                        "fetch-acls":  "username,creator,extended"
+                                    }
+                                ],
+                    "body":  ""
+                },
+    "status":  "success",
+    "response":  {
+                     "entity-type":  "document",
+                     "repository":  "default",
+                     "uid":  "e28a9505-b85e-4a0f-a762-fb5060106b45",
+                     "path":  "/domain-1/workspaces/File_luberon-397 (6).jpg",
+                     "type":  "File",
+                     "state":  "project",
+                     "parentRef":  "421d1c43-65cd-4c9a-8178-f6536a541645",
+                     "isCheckedOut":  false,
+                     "isRecord":  false,
+                     "retainUntil":  null,
+                     "hasLegalHold":  false,
+                     "isUnderRetentionOrLegalHold":  false,
+                     "isVersion":  false,
+                     "isProxy":  false,
+                     "changeToken":  "32-0",
+                     "isTrashed":  false,
+                     "title":  "File_luberon-397 (6)",
+                     "lastModified":  "2026-06-26T12:42:47.193Z",
+                     "facets":  [
+                                    "Versionable",
+                                    "NXTag",
+                                    "Publishable",
+                                    "CollectionMember",
+                                    "Commentable",
+                                    "HasRelatedText",
+                                    "Thumbnail",
+                                    "Downloadable"
+                                ],
+                     "schemas":  [
+                                     {
+                                         "name":  "uid",
+                                         "prefix":  "uid"
+                                     },
+                                     {
+                                         "name":  "thumbnail",
+                                         "prefix":  "thumb"
+                                     },
+                                     {
+                                         "name":  "file",
+                                         "prefix":  "file"
+                                     },
+                                     {
+                                         "name":  "collectionMember",
+                                         "prefix":  "collectionMember"
+                                     },
+                                     {
+                                         "name":  "common",
+                                         "prefix":  "common"
+                                     },
+                                     {
+                                         "name":  "files",
+                                         "prefix":  "files"
+                                     },
+                                     {
+                                         "name":  "dublincore",
+                                         "prefix":  "dc"
+                                     },
+                                     {
+                                         "name":  "relatedtext",
+                                         "prefix":  "relatedtext"
+                                     },
+                                     {
+                                         "name":  "facetedTag",
+                                         "prefix":  "nxtag"
+                                     }
+                                 ],
+                     "contextParameters":  {
+                                               "acls":  [
+                                                            {
+                                                                "name":  "local",
+                                                                "aces":  [
+                                                                             {
+                                                                                 "id":  "readonly-group:Everything:true:::",
+                                                                                 "username":  "readonly-group",
+                                                                                 "externalUser":  false,
+                                                                                 "permission":  "Everything",
+                                                                                 "granted":  true,
+                                                                                 "creator":  null,
+                                                                                 "begin":  null,
+                                                                                 "end":  null,
+                                                                                 "status":  "effective",
+                                                                                 "comment":  null,
+                                                                                 "notify":  false
+                                                                             },
+                                                                             {
+                                                                                 "id":  "randomUser01:Read:true:satori-admin::",
+                                                                                 "username":  "randomUser01",
+                                                                                 "externalUser":  false,
+                                                                                 "permission":  "Read",
+                                                                                 "granted":  true,
+                                                                                 "creator":  "satori-admin",
+                                                                                 "begin":  null,
+                                                                                 "end":  null,
+                                                                                 "status":  "effective",
+                                                                                 "comment":  "Hi, This is from Domain 1",
+                                                                                 "notify":  false
+                                                                             },
+                                                                             {
+                                                                                 "id":  "user-readonly01:Read:true:satori-admin::",
+                                                                                 "username":  "user-readonly01",
+                                                                                 "externalUser":  false,
+                                                                                 "permission":  "Read",
+                                                                                 "granted":  true,
+                                                                                 "creator":  "satori-admin",
+                                                                                 "begin":  null,
+                                                                                 "end":  null,
+                                                                                 "status":  "effective",
+                                                                                 "comment":  "",
+                                                                                 "notify":  false
+                                                                             }
+                                                                         ]
+                                                            }
+                                                        ],
+                                               "permissions":  [
+                                                                   "Write",
+                                                                   "WriteVersion",
+                                                                   "ReadProperties",
+                                                                   "ReadCanCollect",
+                                                                   "ReadSecurity",
+                                                                   "Remove",
+                                                                   "ReadVersion",
+                                                                   "Read",
+                                                                   "WriteLifeCycle",
+                                                                   "Everything",
+                                                                   "Moderate",
+                                                                   "Version",
+                                                                   "ManageLegalHold",
+                                                                   "MakeRecord",
+                                                                   "WriteColdStorage",
+                                                                   "ReadChildren",
+                                                                   "AddChildren",
+                                                                   "Comment",
+                                                                   "ReadLifeCycle",
+                                                                   "RemoveChildren",
+                                                                   "DataVisualization",
+                                                                   "ReviewParticipant",
+                                                                   "UnsetRetention",
+                                                                   "Unlock",
+                                                                   "CanAskForPublishing",
+                                                                   "RestrictedRead",
+                                                                   "Redact",
+                                                                   "ReadWrite",
+                                                                   "ReadRemove",
+                                                                   "Browse",
+                                                                   "SetRetention",
+                                                                   "WriteProperties",
+                                                                   "WriteSecurity",
+                                                                   "ManageWorkflows"
+                                                               ],
+                                               "userVisiblePermissions":  [
+                                                                              "Read",
+                                                                              "ReadWrite",
+                                                                              "Everything"
+                                                                          ]
+                                           }
+                 }
+}

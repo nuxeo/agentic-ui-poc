@@ -1,0 +1,32 @@
+{
+  "app": {
+    "title": "Hyland Nuxeo",
+    "nav": {
+      "toggle": "Toggle navigation menu"
+    }
+  },
+  "browse": {
+    "details": {
+      "show": "Show details",
+      "hide": "Hide details",
+      "toggle": "Toggle details panel"
+    },
+    "scope": {
+      "create-import": "Create / Import",
+      "drive": "Nuxeo Drive",
+      "edit": "Edit metadata",
+      "delete": "Delete",
+      "share": "Share",
+      "notify": "Notify",
+      "export": "Export"
+    }
+  },
+  "settings": {
+    "themes": {
+      "title": "Themes",
+      "search": "Search (placeholder)",
+      "current": "Current",
+      "apply": "Apply"
+    }
+  }
+}

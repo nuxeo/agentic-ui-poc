@@ -1,0 +1,183 @@
+{
+  "ticket": "NXENG-749",
+  "phase": "before",
+  "mode": "scenes",
+  "verdict": "fail",
+  "finishedAt": "2026-09-17T10:09:48.043Z",
+  "environment": {
+    "appUrl": "http://localhost:4217",
+    "node": "v20.20.2",
+    "scenesFile": "scripts/collect-evidence/NXENG-749.mjs",
+    "commit": "312bc0a",
+    "branch": "fix/nxeng-749",
+    "nuxeoImage": "nuxeo-recover:clean"
+  },
+  "totals": {
+    "scenes": 4,
+    "checks": 13,
+    "failed": 2
+  },
+  "video": "NXENG-749-before.webm",
+  "chapters": [
+    {
+      "index": 1,
+      "act": 1,
+      "title": "Open the login page",
+      "criterion": "AC-1",
+      "offsetMs": 3977
+    },
+    {
+      "index": 2,
+      "act": 2,
+      "title": "Tab to the password field",
+      "criterion": "AC-1",
+      "offsetMs": 8497
+    },
+    {
+      "index": 3,
+      "act": 3,
+      "title": "Username field and submit still work",
+      "criterion": "AC-4",
+      "offsetMs": 11829
+    }
+  ],
+  "highlights": [
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-749\\fix\\before\\01-login-initial.png",
+      "label": "Password field",
+      "box": {
+        "x": 12.222222222222221,
+        "y": 53.78645833333333,
+        "w": 25.555555555555554,
+        "h": 2.666666666666667
+      }
+    },
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-749\\fix\\before\\02-password-focused.png",
+      "label": "Focused password",
+      "box": {
+        "x": 12.222222222222221,
+        "y": 54.953125,
+        "w": 25.555555555555554,
+        "h": 2.666666666666667
+      }
+    }
+  ],
+  "steps": [
+    {
+      "index": 1,
+      "label": "[Act 1] Open the login page",
+      "screenshots": [
+        "01-login-initial.png"
+      ],
+      "checks": [
+        {
+          "name": "login form renders",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 1,
+      "intent": "A user signing in with username and password on the Satori login screen",
+      "criterion": "AC-1",
+      "consoleErrors": [
+        "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 401 /nuxeo/api/v1/me",
+        "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 401 /nuxeo/api/v1/me"
+      ]
+    },
+    {
+      "index": 2,
+      "label": "[Act 2] Tab to the password field",
+      "screenshots": [
+        "02-password-focused.png"
+      ],
+      "checks": [
+        {
+          "name": "password input exists",
+          "passed": true
+        },
+        {
+          "name": "password input holds keyboard focus",
+          "passed": true
+        },
+        {
+          "name": "password input center is not covered by another element",
+          "passed": true
+        },
+        {
+          "name": "focused password field stacks above username (z-index)",
+          "passed": false,
+          "detail": "z-index=auto"
+        },
+        {
+          "name": "password outline wrapper does not clip focus",
+          "passed": true
+        },
+        {
+          "name": "password input reserves scroll margin for focus visibility",
+          "passed": false,
+          "detail": "scroll-margin-block=0px"
+        },
+        {
+          "name": "the spotlight still points at its element",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 2,
+      "intent": "Keyboard user moves focus from the Hyland logo through username to password",
+      "criterion": "AC-1",
+      "consoleErrors": []
+    },
+    {
+      "index": 3,
+      "label": "[Act 3] Username field and submit still work",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "username field still present",
+          "passed": true
+        },
+        {
+          "name": "submit button still present",
+          "passed": true
+        }
+      ],
+      "notes": [
+        "SSO providers were not configured in this workspace — SSO buttons not exercised"
+      ],
+      "act": 3,
+      "intent": "Confirm login layout and controls were not regressed",
+      "criterion": "AC-4",
+      "consoleErrors": []
+    },
+    {
+      "index": 4,
+      "label": "Story structure",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "act 1 present — Setup — where we are and what the user is trying to do",
+          "passed": true
+        },
+        {
+          "name": "act 2 present — The bug — the behaviour as reported",
+          "passed": true
+        },
+        {
+          "name": "act 3 present — The proof — the criterion asserted, and what still works",
+          "passed": true
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "consoleErrors": [
+    "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 401 /nuxeo/api/v1/me",
+    "HTTP 401 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 401 /nuxeo/api/v1/me"
+  ]
+}

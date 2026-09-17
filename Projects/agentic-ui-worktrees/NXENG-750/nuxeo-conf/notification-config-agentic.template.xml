@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<component name="org.nuxeo.ecm.platform.ear.config.notification">
+
+  <extension
+    target="org.nuxeo.ecm.platform.ec.notification.service.NotificationService"
+    point="generalSettings">
+    <settings>
+      <!-- When nuxeo.agentic.ui.url is set (local ng serve), emails link to Agentic UI. -->
+      <serverPrefix>${nuxeo.agentic.ui.url:=${nuxeo.url}}/</serverPrefix>
+      <eMailSubjectPrefix>${nuxeo.notification.eMailSubjectPrefix} </eMailSubjectPrefix>
+      <mailSessionJndiName>${jndi.base}/Mail</mailSessionJndiName>
+    </settings>
+  </extension>
+
+</component>

@@ -1,0 +1,216 @@
+{
+  "ticket": "NXENG-750",
+  "phase": "before",
+  "mode": "scenes",
+  "verdict": "fail",
+  "finishedAt": "2026-09-17T09:59:04.177Z",
+  "environment": {
+    "appUrl": "http://localhost:4218",
+    "node": "v20.20.2",
+    "scenesFile": "scripts/collect-evidence/NXENG-750.mjs",
+    "commit": "b7275dd",
+    "branch": "fix/nxeng-750",
+    "nuxeoImage": "nuxeo-recover:clean"
+  },
+  "totals": {
+    "scenes": 5,
+    "checks": 11,
+    "failed": 2
+  },
+  "video": "NXENG-750-before.webm",
+  "chapters": [
+    {
+      "index": 1,
+      "act": 1,
+      "title": "Open the login page",
+      "criterion": "AC-3",
+      "offsetMs": 2300
+    },
+    {
+      "index": 2,
+      "act": 2,
+      "title": "Keyboard focus on Log in (disabled, empty form)",
+      "criterion": "AC-1",
+      "offsetMs": 7523
+    },
+    {
+      "index": 3,
+      "act": 2,
+      "title": "Keyboard focus on Log in (enabled credentials)",
+      "criterion": "AC-3",
+      "offsetMs": 10521
+    },
+    {
+      "index": 4,
+      "act": 3,
+      "title": "Login form fields still accept keyboard focus",
+      "criterion": "AC-3",
+      "offsetMs": 14052
+    }
+  ],
+  "highlights": [
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-750\\fix\\before\\01-login-context.png",
+      "label": "Login form",
+      "box": {
+        "x": 11.11111111111111,
+        "y": 44.677083333333336,
+        "w": 27.77777777777778,
+        "h": 20
+      }
+    },
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-750\\fix\\before\\02-login-submit-focused.png",
+      "label": "Log in (focused)",
+      "box": {
+        "x": 30.555555555555557,
+        "y": 60.23263888888889,
+        "w": 8.333333333333332,
+        "h": 4.444444444444445
+      }
+    },
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-750\\fix\\before\\03-login-submit-enabled-focus.png",
+      "label": "Log in enabled + focused",
+      "box": {
+        "x": 30.555555555555557,
+        "y": 60.23263888888889,
+        "w": 8.333333333333332,
+        "h": 4.444444444444445
+      }
+    },
+    {
+      "file": "C:\\Users\\akoppaka\\Desktop\\agentic-ui-evidence\\NXENG-750\\fix\\before\\04-username-focused.png",
+      "label": "Username",
+      "box": {
+        "x": 12.222222222222221,
+        "y": 46.677083333333336,
+        "w": 25.555555555555554,
+        "h": 2.666666666666667
+      }
+    }
+  ],
+  "steps": [
+    {
+      "index": 1,
+      "label": "[Act 1] Open the login page",
+      "screenshots": [
+        "01-login-context.png"
+      ],
+      "checks": [
+        {
+          "name": "login username field",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 1,
+      "intent": "A user signing in with username and password on the Agentic UI login screen",
+      "criterion": "AC-3",
+      "consoleErrors": [
+        "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+        "HTTP 404 /nuxeo/api/v1/automation/AI.Insights",
+        "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui"
+      ]
+    },
+    {
+      "index": 2,
+      "label": "[Act 2] Keyboard focus on Log in (disabled, empty form)",
+      "screenshots": [
+        "02-login-submit-focused.png"
+      ],
+      "checks": [
+        {
+          "name": "submit button is present",
+          "passed": true
+        },
+        {
+          "name": "disabled submit shows visible outline (2px+ solid) or focus shadow",
+          "passed": false,
+          "detail": "outline=none 3px, shadow=none"
+        },
+        {
+          "name": "the spotlight still points at its element",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 2,
+      "intent": "IBM Equal Access focuses the submit control to verify a visible focus ring",
+      "criterion": "AC-1",
+      "consoleErrors": []
+    },
+    {
+      "index": 3,
+      "label": "[Act 2] Keyboard focus on Log in (enabled credentials)",
+      "screenshots": [
+        "03-login-submit-enabled-focus.png"
+      ],
+      "checks": [
+        {
+          "name": "submit enabled with credentials",
+          "passed": true
+        },
+        {
+          "name": "enabled submit shows visible focus indicator",
+          "passed": true
+        },
+        {
+          "name": "the spotlight still points at its element",
+          "passed": true
+        }
+      ],
+      "notes": [],
+      "act": 2,
+      "intent": "Confirm focus ring remains visible when the button is actionable",
+      "criterion": "AC-3",
+      "consoleErrors": []
+    },
+    {
+      "index": 4,
+      "label": "[Act 3] Login form fields still accept keyboard focus",
+      "screenshots": [
+        "04-username-focused.png"
+      ],
+      "checks": [
+        {
+          "name": "Tab reaches username field",
+          "passed": false,
+          "detail": "focus on username input"
+        }
+      ],
+      "notes": [
+        "Full IBM re-scan (issue 3222288614) runs in CI a11y workflow — not replayed here"
+      ],
+      "act": 3,
+      "intent": "Ensure focus styling changes did not break username/password tab stops",
+      "criterion": "AC-3",
+      "consoleErrors": []
+    },
+    {
+      "index": 5,
+      "label": "Story structure",
+      "screenshots": [],
+      "checks": [
+        {
+          "name": "act 1 present — Setup — where we are and what the user is trying to do",
+          "passed": true
+        },
+        {
+          "name": "act 2 present — The bug — the behaviour as reported",
+          "passed": true
+        },
+        {
+          "name": "act 3 present — The proof — the criterion asserted, and what still works",
+          "passed": true
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "consoleErrors": [
+    "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui",
+    "HTTP 404 /nuxeo/api/v1/automation/AI.Insights",
+    "HTTP 404 /nuxeo/api/v1/path/default-domain/config/agentic-ui"
+  ]
+}

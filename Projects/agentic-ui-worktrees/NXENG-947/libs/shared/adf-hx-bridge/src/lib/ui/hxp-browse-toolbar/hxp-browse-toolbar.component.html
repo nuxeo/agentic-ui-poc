@@ -1,0 +1,121 @@
+<div class="hxp-browse-toolbar">
+  <span class="hxp-browse-toolbar__count">{{ resultCount() }} result(s)</span>
+  <div class="hxp-browse-toolbar__spacer"></div>
+
+  <label class="hxp-browse-toolbar__field">
+    <span class="hxp-browse-toolbar__label">Filter by title...</span>
+    <span class="hxp-browse-toolbar__input-wrap">
+      <input
+        type="text"
+        class="hxp-browse-toolbar__input"
+        [ngModel]="filterText()"
+        (ngModelChange)="filterText.set($event)"
+        placeholder="Filter by title..."
+      />
+      @if (filterText()) {
+        <button
+          type="button"
+          class="hxp-browse-toolbar__clear"
+          aria-label="Clear title filter"
+          (click)="filterText.set('')"
+        >
+          <hxp-icon name="close" size="sm" [decorative]="true" />
+        </button>
+      }
+    </span>
+  </label>
+
+  <label class="hxp-browse-toolbar__field hxp-browse-toolbar__field--date">
+    <span class="hxp-browse-toolbar__label">Modified from</span>
+    <input
+      type="date"
+      class="hxp-browse-toolbar__input"
+      [ngModel]="filterModifiedFrom()"
+      (ngModelChange)="filterModifiedFrom.set($event)"
+    />
+  </label>
+
+  <label class="hxp-browse-toolbar__field hxp-browse-toolbar__field--date">
+    <span class="hxp-browse-toolbar__label">Modified to</span>
+    <input
+      type="date"
+      class="hxp-browse-toolbar__input"
+      [ngModel]="filterModifiedTo()"
+      (ngModelChange)="filterModifiedTo.set($event)"
+    />
+  </label>
+
+  <label class="hxp-browse-toolbar__field">
+    <span class="hxp-browse-toolbar__label">Last Contributor</span>
+    <span class="hxp-browse-toolbar__input-wrap">
+      <input
+        type="text"
+        class="hxp-browse-toolbar__input"
+        [ngModel]="filterContributor()"
+        (ngModelChange)="filterContributor.set($event)"
+        placeholder="Contributor..."
+      />
+      @if (filterContributor()) {
+        <button
+          type="button"
+          class="hxp-browse-toolbar__clear"
+          aria-label="Clear contributor filter"
+          (click)="filterContributor.set('')"
+        >
+          <hxp-icon name="close" size="sm" [decorative]="true" />
+        </button>
+      }
+    </span>
+  </label>
+
+  <label class="hxp-browse-toolbar__field hxp-browse-toolbar__field--select">
+    <span class="hxp-browse-toolbar__label">Type</span>
+    <select
+      class="hxp-browse-toolbar__select"
+      [ngModel]="filterType()"
+      (ngModelChange)="filterType.set($event)"
+    >
+      <option value="">All types</option>
+      @for (type of distinctTypes(); track type) {
+        <option [value]="type">{{ type }}</option>
+      }
+    </select>
+  </label>
+
+  <div class="hxp-browse-toolbar__actions">
+    <button
+      type="button"
+      class="hxp-browse-toolbar__icon-btn"
+      title="Export CSV"
+      aria-label="Export CSV"
+      [disabled]="csvExporting()"
+      (click)="exportCsv.emit()"
+    >
+      @if (csvExporting()) {
+        <hxp-spinner [size]="18" />
+      } @else {
+        <hxp-icon name="download" size="md" [decorative]="true" />
+      }
+    </button>
+    <button
+      type="button"
+      class="hxp-browse-toolbar__icon-btn"
+      [class.hxp-browse-toolbar__icon-btn--active]="viewMode() === 'list'"
+      title="List view"
+      aria-label="List view"
+      (click)="viewMode.set('list')"
+    >
+      <hxp-icon name="view-list" size="md" [decorative]="true" />
+    </button>
+    <button
+      type="button"
+      class="hxp-browse-toolbar__icon-btn"
+      [class.hxp-browse-toolbar__icon-btn--active]="viewMode() === 'card'"
+      title="Card view"
+      aria-label="Card view"
+      (click)="viewMode.set('card')"
+    >
+      <hxp-icon name="grid-view" size="md" [decorative]="true" />
+    </button>
+  </div>
+</div>

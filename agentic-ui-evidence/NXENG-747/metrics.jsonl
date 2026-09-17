@@ -1,0 +1,8 @@
+{"at":"2026-09-17T09:44:47.852Z","type":"start","ticket":"NXENG-747","kind":"bug","model":"composer-2.5-fast","account":"akshitha.koppaka@hyland.com","branch":"fix/nxeng-747","node":"v20.20.2"}
+{"at":"2026-09-17T09:44:48.127Z","type":"phase","phase":"ticket"}
+{"at":"2026-09-17T09:58:08.608Z","type":"phase","phase":"expected"}
+{"at":"2026-09-17T09:58:08.933Z","type":"phase","phase":"reproduce"}
+{"at":"2026-09-17T09:58:09.771Z","type":"phase","phase":"evidence-before"}
+{"at":"2026-09-17T10:17:21.630Z","type":"phase","phase":"fix"}
+{"at":"2026-09-17T10:17:21.947Z","type":"phase","phase":"regression-test"}
+{"at":"2026-09-17T10:25:15.926Z","type":"end","outcome":"blocked"}
