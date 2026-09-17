@@ -141,6 +141,26 @@ describe('LoginPageComponent', () => {
     });
   });
 
+  /**
+   * NXENG-948. Login fields and footer text must live inside a landmark so screen-reader
+   * users can navigate by region — WCAG 2.1 1.3.1 / axe `region`.
+   */
+  describe('accessibility', () => {
+    it('wraps the login surface in a named main landmark', () => {
+      const root = fixture.nativeElement as HTMLElement;
+      const main = root.querySelector('main.login-panel');
+      expect(main).not.toBeNull();
+      expect(main?.getAttribute('aria-label')).toBe('Log in');
+      expect(main?.querySelector('form.login-form')).not.toBeNull();
+      expect(main?.querySelector('footer.login-footer')).not.toBeNull();
+    });
+
+    it('hides the decorative hero image from assistive technologies', () => {
+      const hero = (fixture.nativeElement as HTMLElement).querySelector('.login-hero');
+      expect(hero?.getAttribute('aria-hidden')).toBe('true');
+    });
+  });
+
   it('resets submitting and shows snackbar on auth failure', () => {
     const snackBar = fixture.debugElement.injector.get(MatSnackBar);
     spyOn(snackBar, 'open');
