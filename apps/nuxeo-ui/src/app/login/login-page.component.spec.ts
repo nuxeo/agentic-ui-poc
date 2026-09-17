@@ -39,6 +39,17 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('wraps the login surface in main and contentinfo landmarks', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const main = el.querySelector('main#login-main.login-panel-inner') as HTMLElement | null;
+    expect(main).toBeTruthy();
+    expect(main?.getAttribute('aria-label')).toBe('Sign in');
+    const infix = el.querySelector('.login-form .mat-mdc-form-field-infix');
+    expect(infix?.closest('main#login-main')).toBe(main);
+    const footer = el.querySelector('footer.login-footer');
+    expect(footer).toBeTruthy();
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
