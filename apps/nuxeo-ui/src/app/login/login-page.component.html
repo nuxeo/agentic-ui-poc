@@ -9,7 +9,7 @@
       </a>
 
       <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field appearance="outline" class="login-field-full">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="login-field-full">
           <mat-label>Username</mat-label>
           <input
             matInput
@@ -24,7 +24,11 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" class="login-field-full">
+        <mat-form-field
+          appearance="outline"
+          subscriptSizing="dynamic"
+          class="login-field-full login-field-password"
+        >
           <mat-label>Password</mat-label>
           <input
             matInput

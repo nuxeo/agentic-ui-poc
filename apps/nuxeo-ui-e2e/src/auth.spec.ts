@@ -63,6 +63,32 @@ test.describe('authentication and authorisation', () => {
     await expect(page.locator('button, input[type="submit"]').first()).toBeVisible();
   });
 
+  test('password field stays visible when focused via keyboard (NXENG-749)', async ({ page }) => {
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const username = page.locator('input[formcontrolname="username"]');
+    const password = page.locator('input[formcontrolname="password"]');
+    const passwordLabel = page.locator('mat-form-field.login-field-password mat-label');
+
+    await username.focus();
+    await page.keyboard.press('Tab');
+    await expect(password).toBeFocused();
+    await expect(passwordLabel).toBeVisible();
+
+    const labelBox = await passwordLabel.boundingBox();
+    const pwdBox = await password.boundingBox();
+    expect(labelBox, 'password label should have layout box').not.toBeNull();
+    expect(pwdBox, 'password input should have layout box').not.toBeNull();
+    expect(labelBox!.y).toBeLessThan(pwdBox!.y);
+
+    const usernameField = page.locator('mat-form-field').filter({ has: username });
+    const passwordField = page.locator('mat-form-field.login-field-password');
+    const usernameZ = await usernameField.evaluate((el) => getComputedStyle(el).zIndex);
+    const passwordZ = await passwordField.evaluate((el) => getComputedStyle(el).zIndex);
+    expect(Number(passwordZ)).toBeGreaterThan(Number(usernameZ) || 0);
+  });
+
   test('an anonymous visitor is not granted administration access', async ({ page }) => {
     /**
      * The privilege boundary. `adminGuard` admits only `hasAdministrationAccess()` and sends
@@ -70,8 +96,8 @@ test.describe('authentication and authorisation', () => {
      * visitor reaches the app as `Anonymous` — so this is the assertion that keeps that from
      * meaning "reaches administration".
      *
-     * `httpCredentials` off, or the Administrator credentials in the config would grant exactly
-     * the access this test exists to deny.
+     * `httpCredentials` off, or the dev-server basic-auth credentials in the Playwright config would
+     * grant exactly the access this test exists to deny.
      */
     await page.goto('/#/administration', { waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);
