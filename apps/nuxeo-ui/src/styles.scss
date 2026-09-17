@@ -57,29 +57,53 @@ body {
   margin: 0;
 }
 
-html[data-app-theme] a:where(:link):not(.login-brand),
-html:not([data-app-theme]) a:where(:link):not(.login-brand) {
+html[data-app-theme]
+  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]),
+html:not([data-app-theme])
+  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]) {
   color: var(--mat-sys-primary);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-html[data-app-theme] a:where(:link):not(.login-brand):where(:hover:not(:active)),
-html:not([data-app-theme]) a:where(:link):not(.login-brand):where(:hover:not(:active)) {
+html[data-app-theme]
+  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)),
+html:not([data-app-theme])
+  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)) {
   color: var(--mat-sys-on-primary-container);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-html[data-app-theme] a:where(:visited):not(.login-brand),
-html:not([data-app-theme]) a:where(:visited):not(.login-brand) {
+html[data-app-theme]
+  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]),
+html:not([data-app-theme])
+  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]) {
   color: var(--mat-sys-secondary);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-html[data-app-theme] a:where(:visited):not(.login-brand):where(:hover:not(:active)),
-html:not([data-app-theme]) a:where(:visited):not(.login-brand):where(:hover:not(:active)) {
+html[data-app-theme]
+  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)),
+html:not([data-app-theme])
+  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
+    [mat-flat-button]
+  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)) {
   color: var(--mat-sys-on-secondary-container);
   text-decoration: underline;
   text-underline-offset: 0.15em;
