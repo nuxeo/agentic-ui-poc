@@ -50,6 +50,22 @@ describe('LoginPageComponent', () => {
     expect(el.textContent).toContain('Log in');
   });
 
+  /**
+   * NXENG-949. Login content must sit inside document landmarks (WCAG 1.3.1 / axe `region`).
+   */
+  it('wraps the login panel in main and footer landmarks', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const main = el.querySelector('main.login-panel');
+    const footer = el.querySelector('footer.login-footer');
+    const passwordLabel = el.querySelector('mat-form-field mat-label');
+
+    expect(main).toBeTruthy();
+    expect(main?.getAttribute('aria-label')).toBe('Log in');
+    expect(footer).toBeTruthy();
+    expect(main?.contains(passwordLabel)).toBe(true);
+    expect(main?.contains(footer)).toBe(true);
+  });
+
   it('submits username and password together', async () => {
     const router = TestBed.inject(Router);
     spyOn(router, 'navigateByUrl').and.returnValue(Promise.resolve(true));
