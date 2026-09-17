@@ -39,6 +39,19 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('wraps the sign-in panel in landmarks (WCAG 1.3.1 region)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const main = el.querySelector('main.login-panel-inner');
+    const usernameLabel = el.querySelector('mat-label');
+    const footer = el.querySelector('footer.login-footer');
+
+    expect(main).toBeTruthy();
+    expect(main?.getAttribute('aria-label')).toBe('Sign in');
+    expect(main?.contains(usernameLabel)).toBe(true);
+    expect(footer).toBeTruthy();
+    expect(footer?.textContent).toContain('Copyright');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
