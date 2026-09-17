@@ -88,22 +88,6 @@ html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:visited):where(
   text-underline-offset: 0.15em;
 }
 
-/* Beat emulated encapsulation on app link classes that set text-decoration: none in component SCSS. */
-$hxp-underlined-app-links:
-  '.nuxeo-drive-card__download-link',
-  '.tasks-dashboard-link',
-  '.gd-link',
-  '.ud-link',
-  '.doc-download-link';
-
-@each $link-class in $hxp-underlined-app-links {
-  html[data-app-theme] body a#{$link-class},
-  html:not([data-app-theme]) body a#{$link-class} {
-    text-decoration: underline;
-    text-underline-offset: 0.15em;
-  }
-}
-
 app-root {
   display: block;
   height: 100%;
