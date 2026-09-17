@@ -83,6 +83,7 @@ describe('LoginPageComponent', () => {
       'button.login-submit',
     ) as HTMLButtonElement;
     expect(submit.getAttribute('aria-disabled')).toBe('true');
+    expect(submit.disabled).toBe(false);
   });
 
   it('enables Log in when username and password are present', () => {

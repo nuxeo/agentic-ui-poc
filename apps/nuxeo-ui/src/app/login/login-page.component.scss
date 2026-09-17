@@ -84,22 +84,18 @@
   font-weight: 500;
 }
 
-// disabledInteractive keeps the control focusable; Material otherwise hides the focus ring.
-.login-submit:focus-visible {
-  outline: 2px solid var(--mat-sys-primary);
-  outline-offset: 2px;
-}
-
 /* WCAG 2.4.7: Material flat buttons suppress the default focus ring. */
 .login-brand:focus-visible,
-.login-submit:focus-visible,
 .login-sso-btn:focus-visible {
   outline: 2px solid var(--mat-sys-primary, #1565c0);
   outline-offset: 3px;
 }
 
+// disabledInteractive keeps the control focusable; Material otherwise hides the focus ring.
 .login-submit:focus-visible {
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--mat-sys-primary, #1565c0) 28%, transparent);
+  outline: 2px solid var(--mat-sys-primary);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--mat-sys-primary) 28%, transparent);
 }
 
 .login-submit mat-spinner {
