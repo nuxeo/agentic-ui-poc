@@ -721,8 +721,19 @@ function checkAngularDevAssets() {
     for (const [targetName, target] of Object.entries(targets ?? {})) {
       const base = /** @type {any} */ (target).options?.assets;
       if (!Array.isArray(base)) continue;
+      // `ignore` is part of the identity, not decoration. Compared on glob/input/output alone,
+      // an entry that excludes a file in the base array and not in `development` reads as
+      // identical while the two configurations serve different files — which is the same class
+      // of divergence this whole check exists for, one field further in.
       const key = (entry) =>
-        typeof entry === 'string' ? entry : `${entry.glob}|${entry.input}|${entry.output ?? ''}`;
+        typeof entry === 'string'
+          ? entry
+          : [
+              entry.glob,
+              entry.input,
+              entry.output ?? '',
+              [...(entry.ignore ?? [])].sort().join(','),
+            ].join('|');
 
       for (const [configName, config] of Object.entries(
         /** @type {any} */ (target).configurations ?? {},
@@ -952,6 +963,482 @@ function checkNoAdfHxInPublicApi() {
 }
 
 /**
+ * A newly added hard-coded user-facing string in a template.
+ *
+ * The extraction this guards is deliberately unfinished — NXSAT-284 carries roughly 750
+ * hard-coded text nodes and 400 literal `aria-label`/`title` attributes across thirteen
+ * projects. Without a gate, that backlog grows faster than it shrinks, which is what the ticket
+ * means by "the extraction regresses within weeks".
+ *
+ * ## Diff-scoped, and that is a decision rather than an oversight
+ *
+ * `checkThemeTokens` is diff-scoped; `checkBlobUrlLifecycle` was deliberately converted to
+ * repo-wide, because diff-scoping permanently exempts every pre-existing violation and four real
+ * leaks hid behind exactly that. Both precedents are in this file and they point opposite ways.
+ *
+ * This one is diff-scoped **because repo-wide would be red on arrival in thirteen projects**, and
+ * a gate that cannot be made green is a gate someone switches off. NXSAT-284/B6 flips it to
+ * repo-wide over the core slice once the extraction is done. Until then the honest description is:
+ * this stops the backlog growing, it does not measure it.
+ *
+ * ## The heuristic, and why it is narrow
+ *
+ * Only text that looks like a sentence a user reads — it starts with a capital letter and carries
+ * at least two letters. That excludes the things that are not prose but live in the same
+ * position: `<mat-icon>search</mat-icon>` ligature names, CSS values, numbers and single
+ * characters are all lowercase or too short.
+ *
+ * There is no suppression comment, on purpose. The remedy for a false positive is to route the
+ * string through the translate pipe, and doing that to a string that did not strictly need it
+ * costs one catalogue entry and is never wrong. A suppression marker would be the cheaper path
+ * and would become the default one.
+ */
+function checkNoHardcodedUiText() {
+  /** Attributes whose literal value is read or announced to a user. */
+  const TEXT_ATTRIBUTES = /\b(placeholder|matTooltip|alt|aria-label|title)="([^"<>{}]*)"/g;
+  /** Element text on the same line as its tags: `>Some text<`. */
+  const ELEMENT_TEXT = />([^<>{}]*)</g;
+
+  /** Prose a user reads, as opposed to an icon ligature, a CSS value or a number. */
+  function isDisplayText(value) {
+    const text = value.trim();
+    if (text.length < 2) return false;
+    if (!/^[A-Z]/.test(text)) return false;
+    return (text.match(/[A-Za-z]/g) ?? []).length >= 2;
+  }
+
+  for (const [file, lines] of addedLinesByFile) {
+    if (!/^(libs|apps)\/.+\.html$/.test(file)) continue;
+
+    for (const { line, text } of lines) {
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.startsWith('<!--')) continue;
+      // A line already routing through the pipe is the shape we are asking for. Checking the
+      // whole line rather than the match keeps a translated attribute from tripping on its
+      // neighbour's literal text.
+      if (trimmed.includes('| translate')) continue;
+
+      /** @type {{ what: string, value: string } | null} */
+      let offence = null;
+
+      for (const [, attribute, value] of trimmed.matchAll(TEXT_ATTRIBUTES)) {
+        if (!isDisplayText(value)) continue;
+        offence = { what: `${attribute}="${value}"`, value };
+        break;
+      }
+      if (!offence) {
+        for (const [, value] of trimmed.matchAll(ELEMENT_TEXT)) {
+          if (!isDisplayText(value)) continue;
+          offence = { what: `the text \`${value.trim()}\``, value };
+          break;
+        }
+      }
+      if (!offence) continue;
+
+      fail(
+        `${file}:${line} introduces ${offence.what} as hard-coded English.\n` +
+          "    Add a key to the owning project's `i18n/en.json` and bind it with the translate " +
+          "pipe — `{{ 'browse.details.show' | translate }}` for text, " +
+          '`[attr.aria-label]="\'…\' | translate"` for an accessible name.\n' +
+          '    Add the translator context alongside it in `i18n/en.context.json`: INFO-144 ' +
+          'requires every string to carry enough context to be translated without asking, and ' +
+          'acronyms to be expanded.\n' +
+          '    If the key names a control, it must also go in `en-fallback.ts` — see ' +
+          '`checkAccessibleNameFallbacks`.',
+      );
+    }
+  }
+}
+
+/**
+ * Our own translation catalogues: valid JSON, no blank values, and the same keys in every locale.
+ *
+ * ## Why each check is here
+ *
+ * **Parseable.** A catalogue with a trailing comma is not a style problem here — the Crowdin sync
+ * rejects the file, so a malformed catalogue breaks the localization pipeline rather than the
+ * build. `npm run build` never reads these; they are fetched at runtime. So nothing else in the
+ * toolchain parses them.
+ *
+ * **No blank values.** An empty string is how the most widespread accessibility violation in this
+ * product happened: `sat.platform-nav.expand` was deliberately blanked to suppress a duplicate
+ * tooltip, and because upstream binds one key to both the tooltip and the accessible name, every
+ * nav toggle rendered `aria-label=""` — axe `button-name`, critical, on seven of seven surfaces.
+ * It stood for weeks, because an empty accessible name is invisible to anyone not using a screen
+ * reader. A blank value is never what was meant; use a real string or remove the key.
+ *
+ * **Key parity.** A Crowdin pull that drops or renames a key leaves a locale silently falling
+ * through to the reference language for that string. Comparing each locale's flattened key set
+ * against `en.json` makes that a build failure rather than a bug report from a French customer.
+ *
+ * ## Scope
+ *
+ * `apps/` and `libs/` only. `node_modules` holds **48** upstream catalogues at exactly the same
+ * relative shape — `.../i18n/en.json` from adf-core, both adf-hx bundles and satori-ui — and they
+ * are not ours to validate. `walk()` prunes `node_modules` and `dist` already; the directory
+ * roots keep it honest even if that changes.
+ *
+ * Parity needs two locales to assert anything, and for most of this repository's life there has
+ * been one. That is not a silent pass: the count of comparisons is reported when it is zero, and
+ * `review-guardrails.selftest.mjs` exercises parity against fixtures regardless of what the
+ * repository currently ships.
+ */
+function checkTranslationCatalogues() {
+  const isCatalogue = (path) => /(^|\/)i18n\/[a-z]{2}(-[A-Za-z]{2,4})?\.json$/.test(path);
+  const catalogues = [...walk('apps', isCatalogue), ...walk('libs', isCatalogue)];
+
+  if (catalogues.length === 0) {
+    fail(
+      'No translation catalogues were found under apps/ or libs/, so this gate asserted nothing. ' +
+        'Check the `i18n/<locale>.json` glob before trusting a pass.',
+    );
+    return;
+  }
+
+  /** Flattens to dotted keys, mirroring `flattenCatalogue` in `app-translate-loader.ts`. */
+  function flatten(value, prefix, out) {
+    for (const [key, entry] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof entry === 'string') out.set(path, entry);
+      else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+        flatten(entry, path, out);
+      }
+    }
+    return out;
+  }
+
+  /** @type {Map<string, Map<string, string>>} */
+  const parsed = new Map();
+
+  for (const catalogue of catalogues) {
+    const body = read(catalogue);
+
+    if (!body.endsWith('\n')) {
+      fail(
+        `${catalogue} has no trailing newline.\n` +
+          '    Crowdin rewrites these files on every pull, so without one each sync produces a ' +
+          'spurious last-line diff that hides the real change.',
+      );
+    }
+
+    let json;
+    try {
+      json = JSON.parse(body);
+    } catch (error) {
+      fail(
+        `${catalogue} is not valid JSON: ${error.message}\n` +
+          '    The Crowdin sync rejects malformed catalogues, so this breaks localization rather ' +
+          'than the build, and nothing else in the toolchain parses these files.',
+      );
+      continue;
+    }
+
+    const flat = flatten(json, '', new Map());
+    parsed.set(catalogue, flat);
+
+    for (const [key, value] of flat) {
+      if (value.trim() !== '') continue;
+      fail(
+        `${catalogue} maps \`${key}\` to an empty string. A blank translation renders as a blank ` +
+          'label — and where the key is bound to an `aria-label`, as a control with no accessible ' +
+          'name, which axe reports as `button-name` (critical) and which is invisible without a ' +
+          'screen reader. Use a real string or remove the key.',
+      );
+    }
+  }
+
+  // ---- parity, per i18n directory ----
+  let comparisons = 0;
+  const directories = new Set(catalogues.map((path) => path.slice(0, path.lastIndexOf('/'))));
+
+  for (const directory of directories) {
+    const reference = `${directory}/en.json`;
+    const referenceKeys = parsed.get(reference);
+    if (!referenceKeys) {
+      // An unparseable en.json is already reported above, by name and with the parse error.
+      // Reporting it a second time as "no en.json" would be worse than saying nothing: the file
+      // is right there, so the reader goes looking for a missing-file problem that does not
+      // exist. One defect, one message.
+      if (fileExists(reference)) continue;
+      fail(
+        `${directory} holds translation catalogues but no en.json. English is the reference ` +
+          'language and the Crowdin source of truth; without it there is nothing to compare ' +
+          'against and no locale can fall back.',
+      );
+      continue;
+    }
+
+    for (const [catalogue, keys] of parsed) {
+      if (catalogue === reference || !catalogue.startsWith(`${directory}/`)) continue;
+      comparisons += 1;
+
+      const missing = [...referenceKeys.keys()].filter((key) => !keys.has(key));
+      const extra = [...keys.keys()].filter((key) => !referenceKeys.has(key));
+
+      if (missing.length) {
+        fail(
+          `${catalogue} is missing ${missing.length} key(s) present in ${reference}: ` +
+            `${missing.slice(0, 5).join(', ')}${missing.length > 5 ? ', …' : ''}\n` +
+            '    Those strings silently render in English for this locale. Never hand-edit a ' +
+            'non-English catalogue — Crowdin owns them and overwrites edits on the next pull — so ' +
+            'the fix is a Crowdin sync, not a local patch.',
+        );
+      }
+      if (extra.length) {
+        fail(
+          `${catalogue} carries ${extra.length} key(s) absent from ${reference}: ` +
+            `${extra.slice(0, 5).join(', ')}${extra.length > 5 ? ', …' : ''}\n` +
+            '    A key no longer in the reference is dead weight the translation crew is still ' +
+            'paying to maintain. Push sources with `--delete-obsolete` to clear it.',
+        );
+      }
+    }
+  }
+
+  if (comparisons === 0 && catalogues.length > 1) {
+    fail(
+      `${catalogues.length} catalogues were found but none was compared against an en.json ` +
+        'sibling, so the parity half of this gate asserted nothing.',
+    );
+  }
+}
+
+/**
+ * Translator context exists for every string, and for no string that no longer exists.
+ *
+ * INFO-144 (*Internationalization Strategy for software*) is unambiguous about this: "All strings
+ * MUST provide this context as developers cannot know when this information is needed", and "All
+ * acronyms or abbreviations MUST be expanded and explained in the comment". Its worked examples
+ * are the argument — "Display Manager Failure" cannot be translated without knowing whether
+ * "Display" is a noun or a verb, and Japanese needs different words for "from" depending on
+ * whether a date range or an email sender is meant.
+ *
+ * Context lives in a sibling `en.context.json` rather than inside the catalogue, so that it stays
+ * in version control next to the string and survives a change of translation tool — the Crowdin
+ * RFC makes the same point about keeping the source of truth in the repository rather than in the
+ * vendor.
+ *
+ * Only key parity is enforced. Whether a given sentence of context is *sufficient* is a judgement
+ * a script cannot make; what a script can do is guarantee that a new string cannot be added
+ * without someone writing something, and that context for a deleted string does not linger and
+ * mislead. Keys beginning with `$` are file-level metadata, not strings.
+ */
+function checkTranslationContext() {
+  const isReference = (path) => /(^|\/)i18n\/en\.json$/.test(path);
+  const references = [...walk('apps', isReference), ...walk('libs', isReference)];
+
+  if (references.length === 0) {
+    fail(
+      'No `i18n/en.json` was found under apps/ or libs/, so the translator-context gate ' +
+        'asserted nothing.',
+    );
+    return;
+  }
+
+  let compared = 0;
+  for (const reference of references) {
+    const contextFile = reference.replace(/en\.json$/, 'en.context.json');
+    if (!fileExists(contextFile)) {
+      fail(
+        `${reference} has no sibling en.context.json.\n` +
+          '    INFO-144 requires every string to carry translator context: acronyms expanded, ' +
+          'product names flagged as do-not-translate, placeholders explained, and enough to ' +
+          'disambiguate a word that is a noun in one reading and a verb in another.',
+      );
+      continue;
+    }
+
+    let catalogue;
+    let context;
+    try {
+      catalogue = JSON.parse(read(reference));
+      context = JSON.parse(read(contextFile));
+    } catch {
+      // `checkTranslationCatalogues` reports an unparseable catalogue by name; an unparseable
+      // context file is reported here rather than silently skipped.
+      if (!fileExists(contextFile)) continue;
+      try {
+        JSON.parse(read(contextFile));
+      } catch (error) {
+        fail(`${contextFile} is not valid JSON: ${error.message}`);
+      }
+      continue;
+    }
+
+    const keys = new Set();
+    (function collect(value, prefix) {
+      for (const [key, entry] of Object.entries(value)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        if (typeof entry === 'string') keys.add(path);
+        else if (entry && typeof entry === 'object') collect(entry, path);
+      }
+    })(catalogue, '');
+
+    const documented = new Set(Object.keys(context).filter((key) => !key.startsWith('$')));
+    compared += 1;
+
+    const undocumented = [...keys].filter((key) => !documented.has(key));
+    const orphaned = [...documented].filter((key) => !keys.has(key));
+
+    if (undocumented.length) {
+      fail(
+        `${contextFile} is missing context for ${undocumented.length} string(s) in ${reference}: ` +
+          `${undocumented.slice(0, 8).join(', ')}${undocumented.length > 8 ? ', …' : ''}\n` +
+          '    A translator handed only the English text cannot ask a question; INFO-144 makes ' +
+          'the context mandatory for that reason. Say what part of speech it is, what the ' +
+          'surrounding UI is, expand any acronym, and name anything that must stay in English.',
+      );
+    }
+    if (orphaned.length) {
+      fail(
+        `${contextFile} documents ${orphaned.length} key(s) that ${reference} no longer has: ` +
+          `${orphaned.slice(0, 8).join(', ')}${orphaned.length > 8 ? ', …' : ''}\n` +
+          '    Stale context outlives the string it described and then describes the wrong one ' +
+          'after a key is reused. Delete it with the key.',
+      );
+    }
+  }
+
+  if (compared === 0) {
+    fail(
+      `${references.length} reference catalogue(s) were found but none was compared against a ` +
+        'context file, so this gate asserted nothing.',
+    );
+  }
+}
+
+/**
+ * Every key our templates bind to an accessible name must survive a failed catalogue fetch.
+ *
+ * `AppTranslateLoader` falls back to `EN_FALLBACK_TRANSLATIONS` when it cannot fetch the app
+ * catalogue, and that map is **deliberately partial** — visible text degrading to a raw key is
+ * ugly, an accessible name degrading to one is a WCAG 4.1.2 failure. So the rule is not "mirror
+ * the catalogue"; it is "mirror the keys that name controls".
+ *
+ * `settings.themes.search` was the live gap. It is the `[attr.aria-label]` of the themes
+ * toolbar's search button, it was in the shipped catalogue and absent from the fallback, so a
+ * failed fetch named that control `settings.themes.search`.
+ *
+ * ## Why nothing else catches this
+ *
+ * axe checks that a control **has** an accessible name, not that the name is words. A raw key is
+ * a perfectly good non-empty string. The blank-name variant of the same defect (finding 4.6) was
+ * caught by axe in a single scan; this variant sat through the same audit untouched. The
+ * accessibility gates are not a substitute for this check, which is why it is a separate one.
+ *
+ * Only keys the app's own catalogue owns are in scope. Upstream's SCREAMING_CASE keys arrive
+ * from seeded translation folders that the fallback map has no business duplicating.
+ */
+function checkAccessibleNameFallbacks() {
+  const fallbackFile = 'apps/nuxeo-ui/src/app/i18n/en-fallback.ts';
+  const catalogueFile = 'apps/nuxeo-ui/public/i18n/en.json';
+  for (const required of [fallbackFile, catalogueFile]) {
+    if (!fileExists(required)) {
+      fail(`${required} does not exist, but the accessible-name fallback gate depends on it.`);
+      return;
+    }
+  }
+
+  /** `'key': 'value'` pairs from the fallback map's object literal. */
+  const fallback = new Map(
+    [...read(fallbackFile).matchAll(/'([^']+)':\s*'([^']*)'/g)].map(([, key, value]) => [
+      key,
+      value,
+    ]),
+  );
+  if (fallback.size === 0) {
+    fail(
+      `${fallbackFile} yielded no key/value pairs, so this gate asserted nothing. The map's ` +
+        'literal shape must have changed — update the parser here before trusting a pass.',
+    );
+    return;
+  }
+
+  // Keys the app catalogue owns. A key bound in a template but absent here belongs to an
+  // upstream catalogue and is out of scope.
+  //
+  // Parsed defensively. An unguarded `JSON.parse` here threw an uncaught `SyntaxError` on a
+  // malformed catalogue, which killed the process before the `failures` array was printed — so a
+  // trailing comma in `en.json` produced a stack trace and **discarded every other guardrail's
+  // diagnostics**, including `checkTranslationCatalogues`'s own clean report of the same file.
+  // Found by running that exact negative control. A guardrail that can crash is a guardrail that
+  // can silence the others.
+  let catalogue;
+  try {
+    catalogue = JSON.parse(read(catalogueFile));
+  } catch {
+    // Not reported here: `checkTranslationCatalogues` names the file and the parse error, and one
+    // defect should produce one message.
+    return;
+  }
+
+  const owned = new Set();
+  (function collect(value, prefix) {
+    for (const [key, entry] of Object.entries(value)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      if (typeof entry === 'string') owned.add(path);
+      else if (entry && typeof entry === 'object') collect(entry, path);
+    }
+  })(catalogue, '');
+
+  const templates = git(['ls-files', '--cached', '--others', '--exclude-standard'])
+    .split('\n')
+    .filter((file) => /^(libs|apps)\/.+\.html$/.test(file));
+
+  // `[attr.aria-label]`, `[aria-label]`, `[attr.title]` and `[title]` bound to a single
+  // translate-piped literal key. A ternary or a concatenation is not matched, deliberately:
+  // this stays a check with no judgement calls in it.
+  const BINDING = /\[(?:attr\.)?(aria-label|title)\]="\s*'([^']+)'\s*\|\s*translate\s*"/g;
+
+  // Collected per key rather than per occurrence. `nav.loading` names nine spinners in one
+  // template, and nine identical paragraphs asking for one catalogue entry is how a gate earns
+  // the reputation that gets it switched off. One missing key, one message, with a count.
+  /** @type {Map<string, { attribute: string, sites: string[] }>} */
+  const offences = new Map();
+  let bindings = 0;
+
+  for (const template of templates) {
+    if (!fileExists(template)) continue;
+    for (const [, attribute, key] of read(template).matchAll(BINDING)) {
+      bindings += 1;
+      if (!owned.has(key)) continue;
+      if (fallback.has(key) && fallback.get(key).trim() !== '') continue;
+
+      if (!offences.has(key)) offences.set(key, { attribute, sites: [] });
+      offences.get(key).sites.push(template);
+    }
+  }
+
+  for (const [key, { attribute, sites }] of offences) {
+    const where =
+      sites.length === 1
+        ? sites[0]
+        : `${[...new Set(sites)].join(', ')} (${sites.length} bindings)`;
+
+    if (!fallback.has(key)) {
+      fail(
+        `${where} binds ${attribute} to \`${key}\`, which ${catalogueFile} owns but ` +
+          `${fallbackFile} omits. A failed catalogue fetch names that control with the raw key. ` +
+          'Add it to EN_FALLBACK_TRANSLATIONS.',
+      );
+    } else {
+      fail(
+        `${where} binds ${attribute} to \`${key}\`, and ${fallbackFile} maps it to an empty ` +
+          'string. A failed fetch then leaves the control with no accessible name at all — axe ' +
+          '`button-name`, critical. This is exactly how finding 4.6 shipped.',
+      );
+    }
+  }
+
+  if (bindings === 0) {
+    fail(
+      'No accessible name was found bound to the translate pipe in any template, so this gate ' +
+        'asserted nothing. Check the binding pattern before trusting a pass.',
+    );
+  }
+}
+
+/**
  * REMOVED — superseded by `scripts/beta-harness/sanitizer-audit.mjs` check 5.
  *
  * This was a regex pairing check: every `bypassSecurityTrustHtml` had to have a `DOMPurify.sanitize`
@@ -974,18 +1461,67 @@ function checkNoAdfHxInPublicApi() {
  * shrink.
  */
 
-checkThemeTokens();
-checkDocsNumbering();
-checkNoReviewCorpusChurn();
-checkVitestProjects();
-checkBlobUrlLifecycle();
-checkNoNuxeoUrlInImgSrc();
-checkNoAttrPrefixedLiteralAttributes();
-checkTypeSafetyEscapes();
-checkHardcodedSecrets();
-checkAngularDevAssets();
-checkAdfHxWorkaroundIds();
-checkNoAdfHxInPublicApi();
+/**
+ * Every guardrail, in the order they run.
+ *
+ * A list rather than a sequence of bare calls so that `--only` can select from it and so the
+ * authoritative set is one thing to read. `verify-gate.mjs` does the same and for the same
+ * reason: its usage line went stale twice while gates were being added.
+ */
+const GUARDRAILS = [
+  checkThemeTokens,
+  checkDocsNumbering,
+  checkNoReviewCorpusChurn,
+  checkVitestProjects,
+  checkBlobUrlLifecycle,
+  checkNoNuxeoUrlInImgSrc,
+  checkNoAttrPrefixedLiteralAttributes,
+  checkTypeSafetyEscapes,
+  checkHardcodedSecrets,
+  checkAngularDevAssets,
+  checkAdfHxWorkaroundIds,
+  checkNoAdfHxInPublicApi,
+  checkNoHardcodedUiText,
+  checkTranslationCatalogues,
+  checkTranslationContext,
+  checkAccessibleNameFallbacks,
+];
+
+/**
+ * `--only <csv>` runs a subset, by function name.
+ *
+ * This exists for `review-guardrails.selftest.mjs`, which builds a throwaway git repository per
+ * negative control and needs one guardrail's verdict from it. Running the whole set against a
+ * fixture repository would report a dozen unrelated failures and prove nothing about the one
+ * under test.
+ *
+ * An unknown name exits 2 with the real list, rather than silently running nothing — a typo that
+ * selects an empty set would make every control in the selftest pass.
+ */
+function selectGuardrails() {
+  const only = args.get('only');
+  if (only === undefined || only === true) return GUARDRAILS;
+
+  const wanted = new Set(
+    String(only)
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean),
+  );
+  const byName = new Map(GUARDRAILS.map((guardrail) => [guardrail.name, guardrail]));
+
+  const unknown = [...wanted].filter((name) => !byName.has(name));
+  if (unknown.length || wanted.size === 0) {
+    console.error(
+      `review-guardrails: unknown --only value(s): ${unknown.join(', ') || '(empty)'}\n` +
+        `Available:\n  ${[...byName.keys()].join('\n  ')}`,
+    );
+    process.exit(2);
+  }
+  return [...wanted].map((name) => byName.get(name));
+}
+
+for (const guardrail of selectGuardrails()) guardrail();
 
 if (warnings.length) {
   console.warn('\nReview guardrail warnings:');
