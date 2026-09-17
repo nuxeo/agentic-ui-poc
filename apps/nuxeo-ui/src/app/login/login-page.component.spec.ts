@@ -50,6 +50,24 @@ describe('LoginPageComponent', () => {
     expect(el.textContent).toContain('Log in');
   });
 
+  it('names required fields in the label instead of a color-only marker', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Username (required)');
+    expect(el.textContent).toContain('Password (required)');
+    expect(el.querySelector('.mat-mdc-form-field-required-marker')).toBeNull();
+  });
+
+  it('prefixes validation errors with text, not color alone', () => {
+    component.form.setValue({ username: '', password: '' });
+    component.submit();
+    fixture.detectChanges();
+
+    const error = fixture.nativeElement.querySelector('mat-error') as HTMLElement | null;
+    expect(error).withContext('expected a visible mat-error').not.toBeNull();
+    expect(error!.textContent?.trim()).toContain('Username is required');
+    expect(getComputedStyle(error!, '::before').content).toContain('Error');
+  });
+
   it('submits username and password together', async () => {
     const router = TestBed.inject(Router);
     spyOn(router, 'navigateByUrl').and.returnValue(Promise.resolve(true));
