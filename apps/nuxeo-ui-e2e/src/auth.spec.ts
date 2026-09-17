@@ -89,6 +89,38 @@ test.describe('authentication and authorisation', () => {
     expect(Number(passwordZ)).toBeGreaterThan(Number(usernameZ) || 0);
   });
 
+  test('password field stays unobscured when Tab-focused on a short viewport (NXENG-749)', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 800, height: 320 });
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const username = page.locator('input[formcontrolname="username"]');
+    const password = page.locator('input[formcontrolname="password"]');
+    const passwordLabel = page.locator('mat-form-field.login-field-password mat-label');
+
+    await username.focus();
+    await page.keyboard.press('Tab');
+    await expect(password).toBeFocused();
+
+    const viewport = page.viewportSize();
+    expect(viewport).not.toBeNull();
+
+    const assertInViewport = async (locator: ReturnType<typeof page.locator>, name: string) => {
+      const box = await locator.boundingBox();
+      expect(box, `${name} should have layout box`).not.toBeNull();
+      expect(box!.y, `${name} should not be clipped above viewport`).toBeGreaterThanOrEqual(0);
+      expect(
+        box!.y + box!.height,
+        `${name} should not be clipped below viewport`,
+      ).toBeLessThanOrEqual(viewport!.height);
+    };
+
+    await assertInViewport(passwordLabel, 'password label');
+    await assertInViewport(password, 'password input');
+  });
+
   test('an anonymous visitor is not granted administration access', async ({ page }) => {
     /**
      * The privilege boundary. `adminGuard` admits only `hasAdministrationAccess()` and sends
