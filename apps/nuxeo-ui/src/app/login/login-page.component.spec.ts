@@ -103,6 +103,12 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
 
     expect(component.submitDisabled()).toBe(true);
+    const submit = (fixture.nativeElement as HTMLElement).querySelector(
+      'button.login-submit',
+    ) as HTMLButtonElement;
+    expect(submit.getAttribute('aria-disabled')).toBe('true');
+    expect(submit.disabled).toBe(false);
+    expect(submit.tabIndex).toBeGreaterThanOrEqual(0);
   });
 
   it('enables Log in when username and password are present', () => {
