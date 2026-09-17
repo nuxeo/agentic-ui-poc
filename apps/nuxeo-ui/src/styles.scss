@@ -57,54 +57,31 @@ body {
   margin: 0;
 }
 
-html[data-app-theme]
-  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]),
-html:not([data-app-theme])
-  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]) {
+/* WCAG 1.4.1 — underline + color for prose links; :where() keeps component link styles winning. */
+$hxp-prose-link: ':where(a):where(:not(.login-brand)):where(:not(.profile-card__pill-link)):where(:not([mat-menu-item])):where(:not([mat-button])):where(:not([mat-flat-button])):where(:not([mat-stroked-button])):where(:not([mat-icon-button]))';
+
+:where(html[data-app-theme], html:not([data-app-theme])) #{$hxp-prose-link}:where(:any-link) {
   color: var(--mat-sys-primary);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-html[data-app-theme]
-  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)),
-html:not([data-app-theme])
-  a:where(:link):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)) {
+:where(html[data-app-theme], html:not([data-app-theme]))
+  #{$hxp-prose-link}:where(:any-link):where(:hover:not(:active)) {
   color: var(--mat-sys-on-primary-container);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-html[data-app-theme]
-  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]),
-html:not([data-app-theme])
-  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]) {
-  color: var(--mat-sys-secondary);
+:where(html[data-app-theme], html:not([data-app-theme])) #{$hxp-prose-link}:where(:visited) {
+  color: var(--mat-sys-primary);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
 
-html[data-app-theme]
-  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)),
-html:not([data-app-theme])
-  a:where(:visited):not(.login-brand):not([mat-menu-item]):not([mat-button]):not(
-    [mat-flat-button]
-  ):not([mat-stroked-button]):not([mat-icon-button]):where(:hover:not(:active)) {
-  color: var(--mat-sys-on-secondary-container);
+:where(html[data-app-theme], html:not([data-app-theme]))
+  #{$hxp-prose-link}:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
   text-decoration: underline;
   text-underline-offset: 0.15em;
 }
