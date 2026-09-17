@@ -22,17 +22,27 @@ const p = (s) => `<p>${s}</p>`;
 const h2 = (s) => `<h2>${s}</h2>`;
 
 const body = [
-  p('Every comment a reviewer leaves on a pull request is a defect the authoring agent shipped and the reviewing agent caught. This page is not a bug list &mdash; it is a record of <strong>the gap between the two</strong>, so that a pre-PR review skill can be built from what actually gets missed rather than from someone&rsquo;s idea of what might.'),
-  p('The column that matters is <strong>Why it was missed</strong>. &ldquo;Careless&rdquo; is never the answer; if it were, the remedy would be &ldquo;be careful&rdquo;, which has never worked. Each row names the structural reason &mdash; a claim nobody re-read after the code changed, a guarantee asserted in prose rather than in code, a check that tested a proxy for the thing it was named after.'),
+  p(
+    'Every comment a reviewer leaves on a pull request is a defect the authoring agent shipped and the reviewing agent caught. This page is not a bug list &mdash; it is a record of <strong>the gap between the two</strong>, so that a pre-PR review skill can be built from what actually gets missed rather than from someone&rsquo;s idea of what might.',
+  ),
+  p(
+    'The column that matters is <strong>Why it was missed</strong>. &ldquo;Careless&rdquo; is never the answer; if it were, the remedy would be &ldquo;be careful&rdquo;, which has never worked. Each row names the structural reason &mdash; a claim nobody re-read after the code changed, a guarantee asserted in prose rather than in code, a check that tested a proxy for the thing it was named after.',
+  ),
 
   h2('How rows get here'),
   '<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">bash</ac:parameter><ac:plain-text-body><![CDATA[node scripts/pr-review-analysis.mjs harvest <pr> [<pr> …]   # every Copilot finding: threads, summary body, conversation\n# fill in `category` and `whyMissed` on each row, judging one at a time\nnode scripts/pr-review-analysis.mjs publish <file.jsonl>]]></ac:plain-text-body></ac:structured-macro>',
-  p('Harvesting is mechanical; classification is not, and <code>publish</code> refuses a row with either field blank rather than putting a gap in the column the page exists for. Resolved comments are included &mdash; a fixed defect still shipped.'),
-  p('<strong>This page is the whole record.</strong> <code>publish</code> writes nothing into the repository. It used to also commit a JSONL corpus and regenerate the pre-PR review skill from it, which put four files of review bookkeeping into the diff of every pull request that went through a review round &mdash; and the committed copy still fell behind this page, because the rows were published from branches that had not merged. The skill now quotes no counts and points here; <code>npm run review:analysis -- stats</code> reads the distribution off this table.'),
+  p(
+    'Harvesting is mechanical; classification is not, and <code>publish</code> refuses a row with either field blank rather than putting a gap in the column the page exists for. Resolved comments are included &mdash; a fixed defect still shipped.',
+  ),
+  p(
+    '<strong>This page is the whole record.</strong> <code>publish</code> writes nothing into the repository. It used to also commit a JSONL corpus and regenerate the pre-PR review skill from it, which put four files of review bookkeeping into the diff of every pull request that went through a review round &mdash; and the committed copy still fell behind this page, because the rows were published from branches that had not merged. The skill now quotes no counts and points here; <code>npm run review:analysis -- stats</code> reads the distribution off this table.',
+  ),
 
   h2('Defect classes'),
   `<table><tbody><tr>${th('Class')}${th('What it means')}</tr>` +
-    Object.entries(CATEGORIES).map(([k, v]) => `<tr><td><p><code>${k}</code></p></td><td><p>${v}</p></td></tr>`).join('') +
+    Object.entries(CATEGORIES)
+      .map(([k, v]) => `<tr><td><p><code>${k}</code></p></td><td><p>${v}</p></td></tr>`)
+      .join('') +
     '</tbody></table>',
 
   // No counts in this prose, deliberately. The version it replaces opened "What the first 57
@@ -42,7 +52,9 @@ const body = [
   // of it, and only the reading is durable. `npm run review:analysis -- stats` derives the
   // distribution from the table on demand.
   h2('What they say'),
-  p('Every finding so far has been accepted as valid; none was a false positive. Three classes &mdash; <code>proxy-check</code>, <code>unenforced-guarantee</code> and <code>stale-prose</code> &mdash; account for the clear majority, and the ordering between them has held as the record has grown. What each one demands of a pre-PR check:'),
+  p(
+    'Every finding so far has been accepted as valid; none was a false positive. Three classes &mdash; <code>proxy-check</code>, <code>unenforced-guarantee</code> and <code>stale-prose</code> &mdash; account for the clear majority, and the ordering between them has held as the record has grown. What each one demands of a pre-PR check:',
+  ),
   `<table><tbody>
      <tr>${th('Class')}${th('What a pre-PR check would have to do')}</tr>
      <tr><td><p><code>proxy-check</code></p></td><td><p>The single biggest class. The code tests something <em>adjacent</em> to what its name claims: <code>isConnected</code> for &ldquo;visible&rdquo;, a phase opened for a phase finished, <code>!== pass</code> for <code>=== fail</code>, an id present for &ldquo;my element&rdquo;, a <code>load</code> event for &ldquo;navigated&rdquo;. Always the easier property to query. A check has to read: <em>does this assertion test the noun in its own name?</em></p></td></tr>
@@ -54,9 +66,15 @@ const body = [
    </tbody></table>`,
 
   h2('The pattern underneath'),
-  p('Almost none of these are logic errors. The author understood the problem and wrote code that solves it; what went wrong is <strong>the difference between what the code does and what the author believed it does</strong> &mdash; and that difference is invisible from the inside, because the belief is what produced the code. The reviewer is not smarter; it simply has no belief to defend and reads what is there.'),
-  p('That is why "review your own work more carefully" does not close this gap, and why the checks worth automating are the ones that compare two artifacts rather than inspect one: <em>code against its own comments</em>, <em>a check&rsquo;s body against its name</em>, <em>a PR description against its diff</em>, <em>a documented guarantee against the line that enforces it</em>.'),
-  p('<em>Three of the findings here were regressions of fixes made earlier in the same review loop &mdash; a latch discarded by a later re-injection, a guard applied to one of two injectors, a curl flag fixed in one call and not its twin. Whatever gets built should re-check previous findings on each round, not only the new diff.</em>'),
+  p(
+    'Almost none of these are logic errors. The author understood the problem and wrote code that solves it; what went wrong is <strong>the difference between what the code does and what the author believed it does</strong> &mdash; and that difference is invisible from the inside, because the belief is what produced the code. The reviewer is not smarter; it simply has no belief to defend and reads what is there.',
+  ),
+  p(
+    'That is why "review your own work more carefully" does not close this gap, and why the checks worth automating are the ones that compare two artifacts rather than inspect one: <em>code against its own comments</em>, <em>a check&rsquo;s body against its name</em>, <em>a PR description against its diff</em>, <em>a documented guarantee against the line that enforces it</em>.',
+  ),
+  p(
+    '<em>Three of the findings here were regressions of fixes made earlier in the same review loop &mdash; a latch discarded by a later re-injection, a guard applied to one of two injectors, a curl flag fixed in one call and not its twin. Whatever gets built should re-check previous findings on each round, not only the new diff.</em>',
+  ),
 
   h2('Findings'),
   `<table data-layout="full-width"><tbody>
@@ -72,7 +90,9 @@ const get = await fetch(`${BASE}/api/v2/pages/${PAGE}`, {
   headers: { Authorization: auth, Accept: 'application/json' },
 });
 if (!get.ok) {
-  console.error(`Could not read page ${PAGE} (HTTP ${get.status}): ${(await get.text()).slice(0, 400)}`);
+  console.error(
+    `Could not read page ${PAGE} (HTTP ${get.status}): ${(await get.text()).slice(0, 400)}`,
+  );
   process.exit(1);
 }
 const cur = await get.json();
