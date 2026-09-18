@@ -109,7 +109,8 @@
 
 .ud-link {
   color: var(--mat-sys-primary, #1565c0);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
 }
 
 .ud-link:hover {
