@@ -218,6 +218,7 @@ describe('adf-hx-bridge providers entry point', () => {
       'NuxeoUploadApi',
       'provideAdfHxNuxeoBridge',
       'ADF_HX_NUXEO_BRIDGE_PROVIDERS',
+      'HxpBrowseNavDrawerComponent',
       // Not exported from the main barrel either: it imports upstream's API tokens.
       'AdfHxDocumentService',
     ]) {
