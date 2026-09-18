@@ -1,5 +1,5 @@
 <div class="login-page">
-  <div class="login-panel">
+  <main class="login-panel" aria-label="Log in">
     <div class="login-panel-inner">
       <a routerLink="/login" class="login-brand" aria-label="Hyland">
         <sat-logo direction="horizontal">
@@ -7,6 +7,8 @@
           <sat-word-mark-logo />
         </sat-logo>
       </a>
+
+      <h1 class="login-title">Log in</h1>
 
       <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
         <mat-form-field
@@ -90,12 +92,13 @@
       }
     </div>
 
-    <p class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</p>
-  </div>
+    <footer class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</footer>
+  </main>
 
   <div
     class="login-hero"
     role="presentation"
+    aria-hidden="true"
     [style.background-image]="heroBackgroundImage()"
   ></div>
 </div>

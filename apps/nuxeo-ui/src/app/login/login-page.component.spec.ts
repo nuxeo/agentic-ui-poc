@@ -63,6 +63,13 @@ describe('LoginPageComponent', () => {
     expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
   });
 
+  it('exposes a level-one heading for the login page (WCAG 1.3.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const heading = el.querySelector('h1.login-title');
+    expect(heading).toBeTruthy();
+    expect(heading?.textContent?.trim()).toBe('Log in');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
@@ -186,6 +193,26 @@ describe('LoginPageComponent', () => {
     expect(component.form.getRawValue()).toEqual({
       username: 'administrator',
       password: 'Administrator',
+    });
+  });
+
+  /**
+   * NXENG-948. Login fields and footer text must live inside a landmark so screen-reader
+   * users can navigate by region — WCAG 2.1 1.3.1 / axe `region`.
+   */
+  describe('accessibility', () => {
+    it('wraps the login surface in a named main landmark', () => {
+      const root = fixture.nativeElement as HTMLElement;
+      const main = root.querySelector('main.login-panel');
+      expect(main).not.toBeNull();
+      expect(main?.getAttribute('aria-label')).toBe('Log in');
+      expect(main?.querySelector('form.login-form')).not.toBeNull();
+      expect(main?.querySelector('footer.login-footer')).not.toBeNull();
+    });
+
+    it('hides the decorative hero image from assistive technologies', () => {
+      const hero = (fixture.nativeElement as HTMLElement).querySelector('.login-hero');
+      expect(hero?.getAttribute('aria-hidden')).toBe('true');
     });
   });
 
