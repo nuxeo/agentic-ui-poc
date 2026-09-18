@@ -68,7 +68,8 @@ html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:any-link) {
 }
 
 html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:any-link):where(:hover:not(:active)),
-html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:any-link):where(:hover:not(:active)) {
+html:not([data-app-theme])
+  a#{$hxp-prose-link-exclusions}:where(:any-link):where(:hover:not(:active)) {
   color: var(--mat-sys-on-primary-container);
   text-decoration: underline;
   text-underline-offset: 0.15em;
@@ -82,7 +83,8 @@ html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:visited) {
 }
 
 html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:visited):where(:hover:not(:active)),
-html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:visited):where(:hover:not(:active)) {
+html:not([data-app-theme])
+  a#{$hxp-prose-link-exclusions}:where(:visited):where(:hover:not(:active)) {
   color: var(--mat-sys-on-primary-container);
   text-decoration: underline;
   text-underline-offset: 0.15em;
@@ -185,7 +187,8 @@ sat-platform-nav p.sat-platform-nav-item-label {
  * .mat-mdc-text-field-wrapper (often with border-radius) which crops "Choose a …" style labels
  * in dialogs, filters, and anywhere the wrapper is rounded — fix once app-wide.
  */
-.mat-mdc-form-field-appearance-outline {
+.mat-mdc-form-field-appearance-outline,
+.mat-form-field-appearance-outline {
   overflow: visible;
 
   .mat-mdc-text-field-wrapper {
