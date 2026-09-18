@@ -13,8 +13,9 @@
           appearance="outline"
           subscriptSizing="dynamic"
           class="login-field-full login-field-username"
+          hideRequiredMarker
         >
-          <mat-label>Username</mat-label>
+          <mat-label>Username (required)</mat-label>
           <input
             matInput
             formControlName="username"
@@ -28,8 +29,13 @@
           }
         </mat-form-field>
 
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="login-field-full">
-          <mat-label>Password</mat-label>
+        <mat-form-field
+          appearance="outline"
+          subscriptSizing="dynamic"
+          class="login-field-full"
+          hideRequiredMarker
+        >
+          <mat-label>Password (required)</mat-label>
           <input
             matInput
             type="password"

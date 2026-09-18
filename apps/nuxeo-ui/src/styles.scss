@@ -57,6 +57,39 @@ body {
   margin: 0;
 }
 
+/* WCAG 1.4.1 — underline + color for prose links; exclusions use :where() so pill/Material links keep their tokens. */
+$hxp-prose-link-exclusions: ':where(:not(.login-brand)):where(:not(.profile-card__pill-link)):where(:not([mat-menu-item])):where(:not([mat-button])):where(:not([mat-flat-button])):where(:not([mat-stroked-button])):where(:not([mat-icon-button]))';
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:any-link),
+html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:any-link) {
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:any-link):where(:hover:not(:active)),
+html:not([data-app-theme])
+  a#{$hxp-prose-link-exclusions}:where(:any-link):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:visited),
+html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:visited) {
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:visited):where(:hover:not(:active)),
+html:not([data-app-theme])
+  a#{$hxp-prose-link-exclusions}:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 app-root {
   display: block;
   height: 100%;
