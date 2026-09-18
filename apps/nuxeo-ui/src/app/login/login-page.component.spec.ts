@@ -65,9 +65,12 @@ describe('LoginPageComponent', () => {
 
   it('groups username and password in a credentials fieldset (NXENG-754)', () => {
     const el = fixture.nativeElement as HTMLElement;
+    const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
     const passwordInput = el.querySelector('input[formcontrolname="password"]') as HTMLInputElement;
-    const fieldset = passwordInput.closest('fieldset.login-credentials');
+    const fieldset = el.querySelector('fieldset.login-credentials');
     expect(fieldset).toBeTruthy();
+    expect(fieldset?.contains(usernameInput)).toBe(true);
+    expect(fieldset?.contains(passwordInput)).toBe(true);
     const legend = fieldset?.querySelector('legend');
     expect(legend?.textContent?.trim()).toBe('Sign in credentials');
     expect(legend?.classList.contains('cdk-visually-hidden')).toBe(true);
