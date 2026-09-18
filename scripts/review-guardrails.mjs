@@ -939,7 +939,8 @@ function checkNoAdfHxInPublicApi() {
     }
 
     for (const offender of offenders) {
-      if (ALLOWED.has(offender.file)) continue;
+      const offenderPath = offender.file.replace(/\\/g, '/');
+      if (ALLOWED.has(offender.file) || ALLOWED.has(offenderPath)) continue;
       fail(
         `${offender.file} imports from \`@alfresco/*\` and is reachable from the public barrel ` +
           `${barrel} via ${offender.from.slice(1).join(' -> ') || 'a direct export'}. That both ` +

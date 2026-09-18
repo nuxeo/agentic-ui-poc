@@ -41,6 +41,14 @@
   color: inherit;
 }
 
+.login-title {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--mat-sys-on-surface, #1f2328);
+}
+
 .login-form {
   display: flex;
   flex-direction: column;
@@ -77,6 +85,19 @@
   ::ng-deep input.mat-mdc-input-element {
     scroll-margin: 0.5rem;
   }
+}
+
+/* WCAG 1.4.1: invalid state is not conveyed by outline color alone. */
+.login-field-full.mat-form-field-invalid .mat-mdc-form-field-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
+  font-weight: 500;
+}
+
+.login-field-full.mat-form-field-invalid .mat-mdc-form-field-error::before {
+  content: 'Error:';
+  flex-shrink: 0;
 }
 
 .login-field-full input:-webkit-autofill {
