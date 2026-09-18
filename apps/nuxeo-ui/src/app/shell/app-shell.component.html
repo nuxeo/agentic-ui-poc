@@ -125,7 +125,15 @@
         }
       </div>
 
-      <sat-word-mark-logo satAppHeaderLogo />
+      <!--
+        The word mark is decorative here: it is not a link or a control, the header's name
+        comes from the level-1 heading above, and the vendor's own stylesheet drops it
+        entirely below 619px. It is a vendor component whose <svg> carries no <title> and
+        which we cannot label from this template, so the graphic is hidden from assistive
+        technology instead — otherwise it is announced as an unnamed image (WCAG 1.1.1,
+        NXENG-767 / NXENG-759). aria-hidden is not display:none: it still renders.
+      -->
+      <sat-word-mark-logo satAppHeaderLogo aria-hidden="true" />
 
       <div satAppHeaderActions>
         @if (featureFlags.aiEnabled()) {
