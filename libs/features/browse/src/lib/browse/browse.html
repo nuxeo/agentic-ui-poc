@@ -276,7 +276,9 @@
                   <table class="browse-table">
                     <thead>
                       <tr>
-                        <th class="col-checkbox"></th>
+                        <th class="col-checkbox">
+                          <span class="cdk-visually-hidden">Selection</span>
+                        </th>
                         @for (col of visibleColumns(); track col.key) {
                           <th class="sortable-th" (click)="toggleBrowseSort(col.key)">
                             <span class="th-label">{{ col.label }}</span>
@@ -288,7 +290,9 @@
                           </th>
                         }
                         @if (hasCollectionEntries()) {
-                          <th class="col-actions" aria-label="Actions"></th>
+                          <th class="col-actions">
+                            <span class="cdk-visually-hidden">Actions</span>
+                          </th>
                         }
                         <th class="col-gear">
                           <button
@@ -485,7 +489,9 @@
                           <th>Time Frame</th>
                           <th>Granted by</th>
                           @if (canManageCurrentPermissions()) {
-                            <th></th>
+                            <th>
+                              <span class="cdk-visually-hidden">Actions</span>
+                            </th>
                           }
                         </tr>
                       </thead>

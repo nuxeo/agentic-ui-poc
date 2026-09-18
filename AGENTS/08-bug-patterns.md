@@ -397,6 +397,66 @@ guarantee. See `libs/features/document-detail/src/lib/document-detail/ke-action-
 
 ---
 
+## 16. Vendor focus ring left on its fallback token (WCAG 1.4.11)
+
+Satori components draw their own focus ring through a custom property we are expected to set:
+
+```css
+/* @hylandsoftware/satori-ui, platform-nav */
+sat-platform-nav .sat-platform-nav-item:focus-visible {
+  outline: 2px solid var(--sat-platform-nav-outline, var(--mat-sys-outline-variant, #c8c6d0));
+  outline-offset: -2px;
+}
+```
+
+Set nothing and the colour falls through to `--mat-sys-outline-variant` — a **low-emphasis
+divider** token, chosen to be barely visible. On a saturated panel that lands right on the
+3:1 line WCAG 2.1 SC 1.4.11 asks of a focus indicator, which is why IBM Equal Access reports
+`style_focus_visible` as **"Needs review"** rather than a violation: the ratio decides it, and
+the tool cannot compute it.
+
+Two things make the measurement easy to get wrong, and both were measured on NXENG-758:
+
+- **The negative `outline-offset` changes what the ring is adjacent to.** At `-2px` the ring is
+  painted _inside_ the item's box, so it must contrast with the item's own fill, not the panel.
+- **The current item has a different fill.** Satori lightens it with
+  `rgba(255, 255, 255, .12)`. Measured on the default theme: **3.80:1** on a plain item but
+  **2.87:1** on the current one — a pass and a fail from the same ring colour.
+
+```scss
+// BAD ❌ — nothing sets the token, so a divider colour is the focus indicator
+// (no code at all: the defect is the absence)
+
+// GOOD ✅ — point it at the component's own foreground, which is legible on its own
+// background by construction, so one line covers every theme
+sat-platform-nav {
+  --sat-platform-nav-outline: var(
+    --agentic-nav-focus-outline-color,
+    var(--sat-platform-nav-on-background, var(--mat-sys-on-primary, #fff))
+  );
+}
+```
+
+Do not reach for a fixed colour or a per-theme map. The vendor's own foreground token tracks
+the panel across every palette; measured 4.87:1 to 8.30:1 over the four packaged themes and
+both route states, against 2.87:1 before.
+
+Leave `outline-offset` alone. `.sat-platform-nav-list` sets `overflow-x: hidden`, so a ring
+drawn outside the item's box is clipped at the rail edges.
+
+**Axe will not catch this**, and neither will the template `a11y-scan`: axe has no focus-ring
+contrast rule, and the scan reads templates, not computed CSS. A green
+`expectNoA11yViolations()` is not evidence about a focus indicator.
+
+Regression test pattern: measure it. `nuxeo-ui` specs run in real Chrome under Karma with
+`styles.scss` loaded, so the spec can render the vendor component, focus it, read
+`getComputedStyle`, and assert the computed ratio per theme — no colour of ours written down,
+so a palette change or a vendor rename turns it red. Put the declaration in the **global**
+`styles.scss` rather than a component stylesheet, or the spec has to instantiate the whole
+shell to see it. See `apps/nuxeo-ui/src/app/shell/nav-focus-ring-contrast.spec.ts` (NXENG-758).
+
+---
+
 ## Copilot Flags These on PRs
 
 If you write any of the above, GitHub Copilot will leave a review comment.
@@ -411,3 +471,4 @@ Fix proactively to avoid a review cycle:
 - "Code span split across newlines" → keep the whole backticked phrase on one line
 - "Writing AI output to a vocabulary field without validation" → source candidates from the vocabulary and validate the response
 - "`<mat-spinner>` inside a button" → use a spinning `<mat-icon class="ke-spinning">progress_activity</mat-icon>` to preserve inline layout
+- "Focus indicator may not be visible" → set the vendor's focus-outline custom property to its own foreground token; left unset it falls back to a low-emphasis divider colour and misses 3:1

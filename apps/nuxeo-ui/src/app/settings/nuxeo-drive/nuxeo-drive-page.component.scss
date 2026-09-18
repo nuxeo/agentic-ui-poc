@@ -86,7 +86,8 @@
   border-radius: 6px;
   font-weight: 700;
   color: var(--mat-sys-on-surface);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
   transition:
     background-color 120ms ease,
     color 120ms ease;
