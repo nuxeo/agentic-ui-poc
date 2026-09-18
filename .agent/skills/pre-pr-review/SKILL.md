@@ -12,52 +12,35 @@ node scripts/pre-pr-review.mjs        # the mechanisable part; exits non-zero on
 ```
 
 Then work the four comparisons below. **The script is the floor, not the review** — it covers
-three of the ten defect classes, and the three largest are judgement. See the distribution
-below for how the weight actually falls.
+three of the ten defect classes, and the three largest are judgement. `npm run review:analysis
+-- stats` shows how the weight actually falls.
 
 ## Why this is not a generic checklist
 
-Built from the reviewer findings in `docs/pr-review-findings.jsonl`, each classified by _why_
-it was missed. **Every count in this file is derived from that corpus, never typed** — `npm run
-review:analysis -- check` fails if this section and the data disagree, so the numbers cannot go
-stale the way the ones they replaced were about to:
+Built from every finding a reviewer has left on a pull request here, each classified by _why_
+it was missed. The record lives on
+[PR Review analysis by Copilot](https://hyland.atlassian.net/wiki/x/lwFlAAE) — one row per
+finding, with its class and the reason it got past the author — and `publish` appends to it at
+the end of each review round.
 
-<!-- pr-review-stats:start -->
-<!-- generated from docs/pr-review-findings.jsonl by `npm run review:analysis -- sync`. Do not edit by hand. -->
+**This file quotes no counts on purpose.** Read the current distribution from the record:
 
-**62 findings** across 7 pull requests, every one accepted as valid.
-The three largest classes are **41 of 62**.
+```bash
+npm run review:analysis -- stats        # classes by weight, fetched from the page
+npm run review:analysis -- check-order  # do the sections below still match that ranking?
+```
 
-| Class                  | Findings |
-| ---------------------- | -------- |
-| `proxy-check`          | 15       |
-| `unenforced-guarantee` | 15       |
-| `stale-prose`          | 11       |
-| `ordering`             | 5        |
-| `silent-failure`       | 5        |
-| `false-claim`          | 4        |
-| `incomplete-fetch`     | 3        |
-| `scope`                | 2        |
-| `broken-reference`     | 1        |
-| `dead-branch`          | 1        |
+An embedded table would be a second copy of a number that only ever grows, and keeping it in
+step meant every pull request that went through a review round carried the regenerated skill and
+its two mirrors in its diff — four files of bookkeeping on changes that had nothing to do with
+it. It was also the copy that fell behind, because the rows were published from branches that
+had not merged yet. So the counts are fetched and this file keeps what does not go stale: the
+classes, and the four comparisons below.
 
-<!-- pr-review-stats:end -->
-
-The findings themselves, with the reason each was missed, are on
-[PR Review analysis by Copilot](https://hyland.atlassian.net/wiki/x/lwFlAAE).
-
-**The block above is not a fixed statement — it is a rendering of the corpus as it stands.**
-Every review loop that records findings appends to `docs/pr-review-findings.jsonl`, and
-`pr-review-analysis publish` re-derives the counts, the class table and the accepted/argued-down
-split from the new total. The numbered sections below are **not** re-derived: their order is an
-editorial decision, so `check` verifies it against the corpus ranking and tells you to re-order
-them by hand when the ranking changes. The numbers you are reading will be larger next month,
-and the ranking may differ; that is the point. Commit the corpus and this file together — the
-`review-corpus` gate fails if one moves without the other.
-
-If you argue a finding down rather than fixing it, record it as `"accepted": false` on its
-row. The sentence above counts it, so the corpus stays honest about what the reviewer got
-wrong as well as what it got right.
+The ordering of the numbered sections is the one claim here about the distribution — the reader
+is told what to look at first. `check-order` verifies it against the page and names the new
+ranking when it has changed, so re-order them by hand when it does. It needs Confluence
+credentials and is therefore deliberately not a gate; run it when you touch this file.
 
 Almost none were logic errors. In every case the author understood the problem and wrote code
 that solved it. What went wrong was **the gap between what the code does and what its author
