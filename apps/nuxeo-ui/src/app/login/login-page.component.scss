@@ -20,7 +20,7 @@
   align-items: center;
   padding: clamp(2rem, 5vh, 3.5rem) clamp(1.5rem, 6vw, 4rem) clamp(1.5rem, 4vh, 2.5rem);
   box-sizing: border-box;
-  background: #fff;
+  background: var(--mat-sys-surface, #fff);
 }
 
 .login-panel-inner {
@@ -129,8 +129,8 @@
 
 .login-or-line {
   flex: 1;
-  height: 1px;
-  background: var(--mat-sys-outline-variant, #c8c5d3);
+  height: 0;
+  border-top: 1px solid var(--mat-sys-outline-variant, #c8c5d3);
 }
 
 .login-or-text {
@@ -169,10 +169,44 @@
   flex: 1 1 44%;
   min-width: min(100%, 320px);
   min-height: 320px;
-  background-color: #fff;
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center center;
+  background-color: var(--mat-sys-surface, #fff);
+  overflow: hidden;
+  display: flex;
+}
+
+.login-hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center center;
+}
+
+/*
+ * Windows high contrast / forced-colors: system palette replaces author colours and drops
+ * decorative backgrounds. Keep structure, field boundaries, and focus visible (NXENG-751).
+ */
+@media (forced-colors: active) {
+  .login-panel {
+    background: Canvas;
+    color: CanvasText;
+    border-inline-end: 1px solid CanvasText;
+  }
+
+  .login-or-line {
+    border-top-color: CanvasText;
+  }
+
+  .login-brand:focus-visible,
+  .login-sso-btn:focus-visible,
+  .login-submit:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+
+  .login-hero-image {
+    opacity: 0;
+  }
 }
 
 @media (max-width: 900px) {

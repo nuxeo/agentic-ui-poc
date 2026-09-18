@@ -87,9 +87,8 @@
     <p class="login-footer">Copyright (C) 1992–2026 Hyland Software, Inc.</p>
   </div>
 
-  <div
-    class="login-hero"
-    role="presentation"
-    [style.background-image]="heroBackgroundImage()"
-  ></div>
+  <div class="login-hero" role="presentation">
+    <!-- Decorative art as <img>, not CSS background — survives Windows high contrast (NXENG-751). -->
+    <img class="login-hero-image" [src]="heroImagePath" alt="" />
+  </div>
 </div>

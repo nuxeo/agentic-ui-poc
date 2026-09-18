@@ -63,6 +63,23 @@ describe('LoginPageComponent', () => {
     expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
   });
 
+  it('uses a decorative img for hero art instead of CSS background-image (NXENG-751)', () => {
+    const hero = fixture.nativeElement.querySelector('.login-hero');
+    expect(hero).withContext('hero region').not.toBeNull();
+    if (!hero) {
+      return;
+    }
+    expect(hero.getAttribute('style')).toBeNull();
+
+    const img = hero.querySelector('img.login-hero-image');
+    expect(img).withContext('hero image element').not.toBeNull();
+    if (!img) {
+      return;
+    }
+    expect(img.getAttribute('alt')).toBe('');
+    expect(img.getAttribute('src')).toContain('/images/Login-background.svg');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
