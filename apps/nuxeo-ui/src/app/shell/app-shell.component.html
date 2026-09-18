@@ -126,23 +126,14 @@
       </div>
 
       <!--
-        The word mark is the only thing on this screen that says whose product this is: it
-        sits in no link, the document title is "Nuxeo Platform", and the nav rail carries no
-        brand. So it is named for assistive technology rather than hidden from it.
-
-        The name has to live on a wrapper. `sat-word-mark-logo` draws a bare <svg> with no
-        <title>, and ships ViewEncapsulation.None, so an ARIA attribute on the host never
-        reaches the <svg> the rule reads — measured, the violation survives it. The vendor
-        host is then marked decorative so the graphic is not announced a second time as an
-        unnamed image (WCAG 1.1.1, NXENG-759).
-
-        `satAppHeaderLogo` belongs on the wrapper: the vendor stylesheet keys display:block,
-        and display:none below 620px, off that attribute. On the inner component instead, the
-        wrapper would keep announcing "Hyland" on a narrow viewport where nothing is drawn.
+        The word mark is decorative here: it is not a link or a control, the header's name
+        comes from the level-1 heading above, and the vendor's own stylesheet drops it
+        entirely below 619px. It is a vendor component whose <svg> carries no <title> and
+        which we cannot label from this template, so the graphic is hidden from assistive
+        technology instead — otherwise it is announced as an unnamed image (WCAG 1.1.1,
+        NXENG-767 / NXENG-759). aria-hidden is not display:none: it still renders.
       -->
-      <span satAppHeaderLogo class="app-header-brand" role="img" aria-label="Hyland">
-        <sat-word-mark-logo aria-hidden="true" />
-      </span>
+      <sat-word-mark-logo satAppHeaderLogo aria-hidden="true" />
 
       <div satAppHeaderActions>
         @if (featureFlags.aiEnabled()) {

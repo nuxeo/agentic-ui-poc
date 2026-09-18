@@ -8,24 +8,26 @@
  *
  * ## Why these checks and not others
  *
- * Built from the reviewer findings in docs/pr-review-findings.jsonl, classified by *why* they were
- * missed rather than what they were (see the PR Review analysis page). The distribution said
- * something useful: almost none were logic errors. In every case the author understood the
- * problem and wrote code that solved it, and what went wrong was the gap between what the
- * code does and what the author believed it does — invisible from the inside, because the
- * belief is what produced the code.
+ * Built from the reviewer findings on the PR Review analysis page, classified by *why* they were
+ * missed rather than what they were. The distribution said something useful: almost none were
+ * logic errors. In every case the author understood the problem and wrote code that solved it,
+ * and what went wrong was the gap between what the code does and what the author believed it
+ * does — invisible from the inside, because the belief is what produced the code.
  *
  * So the checks worth automating are the ones that **compare two artifacts** rather than
  * inspect one. Three classes are mechanisable that way and are implemented here:
  *
- *   silent-failure    (5 findings) an error path that reports success
- *   broken-reference  (1)          a link or path that does not resolve
- *   false-claim       (4, partly)  docs naming a command or file that does not exist
+ *   silent-failure    an error path that reports success
+ *   broken-reference  a link or path that does not resolve
+ *   false-claim       (partly) docs naming a command or file that does not exist
  *
- * The other classes — `proxy-check` (15), `unenforced-guarantee` (12), `stale-prose` (9) —
- * need judgement and live in `.cursor/skills/pre-pr-review/SKILL.md`. They are the majority,
- * which is worth stating plainly: **a green run here is not a review.** It clears the floor
- * so a reader spends their attention on the three classes a grep cannot see.
+ * The other classes — `proxy-check`, `unenforced-guarantee`, `stale-prose` — need judgement and
+ * live in `.cursor/skills/pre-pr-review/SKILL.md`. They are the majority, which is worth
+ * stating plainly: **a green run here is not a review.** It clears the floor so a reader spends
+ * their attention on the three classes a grep cannot see.
+ *
+ * Per-class counts are deliberately not repeated here; the ones that were had already gone
+ * stale against the page. `npm run review:analysis -- stats` reads them from the record.
  */
 
 import { readFileSync, existsSync, statSync } from 'node:fs';
