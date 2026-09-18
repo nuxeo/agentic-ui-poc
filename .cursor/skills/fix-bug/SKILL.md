@@ -525,7 +525,7 @@ npm run beta:gate -- --gates guardrails,lint      # seconds — after every mean
 npm run beta:gate                                 # full run before pushing
 ```
 
-An unfiltered run executes **all 22 gates** cheapest-first — `node`, `lockfile`, `supply-chain`,
+An unfiltered run executes **all 21 gates** cheapest-first — `node`, `lockfile`, `supply-chain`,
 `code-scanning`, `guardrails`, sanitizers, `assertions`, then affected `lint`, `test`, `build`,
 `typecheck`, `spec-types`, `bundle`, `api-surface`, the packaging gates and the drift gates
 (`reference-drift`, `agent-mirror`). It stops at the first

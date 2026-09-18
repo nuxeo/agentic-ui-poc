@@ -70,8 +70,8 @@ test.describe('authentication and authorisation', () => {
     await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
     await page.goto('/#/login', { waitUntil: 'networkidle' });
 
-    const username = page.getByLabel('Username', { exact: true });
-    const password = page.getByLabel('Password', { exact: true });
+    const username = page.getByLabel('Username (required)', { exact: true });
+    const password = page.getByLabel('Password (required)', { exact: true });
     const submit = page.locator('button.login-submit');
 
     await expect(username).toBeVisible();

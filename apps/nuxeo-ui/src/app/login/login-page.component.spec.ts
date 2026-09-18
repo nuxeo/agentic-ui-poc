@@ -63,6 +63,13 @@ describe('LoginPageComponent', () => {
     expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
   });
 
+  it('exposes a level-one heading for the login page (WCAG 1.3.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const heading = el.querySelector('h1.login-title');
+    expect(heading).toBeTruthy();
+    expect(heading?.textContent?.trim()).toBe('Log in');
+  });
+
   it('uses a decorative img for hero art instead of CSS background-image (NXENG-751)', () => {
     const hero = fixture.nativeElement.querySelector('.login-hero');
     expect(hero).withContext('hero region').not.toBeNull();
@@ -89,6 +96,24 @@ describe('LoginPageComponent', () => {
     expect(el.textContent).not.toContain('Azure SAML');
     expect(el.textContent).not.toContain('Okta SAML');
     expect(el.textContent).toContain('Log in');
+  });
+
+  it('names required fields in the label instead of a color-only marker', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Username (required)');
+    expect(el.textContent).toContain('Password (required)');
+    expect(el.querySelector('.mat-mdc-form-field-required-marker')).toBeNull();
+  });
+
+  it('prefixes validation errors with text, not color alone', () => {
+    component.form.setValue({ username: '', password: '' });
+    component.submit();
+    fixture.detectChanges();
+
+    const error = fixture.nativeElement.querySelector('mat-error') as HTMLElement | null;
+    expect(error).withContext('expected a visible mat-error').not.toBeNull();
+    expect(error!.textContent?.trim()).toContain('Username is required');
+    expect(getComputedStyle(error!, '::before').content).toContain('Error');
   });
 
   it('submits username and password together', async () => {
@@ -185,6 +210,26 @@ describe('LoginPageComponent', () => {
     expect(component.form.getRawValue()).toEqual({
       username: 'administrator',
       password: 'Administrator',
+    });
+  });
+
+  /**
+   * NXENG-948. Login fields and footer text must live inside a landmark so screen-reader
+   * users can navigate by region — WCAG 2.1 1.3.1 / axe `region`.
+   */
+  describe('accessibility', () => {
+    it('wraps the login surface in a named main landmark', () => {
+      const root = fixture.nativeElement as HTMLElement;
+      const main = root.querySelector('main.login-panel');
+      expect(main).not.toBeNull();
+      expect(main?.getAttribute('aria-label')).toBe('Log in');
+      expect(main?.querySelector('form.login-form')).not.toBeNull();
+      expect(main?.querySelector('footer.login-footer')).not.toBeNull();
+    });
+
+    it('hides the decorative hero image from assistive technologies', () => {
+      const hero = (fixture.nativeElement as HTMLElement).querySelector('.login-hero');
+      expect(hero?.getAttribute('aria-hidden')).toBe('true');
     });
   });
 
