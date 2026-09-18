@@ -26,10 +26,15 @@
  * Dropping the ports from the barrel's *exports* changed nothing, because the providers
  * file still imported them and the providers file was itself exported. Splitting the
  * entry point is the fix: the shell keeps importing the main barrel, which no longer
- * reaches adf-hx, and the lazily-loaded POC route imports this one.
+ * reaches adf-hx, while adf-hx DI and UI that must run at startup import this entry
+ * point directly.
  *
- * **Nothing eagerly loaded may import from here.** If the initial bundle jumps by ~1 MB
- * after a change, something on the critical path has started to.
+ * **Do not add new eager imports from here.** The lazily-loaded POC route is the intended
+ * consumer for most of this surface. Two product decisions already pull adf-hx into the
+ * initial bundle on purpose — `provideAdfHxNuxeoBridge()` in `app.config.ts` and
+ * `HxpBrowseNavDrawerComponent` in the shell nav drawer (see the guardrail allowlist in
+ * `scripts/review-guardrails.mjs`). Anything else on the critical path that starts importing
+ * here will show up as an ~1 MB jump in the initial bundle.
  */
 
 export * from './lib/api/nuxeo-version-api';
