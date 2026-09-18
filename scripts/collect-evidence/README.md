@@ -97,8 +97,8 @@ actions, or the comparison is illustration rather than evidence.
 
 ### Scenes file exports (besides `summary` and `scenes`)
 
-| Export | When to use |
-| ------ | ----------- |
+| Export                       | When to use                                                                                                                                                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `skipHttpCredentials = true` | Public routes such as `/#/login`. Without it, Playwright `httpCredentials` hydrates `/me` and the browser is signed in before the login UI renders. Use a separate scenes file (default httpCredentials) for authenticated flows. |
 
 ## Helpers
@@ -160,7 +160,10 @@ written to do, but it proves nothing, so it can never be cited as evidence. Conv
   pages render, `httpCredentials` authenticates the XHRs behind them. Without both, `/nuxeo/api`
   calls intermittently 403 and you photograph empty states that read as component defects.
   Set `export const skipHttpCredentials = true` on the scenes file for public routes (login) so
-  `/me` hydration does not sign the browser in before the form is shown
+  `/me` hydration does not sign the browser in before the form is shown. That file must stay
+  **public-only**: `h.login()` only injects route-guard state (`helpers.mjs`), and without
+  context `httpCredentials` the Nuxeo XHRs behind authenticated pages return 403 — use a
+  separate scenes file (default credentials) for post-login captures.
 - A caption banner is injected into the page so the recording is narrated, and hidden for
   every screenshot — stills stay clean, and annotation happens on a copy
 - `spotlight()` outlines the element a scene is about, dims the rest and labels it, so the
