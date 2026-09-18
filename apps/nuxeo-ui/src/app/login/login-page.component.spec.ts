@@ -63,6 +63,13 @@ describe('LoginPageComponent', () => {
     expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
   });
 
+  it('exposes a level-one heading for the login page (WCAG 1.3.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const heading = el.querySelector('h1.login-title');
+    expect(heading).toBeTruthy();
+    expect(heading?.textContent?.trim()).toBe('Log in');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
