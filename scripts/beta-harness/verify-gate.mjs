@@ -272,19 +272,20 @@ const ALL_GATES = [
     cmd: 'node',
     argv: ['scripts/mirror-agent-config.mjs', 'check'],
   },
-  // The pre-PR review skill quotes a distribution of past reviewer findings, and orders its
-  // sections by it. Both were hand-typed from a one-day snapshot and nothing re-derived them,
-  // so the skill warning about `stale-prose` was itself going stale — its "six pull requests"
-  // was already wrong when written; the corpus holds five. The statistics block is now
-  // generated from docs/pr-review-findings.jsonl; the section ordering is not, because it is
-  // an editorial call, so this gate *verifies* it against the corpus ranking instead. Either
-  // drifting is a failure.
-  {
-    id: 'review-corpus',
-    label: 'PR-review skill matches its corpus',
-    cmd: 'node',
-    argv: ['scripts/pr-review-analysis.mjs', 'check'],
-  },
+  // There is no `review-corpus` gate any more, and deliberately so.
+  //
+  // It compared the pre-PR review skill's embedded statistics against a committed
+  // docs/pr-review-findings.jsonl. Both are gone: the findings record is the Confluence
+  // analysis page, the skill quotes no counts, and the only claim left — its section ordering —
+  // is checked on demand by `review:analysis -- check-order`, which needs Confluence
+  // credentials and so cannot be a gate. Keeping a gate here under its old name would have
+  // been the `proxy-check` defect the skill itself leads with: a check whose body no longer
+  // tests the noun in its name.
+  //
+  // What the gate really enforced was that four files of review bookkeeping travelled in every
+  // pull request that went through a review round. `review:guardrails` now fails a diff that
+  // reintroduces them, which is the guarantee actually worth having.
+  //
   // Phase 5 gate: the guardrail we ship to customers, run against the reference
   // extension library in this repo. A tool we hand customers and never run ourselves
   // is a tool we would discover was broken from a customer's CI log.

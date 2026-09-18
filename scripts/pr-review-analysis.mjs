@@ -76,57 +76,96 @@ const REPO = process.env['PR_ANALYSIS_REPO'] ?? 'nuxeo/agentic-ui-poc';
 const OUT_DIR = resolve(EVIDENCE_ROOT, 'pr-review-analysis');
 
 /**
- * The corpus, committed.
+ * The corpus lives on the Confluence page, and **only** there.
  *
- * It lives in the repository rather than the evidence folder because the pre-PR review skill
- * is built from it: its section ordering and every count it quotes are derived from these
- * rows. Evidence stays outside the repo, but something a skill's content depends on has to
- * travel with a clone — otherwise the skill states a snapshot nobody can re-derive, which is
- * the `stale-prose` defect the skill itself is about.
+ * It used to be committed as `docs/pr-review-findings.jsonl`, with the skill's counts generated
+ * from it, on the argument that something a skill's content depends on has to travel with a
+ * clone. What that bought in practice was four files of churn on every unrelated pull request —
+ * the JSONL plus the regenerated skill and its two mirrors — because `publish` ran inside the
+ * review loop and the `review-corpus` gate then demanded they be committed with the fix. A
+ * two-line accessibility fix carried four files of review bookkeeping.
+ *
+ * It did not even buy freshness. Measured before this change: the page held 67 findings across
+ * eight pull requests while the committed copy held 59 across six, because the missing rows were
+ * sitting in the open PRs that had produced them. The repository copy was the stale one, so the
+ * duplicate cost churn and lost the argument it was there to win.
+ *
+ * So the page is the record and the skill points at it. The skill keeps what does not go stale —
+ * the defect classes and the four comparisons — and quotes no figure. `stats` fetches the
+ * distribution on demand; `check-order` compares the skill's section ordering against the page's
+ * ranking. Neither writes to the repository, and nothing here is a gate: both need Confluence
+ * credentials, which CI does not have and has never had.
  */
-const CORPUS = resolve(repoRoot(), 'docs/pr-review-findings.jsonl');
 const SKILL = resolve(repoRoot(), '.cursor/skills/pre-pr-review/SKILL.md');
-const MARK_START = '<!-- pr-review-stats:start -->';
-const MARK_END = '<!-- pr-review-stats:end -->';
 
 function repoRoot() {
   return resolve(dirname(fileURLToPath(import.meta.url)), '..');
 }
 
-async function corpus() {
-  if (!existsSync(CORPUS)) return [];
-  return (await readFile(CORPUS, 'utf8'))
-    .split('\n')
-    .filter(Boolean)
-    .map((l) => JSON.parse(l));
+/** Basic auth for the Confluence API, or exit with the reason. */
+function confluenceAuth() {
+  const email = readIf(`${homedir()}/.jira_email`);
+  const token = readIf(`${homedir()}/.jira_token`);
+  if (!email || !token) {
+    console.error('\n~/.jira_email and ~/.jira_token are required to reach the analysis page.\n');
+    process.exit(1);
+  }
+  return `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
 }
 
-/** The distribution, and the block the skill embeds. Derived, never typed by hand. */
-function renderStats(rows) {
+/** The analysis page's storage body, or exit. */
+async function readPage(auth) {
+  const get = await fetch(`${CONFLUENCE}/api/v2/pages/${PAGE_ID}?body-format=storage`, {
+    headers: { Authorization: auth, Accept: 'application/json' },
+  });
+  if (!get.ok) {
+    console.error(`Could not read the analysis page (HTTP ${get.status}).`);
+    process.exit(1);
+  }
+  const page = await get.json();
+  return { page, storage: page.body?.storage?.value ?? '' };
+}
+
+/**
+ * The findings table on the page, parsed back into rows.
+ *
+ * Scoped to the `<h2>Findings</h2>` table on purpose: the page carries three other tables — the
+ * defect-class glossary and two prose tables — and counting classes across all of them would
+ * score the glossary as one finding per class. The header row is dropped by requiring `<td>`
+ * cells, which a `<th>` row has none of.
+ *
+ * Exits rather than returning `[]` when the table cannot be found. Zero findings and "I could
+ * not read the table" are the same output otherwise, and a distribution that silently reads as
+ * empty is the `silent-failure` class this page exists to record.
+ */
+function findingsOnPage(storage) {
+  const heading = storage.indexOf('<h2>Findings</h2>');
+  const close = heading === -1 ? -1 : storage.indexOf('</tbody>', heading);
+  if (close === -1) {
+    console.error('\nNo <h2>Findings</h2> heading with a table below it. Re-seed the page.\n');
+    process.exit(1);
+  }
+  const table = storage.slice(heading, close);
+  const rows = [];
+  for (const tr of table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
+    const cells = [...tr[1].matchAll(/<td><p>([\s\S]*?)<\/p><\/td>/g)].map((m) => m[1]);
+    // PR, file, finding, class, why-missed — the five `publish` writes. A row of any other
+    // width is not a finding row, so it is skipped rather than counted into a wrong column.
+    if (cells.length !== 5) continue;
+    rows.push({ pr: cells[0], category: cells[3] });
+  }
+  if (!rows.length) {
+    console.error('\nThe Findings table parsed to zero rows. Has its column layout changed?\n');
+    process.exit(1);
+  }
+  return rows;
+}
+
+/** Classes by descending count, ties broken by name — the ranking the skill's order claims. */
+function ranking(rows) {
   const counts = new Map();
   for (const r of rows) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
-  const ordered = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  const prs = [...new Set(rows.map((r) => r.pr))].sort((a, b) => a - b);
-  const top3 = ordered.slice(0, 3).reduce((n, [, c]) => n + c, 0);
-
-  // Deliberately not enumerating the pull requests. The corpus only grows, so a list of every
-  // contributing PR becomes a wall of numbers nobody reads, and a range would be a lie: the
-  // five recorded so far are #174 and #178-#181, not a contiguous span. The per-finding PR is
-  // a column in the corpus and on the Confluence page, which is where you would look anyway.
-  return [
-    MARK_START,
-    `<!-- generated from docs/pr-review-findings.jsonl by \`npm run review:analysis -- sync\`. Do not edit by hand. -->`,
-    '',
-    `**${rows.length} findings** across ${prs.length} pull requests, ${verdict(rows)}.`,
-    `The ${ordered.length > 3 ? 'three largest classes are' : 'classes are'} **${top3} of ${rows.length}**.`,
-    '',
-    // Emit Prettier's padded table form. The generator and the formatter must agree on the
-    // byte, or `check` goes red after every `prettier --write` and becomes noise people learn
-    // to re-sync past without reading — a drift alarm that only ever cries wolf catches no drift.
-    ...table([['Class', 'Findings'], ...ordered.map(([c, n]) => [`\`${c}\``, String(n)])]),
-    '',
-    MARK_END,
-  ].join('\n');
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
 const isCli = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -299,6 +338,58 @@ function suppressedFindings(body) {
   return found;
 }
 
+/**
+ * Resolve a review id for a command that filters by it, or exit 3 rather than let an id
+ * matching nothing masquerade as an empty result.
+ *
+ * Both `round` and `harvest --review` narrow their output to one review, so for both of them
+ * an unmatched id produces exactly what "nothing to report" produces. The skill hands the
+ * same id to both, which means one mistyped or wrong-id-space argument silences the loop's
+ * verdict and its record together.
+ *
+ * @param {string|string[]} prs the pull request(s) the id must belong to
+ * @param {string} reviewId GraphQL node id or REST databaseId
+ * @param {string} subject how to name the thing left unknown, e.g. 'The round'
+ */
+function requireReviewOnPr(prs, reviewId, subject) {
+  const list = Array.isArray(prs) ? prs : [prs];
+  let review = null;
+  try {
+    for (const pr of list) {
+      review = reviewOnPr(pr, reviewId);
+      if (review) break;
+    }
+  } catch (error) {
+    console.error(
+      `\nCould not read the reviews on #${list.join(', #')}: ${error.message.split('\n')[0]}`,
+    );
+    console.error(`${subject} is UNKNOWN, not clean.\n`);
+    process.exit(3);
+  }
+  if (!review) {
+    console.error(`\nNo review with id ${reviewId} on #${list.join(' or #')}.`);
+    console.error(
+      `${subject} is UNKNOWN, not clean: an id that matches no review filters every finding\n` +
+        'away, and the empty result is indistinguishable from a review that found nothing.',
+    );
+    console.error(
+      '\nPass the id `latest-review` prints — a GraphQL node id, `PRR_…`. The numeric REST\n' +
+        '`databaseId` is accepted too; anything else is a wrong id, a stale one, or an id\n' +
+        'belonging to a different pull request.\n',
+    );
+    process.exit(3);
+  }
+  if (!REVIEWER.test(review.author ?? '')) {
+    console.error(`\nReview ${reviewId} is by ${review.author ?? 'an unknown user'}.`);
+    console.error(
+      `${subject} is UNKNOWN, not clean: this command reports the automated reviewer's\n` +
+        'findings, so a human review would report zero of them and look clean.\n',
+    );
+    process.exit(3);
+  }
+  return review;
+}
+
 function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId = null }) {
   return {
     pr: Number(pr),
@@ -317,7 +408,16 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId
 }
 
 /**
- * The Copilot reviews on a PR, oldest first.
+ * **Every** review on a PR, oldest first — human ones included, because the caller has to be
+ * able to reject a human's review id explicitly rather than silently report zero findings for
+ * it. `copilotReviews` is the filtered view.
+ *
+ * `fullDatabaseId` alongside `databaseId`: the schema types `databaseId` as a 32-bit `Int`,
+ * which cannot hold a modern review id — 5204368759 is well past 2^31. In practice the API
+ * returns it in full and unerrored today (verified against #184), so the numeric lookup worked
+ * either way, but a field whose declared type contradicts its own values is not something to
+ * depend on. `fullDatabaseId` is a `BigInt`, serialised as a string, and is preferred when
+ * present; the comparison is string-based, so nothing has to survive a float.
  *
  * `gh` failing throws out of `execFileSync`, which is the point: this used to be
  * `copilot_reviews | tail -1` in a shell snippet, and without `pipefail` `tail` exits 0 when
@@ -327,17 +427,41 @@ function row({ pr, prTitle, file, line, url, finding, resolved, source, reviewId
  * reassuring zero, which is the argument for the loop's state living here rather than in
  * shell.
  */
-export function copilotReviews(pr) {
+export function reviewsOnPr(pr) {
   return paginate(
     pr,
     `headRefOid
      reviews(first:50, after:$endCursor){
        pageInfo{ hasNextPage endCursor }
-       nodes{ id author{ login } commit{ oid } } }`,
+       nodes{ id databaseId fullDatabaseId author{ login } commit{ oid } } }`,
     '$pr.reviews.nodes[] | {head: $pr.headRefOid} + .',
-  )
-    .filter((r) => REVIEWER.test(r.author?.login ?? ''))
-    .map((r) => ({ id: r.id, commit: r.commit?.oid ?? null, head: r.head }));
+  ).map((r) => ({
+    id: r.id,
+    databaseId: r.fullDatabaseId ?? r.databaseId ?? null,
+    author: r.author?.login ?? null,
+    commit: r.commit?.oid ?? null,
+    head: r.head,
+  }));
+}
+
+/** The Copilot reviews on a PR, oldest first. */
+export function copilotReviews(pr) {
+  return reviewsOnPr(pr).filter((r) => REVIEWER.test(r.author ?? ''));
+}
+
+/**
+ * One review on `pr`, by either of the two ids GitHub gives it, or `null`.
+ *
+ * Both id spaces are accepted because both are in front of you: `latest-review` prints the
+ * GraphQL node id, while the REST API and `gh api …/reviews` hand back the numeric
+ * `databaseId`. They are not interchangeable, and `round` used to compare its argument against
+ * node ids only — so a REST id matched nothing, filtered every finding away, and printed a
+ * clean round. Verified on #184: the round-2 review reported one finding by node id and zero
+ * by its own numeric id, from the same review.
+ */
+export function reviewOnPr(pr, reviewId) {
+  const wanted = String(reviewId);
+  return reviewsOnPr(pr).find((r) => r.id === wanted || String(r.databaseId) === wanted) ?? null;
 }
 
 /**
@@ -502,6 +626,13 @@ if (isCli) {
       console.error('Usage: pr-review-analysis.mjs harvest <pr> [<pr> …] [--review <reviewId>]');
       process.exit(2);
     }
+    // Resolved here, before the output file exists. `--review` narrows the harvest to one
+    // review, so an id matching nothing records an empty round exactly as a clean one does —
+    // and the skill passes the same id to `round`, so one wrong argument silences the verdict
+    // and the record together. The check has to come before the `writeFile` below, because a
+    // guard that fired afterwards would leave an empty file that the existence check then
+    // refuses to overwrite, turning a bad argument into a blocked retry.
+    const harvestReview = onlyReview ? requireReviewOnPr(rest, onlyReview, 'The harvest') : null;
     await mkdir(OUT_DIR, { recursive: true });
     const out = resolve(OUT_DIR, harvestFileName(rest));
     // One invocation, one file. The name used to be the UTC date, so a second harvest the same
@@ -522,8 +653,8 @@ if (isCli) {
     let n = 0;
     const bySource = {};
     for (const pr of rest) {
-      const entries = onlyReview
-        ? harvestPr(pr).filter((r) => r.reviewId === onlyReview)
+      const entries = harvestReview
+        ? harvestPr(pr).filter((r) => r.reviewId === harvestReview.id)
         : harvestPr(pr);
       for (const entry of entries) {
         await appendFile(out, `${JSON.stringify(entry)}\n`, 'utf8');
@@ -581,23 +712,8 @@ if (isCli) {
       process.exit(1);
     }
 
-    const email = readIf(`${homedir()}/.jira_email`);
-    const token = readIf(`${homedir()}/.jira_token`);
-    if (!email || !token) {
-      console.error('\n~/.jira_email and ~/.jira_token are required to publish.\n');
-      process.exit(1);
-    }
-    const auth = `Basic ${Buffer.from(`${email}:${token}`).toString('base64')}`;
-
-    const get = await fetch(`${CONFLUENCE}/api/v2/pages/${PAGE_ID}?body-format=storage`, {
-      headers: { Authorization: auth, Accept: 'application/json' },
-    });
-    if (!get.ok) {
-      console.error(`Could not read the analysis page (HTTP ${get.status}).`);
-      process.exit(1);
-    }
-    const page = await get.json();
-    const storage = page.body?.storage?.value ?? '';
+    const auth = confluenceAuth();
+    const { page, storage } = await readPage(auth);
 
     const heading = storage.indexOf('<h2>Findings</h2>');
     const close = heading === -1 ? -1 : storage.indexOf('</tbody>', heading);
@@ -672,43 +788,10 @@ if (isCli) {
       `Published ${pending.length} finding(s) to ${CONFLUENCE}/pages/${PAGE_ID}` +
         (already ? ` (${already} already there, skipped)` : ''),
     );
-
-    // Append to the committed corpus and re-derive the skill, in that order. Publishing to
-    // Confluence alone would leave the repository's copy behind, and the skill quoting a
-    // distribution that no longer matches what the page shows — the same drift that made these
-    // numbers hand-typed in the first place. Deduplicate on the comment URL so re-publishing a
-    // file does not double-count it.
-    // Same identity as the page, and for the same reason: `r.url` is shared by every
-    // suppressed finding from one review, so a URL-keyed set dropped all but the first.
-    const corpusKey = (r) => `${r.pr}|${r.url}|${r.file}|${r.line}|${r.finding}`;
-    const known = new Set((await corpus()).map(corpusKey));
-    const fresh = rows.filter((r) => !known.has(corpusKey(r)));
-    if (fresh.length) {
-      await appendFile(CORPUS, `${fresh.map((r) => JSON.stringify(r)).join('\n')}\n`, 'utf8');
-      const all = await corpus();
-      await writeFile(SKILL, replaceBlock(await readFile(SKILL, 'utf8'), renderStats(all)), 'utf8');
-
-      // `.cursor/` is the source, but `.claude/` and `.agent/` carry generated byte-identical
-      // copies and the `agent-mirror` gate compares them. Rewriting the skill here and
-      // leaving that to the caller meant publishing any fresh finding left the next gate —
-      // and CI — red, on a file the caller never edited by hand and had no reason to suspect.
-      // The generator is the right place to re-run the generator.
-      execFileSync('node', [resolve(repoRoot(), 'scripts/mirror-agent-config.mjs'), 'sync'], {
-        encoding: 'utf8',
-        stdio: 'inherit',
-      });
-
-      console.log(
-        `Corpus now ${all.length} finding(s); skill re-derived and mirrors synced. Stage all ` +
-          'four together:\n' +
-          '  git add docs/pr-review-findings.jsonl \\\n' +
-          '          .cursor/skills/pre-pr-review/SKILL.md \\\n' +
-          '          .claude/skills/pre-pr-review/SKILL.md \\\n' +
-          '          .agent/skills/pre-pr-review/SKILL.md\n' +
-          'The review-corpus gate fails if the corpus and the skill move apart, and ' +
-          'agent-mirror fails if the mirrors do.',
-      );
-    }
+    // Nothing tracked is written, by design — see the note above `SKILL`. There is nothing to
+    // stage, so publishing is no longer something a pull request has to carry, and no longer
+    // has to happen before the review loop's last round.
+    console.log('Nothing written to the repository; the page is the record.');
   } else if (cmd === 'latest-review') {
     const [pr] = rest;
     if (!pr) {
@@ -741,9 +824,14 @@ if (isCli) {
     // indistinguishable from "found something" — survivable, but it would make "clean" the
     // only trustworthy code, and this loop has already been bitten three times by an error
     // wearing a verdict's clothes.
+    //
+    // An id that matches no review on this PR is the fourth. It is not an API failure, so
+    // nothing threw: the filter simply matched nothing and zero findings read as a clean
+    // round. Resolve it first, so "no findings" can only ever mean a real review found none.
+    const review = requireReviewOnPr(pr, reviewId, 'The round');
     let found;
     try {
-      found = roundFindings(pr, reviewId);
+      found = roundFindings(pr, review.id);
     } catch (error) {
       console.error(`\nCould not read #${pr}: ${error.message.split('\n')[0]}`);
       console.error('The round is UNKNOWN, not clean.\n');
@@ -760,57 +848,47 @@ if (isCli) {
     }
     process.exit(found.length === 0 ? 0 : 1);
   } else if (cmd === 'stats') {
-    const rows = await corpus();
-    console.log(`\n${stripAll(renderStats(rows), HTML_COMMENT, HTML_COMMENT_MARKER)}`);
-  } else if (cmd === 'sync') {
-    const rows = await corpus();
-    const text = await readFile(SKILL, 'utf8');
-    if (!singleMarkerPair(text)) process.exit(1);
-    const next = replaceBlock(text, renderStats(rows));
-    if (next === text) {
-      console.log('skill is already in step with the corpus');
-    } else {
-      await writeFile(SKILL, next, 'utf8');
-      console.log(`synced ${SKILL} from ${rows.length} finding(s)`);
-    }
-  } else if (cmd === 'check') {
-    const rows = await corpus();
-    const text = await readFile(SKILL, 'utf8');
-    if (!singleMarkerPair(text)) process.exit(1);
-
+    // Read, not embedded. The skill quotes no figure precisely so that this is the only place
+    // a number comes from, and a number fetched at the moment you read it cannot go stale in a
+    // file nobody re-derived.
+    const rows = findingsOnPage((await readPage(confluenceAuth())).storage);
+    const ordered = ranking(rows);
+    const prs = new Set(rows.map((r) => r.pr));
+    const top3 = ordered.slice(0, 3).reduce((n, [, c]) => n + c, 0);
+    console.log(`\n${rows.length} findings across ${prs.size} pull requests.`);
+    console.log(
+      `The ${ordered.length > 3 ? 'three largest classes are' : 'classes are'} ${top3} of ${rows.length}.\n`,
+    );
+    console.log(
+      table([['Class', 'Findings'], ...ordered.map(([c, n]) => [c, String(n)])]).join('\n'),
+    );
+    console.log(`\n${CONFLUENCE}/pages/${PAGE_ID}\n`);
+  } else if (cmd === 'check-order') {
     // The skill's three numbered sections are ordered by weight, and that ordering is an
-    // assertion about the corpus, not a layout choice: the reader is told to spend their
-    // attention top-down. Counts drifting is cosmetic; the order being wrong sends the review
-    // at the wrong thing first. `proxy-check` leads `unenforced-guarantee` by three findings —
-    // close enough that a single run could overturn it — so check the claim, not just the table.
-    const counts = new Map();
-    for (const r of rows) counts.set(r.category, (counts.get(r.category) ?? 0) + 1);
-    const top = [...counts.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    // assertion about the findings, not a layout choice: the reader is told where to spend
+    // their attention first. It is the one claim the skill still makes about the distribution,
+    // now that it quotes no counts — so it is the one thing left to verify.
+    //
+    // Run deliberately, not as a gate. It needs Confluence credentials, and a check that
+    // cannot run in CI must not be something a pull request depends on.
+    const top = ranking(findingsOnPage((await readPage(confluenceAuth())).storage))
       .slice(0, 3)
       .map(([c]) => c);
+    const text = await readFile(SKILL, 'utf8');
     const written = [...text.matchAll(/^## [123]\. .*`([a-z-]+)`/gm)].map((m) => m[1]);
     if (written.join() !== top.join()) {
       console.error(
         `\nThe skill's numbered sections are ordered ${written.join(' → ') || '(none found)'},\n` +
-          `but the corpus ranks them ${top.join(' → ')}. Re-order the sections, or re-check\n` +
+          `but the page ranks them ${top.join(' → ')}. Re-order the sections, or re-check\n` +
           'the classification — the section order tells the reader what to look at first.\n',
       );
       process.exit(1);
     }
-
-    if (replaceBlock(text, renderStats(rows)) !== text) {
-      console.error(
-        `\nThe pre-PR review skill disagrees with docs/pr-review-findings.jsonl (${rows.length} rows).\n` +
-          'Run `npm run review:analysis -- sync`.\n',
-      );
-      process.exit(1);
-    }
-    console.log(`skill is in step with the corpus (${rows.length} finding(s))`);
+    console.log(`skill sections match the page ranking (${top.join(' → ')})`);
   } else {
     console.error(
       'Usage: pr-review-analysis.mjs harvest <pr> … | publish <file> | latest-review <pr> | ' +
-        'round <pr> <reviewId> | stats | sync | check',
+        'round <pr> <reviewId> | stats | check-order',
     );
     process.exit(2);
   }
@@ -827,53 +905,11 @@ export function harvestFileName(prs, now = new Date()) {
   return `${stamp}-${label}.jsonl`;
 }
 
-/**
- * "every one accepted as valid" is a claim about the corpus, so read it from the corpus.
- *
- * A finding can legitimately be argued down — the loop tells you to reply with the reasoning
- * and leave the thread open — and the first time that happens a hand-written universal would
- * go quietly false. Record it as `accepted: false` and this sentence changes itself. Rows
- * predate the field, so absent means accepted.
- */
-function verdict(rows) {
-  const rejected = rows.filter((r) => r.accepted === false).length;
-  if (!rejected) return 'every one accepted as valid';
-  if (rejected === rows.length) return 'none of them accepted';
-  return `${rows.length - rejected} accepted as valid, ${rejected} argued down`;
-}
-
 /** A Markdown table padded the way Prettier pads one: columns to their widest cell. */
 function table([header, ...body]) {
   const w = header.map((_, i) => Math.max(...[header, ...body].map((r) => r[i].length)));
   const row = (cells) => `| ${cells.map((c, i) => c.padEnd(w[i])).join(' | ')} |`;
   return [row(header), `| ${w.map((n) => '-'.repeat(n)).join(' | ')} |`, ...body.map(row)];
-}
-
-/**
- * Exactly one marker pair, because `replaceBlock` updates the first one it finds.
- *
- * The skill carried two generated blocks, and `check` passed with both: it only ever compared
- * the first, so the second was free to sit at 57 findings for ever while the page and the
- * corpus moved on. A no-drift guarantee that cannot see a second copy of the thing it guards
- * is not a guarantee, and this is the check that would have caught it.
- */
-function singleMarkerPair(text) {
-  const starts = text.split(MARK_START).length - 1;
-  const ends = text.split(MARK_END).length - 1;
-  if (starts === 1 && ends === 1) return true;
-  console.error(
-    `\n${SKILL} has ${starts} generated block(s) (${ends} end marker(s)); it must have exactly one.\n` +
-      'replaceBlock only updates the first, so any other copy drifts silently. Remove the extras.\n',
-  );
-  return false;
-}
-
-/** Swap the generated block, or append it if the skill has none yet. */
-function replaceBlock(text, block) {
-  const a = text.indexOf(MARK_START);
-  const b = text.indexOf(MARK_END);
-  if (a === -1 || b === -1) return `${text.trimEnd()}\n\n${block}\n`;
-  return `${text.slice(0, a)}${block}${text.slice(b + MARK_END.length)}`;
 }
 
 function readIf(f) {

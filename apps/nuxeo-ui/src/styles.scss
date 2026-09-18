@@ -154,7 +154,8 @@ sat-platform-nav p.sat-platform-nav-item-label {
  * .mat-mdc-text-field-wrapper (often with border-radius) which crops "Choose a …" style labels
  * in dialogs, filters, and anywhere the wrapper is rounded — fix once app-wide.
  */
-.mat-mdc-form-field-appearance-outline {
+.mat-mdc-form-field-appearance-outline,
+.mat-form-field-appearance-outline {
   overflow: visible;
 
   .mat-mdc-text-field-wrapper {
