@@ -9,7 +9,11 @@
       </a>
 
       <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="login-field-full">
+        <mat-form-field
+          appearance="outline"
+          subscriptSizing="dynamic"
+          class="login-field-full login-field-username"
+        >
           <mat-label>Username</mat-label>
           <input
             matInput
@@ -50,6 +54,7 @@
             color="primary"
             type="submit"
             class="login-submit"
+            disabledInteractive
             [disabled]="submitDisabled()"
           >
             @if (submitting()) {
