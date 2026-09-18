@@ -74,7 +74,7 @@ test.describe('authentication and authorisation', () => {
     await expect(skip).toBeFocused();
 
     await page.keyboard.press('Enter');
-    await expect(page.locator('#login-main')).toBeFocused();
+    await expect(page.locator('input[formcontrolname="username"]')).toBeFocused();
     expect(page.url()).toMatch(/#\/login$/);
   });
 

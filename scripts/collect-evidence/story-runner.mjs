@@ -127,6 +127,13 @@ const context = await browser.newContext({
       }),
 });
 
+if (skipHttpCredentials) {
+  // Anonymous /me hydration still satisfies loginGuard unless the signed-out flag is set.
+  await context.addInitScript(() => {
+    sessionStorage.setItem('agentic_ui_signed_out', '1');
+  });
+}
+
 // Chapter offsets are measured from here. Recording actually begins inside newContext, a few
 // tens of milliseconds earlier, so offsets are approximate — stated in chapters.json rather
 // than presented as exact.

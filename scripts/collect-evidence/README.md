@@ -160,10 +160,12 @@ written to do, but it proves nothing, so it can never be cited as evidence. Conv
   pages render, `httpCredentials` authenticates the XHRs behind them. Without both, `/nuxeo/api`
   calls intermittently 403 and you photograph empty states that read as component defects.
   Set `export const skipHttpCredentials = true` on the scenes file for public routes (login) so
-  `/me` hydration does not sign the browser in before the form is shown. That file must stay
-  **public-only**: `h.login()` only injects route-guard state (`helpers.mjs`), and without
-  context `httpCredentials` the Nuxeo XHRs behind authenticated pages return 403 — use a
-  separate scenes file (default credentials) for post-login captures.
+  `/me` hydration does not sign the browser in before the form is shown. The runner also sets
+  `sessionStorage.agentic_ui_signed_out` so anonymous `/me` hydration does not redirect away
+  from `/#/login`. That file must stay **public-only**: `h.login()` only injects route-guard
+  state (`helpers.mjs`), and without context `httpCredentials` the Nuxeo XHRs behind
+  authenticated pages return 403 — use a separate scenes file (default credentials) for
+  post-login captures.
 - A caption banner is injected into the page so the recording is narrated, and hidden for
   every screenshot — stills stay clean, and annotation happens on a copy
 - `spotlight()` outlines the element a scene is about, dims the rest and labels it, so the

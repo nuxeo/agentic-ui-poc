@@ -52,9 +52,9 @@ describe('LoginPageComponent', () => {
     expect(landmark?.getAttribute('aria-label')).toBe('Log in');
   });
 
-  it('focuses the sign-in landmark and cancels navigation when the skip link is activated', () => {
+  it('focuses the username field and cancels navigation when the skip link is activated', () => {
     const el = fixture.nativeElement as HTMLElement;
-    const landmark = el.querySelector('#login-main') as HTMLElement;
+    const usernameInput = el.querySelector('input[formcontrolname="username"]') as HTMLInputElement;
     const event = new MouseEvent('click', { cancelable: true, bubbles: true });
     const preventSpy = spyOn(event, 'preventDefault').and.callThrough();
 
@@ -63,7 +63,7 @@ describe('LoginPageComponent', () => {
 
     expect(preventSpy).toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(true);
-    expect(document.activeElement).toBe(landmark);
+    expect(document.activeElement).toBe(usernameInput);
   });
 
   it('shows username required error after empty submit (NXENG-748)', () => {

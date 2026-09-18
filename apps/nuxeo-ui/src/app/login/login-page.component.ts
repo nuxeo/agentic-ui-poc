@@ -76,13 +76,15 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * `withHashLocation()` treats `#login-main` as the router URL; focus the landmark without
-   * changing the hash (WCAG 2.4.1 skip navigation).
+   * `withHashLocation()` treats `#login-main` as the router URL; focus the first sign-in
+   * control without changing the hash (WCAG 2.4.1 skip navigation).
    */
   skipToSignIn(event: MouseEvent): void {
     event.preventDefault();
-    const landmark = this.host.nativeElement.querySelector('#login-main') as HTMLElement | null;
-    landmark?.focus();
+    const usernameInput = this.host.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement | null;
+    usernameInput?.focus();
   }
 
   ngOnDestroy(): void {
