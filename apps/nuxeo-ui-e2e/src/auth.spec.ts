@@ -63,7 +63,7 @@ test.describe('authentication and authorisation', () => {
     await expect(page.locator('button, input[type="submit"]').first()).toBeVisible();
   });
 
-  test('skip link is first in tab order and focuses the sign-in landmark (NXENG-745)', async ({
+  test('skip link is first in tab order and focuses the first sign-in control (NXENG-745)', async ({
     page,
   }) => {
     await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
@@ -74,7 +74,10 @@ test.describe('authentication and authorisation', () => {
     await expect(skip).toBeFocused();
 
     await page.keyboard.press('Enter');
-    await expect(page.locator('input[formcontrolname="username"]')).toBeFocused();
+    const username = page.locator('input[formcontrolname="username"]');
+    await expect(username).toBeFocused();
+    // Bypass must land past the Hyland logo inside main#login-main, not on the brand link.
+    await expect(page.locator('a.login-brand')).not.toBeFocused();
     expect(page.url()).toMatch(/#\/login$/);
   });
 
