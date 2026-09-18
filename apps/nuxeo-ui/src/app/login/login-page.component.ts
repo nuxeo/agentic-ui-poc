@@ -1,4 +1,5 @@
 import {
+  AfterViewChecked,
   AfterViewInit,
   ChangeDetectorRef,
   Component,
@@ -38,7 +39,7 @@ const LAST_USER_KEY = 'agentic_ui_last_username';
   templateUrl: './login-page.component.html',
   styleUrl: './login-page.component.scss',
 })
-export class LoginPageComponent implements AfterViewInit, OnDestroy {
+export class LoginPageComponent implements AfterViewInit, AfterViewChecked, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -73,6 +74,21 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     // Password managers often autofill after first paint without updating reactive form state.
     this.scheduleAutofillSync();
+  }
+
+  ngAfterViewChecked(): void {
+    this.neutralizeRedundantPasswordAriaRequired();
+  }
+
+  /**
+   * MatInput sets both HTML `required` and `aria-required="true"`; IBM Equal Access flags the
+   * duplicate (aria_attribute_redundant, NXENG-755). Native `required` is sufficient for AT.
+   */
+  private neutralizeRedundantPasswordAriaRequired(): void {
+    const { passwordInput } = this.getCredentialInputs();
+    if (passwordInput?.required && passwordInput.getAttribute('aria-required') === 'true') {
+      passwordInput.removeAttribute('aria-required');
+    }
   }
 
   ngOnDestroy(): void {
