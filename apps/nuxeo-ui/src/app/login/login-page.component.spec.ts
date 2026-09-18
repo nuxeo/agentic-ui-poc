@@ -39,6 +39,14 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
   });
 
+  it('does not expose redundant aria-required on username when HTML required is set (NXENG-753)', () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+    expect(usernameInput.required).toBe(true);
+    expect(usernameInput.getAttribute('aria-required')).toBeNull();
+  });
+
   it('shows username required error after empty submit (NXENG-748)', () => {
     component.form.setValue({ username: '', password: '' });
     component.submit();

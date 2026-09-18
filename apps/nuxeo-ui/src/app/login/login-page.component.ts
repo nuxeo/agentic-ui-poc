@@ -47,6 +47,7 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   private readonly host = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly autofillSyncTimeouts: ReturnType<typeof setTimeout>[] = [];
+  private usernameAriaRequiredObserver: MutationObserver | null = null;
 
   readonly submitting = signal(false);
   /** SSO entry points from `nuxeo-sso.providers.ts` / app config. */
@@ -73,12 +74,15 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
   ngAfterViewInit(): void {
     // Password managers often autofill after first paint without updating reactive form state.
     this.scheduleAutofillSync();
+    this.watchUsernameRequiredAccessibility();
   }
 
   ngOnDestroy(): void {
     for (const timeoutId of this.autofillSyncTimeouts) {
       clearTimeout(timeoutId);
     }
+    this.usernameAriaRequiredObserver?.disconnect();
+    this.usernameAriaRequiredObserver = null;
   }
 
   private scheduleAutofillSync(): void {
@@ -102,6 +106,31 @@ export class LoginPageComponent implements AfterViewInit, OnDestroy {
       this.syncAutofillFromDom();
       this.cdr.markForCheck();
     }
+  }
+
+  /**
+   * MatInput sets both native `required` and `aria-required`; IBM Equal Access flags the
+   * duplicate on the username field (NXENG-753). Keep HTML required, drop the redundant ARIA.
+   */
+  private watchUsernameRequiredAccessibility(): void {
+    const { usernameInput } = this.getCredentialInputs();
+    if (!usernameInput) {
+      return;
+    }
+
+    const stripRedundantAriaRequired = (): void => {
+      if (usernameInput.required && usernameInput.getAttribute('aria-required') === 'true') {
+        usernameInput.removeAttribute('aria-required');
+      }
+    };
+
+    stripRedundantAriaRequired();
+    this.usernameAriaRequiredObserver?.disconnect();
+    this.usernameAriaRequiredObserver = new MutationObserver(stripRedundantAriaRequired);
+    this.usernameAriaRequiredObserver.observe(usernameInput, {
+      attributes: true,
+      attributeFilter: ['aria-required', 'required'],
+    });
   }
 
   private getCredentialInputs(): {
