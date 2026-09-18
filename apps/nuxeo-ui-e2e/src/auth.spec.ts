@@ -84,9 +84,7 @@ test.describe('authentication and authorisation', () => {
       const shadow = style.boxShadow;
       const hasVisibleShadow =
         shadow !== 'none' &&
-        shadow
-          .split(',')
-          .some((layer) => !/^0px\s+0px\s+0px\s+0px/.test(layer.trim()));
+        shadow.split(',').some((layer) => !/^0px\s+0px\s+0px\s+0px/.test(layer.trim()));
       return {
         outlineWidthPx,
         outlineStyle: style.outlineStyle,
