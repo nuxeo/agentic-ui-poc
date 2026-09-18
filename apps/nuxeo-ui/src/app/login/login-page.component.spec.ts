@@ -13,17 +13,35 @@ describe('LoginPageComponent', () => {
   let fixture: ComponentFixture<LoginPageComponent>;
   let component: LoginPageComponent;
   let auth: jasmine.SpyObj<Pick<AuthService, 'login' | 'startSamlLogin' | 'samlLoginOptions'>>;
+  const samlLoginOptions = signal<NuxeoSamlLoginEndpoint[]>([]);
   const samlEndpoint: NuxeoSamlLoginEndpoint = {
     id: 'azure',
     label: 'Azure SAML',
     path: '/nuxeo/login/azure',
   };
 
+  function expectKeyboardFocusIndicator(el: HTMLElement): void {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    el.focus();
+    fixture.detectChanges();
+
+    expect(el).withContext('the target should receive focus').toBe(document.activeElement);
+    expect(el.matches(':focus-visible'))
+      .withContext('keyboard focus should match :focus-visible')
+      .toBe(true);
+
+    const style = getComputedStyle(el);
+    expect(style.outlineStyle).not.toBe('none');
+    expect(Number.parseFloat(style.outlineWidth) || 0).toBeGreaterThanOrEqual(2);
+
+    el.blur();
+  }
+
   beforeEach(async () => {
     auth = jasmine.createSpyObj('AuthService', ['login', 'startSamlLogin']);
     auth.login.and.returnValue(of(undefined));
     Object.defineProperty(auth, 'samlLoginOptions', {
-      get: () => signal([]),
+      get: () => samlLoginOptions,
     });
 
     await TestBed.configureTestingModule({
@@ -37,6 +55,10 @@ describe('LoginPageComponent', () => {
     fixture = TestBed.createComponent(LoginPageComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    samlLoginOptions.set([]);
   });
 
   it('shows username required error after empty submit (NXENG-748)', () => {
@@ -96,6 +118,25 @@ describe('LoginPageComponent', () => {
   it('starts SAML login for external providers', () => {
     component.startSamlLogin(samlEndpoint);
     expect(auth.startSamlLogin).toHaveBeenCalledWith(samlEndpoint);
+  });
+
+  it('shows a visible keyboard focus indicator on the brand link (NXENG-750)', () => {
+    const brand = (fixture.nativeElement as HTMLElement).querySelector('a.login-brand') as HTMLElement;
+    expect(brand).toBeTruthy();
+
+    expectKeyboardFocusIndicator(brand);
+  });
+
+  it('shows a visible keyboard focus indicator on SSO buttons (NXENG-750)', () => {
+    samlLoginOptions.set([samlEndpoint]);
+    fixture.detectChanges();
+
+    const ssoButton = (fixture.nativeElement as HTMLElement).querySelector(
+      'button.login-sso-btn',
+    ) as HTMLElement;
+    expect(ssoButton).toBeTruthy();
+
+    expectKeyboardFocusIndicator(ssoButton);
   });
 
   it('disables Log in when required fields are empty', () => {
