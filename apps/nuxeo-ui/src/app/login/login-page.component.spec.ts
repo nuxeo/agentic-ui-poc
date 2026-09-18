@@ -87,6 +87,13 @@ describe('LoginPageComponent', () => {
     expect(img.getAttribute('src')).toContain('/images/Login-background.svg');
   });
 
+  it('fills the hero box without expanding it from intrinsic image size (NXENG-751)', () => {
+    const hero = fixture.nativeElement.querySelector('.login-hero') as HTMLElement;
+    const img = hero.querySelector('.login-hero-image') as HTMLElement;
+    expect(getComputedStyle(hero).position).toBe('relative');
+    expect(getComputedStyle(img).position).toBe('absolute');
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
