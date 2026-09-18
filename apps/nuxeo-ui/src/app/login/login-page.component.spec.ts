@@ -63,6 +63,16 @@ describe('LoginPageComponent', () => {
     expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
   });
 
+  it('groups username and password in a credentials fieldset (NXENG-754)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const passwordInput = el.querySelector('input[formcontrolname="password"]') as HTMLInputElement;
+    const fieldset = passwordInput.closest('fieldset.login-credentials');
+    expect(fieldset).toBeTruthy();
+    const legend = fieldset?.querySelector('legend');
+    expect(legend?.textContent?.trim()).toBe('Sign in credentials');
+    expect(legend?.classList.contains('cdk-visually-hidden')).toBe(true);
+  });
+
   it('shows username and password on one form (Web UI parity)', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('input[formcontrolname="username"]')).toBeTruthy();
