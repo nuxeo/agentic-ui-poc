@@ -63,6 +63,43 @@ test.describe('authentication and authorisation', () => {
     await expect(page.locator('button, input[type="submit"]').first()).toBeVisible();
   });
 
+  test('Log in shows a visible focus indicator when reached via Tab (NXENG-750)', async ({
+    page,
+  }) => {
+    await page.addInitScript((key) => sessionStorage.setItem(key, '1'), SIGNED_OUT_KEY);
+    await page.goto('/#/login', { waitUntil: 'networkidle' });
+
+    const submit = page.locator('button.login-submit');
+    await expect(submit).toBeVisible();
+
+    // Brand link → username → password → submit (empty credentials, disabledInteractive).
+    for (let i = 0; i < 4; i += 1) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(submit).toBeFocused();
+
+    const focusRing = await submit.evaluate((el) => {
+      const style = getComputedStyle(el);
+      const outlineWidthPx = Number.parseFloat(style.outlineWidth) || 0;
+      const shadow = style.boxShadow;
+      const hasVisibleShadow =
+        shadow !== 'none' &&
+        shadow
+          .split(',')
+          .some((layer) => !/^0px\s+0px\s+0px\s+0px/.test(layer.trim()));
+      return {
+        outlineWidthPx,
+        outlineStyle: style.outlineStyle,
+        hasVisibleShadow,
+      };
+    });
+    expect(focusRing.outlineStyle).not.toBe('none');
+    expect(
+      focusRing.outlineWidthPx >= 2 || focusRing.hasVisibleShadow,
+      'focus-visible should render a 2px+ outline or non-zero focus shadow',
+    ).toBe(true);
+  });
+
   test('an anonymous visitor is not granted administration access', async ({ page }) => {
     /**
      * The privilege boundary. `adminGuard` admits only `hasAdministrationAccess()` and sends
