@@ -77,6 +77,7 @@ describe('LoginPageComponent', () => {
       return;
     }
     expect(hero.getAttribute('style')).toBeNull();
+    expect(getComputedStyle(hero).backgroundImage).toBe('none');
 
     const img = hero.querySelector('img.login-hero-image');
     expect(img).withContext('hero image element').not.toBeNull();

@@ -80,6 +80,8 @@ test.describe('authentication and authorisation', () => {
 
     const heroImg = page.locator('img.login-hero-image');
     await expect(heroImg).toHaveAttribute('alt', '');
+    const heroOpacity = await heroImg.evaluate((el) => getComputedStyle(el).opacity);
+    expect(heroOpacity, 'forced-colors hides decorative hero art').toBe('0');
 
     for (let i = 0; i < 4; i += 1) {
       await page.keyboard.press('Tab');
