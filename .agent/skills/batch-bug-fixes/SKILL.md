@@ -46,7 +46,7 @@ skill exists mostly to handle them.
 | Shared Nuxeo container + OpenSearch      | Shared, per-ticket data root is the isolate | Keep the default; do not run N containers   |
 | `git` object store, index, worktree list | Contended during **creation**               | Create workspaces **serially**              |
 | `git stash` stack                        | Shared across every worktree                | `fix-bug` already bans it; never relax that |
-| PR review findings record                | Confluence page; `publish` dedupes per row  | Nothing to do — it writes no tracked file   |
+| PR review findings record                | Confluence page; PUTs race on `version + 1` | No tracked file, but publish **serially**   |
 | GitHub review requests                   | Rate-limited, and Copilot queues            | Stagger; never request N reviews at once    |
 
 ### The port collision, because it is the one that bit
@@ -236,8 +236,9 @@ is mostly overlap.
 - **Never create workspaces concurrently.** Serial creation, parallel work.
 - **Never raise `--concurrency` past the plan to hit a deadline.** Swapping loses in-flight fixes.
 - **Never `--nuxeo own` across a large batch.** A container is ~2 GB; twelve is the machine.
-- **Never let a subagent publish to the shared corpus.** Serial tail, in the wrapper, on the
-  batch's own corpus branch — never appended to a ticket PR that has already gone clean.
+- **Never let a subagent publish the findings record.** Serial tail, in the wrapper: concurrent
+  PUTs race on the page's optimistic `version + 1`. There is no corpus branch to publish on —
+  `publish` writes no tracked file, so nothing can land on a ticket PR either way.
 - **Stop the whole batch** only for a shared-resource failure. Everything else is per-ticket.
 - **Report a ticket's real outcome.** `pr-open` is not `merged`, and a blocked ticket in a batch
   of twelve is easy to lose in a summary that leads with eleven successes.

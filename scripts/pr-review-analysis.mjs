@@ -139,16 +139,6 @@ async function readPage(auth) {
  * empty is the `silent-failure` class this page exists to record.
  */
 function findingsOnPage(storage) {
-  const cellText = (html) =>
-    html
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;|&apos;/g, "'")
-      .trim();
   const heading = storage.indexOf('<h2>Findings</h2>');
   const close = heading === -1 ? -1 : storage.indexOf('</tbody>', heading);
   if (close === -1) {
@@ -158,13 +148,11 @@ function findingsOnPage(storage) {
   const table = storage.slice(heading, close);
   const rows = [];
   for (const tr of table.matchAll(/<tr>([\s\S]*?)<\/tr>/g)) {
-    const cells = [...tr[1].matchAll(/<td>([\s\S]*?)<\/td>/g)].map((m) =>
-      m[1].replace(/^<p>([\s\S]*?)<\/p>$/, '$1'),
-    );
+    const cells = [...tr[1].matchAll(/<td><p>([\s\S]*?)<\/p><\/td>/g)].map((m) => m[1]);
     // PR, file, finding, class, why-missed — the five `publish` writes. A row of any other
     // width is not a finding row, so it is skipped rather than counted into a wrong column.
     if (cells.length !== 5) continue;
-    rows.push({ pr: cellText(cells[0]), category: cellText(cells[3]) });
+    rows.push({ pr: cells[0], category: cells[3] });
   }
   if (!rows.length) {
     console.error('\nThe Findings table parsed to zero rows. Has its column layout changed?\n');

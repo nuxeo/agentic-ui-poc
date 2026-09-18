@@ -49,23 +49,52 @@ describe('LoginPageComponent', () => {
     const landmark = el.querySelector('#login-main');
     expect(landmark).toBeTruthy();
     expect(landmark?.getAttribute('tabindex')).toBe('-1');
+    expect(landmark?.getAttribute('aria-label')).toBe('Log in');
   });
 
-  it('focuses the sign-in landmark when the skip link is activated', () => {
+  it('focuses the sign-in landmark and cancels navigation when the skip link is activated', () => {
     const el = fixture.nativeElement as HTMLElement;
     const landmark = el.querySelector('#login-main') as HTMLElement;
-    const event = jasmine.createSpyObj<MouseEvent>('event', ['preventDefault']);
+    const event = new MouseEvent('click', { cancelable: true, bubbles: true });
+    const preventSpy = spyOn(event, 'preventDefault').and.callThrough();
 
     component.skipToSignIn(event);
     fixture.detectChanges();
 
-    expect(event.preventDefault).toHaveBeenCalled();
+    expect(preventSpy).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(landmark);
   });
 
-  it('names the sign-in form landmark for assistive tech', () => {
-    const landmark = fixture.nativeElement.querySelector('#login-main') as HTMLElement;
-    expect(landmark.getAttribute('aria-label')).toBe('Sign in');
+  it('shows username required error after empty submit (NXENG-748)', () => {
+    component.form.setValue({ username: '', password: '' });
+    component.submit();
+    fixture.detectChanges();
+
+    const errors = Array.from(fixture.nativeElement.querySelectorAll('mat-error')).map(
+      (el) => (el as HTMLElement).textContent?.trim() ?? '',
+    );
+    expect(errors).toContain('Username is required');
+  });
+
+  it('keeps the username outline wrapper from clipping focused input (NXENG-748)', () => {
+    const usernameInput = fixture.nativeElement.querySelector(
+      'input[formcontrolname="username"]',
+    ) as HTMLInputElement;
+    usernameInput.focus();
+    fixture.detectChanges();
+
+    const wrapper = usernameInput.closest('.mat-mdc-text-field-wrapper') as HTMLElement;
+    expect(wrapper).toBeTruthy();
+    expect(getComputedStyle(wrapper).overflow).toBe('visible');
+    expect(getComputedStyle(usernameInput).scrollMarginTop).not.toBe('0px');
+  });
+
+  it('exposes a level-one heading for the login page (WCAG 1.3.1)', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    const heading = el.querySelector('h1.login-title');
+    expect(heading).toBeTruthy();
+    expect(heading?.textContent?.trim()).toBe('Log in');
   });
 
   it('shows username and password on one form (Web UI parity)', () => {
@@ -77,6 +106,24 @@ describe('LoginPageComponent', () => {
     expect(el.textContent).not.toContain('Azure SAML');
     expect(el.textContent).not.toContain('Okta SAML');
     expect(el.textContent).toContain('Log in');
+  });
+
+  it('names required fields in the label instead of a color-only marker', () => {
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Username (required)');
+    expect(el.textContent).toContain('Password (required)');
+    expect(el.querySelector('.mat-mdc-form-field-required-marker')).toBeNull();
+  });
+
+  it('prefixes validation errors with text, not color alone', () => {
+    component.form.setValue({ username: '', password: '' });
+    component.submit();
+    fixture.detectChanges();
+
+    const error = fixture.nativeElement.querySelector('mat-error') as HTMLElement | null;
+    expect(error).withContext('expected a visible mat-error').not.toBeNull();
+    expect(error!.textContent?.trim()).toContain('Username is required');
+    expect(getComputedStyle(error!, '::before').content).toContain('Error');
   });
 
   it('submits username and password together', async () => {
@@ -108,6 +155,12 @@ describe('LoginPageComponent', () => {
     fixture.detectChanges();
 
     expect(component.submitDisabled()).toBe(true);
+    const submit = (fixture.nativeElement as HTMLElement).querySelector(
+      'button.login-submit',
+    ) as HTMLButtonElement;
+    expect(submit.getAttribute('aria-disabled')).toBe('true');
+    expect(submit.disabled).toBe(false);
+    expect(submit.tabIndex).toBeGreaterThanOrEqual(0);
   });
 
   it('enables Log in when username and password are present', () => {
@@ -167,6 +220,27 @@ describe('LoginPageComponent', () => {
     expect(component.form.getRawValue()).toEqual({
       username: 'administrator',
       password: 'Administrator',
+    });
+  });
+
+  /**
+   * NXENG-948. Login fields and footer text must live inside a landmark so screen-reader
+   * users can navigate by region — WCAG 2.1 1.3.1 / axe `region`.
+   */
+  describe('accessibility', () => {
+    it('wraps the login surface in a named main landmark', () => {
+      const root = fixture.nativeElement as HTMLElement;
+      const main = root.querySelector('main.login-panel');
+      expect(main).not.toBeNull();
+      expect(main?.getAttribute('id')).toBe('login-main');
+      expect(main?.getAttribute('aria-label')).toBe('Log in');
+      expect(main?.querySelector('form.login-form')).not.toBeNull();
+      expect(main?.querySelector('footer.login-footer')).not.toBeNull();
+    });
+
+    it('hides the decorative hero image from assistive technologies', () => {
+      const hero = (fixture.nativeElement as HTMLElement).querySelector('.login-hero');
+      expect(hero?.getAttribute('aria-hidden')).toBe('true');
     });
   });
 

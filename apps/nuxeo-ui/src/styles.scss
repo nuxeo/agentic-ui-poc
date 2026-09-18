@@ -57,6 +57,39 @@ body {
   margin: 0;
 }
 
+/* WCAG 1.4.1 — underline + color for prose links; exclusions use :where() so pill/Material links keep their tokens. */
+$hxp-prose-link-exclusions: ':where(:not(.login-brand)):where(:not(.profile-card__pill-link)):where(:not([mat-menu-item])):where(:not([mat-button])):where(:not([mat-flat-button])):where(:not([mat-stroked-button])):where(:not([mat-icon-button]))';
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:any-link),
+html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:any-link) {
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:any-link):where(:hover:not(:active)),
+html:not([data-app-theme])
+  a#{$hxp-prose-link-exclusions}:where(:any-link):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:visited),
+html:not([data-app-theme]) a#{$hxp-prose-link-exclusions}:where(:visited) {
+  color: var(--mat-sys-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+html[data-app-theme] a#{$hxp-prose-link-exclusions}:where(:visited):where(:hover:not(:active)),
+html:not([data-app-theme])
+  a#{$hxp-prose-link-exclusions}:where(:visited):where(:hover:not(:active)) {
+  color: var(--mat-sys-on-primary-container);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
 app-root {
   display: block;
   height: 100%;
@@ -86,6 +119,42 @@ html:not([data-app-theme]) body.mat-typography sat-platform-nav h2.sat-platform-
   line-height: var(--sat-platform-nav-title-line-height, 1.5rem);
   letter-spacing: var(--sat-platform-nav-title-letter-spacing, 0.009rem);
   margin: 0;
+}
+
+/*
+ * Keyboard focus ring on the sidebar nav items — NXENG-758.
+ *
+ * Satori draws the ring itself, as
+ * `outline: 2px solid var(--sat-platform-nav-outline, var(--mat-sys-outline-variant, #c8c6d0))`
+ * with `outline-offset: -2px`. Nothing in this repo set `--sat-platform-nav-outline`, so the
+ * colour fell through to `--mat-sys-outline-variant` — a low-emphasis divider token — painted
+ * inset on the nav panel's saturated fill. Measured in Chromium on the default theme: 3.80:1
+ * against the panel, but only **2.87:1** against the current item, because Satori lightens the
+ * current item with a 12% white overlay and the negative offset puts the ring on top of that
+ * lighter fill. WCAG 2.1 SC 1.4.11 asks 3:1 of a focus indicator.
+ *
+ * Pointing the token at the nav's own foreground fixes every theme without a per-theme value:
+ * that colour is legible on this panel by construction, being what Satori uses for the item's
+ * own icon and label. Measured across the four packaged themes in both route states, the ring
+ * now ranges 4.87:1 (nuxeo, current item) to 8.30:1 (dark).
+ *
+ * Only the colour changes. `outline-offset` stays at Satori's -2px on purpose: the nav list
+ * below sets `overflow-x: hidden`, so a ring drawn outside the item's box is clipped at the
+ * rail edges.
+ *
+ * `--agentic-nav-focus-outline-color` keeps this Layer 0 — a customer can restyle the ring from
+ * configuration without also repainting the icon and the label.
+ *
+ * Global rather than in `app-shell.component.scss` so the guarantee is testable: the Karma
+ * target loads this stylesheet into the page, which is what lets
+ * `app/shell/nav-focus-ring-contrast.spec.ts` measure the real computed ratio instead of
+ * re-deriving colours it would have had to hardcode.
+ */
+sat-platform-nav {
+  --sat-platform-nav-outline: var(
+    --agentic-nav-focus-outline-color,
+    var(--sat-platform-nav-on-background, var(--mat-sys-on-primary, #fff))
+  );
 }
 
 /* Satori default: nav list uses overflow-y hidden until :hover, so items below the fold are clipped without hover (e.g. touch). */
@@ -154,7 +223,8 @@ sat-platform-nav p.sat-platform-nav-item-label {
  * .mat-mdc-text-field-wrapper (often with border-radius) which crops "Choose a …" style labels
  * in dialogs, filters, and anywhere the wrapper is rounded — fix once app-wide.
  */
-.mat-mdc-form-field-appearance-outline {
+.mat-mdc-form-field-appearance-outline,
+.mat-form-field-appearance-outline {
   overflow: visible;
 
   .mat-mdc-text-field-wrapper {
