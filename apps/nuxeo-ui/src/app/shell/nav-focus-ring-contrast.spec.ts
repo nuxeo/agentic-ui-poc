@@ -61,13 +61,7 @@ const LINK = 'sat-platform-nav-list-item[data-nav-id="app.navbar.browseAdfHx"] .
 @Component({
   standalone: true,
   imports: [SatPlatformNavModule],
-  template: `
-    <sat-platform-nav>
-      <sat-platform-nav-list-item [active]="active()" data-nav-id="app.navbar.browseAdfHx">
-        Browse (adf-hx POC)
-      </sat-platform-nav-list-item>
-    </sat-platform-nav>
-  `,
+  templateUrl: './nav-focus-ring-contrast.spec.html',
 })
 class NavHostComponent {
   readonly active = signal(false);
