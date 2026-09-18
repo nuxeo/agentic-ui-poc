@@ -53,10 +53,8 @@ import {
   writeClipboardDocs,
   type ClipboardDoc,
 } from '@nuxeo-satori/platform/nuxeo-client';
-import {
-  HxpBrowseNavDrawerComponent,
-  toAdfHxBrowseRouterUrl,
-} from '@agentic-ui/shared/adf-hx-bridge';
+import { toAdfHxBrowseRouterUrl } from '@agentic-ui/shared/adf-hx-bridge';
+import { HxpBrowseNavDrawerComponent } from '@agentic-ui/shared/adf-hx-bridge/providers';
 import {
   AppExtensionsService,
   EXTENSION_SLOTS,
