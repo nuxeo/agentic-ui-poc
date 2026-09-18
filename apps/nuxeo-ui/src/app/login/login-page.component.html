@@ -9,46 +9,49 @@
       </a>
 
       <form class="login-form" [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field
-          appearance="outline"
-          subscriptSizing="dynamic"
-          class="login-field-full login-field-username"
-          hideRequiredMarker
-        >
-          <mat-label>Username (required)</mat-label>
-          <input
-            matInput
-            formControlName="username"
-            autocomplete="username"
-            (input)="onCredentialInput()"
-            (change)="onCredentialInput()"
-            (animationstart)="onAutofillAnimation($event)"
-          />
-          @if (form.controls.username.hasError('required') && form.controls.username.touched) {
-            <mat-error>Username is required</mat-error>
-          }
-        </mat-form-field>
+        <fieldset class="login-credentials">
+          <legend class="cdk-visually-hidden">Sign in credentials</legend>
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full login-field-username"
+            hideRequiredMarker
+          >
+            <mat-label>Username (required)</mat-label>
+            <input
+              matInput
+              formControlName="username"
+              autocomplete="username"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.username.hasError('required') && form.controls.username.touched) {
+              <mat-error>Username is required</mat-error>
+            }
+          </mat-form-field>
 
-        <mat-form-field
-          appearance="outline"
-          subscriptSizing="dynamic"
-          class="login-field-full"
-          hideRequiredMarker
-        >
-          <mat-label>Password (required)</mat-label>
-          <input
-            matInput
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            (input)="onCredentialInput()"
-            (change)="onCredentialInput()"
-            (animationstart)="onAutofillAnimation($event)"
-          />
-          @if (form.controls.password.hasError('required') && form.controls.password.touched) {
-            <mat-error>Password is required</mat-error>
-          }
-        </mat-form-field>
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="login-field-full"
+            hideRequiredMarker
+          >
+            <mat-label>Password (required)</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="current-password"
+              (input)="onCredentialInput()"
+              (change)="onCredentialInput()"
+              (animationstart)="onAutofillAnimation($event)"
+            />
+            @if (form.controls.password.hasError('required') && form.controls.password.touched) {
+              <mat-error>Password is required</mat-error>
+            }
+          </mat-form-field>
+        </fieldset>
 
         <div class="login-actions-row login-actions-row--single">
           <button
