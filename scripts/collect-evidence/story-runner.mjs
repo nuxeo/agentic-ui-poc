@@ -96,16 +96,18 @@ const browser = await chromium.launch({
 // Credentials come from the environment, with no fallback. Defaulting to Administrator
 // meant a capture silently ran with privileged credentials whenever the variables were
 // unset — and produced evidence of what an administrator sees, which is rarely the claim.
+const skipHttpCredentials = scenesMod.skipHttpCredentials === true;
 const nuxeoUser = process.env['NUXEO_USER'];
 const nuxeoPass = process.env['NUXEO_PASS'];
-if (!nuxeoUser || !nuxeoPass) {
+if (!skipHttpCredentials && (!nuxeoUser || !nuxeoPass)) {
   // Placeholders, not a worked example. Spelling the local dev value out as an assignment
   // reads as a hardcoded credential to both a reviewer and the secret scanner, and this
   // repository gates merges on the latter.
   console.error(
     '\nNUXEO_USER and NUXEO_PASS must be set — there is deliberately no default.\n\n' +
       '  export NUXEO_USER=<user> NUXEO_PASS=<password>\n\n' +
-      'A local Nuxeo dev container uses its documented default administrator account.\n',
+      'A local Nuxeo dev container uses its documented default administrator account.\n' +
+      'Public routes (e.g. /#/login) may export skipHttpCredentials = true and run without them.\n',
   );
   await browser.close();
   process.exit(2);
@@ -118,7 +120,7 @@ const context = await browser.newContext({
   // the route guard so pages render, httpCredentials authenticates the XHRs behind them. Login
   // and other public routes set `skipHttpCredentials: true` on the scenes file so /me hydration
   // does not sign the browser in before the login form renders.
-  ...(scenesMod.skipHttpCredentials === true
+  ...(skipHttpCredentials
     ? {}
     : {
         httpCredentials: { username: nuxeoUser, password: nuxeoPass, origin: baseUrl },
