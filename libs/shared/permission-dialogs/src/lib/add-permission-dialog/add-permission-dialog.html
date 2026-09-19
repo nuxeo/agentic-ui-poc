@@ -40,10 +40,14 @@
   </mat-form-field>
 
   <div class="time-frame-section">
-    <label class="field-label">{{
+    <span class="field-label" id="time-frame-label">{{
       'permissions.add-permission-dialog.time-frame' | translate
-    }}</label>
-    <mat-radio-group [(ngModel)]="timeFrame" class="time-frame-radios">
+    }}</span>
+    <mat-radio-group
+      [(ngModel)]="timeFrame"
+      class="time-frame-radios"
+      [attr.aria-labelledby]="'time-frame-label'"
+    >
       <mat-radio-button value="permanent">{{
         'permissions.add-permission-dialog.permanent' | translate
       }}</mat-radio-button>
@@ -86,12 +90,13 @@
   @if (sendNotify) {
     <p class="mail-hint">{{ mailHint }}</p>
     <div class="notify-section">
-      <label class="field-label">{{
+      <label class="field-label" for="notify-email">{{
         'permissions.add-permission-dialog.notification-email' | translate
       }}</label>
       <mat-form-field appearance="outline" class="full-width">
         <textarea
           matInput
+          id="notify-email"
           [(ngModel)]="notifyComment"
           rows="2"
           [placeholder]="

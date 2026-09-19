@@ -14,10 +14,14 @@
 
   @if (!isExternal) {
     <div class="time-frame-section">
-      <label class="field-label">{{
+      <span class="field-label" id="update-time-frame-label">{{
         'permissions.update-permission-dialog.time-frame' | translate
-      }}</label>
-      <mat-radio-group [(ngModel)]="timeFrame" class="time-frame-radios">
+      }}</span>
+      <mat-radio-group
+        [(ngModel)]="timeFrame"
+        class="time-frame-radios"
+        [attr.aria-labelledby]="'update-time-frame-label'"
+      >
         <mat-radio-button value="permanent">{{
           'permissions.update-permission-dialog.permanent' | translate
         }}</mat-radio-button>
@@ -67,12 +71,13 @@
 
   @if (isExternal || sendNotify) {
     <div class="notify-section">
-      <label class="field-label">{{
+      <label class="field-label" for="update-notify-email">{{
         'permissions.update-permission-dialog.notification-email' | translate
       }}</label>
       <mat-form-field appearance="outline" class="full-width">
         <textarea
           matInput
+          id="update-notify-email"
           [(ngModel)]="notifyComment"
           rows="2"
           [placeholder]="

@@ -38,12 +38,13 @@
   <p class="mail-hint">{{ mailHint }}</p>
 
   <div class="notify-section">
-    <label class="field-label">{{
+    <label class="field-label" for="share-notify-email">{{
       'permissions.share-external-dialog.notification-email' | translate
     }}</label>
     <mat-form-field appearance="outline" class="full-width">
       <textarea
         matInput
+        id="share-notify-email"
         [(ngModel)]="notifyComment"
         rows="2"
         [placeholder]="'permissions.share-external-dialog.hi-could-you-comment-on-this' | translate"
