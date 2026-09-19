@@ -197,8 +197,9 @@ describe('LoginPageComponent', () => {
   });
 
   /**
-   * NXENG-948. Login fields and footer text must live inside a landmark so screen-reader
-   * users can navigate by region — WCAG 2.1 1.3.1 / axe `region`.
+   * NXENG-948 / NXENG-756. Login fields and footer text must live inside a landmark so
+   * screen-reader users can navigate by region — WCAG 2.1 1.3.1 (IBM aria_content_in_landmark,
+   * issue 3563006691) / axe `region`.
    */
   describe('accessibility', () => {
     it('wraps the login surface in a named main landmark', () => {
